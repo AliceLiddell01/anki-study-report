@@ -1,0 +1,21 @@
+{
+  "default_period": "today",
+  "report_scope": "all",
+  "selected_deck_ids": [],
+  "include_child_decks": true,
+  "use_study_time_stats": true,
+  "selected_profile": "daily_control",
+  "report_detail_level": "normal",
+  "enabled_metrics": {
+    "total_reviews": true,
+    "new_cards": true,
+    "again_count": true,
+    "pass_rate": true,
+    "total_seconds": true,
+    "real_study_time": true,
+    "estimated_minutes": true,
+    "deck_breakdown": true,
+    "due_tomorrow": true
+  },
+  "last_report_ts": null
+}
