@@ -70,6 +70,7 @@ class DashboardServerManager:
         self._cache_status_provider = None
         self._cache_rebuild_handler = None
         self._cache_refresh_handler = None
+        self._action_handler = None
 
     def start(
         self,
@@ -192,6 +193,10 @@ class DashboardServerManager:
             self._cache_rebuild_handler = rebuild_handler
             self._cache_refresh_handler = refresh_handler
 
+    def configure_action_handler(self, action_handler=None) -> None:
+        with self._lock:
+            self._action_handler = action_handler
+
     def cache_status(self) -> dict[str, Any]:
         with self._lock:
             provider = self._cache_status_provider
@@ -224,6 +229,17 @@ class DashboardServerManager:
         except Exception:
             traceback.print_exc()
             return {"ok": False, "status": "error", "error": "Statistics cache refresh failed."}
+
+    def request_action(self, action: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        with self._lock:
+            handler = self._action_handler
+        if handler is None:
+            return _action_error(action, "Dashboard actions are not configured.")
+        try:
+            return handler(action, payload or {})
+        except Exception:
+            traceback.print_exc()
+            return _action_error(action, "Dashboard action failed.")
 
     def state(self) -> DashboardServerState:
         with self._lock:
@@ -313,6 +329,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/cache/refresh":
             self._send_cache_action(_query_token(parsed), "refresh")
             return
+        if path.startswith("/api/actions/"):
+            action = path.removeprefix("/api/actions/").strip("/")
+            self._send_dashboard_action(_query_token(parsed), action)
+            return
 
         self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -332,6 +352,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         payload = json.dumps(
             {
                 "error": "invalid_dashboard_token",
+                "ok": False,
                 "message": "Недействительная ссылка dashboard. Откройте dashboard из Anki Study Report.",
             },
             ensure_ascii=False,
@@ -709,6 +730,36 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 
+    def _send_dashboard_action(self, token: str | None, action: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(_action_error(action, "Invalid JSON request body."), HTTPStatus.BAD_REQUEST)
+            return
+        result = self.manager.request_action(action, payload)
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
+    def _read_json_body(self) -> dict[str, Any] | None:
+        length_header = self.headers.get("Content-Length")
+        if not length_header:
+            return {}
+        try:
+            length = int(length_header)
+        except ValueError:
+            return None
+        if length < 0 or length > 8192:
+            return None
+        try:
+            raw = self.rfile.read(length)
+            if not raw:
+                return {}
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            return None
+        return data if isinstance(data, dict) else None
+
     def _send_file(self, target: Path) -> None:
         try:
             payload = target.read_bytes()
@@ -784,6 +835,14 @@ def _query_token(parsed) -> str | None:
     if not values:
         return None
     return values[0]
+
+
+def _action_error(action: str, message: str) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "action": action or "unknown",
+        "error": message,
+    }
 
 
 def _redact_token(url: str | None) -> str | None:

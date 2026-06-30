@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import ActionsPage from "../pages/ActionsPage";
 import BrowsePage from "../pages/BrowsePage";
 import CalendarPage from "../pages/CalendarPage";
 import CardsPage from "../pages/CardsPage";
@@ -19,6 +20,7 @@ export type RoutePath =
   | "/calendar"
   | "/fsrs"
   | "/browse"
+  | "/actions"
   | "/settings";
 
 export const navItems: Array<{ path: RoutePath; label: string }> = [
@@ -30,6 +32,7 @@ export const navItems: Array<{ path: RoutePath; label: string }> = [
   { path: "/calendar", label: "Calendar" },
   { path: "/fsrs", label: "FSRS" },
   { path: "/browse", label: "Browse" },
+  { path: "/actions", label: "Actions" },
   { path: "/settings", label: "Settings" },
 ];
 
@@ -57,6 +60,8 @@ export function renderRoute(route: RoutePath, report: StudyReport | null, loadSt
       return <FsrsPage />;
     case "/browse":
       return <BrowsePage />;
+    case "/actions":
+      return <ActionsPage report={report} loadState={loadState} />;
     case "/settings":
       return <SettingsPage report={report} />;
     case "/home":

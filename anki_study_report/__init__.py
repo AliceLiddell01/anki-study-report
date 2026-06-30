@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from time import monotonic
+import threading
 import traceback
 
 from aqt import dialogs, gui_hooks, mw
@@ -127,6 +128,7 @@ _REPORT_CACHE: dict[str, object] = {
     "created_at": 0.0,
     "metrics": None,
 }
+_DASHBOARD_ACTION_CONTEXT: dict[str, object] = {}
 _STUDY_REPORT_DIALOG: StudyReportDialog | None = None
 _INTEGRATIONS_DIALOG: IntegrationDiagnosticsDialog | None = None
 _WEB_DASHBOARD_DIALOG: WebDashboardSettingsDialog | None = None
@@ -716,9 +718,13 @@ class StudyReportDialog(QDialog):
     def _open_current_report_dashboard(self) -> None:
         def on_success(metrics: dict) -> None:
             metadata = self._report_metadata()
+            markdown = build_markdown_report(metrics, metadata)
             report = _dashboard_report_payload(metrics, metadata)
             state = _ensure_web_dashboard_server()
             _DASHBOARD_SERVER.publish_report(report)
+            self._latest_report_markdown = markdown
+            self._latest_report_cache_key = self._current_metrics_cache_key()
+            _publish_dashboard_action_context(markdown, metadata, self.report_deck_ids())
             if state.url:
                 QDesktopServices.openUrl(QUrl(state.url))
             self._remember_last_report()
@@ -1550,6 +1556,7 @@ def _configure_dashboard_cache_handlers() -> None:
         rebuild_handler=_request_cache_rebuild,
         refresh_handler=_request_cache_refresh,
     )
+    _DASHBOARD_SERVER.configure_action_handler(_request_dashboard_action)
 
 
 def _cache_status_response() -> dict:
@@ -1568,7 +1575,245 @@ def _clear_report_cache() -> None:
     _REPORT_CACHE["key"] = None
     _REPORT_CACHE["created_at"] = 0.0
     _REPORT_CACHE["metrics"] = None
+    _DASHBOARD_ACTION_CONTEXT.clear()
     _DASHBOARD_SERVER.clear_report()
+
+
+def _publish_dashboard_action_context(
+    markdown: str,
+    metadata: dict,
+    deck_ids: list[int] | None,
+) -> None:
+    _DASHBOARD_ACTION_CONTEXT.clear()
+    _DASHBOARD_ACTION_CONTEXT.update(
+        {
+            "markdown": markdown,
+            "metadata": dict(metadata),
+            "start_ts": metadata.get("period_start_ts"),
+            "end_ts": metadata.get("period_end_ts"),
+            "deck_ids": list(deck_ids) if deck_ids is not None else None,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+
+
+def _request_dashboard_action(action: str, payload: dict) -> dict:
+    safe_action = str(action or "").strip()
+    if safe_action == "open-browser":
+        kind = str(payload.get("kind") or "problematic-decks")
+        return _request_dashboard_browser_action(kind)
+    if safe_action == "open-problematic":
+        return _request_dashboard_browser_action("problematic-decks")
+    if safe_action == "open-again":
+        return _request_dashboard_browser_action("again")
+    if safe_action == "open-new":
+        return _request_dashboard_browser_action("new")
+    if safe_action == "copy-markdown":
+        return _request_dashboard_copy_markdown()
+    if safe_action == "save-markdown":
+        return _request_dashboard_save_markdown()
+    if safe_action == "open-dashboard":
+        return _request_dashboard_open_dashboard()
+    return _dashboard_action_error(safe_action or "unknown", "Unknown dashboard action.")
+
+
+def _request_dashboard_copy_markdown() -> dict:
+    markdown = _dashboard_context_markdown()
+    if markdown is None:
+        return _dashboard_no_report_error("copy-markdown")
+
+    def copy() -> None:
+        clipboard = QApplication.clipboard()
+        if clipboard is None:
+            raise RuntimeError("Clipboard is unavailable.")
+        clipboard.setText(markdown)
+
+    result = _run_on_anki_main_sync(copy)
+    if not result["ok"]:
+        return _dashboard_action_error("copy-markdown", result["error"])
+    return _dashboard_action_ok("copy-markdown", "Copied Markdown to clipboard.")
+
+
+def _request_dashboard_save_markdown() -> dict:
+    markdown = _dashboard_context_markdown()
+    if markdown is None:
+        return _dashboard_no_report_error("save-markdown")
+
+    def save() -> str | None:
+        filename, _selected_filter = QFileDialog.getSaveFileName(
+            mw,
+            "Сохранить Markdown-отчёт",
+            _default_markdown_filename(),
+            "Markdown (*.md);;Text files (*.txt);;All files (*)",
+        )
+        if not filename:
+            return None
+        with open(filename, "w", encoding="utf-8") as file:
+            file.write(markdown)
+            file.write("\n")
+        return filename
+
+    result = _run_on_anki_main_sync(save, timeout_seconds=120.0)
+    if not result["ok"]:
+        return _dashboard_action_error("save-markdown", result["error"])
+    filename = result.get("value")
+    if not filename:
+        return _dashboard_action_error("save-markdown", "Save cancelled.")
+    return _dashboard_action_ok("save-markdown", f"Saved report to: {filename}")
+
+
+def _request_dashboard_open_dashboard() -> dict:
+    if not _DASHBOARD_ACTION_CONTEXT:
+        return _dashboard_no_report_error("open-dashboard")
+
+    def open_url() -> None:
+        state = _ensure_web_dashboard_server()
+        if not state.url:
+            raise RuntimeError("Dashboard server is stopped.")
+        QDesktopServices.openUrl(QUrl(state.url))
+
+    result = _run_on_anki_main_sync(open_url)
+    if not result["ok"]:
+        return _dashboard_action_error("open-dashboard", result["error"])
+    return _dashboard_action_ok("open-dashboard", "Opened current report in dashboard.")
+
+
+def _request_dashboard_browser_action(kind: str) -> dict:
+    action_map = {
+        "problematic-decks": ("problem_decks", "open-browser", "No problematic decks found for the selected period."),
+        "again": ("again", "open-again", "No Again answers found for the selected period."),
+        "new": ("new", "open-new", "No new cards found for the selected period."),
+    }
+    if kind not in action_map:
+        return _dashboard_action_error("open-browser", "Unknown browser action kind.")
+    action, response_action, empty_message = action_map[kind]
+    if not _DASHBOARD_ACTION_CONTEXT:
+        return _dashboard_no_report_error(response_action)
+    if mw is None or mw.col is None or not hasattr(mw, "taskman"):
+        return _dashboard_action_error(response_action, "Anki collection is unavailable.")
+
+    try:
+        start_ts = int(_DASHBOARD_ACTION_CONTEXT["start_ts"])
+        end_ts = int(_DASHBOARD_ACTION_CONTEXT["end_ts"])
+        deck_ids = _DASHBOARD_ACTION_CONTEXT.get("deck_ids")
+        deck_ids = deck_ids if isinstance(deck_ids, list) else None
+    except Exception:
+        return _dashboard_action_error(response_action, "No report is available for the selected period.")
+
+    result = _collect_browser_action_on_background(start_ts, end_ts, deck_ids, action)
+    if not result.get("ok"):
+        return _dashboard_action_error(response_action, str(result.get("error") or "Browser action failed."))
+    card_ids = result.get("card_ids") if isinstance(result.get("card_ids"), list) else []
+    if not card_ids:
+        return _dashboard_action_ok(response_action, empty_message)
+
+    open_result = _run_on_anki_main_sync(lambda: _open_browser_search(_card_ids_search_query(card_ids)))
+    if not open_result["ok"]:
+        return _dashboard_action_error(response_action, open_result["error"])
+    message = "Opened Anki Browser."
+    if result.get("truncated"):
+        message = f"Opened Anki Browser with the first {BROWSER_ACTION_CARD_LIMIT} cards."
+    return _dashboard_action_ok(response_action, message)
+
+
+def _collect_browser_action_on_background(
+    start_ts: int,
+    end_ts: int,
+    deck_ids: list[int] | None,
+    action: str,
+) -> dict:
+    event = threading.Event()
+    holder: dict[str, object] = {}
+
+    def finish(future) -> None:
+        try:
+            holder["result"] = future.result()
+        except Exception:
+            traceback.print_exc()
+            holder["result"] = {"ok": False, "error": "Browser action failed."}
+        finally:
+            event.set()
+
+    def start_background() -> None:
+        mw.taskman.run_in_background(
+            lambda: _safe_collect_action_card_ids(
+                mw.col,
+                start_ts,
+                end_ts,
+                deck_ids,
+                action,
+                BROWSER_ACTION_CARD_LIMIT,
+            ),
+            finish,
+        )
+
+    schedule_result = _run_on_anki_main_sync(start_background)
+    if not schedule_result["ok"]:
+        return {"ok": False, "error": schedule_result["error"]}
+
+    if not event.wait(30.0):
+        return {"ok": False, "error": "Browser action is still running."}
+    result = holder.get("result")
+    return result if isinstance(result, dict) else {"ok": False, "error": "Browser action failed."}
+
+
+def _run_on_anki_main_sync(callback: Callable[[], object], timeout_seconds: float = 8.0) -> dict:
+    if mw is None or not hasattr(mw, "taskman"):
+        return {"ok": False, "error": "Anki task manager is unavailable."}
+
+    event = threading.Event()
+    holder: dict[str, object] = {}
+
+    def run() -> None:
+        try:
+            holder["value"] = callback()
+            holder["ok"] = True
+        except Exception:
+            traceback.print_exc()
+            holder["ok"] = False
+            holder["error"] = "Dashboard action failed."
+        finally:
+            event.set()
+
+    try:
+        mw.taskman.run_on_main(run)
+    except Exception:
+        traceback.print_exc()
+        return {"ok": False, "error": "Could not schedule dashboard action."}
+
+    if not event.wait(timeout_seconds):
+        return {"ok": False, "error": "Dashboard action did not finish yet."}
+    if holder.get("ok"):
+        return {"ok": True, "value": holder.get("value")}
+    return {"ok": False, "error": str(holder.get("error") or "Dashboard action failed.")}
+
+
+def _dashboard_context_markdown() -> str | None:
+    markdown = _DASHBOARD_ACTION_CONTEXT.get("markdown")
+    return markdown if isinstance(markdown, str) and markdown.strip() else None
+
+
+def _dashboard_no_report_error(action: str) -> dict:
+    return _dashboard_action_error(action, "No report is available yet. Build or open a report first.")
+
+
+def _dashboard_action_ok(action: str, message: str) -> dict:
+    return {
+        "ok": True,
+        "action": action,
+        "message": message,
+    }
+
+
+def _dashboard_action_error(action: str, error: str) -> dict:
+    safe_error = str(error or "Dashboard action failed.")
+    if "Traceback" in safe_error:
+        safe_error = "Dashboard action failed."
+    return {
+        "ok": False,
+        "action": action,
+        "error": safe_error,
+    }
 
 
 def _request_cache_rebuild() -> dict:
