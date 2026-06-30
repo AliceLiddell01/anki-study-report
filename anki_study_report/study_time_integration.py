@@ -20,10 +20,33 @@ from zipfile import ZipFile
 
 STUDY_TIME_STATS_ADDON_ID = "1247171202"
 MAX_LOG_LINES = 200
-MAX_JSON_BYTES = 20 * 1024 * 1024
-MAX_ROWS_PER_TABLE = 200_000
+MAX_JSON_BYTES = 5 * 1024 * 1024
+MAX_SQLITE_BYTES = 20 * 1024 * 1024
+MAX_ROWS_PER_TABLE = 50_000
+MAX_RECORDS_PER_SOURCE = 50_000
 SECONDS_IN_DAY = 86_400
-SOURCE_TOKENS = ("study", "time", "stats", "session")
+ALLOWED_DATA_FILE_NAMES = {
+    "study_time_stats.json",
+    "study_time_stats.db",
+    "study_time_stats.sqlite",
+    "study_time_stats.sqlite3",
+    "study_sessions.json",
+    "study_sessions.db",
+    "study_sessions.sqlite",
+    "study_sessions.sqlite3",
+    "sessions.json",
+    "sessions.db",
+    "sessions.sqlite",
+    "sessions.sqlite3",
+}
+ALLOWED_DATA_DIRS = {"", "data", "user_files", "meta"}
+ALLOWED_TABLE_NAMES = {
+    "study_time_stats",
+    "study_time_sessions",
+    "study_sessions",
+    "sessions",
+    "review_sessions",
+}
 TIMESTAMP_KEYS = (
     "date",
     "day",
@@ -65,6 +88,7 @@ END_KEYS = ("ended", "ended_at", "end", "end_at", "end_time", "stop", "stopped_a
 DECK_ID_KEYS = ("deck_id", "deckid", "did")
 DECK_NAME_KEYS = ("deck", "deck_name", "deckname")
 _LOG_LINES: list[str] = []
+_LIMIT_EXCEEDED = False
 
 
 @dataclass
@@ -148,6 +172,8 @@ def collect_real_study_time(
     """Return real study time if Study Time Stats Personal data is readable."""
 
     try:
+        global _LIMIT_EXCEEDED
+        _LIMIT_EXCEEDED = False
         start = _to_seconds(start_ts)
         end = _to_seconds(end_ts)
         if end <= start:
@@ -160,6 +186,11 @@ def collect_real_study_time(
 
         best = _best_result(results)
         if best is None:
+            if _LIMIT_EXCEEDED:
+                return unavailable_study_time(
+                    "too_large",
+                    "Реальное время занятий недоступно: данные Study Time Stats слишком большие для безопасного чтения.",
+                )
             if _study_time_stats_is_installed():
                 _log("Study Time Stats найден, но отдельные записи учебных сессий не обнаружены.")
                 return unavailable_study_time(
@@ -235,7 +266,7 @@ def _from_collection_tables(
     results: list[SourceResult] = []
     for row in rows:
         table = str(row[0]) if row else ""
-        if not _source_name_looks_relevant(table):
+        if not _source_name_is_allowed(table):
             continue
         result = _source_result_from_collection_table(col, table, start, end, deck_context)
         if result is not None:
@@ -254,7 +285,7 @@ def _relevant_collection_table_names(col: Any) -> list[str]:
     names: list[str] = []
     for row in rows:
         table = str(row[0]) if row else ""
-        if not _source_name_looks_relevant(table):
+        if not _source_name_is_allowed(table):
             continue
         try:
             columns = [str(info[1]) for info in col.db.all(f'pragma table_info("{table}")')]
@@ -282,11 +313,14 @@ def _source_result_from_collection_table(
 
     column_sql = ", ".join(f'"{column}"' for column in columns)
     try:
-        rows = col.db.all(f'select {column_sql} from "{table}" limit {MAX_ROWS_PER_TABLE}')
+        rows = col.db.all(f'select {column_sql} from "{table}" limit {MAX_ROWS_PER_TABLE + 1}')
     except Exception:
         return None
+    if len(rows) > MAX_ROWS_PER_TABLE:
+        _mark_limit_exceeded(f"Таблица Study Time Stats слишком большая: {table}")
+        return None
 
-    records = [dict(zip(columns, row)) for row in rows]
+    records = [dict(zip(columns, row)) for row in rows[:MAX_ROWS_PER_TABLE]]
     return _sum_records(
         records,
         start,
@@ -342,7 +376,7 @@ def _from_directory(
     deck_context: dict[str, Any],
 ) -> list[SourceResult]:
     results: list[SourceResult] = []
-    for file_path in _safe_rglob(base):
+    for file_path in _allowed_data_files(base):
         if not file_path.is_file():
             continue
         if file_path.suffix.lower() in {".db", ".sqlite", ".sqlite3"}:
@@ -374,7 +408,13 @@ def _from_zip(
             for info in archive.infolist():
                 suffix = Path(info.filename).suffix.lower()
                 name = Path(info.filename).name
-                if info.is_dir() or info.file_size > MAX_JSON_BYTES:
+                if info.is_dir() or not _data_file_name_is_allowed(name):
+                    continue
+                if suffix == ".json" and info.file_size > MAX_JSON_BYTES:
+                    _mark_limit_exceeded(f"JSON Study Time Stats слишком большой: {name}")
+                    continue
+                if suffix in {".db", ".sqlite", ".sqlite3"} and info.file_size > MAX_SQLITE_BYTES:
+                    _mark_limit_exceeded(f"SQLite Study Time Stats слишком большой: {name}")
                     continue
                 if suffix == ".json":
                     result = _from_json_bytes(
@@ -427,6 +467,9 @@ def _from_sqlite_path(
     source: str | None = None,
 ) -> SourceResult | None:
     try:
+        if file_path.stat().st_size > MAX_SQLITE_BYTES:
+            _mark_limit_exceeded(f"SQLite Study Time Stats слишком большой: {file_path.name}")
+            return None
         with sqlite3.connect(f"file:{file_path}?mode=ro", uri=True) as db:
             return _from_sqlite_connection(
                 db,
@@ -450,6 +493,9 @@ def _from_sqlite_bytes(
     source: str,
 ) -> SourceResult | None:
     if not raw:
+        return None
+    if len(raw) > MAX_SQLITE_BYTES:
+        _mark_limit_exceeded(f"SQLite Study Time Stats слишком большой: {source}")
         return None
     temp_path = None
     try:
@@ -484,7 +530,7 @@ def _from_sqlite_connection(
 
     best: SourceResult | None = None
     for table in tables:
-        if not _source_name_looks_relevant(str(table)):
+        if not _source_name_is_allowed(str(table)):
             continue
         try:
             columns = [row[1] for row in db.execute(f'pragma table_info("{table}")')]
@@ -495,11 +541,15 @@ def _from_sqlite_connection(
         column_sql = ", ".join(f'"{column}"' for column in columns)
         try:
             cursor = db.execute(
-                f'select {column_sql} from "{table}" limit {MAX_ROWS_PER_TABLE}'
+                f'select {column_sql} from "{table}" limit {MAX_ROWS_PER_TABLE + 1}'
             )
             records = [dict(zip(columns, row)) for row in cursor.fetchall()]
         except sqlite3.Error:
             continue
+        if len(records) > MAX_ROWS_PER_TABLE:
+            _mark_limit_exceeded(f"Таблица Study Time Stats слишком большая: {table}")
+            continue
+        records = records[:MAX_ROWS_PER_TABLE]
         result = _sum_records(records, start, end, deck_context, f"{source}, таблица {table}")
         if result is not None and (
             best is None or (result.seconds, result.found_records) > (best.seconds, best.found_records)
@@ -521,7 +571,10 @@ def _sum_records(
     has_deck_data = False
     used_deck_filter = False
 
-    for record in records:
+    for index, record in enumerate(records, start=1):
+        if index > MAX_RECORDS_PER_SOURCE:
+            _mark_limit_exceeded(f"Источник Study Time Stats содержит слишком много записей: {source}")
+            break
         timestamp = _record_timestamp(record)
         duration = _record_duration_seconds(record)
         if timestamp is None or duration is None:
@@ -628,18 +681,19 @@ def _deck_context(col: Any, deck_ids: Sequence[int] | None) -> dict[str, Any]:
     return {"deck_ids": selected, "deck_names": names}
 
 
-def _safe_rglob(base: Path) -> Iterable[Path]:
-    try:
-        yield from base.rglob("*")
-    except Exception:
-        _log(f"Не удалось просканировать папку Study Time Stats: {base}")
-        print(f"[Anki Study Report] Could not scan Study Time Stats directory: {base}")
-        traceback.print_exc()
+def _allowed_data_files(base: Path) -> Iterable[Path]:
+    for directory in ALLOWED_DATA_DIRS:
+        root = base / directory if directory else base
+        if not root.is_dir():
+            continue
+        for name in ALLOWED_DATA_FILE_NAMES:
+            yield root / name
 
 
 def _safe_read_bytes(file_path: Path) -> bytes | None:
     try:
         if file_path.stat().st_size > MAX_JSON_BYTES:
+            _mark_limit_exceeded(f"JSON Study Time Stats слишком большой: {file_path.name}")
             return None
         return file_path.read_bytes()
     except Exception:
@@ -668,16 +722,25 @@ def _columns_look_like_time_records(columns: Iterable[str]) -> bool:
     return has_time and (has_duration or has_end)
 
 
-def _source_name_looks_relevant(name: str) -> bool:
-    lowered = name.lower()
-    return any(token in lowered for token in SOURCE_TOKENS)
+def _source_name_is_allowed(name: str) -> bool:
+    return name.lower() in ALLOWED_TABLE_NAMES
+
+
+def _data_file_name_is_allowed(name: str) -> bool:
+    return name.lower() in ALLOWED_DATA_FILE_NAMES
+
+
+def _mark_limit_exceeded(message: str) -> None:
+    global _LIMIT_EXCEEDED
+    _LIMIT_EXCEEDED = True
+    _log(message)
 
 
 def _candidate_data_file_names(paths: Iterable[Path]) -> list[str]:
     names: list[str] = []
     for base in paths:
         if base.is_dir():
-            for file_path in _safe_rglob(base):
+            for file_path in _allowed_data_files(base):
                 if not file_path.is_file():
                     continue
                 suffix = file_path.suffix.lower()
@@ -690,9 +753,12 @@ def _candidate_data_file_names(paths: Iterable[Path]) -> list[str]:
                 with ZipFile(base) as archive:
                     for info in archive.infolist():
                         suffix = Path(info.filename).suffix.lower()
-                        if suffix == ".json" and _json_bytes_have_time_records(archive.read(info)):
+                        name = Path(info.filename).name
+                        if not _data_file_name_is_allowed(name):
+                            continue
+                        if suffix == ".json" and info.file_size <= MAX_JSON_BYTES and _json_bytes_have_time_records(archive.read(info)):
                             names.append(f"{base}!{info.filename}")
-                        elif suffix in {".db", ".sqlite", ".sqlite3"}:
+                        elif suffix in {".db", ".sqlite", ".sqlite3"} and info.file_size <= MAX_SQLITE_BYTES:
                             names.append(f"{base}!{info.filename}")
             except Exception:
                 _log(f"Не удалось перечислить архив Study Time Stats: {base}")
@@ -716,6 +782,8 @@ def _json_bytes_have_time_records(raw: bytes | None) -> bool:
 
 def _sqlite_file_has_time_records(file_path: Path) -> bool:
     try:
+        if file_path.stat().st_size > MAX_SQLITE_BYTES:
+            return False
         with sqlite3.connect(f"file:{file_path}?mode=ro", uri=True) as db:
             tables = [
                 row[0]
@@ -724,6 +792,8 @@ def _sqlite_file_has_time_records(file_path: Path) -> bool:
                 )
             ]
             for table in tables:
+                if not _source_name_is_allowed(str(table)):
+                    continue
                 columns = [row[1] for row in db.execute(f'pragma table_info("{table}")')]
                 if _columns_look_like_time_records(columns):
                     return True

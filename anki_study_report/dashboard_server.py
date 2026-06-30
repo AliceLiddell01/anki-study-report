@@ -1,0 +1,821 @@
+"""Local web dashboard server for Anki Study Report.
+
+The server is intentionally local-only. It serves the built Vite dashboard from
+disk and shuts itself down after a configurable idle timeout.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from functools import partial
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
+from pathlib import Path
+import secrets
+import shutil
+import tempfile
+import threading
+import time
+import traceback
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
+
+
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8766
+DEFAULT_IDLE_TIMEOUT_SECONDS = 1800
+
+
+@dataclass(frozen=True)
+class DashboardServerState:
+    running: bool
+    url: str | None
+    host: str
+    port: int
+    requested_port: int
+    port_collision: bool
+    message: str | None
+    static_dir: str | None
+    static_available: bool
+    started_at: str | None
+    last_request_at: str | None
+    idle_timeout_seconds: int
+    report_available: bool
+    report_path: str | None
+
+
+class DashboardServerManager:
+    """Owns the local HTTP server lifecycle."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._server: ThreadingHTTPServer | None = None
+        self._server_thread: threading.Thread | None = None
+        self._monitor_thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
+        self._host = DEFAULT_HOST
+        self._port = DEFAULT_PORT
+        self._requested_port = DEFAULT_PORT
+        self._port_collision = False
+        self._message: str | None = None
+        self._token: str | None = None
+        self._idle_timeout_seconds = DEFAULT_IDLE_TIMEOUT_SECONDS
+        self._static_dir: Path | None = None
+        self._report_dir: Path | None = None
+        self._report_path: Path | None = None
+        self._started_at: float | None = None
+        self._last_request_at: float | None = None
+        self._cache_status_provider = None
+        self._cache_rebuild_handler = None
+        self._cache_refresh_handler = None
+
+    def start(
+        self,
+        port: int = DEFAULT_PORT,
+        idle_timeout_seconds: int = DEFAULT_IDLE_TIMEOUT_SECONDS,
+    ) -> DashboardServerState:
+        """Start the server if needed and return its current state."""
+
+        with self._lock:
+            if self._server is not None:
+                return self.state()
+
+            self._host = DEFAULT_HOST
+            self._requested_port = _safe_port(port)
+            self._port = self._requested_port
+            self._port_collision = False
+            self._message = None
+            self._token = secrets.token_urlsafe(32)
+            self._idle_timeout_seconds = max(0, int(idle_timeout_seconds or 0))
+            self._static_dir = _find_static_dir()
+            self._report_dir = Path(tempfile.mkdtemp(prefix="anki-study-report-dashboard-"))
+            self._report_path = self._report_dir / "report.json"
+            self._started_at = time.time()
+            self._last_request_at = self._started_at
+            self._stop_event.clear()
+
+            handler = partial(_DashboardRequestHandler, manager=self)
+            try:
+                self._server = ThreadingHTTPServer((self._host, self._port), handler)
+            except OSError:
+                if self._port == 0:
+                    raise
+                self._server = ThreadingHTTPServer((self._host, 0), handler)
+                self._port_collision = True
+            self._port = int(self._server.server_address[1])
+            if self._port_collision:
+                self._message = (
+                    f"Порт {self._requested_port} занят. Dashboard запущен на "
+                    f"свободном порту {self._port}."
+                )
+            self._server_thread = threading.Thread(
+                target=self._server.serve_forever,
+                name="AnkiStudyReportDashboardServer",
+                daemon=True,
+            )
+            self._server_thread.start()
+
+            if self._idle_timeout_seconds > 0:
+                self._monitor_thread = threading.Thread(
+                    target=self._monitor_idle,
+                    name="AnkiStudyReportDashboardIdleMonitor",
+                    daemon=True,
+                )
+                self._monitor_thread.start()
+
+            return self.state()
+
+    def stop(self) -> None:
+        """Stop the server. Safe to call repeatedly."""
+
+        with self._lock:
+            server = self._server
+            self._server = None
+            self._stop_event.set()
+            self._token = None
+
+        if server is not None:
+            server.shutdown()
+            server.server_close()
+
+        with self._lock:
+            self._server_thread = None
+            self._monitor_thread = None
+            self._started_at = None
+            self._last_request_at = None
+            self._port_collision = False
+            self._message = None
+            report_dir = self._report_dir
+            self._report_dir = None
+            self._report_path = None
+
+        if report_dir is not None:
+            shutil.rmtree(report_dir, ignore_errors=True)
+
+    def publish_report(self, report: dict[str, Any]) -> None:
+        """Write the current report JSON into temporary server storage."""
+
+        with self._lock:
+            if self._report_dir is None:
+                self._report_dir = Path(
+                    tempfile.mkdtemp(prefix="anki-study-report-dashboard-")
+                )
+            self._report_path = self._report_dir / "report.json"
+            payload = json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8")
+            self._report_path.write_bytes(payload)
+            self._last_request_at = time.time()
+
+    def clear_report(self) -> None:
+        with self._lock:
+            report_path = self._report_path
+            self._report_path = None
+        if report_path is not None:
+            try:
+                report_path.unlink()
+            except OSError:
+                pass
+
+    def touch(self) -> None:
+        with self._lock:
+            self._last_request_at = time.time()
+
+    def configure_cache_handlers(
+        self,
+        status_provider=None,
+        rebuild_handler=None,
+        refresh_handler=None,
+    ) -> None:
+        with self._lock:
+            self._cache_status_provider = status_provider
+            self._cache_rebuild_handler = rebuild_handler
+            self._cache_refresh_handler = refresh_handler
+
+    def cache_status(self) -> dict[str, Any]:
+        with self._lock:
+            provider = self._cache_status_provider
+        if provider is None:
+            return {"status": "error", "error": "Statistics cache is not configured."}
+        try:
+            return provider()
+        except Exception:
+            traceback.print_exc()
+            return {"status": "error", "error": "Statistics cache status failed."}
+
+    def request_cache_rebuild(self) -> dict[str, Any]:
+        with self._lock:
+            handler = self._cache_rebuild_handler
+        if handler is None:
+            return {"ok": False, "status": "error", "error": "Statistics cache is not configured."}
+        try:
+            return handler()
+        except Exception:
+            traceback.print_exc()
+            return {"ok": False, "status": "error", "error": "Statistics cache rebuild failed."}
+
+    def request_cache_refresh(self) -> dict[str, Any]:
+        with self._lock:
+            handler = self._cache_refresh_handler
+        if handler is None:
+            return {"ok": False, "status": "error", "error": "Statistics cache is not configured."}
+        try:
+            return handler()
+        except Exception:
+            traceback.print_exc()
+            return {"ok": False, "status": "error", "error": "Statistics cache refresh failed."}
+
+    def state(self) -> DashboardServerState:
+        with self._lock:
+            running = self._server is not None
+            static_available = self._static_dir is not None
+            return DashboardServerState(
+                running=running,
+                url=self.url() if running else None,
+                host=self._host,
+                port=self._port,
+                requested_port=self._requested_port,
+                port_collision=self._port_collision,
+                message=self._message,
+                static_dir=str(self._static_dir) if self._static_dir is not None else None,
+                static_available=static_available,
+                started_at=_format_ts(self._started_at),
+                last_request_at=_format_ts(self._last_request_at),
+                idle_timeout_seconds=self._idle_timeout_seconds,
+                report_available=(
+                    self._report_path is not None and self._report_path.is_file()
+                ),
+                report_path=str(self._report_path) if self._report_path else None,
+            )
+
+    def url(self) -> str:
+        return f"http://{self._host}:{self._port}/?token={self._token or ''}"
+
+    def token_is_valid(self, token: str | None) -> bool:
+        with self._lock:
+            expected = self._token
+        return bool(expected and token and secrets.compare_digest(token, expected))
+
+    def _monitor_idle(self) -> None:
+        while not self._stop_event.wait(5):
+            with self._lock:
+                if self._server is None:
+                    return
+                last_request_at = self._last_request_at or time.time()
+                timeout = self._idle_timeout_seconds
+            if timeout > 0 and time.time() - last_request_at >= timeout:
+                self.stop()
+                return
+
+
+class _DashboardRequestHandler(BaseHTTPRequestHandler):
+    manager: DashboardServerManager
+
+    def __init__(self, *args: Any, manager: DashboardServerManager, **kwargs: Any) -> None:
+        self.manager = manager
+        super().__init__(*args, **kwargs)
+
+    def do_GET(self) -> None:
+        self.manager.touch()
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+
+        if path == "/api/status":
+            self._send_json(_state_to_dict(self.manager.state()))
+            return
+        if path == "/api/report":
+            self._send_report(_query_token(parsed))
+            return
+        if path == "/api/cache/status":
+            self._send_cache_status(_query_token(parsed))
+            return
+
+        state = self.manager.state()
+        if not state.static_available or state.static_dir is None:
+            self._send_builtin_dashboard()
+            return
+
+        static_dir = Path(state.static_dir)
+        target = _safe_static_target(static_dir, path)
+        if target is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self._send_file(target)
+
+    def do_POST(self) -> None:
+        self.manager.touch()
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+
+        if path == "/api/cache/rebuild":
+            self._send_cache_action(_query_token(parsed), "rebuild")
+            return
+        if path == "/api/cache/refresh":
+            self._send_cache_action(_query_token(parsed), "refresh")
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def log_message(self, format: str, *args: Any) -> None:
+        return
+
+    def _send_json(self, data: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
+        payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_forbidden(self) -> None:
+        payload = json.dumps(
+            {
+                "error": "invalid_dashboard_token",
+                "message": "Недействительная ссылка dashboard. Откройте dashboard из Anki Study Report.",
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+        self.send_response(HTTPStatus.FORBIDDEN)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_builtin_dashboard(self) -> None:
+        payload = """<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anki Study Report Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1624;
+      --surface: #151f2e;
+      --elevated: #1d2a3d;
+      --border: #2b3a50;
+      --text: #e8f0ff;
+      --muted: #8fa3bf;
+      --blue: #3db4f2;
+      --purple: #7c5cff;
+      --success: #67d391;
+      --warning: #f6c177;
+      --danger: #ef6f6c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% -6%, rgba(61, 180, 242, .14), transparent 34rem),
+        radial-gradient(circle at 88% 2%, rgba(124, 92, 255, .12), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: "kern" 1, "liga" 1;
+    }
+    .shell { width: min(1760px, calc(100% - 32px)); margin: 0 auto; padding: 16px 0 28px; }
+    header, section, .card {
+      background: rgba(21, 31, 46, .96);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 18px 50px rgba(3, 8, 20, .22);
+    }
+    header { padding: 18px; margin-bottom: 16px; }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, Arial, sans-serif; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    h3 { font-size: 15px; line-height: 1.45; }
+    section { padding: 18px; margin-bottom: 16px; min-width: 0; }
+    .meta, .chips, .grid, .hero-grid, .two-col, .cards { display: grid; gap: 12px; }
+    .meta { display: flex; flex-wrap: wrap; margin-top: 12px; }
+    .chip, .pill {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(29, 42, 61, .72);
+      color: var(--muted);
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .hero {
+      background: linear-gradient(135deg, rgba(21,31,46,.98), rgba(29,42,61,.98));
+      border-color: rgba(61, 180, 242, .32);
+    }
+    .verdict { max-width: 1100px; font-size: clamp(22px, 2vw, 34px); line-height: 1.25; font-weight: 700; }
+    .subtle { color: var(--muted); line-height: 1.6; }
+    .grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+    .two-col { grid-template-columns: minmax(0, 1fr); }
+    .hero-grid { grid-template-columns: minmax(0, 1fr); margin-top: 18px; }
+    .card { padding: 14px; min-width: 0; }
+    .card-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .card-value { margin-top: 8px; font-size: 26px; font-weight: 700; }
+    .good { border-color: rgba(103, 211, 145, .38); color: var(--success); }
+    .neutral { border-color: rgba(61, 180, 242, .28); color: var(--blue); }
+    .warning { border-color: rgba(246, 193, 119, .4); color: var(--warning); }
+    .danger { border-color: rgba(239, 111, 108, .42); color: var(--danger); }
+    .bar-row { display: grid; grid-template-columns: 86px minmax(0, 1fr) 64px; gap: 10px; align-items: center; margin: 10px 0; }
+    .bar { height: 11px; background: #111827; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+    .bar span { display: block; height: 100%; border-radius: 999px; }
+    .deck-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .deck-name { overflow-wrap: anywhere; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; min-width: 880px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid rgba(43, 58, 80, .75); text-align: left; vertical-align: top; }
+    th { color: var(--muted); background: var(--elevated); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    .table-details { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(17, 24, 39, .45); overflow: hidden; }
+    .table-details summary { cursor: pointer; padding: 12px; color: var(--blue); font-weight: 700; }
+    .table-details .table-wrap { border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+    .heatmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(18px, 1fr)); gap: 7px; }
+    .day { aspect-ratio: 1; border-radius: 5px; border: 1px solid var(--border); background: #111827; }
+    .actions { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .empty { padding: 24px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); text-align: center; }
+    @media (min-width: 1000px) {
+      .two-col { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+      .hero-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 24px, 1760px); }
+      header, section { padding: 14px; }
+      .verdict { font-size: 22px; }
+      .bar-row { grid-template-columns: 72px minmax(0, 1fr) 52px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app">
+    <section class="empty">Загрузка отчёта...</section>
+  </div>
+  <script>
+    const statusClass = (value) => ["good", "neutral", "warning", "danger"].includes(value) ? value : "neutral";
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[char]));
+    const pct = (value) => `${Math.round((Number(value) || 0) * 100)}%`;
+    const int = (value) => Number(value) || 0;
+    const maxOf = (items, key) => Math.max(1, ...items.map((item) => int(item[key])));
+    const colorForStatus = (status) => ({
+      good: "var(--success)",
+      neutral: "var(--blue)",
+      warning: "var(--warning)",
+      danger: "var(--danger)"
+    }[statusClass(status)]);
+    const heatColor = (reviews, max) => {
+      const ratio = int(reviews) / Math.max(1, max);
+      if (ratio <= 0) return "#111827";
+      if (ratio > .75) return "var(--blue)";
+      if (ratio > .5) return "#287eaf";
+      if (ratio > .25) return "#1d5578";
+      return "#17364f";
+    };
+    function chip(label, value) {
+      return `<span class="chip"><span>${escapeHtml(label)}:&nbsp;</span><strong>${escapeHtml(value)}</strong></span>`;
+    }
+    function kpi(metric) {
+      return `<article class="card ${statusClass(metric.status)}">
+        <div class="card-label">${escapeHtml(metric.label)}</div>
+        <div class="card-value">${escapeHtml(metric.value)}</div>
+        <p class="subtle">${escapeHtml(metric.caption)}</p>
+      </article>`;
+    }
+    function bars(items, totalKey = "value") {
+      const max = maxOf(items, totalKey);
+      return items.map((item) => `<div class="bar-row">
+        <span class="subtle">${escapeHtml(item.label ?? item.day ?? item.offset)}</span>
+        <div class="bar"><span style="width:${Math.max(2, int(item[totalKey]) / max * 100)}%;background:${escapeHtml(item.color || "var(--blue)")};"></span></div>
+        <strong>${escapeHtml(item[totalKey])}</strong>
+      </div>`).join("");
+    }
+    function deckCard(deck) {
+      return `<article class="card ${statusClass(deck.status)}">
+        <h3 class="deck-name">${escapeHtml(deck.name)}</h3>
+        <div class="hero-grid">
+          <div><div class="card-label">Pass</div><strong>${pct(deck.passRate)}</strong></div>
+          <div><div class="card-label">Fail</div><strong>${escapeHtml(deck.failCount)}</strong></div>
+          <div><div class="card-label">Avg</div><strong>${escapeHtml(deck.averageAnswerSeconds)}s</strong></div>
+        </div>
+        <p class="subtle" style="margin-top:12px">${escapeHtml(deck.explanation)}</p>
+      </article>`;
+    }
+    function deckRow(deck) {
+      return `<tr><td class="deck-name">${escapeHtml(deck.name)}<br><span class="subtle">${escapeHtml(deck.explanation)}</span></td><td class="num">${escapeHtml(deck.totalReviews)}</td><td class="num">${escapeHtml(deck.newCards)}</td><td class="num">${pct(deck.passRate)}</td><td class="num">${escapeHtml(deck.failCount)}</td><td class="num">${escapeHtml(deck.averageAnswerSeconds)}s</td><td><span class="pill ${statusClass(deck.status)}">${escapeHtml(deck.status)}</span></td></tr>`;
+    }
+    function comparisonDelta(value, suffix = "") {
+      if (value == null || !Number.isFinite(Number(value))) return "нет данных";
+      const rounded = Math.round(Number(value));
+      if (rounded === 0) return `→ 0${suffix}`;
+      return `${rounded > 0 ? "↑ +" : "↓ -"}${Math.abs(rounded)}${suffix}`;
+    }
+    function comparisonPercent(value) {
+      if (value == null || !Number.isFinite(Number(value))) return "нет истории";
+      const rounded = Math.round(Number(value));
+      if (Math.abs(rounded) < 1) return "→ около нормы";
+      return `${rounded > 0 ? "↑" : "↓"} ${Math.abs(rounded)}% к норме`;
+    }
+    function comparisonSection(comparison) {
+      const data = comparison || {};
+      if (!data.available) {
+        return `<section><h2>Сегодня против нормы</h2><div class="empty">${escapeHtml(data.message || "Недостаточно истории для сравнения. Данные начнут появляться после нескольких дней учёбы.")}</div></section>`;
+      }
+      const today = data.today || {};
+      const baseline = data.baselines?.avg7 || {};
+      const delta = data.comparisons?.avg7 || {};
+      const insightHtml = (data.insights || []).slice(0, 3).map((item) => `<article class="card ${item.severity === "positive" ? "good" : statusClass(item.severity)}"><h3>${escapeHtml(item.title)}</h3><p class="subtle">${escapeHtml(item.text)}</p></article>`).join("");
+      return `<section>
+        <h2>Сегодня против нормы</h2>
+        <p class="subtle">Сегодня против ${escapeHtml(baseline.label || "7-дневной нормы")}</p>
+        <div class="grid kpis" style="margin-top:12px">
+          ${kpi({label:"Reviews", value: today.reviews || 0, caption:`${comparisonDelta(delta.reviews?.delta)} · ${comparisonPercent(delta.reviews?.percentDelta)}`, status:"neutral"})}
+          ${kpi({label:"Study time", value: `${today.studyMinutes || 0} мин`, caption:`${comparisonDelta(delta.studyMinutes?.delta, " мин")} · ${comparisonPercent(delta.studyMinutes?.percentDelta)}`, status:"neutral"})}
+          ${kpi({label:"Pass rate", value: today.passRate == null ? "Нет данных" : pct(today.passRate), caption: comparisonDelta(delta.passRate?.deltaPp, " п.п."), status:"good"})}
+          ${kpi({label:"New cards", value: today.newCards || 0, caption:`${comparisonDelta(delta.newCards?.delta)} · ${comparisonPercent(delta.newCards?.percentDelta)}`, status:"warning"})}
+        </div>
+        <div class="cards" style="margin-top:12px">${insightHtml}</div>
+      </section>`;
+    }
+    function render(report) {
+      const decks = report.decks || [];
+      const deckTableLimit = 12;
+      const visibleDecks = decks.slice(0, deckTableLimit);
+      const hiddenDecks = decks.slice(deckTableLimit);
+      const problemDecks = decks.filter((deck) => ["danger", "warning"].includes(deck.status)).slice(0, 3);
+      const bestDecks = [...decks].filter((deck) => deck.status === "good").sort((a, b) => b.passRate - a.passRate).slice(0, 3);
+      const activity = report.activity || {};
+      const forecast = report.forecast || {};
+      const fsrs = report.fsrs || {};
+      const comparison = report.comparison || {};
+      const days = activity.days || [];
+      const dayMax = maxOf(days, "reviews");
+      document.getElementById("app").innerHTML = `
+        <header>
+          <h1>${escapeHtml(report.metadata?.title || "Anki Study Report")}</h1>
+          <div class="meta">
+            ${chip("Период", report.metadata?.period || "Не указан")}
+            ${chip("Колоды", (report.metadata?.selectedDecks || []).join(", ") || "Не указаны")}
+            ${chip("Режим", report.metadata?.answerMode === "pass_fail" ? "Pass/Fail" : "4-button")}
+            ${chip("Создано", report.metadata?.createdAt || "")}
+            ${chip("Детализация", report.metadata?.detailMode || "normal")}
+          </div>
+        </header>
+        <section class="hero">
+          <span class="pill ${statusClass(report.summary?.riskLevel)}">risk level: ${escapeHtml(report.summary?.riskLevel || "neutral")}</span>
+          <p class="verdict" style="margin-top:16px">${escapeHtml(report.summary?.verdict || "Отчёт готов.")}</p>
+          <div class="hero-grid">
+            <article class="card good"><div class="card-label">Главное действие</div><p>${escapeHtml(report.summary?.mainAction || "")}</p></article>
+            <article class="card danger"><div class="card-label">Что тревожит</div><p>${escapeHtml(report.summary?.warning || "")}</p></article>
+            <article class="card warning"><div class="card-label">Новые карточки</div><p>${escapeHtml(report.summary?.newCardsAdvice || "")}</p></article>
+          </div>
+        </section>
+        <section><h2>KPI</h2><div class="grid kpis">${(report.kpis || []).map(kpi).join("")}</div></section>
+        ${comparisonSection(comparison)}
+        <div class="two-col">
+          <section><h2>Answer Distribution</h2>${bars(report.answerDistribution || [])}</section>
+          <section>
+            <h2>Activity</h2>
+            <div class="grid kpis">
+              ${kpi({label:"Active days", value: activity.activeDays || 0, caption:"дни с повторениями", status:"good"})}
+              ${kpi({label:"Missed days", value: activity.missedDays || 0, caption:"дни без повторений", status:"neutral"})}
+              ${kpi({label:"Current streak", value:`${activity.currentStreak || 0} дней`, caption:"текущая серия", status:"good"})}
+              ${kpi({label:"Best streak", value:`${activity.bestStreak || 0} дней`, caption:"лучшая серия", status:"good"})}
+            </div>
+            <div class="heatmap" style="margin-top:14px">${days.map((day) => `<span class="day" title="${escapeHtml(day.date)}: ${escapeHtml(day.reviews)}" style="background:${heatColor(day.reviews, dayMax)}"></span>`).join("")}</div>
+          </section>
+        </div>
+        <section><h2>Problem Decks</h2>${problemDecks.length ? `<div class="deck-list">${problemDecks.map(deckCard).join("")}</div>` : `<div class="empty">Явных проблемных колод нет.</div>`}</section>
+        <section><h2>Best Decks</h2>${bestDecks.length ? `<div class="deck-list">${bestDecks.map(deckCard).join("")}</div>` : `<div class="empty">Лучшие колоды пока не выделены.</div>`}</section>
+        <section>
+          <h2>Deck Performance Table</h2>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Deck</th><th class="num">Reviews</th><th class="num">New</th><th class="num">Pass rate</th><th class="num">Fail</th><th class="num">Avg answer</th><th>Status</th></tr></thead>
+            <tbody>${visibleDecks.map(deckRow).join("")}</tbody>
+          </table></div>
+          ${hiddenDecks.length ? `<details class="table-details"><summary>Показаны первые ${visibleDecks.length} строк, открыть ещё ${hiddenDecks.length}</summary><div class="table-wrap"><table><tbody>${hiddenDecks.map(deckRow).join("")}</tbody></table></div></details>` : ""}
+        </section>
+        <div class="two-col">
+          <section><h2>Forecast</h2>
+            <div class="grid kpis">
+              ${kpi({label:"Tomorrow", value: forecast.tomorrow || 0, caption:"завтра", status:"good"})}
+              ${kpi({label:"Next 7 days", value: forecast.next7Days || 0, caption:"7 дней", status:"neutral"})}
+              ${kpi({label:"Next 30 days", value: forecast.next30Days || 0, caption:"30 дней", status:"neutral"})}
+            </div>
+            <p class="subtle" style="margin-top:14px">${escapeHtml(forecast.recommendation || "")}</p>
+          </section>
+          <section><h2>FSRS</h2>
+            <div class="grid kpis">
+              ${kpi({label:"Predicted recall", value: fsrs.predictedRecall == null ? "Нет данных" : pct(fsrs.predictedRecall), caption:"average recall", status:"neutral"})}
+              ${kpi({label:"Below target", value: fsrs.cardsBelowTarget || 0, caption:"ниже target", status:"warning"})}
+              ${kpi({label:"High forgetting risk", value: fsrs.highForgettingRisk || 0, caption:"риск забывания", status:"danger"})}
+              ${kpi({label:"Future load", value: fsrs.futureLoad30Days || 0, caption:"FSRS load", status:"neutral"})}
+            </div>
+          </section>
+        </div>
+        <section class="hero">
+          <h2>Recommendations / Next Actions</h2>
+          <p class="verdict">${escapeHtml(report.recommendations?.mainAction || "")}</p>
+          <p class="subtle" style="margin-top:10px">${escapeHtml(report.recommendations?.why || "")}</p>
+          <div class="actions" style="margin-top:14px">${(report.recommendations?.checklist || []).map((item) => `<article class="card good">${escapeHtml(item)}</article>`).join("")}</div>
+        </section>
+        <section><h2>Technical Details</h2>
+          <div class="grid kpis">
+            ${kpi({label:"period", value: report.metadata?.period || "", caption:"", status:"neutral"})}
+            ${kpi({label:"include children", value: report.metadata?.includeChildren ? "yes" : "no", caption:"", status:"neutral"})}
+            ${kpi({label:"answer mode", value: report.metadata?.answerMode || "", caption:"", status:"neutral"})}
+            ${kpi({label:"deleted reviews", value: report.metadata?.deletedCardReviews || 0, caption:"", status:"neutral"})}
+          </div>
+        </section>
+      `;
+    }
+    const token = new URLSearchParams(window.location.search).get("token") || "";
+    fetch(`/api/report?token=${encodeURIComponent(token)}`, { cache: "no-store" })
+      .then((response) => {
+        if (response.status === 403) throw new Error("forbidden");
+        if (!response.ok) throw new Error("No report");
+        return response.json();
+      })
+      .then(render)
+      .catch((error) => {
+        if (error.message === "forbidden") {
+          document.getElementById("app").innerHTML = `<section class="empty">
+            <h1>Недействительная ссылка dashboard</h1>
+            <p>Недействительная ссылка dashboard. Откройте dashboard из Anki Study Report.</p>
+          </section>`;
+          return;
+        }
+        document.getElementById("app").innerHTML = `<section class="empty">
+          <h1>Отчёт для dashboard ещё не опубликован</h1>
+          <p>Откройте основное окно Anki Study Report и нажмите “Открыть этот отчёт в dashboard”.</p>
+        </section>`;
+      });
+  </script>
+</body>
+</html>
+""".encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_report(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+
+        state = self.manager.state()
+        if state.report_path is None:
+            self.send_error(HTTPStatus.NOT_FOUND, "No dashboard report has been published")
+            return
+        try:
+            payload = Path(state.report_path).read_bytes()
+        except OSError:
+            self.send_error(HTTPStatus.NOT_FOUND, "No dashboard report has been published")
+            return
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_cache_status(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        self._send_json(self.manager.cache_status())
+
+    def _send_cache_action(self, token: str | None, action: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        if action == "rebuild":
+            self._send_json(self.manager.request_cache_rebuild())
+            return
+        if action == "refresh":
+            self._send_json(self.manager.request_cache_refresh())
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def _send_file(self, target: Path) -> None:
+        try:
+            payload = target.read_bytes()
+        except OSError:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", _content_type(target))
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(payload)
+
+
+def _find_static_dir() -> Path | None:
+    package_dir = Path(__file__).resolve().parent
+    candidates = [
+        package_dir / "web_dashboard",
+        package_dir.parent / "web-dashboard" / "dist",
+    ]
+    for candidate in candidates:
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+def _safe_static_target(static_dir: Path, path: str) -> Path | None:
+    relative = path.lstrip("/") or "index.html"
+    if relative.startswith("api/"):
+        return None
+    target = (static_dir / relative).resolve()
+    root = static_dir.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None
+    if target.is_dir():
+        target = target / "index.html"
+    if target.is_file():
+        return target
+    return root / "index.html"
+
+
+def _content_type(path: Path) -> str:
+    suffix = path.suffix.lower()
+    return {
+        ".css": "text/css; charset=utf-8",
+        ".html": "text/html; charset=utf-8",
+        ".js": "application/javascript; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".png": "image/png",
+        ".svg": "image/svg+xml",
+        ".txt": "text/plain; charset=utf-8",
+        ".webp": "image/webp",
+    }.get(suffix, "application/octet-stream")
+
+
+def _safe_port(value: int) -> int:
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_PORT
+    if port == 0:
+        return 0
+    if 1024 <= port <= 65535:
+        return port
+    return DEFAULT_PORT
+
+
+def _query_token(parsed) -> str | None:
+    values = parse_qs(parsed.query).get("token")
+    if not values:
+        return None
+    return values[0]
+
+
+def _redact_token(url: str | None) -> str | None:
+    if not url:
+        return url
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?token=..."
+
+
+def _format_ts(value: float | None) -> str | None:
+    if value is None:
+        return None
+    return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _state_to_dict(state: DashboardServerState) -> dict[str, Any]:
+    return {
+        "running": state.running,
+        "url": _redact_token(state.url),
+        "host": state.host,
+        "port": state.port,
+        "requested_port": state.requested_port,
+        "port_collision": state.port_collision,
+        "message": state.message,
+        "token_required": True,
+        "static_dir": state.static_dir,
+        "static_available": state.static_available,
+        "started_at": state.started_at,
+        "last_request_at": state.last_request_at,
+        "idle_timeout_seconds": state.idle_timeout_seconds,
+        "report_available": state.report_available,
+        "report_path": state.report_path,
+    }
