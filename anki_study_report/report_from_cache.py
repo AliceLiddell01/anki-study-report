@@ -333,6 +333,7 @@ def _activity_day(row: dict[str, Any]) -> dict[str, Any]:
     fail = _as_int(row.get("fail"))
     pass_count = _as_int(row.get("pass")) or max(0, reviews - fail)
     study_seconds = _as_int(row.get("study_seconds"))
+    total_answer_seconds = _as_float(row.get("total_answer_seconds"))
     return {
         "date": str(row.get("date") or ""),
         "reviews": reviews,
@@ -350,7 +351,7 @@ def _activity_day(row: dict[str, Any]) -> dict[str, Any]:
         "passRate": round(pass_count / reviews, 4) if reviews > 0 else None,
         "failRate": round(fail / reviews, 4) if reviews > 0 else None,
         "studySeconds": study_seconds,
-        "avgAnswerSeconds": round(study_seconds / reviews, 1) if reviews > 0 and study_seconds > 0 else None,
+        "avgAnswerSeconds": round(total_answer_seconds / reviews, 1) if reviews > 0 and total_answer_seconds > 0 else None,
     }
 
 
@@ -359,6 +360,7 @@ def _summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     fail = sum(_as_int(row.get("fail")) for row in rows)
     pass_count = sum(_as_int(row.get("pass")) for row in rows)
     study_seconds = sum(_as_int(row.get("study_seconds")) for row in rows)
+    total_answer_seconds = sum(_as_float(row.get("total_answer_seconds")) for row in rows)
     active_days = sum(1 for row in rows if _as_int(row.get("reviews")) > 0)
     return {
         "total_reviews": reviews,
@@ -375,6 +377,7 @@ def _summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "active_days": active_days,
         "average_reviews_per_active_day": round(reviews / active_days, 1) if active_days > 0 else 0.0,
         "average_study_seconds_per_active_day": round(study_seconds / active_days, 1) if active_days > 0 else 0.0,
+        "average_answer_seconds": round(total_answer_seconds / reviews, 1) if reviews > 0 and total_answer_seconds > 0 else None,
     }
 
 
@@ -438,6 +441,7 @@ def _daily_stats(row: dict[str, Any] | None, label: str) -> dict[str, Any]:
     fail = _as_int(row.get("fail"))
     pass_count = _as_int(row.get("pass")) or max(0, reviews - fail)
     study_seconds = _as_int(row.get("study_seconds"))
+    total_answer_seconds = _as_float(row.get("total_answer_seconds"))
     return {
         "date": str(row.get("date") or ""),
         "label": str(row.get("label") or row.get("date") or label),
@@ -449,7 +453,7 @@ def _daily_stats(row: dict[str, Any] | None, label: str) -> dict[str, Any]:
         "easy": _as_int(row.get("easy")),
         "studySeconds": study_seconds,
         "studyMinutes": round(study_seconds / 60),
-        "avgAnswerSeconds": round(study_seconds / reviews, 1) if reviews > 0 and study_seconds > 0 else None,
+        "avgAnswerSeconds": round(total_answer_seconds / reviews, 1) if reviews > 0 and total_answer_seconds > 0 else None,
         "activeDecks": _as_int(row.get("active_decks")),
         "passRate": round(pass_count / reviews, 4) if reviews > 0 else None,
         "failRate": round(fail / reviews, 4) if reviews > 0 else None,
@@ -482,7 +486,7 @@ def _average_daily_stats(rows: list[dict[str, Any]], label: str) -> dict[str, An
     aggregate = _aggregate_base(rows)
     aggregate["date"] = ""
     aggregate["label"] = label
-    for key in ("reviews", "new_cards", "pass", "fail", "hard", "easy", "study_seconds", "active_decks"):
+    for key in ("reviews", "new_cards", "pass", "fail", "hard", "easy", "study_seconds", "total_answer_seconds", "active_decks"):
         aggregate[key] = round(_as_float(aggregate.get(key)) / count)
     return _daily_stats(aggregate, label)
 
@@ -507,6 +511,7 @@ def _aggregate_base(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "hard": sum(_as_int(row.get("hard")) for row in rows),
         "easy": sum(_as_int(row.get("easy")) for row in rows),
         "study_seconds": sum(_as_int(row.get("study_seconds")) for row in rows),
+        "total_answer_seconds": sum(_as_float(row.get("total_answer_seconds")) for row in rows),
         "active_decks": sum(_as_int(row.get("active_decks")) for row in rows),
     }
 

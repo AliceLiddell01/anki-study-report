@@ -43,6 +43,7 @@ from .metrics import collect_action_card_ids, collect_metrics, expand_deck_ids
 from .heatmap_metrics import diagnose_review_heatmap_personal
 from .report_builder import build_markdown_report, render_html_report
 from .report_from_cache import build_cached_report_parts, merge_cached_report_parts
+from .report_publication import report_metrics_cache_key
 from .session_tracker import (
     collect_tracked_study_time,
     diagnose_session_tracker,
@@ -676,6 +677,7 @@ class StudyReportDialog(QDialog):
         config["include_child_decks"] = self.include_child_decks.isChecked()
         config["enabled_metrics"] = dict(self._enabled_metrics)
         _write_config(config)
+        self._config = config
 
     def _show_report(self) -> None:
         def on_success(metrics: dict) -> None:
@@ -935,16 +937,21 @@ class StudyReportDialog(QDialog):
         answer_mode = self.selected_answer_mode()
         use_study_time_stats = bool(self._config.get("use_study_time_stats", False))
         track_reviewer_sessions = bool(self._config.get("track_reviewer_sessions", False))
+        use_stats_cache_for_report = bool(
+            self._config.get("use_stats_cache_for_report", False)
+        )
         return {
             "start_ts": start_ts,
             "end_ts": end_ts,
             "deck_ids": deck_ids,
             "answer_mode": answer_mode,
-            "cache_key": (
+            "cache_key": report_metrics_cache_key(
                 cache_key,
                 answer_mode,
                 use_study_time_stats,
                 track_reviewer_sessions,
+                use_stats_cache_for_report,
+                _STATS_CACHE.status(),
             ),
             "use_study_time_stats": use_study_time_stats,
             "track_reviewer_sessions": track_reviewer_sessions,
@@ -1078,7 +1085,7 @@ class StudyReportDialog(QDialog):
             "period_end_ts": end_ts,
             "period_start_date": _date_key_from_timestamp(start_ts),
             "period_end_date": _date_key_from_timestamp(max(start_ts, end_ts - 1)),
-            "today_date": _date_key_from_timestamp(int(datetime.now().timestamp())),
+            "today_date": _current_anki_today_date_key(),
         }
 
     def _selected_period_bounds_quiet(self) -> tuple[int, int]:
@@ -1557,6 +1564,13 @@ def _cache_status_response() -> dict:
     return status
 
 
+def _clear_report_cache() -> None:
+    _REPORT_CACHE["key"] = None
+    _REPORT_CACHE["created_at"] = 0.0
+    _REPORT_CACHE["metrics"] = None
+    _DASHBOARD_SERVER.clear_report()
+
+
 def _request_cache_rebuild() -> dict:
     return _schedule_cache_action("rebuild")
 
@@ -1586,6 +1600,7 @@ def _schedule_cache_action(action: str) -> dict:
             "alreadyBuilding": True,
             "message": "Cache operation is already running",
         }
+    _clear_report_cache()
 
     def start_on_main() -> None:
         _start_cache_action_on_main(action)
@@ -1622,6 +1637,7 @@ def _start_cache_action_on_main(action: str) -> None:
     def finish(future) -> None:
         try:
             future.result()
+            _clear_report_cache()
         except Exception:
             traceback.print_exc()
             _STATS_CACHE.mark_error(f"Background cache {action} failed.")
@@ -2644,6 +2660,16 @@ def _date_key_from_timestamp(timestamp: int | float) -> str:
     except (TypeError, ValueError):
         value = 0
     return datetime.fromtimestamp(value).date().isoformat()
+
+
+def _current_anki_today_date_key() -> str:
+    try:
+        day_cutoff = int(mw.col.sched.day_cutoff) if mw and mw.col else 0
+    except Exception:
+        day_cutoff = 0
+    if day_cutoff > SECONDS_IN_DAY:
+        return _date_key_from_timestamp(day_cutoff - SECONDS_IN_DAY)
+    return _date_key_from_timestamp(int(datetime.now().timestamp()))
 
 
 def _enabled_metrics_from_config(config: dict) -> dict[str, bool]:

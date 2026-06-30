@@ -244,6 +244,7 @@ export interface StatsCacheSummary {
     active_days: number;
     average_reviews_per_active_day: number;
     average_study_seconds_per_active_day: number;
+    average_answer_seconds: number | null;
   };
   cacheDeckSummary?: {
     available: boolean;
