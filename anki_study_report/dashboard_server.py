@@ -22,6 +22,14 @@ import traceback
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .extension_logging import (
+    clear_logs,
+    log_event,
+    log_exception,
+    log_status,
+    read_recent_logs,
+)
+
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8766
@@ -71,6 +79,10 @@ class DashboardServerManager:
         self._cache_rebuild_handler = None
         self._cache_refresh_handler = None
         self._action_handler = None
+        self._server_action_handler = None
+        self._server_status_provider = None
+        self._display_settings_provider = None
+        self._display_settings_handler = None
 
     def start(
         self,
@@ -117,6 +129,13 @@ class DashboardServerManager:
                 daemon=True,
             )
             self._server_thread.start()
+            log_event(
+                "server.start",
+                "Dashboard server started",
+                port=self._port,
+                requested_port=self._requested_port,
+                port_collision=self._port_collision,
+            )
 
             if self._idle_timeout_seconds > 0:
                 self._monitor_thread = threading.Thread(
@@ -154,6 +173,7 @@ class DashboardServerManager:
 
         if report_dir is not None:
             shutil.rmtree(report_dir, ignore_errors=True)
+        log_event("server.stop", "Dashboard server stopped")
 
     def publish_report(self, report: dict[str, Any]) -> None:
         """Write the current report JSON into temporary server storage."""
@@ -167,6 +187,7 @@ class DashboardServerManager:
             payload = json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8")
             self._report_path.write_bytes(payload)
             self._last_request_at = time.time()
+            log_event("report.publish", "Report published", bytes=len(payload))
 
     def clear_report(self) -> None:
         with self._lock:
@@ -196,6 +217,24 @@ class DashboardServerManager:
     def configure_action_handler(self, action_handler=None) -> None:
         with self._lock:
             self._action_handler = action_handler
+
+    def configure_server_handlers(
+        self,
+        action_handler=None,
+        status_provider=None,
+    ) -> None:
+        with self._lock:
+            self._server_action_handler = action_handler
+            self._server_status_provider = status_provider
+
+    def configure_display_settings_handlers(
+        self,
+        settings_provider=None,
+        settings_handler=None,
+    ) -> None:
+        with self._lock:
+            self._display_settings_provider = settings_provider
+            self._display_settings_handler = settings_handler
 
     def cache_status(self) -> dict[str, Any]:
         with self._lock:
@@ -239,7 +278,59 @@ class DashboardServerManager:
             return handler(action, payload or {})
         except Exception:
             traceback.print_exc()
+            log_exception("action.error", "Dashboard action failed", action=action)
             return _action_error(action, "Dashboard action failed.")
+
+    def request_server_action(self, action: str) -> dict[str, Any]:
+        with self._lock:
+            handler = self._server_action_handler
+        if handler is None:
+            return _action_error(action, "Server actions are not configured.")
+        try:
+            return handler(action)
+        except Exception:
+            traceback.print_exc()
+            log_exception("server.action.error", "Server action failed", action=action)
+            return _action_error(action, "Server action failed.")
+
+    def server_status(self) -> dict[str, Any]:
+        state = _state_to_dict(self.state())
+        with self._lock:
+            provider = self._server_status_provider
+        if provider is None:
+            return state
+        try:
+            extra = provider()
+        except Exception:
+            traceback.print_exc()
+            log_exception("server.status.error", "Server status failed")
+            extra = {"error": "Server status failed."}
+        if isinstance(extra, dict):
+            state.update(extra)
+        return state
+
+    def display_settings(self) -> dict[str, Any]:
+        with self._lock:
+            provider = self._display_settings_provider
+        if provider is None:
+            return {"status": "error", "error": "Dashboard settings are not configured."}
+        try:
+            return provider()
+        except Exception:
+            traceback.print_exc()
+            return {"status": "error", "error": "Dashboard settings failed."}
+
+    def update_display_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._display_settings_handler
+        if handler is None:
+            return {"ok": False, "error": "Dashboard settings are not configured."}
+        try:
+            return handler(payload)
+        except Exception:
+            traceback.print_exc()
+            log_exception("settings.update.error", "Dashboard settings update failed")
+            return {"ok": False, "error": "Dashboard settings update failed."}
 
     def state(self) -> DashboardServerState:
         with self._lock:
@@ -299,11 +390,29 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/status":
             self._send_json(_state_to_dict(self.manager.state()))
             return
+        if path == "/api/server/status":
+            self._send_server_status(_query_token(parsed))
+            return
         if path == "/api/report":
             self._send_report(_query_token(parsed))
             return
         if path == "/api/cache/status":
             self._send_cache_status(_query_token(parsed))
+            return
+        if path == "/api/dashboard/settings":
+            self._send_dashboard_settings(_query_token(parsed))
+            return
+        if path == "/api/logs/status":
+            self._send_logs_status(_query_token(parsed))
+            return
+        if path == "/api/logs/recent":
+            self._send_recent_logs(_query_token(parsed), parsed)
+            return
+        if path == "/api/logs/download":
+            self._send_log_download(_query_token(parsed))
+            return
+        if path == "/api/integrations/status":
+            self._send_integrations_status(_query_token(parsed))
             return
 
         state = self.manager.state()
@@ -329,6 +438,16 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/cache/refresh":
             self._send_cache_action(_query_token(parsed), "refresh")
             return
+        if path.startswith("/api/server/"):
+            action = path.removeprefix("/api/server/").strip("/")
+            self._send_server_action(_query_token(parsed), action)
+            return
+        if path == "/api/logs/clear":
+            self._send_clear_logs(_query_token(parsed))
+            return
+        if path == "/api/dashboard/settings":
+            self._send_dashboard_settings_update(_query_token(parsed))
+            return
         if path.startswith("/api/actions/"):
             action = path.removeprefix("/api/actions/").strip("/")
             self._send_dashboard_action(_query_token(parsed), action)
@@ -349,6 +468,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _send_forbidden(self) -> None:
+        log_event("security.token_failed", "Dashboard token validation failed", path=self.path)
         payload = json.dumps(
             {
                 "error": "invalid_dashboard_token",
@@ -363,6 +483,82 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(payload)
+
+    def _send_server_status(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        self._send_json(self.manager.server_status())
+
+    def _send_server_action(self, token: str | None, action: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        if action in {"open-dashboard", "copy-url"}:
+            result = self.manager.request_server_action(action)
+            self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+            return
+        if action in {"restart", "stop"}:
+            self._send_json(
+                _dashboard_action_ok(action, f"Server {action} scheduled."),
+                HTTPStatus.OK,
+            )
+            self._run_server_action_after_response(action)
+            return
+        self._send_json(_action_error(action, "Unknown server action."), HTTPStatus.NOT_FOUND)
+
+    def _run_server_action_after_response(self, action: str) -> None:
+        def run() -> None:
+            time.sleep(0.1)
+            self.manager.request_server_action(action)
+
+        threading.Thread(
+            target=run,
+            name=f"AnkiStudyReportServerAction-{action}",
+            daemon=True,
+        ).start()
+
+    def _send_logs_status(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        self._send_json(log_status())
+
+    def _send_integrations_status(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        self._send_json(self.manager.server_status().get("integrations", {"items": []}))
+
+    def _send_recent_logs(self, token: str | None, parsed) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        max_bytes = _query_int(parsed, "max_bytes", 200_000)
+        text = read_recent_logs(max_bytes=max_bytes)
+        self._send_json({"ok": True, "text": text, "status": log_status(max_bytes=max_bytes)})
+
+    def _send_log_download(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        text = read_recent_logs(max_bytes=1_000_000)
+        payload = text.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Disposition", 'attachment; filename="anki_study_report.log"')
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_clear_logs(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        clear_logs()
+        log_event("logs.clear", "Extension logs cleared")
+        self._send_json({"ok": True, "message": "Logs cleared.", "status": log_status()})
 
     def _send_builtin_dashboard(self) -> None:
         payload = """<!doctype html>
@@ -394,7 +590,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         radial-gradient(circle at 88% 2%, rgba(124, 92, 255, .12), transparent 30rem),
         var(--bg);
       color: var(--text);
-      font-family: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, Arial, sans-serif;
+      font-family: "Inter", "Segoe UI", "Noto Sans", "Yu Gothic UI", "Meiryo", ui-sans-serif, system-ui, Arial, sans-serif;
       font-size: 15px;
       line-height: 1.5;
       text-rendering: optimizeLegibility;
@@ -411,7 +607,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
     }
     header { padding: 18px; margin-bottom: 16px; }
     h1, h2, h3, p { margin: 0; }
-    h1, h2, h3 { font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, Arial, sans-serif; }
+    h1, h2, h3 { font-family: "Inter", "Segoe UI", "Noto Sans", "Yu Gothic UI", "Meiryo", ui-sans-serif, system-ui, Arial, sans-serif; }
     h1 { font-size: 24px; }
     h2 { font-size: 18px; margin-bottom: 14px; }
     h3 { font-size: 15px; line-height: 1.45; }
@@ -501,8 +697,22 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
       if (ratio > .25) return "#1d5578";
       return "#17364f";
     };
+    let selectedHeatmapYear = null;
     function chip(label, value) {
       return `<span class="chip"><span>${escapeHtml(label)}:&nbsp;</span><strong>${escapeHtml(value)}</strong></span>`;
+    }
+    function deckScopeSummary(decks) {
+      const clean = (Array.isArray(decks) ? decks : []).map((deck) => String(deck || "").trim()).filter(Boolean);
+      if (!clean.length || (clean.length === 1 && clean[0].toLowerCase() === "все колоды")) return "Все колоды";
+      if (clean.length <= 3) return `${clean.length} ${deckWord(clean.length)}: ${clean.join(", ")}`;
+      return `${clean.length} ${deckWord(clean.length)}: ${clean.slice(0, 3).join(", ")} + ещё ${clean.length - 3}`;
+    }
+    function deckWord(count) {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod10 === 1 && mod100 !== 11) return "колода";
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "колоды";
+      return "колод";
     }
     function kpi(metric) {
       return `<article class="card ${statusClass(metric.status)}">
@@ -578,16 +788,19 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
       const fsrs = report.fsrs || {};
       const comparison = report.comparison || {};
       const days = activity.days || [];
-      const dayMax = maxOf(days, "reviews");
+      const years = [...new Set(days.map((day) => String(day.date || "").slice(0, 4)).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+      const currentYear = String(new Date().getFullYear());
+      if (!selectedHeatmapYear) selectedHeatmapYear = years.includes(currentYear) ? currentYear : (years[0] || currentYear);
+      if (!years.includes(selectedHeatmapYear)) years.unshift(selectedHeatmapYear);
+      const visibleDays = days.filter((day) => String(day.date || "").slice(0, 4) === selectedHeatmapYear);
+      const dayMax = maxOf(visibleDays, "reviews");
+      window.setHeatmapYear = (year) => { selectedHeatmapYear = String(year); render(report); };
       document.getElementById("app").innerHTML = `
         <header>
           <h1>${escapeHtml(report.metadata?.title || "Anki Study Report")}</h1>
           <div class="meta">
-            ${chip("Период", report.metadata?.period || "Не указан")}
-            ${chip("Колоды", (report.metadata?.selectedDecks || []).join(", ") || "Не указаны")}
-            ${chip("Режим", report.metadata?.answerMode === "pass_fail" ? "Pass/Fail" : "4-button")}
-            ${chip("Создано", report.metadata?.createdAt || "")}
-            ${chip("Детализация", report.metadata?.detailMode || "normal")}
+            ${chip("Период статистики", report.metadata?.period || "Всё время")}
+            ${chip("Статистика по", deckScopeSummary(report.metadata?.selectedDecks))}
           </div>
         </header>
         <section class="hero">
@@ -611,7 +824,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
               ${kpi({label:"Current streak", value:`${activity.currentStreak || 0} дней`, caption:"текущая серия", status:"good"})}
               ${kpi({label:"Best streak", value:`${activity.bestStreak || 0} дней`, caption:"лучшая серия", status:"good"})}
             </div>
-            <div class="heatmap" style="margin-top:14px">${days.map((day) => `<span class="day" title="${escapeHtml(day.date)}: ${escapeHtml(day.reviews)}" style="background:${heatColor(day.reviews, dayMax)}"></span>`).join("")}</div>
+            <div class="meta" style="margin-top:14px">
+              <button type="button" onclick="window.setHeatmapYear(Number(selectedHeatmapYear)-1)">←</button>
+              <select onchange="window.setHeatmapYear(this.value)">${years.map((year) => `<option value="${escapeHtml(year)}" ${year === selectedHeatmapYear ? "selected" : ""}>${escapeHtml(year)}</option>`).join("")}</select>
+              <button type="button" onclick="window.setHeatmapYear(Number(selectedHeatmapYear)+1)">→</button>
+            </div>
+            ${visibleDays.length ? `<div class="heatmap" style="margin-top:14px">${visibleDays.map((day) => `<span class="day" title="${escapeHtml(day.date)}: ${escapeHtml(day.reviews)}" style="background:${heatColor(day.reviews, dayMax)}"></span>`).join("")}</div>` : `<div class="empty" style="margin-top:14px">Нет данных за выбранный год.</div>`}
           </section>
         </div>
         <section><h2>Problem Decks</h2>${problemDecks.length ? `<div class="deck-list">${problemDecks.map(deckCard).join("")}</div>` : `<div class="empty">Явных проблемных колод нет.</div>`}</section>
@@ -651,6 +869,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         <section><h2>Technical Details</h2>
           <div class="grid kpis">
             ${kpi({label:"period", value: report.metadata?.period || "", caption:"", status:"neutral"})}
+            ${kpi({label:"selected decks", value: deckScopeSummary(report.metadata?.selectedDecks), caption:"", status:"neutral"})}
+            ${kpi({label:"created at", value: report.metadata?.createdAt || "", caption:"", status:"neutral"})}
             ${kpi({label:"include children", value: report.metadata?.includeChildren ? "yes" : "no", caption:"", status:"neutral"})}
             ${kpi({label:"answer mode", value: report.metadata?.answerMode || "", caption:"", status:"neutral"})}
             ${kpi({label:"deleted reviews", value: report.metadata?.deletedCardReviews || 0, caption:"", status:"neutral"})}
@@ -730,6 +950,23 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 
+    def _send_dashboard_settings(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        self._send_json(self.manager.display_settings())
+
+    def _send_dashboard_settings_update(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(_action_error("dashboard-settings", "Invalid JSON request body."), HTTPStatus.BAD_REQUEST)
+            return
+        result = self.manager.update_display_settings(payload)
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
     def _send_dashboard_action(self, token: str | None, action: str) -> None:
         if not self.manager.token_is_valid(token):
             self._send_forbidden()
@@ -801,6 +1038,8 @@ def _safe_static_target(static_dir: Path, path: str) -> Path | None:
         target = target / "index.html"
     if target.is_file():
         return target
+    if relative.startswith("assets/"):
+        return None
     return root / "index.html"
 
 
@@ -837,11 +1076,29 @@ def _query_token(parsed) -> str | None:
     return values[0]
 
 
+def _query_int(parsed, name: str, fallback: int) -> int:
+    values = parse_qs(parsed.query).get(name)
+    if not values:
+        return fallback
+    try:
+        return int(values[0])
+    except (TypeError, ValueError):
+        return fallback
+
+
 def _action_error(action: str, message: str) -> dict[str, Any]:
     return {
         "ok": False,
         "action": action or "unknown",
         "error": message,
+    }
+
+
+def _dashboard_action_ok(action: str, message: str) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "action": action,
+        "message": message,
     }
 
 
@@ -870,11 +1127,26 @@ def _state_to_dict(state: DashboardServerState) -> dict[str, Any]:
         "port_collision": state.port_collision,
         "message": state.message,
         "token_required": True,
-        "static_dir": state.static_dir,
+        "static_dir": _mask_path(state.static_dir),
         "static_available": state.static_available,
         "started_at": state.started_at,
         "last_request_at": state.last_request_at,
         "idle_timeout_seconds": state.idle_timeout_seconds,
         "report_available": state.report_available,
-        "report_path": state.report_path,
+        "report_path": _mask_path(state.report_path),
     }
+
+
+def _mask_path(value: str | None) -> str | None:
+    if not value:
+        return value
+    try:
+        path = Path(value)
+        parts = path.resolve().parts
+    except OSError:
+        return value
+    if "Users" in parts:
+        index = parts.index("Users")
+        if len(parts) > index + 2:
+            return str(Path(*parts[: index + 2]) / "..." / Path(*parts[index + 3 :]))
+    return str(path)

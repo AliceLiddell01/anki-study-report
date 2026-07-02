@@ -28,5 +28,13 @@
     "auto_start": false,
     "port": 8766,
     "idle_timeout_seconds": 1800
+  },
+  "dashboard_display": {
+    "period": "all_time",
+    "custom_start_date": "",
+    "custom_end_date": "",
+    "selected_deck_ids": [],
+    "selected_deck_names": [],
+    "include_child_decks": true
   }
 }

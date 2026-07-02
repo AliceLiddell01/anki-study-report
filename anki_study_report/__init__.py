@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from pathlib import Path
 from time import monotonic
+import shutil
 import threading
 import traceback
 
-from aqt import dialogs, gui_hooks, mw
+from aqt import gui_hooks, mw
 from aqt.qt import (
     QAction,
     QApplication,
@@ -27,7 +29,6 @@ from aqt.qt import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QPushButton,
     QSpinBox,
     QSizePolicy,
@@ -40,7 +41,7 @@ from aqt.qt import (
 )
 from aqt.utils import showCritical, showInfo
 
-from .metrics import collect_action_card_ids, collect_metrics, expand_deck_ids
+from .metrics import collect_metrics, expand_deck_ids
 from .heatmap_metrics import diagnose_review_heatmap_personal
 from .report_builder import build_markdown_report, render_html_report
 from .report_from_cache import build_cached_report_parts, merge_cached_report_parts
@@ -62,6 +63,31 @@ from .dashboard_server import (
     DEFAULT_PORT,
     DashboardServerManager,
 )
+from .dashboard_actions import DashboardActions
+from .dashboard_payload import (
+    build_dashboard_report_payload,
+    build_default_dashboard_metadata,
+    dashboard_int,
+    metrics_from_cache_snapshot,
+)
+from .browser_actions import (
+    BROWSER_ACTION_CARD_LIMIT,
+    card_ids_search_query,
+    collect_browser_action_card_ids,
+    open_browser_search,
+)
+from .config_service import (
+    DEFAULT_ENABLED_METRICS,
+    _custom_profiles_from_config,
+    dashboard_display_config,
+    _enabled_metrics_from_config,
+    _last_report_ts,
+    _read_config,
+    _web_dashboard_config,
+    _write_config,
+    write_dashboard_display_config,
+)
+from .extension_logging import configure_log_dir, log_event, log_exception, log_status
 from .stats_cache import StatsCacheManager
 
 
@@ -95,22 +121,6 @@ ANSWER_MODES = [
     ("standard", "Обычный Anki"),
     ("pass_fail", "Pass/Fail"),
 ]
-METRIC_KEYS = [
-    "total_reviews",
-    "new_cards",
-    "again_count",
-    "pass_rate",
-    "total_seconds",
-    "real_study_time",
-    "average_answer_seconds",
-    "estimated_minutes",
-    "answer_distribution",
-    "deck_breakdown",
-    "due_tomorrow",
-    "forecast",
-    "heatmap",
-]
-DEFAULT_ENABLED_METRICS = {metric: True for metric in METRIC_KEYS}
 PROFILES = [
     (
         MANUAL_PROFILE_ID,
@@ -121,23 +131,78 @@ PROFILES = [
 PROFILE_SETTINGS = {profile_id: settings for profile_id, _label, settings in PROFILES}
 REPORT_CACHE_TTL_SECONDS = 5
 LARGE_PERIOD_WARNING_DAYS = 180
-BROWSER_ACTION_CARD_LIMIT = 500
 SECONDS_IN_DAY = 86_400
+
+
+def _addon_runtime_data_dir() -> Path:
+    addon_id = "anki_study_report"
+    try:
+        addon_id = str(mw.addonManager.addonFromModule(__name__) or addon_id)
+    except Exception:
+        pass
+    try:
+        profile_dir = Path(mw.pm.profileFolder())
+        return profile_dir / "addon_data" / addon_id
+    except Exception:
+        return Path(__file__).resolve().parent / "user_files"
+
+
+def _configure_runtime_data_paths() -> Path:
+    data_dir = _addon_runtime_data_dir()
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        _migrate_legacy_user_files(data_dir)
+    except Exception:
+        traceback.print_exc()
+    configure_log_dir(data_dir / "logs")
+    return data_dir
+
+
+def _migrate_legacy_user_files(data_dir: Path) -> None:
+    legacy_dir = Path(__file__).resolve().parent / "user_files"
+    if not legacy_dir.exists() or legacy_dir.resolve() == data_dir.resolve():
+        return
+
+    cache_src = legacy_dir / "study_report_cache.sqlite3"
+    cache_dst = data_dir / "study_report_cache.sqlite3"
+    if cache_src.is_file() and not cache_dst.exists():
+        try:
+            shutil.copy2(cache_src, cache_dst)
+        except OSError:
+            pass
+
+    logs_src = legacy_dir / "logs"
+    logs_dst = data_dir / "logs"
+    if logs_src.is_dir():
+        logs_dst.mkdir(parents=True, exist_ok=True)
+        for source in logs_src.glob("anki_study_report.log*"):
+            target = logs_dst / source.name
+            if target.exists():
+                continue
+            try:
+                shutil.copy2(source, target)
+            except OSError:
+                pass
+
+    try:
+        shutil.rmtree(legacy_dir)
+    except OSError:
+        pass
+
+
+_RUNTIME_DATA_DIR = _configure_runtime_data_paths()
 _REPORT_CACHE: dict[str, object] = {
     "key": None,
     "created_at": 0.0,
     "metrics": None,
 }
-_DASHBOARD_ACTION_CONTEXT: dict[str, object] = {}
+_DASHBOARD_ACTIONS: DashboardActions | None = None
 _STUDY_REPORT_DIALOG: StudyReportDialog | None = None
 _INTEGRATIONS_DIALOG: IntegrationDiagnosticsDialog | None = None
 _WEB_DASHBOARD_DIALOG: WebDashboardSettingsDialog | None = None
+_LAUNCHER_DIALOG: LauncherDialog | None = None
 _DASHBOARD_SERVER = DashboardServerManager()
-_STATS_CACHE = StatsCacheManager()
-
-
-class _ReportCancelled(Exception):
-    """Raised when the user cancels a potentially heavy report."""
+_STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3")
 
 
 class StudyReportDialog(QDialog):
@@ -828,30 +893,25 @@ class StudyReportDialog(QDialog):
                 return
 
             if result.get("truncated"):
-                answer = QMessageBox.warning(
-                    self,
-                    ADDON_NAME,
-                    (
-                        "Найдено больше "
-                        f"{BROWSER_ACTION_CARD_LIMIT} карточек. "
-                        "Чтобы Anki Browser не завис на огромном поисковом запросе, "
-                        f"будут открыты только первые {BROWSER_ACTION_CARD_LIMIT}.\n\n"
-                        "Открыть Browser?"
-                    ),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
+                self.status_label.setText(
+                    "Найден большой набор карточек. "
+                    f"Открываю первые {BROWSER_ACTION_CARD_LIMIT}, чтобы Browser не завис."
                 )
-                if answer != QMessageBox.StandardButton.Yes:
-                    return
+                log_event(
+                    "browser.open_truncated",
+                    "Large browser action result truncated",
+                    action=action,
+                    limit=BROWSER_ACTION_CARD_LIMIT,
+                )
 
             try:
-                _open_browser_search(_card_ids_search_query(card_ids))
+                open_browser_search(card_ids_search_query(card_ids))
             except Exception:
                 self._show_browser_action_error(traceback.format_exc())
 
         try:
             mw.taskman.run_in_background(
-                lambda: _safe_collect_action_card_ids(
+                lambda: collect_browser_action_card_ids(
                     mw.col,
                     start_ts,
                     end_ts,
@@ -891,11 +951,12 @@ class StudyReportDialog(QDialog):
                 return
 
             if _is_large_period(request["start_ts"], request["end_ts"]):
-                if not _confirm_large_period(self):
-                    raise _ReportCancelled()
-        except _ReportCancelled:
-            showInfo("Расчёт отчёта отменён.", title=ADDON_NAME, parent=self)
-            return
+                self.status_label.setText("All-time report requested. This may take a moment.")
+                log_event(
+                    "report.large_period",
+                    "Large report period requested",
+                    period=self.selected_period(),
+                )
         except Exception:
             self._show_report_error(error_message)
             return
@@ -1396,6 +1457,159 @@ class WebDashboardSettingsDialog(QDialog):
         self.status_text.setPlainText(_web_dashboard_status_text())
 
 
+class LauncherDialog(QDialog):
+    """Compact entrypoint for the local dashboard."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Anki Study Report Launcher")
+        self.setMinimumSize(460, 260)
+
+        title = QLabel("Anki Study Report")
+        title.setStyleSheet("font-size: 18px; font-weight: 600;")
+        subtitle = QLabel("Local dashboard launcher")
+        subtitle.setStyleSheet("color: #666;")
+
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        self.url_label = QLabel()
+        self.url_label.setWordWrap(True)
+        self.report_label = QLabel()
+        self.report_label.setWordWrap(True)
+        self.cache_label = QLabel()
+        self.cache_label.setWordWrap(True)
+
+        self.open_dashboard_button = QPushButton("Open Dashboard")
+        copy_url_button = QPushButton("Copy Dashboard URL")
+        close_button = QPushButton("Close")
+
+        self.open_dashboard_button.clicked.connect(self._open_dashboard)
+        copy_url_button.clicked.connect(self._copy_dashboard_url)
+        close_button.clicked.connect(self.close)
+
+        button_rows = [
+            (self.open_dashboard_button, copy_url_button),
+            (close_button, None),
+        ]
+
+        layout = QVBoxLayout()
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addSpacing(8)
+        layout.addWidget(QLabel("Server status:"))
+        layout.addWidget(self.status_label)
+        layout.addWidget(QLabel("Dashboard URL:"))
+        layout.addWidget(self.url_label)
+        layout.addWidget(QLabel("Report/cache:"))
+        layout.addWidget(self.report_label)
+        layout.addWidget(self.cache_label)
+        layout.addSpacing(8)
+        for left, right in button_rows:
+            row = QHBoxLayout()
+            row.addWidget(left)
+            if right is not None:
+                row.addWidget(right)
+            layout.addLayout(row)
+        self.setLayout(layout)
+        self.refresh_status()
+        log_event("launcher.opened", "Launcher opened")
+
+    def _open_dashboard(self) -> None:
+        try:
+            _ensure_web_dashboard_server()
+        except Exception:
+            log_exception("launcher.open_dashboard", "Could not start dashboard server")
+            showCritical(
+                "Не удалось открыть web dashboard.\n\n"
+                "Подробности записаны в лог расширения.",
+                title=ADDON_NAME,
+                parent=self,
+            )
+            self.refresh_status()
+            return
+
+        self._set_busy(True, "Preparing all-time report from cache...")
+
+        def finish(future) -> None:
+            self._set_busy(False)
+            try:
+                result = future.result()
+                report = result.get("report")
+                if isinstance(report, dict):
+                    _DASHBOARD_SERVER.publish_report(report)
+                markdown = result.get("markdown")
+                metadata = result.get("metadata")
+                _publish_dashboard_action_context(
+                    markdown if isinstance(markdown, str) else "",
+                    metadata if isinstance(metadata, dict) else {},
+                    None,
+                )
+                url = str(result.get("url") or _dashboard_url_for_route("/home", start=False))
+                QDesktopServices.openUrl(QUrl(url))
+                self.status_label.setText(str(result.get("message") or "Dashboard ready."))
+                log_event("launcher.open_dashboard", "Dashboard opened with all-time report")
+            except Exception:
+                log_exception("launcher.open_dashboard", "Could not prepare default dashboard report")
+                showCritical(
+                    "Не удалось подготовить отчёт для dashboard.\n\n"
+                    "Подробности записаны в лог расширения.",
+                    title=ADDON_NAME,
+                    parent=self,
+                )
+            self.refresh_status()
+
+        try:
+            mw.taskman.run_in_background(_prepare_default_dashboard_report, finish)
+        except Exception:
+            self._set_busy(False)
+            log_exception("launcher.open_dashboard", "Could not schedule dashboard report preparation")
+            showCritical(
+                "Не удалось запланировать подготовку отчёта.\n\n"
+                "Подробности записаны в лог расширения.",
+                title=ADDON_NAME,
+                parent=self,
+            )
+            self.refresh_status()
+
+    def _copy_dashboard_url(self) -> None:
+        try:
+            url = _dashboard_url_for_route("/home")
+            QApplication.clipboard().setText(url)
+            self.status_label.setText("Dashboard URL copied.")
+            log_event("launcher.copy_url", "Dashboard URL copied")
+        except Exception:
+            log_exception("launcher.copy_url", "Could not copy dashboard URL")
+            self.status_label.setText("Could not copy dashboard URL.")
+        self.refresh_status()
+
+    def _set_busy(self, busy: bool, message: str | None = None) -> None:
+        self.open_dashboard_button.setEnabled(not busy)
+        if message:
+            self.status_label.setText(message)
+
+    def refresh_status(self) -> None:
+        state = _DASHBOARD_SERVER.state()
+        status = "running" if state.running else "stopped"
+        if state.message:
+            status = f"{status} · {state.message}"
+        self.status_label.setText(
+            f"{status}\nhost: {state.host}\nport: {state.port if state.running else state.requested_port}"
+        )
+        self.url_label.setText(_masked_dashboard_url(_dashboard_url_for_route("/home", start=False)))
+        self.report_label.setText(
+            "current report: available" if state.report_available else "current report: not published"
+        )
+        try:
+            cache = _cache_status_response()
+            self.cache_label.setText(
+                "cache: "
+                f"{cache.get('status', 'unknown')} · "
+                f"use_stats_cache_for_report={cache.get('useStatsCacheForReport')}"
+            )
+        except Exception:
+            self.cache_label.setText("cache: unavailable")
+
+
 def _open_study_report_dialog() -> None:
     """Open the report dialog without allowing UI errors to crash Anki."""
 
@@ -1497,6 +1711,35 @@ def _open_web_dashboard() -> None:
         )
 
 
+def _open_launcher_dialog() -> None:
+    """Open the compact dashboard launcher."""
+
+    global _LAUNCHER_DIALOG
+    try:
+        if _LAUNCHER_DIALOG is not None:
+            _LAUNCHER_DIALOG.refresh_status()
+            _LAUNCHER_DIALOG.raise_()
+            _LAUNCHER_DIALOG.activateWindow()
+            return
+
+        dialog = LauncherDialog(mw)
+        dialog.setModal(False)
+        dialog.setWindowModality(Qt.WindowModality.NonModal)
+        dialog.finished.connect(_clear_launcher_dialog)
+        _LAUNCHER_DIALOG = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+    except Exception:
+        log_exception("launcher.error", "Could not open launcher")
+        showCritical(
+            "Не удалось открыть launcher Anki Study Report.\n\n"
+            "Подробности записаны в лог расширения.",
+            title=ADDON_NAME,
+            parent=mw,
+        )
+
+
 def _clear_study_report_dialog(_result: int = 0) -> None:
     global _STUDY_REPORT_DIALOG
     _STUDY_REPORT_DIALOG = None
@@ -1512,22 +1755,31 @@ def _clear_web_dashboard_dialog(_result: int = 0) -> None:
     _WEB_DASHBOARD_DIALOG = None
 
 
-def _web_dashboard_config() -> dict:
-    config = _read_config()
-    web_dashboard = config.get("web_dashboard")
-    if not isinstance(web_dashboard, dict):
-        web_dashboard = {}
-    port = _config_int(web_dashboard.get("port"), DEFAULT_PORT)
-    if port == 8765:
-        port = DEFAULT_PORT
-    return {
-        "auto_start": bool(web_dashboard.get("auto_start", False)),
-        "port": port,
-        "idle_timeout_seconds": _config_int(
-            web_dashboard.get("idle_timeout_seconds"),
-            DEFAULT_IDLE_TIMEOUT_SECONDS,
-        ),
-    }
+def _clear_launcher_dialog(_result: int = 0) -> None:
+    global _LAUNCHER_DIALOG
+    _LAUNCHER_DIALOG = None
+
+
+def _dashboard_url_for_route(route: str = "/home", start: bool = True) -> str:
+    route = "/" + str(route or "/home").lstrip("/")
+    state = _ensure_web_dashboard_server() if start else _DASHBOARD_SERVER.state()
+    if state.url:
+        return f"{state.url}#{route}"
+    return f"http://{state.host}:{state.requested_port}/?token=<hidden>#{route}"
+
+
+def _masked_dashboard_url(url: str | None) -> str:
+    if not url:
+        return "server stopped"
+    if "token=" not in url:
+        return url
+    prefix, rest = url.split("token=", 1)
+    suffix = ""
+    for delimiter in ("#", "&"):
+        if delimiter in rest:
+            suffix = rest[rest.index(delimiter) :]
+            break
+    return f"{prefix}token=<hidden>{suffix}"
 
 
 def _start_web_dashboard_server():
@@ -1539,6 +1791,8 @@ def _start_web_dashboard_server():
     )
     if _STUDY_REPORT_DIALOG is not None:
         _STUDY_REPORT_DIALOG._update_dashboard_status()
+    if _LAUNCHER_DIALOG is not None:
+        _LAUNCHER_DIALOG.refresh_status()
     return state
 
 
@@ -1556,7 +1810,16 @@ def _configure_dashboard_cache_handlers() -> None:
         rebuild_handler=_request_cache_rebuild,
         refresh_handler=_request_cache_refresh,
     )
-    _DASHBOARD_SERVER.configure_action_handler(_request_dashboard_action)
+    actions = _dashboard_actions()
+    _DASHBOARD_SERVER.configure_action_handler(actions.request_dashboard_action)
+    _DASHBOARD_SERVER.configure_server_handlers(
+        action_handler=actions.request_server_action,
+        status_provider=_server_status_response,
+    )
+    _DASHBOARD_SERVER.configure_display_settings_handlers(
+        settings_provider=_dashboard_display_settings_response,
+        settings_handler=_update_dashboard_display_settings,
+    )
 
 
 def _cache_status_response() -> dict:
@@ -1571,11 +1834,218 @@ def _cache_status_response() -> dict:
     return status
 
 
+def _server_status_response() -> dict:
+    config = _web_dashboard_config()
+    cache = _cache_status_response()
+    logs = log_status()
+    integrations = _integration_status_response()
+    return {
+        "autoStart": bool(config.get("auto_start")),
+        "configuredPort": int(config.get("port", DEFAULT_PORT)),
+        "idleTimeoutSeconds": int(config.get("idle_timeout_seconds", DEFAULT_IDLE_TIMEOUT_SECONDS)),
+        "hostLocked": True,
+        "hostPolicy": "local-only",
+        "maskedUrl": _masked_dashboard_url(_dashboard_url_for_route("/home", start=False)),
+        "cacheStatus": {
+            "status": cache.get("status", "unknown"),
+            "useStatsCacheForReport": bool(cache.get("useStatsCacheForReport", False)),
+            "dataSource": cache.get("dataSource"),
+            "fallbackReason": cache.get("fallbackReason"),
+        },
+        "logs": logs,
+        "integrations": integrations,
+    }
+
+
+def _dashboard_display_settings_response() -> dict:
+    return {
+        "ok": True,
+        "settings": dashboard_display_config(),
+        "deckOptions": [
+            {"id": deck_id, "name": deck_name}
+            for deck_id, deck_name in _deck_names()
+        ],
+    }
+
+
+def _update_dashboard_display_settings(payload: dict) -> dict:
+    settings = write_dashboard_display_config(payload if isinstance(payload, dict) else {})
+    response = {
+        "ok": True,
+        "message": "Dashboard settings saved.",
+        "settings": settings,
+        "deckOptions": [
+            {"id": deck_id, "name": deck_name}
+            for deck_id, deck_name in _deck_names()
+        ],
+    }
+    try:
+        result = _prepare_default_dashboard_report()
+        report = result.get("report")
+        metadata = result.get("metadata")
+        markdown = result.get("markdown")
+        if isinstance(report, dict):
+            _DASHBOARD_SERVER.publish_report(report)
+            response["report"] = report
+        _publish_dashboard_action_context(
+            markdown if isinstance(markdown, str) else "",
+            metadata if isinstance(metadata, dict) else {},
+            None,
+        )
+        response["message"] = "Dashboard settings saved and report updated."
+    except Exception:
+        traceback.print_exc()
+        response["reportRefreshError"] = "Settings saved, but dashboard report refresh failed."
+    return response
+
+
+def _dashboard_display_settings_for_payload() -> dict:
+    settings = dashboard_display_config()
+    selected_ids = [
+        int(deck_id)
+        for deck_id in settings.get("selected_deck_ids", [])
+        if _is_int_like(deck_id)
+    ]
+    if selected_ids and settings.get("include_child_decks", True) and mw and mw.col:
+        selected_ids = expand_deck_ids(mw.col, selected_ids)
+    deck_name_by_id = dict(_deck_names())
+    selected_names = [
+        deck_name_by_id.get(deck_id, f"Колода {deck_id}")
+        for deck_id in selected_ids
+    ]
+    if not selected_names:
+        selected_names = [
+            str(name)
+            for name in settings.get("selected_deck_names", [])
+            if str(name or "").strip()
+        ]
+    return {
+        **settings,
+        "selected_deck_ids": selected_ids,
+        "selected_deck_names": selected_names,
+    }
+
+
+def _integration_status_response() -> dict:
+    diagnostics = _integration_diagnostics_sections()
+    return {
+        "items": [
+            _integration_item(
+                "study_time_stats",
+                "Study Time Stats",
+                diagnostics.get("study_time_stats", ""),
+            ),
+            _integration_item(
+                "session_tracker",
+                "Review session tracker",
+                diagnostics.get("session_tracker", ""),
+            ),
+            _integration_item(
+                "heatmap",
+                "Review heatmap",
+                diagnostics.get("heatmap", ""),
+            ),
+            _integration_item("logs", "Integration logs", diagnostics.get("logs", "")),
+        ],
+        "notes": [
+            "Optional integrations are detected from local Anki/add-on state.",
+            "AnkiConnect is not required.",
+        ],
+    }
+
+
+def _integration_item(key: str, label: str, diagnostics: str) -> dict:
+    text = str(diagnostics or "")
+    lowered = text.lower()
+    status = "warning"
+    if any(marker in lowered for marker in ("available", "найден", "включ", "ok", "готов")):
+        status = "good"
+    if any(marker in lowered for marker in ("error", "traceback", "ошибка")):
+        status = "danger"
+    if not text.strip():
+        status = "neutral"
+    return {
+        "id": key,
+        "label": label,
+        "status": status,
+        "enabled": status in {"good", "warning"},
+        "diagnostics": text[:4000],
+        "description": _integration_description(key),
+    }
+
+
+def _integration_description(key: str) -> str:
+    return {
+        "study_time_stats": "Optional source for real study time, used only when available.",
+        "session_tracker": "Built-in lightweight tracker for review-session timing.",
+        "heatmap": "Personal review heatmap diagnostics.",
+        "logs": "Local technical logs for optional integration diagnostics.",
+    }.get(key, "Optional local integration.")
+
+
+def _dashboard_actions() -> DashboardActions:
+    global _DASHBOARD_ACTIONS
+    if _DASHBOARD_ACTIONS is None:
+        _DASHBOARD_ACTIONS = DashboardActions(
+            run_on_main=_run_on_anki_main_sync,
+            copy_markdown=_copy_dashboard_markdown_to_clipboard,
+            save_markdown=_save_dashboard_markdown,
+            open_current_dashboard=_open_current_dashboard_from_action,
+            open_route=_open_dashboard_route_from_action,
+            copy_url=_copy_dashboard_url_from_action,
+            restart_server=_restart_web_dashboard_server,
+            stop_server=_stop_web_dashboard_server,
+            log_event=log_event,
+        )
+    return _DASHBOARD_ACTIONS
+
+
+def _copy_dashboard_markdown_to_clipboard(markdown: str) -> None:
+    clipboard = QApplication.clipboard()
+    if clipboard is None:
+        raise RuntimeError("Clipboard is unavailable.")
+    clipboard.setText(markdown)
+
+
+def _save_dashboard_markdown(markdown: str) -> str | None:
+    filename, _selected_filter = QFileDialog.getSaveFileName(
+        mw,
+        "Сохранить Markdown-отчёт",
+        _default_markdown_filename(),
+        "Markdown (*.md);;Text files (*.txt);;All files (*)",
+    )
+    if not filename:
+        return None
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(markdown)
+        file.write("\n")
+    return filename
+
+
+def _open_current_dashboard_from_action() -> None:
+    state = _ensure_web_dashboard_server()
+    if not state.url:
+        raise RuntimeError("Dashboard server is stopped.")
+    QDesktopServices.openUrl(QUrl(state.url))
+
+
+def _open_dashboard_route_from_action(route: str, event: str) -> None:
+    url = _dashboard_url_for_route(route)
+    QDesktopServices.openUrl(QUrl(url))
+    log_event(event, "Dashboard route opened", route=route)
+
+
+def _copy_dashboard_url_from_action() -> None:
+    url = _dashboard_url_for_route("/home")
+    QApplication.clipboard().setText(url)
+    log_event("server.copy_url", "Dashboard URL copied")
+
+
 def _clear_report_cache() -> None:
     _REPORT_CACHE["key"] = None
     _REPORT_CACHE["created_at"] = 0.0
     _REPORT_CACHE["metrics"] = None
-    _DASHBOARD_ACTION_CONTEXT.clear()
+    _dashboard_actions().clear_report_context()
     _DASHBOARD_SERVER.clear_report()
 
 
@@ -1584,177 +2054,7 @@ def _publish_dashboard_action_context(
     metadata: dict,
     deck_ids: list[int] | None,
 ) -> None:
-    _DASHBOARD_ACTION_CONTEXT.clear()
-    _DASHBOARD_ACTION_CONTEXT.update(
-        {
-            "markdown": markdown,
-            "metadata": dict(metadata),
-            "start_ts": metadata.get("period_start_ts"),
-            "end_ts": metadata.get("period_end_ts"),
-            "deck_ids": list(deck_ids) if deck_ids is not None else None,
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-        }
-    )
-
-
-def _request_dashboard_action(action: str, payload: dict) -> dict:
-    safe_action = str(action or "").strip()
-    if safe_action == "open-browser":
-        kind = str(payload.get("kind") or "problematic-decks")
-        return _request_dashboard_browser_action(kind)
-    if safe_action == "open-problematic":
-        return _request_dashboard_browser_action("problematic-decks")
-    if safe_action == "open-again":
-        return _request_dashboard_browser_action("again")
-    if safe_action == "open-new":
-        return _request_dashboard_browser_action("new")
-    if safe_action == "copy-markdown":
-        return _request_dashboard_copy_markdown()
-    if safe_action == "save-markdown":
-        return _request_dashboard_save_markdown()
-    if safe_action == "open-dashboard":
-        return _request_dashboard_open_dashboard()
-    return _dashboard_action_error(safe_action or "unknown", "Unknown dashboard action.")
-
-
-def _request_dashboard_copy_markdown() -> dict:
-    markdown = _dashboard_context_markdown()
-    if markdown is None:
-        return _dashboard_no_report_error("copy-markdown")
-
-    def copy() -> None:
-        clipboard = QApplication.clipboard()
-        if clipboard is None:
-            raise RuntimeError("Clipboard is unavailable.")
-        clipboard.setText(markdown)
-
-    result = _run_on_anki_main_sync(copy)
-    if not result["ok"]:
-        return _dashboard_action_error("copy-markdown", result["error"])
-    return _dashboard_action_ok("copy-markdown", "Copied Markdown to clipboard.")
-
-
-def _request_dashboard_save_markdown() -> dict:
-    markdown = _dashboard_context_markdown()
-    if markdown is None:
-        return _dashboard_no_report_error("save-markdown")
-
-    def save() -> str | None:
-        filename, _selected_filter = QFileDialog.getSaveFileName(
-            mw,
-            "Сохранить Markdown-отчёт",
-            _default_markdown_filename(),
-            "Markdown (*.md);;Text files (*.txt);;All files (*)",
-        )
-        if not filename:
-            return None
-        with open(filename, "w", encoding="utf-8") as file:
-            file.write(markdown)
-            file.write("\n")
-        return filename
-
-    result = _run_on_anki_main_sync(save, timeout_seconds=120.0)
-    if not result["ok"]:
-        return _dashboard_action_error("save-markdown", result["error"])
-    filename = result.get("value")
-    if not filename:
-        return _dashboard_action_error("save-markdown", "Save cancelled.")
-    return _dashboard_action_ok("save-markdown", f"Saved report to: {filename}")
-
-
-def _request_dashboard_open_dashboard() -> dict:
-    if not _DASHBOARD_ACTION_CONTEXT:
-        return _dashboard_no_report_error("open-dashboard")
-
-    def open_url() -> None:
-        state = _ensure_web_dashboard_server()
-        if not state.url:
-            raise RuntimeError("Dashboard server is stopped.")
-        QDesktopServices.openUrl(QUrl(state.url))
-
-    result = _run_on_anki_main_sync(open_url)
-    if not result["ok"]:
-        return _dashboard_action_error("open-dashboard", result["error"])
-    return _dashboard_action_ok("open-dashboard", "Opened current report in dashboard.")
-
-
-def _request_dashboard_browser_action(kind: str) -> dict:
-    action_map = {
-        "problematic-decks": ("problem_decks", "open-browser", "No problematic decks found for the selected period."),
-        "again": ("again", "open-again", "No Again answers found for the selected period."),
-        "new": ("new", "open-new", "No new cards found for the selected period."),
-    }
-    if kind not in action_map:
-        return _dashboard_action_error("open-browser", "Unknown browser action kind.")
-    action, response_action, empty_message = action_map[kind]
-    if not _DASHBOARD_ACTION_CONTEXT:
-        return _dashboard_no_report_error(response_action)
-    if mw is None or mw.col is None or not hasattr(mw, "taskman"):
-        return _dashboard_action_error(response_action, "Anki collection is unavailable.")
-
-    try:
-        start_ts = int(_DASHBOARD_ACTION_CONTEXT["start_ts"])
-        end_ts = int(_DASHBOARD_ACTION_CONTEXT["end_ts"])
-        deck_ids = _DASHBOARD_ACTION_CONTEXT.get("deck_ids")
-        deck_ids = deck_ids if isinstance(deck_ids, list) else None
-    except Exception:
-        return _dashboard_action_error(response_action, "No report is available for the selected period.")
-
-    result = _collect_browser_action_on_background(start_ts, end_ts, deck_ids, action)
-    if not result.get("ok"):
-        return _dashboard_action_error(response_action, str(result.get("error") or "Browser action failed."))
-    card_ids = result.get("card_ids") if isinstance(result.get("card_ids"), list) else []
-    if not card_ids:
-        return _dashboard_action_ok(response_action, empty_message)
-
-    open_result = _run_on_anki_main_sync(lambda: _open_browser_search(_card_ids_search_query(card_ids)))
-    if not open_result["ok"]:
-        return _dashboard_action_error(response_action, open_result["error"])
-    message = "Opened Anki Browser."
-    if result.get("truncated"):
-        message = f"Opened Anki Browser with the first {BROWSER_ACTION_CARD_LIMIT} cards."
-    return _dashboard_action_ok(response_action, message)
-
-
-def _collect_browser_action_on_background(
-    start_ts: int,
-    end_ts: int,
-    deck_ids: list[int] | None,
-    action: str,
-) -> dict:
-    event = threading.Event()
-    holder: dict[str, object] = {}
-
-    def finish(future) -> None:
-        try:
-            holder["result"] = future.result()
-        except Exception:
-            traceback.print_exc()
-            holder["result"] = {"ok": False, "error": "Browser action failed."}
-        finally:
-            event.set()
-
-    def start_background() -> None:
-        mw.taskman.run_in_background(
-            lambda: _safe_collect_action_card_ids(
-                mw.col,
-                start_ts,
-                end_ts,
-                deck_ids,
-                action,
-                BROWSER_ACTION_CARD_LIMIT,
-            ),
-            finish,
-        )
-
-    schedule_result = _run_on_anki_main_sync(start_background)
-    if not schedule_result["ok"]:
-        return {"ok": False, "error": schedule_result["error"]}
-
-    if not event.wait(30.0):
-        return {"ok": False, "error": "Browser action is still running."}
-    result = holder.get("result")
-    return result if isinstance(result, dict) else {"ok": False, "error": "Browser action failed."}
+    _dashboard_actions().publish_report_context(markdown, metadata, deck_ids)
 
 
 def _run_on_anki_main_sync(callback: Callable[[], object], timeout_seconds: float = 8.0) -> dict:
@@ -1786,34 +2086,6 @@ def _run_on_anki_main_sync(callback: Callable[[], object], timeout_seconds: floa
     if holder.get("ok"):
         return {"ok": True, "value": holder.get("value")}
     return {"ok": False, "error": str(holder.get("error") or "Dashboard action failed.")}
-
-
-def _dashboard_context_markdown() -> str | None:
-    markdown = _DASHBOARD_ACTION_CONTEXT.get("markdown")
-    return markdown if isinstance(markdown, str) and markdown.strip() else None
-
-
-def _dashboard_no_report_error(action: str) -> dict:
-    return _dashboard_action_error(action, "No report is available yet. Build or open a report first.")
-
-
-def _dashboard_action_ok(action: str, message: str) -> dict:
-    return {
-        "ok": True,
-        "action": action,
-        "message": message,
-    }
-
-
-def _dashboard_action_error(action: str, error: str) -> dict:
-    safe_error = str(error or "Dashboard action failed.")
-    if "Traceback" in safe_error:
-        safe_error = "Dashboard action failed."
-    return {
-        "ok": False,
-        "action": action,
-        "error": safe_error,
-    }
 
 
 def _request_cache_rebuild() -> dict:
@@ -1916,12 +2188,91 @@ def _current_anki_profile_name() -> str | None:
         return None
 
 
+def _prepare_default_dashboard_report() -> dict:
+    """Prepare the default dashboard report from cache and display settings."""
+
+    if mw is None or mw.col is None:
+        raise RuntimeError("Collection is unavailable.")
+
+    cache_result = _ensure_default_dashboard_cache_current()
+    snapshot = _STATS_CACHE.report_snapshot()
+    today_key = _current_anki_today_date_key()
+    display_settings = _dashboard_display_settings_for_payload()
+    metadata = build_default_dashboard_metadata(
+        snapshot,
+        today_key,
+        display_settings=display_settings,
+    )
+    metrics = metrics_from_cache_snapshot(snapshot, today_key, display_settings)
+    report = _dashboard_report_payload(metrics, metadata)
+    try:
+        markdown = build_markdown_report(metrics, metadata)
+    except Exception:
+        traceback.print_exc()
+        markdown = ""
+
+    return {
+        "ok": True,
+        "url": _dashboard_url_for_route("/home", start=False),
+        "message": "Dashboard ready.",
+        "cacheResult": cache_result,
+        "report": report,
+        "markdown": markdown,
+        "metadata": metadata,
+    }
+
+
+def _ensure_default_dashboard_cache_current() -> dict:
+    """Refresh a ready cache or rebuild it when no reliable all-time cache exists."""
+
+    profile_name = _current_anki_profile_name()
+    status = _STATS_CACHE.status()
+    current_status = str(status.get("status") or "empty")
+    if current_status in {"scheduled", "building"}:
+        if dashboard_int(status.get("cachedDays")) > 0:
+            return {
+                "ok": True,
+                "status": current_status,
+                "message": "Using existing cache while another cache operation is running.",
+            }
+        raise RuntimeError("Statistics cache is already building.")
+
+    if current_status == "ready" and dashboard_int(status.get("cachedDays")) > 0:
+        refresh = _STATS_CACHE.refresh_incremental(
+            mw.col,
+            profile_name=profile_name,
+        )
+        if refresh.get("rebuildRequired") or str(refresh.get("status") or "") in {"stale", "empty"}:
+            return _STATS_CACHE.rebuild_all_time_cache(
+                mw.col,
+                profile_name=profile_name,
+            )
+        if not refresh.get("ok"):
+            raise RuntimeError(str(refresh.get("error") or refresh.get("message") or "Cache refresh failed."))
+        return refresh
+
+    rebuild = _STATS_CACHE.rebuild_all_time_cache(
+        mw.col,
+        profile_name=profile_name,
+    )
+    if not rebuild.get("ok"):
+        raise RuntimeError(str(rebuild.get("error") or rebuild.get("message") or "Cache rebuild failed."))
+    return rebuild
+
+
 def _stop_web_dashboard_server(*_args) -> None:
     _DASHBOARD_SERVER.stop()
     if _WEB_DASHBOARD_DIALOG is not None:
         _WEB_DASHBOARD_DIALOG.refresh_status()
     if _STUDY_REPORT_DIALOG is not None:
         _STUDY_REPORT_DIALOG._update_dashboard_status()
+    if _LAUNCHER_DIALOG is not None:
+        _LAUNCHER_DIALOG.refresh_status()
+
+
+def _restart_web_dashboard_server() -> None:
+    _stop_web_dashboard_server()
+    _start_web_dashboard_server()
 
 
 def _maybe_auto_start_web_dashboard() -> None:
@@ -1929,7 +2280,7 @@ def _maybe_auto_start_web_dashboard() -> None:
         try:
             _start_web_dashboard_server()
         except Exception:
-            traceback.print_exc()
+            log_exception("server.auto_start", "Dashboard auto-start failed")
 
 
 def _web_dashboard_status_text() -> str:
@@ -1964,112 +2315,27 @@ def _web_dashboard_status_text() -> str:
 
 
 def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
-    total_reviews = _dashboard_int(metrics.get("total_reviews"))
-    new_cards = _dashboard_int(metrics.get("new_cards"))
-    fail_count = _dashboard_fail_count(metrics)
-    pass_count = max(0, _dashboard_int(metrics.get("pass_count")) or total_reviews - fail_count)
-    pass_rate = _dashboard_rate(metrics.get("pass_rate"))
-    fail_rate = _dashboard_rate(metrics.get("fail_rate"))
-    if total_reviews > 0 and fail_rate <= 0:
-        fail_rate = round(fail_count / total_reviews, 4)
-    total_seconds = _dashboard_int(metrics.get("total_seconds"))
-    average_answer_seconds = _dashboard_float(metrics.get("average_answer_seconds"))
-    heatmap = metrics.get("heatmap") if isinstance(metrics.get("heatmap"), dict) else {}
-    forecast = metrics.get("forecast") if isinstance(metrics.get("forecast"), dict) else {}
-    fsrs = metrics.get("fsrs") if isinstance(metrics.get("fsrs"), dict) else {}
-    due_forecast = forecast.get("due_forecast") if isinstance(forecast.get("due_forecast"), dict) else {}
-    baseline = forecast.get("baseline") if isinstance(forecast.get("baseline"), dict) else {}
-    forecast_recommendation = (
-        forecast.get("recommendation")
-        if isinstance(forecast.get("recommendation"), dict)
-        else {}
+    report = build_dashboard_report_payload(
+        metrics,
+        metadata,
+        cache_summary=_dashboard_cache_summary(),
     )
-    risk = str(forecast_recommendation.get("risk") or "low")
-    decks = _dashboard_decks(metrics.get("deck_breakdown"))
-    problem_decks = [
-        deck for deck in decks if deck["status"] in {"danger", "warning"}
-    ]
-    hardest_deck = problem_decks[0]["name"] if problem_decks else "проблемные колоды не выделены"
-    tomorrow = _dashboard_int(due_forecast.get("tomorrow") or metrics.get("due_tomorrow"))
-    next_7 = _dashboard_int(due_forecast.get("next_7_days_total"))
-    next_30 = _dashboard_int(due_forecast.get("next_30_days_total"))
-    risk_status = _dashboard_risk_status(risk)
-    quality_status = _dashboard_quality_status(pass_rate, total_reviews)
-    fail_status = "danger" if fail_rate >= 0.22 else "warning" if fail_rate >= 0.15 else "good"
-
-    summary_verdict = _dashboard_summary_verdict(
-        pass_rate,
-        fail_rate,
-        tomorrow,
-        hardest_deck,
-        risk_status,
-    )
-    main_action = _dashboard_main_action(problem_decks)
-    new_cards_advice = _dashboard_new_cards_advice(pass_rate, risk_status)
-
-    report = {
-        "metadata": {
-            "title": "Anki Study Report",
-            "period": str(metadata.get("period") or "Не указан"),
-            "selectedDecks": _dashboard_selected_decks(metadata.get("selected_decks")),
-            "includeChildren": bool(metadata.get("include_child_decks")),
-            "answerMode": (
-                "pass_fail"
-                if str(metrics.get("answer_mode") or metadata.get("requested_answer_mode")) == "pass_fail"
-                else "standard"
-            ),
-            "createdAt": str(metadata.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M")),
-            "detailMode": str(metadata.get("detail_level") or "normal"),
-            "deletedCardReviews": _dashboard_deleted_reviews(metrics.get("deck_breakdown")),
-            "unavailableTrackerNotes": _dashboard_tracker_notes(metrics),
-        },
-        "summary": {
-            "verdict": summary_verdict,
-            "riskLevel": "danger" if quality_status == "danger" else risk_status,
-            "mainAction": main_action,
-            "warning": _dashboard_warning(fail_rate),
-            "newCardsAdvice": new_cards_advice,
-        },
-        "kpis": _dashboard_kpis(
-            total_reviews,
-            pass_rate,
-            fail_rate,
-            new_cards,
-            total_seconds,
-            average_answer_seconds,
-            heatmap,
-            tomorrow,
-            next_7,
-            next_30,
-            fsrs,
-            quality_status,
-            fail_status,
-        ),
-        "answerDistribution": _dashboard_answer_distribution(metrics),
-        "activity": _dashboard_activity(heatmap),
-        "comparison": _dashboard_comparison(metrics.get("comparison")),
-        "decks": decks,
-        "forecast": _dashboard_forecast(forecast, tomorrow, next_7, next_30, baseline, risk_status),
-        "fsrs": _dashboard_fsrs(fsrs, next_30),
-        "recommendations": {
-            "mainAction": main_action,
-            "why": _dashboard_recommendation_why(problem_decks, tomorrow),
-            "avoid": _dashboard_recommendation_avoid(pass_rate, risk_status),
-            "checklist": _dashboard_checklist(problem_decks, pass_rate),
-        },
-        "cache": _dashboard_cache_summary(),
+    cache_config = {
+        **_read_config(),
+        "period_start_ts": metadata.get("period_start_ts"),
+        "period_end_ts": metadata.get("period_end_ts"),
+        "period_start_date": metadata.get("period_start_date"),
+        "period_end_date": metadata.get("period_end_date"),
+        "today_date": metadata.get("today_date"),
     }
+    if metadata.get("force_stats_cache_for_report"):
+        cache_config["use_stats_cache_for_report"] = True
+    if metadata.get("dashboard_display_deck_filter"):
+        return report
     cache_parts = build_cached_report_parts(
         _STATS_CACHE,
         str(metadata.get("period_id") or ""),
-        {
-            **_read_config(),
-            "period_start_ts": metadata.get("period_start_ts"),
-            "period_end_ts": metadata.get("period_end_ts"),
-            "period_start_date": metadata.get("period_start_date"),
-            "period_end_date": metadata.get("period_end_date"),
-            "today_date": metadata.get("today_date"),
-        },
+        cache_config,
         legacy_report={"metrics": metrics, "payload": report},
     )
     return merge_cached_report_parts(report, cache_parts)
@@ -2088,534 +2354,6 @@ def _dashboard_cache_summary() -> dict:
         }
 
 
-def _dashboard_kpis(
-    total_reviews: int,
-    pass_rate: float,
-    fail_rate: float,
-    new_cards: int,
-    total_seconds: int,
-    average_answer_seconds: float,
-    heatmap: dict,
-    tomorrow: int,
-    next_7: int,
-    next_30: int,
-    fsrs: dict,
-    quality_status: str,
-    fail_status: str,
-) -> list[dict]:
-    fsrs_memory = fsrs.get("memory_state") if isinstance(fsrs.get("memory_state"), dict) else {}
-    predicted_recall = _dashboard_optional_rate(fsrs_memory.get("average_recall"))
-    return [
-        _dashboard_kpi("total_reviews", "Total reviews", _dashboard_format_int(total_reviews), "за выбранный период", "good", "layers"),
-        _dashboard_kpi("pass_rate", "Pass rate", _dashboard_format_percent(pass_rate), "качество ответов", quality_status, "check"),
-        _dashboard_kpi("fail_rate", "Fail rate", _dashboard_format_percent(fail_rate), "ошибки за период", fail_status, "alert"),
-        _dashboard_kpi("new_cards", "New cards", _dashboard_format_int(new_cards), "новые карточки", "warning" if new_cards >= 50 else "neutral", "sparkles"),
-        _dashboard_kpi("study_time", "Study time", _dashboard_format_duration(total_seconds), "оценка по revlog", "neutral", "clock"),
-        _dashboard_kpi("average_answer_time", "Average answer time", _dashboard_format_seconds(average_answer_seconds), "средний ответ", "good", "timer"),
-        _dashboard_kpi("active_days", "Active days", _dashboard_format_int(_dashboard_int(heatmap.get("active_days"))), "дни с повторениями", "good", "calendar"),
-        _dashboard_kpi("missed_days", "Missed days", _dashboard_format_int(_dashboard_int(heatmap.get("missed_days"))), "дни без повторений", "neutral", "pause"),
-        _dashboard_kpi("current_streak", "Current streak", f"{_dashboard_int(heatmap.get('current_streak'))} дней", "текущая серия", "good", "flame"),
-        _dashboard_kpi("best_streak", "Best streak", f"{_dashboard_int(heatmap.get('longest_streak'))} дней", "лучшая серия", "good", "trophy"),
-        _dashboard_kpi("tomorrow_due", "Tomorrow due", _dashboard_format_int(tomorrow), "очередь на завтра", "warning" if tomorrow >= 100 else "good", "sun"),
-        _dashboard_kpi("forecast_7", "7-day forecast", _dashboard_format_int(next_7), "следующие 7 дней", "neutral", "line"),
-        _dashboard_kpi("forecast_30", "30-day forecast", _dashboard_format_int(next_30), "следующие 30 дней", "neutral", "bar"),
-        _dashboard_kpi("fsrs_predicted_recall", "FSRS predicted recall", _dashboard_format_percent(predicted_recall) if predicted_recall is not None else "Нет данных", "average recall", "warning" if predicted_recall is not None and predicted_recall < 0.9 else "neutral", "brain"),
-    ]
-
-
-def _dashboard_kpi(
-    metric_id: str,
-    label: str,
-    value: str,
-    caption: str,
-    status: str,
-    icon: str,
-) -> dict:
-    return {
-        "id": metric_id,
-        "label": label,
-        "value": value,
-        "caption": caption,
-        "status": _dashboard_status(status),
-        "icon": icon,
-    }
-
-
-def _dashboard_answer_distribution(metrics: dict) -> list[dict]:
-    distribution = (
-        metrics.get("answer_distribution")
-        if isinstance(metrics.get("answer_distribution"), dict)
-        else {}
-    )
-    pass_fail = (
-        metrics.get("pass_fail") if isinstance(metrics.get("pass_fail"), dict) else {}
-    )
-    return [
-        {"label": "Pass", "value": _dashboard_int(pass_fail.get("pass_count") or distribution.get("good")), "color": "#67d391"},
-        {"label": "Fail", "value": _dashboard_int(pass_fail.get("fail_count") or distribution.get("again")), "color": "#ef6f6c"},
-        {"label": "Hard", "value": _dashboard_int(distribution.get("hard")), "color": "#f6c177"},
-        {"label": "Easy", "value": _dashboard_int(distribution.get("easy")), "color": "#3db4f2"},
-    ]
-
-
-def _dashboard_activity(heatmap: dict) -> dict:
-    days = [
-        {
-            "date": str(day.get("date") or ""),
-            "reviews": _dashboard_int(day.get("reviews")),
-            "newCards": _dashboard_int(day.get("new_cards")),
-            "again": _dashboard_int(day.get("again")),
-            "studySeconds": _dashboard_int(day.get("total_seconds")),
-        }
-        for day in _dashboard_list(heatmap.get("reviews_by_day"))
-    ]
-    best_days = _dashboard_list(heatmap.get("best_days"))
-    best_day = "Нет данных"
-    if best_days:
-        best = best_days[0]
-        best_day = f"{best.get('date')}, {_dashboard_int(best.get('reviews'))} reviews"
-    weekday_average = heatmap.get("weekday_average")
-    if not isinstance(weekday_average, dict):
-        weekday_average = {}
-    return {
-        "available": bool(heatmap.get("available")),
-        "activeDays": _dashboard_int(heatmap.get("active_days")),
-        "missedDays": _dashboard_int(heatmap.get("missed_days")),
-        "currentStreak": _dashboard_int(heatmap.get("current_streak")),
-        "bestStreak": _dashboard_int(heatmap.get("longest_streak")),
-        "bestDay": best_day,
-        "weekdayAverage": [
-            {
-                "day": _dashboard_short_day(day),
-                "reviews": _dashboard_float(value),
-                "activeRate": 0,
-            }
-            for day, value in weekday_average.items()
-        ],
-        "days": days,
-    }
-
-
-def _dashboard_comparison(comparison: object) -> dict:
-    data = comparison if isinstance(comparison, dict) else {}
-    baselines = data.get("baselines") if isinstance(data.get("baselines"), dict) else {}
-    comparisons = data.get("comparisons") if isinstance(data.get("comparisons"), dict) else {}
-    return {
-        "available": bool(data.get("available")),
-        "message": str(
-            data.get("message")
-            or "Недостаточно истории для сравнения. Данные начнут появляться после нескольких дней учёбы."
-        ),
-        "today": _dashboard_comparison_stats(data.get("today"), "Сегодня"),
-        "baselines": {
-            "yesterday": _dashboard_comparison_stats(baselines.get("yesterday"), "Вчера"),
-            "avg7": _dashboard_comparison_stats(baselines.get("avg7"), "Последние 7 дней"),
-            "avg30": _dashboard_comparison_stats(baselines.get("avg30"), "Последние 30 дней"),
-            "sameWeekdayLastWeek": _dashboard_comparison_stats(
-                baselines.get("sameWeekdayLastWeek"),
-                "Этот день прошлой недели",
-            ),
-            "currentWeek": _dashboard_comparison_stats(baselines.get("currentWeek"), "Эта неделя"),
-            "previousWeek": _dashboard_comparison_stats(baselines.get("previousWeek"), "Прошлая неделя"),
-            "currentMonth": _dashboard_comparison_stats(baselines.get("currentMonth"), "Этот месяц"),
-            "previousMonth": _dashboard_comparison_stats(baselines.get("previousMonth"), "Прошлый месяц"),
-        },
-        "comparisons": {
-            "yesterday": _dashboard_comparison_delta(comparisons.get("yesterday")),
-            "avg7": _dashboard_comparison_delta(comparisons.get("avg7")),
-            "avg30": _dashboard_comparison_delta(comparisons.get("avg30")),
-            "sameWeekdayLastWeek": _dashboard_comparison_delta(comparisons.get("sameWeekdayLastWeek")),
-            "week": _dashboard_comparison_delta(comparisons.get("week")),
-            "month": _dashboard_comparison_delta(comparisons.get("month")),
-        },
-        "insights": _dashboard_comparison_insights(data.get("insights")),
-        "source": data.get("source") if isinstance(data.get("source"), dict) else {},
-    }
-
-
-def _dashboard_comparison_stats(value: object, fallback_label: str) -> dict:
-    item = value if isinstance(value, dict) else {}
-    return {
-        "date": str(item.get("date") or ""),
-        "label": str(item.get("label") or fallback_label),
-        "reviews": _dashboard_int(item.get("reviews")),
-        "newCards": _dashboard_int(item.get("newCards")),
-        "pass": _dashboard_int(item.get("pass")),
-        "fail": _dashboard_int(item.get("fail")),
-        "hard": _dashboard_int(item.get("hard")),
-        "easy": _dashboard_int(item.get("easy")),
-        "studySeconds": _dashboard_int(item.get("studySeconds")),
-        "studyMinutes": _dashboard_int(item.get("studyMinutes")),
-        "avgAnswerSeconds": _dashboard_optional_float(item.get("avgAnswerSeconds")),
-        "activeDecks": _dashboard_int(item.get("activeDecks")),
-        "passRate": _dashboard_optional_rate(item.get("passRate")),
-        "failRate": _dashboard_optional_rate(item.get("failRate")),
-    }
-
-
-def _dashboard_comparison_delta(value: object) -> dict:
-    data = value if isinstance(value, dict) else {}
-    return {
-        "reviews": _dashboard_metric_delta(data.get("reviews")),
-        "newCards": _dashboard_metric_delta(data.get("newCards")),
-        "studyMinutes": _dashboard_metric_delta(data.get("studyMinutes")),
-        "passRate": _dashboard_rate_delta(data.get("passRate")),
-        "failRate": _dashboard_rate_delta(data.get("failRate")),
-        "avgAnswerSeconds": _dashboard_metric_delta(data.get("avgAnswerSeconds")),
-        "activeDecks": _dashboard_metric_delta(data.get("activeDecks")),
-    }
-
-
-def _dashboard_metric_delta(value: object) -> dict:
-    data = value if isinstance(value, dict) else {}
-    return {
-        "delta": _dashboard_optional_float(data.get("delta")),
-        "percentDelta": _dashboard_optional_float(data.get("percentDelta")),
-    }
-
-
-def _dashboard_rate_delta(value: object) -> dict:
-    data = value if isinstance(value, dict) else {}
-    return {"deltaPp": _dashboard_optional_float(data.get("deltaPp"))}
-
-
-def _dashboard_comparison_insights(value: object) -> list[dict]:
-    insights = []
-    for item in _dashboard_list(value):
-        severity = str(item.get("severity") or "neutral")
-        if severity not in {"positive", "neutral", "warning", "danger"}:
-            severity = "neutral"
-        insights.append(
-            {
-                "severity": severity,
-                "title": str(item.get("title") or "Сравнение"),
-                "text": str(item.get("text") or ""),
-                "metric": str(item.get("metric") or ""),
-            }
-        )
-    return insights
-
-
-def _dashboard_decks(deck_breakdown) -> list[dict]:
-    decks = []
-    for index, deck in enumerate(_dashboard_list(deck_breakdown), start=1):
-        total = _dashboard_int(deck.get("total_reviews"))
-        fail = _dashboard_int(deck.get("fail_count") or deck.get("again_count"))
-        pass_count = _dashboard_int(deck.get("pass_count")) or max(0, total - fail)
-        pass_rate = _dashboard_rate(deck.get("pass_rate"))
-        average_answer_seconds = _dashboard_float(deck.get("average_answer_seconds"))
-        status = _dashboard_deck_status(pass_rate, total, fail)
-        decks.append(
-            {
-                "id": _dashboard_int(deck.get("deck_id")) or index,
-                "name": str(deck.get("deck_name") or f"Колода {index}"),
-                "totalReviews": total,
-                "newCards": _dashboard_int(deck.get("new_cards")),
-                "passCount": pass_count,
-                "failCount": fail,
-                "hardCount": _dashboard_int(deck.get("hard_count")),
-                "easyCount": _dashboard_int(deck.get("easy_count")),
-                "passRate": pass_rate,
-                "failRate": _dashboard_rate(deck.get("fail_rate")),
-                "averageAnswerSeconds": average_answer_seconds,
-                "studyMinutes": round(_dashboard_int(deck.get("total_seconds")) / 60),
-                "status": status,
-                "explanation": _dashboard_deck_explanation(status, fail, average_answer_seconds),
-            }
-        )
-    return decks
-
-
-def _dashboard_forecast(
-    forecast: dict,
-    tomorrow: int,
-    next_7: int,
-    next_30: int,
-    baseline: dict,
-    risk_status: str,
-) -> dict:
-    due_forecast = forecast.get("due_forecast") if isinstance(forecast.get("due_forecast"), dict) else {}
-    recommendation = (
-        forecast.get("recommendation")
-        if isinstance(forecast.get("recommendation"), dict)
-        else {}
-    )
-    daily = []
-    for item in _dashboard_list(due_forecast.get("daily")):
-        daily.append(
-            {
-                "offset": _dashboard_int(item.get("offset")),
-                "date": str(item.get("date") or item.get("offset") or ""),
-                "due": _dashboard_int(item.get("due")),
-                "reviewDue": _dashboard_int(item.get("review_due")),
-                "learningDue": _dashboard_int(item.get("learning_due")),
-                "risk": str(item.get("risk") or "low"),
-            }
-        )
-    return {
-        "available": bool(forecast.get("available")),
-        "tomorrow": tomorrow,
-        "next7Days": next_7,
-        "next30Days": next_30,
-        "activeDayBaseline": _dashboard_float(baseline.get("median_reviews_active_day")),
-        "overloadRisk": risk_status,
-        "daily": daily,
-        "recommendation": str(recommendation.get("new_cards_advice") or recommendation.get("summary") or "Прогноз пока недоступен."),
-    }
-
-
-def _dashboard_fsrs(fsrs: dict, fallback_future_load: int) -> dict:
-    memory = fsrs.get("memory_state") if isinstance(fsrs.get("memory_state"), dict) else {}
-    future = fsrs.get("future_load") if isinstance(fsrs.get("future_load"), dict) else {}
-    source = fsrs.get("source") if isinstance(fsrs.get("source"), dict) else {}
-    settings = _dashboard_fsrs_settings(fsrs)
-    return {
-        "predictedRecall": _dashboard_optional_rate(memory.get("average_recall")),
-        "cardsBelowTarget": _dashboard_int(memory.get("below_90_count")),
-        "highForgettingRisk": _dashboard_int(memory.get("high_risk_count")),
-        "averageDifficulty": _dashboard_optional_float(memory.get("average_difficulty")),
-        "futureLoad30Days": _dashboard_int(future.get("next_30_days") or fallback_future_load),
-        "settings": {
-            "enabled": bool(fsrs.get("enabled")),
-            "desiredRetention": settings.get("desiredRetention"),
-            "helperDetected": bool(source.get("helper_detected")),
-            "helperConfigAvailable": bool(source.get("helper_config_available")),
-            "rescheduleEnabled": bool(settings.get("rescheduleEnabled")),
-            "autoDisperse": bool(settings.get("autoDisperse")),
-        },
-    }
-
-
-def _dashboard_fsrs_settings(fsrs: dict) -> dict:
-    deck_settings = _dashboard_list(fsrs.get("deck_settings"))
-    desired = None
-    for item in deck_settings:
-        desired = _dashboard_optional_rate(item.get("desired_retention"))
-        if desired is not None:
-            break
-    return {
-        "desiredRetention": desired,
-        "rescheduleEnabled": False,
-        "autoDisperse": False,
-    }
-
-
-def _dashboard_selected_decks(value) -> list[str]:
-    text = str(value or "Не указаны")
-    if not text:
-        return ["Не указаны"]
-    return [part.strip() for part in text.split(",") if part.strip()] or [text]
-
-
-def _dashboard_tracker_notes(metrics: dict) -> list[str]:
-    notes = []
-    real_time = metrics.get("real_study_time")
-    if isinstance(real_time, dict) and not real_time.get("available"):
-        notes.append(str(real_time.get("explanation") or "Real study time недоступен."))
-    return notes
-
-
-def _dashboard_deleted_reviews(deck_breakdown) -> int:
-    total = 0
-    for deck in _dashboard_list(deck_breakdown):
-        name = str(deck.get("deck_name") or "").lower()
-        if "удал" in name or "deleted" in name:
-            total += _dashboard_int(deck.get("total_reviews"))
-    return total
-
-
-def _dashboard_summary_verdict(
-    pass_rate: float,
-    fail_rate: float,
-    tomorrow: int,
-    hardest_deck: str,
-    risk_status: str,
-) -> str:
-    quality = "хорошее" if pass_rate >= 0.85 else "ошибок много" if fail_rate >= 0.2 else "качество среднее"
-    load = "ближайшая очередь лёгкая" if tomorrow < 60 else "нагрузка заметная"
-    action = f"Сначала разобрать {hardest_deck}" if hardest_deck != "проблемные колоды не выделены" else "Продолжать обычный темп"
-    if risk_status == "danger":
-        load = "есть риск перегруза"
-    return f"Pass rate {_dashboard_format_percent(pass_rate)}: {quality}, {load}. {action}."
-
-
-def _dashboard_main_action(problem_decks: list[dict]) -> str:
-    if not problem_decks:
-        return "Поддержать серию и продолжать обычный темп повторений."
-    names = [deck["name"] for deck in problem_decks[:2]]
-    return "Разобрать " + " и ".join(names) + "."
-
-
-def _dashboard_new_cards_advice(pass_rate: float, risk_status: str) -> str:
-    if pass_rate < 0.8 or risk_status in {"warning", "danger"}:
-        return "Новые карточки лучше временно снизить и вернуть после стабилизации качества."
-    return "Новые можно добавлять умеренно, если очередь остаётся комфортной."
-
-
-def _dashboard_warning(fail_rate: float) -> str:
-    if fail_rate >= 0.2:
-        return f"Fail rate {_dashboard_format_percent(fail_rate)} выше комфортного уровня."
-    return "Критичного fail rate не видно."
-
-
-def _dashboard_recommendation_why(problem_decks: list[dict], tomorrow: int) -> str:
-    if problem_decks:
-        return "Эти колоды дают основную часть ошибок; текущая очередь позволяет сначала поднять качество."
-    if tomorrow > 0:
-        return "Очередь на завтра есть, но явных проблемных колод за период не видно."
-    return "На завтра заметной due-нагрузки не видно."
-
-
-def _dashboard_recommendation_avoid(pass_rate: float, risk_status: str) -> str:
-    if pass_rate < 0.8 or risk_status in {"warning", "danger"}:
-        return "Пока не повышать лимит новых и не открывать тяжёлые уроки."
-    return "Не разгонять новые карточки резко; держать стабильный темп."
-
-
-def _dashboard_checklist(problem_decks: list[dict], pass_rate: float) -> list[str]:
-    items = [f"Разобрать {deck['name']}." for deck in problem_decks[:3]]
-    if pass_rate < 0.8:
-        items.append("Временно снизить новые карточки.")
-        items.append("Вернуть новые после стабилизации pass rate.")
-    if not items:
-        items.append("Сделать обычную короткую сессию повторений.")
-    return items
-
-
-def _dashboard_deck_status(pass_rate: float, total: int, fail_count: int) -> str:
-    if total <= 0:
-        return "neutral"
-    if pass_rate < 0.7 or fail_count >= 30:
-        return "danger"
-    if pass_rate < 0.82 or fail_count >= 15:
-        return "warning"
-    if pass_rate >= 0.88:
-        return "good"
-    return "neutral"
-
-
-def _dashboard_deck_explanation(status: str, fail_count: int, average_answer_seconds: float) -> str:
-    if status == "danger":
-        return "много Fail, лучше разобрать до новых карточек"
-    if status == "warning":
-        return "ошибки заметны, нагрузку лучше не повышать"
-    if average_answer_seconds >= 15:
-        return "ответы медленные, стоит проверить сложные карточки"
-    if fail_count <= 5:
-        return "ошибки редкие, можно продолжать обычный темп"
-    return "стабильная колода без явного риска"
-
-
-def _dashboard_quality_status(pass_rate: float, total_reviews: int) -> str:
-    if total_reviews <= 0:
-        return "neutral"
-    if pass_rate >= 0.88:
-        return "good"
-    if pass_rate >= 0.8:
-        return "warning"
-    return "danger"
-
-
-def _dashboard_risk_status(risk: str) -> str:
-    if risk == "high":
-        return "danger"
-    if risk == "medium":
-        return "warning"
-    if risk == "low":
-        return "good"
-    return "neutral"
-
-
-def _dashboard_status(value: str) -> str:
-    return value if value in {"good", "neutral", "warning", "danger"} else "neutral"
-
-
-def _dashboard_fail_count(metrics: dict) -> int:
-    pass_fail = metrics.get("pass_fail") if isinstance(metrics.get("pass_fail"), dict) else {}
-    return _dashboard_int(metrics.get("fail_count") or pass_fail.get("fail_count") or metrics.get("again_count"))
-
-
-def _dashboard_list(value) -> list[dict]:
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
-
-
-def _dashboard_short_day(value) -> str:
-    return {
-        "Monday": "Mon",
-        "Tuesday": "Tue",
-        "Wednesday": "Wed",
-        "Thursday": "Thu",
-        "Friday": "Fri",
-        "Saturday": "Sat",
-        "Sunday": "Sun",
-    }.get(str(value), str(value)[:3])
-
-
-def _dashboard_rate(value) -> float:
-    number = _dashboard_float(value)
-    if number > 1:
-        number = number / 100
-    return max(0.0, min(1.0, number))
-
-
-def _dashboard_optional_rate(value) -> float | None:
-    if value is None:
-        return None
-    return _dashboard_rate(value)
-
-
-def _dashboard_optional_float(value) -> float | None:
-    if value is None:
-        return None
-    return _dashboard_float(value)
-
-
-def _dashboard_int(value) -> int:
-    try:
-        return int(value or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _dashboard_float(value) -> float:
-    try:
-        return float(value or 0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _dashboard_format_int(value: int) -> str:
-    return f"{int(value):,}".replace(",", " ")
-
-
-def _dashboard_format_percent(value: float) -> str:
-    return f"{round(_dashboard_rate(value) * 100)}%"
-
-
-def _dashboard_format_duration(seconds: int) -> str:
-    minutes = round(max(0, seconds) / 60)
-    if minutes <= 0:
-        return "0 мин"
-    hours, rest = divmod(minutes, 60)
-    if hours and rest:
-        return f"{hours} ч {rest} мин"
-    if hours:
-        return f"{hours} ч"
-    return f"{minutes} мин"
-
-
-def _dashboard_format_seconds(seconds: float) -> str:
-    if seconds <= 0:
-        return "0 сек"
-    if seconds >= 60:
-        return _dashboard_format_duration(round(seconds))
-    if float(seconds).is_integer():
-        return f"{int(seconds)} сек"
-    return f"{seconds:.1f} сек"
-
-
 def _idle_timeout_label(seconds: int) -> str:
     if seconds <= 0:
         return "выключено"
@@ -2624,13 +2362,6 @@ def _idle_timeout_label(seconds: int) -> str:
         hours, rest = divmod(minutes, 60)
         return f"{hours} ч {rest} мин" if rest else f"{hours} ч"
     return f"{minutes} мин"
-
-
-def _config_int(value, fallback: int) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return fallback
 
 
 def _integration_diagnostics_text() -> str:
@@ -2661,43 +2392,6 @@ def _integration_diagnostics_sections() -> dict[str, str]:
             ]
         ),
     }
-
-
-def _read_config() -> dict:
-    try:
-        config = mw.addonManager.getConfig(__name__) if mw else None
-    except Exception:
-        config = None
-    return dict(config or {})
-
-
-def _write_config(config: dict) -> None:
-    if mw is None:
-        return
-    try:
-        mw.addonManager.writeConfig(__name__, config)
-    except Exception:
-        traceback.print_exc()
-
-
-def _custom_profiles_from_config(config: dict) -> dict[str, dict]:
-    configured = config.get("custom_profiles")
-    if not isinstance(configured, dict):
-        return {}
-
-    profiles: dict[str, dict] = {}
-    for profile_id, profile in configured.items():
-        if not isinstance(profile, dict):
-            continue
-        label = str(profile.get("label") or profile_id).strip()
-        settings = profile.get("settings")
-        if not label or not isinstance(settings, dict):
-            continue
-        profiles[str(profile_id)] = {
-            "label": label,
-            "settings": dict(settings),
-        }
-    return profiles
 
 
 def _safe_collect_metrics(
@@ -2761,76 +2455,6 @@ def _safe_collect_metrics(
         }
 
 
-def _safe_collect_action_card_ids(
-    col,
-    start_ts: int,
-    end_ts: int,
-    deck_ids: list[int] | None,
-    action: str,
-    limit: int,
-) -> dict:
-    try:
-        card_ids = collect_action_card_ids(
-            col,
-            start_ts,
-            end_ts,
-            deck_ids=deck_ids,
-            action=action,
-            max_results=limit + 1,
-        )
-        truncated = len(card_ids) > limit
-        return {
-            "ok": True,
-            "card_ids": card_ids[:limit],
-            "truncated": truncated,
-        }
-    except Exception:
-        return {
-            "ok": False,
-            "error": traceback.format_exc(),
-        }
-
-
-def _card_ids_search_query(card_ids: list[int]) -> str:
-    return _balanced_or_search_query([f"cid:{int(card_id)}" for card_id in card_ids])
-
-
-def _balanced_or_search_query(terms: list[str]) -> str:
-    if not terms:
-        return ""
-    if len(terms) == 1:
-        return terms[0]
-
-    midpoint = len(terms) // 2
-    left = _balanced_or_search_query(terms[:midpoint])
-    right = _balanced_or_search_query(terms[midpoint:])
-    return f"({left} OR {right})"
-
-
-def _open_browser_search(search_query: str) -> None:
-    if mw is None:
-        raise RuntimeError("Главное окно Anki недоступно.")
-
-    browser = dialogs.open("Browser", mw)
-    if hasattr(browser, "search_for"):
-        browser.search_for(search_query)
-        return
-
-    search_edit = getattr(getattr(browser, "form", None), "searchEdit", None)
-    if search_edit is not None:
-        if hasattr(search_edit, "lineEdit"):
-            search_edit.lineEdit().setText(search_query)
-        elif hasattr(search_edit, "setText"):
-            search_edit.setText(search_query)
-
-    if hasattr(browser, "onSearchActivated"):
-        browser.onSearchActivated()
-    elif hasattr(browser, "search"):
-        browser.search()
-    elif hasattr(browser, "onSearch"):
-        browser.onSearch()
-
-
 def _deck_names() -> list[tuple[int, str]]:
     if mw is None or mw.col is None:
         return []
@@ -2891,14 +2515,6 @@ def _qdate_from_config(value, fallback: QDate) -> QDate:
     return qdate if qdate.isValid() else fallback
 
 
-def _last_report_ts(config: dict) -> int | None:
-    try:
-        value = int(config.get("last_report_ts") or 0)
-    except (TypeError, ValueError):
-        return None
-    return value if value > 0 else None
-
-
 def _date_key_from_timestamp(timestamp: int | float) -> str:
     try:
         value = max(0, float(timestamp))
@@ -2915,17 +2531,6 @@ def _current_anki_today_date_key() -> str:
     if day_cutoff > SECONDS_IN_DAY:
         return _date_key_from_timestamp(day_cutoff - SECONDS_IN_DAY)
     return _date_key_from_timestamp(int(datetime.now().timestamp()))
-
-
-def _enabled_metrics_from_config(config: dict) -> dict[str, bool]:
-    configured = config.get("enabled_metrics")
-    if not isinstance(configured, dict):
-        configured = {}
-
-    return {
-        metric: bool(configured.get(metric, DEFAULT_ENABLED_METRICS[metric]))
-        for metric in METRIC_KEYS
-    }
 
 
 def _period_bounds(period: str) -> tuple[int, int]:
@@ -2979,18 +2584,6 @@ def _is_large_period(start_ts: int, end_ts: int) -> bool:
     return end_ts - start_ts > LARGE_PERIOD_WARNING_DAYS * 24 * 60 * 60
 
 
-def _confirm_large_period(parent: QWidget) -> bool:
-    result = QMessageBox.warning(
-        parent,
-        ADDON_NAME,
-        "Выбран большой период. Расчёт может занять заметное время.\n\n"
-        "Продолжить?",
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        QMessageBox.StandardButton.No,
-    )
-    return result == QMessageBox.StandardButton.Yes
-
-
 def _report_cache_key(period: object, deck_ids: list[int] | None) -> tuple:
     if deck_ids is None:
         deck_key = None
@@ -3021,20 +2614,17 @@ def _default_markdown_filename() -> str:
 
 
 def _setup_menu(main_window) -> None:
-    """Register Tools -> Study Report using Anki's modern Qt action API."""
+    """Register Tools -> Anki Study Report Launcher."""
 
     if main_window is None:
         return
 
-    action = QAction("Study Report", main_window)
-    action.triggered.connect(_open_study_report_dialog)
+    action = QAction("Open Anki Study Report Launcher", main_window)
+    action.triggered.connect(_open_launcher_dialog)
     main_window.form.menuTools.addAction(action)
 
-    integrations_action = QAction("Study Report: интеграции", main_window)
-    integrations_action.triggered.connect(_open_integrations_dialog)
-    main_window.form.menuTools.addAction(integrations_action)
-
     setup_session_tracking(gui_hooks, mw)
+    log_event("addon.startup", "Anki Study Report add-on initialized")
     _maybe_auto_start_web_dashboard()
 
 
