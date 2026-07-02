@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "period": "Сегодня",
+    "selected_decks": "Все колоды",
+    "include_child_decks": true,
+    "created_at": "2026-07-01 09:00",
+    "detail_level": "normal"
+  },
+  "metrics": {
+    "total_reviews": 0,
+    "new_cards": 0,
+    "again_count": 0,
+    "pass_rate": 0,
+    "fail_rate": 0,
+    "total_seconds": 0,
+    "average_answer_seconds": 0,
+    "deck_breakdown": [],
+    "heatmap": {
+      "available": false,
+      "reviews_by_day": []
+    }
+  },
+  "cache": {
+    "status": "empty",
+    "updatedAt": 0,
+    "cachedDays": 0,
+    "cachedDeckDays": 0
+  }
+}

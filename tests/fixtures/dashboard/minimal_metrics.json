@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "period": "Сегодня",
+    "selected_decks": "Core",
+    "include_child_decks": true,
+    "created_at": "2026-07-01 09:00",
+    "detail_level": "normal",
+    "requested_answer_mode": "pass_fail"
+  },
+  "metrics": {
+    "total_reviews": 1,
+    "new_cards": 0,
+    "again_count": 0,
+    "pass_count": 1,
+    "fail_count": 0,
+    "pass_rate": 1,
+    "fail_rate": 0,
+    "total_seconds": 12,
+    "average_answer_seconds": 12,
+    "answer_mode": "pass_fail",
+    "deck_breakdown": []
+  },
+  "cache": {
+    "status": "empty",
+    "updatedAt": 0,
+    "cachedDays": 0,
+    "cachedDeckDays": 0
+  }
+}

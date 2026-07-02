@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "period": "Сегодня",
+    "selected_decks": "Japanese::Core",
+    "include_child_decks": true,
+    "created_at": "2026-07-01 20:00",
+    "detail_level": "normal",
+    "requested_answer_mode": "pass_fail"
+  },
+  "metrics": {
+    "total_reviews": 100,
+    "new_cards": 12,
+    "again_count": 8,
+    "pass_count": 92,
+    "fail_count": 8,
+    "pass_rate": 0.92,
+    "fail_rate": 0.08,
+    "total_seconds": 1800,
+    "average_answer_seconds": 18,
+    "answer_mode": "pass_fail",
+    "answer_distribution": {
+      "again": 8,
+      "hard": 12,
+      "good": 70,
+      "easy": 10
+    },
+    "deck_breakdown": [
+      {
+        "deck_id": 10,
+        "deck_name": "Japanese::Core",
+        "total_reviews": 100,
+        "new_cards": 12,
+        "fail_count": 8,
+        "pass_count": 92,
+        "pass_rate": 0.92,
+        "fail_rate": 0.08,
+        "total_seconds": 1800,
+        "average_answer_seconds": 18
+      }
+    ],
+    "heatmap": {
+      "available": true,
+      "active_days": 1,
+      "missed_days": 0,
+      "current_streak": 4,
+      "longest_streak": 8,
+      "best_days": [
+        { "date": "2026-07-01", "reviews": 100 }
+      ],
+      "weekday_average": {
+        "Wednesday": 100
+      },
+      "reviews_by_day": [
+        { "date": "2026-07-01", "reviews": 100, "new_cards": 12, "again": 8, "total_seconds": 1800 }
+      ]
+    },
+    "forecast": {
+      "available": true,
+      "baseline": { "median_reviews_active_day": 90 },
+      "due_forecast": {
+        "tomorrow": 80,
+        "next_7_days_total": 520,
+        "next_30_days_total": 2100,
+        "daily": [
+          { "offset": 1, "date": "2026-07-02", "due": 80, "review_due": 75, "learning_due": 5, "risk": "low" }
+        ]
+      },
+      "recommendation": {
+        "risk": "low",
+        "summary": "Нагрузка нормальная.",
+        "new_cards_advice": "Новые можно брать умеренно."
+      }
+    },
+    "fsrs": {
+      "enabled": true,
+      "source": { "helper_detected": true, "helper_config_available": true },
+      "memory_state": { "average_recall": 0.91, "below_90_count": 4, "high_risk_count": 1 },
+      "future_load": { "next_30_days": 2100 }
+    }
+  },
+  "cache": {
+    "status": "ready",
+    "updatedAt": 1782925200,
+    "cachedDays": 10,
+    "cachedDeckDays": 10
+  }
+}
