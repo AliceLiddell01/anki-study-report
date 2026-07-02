@@ -26,7 +26,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       })
       .catch((error: Error) => {
         setLoadState("error");
-        setMessage(error.message === "forbidden" ? "Недействительный dashboard token." : "Не удалось загрузить status.");
+        setMessage(error.message === "forbidden" ? "Недействительный dashboard token." : "Не удалось загрузить статус.");
       });
   }, []);
 
@@ -72,7 +72,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
         if (result.error) {
           setMessage(result.error);
         } else if (result.alreadyBuilding) {
-          setMessage(result.message || "Cache operation is already running.");
+          setMessage(result.message || "Операция с кэшем уже выполняется.");
         } else {
           setMessage(result.message || actionMessage(result.status, result.addedRows));
         }
@@ -92,9 +92,9 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       ? [cache.deckHistoryNote]
       : [];
   const reportCache = report?.cache;
-  const reportSource = report?.dataSource ?? reportCache?.dataSource ?? "legacy";
-  const reportUsedFor = reportCache?.usedFor?.length ? reportCache.usedFor.join(", ") : "none";
-  const reportFallback = reportCache?.fallbackReason || "none";
+  const reportSource = sourceLabel(report?.dataSource ?? reportCache?.dataSource ?? "legacy");
+  const reportUsedFor = reportCache?.usedFor?.length ? reportCache.usedFor.join(", ") : "нет";
+  const reportFallback = reportCache?.fallbackReason || "нет";
   const reportFlag = cache?.useStatsCacheForReport ?? reportCache?.useStatsCacheForReport ?? false;
   const parityMismatches = report?.cacheDebug?.mismatches?.length ?? 0;
 
@@ -103,10 +103,10 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <span className={`status-pill status-${statusTone(status)}`}>{status}</span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Statistics cache</h1>
+            <span className={`status-pill status-${statusTone(status)}`}>{cacheStatusLabel(status)}</span>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Кэш и диагностика</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-              All-time revlog aggregates stored locally for fast period filtering.
+              Локальные агрегаты revlog для быстрого фильтра по периодам.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -115,20 +115,20 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
               className="inline-flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-800 px-3 py-2 text-sm font-medium text-report-text transition hover:border-report-blue/55 disabled:cursor-not-allowed disabled:opacity-55"
               disabled={isBusy}
               onClick={() => runAction("refresh")}
-              title="Refresh incremental"
+              title="Обновить инкрементально"
             >
               <RefreshCw size={16} aria-hidden="true" />
-              Refresh incremental
+              Обновить инкрементально
             </button>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg border border-report-warning/35 bg-report-warning/10 px-3 py-2 text-sm font-medium text-report-warning transition hover:border-report-warning/70 disabled:cursor-not-allowed disabled:opacity-55"
               disabled={isBusy}
               onClick={() => runAction("rebuild")}
-              title="Rebuild all-time cache"
+              title="Пересобрать кэш за всё время"
             >
               <RotateCcw size={16} aria-hidden="true" />
-              Rebuild all-time cache
+              Пересобрать кэш
             </button>
           </div>
         </div>
@@ -136,38 +136,38 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <CacheMetric label="Status" value={cache?.status ?? loadState} tone={statusTone(status)} />
-        <CacheMetric label="Cached days" value={formatInteger(cache?.cachedDays ?? 0)} />
-        <CacheMetric label="Cached deck-days" value={formatInteger(cache?.cachedDeckDays ?? 0)} />
-        <CacheMetric label="Last revlog id" value={formatInteger(cache?.lastRevlogId ?? 0)} />
-        <CacheMetric label="Build duration" value={formatMilliseconds(cache?.lastBuildDurationMs)} />
-        <CacheMetric label="Refresh duration" value={formatMilliseconds(cache?.lastRefreshDurationMs)} />
-        <CacheMetric label="Refresh added rows" value={formatInteger(cache?.lastRefreshAddedRows ?? 0)} />
-        <CacheMetric label="Operation" value={status === "scheduled" || status === "building" ? "Building..." : "Idle"} tone={statusTone(status)} />
+        <CacheMetric label="Статус" value={cacheStatusLabel(cache?.status ?? loadState)} tone={statusTone(status)} />
+        <CacheMetric label="Дней в кэше" value={formatInteger(cache?.cachedDays ?? 0)} />
+        <CacheMetric label="Колода-дней" value={formatInteger(cache?.cachedDeckDays ?? 0)} />
+        <CacheMetric label="Последний revlog id" value={formatInteger(cache?.lastRevlogId ?? 0)} />
+        <CacheMetric label="Сборка" value={formatMilliseconds(cache?.lastBuildDurationMs)} />
+        <CacheMetric label="Обновление" value={formatMilliseconds(cache?.lastRefreshDurationMs)} />
+        <CacheMetric label="Новые строки" value={formatInteger(cache?.lastRefreshAddedRows ?? 0)} />
+        <CacheMetric label="Операция" value={status === "scheduled" || status === "building" ? "Выполняется..." : "Ожидание"} tone={statusTone(status)} />
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
-        <h2 className="text-lg font-semibold tracking-normal text-report-text">Report source</h2>
+        <h2 className="text-lg font-semibold tracking-normal text-report-text">Источник отчёта</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <CacheDetail label="Mode" value={reportFlag ? "Cache for historical data" : "Legacy only"} />
-          <CacheDetail label="Data source" value={reportSource} />
-          <CacheDetail label="Cache used for" value={reportUsedFor} />
+          <CacheDetail label="Режим" value={reportFlag ? "Кэш для исторических данных" : "Только legacy"} />
+          <CacheDetail label="Источник данных" value={reportSource} />
+          <CacheDetail label="Кэш используется для" value={reportUsedFor} />
           <CacheDetail label="Fallback" value={reportFallback} />
-          <CacheDetail label="Parity check" value={report?.cacheDebug?.parityChecked ? `${formatInteger(parityMismatches)} mismatches` : "Not checked"} />
-          <CacheDetail label="Cache read" value={formatMilliseconds(report?.performance?.cacheReadMs)} />
+          <CacheDetail label="Parity check" value={report?.cacheDebug?.parityChecked ? `${formatInteger(parityMismatches)} расхождений` : "Не проверялось"} />
+          <CacheDetail label="Чтение кэша" value={formatMilliseconds(report?.performance?.cacheReadMs)} />
         </div>
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <div className="grid gap-3 md:grid-cols-2">
-          <CacheDetail label="Last update" value={formatUnixSeconds(cache?.updatedAt)} />
-          <CacheDetail label="Created" value={formatUnixSeconds(cache?.createdAt)} />
-          <CacheDetail label="Version" value={formatInteger(cache?.version ?? 0)} />
-          <CacheDetail label="Cache file" value={safeText(cache?.cachePath)} />
+          <CacheDetail label="Последнее обновление" value={formatUnixSeconds(cache?.updatedAt)} />
+          <CacheDetail label="Создан" value={formatUnixSeconds(cache?.createdAt)} />
+          <CacheDetail label="Версия" value={formatInteger(cache?.version ?? 0)} />
+          <CacheDetail label="Файл кэша" value={safeText(cache?.cachePath)} />
         </div>
         {status === "stale" ? (
           <div className="mt-4 rounded-lg border border-report-warning/35 bg-report-warning/10 p-3 text-sm leading-6 text-report-warning">
-            Cache schema is outdated or cache is not ready. Rebuild required.
+            Схема кэша устарела или кэш не готов. Нужна пересборка.
           </div>
         ) : null}
         {limitations.length > 0 ? (
@@ -189,7 +189,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
         ) : null}
         {cache?.lastError && cache.lastError !== cache.error ? (
           <div className="mt-4 rounded-lg border border-report-danger/25 bg-report-danger/5 p-3 text-sm leading-6 text-report-muted">
-            Last error: {cache.lastError}
+            Последняя ошибка: {cache.lastError}
           </div>
         ) : null}
       </section>
@@ -272,6 +272,26 @@ function validReportDataSource(value: unknown): value is "legacy" | "cache" | "m
   return value === "legacy" || value === "cache" || value === "mixed";
 }
 
+function cacheStatusLabel(value: string): string {
+  return {
+    ready: "готово",
+    scheduled: "запланировано",
+    building: "собирается",
+    stale: "устарел",
+    empty: "пусто",
+    error: "ошибка",
+    loading: "загрузка",
+  }[value] ?? value;
+}
+
+function sourceLabel(value: "legacy" | "cache" | "mixed" | string): string {
+  return {
+    legacy: "legacy",
+    cache: "кэш",
+    mixed: "смешанный",
+  }[value] ?? value;
+}
+
 function statusTone(status: StatsCacheStatus): "good" | "neutral" | "warning" | "danger" {
   if (status === "ready") {
     return "good";
@@ -314,16 +334,16 @@ function formatMilliseconds(value: unknown): string {
 
 function actionMessage(status: StatsCacheStatus | undefined, addedRows: unknown): string {
   if (status === "scheduled") {
-    return "Cache operation scheduled.";
+    return "Операция с кэшем запланирована.";
   }
   if (status === "building") {
-    return "Cache operation is running.";
+    return "Операция с кэшем выполняется.";
   }
   if (status === "ready") {
     const rows = finiteNumberOrZero(addedRows);
-    return rows > 0 ? `Cache refresh complete: ${formatInteger(rows)} new rows.` : "Cache status updated.";
+    return rows > 0 ? `Кэш обновлён: ${formatInteger(rows)} новых строк.` : "Статус кэша обновлён.";
   }
-  return "Cache status updated.";
+  return "Статус кэша обновлён.";
 }
 
 export default SettingsPage;

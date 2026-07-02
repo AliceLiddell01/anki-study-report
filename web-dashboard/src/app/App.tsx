@@ -54,7 +54,12 @@ function App() {
     };
   }, []);
 
-  return <AppLayout activeRoute={route}>{renderRoute(route, report, loadState)}</AppLayout>;
+  const updateReport = (nextReport: StudyReport) => {
+    setReport(nextReport);
+    setLoadState("ready");
+  };
+
+  return <AppLayout activeRoute={route}>{renderRoute(route, report, loadState, updateReport)}</AppLayout>;
 }
 
 export default App;

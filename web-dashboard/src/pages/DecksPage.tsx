@@ -19,11 +19,11 @@ type SortDirection = "asc" | "desc";
 type DeckHealthRow = DeckPerformance & { health: DeckHealth };
 
 const statusLabels: Record<DeckStatusFilter, string> = {
-  all: "All statuses",
-  good: "Good",
-  normal: "Normal",
-  warning: "Warning",
-  danger: "Danger",
+  all: "Все статусы",
+  good: "Хорошо",
+  normal: "Норма",
+  warning: "Внимание",
+  danger: "Опасно",
 };
 const statusOrder: Record<Exclude<DeckStatusFilter, "all">, number> = {
   danger: 4,
@@ -68,7 +68,7 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
   if (!report || rows.length === 0) {
     return (
       <DecksShell totalDecks={0} counts={counts}>
-        <EmptyDecksState title="Нет колод" text="В отчёте пока нет deck breakdown. После публикации отчёта с повторениями здесь появится здоровье колод." />
+        <EmptyDecksState title="Нет колод" text="В отчёте пока нет разбивки по колодам. После публикации отчёта с повторениями здесь появится здоровье колод." />
       </DecksShell>
     );
   }
@@ -76,13 +76,13 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
   return (
     <DecksShell totalDecks={rows.length} counts={counts}>
       <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        <SummaryCard label="Total decks" value={formatInteger(rows.length)} status="neutral" />
-        <SummaryCard label="Good decks" value={formatInteger(counts.good)} status="good" />
-        <SummaryCard label="Warning decks" value={formatInteger(counts.warning)} status="warning" />
-        <SummaryCard label="Danger decks" value={formatInteger(counts.danger)} status="danger" />
-        <SummaryCard label="Average pass rate" value={formatPercent(averagePassRate)} status={counts.danger ? "danger" : counts.warning ? "warning" : "good"} />
-        <SummaryCard label="Average answer time" value={formatSeconds(averageAnswerTime)} status="neutral" />
-        <SummaryCard label="Total reviews today" value={formatInteger(totalReviews)} status={totalReviews > 0 ? "neutral" : "warning"} />
+        <SummaryCard label="Всего колод" value={formatInteger(rows.length)} status="neutral" />
+        <SummaryCard label="Хорошие колоды" value={formatInteger(counts.good)} status="good" />
+        <SummaryCard label="Требуют внимания" value={formatInteger(counts.warning)} status="warning" />
+        <SummaryCard label="Опасная зона" value={formatInteger(counts.danger)} status="danger" />
+        <SummaryCard label="Средняя успешность" value={formatPercent(averagePassRate)} status={counts.danger ? "danger" : counts.warning ? "warning" : "good"} />
+        <SummaryCard label="Средний ответ" value={formatSeconds(averageAnswerTime)} status="neutral" />
+        <SummaryCard label="Повторений сегодня" value={formatInteger(totalReviews)} status={totalReviews > 0 ? "neutral" : "warning"} />
       </section>
 
       {totalReviews <= 0 && (
@@ -92,7 +92,7 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-4 shadow-panel sm:p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-normal">Deck health table</h2>
+            <h2 className="text-lg font-semibold tracking-normal">Состояние колод</h2>
             <p className="mt-1 text-sm text-report-muted">Поиск, фильтр и сортировка по текущим метрикам колод.</p>
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
@@ -101,15 +101,15 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="w-full rounded-lg border border-ink-700 bg-ink-900 py-2.5 pl-10 pr-3 text-sm text-report-text outline-none transition focus:border-report-blue"
-                placeholder="Search deck name"
+                className="form-control w-full py-2.5 pl-10 pr-3 text-sm"
+                placeholder="Найти колоду"
               />
             </label>
             <label className="relative block md:w-52">
               <select
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as DeckStatusFilter)}
-                className="w-full appearance-none rounded-lg border border-ink-700 bg-ink-900 px-3 py-2.5 text-sm text-report-text outline-none transition focus:border-report-blue"
+                className="form-control w-full appearance-none px-3 py-2.5 pr-9 text-sm"
               >
                 {Object.entries(statusLabels).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -124,18 +124,18 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
 
         {filteredRows.length ? (
           <div className="overflow-x-auto rounded-lg border border-ink-700">
-            <table className="w-full min-w-[1180px] border-collapse text-sm">
-              <thead className="bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
+            <table className="table-readable w-full min-w-[1180px] border-collapse">
+              <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
                 <tr>
-                  <th className="px-3 py-3 text-left">Deck name</th>
-                  <DeckSortHeader label="Reviews" sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} />
-                  <th className="px-3 py-3 text-right">New cards</th>
-                  <DeckSortHeader label="Pass rate" sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} />
-                  <DeckSortHeader label="Fail / rate" sortKey="failRate" activeKey={sortKey} direction={direction} onSort={requestSort} />
-                  <DeckSortHeader label="Avg answer" sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} />
-                  <DeckSortHeader label="Status" sortKey="status" activeKey={sortKey} direction={direction} onSort={requestSort} align="left" />
-                  <th className="px-3 py-3 text-left">Reason</th>
-                  <th className="px-3 py-3 text-left">Recommended action</th>
+                  <th className="px-3 py-3 text-left">Колода</th>
+                  <DeckSortHeader label="Повторения" sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} />
+                  <th className="px-3 py-3 text-right">Новые</th>
+                  <DeckSortHeader label="Успешность" sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} />
+                  <DeckSortHeader label="Ошибки / доля" sortKey="failRate" activeKey={sortKey} direction={direction} onSort={requestSort} />
+                  <DeckSortHeader label="Средний ответ" sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} />
+                  <DeckSortHeader label="Статус" sortKey="status" activeKey={sortKey} direction={direction} onSort={requestSort} align="left" />
+                  <th className="px-3 py-3 text-left">Причина</th>
+                  <th className="px-3 py-3 text-left">Что делать</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,24 +145,24 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
                       className="cursor-pointer border-t border-ink-700/80 transition hover:bg-ink-800/45"
                       onClick={() => setSelectedDeckId((current) => (current === deck.id ? null : deck.id))}
                     >
-                      <td className="max-w-[280px] px-3 py-3">
-                        <div className="truncate font-medium text-report-text" title={safeText(deck.name)}>
+                      <td className="max-w-[280px] px-3 py-3.5">
+                        <div className="truncate font-semibold text-report-text" title={safeText(deck.name)}>
                           {safeText(deck.name)}
                         </div>
                         {!deck.health.hasEnoughData && <p className="mt-1 text-xs text-report-muted">Предварительная оценка</p>}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatInteger(deck.totalReviews)}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatInteger(deck.newCards)}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatPercent(deck.health.passRate)}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">
+                      <td className="px-3 py-3.5 text-right tabular-nums">{formatInteger(deck.totalReviews)}</td>
+                      <td className="px-3 py-3.5 text-right tabular-nums">{formatInteger(deck.newCards)}</td>
+                      <td className="px-3 py-3.5 text-right tabular-nums">{formatPercent(deck.health.passRate)}</td>
+                      <td className="px-3 py-3.5 text-right tabular-nums">
                         {formatInteger(deck.failCount)} / {formatPercent(deck.health.failRate)}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatCompactSeconds(deck.health.averageAnswerSeconds)}</td>
-                      <td className="px-3 py-3">
-                        <StatusPill status={deck.health.status}>{deck.health.statusLabel}</StatusPill>
+                      <td className="px-3 py-3.5 text-right tabular-nums">{formatCompactSeconds(deck.health.averageAnswerSeconds)}</td>
+                      <td className="px-3 py-3.5">
+                        <StatusPill status={deck.health.status}>{deckStatusText(deck.health.statusLabel)}</StatusPill>
                       </td>
-                      <td className="max-w-[300px] px-3 py-3 text-report-muted">{deck.health.reason}</td>
-                      <td className="max-w-[260px] px-3 py-3 text-report-muted">{deck.health.action}</td>
+                      <td className="max-w-[300px] px-3 py-3.5 text-report-muted">{deck.health.reason}</td>
+                      <td className="max-w-[260px] px-3 py-3.5 text-report-muted">{deck.health.action}</td>
                     </tr>
                     {selectedDeckId === deck.id && (
                       <tr className="border-t border-ink-700/80 bg-ink-900/35">
@@ -199,15 +199,15 @@ function DecksShell({
       <header className="min-w-0 rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Decks</h1>
+            <h1 className="text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Колоды</h1>
             <p className="mt-2 text-sm leading-6 text-report-muted">Состояние колод, качество ответов и проблемные зоны.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusPill status="neutral">{formatInteger(totalDecks)} decks</StatusPill>
-            <StatusPill status="good">good {formatInteger(counts.good)}</StatusPill>
-            <StatusPill status="neutral">normal {formatInteger(counts.normal)}</StatusPill>
-            <StatusPill status="warning">warning {formatInteger(counts.warning)}</StatusPill>
-            <StatusPill status="danger">danger {formatInteger(counts.danger)}</StatusPill>
+            <StatusPill status="neutral">{formatInteger(totalDecks)} колод</StatusPill>
+            <StatusPill status="good">хорошо {formatInteger(counts.good)}</StatusPill>
+            <StatusPill status="neutral">норма {formatInteger(counts.normal)}</StatusPill>
+            <StatusPill status="warning">внимание {formatInteger(counts.warning)}</StatusPill>
+            <StatusPill status="danger">опасно {formatInteger(counts.danger)}</StatusPill>
           </div>
         </div>
       </header>
@@ -223,7 +223,7 @@ function DeckDetails({ deck }: { deck: DeckHealthRow }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold tracking-normal text-report-text">{safeText(deck.name)}</h2>
-            <StatusPill status={deck.health.status}>{deck.health.statusLabel}</StatusPill>
+            <StatusPill status={deck.health.status}>{deckStatusText(deck.health.statusLabel)}</StatusPill>
           </div>
           <p className="mt-2 text-sm leading-6 text-report-muted">{deck.health.reason}</p>
         </div>
@@ -232,12 +232,12 @@ function DeckDetails({ deck }: { deck: DeckHealthRow }) {
         </p>
       </div>
       <div className="mt-4 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
-        <DetailMetric label="Reviews" value={formatInteger(deck.totalReviews)} />
-        <DetailMetric label="New cards" value={formatInteger(deck.newCards)} />
+        <DetailMetric label="Повторения" value={formatInteger(deck.totalReviews)} />
+        <DetailMetric label="Новые" value={formatInteger(deck.newCards)} />
         <DetailMetric label="Pass" value={formatInteger(deck.passCount)} />
         <DetailMetric label="Fail" value={formatInteger(deck.failCount)} tone={deck.health.status === "danger" ? "danger" : "neutral"} />
         <DetailMetric label="Hard / Easy" value={`${formatInteger(deck.hardCount)} / ${formatInteger(deck.easyCount)}`} />
-        <DetailMetric label="Study time" value={`${formatInteger(deck.studyMinutes)} мин`} />
+        <DetailMetric label="Время учёбы" value={`${formatInteger(deck.studyMinutes)} мин`} />
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <InfoBox title="Качество" text={`Pass ${formatPercent(deck.health.passRate)}, fail ${formatPercent(deck.health.failRate)}.`} status={deck.health.status} />
@@ -259,9 +259,9 @@ function DeckDetails({ deck }: { deck: DeckHealthRow }) {
 
 function SummaryCard({ label, value, status }: { label: string; value: string; status: DeckHealthStatus }) {
   return (
-    <article className={`kpi-card status-${status}`}>
-      <p className="truncate text-xs font-medium uppercase tracking-[0.04em] text-report-muted">{label}</p>
-      <p className="mt-2 break-words text-2xl font-semibold text-report-text">{value}</p>
+    <article className={`kpi-card min-h-[112px] status-${status}`}>
+      <p className="text-[13px] font-medium uppercase leading-5 tracking-[0.04em] text-report-muted">{label}</p>
+      <p className="mt-3 break-words text-2xl font-semibold leading-8 text-report-text">{value}</p>
     </article>
   );
 }
@@ -291,16 +291,16 @@ function DecksLoadState({ state }: { state: LoadState }) {
       : state === "empty"
         ? "Отчёт ещё не опубликован"
         : state === "forbidden"
-          ? "Недействительная ссылка dashboard"
+          ? "Недействительная ссылка дашборда"
           : "Не удалось загрузить колоды";
   const text =
     state === "loading"
-      ? "Проверяю локальный dashboard API."
+      ? "Проверяю локальный API дашборда."
       : state === "empty"
-        ? "Откройте основное окно Anki Study Report и опубликуйте отчёт в dashboard."
+        ? "Откройте основное окно Anki Study Report и опубликуйте отчёт в дашборде."
         : state === "forbidden"
-          ? "Откройте dashboard из Anki Study Report, чтобы получить действующий token."
-          : "Локальный dashboard API не вернул deck breakdown.";
+          ? "Откройте дашборд из Anki Study Report, чтобы получить действующий token."
+          : "Локальный API дашборда не вернул разбивку по колодам.";
   return <EmptyDecksState title={title} text={text} />;
 }
 
@@ -345,6 +345,10 @@ function DeckSortHeader({
 
 function StatusPill({ status, children }: { status: DeckHealthStatus; children: ReactNode }) {
   return <span className={`status-pill status-${status}`}>{children}</span>;
+}
+
+function deckStatusText(status: DeckStatusFilter) {
+  return statusLabels[status] ?? status;
 }
 
 function compareDeckRows(a: DeckHealthRow, b: DeckHealthRow, key: DeckSortKey, direction: SortDirection) {

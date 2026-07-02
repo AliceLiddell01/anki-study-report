@@ -123,17 +123,17 @@ function resolveStatus(passRate: number | null, failRate: number | null, slowAns
 
 function buildReason(status: Status, passRate: number | null, failRate: number | null, slowAnswers: boolean): string {
   if (status === "good") {
-    return "Колода выглядит стабильной: высокий pass rate и мало ошибок.";
+    return "Колода выглядит стабильной: высокая успешность и мало ошибок.";
   }
   if (status === "danger") {
     if (passRate !== null && passRate < 0.7) {
-      return `Качество сильно ниже нормы: pass rate ${formatPercent(passRate)}.`;
+      return `Качество сильно ниже нормы: успешность ${formatPercent(passRate)}.`;
     }
     return "Много ошибок относительно количества повторений.";
   }
   if (status === "warning") {
     if (passRate !== null && passRate < 0.8) {
-      return `Качество ниже нормы: pass rate ${formatPercent(passRate)}.`;
+      return `Качество ниже нормы: успешность ${formatPercent(passRate)}.`;
     }
     if (failRate !== null && failRate >= 0.2) {
       return "Много ошибок относительно количества повторений.";

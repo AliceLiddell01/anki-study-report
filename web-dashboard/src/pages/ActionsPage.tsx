@@ -1,18 +1,21 @@
 import {
   Clipboard,
-  Copy,
   Download,
-  ExternalLink,
-  FileText,
   FolderSearch,
+  MousePointerClick,
   RotateCcw,
-  Search,
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { LoadState } from "./HomePage";
-import { dashboardToken, runReportAction, type ActionResponse, type BrowserActionKind, type ReportAction } from "../lib/actionsApi";
+import {
+  dashboardToken,
+  runReportAction,
+  type ActionResponse,
+  type BrowserActionKind,
+  type ReportAction,
+} from "../lib/actionsApi";
 import type { StudyReport } from "../types/report";
 
 type ButtonState = {
@@ -27,72 +30,52 @@ type ActionButton = {
   icon: LucideIcon;
   action?: ReportAction;
   kind?: BrowserActionKind;
-  clientAction?: "copy-dashboard-url";
 };
 
 const sections: Array<{ title: string; actions: ActionButton[] }> = [
   {
-    title: "Export",
-    actions: [
-      {
-        id: "copy-markdown",
-        label: "Copy Markdown",
-        description: "Copy current report as Markdown to clipboard.",
-        icon: Clipboard,
-        action: "copy-markdown",
-      },
-      {
-        id: "save-markdown",
-        label: "Save .md",
-        description: "Save current report as a Markdown file.",
-        icon: Download,
-        action: "save-markdown",
-      },
-    ],
-  },
-  {
-    title: "Open in Anki",
+    title: "Основные действия",
     actions: [
       {
         id: "open-problematic",
-        label: "Open problematic decks",
-        description: "Open Anki Browser with cards and decks that need attention.",
+        label: "Открыть проблемные колоды",
+        description: "Открыть Anki Browser с карточками и колодами, которым нужно внимание.",
         icon: FolderSearch,
         action: "open-browser",
         kind: "problematic-decks",
       },
       {
         id: "open-again",
-        label: "Open Again for period",
-        description: "Open Anki Browser filtered to Again answers in the selected period.",
+        label: "Открыть Again за период",
+        description: "Открыть Anki Browser с ответами Again за выбранный период.",
         icon: RotateCcw,
         action: "open-again",
       },
       {
         id: "open-new",
-        label: "Open New for period",
-        description: "Open Anki Browser filtered to new cards in the selected period.",
+        label: "Открыть New за период",
+        description: "Открыть Anki Browser с новыми карточками за выбранный период.",
         icon: Sparkles,
         action: "open-new",
       },
     ],
   },
   {
-    title: "Dashboard",
+    title: "Экспорт",
     actions: [
       {
-        id: "open-dashboard",
-        label: "Open this report in dashboard",
-        description: "Open the current dashboard report URL.",
-        icon: ExternalLink,
-        action: "open-dashboard",
+        id: "copy-markdown",
+        label: "Copy Markdown",
+        description: "Скопировать текущий отчёт как Markdown.",
+        icon: Clipboard,
+        action: "copy-markdown",
       },
       {
-        id: "copy-dashboard-url",
-        label: "Copy dashboard URL",
-        description: "Copy the current local dashboard URL.",
-        icon: Copy,
-        clientAction: "copy-dashboard-url",
+        id: "save-markdown",
+        label: "Сохранить .md",
+        description: "Сохранить текущий отчёт в Markdown-файл.",
+        icon: Download,
+        action: "save-markdown",
       },
     ],
   },
@@ -104,10 +87,10 @@ function ActionsPage({ report, loadState }: { report: StudyReport | null; loadSt
   const tokenAvailable = dashboardToken().length > 0;
   const disabledReason = useMemo(() => {
     if (!tokenAvailable) {
-      return "Open dashboard from Anki Study Report to get a valid token.";
+      return "Откройте дашборд из Anki Study Report, чтобы получить действующий token.";
     }
     if (!reportAvailable) {
-      return "No report is available yet. Build or open a report first.";
+      return "Отчёт ещё не опубликован. Сначала откройте или создайте отчёт.";
     }
     return "";
   }, [reportAvailable, tokenAvailable]);
@@ -122,16 +105,13 @@ function ActionsPage({ report, loadState }: { report: StudyReport | null; loadSt
       [button.id]: { loading: true, response: null },
     }));
     try {
-      const response =
-        button.clientAction === "copy-dashboard-url"
-          ? await copyDashboardUrl()
-          : await runReportAction(button.action || "open-browser", button.kind ? { kind: button.kind } : {});
+      const response = await runReportAction(button.action || "open-browser", button.kind ? { kind: button.kind } : {});
       setButtonResponse(button.id, response);
     } catch {
       setButtonResponse(button.id, {
         ok: false,
         action: button.action || button.id,
-        error: "Dashboard action failed.",
+        error: "Действие дашборда не выполнено.",
       });
     }
   };
@@ -149,15 +129,15 @@ function ActionsPage({ report, loadState }: { report: StudyReport | null; loadSt
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill ${reportAvailable ? "status-good" : "status-warning"}`}>
-              {reportAvailable ? "report ready" : "report needed"}
+              {reportAvailable ? "отчёт готов" : "нужен отчёт"}
             </span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Actions</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Действия</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
               Быстрые действия с текущим отчётом и Anki Browser.
             </p>
           </div>
           <div className="rounded-lg border border-ink-700 bg-ink-900/45 px-3 py-2 text-sm text-report-muted">
-            {reportAvailable ? report?.metadata.period || "Current report" : disabledReason}
+            {reportAvailable ? report?.metadata.period || "Текущий отчёт" : disabledReason}
           </div>
         </div>
       </section>
@@ -196,7 +176,7 @@ function ActionCard({
   const Icon = button.icon;
   const response = state.response;
   const tone = response ? (response.ok ? "good" : "danger") : "neutral";
-  const text = response?.ok ? response.message || "Done." : response?.error;
+  const text = response?.ok ? successText(button.id, response.message) : response?.error;
 
   return (
     <article className={`rounded-xl border bg-ink-800/55 p-4 status-border-${tone}`}>
@@ -211,33 +191,29 @@ function ActionCard({
       </div>
       <button
         type="button"
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-report-blue/35 bg-report-blue/10 px-3 py-2 text-sm font-medium text-report-blue transition hover:border-report-blue/70 disabled:cursor-not-allowed disabled:opacity-55"
+        className="action-button mt-4"
         disabled={disabled || state.loading}
         onClick={onClick}
       >
-        <Search size={16} aria-hidden="true" />
-        {state.loading ? "Working..." : button.label}
+        <MousePointerClick size={16} aria-hidden="true" />
+        {state.loading ? "Выполняю..." : button.label}
       </button>
       {text ? <p className={`mt-3 text-sm leading-6 ${response?.ok ? "text-report-success" : "text-report-danger"}`}>{text}</p> : null}
     </article>
   );
 }
 
-async function copyDashboardUrl(): Promise<ActionResponse> {
-  try {
-    await navigator.clipboard.writeText(window.location.href);
-    return {
-      ok: true,
-      action: "copy-dashboard-url",
-      message: "Copied dashboard URL to clipboard.",
-    };
-  } catch {
-    return {
-      ok: false,
-      action: "copy-dashboard-url",
-      error: "Could not copy dashboard URL.",
-    };
+function successText(buttonId: string, fallback?: string) {
+  if (buttonId === "copy-markdown") {
+    return "Markdown скопирован.";
   }
+  if (buttonId === "save-markdown") {
+    return fallback?.startsWith("Saved report to:") ? fallback.replace("Saved report to:", "Файл сохранён:") : "Файл сохранён.";
+  }
+  if (buttonId.startsWith("open-")) {
+    return "Anki Browser открыт.";
+  }
+  return fallback || "Готово.";
 }
 
 export default ActionsPage;

@@ -7,6 +7,8 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Flame,
   Layers3,
@@ -52,7 +54,8 @@ const chartColors = {
   warning: "#f6c177",
   danger: "#ef6f6c",
 };
-const collapsedDeckTableRows = 12;
+const collapsedDeckTableRows = 5;
+const homeKpiIds = new Set(["pass_rate", "fail_rate", "new_cards", "study_time", "active_decks", "tomorrow_due"]);
 
 const iconMap = {
   alert: AlertTriangle,
@@ -77,16 +80,16 @@ type DeckFilter = "all" | Status;
 export type LoadState = "loading" | "ready" | "empty" | "forbidden" | "error";
 
 const statusLabel: Record<Status, string> = {
-  good: "good",
-  neutral: "neutral",
-  warning: "warning",
-  danger: "danger",
+  good: "хорошо",
+  neutral: "инфо",
+  warning: "внимание",
+  danger: "опасно",
 };
 const comparisonStatusLabel: Record<"good" | "neutral" | "warning" | "danger", string> = {
-  good: "better",
-  neutral: "normal",
-  warning: "warning",
-  danger: "overload",
+  good: "лучше нормы",
+  neutral: "норма",
+  warning: "внимание",
+  danger: "перегруз",
 };
 const comparisonPeriods: Array<{ key: ComparisonPeriod; label: string }> = [
   { key: "yesterday", label: "Вчера" },
@@ -122,6 +125,7 @@ function HomePage({ report, loadState }: { report: StudyReport | null; loadState
     <ReportContext.Provider value={report}>
       <div className="grid min-w-0 gap-5">
         <Header />
+        <ScopeSummary />
         <HeroSummary />
         <KpiGrid metrics={report.kpis} />
         <ProgressComparisonSection />
@@ -148,15 +152,15 @@ function EmptyDashboard({ state }: { state: LoadState }) {
     : state === "empty"
       ? "Отчёт ещё не опубликован"
       : state === "forbidden"
-        ? "Недействительная ссылка dashboard"
+        ? "Недействительная ссылка дашборда"
       : "Не удалось загрузить отчёт";
   const text = isLoading
-    ? "Проверяю локальный dashboard API."
+    ? "Проверяю локальный API дашборда."
     : state === "empty"
-      ? "Откройте основное окно Anki Study Report и нажмите “Открыть этот отчёт в dashboard”."
+      ? "Откройте основное окно Anki Study Report и нажмите “Открыть этот отчёт в дашборде”."
       : state === "forbidden"
-        ? "Недействительная ссылка dashboard. Откройте dashboard из Anki Study Report."
-      : "Локальный dashboard API не вернул отчёт. Попробуйте опубликовать отчёт ещё раз.";
+        ? "Недействительная ссылка дашборда. Откройте дашборд из Anki Study Report."
+      : "Локальный API дашборда не вернул отчёт. Попробуйте опубликовать отчёт ещё раз.";
 
   return (
     <section className="mx-auto max-w-2xl rounded-xl border border-dashed border-ink-700 bg-ink-850 p-6 text-center shadow-panel">
@@ -179,16 +183,24 @@ function Header() {
             </h1>
             <StatusPill status="warning">личная статистика</StatusPill>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-report-muted">
-            <MetaChip label="Период" value={metadata.period} />
-            <MetaChip label="Колоды" value={metadata.selectedDecks.join(", ")} />
-            <MetaChip label="Режим" value={metadata.answerMode === "pass_fail" ? "Pass/Fail" : "4-button"} />
-            <MetaChip label="Создано" value={metadata.createdAt} />
-            <MetaChip label="Детализация" value={metadata.detailMode} />
-          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
+            Локальная аналитика по текущему набору отчёта.
+          </p>
         </div>
       </div>
     </header>
+  );
+}
+
+function ScopeSummary() {
+  const { metadata } = useReport();
+  const deckScope = deckScopeSummary(metadata);
+
+  return (
+    <section className="grid min-w-0 gap-3 md:grid-cols-2">
+      <ScopeTile label="Период статистики" value={metadata.period || "Всё время"} />
+      <ScopeTile label="Статистика по" value={deckScope.summary} detail={deckScope.detail} />
+    </section>
   );
 }
 
@@ -198,24 +210,24 @@ function HeroSummary() {
 
   return (
     <section className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-      <div className="rounded-xl border border-ink-700 bg-gradient-to-br from-ink-850 via-ink-850 to-ink-800 p-5 shadow-glow">
+      <div className="hero-surface rounded-xl border border-ink-700 p-5 shadow-glow">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill status={summary.riskLevel}>risk level: {statusLabel[summary.riskLevel]}</StatusPill>
-          <StatusPill status="neutral">pass/fail view</StatusPill>
+          <StatusPill status={summary.riskLevel}>риск: {statusLabel[summary.riskLevel]}</StatusPill>
+          <StatusPill status="neutral">Pass/Fail</StatusPill>
         </div>
         <p className="mt-5 max-w-5xl text-2xl font-semibold leading-snug tracking-normal text-report-text lg:text-3xl">
           {summary.verdict}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <HeroNote title="Главное действие" text={summary.mainAction} status="good" />
-          <HeroNote title="Что тревожит" text={summary.warning} status="danger" />
+          <HeroNote title="Что тревожит" text={humanizeUiText(summary.warning)} status="danger" />
           <HeroNote title="Новые карточки" text={summary.newCardsAdvice} status="warning" />
         </div>
       </div>
       <div className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-report-muted">Следующий шаг</p>
+            <p className="text-sm text-report-muted">Что делать дальше</p>
             <h2 className="mt-1 text-lg font-semibold">Стабилизировать качество</h2>
           </div>
           <div className="rounded-lg bg-report-blue/15 p-3 text-report-blue">
@@ -224,7 +236,7 @@ function HeroSummary() {
         </div>
         <div className="mt-5 space-y-3">
           {report.recommendations.checklist.slice(0, 3).map((item) => (
-            <div key={item} className="flex gap-3 rounded-lg border border-ink-700 bg-ink-800/55 p-3">
+            <div key={item} className="nested-surface flex gap-3 rounded-lg border border-ink-700 p-3">
               <CheckCircle2 className="mt-0.5 shrink-0 text-report-success" size={18} />
               <span className="text-sm leading-6 text-report-text">{item}</span>
             </div>
@@ -236,16 +248,20 @@ function HeroSummary() {
 }
 
 function KpiGrid({ metrics }: { metrics: KpiMetric[] }) {
+  const visibleMetrics = metrics
+    .filter((metric) => homeKpiIds.has(metric.id))
+    .slice(0, 6);
+
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
-      {metrics.map((metric) => {
+    <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      {visibleMetrics.map((metric) => {
         const Icon = iconMap[metric.icon as keyof typeof iconMap] ?? BarChart3;
         return (
           <article key={metric.id} className={`kpi-card status-${metric.status}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium uppercase tracking-[0.04em] text-report-muted">
-                  {metric.label}
+                  {kpiLabel(metric)}
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-report-text">{metric.value}</p>
               </div>
@@ -268,12 +284,12 @@ function AnswerDistribution() {
   const fail = data.find((item) => item.label === "Fail")?.value ?? 0;
 
   return (
-    <Panel title="Answer Distribution" action={<StatusPill status="neutral">Pass/Fail главный</StatusPill>}>
-      <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-        <div className="h-56">
-          <ResponsiveContainer>
+    <Panel title="Качество ответов" action={<StatusPill status="neutral">ответы</StatusPill>}>
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(240px,1fr)] lg:items-center">
+        <div className="h-[min(340px,58vw)] min-h-[260px] max-h-[340px] min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={62} outerRadius={92} paddingAngle={3}>
+              <Pie data={data} dataKey="value" innerRadius="55%" outerRadius="82%" paddingAngle={3}>
                 {data.map((item) => (
                   <Cell key={item.label} fill={item.color} />
                 ))}
@@ -282,12 +298,12 @@ function AnswerDistribution() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex flex-col justify-center gap-3">
+        <div className="grid min-w-0 gap-3">
           {data.map((item) => (
-            <div key={item.label} className="flex items-center justify-between gap-4 rounded-lg bg-ink-800/50 px-3 py-2">
+            <div key={item.label} className="nested-surface flex items-center justify-between gap-4 rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-report-muted">{item.label}</span>
+                <span className="text-sm text-report-muted">{answerLabel(item.label)}</span>
               </div>
               <span className="text-sm font-semibold text-report-text">
                 {item.value} · {formatPercent(item.value / total)}
@@ -313,7 +329,7 @@ function ProgressComparisonSection() {
   const title = period === "week" ? "Эта неделя против прошлой" : `Сегодня против ${baseline.label || "нормы"}`;
 
   return (
-    <Panel title="Сегодня против нормы" action={<StatusPill status={status}>{comparisonStatusLabel[status]}</StatusPill>}>
+    <Panel title="Почему так" action={<StatusPill status={status}>{comparisonStatusLabel[status]}</StatusPill>}>
       {comparison.available ? (
         <div className="grid gap-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -323,7 +339,7 @@ function ProgressComparisonSection() {
                 {comparisonVerdict(status, period)}
               </p>
             </div>
-            <div className="grid grid-cols-4 gap-1 rounded-lg border border-ink-700 bg-ink-900/45 p-1">
+            <div className="nested-surface grid grid-cols-4 gap-1 rounded-lg border border-ink-700 p-1">
               {comparisonPeriods.map((item) => (
                 <button
                   key={item.key}
@@ -342,28 +358,28 @@ function ProgressComparisonSection() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <ComparisonMiniStat
-              label="Reviews"
+              label="Повторения"
               value={formatCount(current.reviews)}
               delta={formatCountDelta(delta.reviews.delta)}
               detail={formatPercentDelta(delta.reviews.percentDelta)}
               tone={deltaTone(delta.reviews.delta, "moreIsGood")}
             />
             <ComparisonMiniStat
-              label="Study time"
+              label="Учёба"
               value={formatMinutes(current.studyMinutes)}
               delta={formatMinuteDelta(delta.studyMinutes.delta)}
               detail={formatPercentDelta(delta.studyMinutes.percentDelta)}
               tone="neutral"
             />
             <ComparisonMiniStat
-              label="Pass rate"
+              label="Успешность"
               value={formatNullablePercent(current.passRate)}
               delta={formatPointDelta(delta.passRate.deltaPp)}
               detail="процентные пункты"
               tone={deltaTone(delta.passRate.deltaPp, "moreIsGood")}
             />
             <ComparisonMiniStat
-              label="New cards"
+              label="Новые"
               value={formatCount(current.newCards)}
               delta={formatCountDelta(delta.newCards.delta)}
               detail={formatPercentDelta(delta.newCards.percentDelta)}
@@ -375,7 +391,7 @@ function ProgressComparisonSection() {
               {comparison.insights.slice(0, 3).map((insight) => (
                 <div
                   key={`${insight.title}-${insight.metric}`}
-                  className={`rounded-lg border bg-ink-900/45 p-3 status-border-${severityStatus(insight.severity)}`}
+                  className={`nested-surface rounded-lg border p-3 status-border-${severityStatus(insight.severity)}`}
                 >
                   <p className="text-sm font-semibold text-report-text">{insight.title}</p>
                   <p className="mt-1 text-sm leading-6 text-report-muted">{insight.text}</p>
@@ -383,10 +399,10 @@ function ProgressComparisonSection() {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <MiniStat label="Fail rate" value={formatNullablePercent(current.failRate)} tone={deltaTone(delta.failRate.deltaPp, "lessIsGood")} />
-              <MiniStat label="Avg answer" value={formatSeconds(current.avgAnswerSeconds)} />
-              <MiniStat label="Active decks" value={formatCount(current.activeDecks)} />
-              <MiniStat label="Baseline" value={baseline.reviews > 0 ? formatCount(baseline.reviews) : "Нет данных"} />
+              <MiniStat label="Ошибки" value={formatNullablePercent(current.failRate)} tone={deltaTone(delta.failRate.deltaPp, "lessIsGood")} />
+              <MiniStat label="Средний ответ" value={formatSeconds(current.avgAnswerSeconds)} />
+              <MiniStat label="Активные колоды" value={formatCount(current.activeDecks)} />
+              <MiniStat label="Норма" value={baseline.reviews > 0 ? formatCount(baseline.reviews) : "Нет данных"} />
             </div>
           </div>
         </div>
@@ -399,40 +415,88 @@ function ProgressComparisonSection() {
 
 function ActivitySection() {
   const { activity } = useReport();
-  const heatmapMax = Math.max(...activity.days.map((day) => day.reviews), 1);
+  const [selectedYear, setSelectedYear] = useState(() => defaultActivityYear(activity.days));
+  const years = useMemo(() => activityYears(activity.days, selectedYear), [activity.days, selectedYear]);
+  const visibleDays = useMemo(
+    () => activity.days.filter((day) => yearFromDate(day.date) === selectedYear),
+    [activity.days, selectedYear],
+  );
+  const heatmapMax = Math.max(...visibleDays.map((day) => day.reviews), 1);
+
+  useEffect(() => {
+    setSelectedYear(defaultActivityYear(activity.days));
+  }, [activity.days]);
 
   return (
-    <Panel title="Activity" action={<StatusPill status="good">{activity.currentStreak} day streak</StatusPill>}>
+    <Panel
+      title="Активность"
+      action={
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="form-control inline-flex h-9 w-9 items-center justify-center text-report-muted hover:text-report-text"
+            onClick={() => setSelectedYear((year) => year - 1)}
+            title="Предыдущий год"
+            aria-label="Предыдущий год heatmap"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <select
+            value={selectedYear}
+            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            className="form-control h-9 px-3 text-sm"
+            aria-label="Год heatmap"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="form-control inline-flex h-9 w-9 items-center justify-center text-report-muted hover:text-report-text"
+            onClick={() => setSelectedYear((year) => year + 1)}
+            title="Следующий год"
+            aria-label="Следующий год heatmap"
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      }
+    >
       {activity.available ? (
         <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <MiniStat label="Active" value={activity.activeDays.toString()} />
-            <MiniStat label="Missed" value={activity.missedDays.toString()} />
-            <MiniStat label="Current" value={`${activity.currentStreak} дней`} />
-            <MiniStat label="Best" value={`${activity.bestStreak} дней`} />
-            <MiniStat label="Best day" value={activity.bestDay} />
+            <MiniStat label="Активные дни" value={activity.activeDays.toString()} />
+            <MiniStat label="Пропуски" value={activity.missedDays.toString()} />
+            <MiniStat label="Текущая серия" value={`${activity.currentStreak} дней`} />
+            <MiniStat label="Лучшая серия" value={`${activity.bestStreak} дней`} />
+            <MiniStat label="Лучший день" value={activity.bestDay} />
           </div>
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={activity.weekdayAverage}>
-                <CartesianGrid stroke="#2b3a50" vertical={false} />
-                <XAxis dataKey="day" stroke="#8fa3bf" tickLine={false} axisLine={false} />
-                <YAxis stroke="#8fa3bf" tickLine={false} axisLine={false} width={34} />
+                <CartesianGrid stroke="rgb(var(--color-border-subtle))" vertical={false} />
+                <XAxis dataKey="day" stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} />
+                <YAxis stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} width={34} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar dataKey="reviews" radius={[7, 7, 0, 0]} fill={chartColors.blue} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-[repeat(12,minmax(18px,1fr))] gap-2 sm:grid-cols-[repeat(23,minmax(18px,1fr))]">
-            {activity.days.map((day) => (
-              <div
-                key={day.date}
-                title={`${day.date}: ${day.reviews} reviews`}
-                className="aspect-square rounded-[6px] border border-ink-700"
-                style={{ backgroundColor: heatmapColor(day.reviews, heatmapMax) }}
-              />
-            ))}
-          </div>
+          {visibleDays.length > 0 ? (
+            <div className="grid grid-cols-[repeat(12,minmax(18px,1fr))] gap-2 sm:grid-cols-[repeat(23,minmax(18px,1fr))]">
+              {visibleDays.map((day) => (
+                <div
+                  key={day.date}
+                  title={`${day.date}: ${day.reviews} reviews`}
+                  className="aspect-square rounded-[6px] border border-ink-700"
+                  style={{ backgroundColor: heatmapColor(day.reviews, heatmapMax) }}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Нет данных за выбранный год" text={`В ${selectedYear} году в данных дашборда нет дней активности.`} />
+          )}
         </div>
       ) : (
         <EmptyState title="Нет данных активности" text="Revlog за выбранный период пустой, поэтому heatmap пока нечего показать." />
@@ -451,17 +515,17 @@ function DeckPerformanceSection({
   return (
     <section className="grid min-w-0 gap-5">
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <Panel title="Problem Decks" action={<StatusPill status="danger">{problemDecks.length} требуют внимания</StatusPill>}>
+        <Panel title="Проблемные колоды" action={<StatusPill status="danger">{problemDecks.length} требуют внимания</StatusPill>}>
           <div className="grid gap-3 lg:grid-cols-3">
             {problemDecks.map((deck) => (
               <DeckCard key={deck.id} deck={deck} />
             ))}
           </div>
         </Panel>
-        <Panel title="Best Decks" action={<StatusPill status="good">стабильные</StatusPill>}>
+        <Panel title="Стабильные колоды" action={<StatusPill status="good">стабильные</StatusPill>}>
           <div className="grid min-w-0 gap-3">
             {bestDecks.map((deck) => (
-              <div key={deck.id} className="flex min-w-0 max-w-full items-center justify-between gap-4 rounded-lg border border-ink-700 bg-ink-800/55 p-3">
+              <div key={deck.id} className="nested-surface flex min-w-0 max-w-full items-center justify-between gap-4 rounded-lg border border-ink-700 p-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{deck.name}</p>
                   <p className="mt-1 truncate text-xs text-report-muted">{deck.explanation}</p>
@@ -536,60 +600,60 @@ function DeckTable() {
   };
 
   return (
-    <Panel title="Deck Performance Table" action={<StatusPill status="neutral">{rows.length} decks</StatusPill>}>
+    <Panel title="Сводка по колодам" action={<StatusPill status="neutral">{rows.length} колод</StatusPill>}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <label className="relative block md:w-96">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-report-muted" size={17} />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="w-full rounded-lg border border-ink-700 bg-ink-900 py-2.5 pl-10 pr-3 text-sm text-report-text outline-none transition focus:border-report-blue"
-            placeholder="Search deck name"
+            className="form-control w-full py-2.5 pl-10 pr-3 text-sm"
+            placeholder="Найти колоду"
           />
         </label>
         <label className="relative block md:w-56">
           <select
             value={filter}
             onChange={(event) => setFilter(event.target.value as DeckFilter)}
-            className="w-full appearance-none rounded-lg border border-ink-700 bg-ink-900 px-3 py-2.5 text-sm text-report-text outline-none transition focus:border-report-blue"
+            className="form-control w-full appearance-none px-3 py-2.5 pr-9 text-sm"
           >
-            <option value="all">All statuses</option>
-            <option value="good">Good</option>
-            <option value="neutral">Neutral</option>
-            <option value="warning">Warning</option>
-            <option value="danger">Danger</option>
+            <option value="all">Все статусы</option>
+            <option value="good">Хорошо</option>
+            <option value="neutral">Инфо</option>
+            <option value="warning">Внимание</option>
+            <option value="danger">Опасно</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-report-muted" size={17} />
         </label>
       </div>
       <div className="overflow-x-auto rounded-lg border border-ink-700">
-        <table className="min-w-[920px] w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
+        <table className="table-readable min-w-[920px] w-full border-collapse">
+          <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
             <tr>
-              <SortableTh label="Deck" sortKey="name" activeKey={sortKey} direction={direction} onSort={requestSort} />
-              <SortableTh label="Reviews" sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <th className="px-3 py-3 text-right">New</th>
-              <SortableTh label="Pass rate" sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <SortableTh label="Fail" sortKey="failCount" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <SortableTh label="Avg answer" sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <th className="px-3 py-3 text-left">Status</th>
+              <SortableTh label="Колода" sortKey="name" activeKey={sortKey} direction={direction} onSort={requestSort} />
+              <SortableTh label="Повторения" sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <th className="px-3 py-3 text-right">Новые</th>
+              <SortableTh label="Успешность" sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <SortableTh label="Ошибки" sortKey="failCount" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <SortableTh label="Средний ответ" sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <th className="px-3 py-3 text-left">Статус</th>
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((deck) => (
               <tr key={deck.id} className="border-t border-ink-700/80 hover:bg-ink-800/45">
-                <td className="max-w-[340px] px-3 py-3">
-                  <div className="truncate font-medium text-report-text" title={deck.name}>
+                <td className="max-w-[340px] px-3 py-3.5">
+                  <div className="truncate font-semibold text-report-text" title={deck.name}>
                     {deck.name}
                   </div>
                   <div className="mt-1 truncate text-xs text-report-muted">{deck.explanation}</div>
                 </td>
-                <td className="px-3 py-3 text-right tabular-nums">{deck.totalReviews}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{deck.newCards}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{formatPercent(deck.passRate)}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{deck.failCount}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{deck.averageAnswerSeconds}s</td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-3.5 text-right tabular-nums">{deck.totalReviews}</td>
+                <td className="px-3 py-3.5 text-right tabular-nums">{deck.newCards}</td>
+                <td className="px-3 py-3.5 text-right tabular-nums">{formatPercent(deck.passRate)}</td>
+                <td className="px-3 py-3.5 text-right tabular-nums">{deck.failCount}</td>
+                <td className="px-3 py-3.5 text-right tabular-nums">{deck.averageAnswerSeconds}s</td>
+                <td className="px-3 py-3.5">
                   <StatusPill status={deck.status}>{statusLabel[deck.status]}</StatusPill>
                 </td>
               </tr>
@@ -598,18 +662,18 @@ function DeckTable() {
         </table>
       </div>
       {canCollapse && (
-        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-ink-700 bg-ink-900/45 px-3 py-3 text-sm text-report-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="nested-surface mt-3 flex flex-col gap-2 rounded-lg border border-ink-700 px-3 py-3 text-sm text-report-muted sm:flex-row sm:items-center sm:justify-between">
           <span>
             {expanded
               ? `Показаны все ${rows.length} строк.`
-              : `Показаны первые ${visibleRows.length} строк, ещё ${hiddenRows} скрыто.`}
+              : `Показаны ${visibleRows.length} самых проблемных строк, ещё ${hiddenRows} скрыто.`}
           </span>
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
             className="inline-flex items-center justify-center rounded-lg border border-report-blue/35 bg-report-blue/10 px-3 py-2 font-medium text-report-blue transition hover:border-report-blue hover:bg-report-blue/15"
           >
-            {expanded ? "Свернуть таблицу" : "Показать все строки"}
+            {expanded ? "Свернуть таблицу" : "Показать все"}
           </button>
         </div>
       )}
@@ -621,14 +685,14 @@ function ForecastSection() {
   const { forecast } = useReport();
 
   return (
-    <Panel title="Forecast" action={<StatusPill status={forecast.overloadRisk}>overload: {statusLabel[forecast.overloadRisk]}</StatusPill>}>
+    <Panel title="Прогноз нагрузки" action={<StatusPill status={forecast.overloadRisk}>перегруз: {statusLabel[forecast.overloadRisk]}</StatusPill>}>
       {forecast.available ? (
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MiniStat label="Tomorrow" value={forecast.tomorrow.toString()} />
-            <MiniStat label="Next 7 days" value={forecast.next7Days.toString()} />
-            <MiniStat label="Next 30 days" value={forecast.next30Days.toString()} />
-            <MiniStat label="Active day" value={forecast.activeDayBaseline.toString()} />
+            <MiniStat label="Завтра" value={forecast.tomorrow.toString()} />
+            <MiniStat label="7 дней" value={forecast.next7Days.toString()} />
+            <MiniStat label="30 дней" value={forecast.next30Days.toString()} />
+            <MiniStat label="Активный день" value={forecast.activeDayBaseline.toString()} />
           </div>
           <div className="h-64">
             <ResponsiveContainer>
@@ -639,9 +703,9 @@ function ForecastSection() {
                     <stop offset="100%" stopColor={chartColors.purple} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#2b3a50" vertical={false} />
-                <XAxis dataKey="offset" stroke="#8fa3bf" tickLine={false} axisLine={false} />
-                <YAxis stroke="#8fa3bf" tickLine={false} axisLine={false} width={34} />
+                <CartesianGrid stroke="rgb(var(--color-border-subtle))" vertical={false} />
+                <XAxis dataKey="offset" stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} />
+                <YAxis stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} width={34} />
                 <Tooltip content={<ChartTooltip />} />
                 <Area type="monotone" dataKey="due" stroke={chartColors.purple} fill="url(#forecastFill)" strokeWidth={2} />
               </AreaChart>
@@ -663,18 +727,18 @@ function FsrsSection() {
   const recall = fsrs.predictedRecall ?? 0;
 
   return (
-    <Panel title="FSRS" action={<StatusPill status={fsrs.settings.enabled ? "good" : "neutral"}>{fsrs.settings.enabled ? "enabled" : "disabled"}</StatusPill>}>
+    <Panel title="FSRS" action={<StatusPill status={fsrs.settings.enabled ? "good" : "neutral"}>{fsrs.settings.enabled ? "включено" : "выключено"}</StatusPill>}>
       {fsrs.settings.enabled ? (
         <div className="grid gap-4">
-          <div className="rounded-lg border border-ink-700 bg-ink-800/55 p-4">
+          <div className="nested-surface rounded-lg border border-ink-700 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-report-muted">Average predicted recall</p>
+                <p className="text-sm text-report-muted">Средний predicted recall</p>
                 <p className="mt-1 text-3xl font-semibold">{formatPercent(recall)}</p>
               </div>
               <Brain className="text-report-purple" size={34} />
             </div>
-            <div className="mt-4 h-3 rounded-full bg-ink-900">
+            <div className="mt-4 h-3 rounded-full bg-ink-900/70">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-report-purple to-report-blue"
                 style={{ width: `${Math.round(recall * 100)}%` }}
@@ -685,14 +749,14 @@ function FsrsSection() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <MiniStat label="Below target" value={fsrs.cardsBelowTarget.toString()} />
-            <MiniStat label="High forgetting risk" value={fsrs.highForgettingRisk.toString()} tone="danger" />
-            <MiniStat label="Avg difficulty" value={fsrs.averageDifficulty ? `${fsrs.averageDifficulty}%` : "Нет данных"} />
-            <MiniStat label="Future FSRS load" value={fsrs.futureLoad30Days.toString()} />
+            <MiniStat label="Ниже цели" value={fsrs.cardsBelowTarget.toString()} />
+            <MiniStat label="Риск забывания" value={fsrs.highForgettingRisk.toString()} tone="danger" />
+            <MiniStat label="Сложность" value={fsrs.averageDifficulty ? `${fsrs.averageDifficulty}%` : "Нет данных"} />
+            <MiniStat label="FSRS-нагрузка" value={fsrs.futureLoad30Days.toString()} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusPill status={fsrs.settings.helperDetected ? "good" : "neutral"}>FSRS Helper detected</StatusPill>
-            <StatusPill status={fsrs.settings.helperConfigAvailable ? "good" : "neutral"}>config available</StatusPill>
+            <StatusPill status={fsrs.settings.helperDetected ? "good" : "neutral"}>FSRS Helper найден</StatusPill>
+            <StatusPill status={fsrs.settings.helperConfigAvailable ? "good" : "neutral"}>config есть</StatusPill>
             <StatusPill status="neutral">reschedule {fsrs.settings.rescheduleEnabled ? "on" : "off"}</StatusPill>
             <StatusPill status={fsrs.settings.autoDisperse ? "good" : "neutral"}>auto disperse</StatusPill>
           </div>
@@ -711,7 +775,7 @@ function RecommendationsSection() {
     <section className="rounded-xl border border-report-blue/35 bg-gradient-to-br from-report-blue/12 via-ink-850 to-report-purple/12 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div>
-          <p className="text-sm uppercase tracking-[0.04em] text-report-blue">Recommendations / Next Actions</p>
+          <p className="text-sm uppercase tracking-[0.04em] text-report-blue">Что делать дальше</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal">{recommendations.mainAction}</h2>
           <p className="mt-4 text-sm leading-6 text-report-muted">{recommendations.why}</p>
           <p className="mt-3 rounded-lg border border-report-danger/35 bg-report-danger/10 p-3 text-sm leading-6 text-report-text">
@@ -720,7 +784,7 @@ function RecommendationsSection() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {recommendations.checklist.map((item) => (
-            <div key={item} className="flex gap-3 rounded-lg border border-ink-700 bg-ink-800/65 p-3">
+            <div key={item} className="nested-surface flex gap-3 rounded-lg border border-ink-700 p-3">
               <CheckCircle2 className="mt-0.5 shrink-0 text-report-success" size={18} />
               <span className="text-sm leading-6">{item}</span>
             </div>
@@ -733,27 +797,29 @@ function RecommendationsSection() {
 
 function TechnicalDetails() {
   const { metadata } = useReport();
-  const rows = [
-    ["period", metadata.period],
-    ["selected decks", metadata.selectedDecks.join(", ")],
-    ["include children", metadata.includeChildren ? "yes" : "no"],
-    ["detail mode", metadata.detailMode],
-    ["answer mode", metadata.answerMode === "pass_fail" ? "Pass/Fail" : "4-button"],
-    ["deleted card reviews", metadata.deletedCardReviews.toString()],
-    ["unavailable tracker notes", metadata.unavailableTrackerNotes.join(" ")],
+  const deckScope = deckScopeSummary(metadata);
+  const rows: Array<{ label: string; value: string; detail?: string }> = [
+    { label: "period", value: metadata.period },
+    { label: "selected decks", value: deckScope.summary, detail: deckScope.fullList },
+    { label: "include children", value: metadata.includeChildren ? "yes" : "no" },
+    { label: "created at", value: metadata.createdAt },
+    { label: "detail mode", value: metadata.detailMode },
+    { label: "answer mode", value: metadata.answerMode === "pass_fail" ? "Pass/Fail" : "4-button" },
+    { label: "deleted card reviews", value: metadata.deletedCardReviews.toString() },
+    { label: "unavailable tracker notes", value: metadata.unavailableTrackerNotes.join(" ") },
   ];
 
   return (
-    <Panel title="Technical Details" action={<StatusPill status="neutral">secondary</StatusPill>}>
-      <div className="grid gap-2 md:grid-cols-2">
-        {rows.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-ink-700 bg-ink-900/50 px-3 py-2">
-            <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
-            <p className="mt-1 text-sm leading-6 text-report-text">{value}</p>
-          </div>
+    <details className="rounded-xl border border-ink-700 bg-ink-850 p-4 shadow-panel sm:p-5">
+      <summary className="cursor-pointer text-lg font-semibold tracking-normal text-report-text">
+        Диагностика и технические детали
+      </summary>
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        {rows.map((row) => (
+          <TechnicalDetail key={row.label} {...row} />
         ))}
       </div>
-    </Panel>
+    </details>
   );
 }
 
@@ -777,27 +843,47 @@ function Panel({
   );
 }
 
-function MetaChip({ label, value }: { label: string; value: string }) {
+function ScopeTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <span className="max-w-full rounded-lg border border-ink-700 bg-ink-800/70 px-2.5 py-1">
-      <span className="text-report-muted">{label}: </span>
-      <span className="text-report-text">{value}</span>
-    </span>
+    <div className="min-w-0 rounded-lg border border-ink-700 bg-ink-850 px-4 py-3 shadow-panel">
+      <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium leading-6 text-report-text">{value}</p>
+      {detail ? <p className="mt-1 text-xs leading-5 text-report-muted">{detail}</p> : null}
+    </div>
+  );
+}
+
+function TechnicalDetail({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="rounded-lg border border-ink-700 bg-ink-900/50 px-3 py-2">
+      <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
+      <p className="mt-1 break-words text-sm leading-6 text-report-text">{value || "Нет данных"}</p>
+      {detail ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-report-blue hover:text-report-text">
+            Показать список
+          </summary>
+          <p className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-md border border-ink-700 bg-ink-900/50 p-2 text-xs leading-5 text-report-muted">
+            {detail}
+          </p>
+        </details>
+      ) : null}
+    </div>
   );
 }
 
 function HeroNote({ title, text, status }: { title: string; text: string; status: Status }) {
   return (
-    <div className={`rounded-lg border bg-ink-900/45 p-3 status-border-${status}`}>
+    <div className={`nested-surface rounded-lg border p-3 status-border-${status}`}>
       <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-report-text">{text}</p>
+      <p className="mt-2 text-sm leading-6 text-report-text">{humanizeUiText(text)}</p>
     </div>
   );
 }
 
 function MiniStat({ label, value, tone = "neutral" }: { label: string; value: string; tone?: Status }) {
   return (
-    <div className={`rounded-lg border border-ink-700 bg-ink-900/45 p-3 status-border-${tone}`}>
+    <div className={`nested-surface rounded-lg border border-ink-700 p-3 status-border-${tone}`}>
       <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
       <p className="mt-1 break-words text-sm font-semibold text-report-text">{value}</p>
     </div>
@@ -818,7 +904,7 @@ function ComparisonMiniStat({
   tone: Status;
 }) {
   return (
-    <div className={`rounded-lg border border-ink-700 bg-ink-900/45 p-3 status-border-${tone}`}>
+    <div className={`nested-surface rounded-lg border border-ink-700 p-3 status-border-${tone}`}>
       <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
       <p className="mt-1 text-lg font-semibold text-report-text">{value}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -835,7 +921,7 @@ function StatusPill({ status, children }: { status: Status; children: React.Reac
 
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-ink-700 bg-ink-900/45 p-5 text-center">
+    <div className="nested-surface rounded-lg border border-dashed border-ink-700 p-5 text-center">
       <p className="font-semibold">{title}</p>
       <p className="mt-2 text-sm leading-6 text-report-muted">{text}</p>
     </div>
@@ -878,7 +964,7 @@ function ChartTooltip({ active, payload, label }: any) {
   }
 
   return (
-    <div className="rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-sm shadow-panel">
+    <div className="rounded-lg border border-ink-700 bg-ink-900/75 px-3 py-2 text-sm shadow-panel">
       {label !== undefined && <p className="mb-1 text-report-muted">{label}</p>}
       {payload.map((item: any) => (
         <p key={`${item.name}-${item.value}`} className="text-report-text">
@@ -894,6 +980,85 @@ function formatPercent(value: number) {
     return "0%";
   }
   return `${Math.round(value * 100)}%`;
+}
+
+function kpiLabel(metric: KpiMetric) {
+  return {
+    pass_rate: "Успешность",
+    fail_rate: "Ошибки",
+    new_cards: "Новые",
+    study_time: "Время учёбы",
+    active_decks: "Активные колоды",
+    tomorrow_due: "Очередь на завтра",
+  }[metric.id] ?? metric.label;
+}
+
+function answerLabel(label: string) {
+  return {
+    Pass: "Pass",
+    Fail: "Fail",
+    Hard: "Hard",
+    Easy: "Easy",
+  }[label] ?? label;
+}
+
+function humanizeUiText(value: string) {
+  return value.replace(/\bPass rate\b/g, "Успешность").replace(/\bFail rate\b/g, "Ошибки");
+}
+
+function deckScopeSummary(metadata: StudyReport["metadata"]) {
+  const decks = metadata.selectedDecks.filter((deck) => deck.trim().length > 0);
+  if (decks.length === 0 || (decks.length === 1 && decks[0].toLowerCase() === "все колоды")) {
+    return { summary: "Все колоды" };
+  }
+  if (decks.length <= 3) {
+    return { summary: `${decks.length} ${pluralizeDecks(decks.length)}: ${decks.join(", ")}` };
+  }
+  const visible = decks.slice(0, 3).join(", ");
+  return {
+    summary: `${decks.length} ${pluralizeDecks(decks.length)}: ${visible} + ещё ${decks.length - 3}`,
+    detail: "Полный список скрыт, чтобы не раздувать дашборд.",
+    fullList: decks.join(", "),
+  };
+}
+
+function pluralizeDecks(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return "колода";
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "колоды";
+  }
+  return "колод";
+}
+
+function defaultActivityYear(days: Array<{ date: string }>) {
+  const currentYear = new Date().getFullYear();
+  const yearsWithData = days
+    .map((day) => yearFromDate(day.date))
+    .filter((year): year is number => Number.isFinite(year));
+  if (yearsWithData.includes(currentYear)) {
+    return currentYear;
+  }
+  return yearsWithData.length ? Math.max(...yearsWithData) : currentYear;
+}
+
+function activityYears(days: Array<{ date: string }>, selectedYear: number) {
+  const years = new Set<number>([selectedYear, new Date().getFullYear()]);
+  for (const day of days) {
+    const year = yearFromDate(day.date);
+    if (Number.isFinite(year)) {
+      years.add(year);
+    }
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
+function yearFromDate(value: string) {
+  const year = Number(value.slice(0, 4));
+  return Number.isFinite(year) && year > 0 ? year : Number.NaN;
 }
 
 function comparisonStatus(current: DailyStats, baseline: DailyStats, delta: ComparisonDelta, available: boolean): Status {
@@ -1083,19 +1248,19 @@ function formatSignedValue(value: number | null, suffix: string) {
 
 function heatmapColor(reviews: number, max: number) {
   if (reviews <= 0) {
-    return "#111827";
+    return "rgb(var(--color-bg-elevated))";
   }
   const intensity = Math.min(1, reviews / max);
   if (intensity > 0.75) {
-    return "#3db4f2";
+    return "rgb(var(--color-accent) / 0.9)";
   }
   if (intensity > 0.5) {
-    return "#287eaf";
+    return "rgb(var(--color-accent) / 0.68)";
   }
   if (intensity > 0.25) {
-    return "#1d5578";
+    return "rgb(var(--color-accent) / 0.46)";
   }
-  return "#17364f";
+  return "rgb(var(--color-accent) / 0.28)";
 }
 
 export default HomePage;

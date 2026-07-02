@@ -9,6 +9,8 @@ export type ReportAction =
 
 export type BrowserActionKind = "problematic-decks" | "again" | "new";
 
+export type ServerAction = "restart" | "stop" | "open-dashboard" | "copy-url";
+
 export type ActionResponse = {
   ok: boolean;
   action: string;
@@ -40,8 +42,29 @@ export async function runReportAction(
   return normalizeActionResponse(data, action);
 }
 
+export async function runServerAction(action: ServerAction): Promise<ActionResponse> {
+  const token = dashboardToken();
+  const response = await fetch(`/api/server/${action}?token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    cache: "no-store",
+  });
+  const data = await safeJson(response);
+  if (!response.ok && !data) {
+    return {
+      ok: false,
+      action,
+      error: response.status === 403 ? "Invalid dashboard token." : "Server action failed.",
+    };
+  }
+  return normalizeActionResponse(data, action);
+}
+
 export function dashboardToken(): string {
-  return new URLSearchParams(window.location.search).get("token") || "";
+  return dashboardTokenFromSearch(window.location.search);
+}
+
+export function dashboardTokenFromSearch(search: string): string {
+  return new URLSearchParams(search).get("token") || "";
 }
 
 async function safeJson(response: Response): Promise<unknown> {
@@ -52,13 +75,14 @@ async function safeJson(response: Response): Promise<unknown> {
   }
 }
 
-function normalizeActionResponse(value: unknown, fallbackAction: ReportAction): ActionResponse {
+function normalizeActionResponse(value: unknown, fallbackAction: ReportAction | ServerAction): ActionResponse {
   const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const ok = data.ok === true;
   return {
-    ok: data.ok === true,
+    ok,
     action: typeof data.action === "string" && data.action.trim() ? data.action : fallbackAction,
     message: cleanText(data.message),
-    error: cleanText(data.error) || cleanText(data.message),
+    error: ok ? undefined : cleanText(data.error) || cleanText(data.message),
   };
 }
 

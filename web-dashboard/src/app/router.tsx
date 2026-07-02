@@ -6,7 +6,10 @@ import CardsPage from "../pages/CardsPage";
 import DecksPage from "../pages/DecksPage";
 import FsrsPage from "../pages/FsrsPage";
 import HomePage, { type LoadState } from "../pages/HomePage";
+import IntegrationsPage from "../pages/IntegrationsPage";
+import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
+import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import StatsPage from "../pages/StatsPage";
 import type { StudyReport } from "../types/report";
@@ -21,19 +24,24 @@ export type RoutePath =
   | "/fsrs"
   | "/browse"
   | "/actions"
-  | "/settings";
+  | "/settings"
+  | "/settings/server"
+  | "/integrations"
+  | "/logs";
 
-export const navItems: Array<{ path: RoutePath; label: string }> = [
-  { path: "/home", label: "Home" },
-  { path: "/profile", label: "Profile" },
-  { path: "/decks", label: "Decks" },
-  { path: "/cards", label: "Cards" },
-  { path: "/stats", label: "Stats" },
-  { path: "/calendar", label: "Calendar" },
-  { path: "/fsrs", label: "FSRS" },
-  { path: "/browse", label: "Browse" },
-  { path: "/actions", label: "Actions" },
-  { path: "/settings", label: "Settings" },
+export const navItems: Array<{ path: RoutePath; label: string; group: "Основное" | "Аналитика" | "Инструменты" | "Система" }> = [
+  { path: "/home", label: "Главная", group: "Основное" },
+  { path: "/profile", label: "Профиль", group: "Основное" },
+  { path: "/decks", label: "Колоды", group: "Основное" },
+  { path: "/cards", label: "Карточки", group: "Аналитика" },
+  { path: "/stats", label: "Статистика", group: "Аналитика" },
+  { path: "/calendar", label: "Календарь", group: "Аналитика" },
+  { path: "/fsrs", label: "FSRS", group: "Аналитика" },
+  { path: "/browse", label: "Поиск", group: "Инструменты" },
+  { path: "/actions", label: "Действия", group: "Инструменты" },
+  { path: "/integrations", label: "Интеграции", group: "Система" },
+  { path: "/logs", label: "Логи", group: "Система" },
+  { path: "/settings/server", label: "Настройки", group: "Система" },
 ];
 
 const routePaths = new Set<RoutePath>(navItems.map((item) => item.path));
@@ -44,10 +52,15 @@ export function getRouteFromHash(hash: string): RoutePath {
   return routePaths.has(normalized as RoutePath) ? (normalized as RoutePath) : "/home";
 }
 
-export function renderRoute(route: RoutePath, report: StudyReport | null, loadState: LoadState): ReactNode {
+export function renderRoute(
+  route: RoutePath,
+  report: StudyReport | null,
+  loadState: LoadState,
+  onReportUpdated?: (report: StudyReport) => void,
+): ReactNode {
   switch (route) {
     case "/profile":
-      return <ProfilePage />;
+      return <ProfilePage report={report} onReportUpdated={onReportUpdated} />;
     case "/decks":
       return <DecksPage report={report} loadState={loadState} />;
     case "/cards":
@@ -62,6 +75,12 @@ export function renderRoute(route: RoutePath, report: StudyReport | null, loadSt
       return <BrowsePage />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
+    case "/integrations":
+      return <IntegrationsPage />;
+    case "/logs":
+      return <LogsPage />;
+    case "/settings/server":
+      return <ServerSettingsPage />;
     case "/settings":
       return <SettingsPage report={report} />;
     case "/home":

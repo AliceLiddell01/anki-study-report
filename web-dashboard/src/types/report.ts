@@ -6,6 +6,8 @@ export type ReportDataSource = "legacy" | "cache" | "mixed";
 export interface ReportMetadata {
   title: string;
   period: string;
+  periodId?: string;
+  scope?: string;
   selectedDecks: string[];
   includeChildren: boolean;
   answerMode: AnswerMode;
