@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 .codex/
 .agents/
 
@@ -8,11 +9,13 @@ web-dashboard/node_modules/
 web-dashboard/dist/
 web-dashboard/dev-server.log
 web-dashboard/dev-server.err
+web-dashboard/.vite-*.log
 web-dashboard/screenshots/
 
 anki_study_report/user_files/*.sqlite3
 anki_study_report/user_files/*.sqlite3-wal
 anki_study_report/user_files/*.sqlite3-shm
+anki_study_report/user_files/logs/*.log*
 anki_study_report/web_dashboard/
 
 *.ankiaddon
