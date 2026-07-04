@@ -15,6 +15,35 @@ node scripts/run_python.mjs -m pytest
 python scripts/package_addon.py --check-only
 ```
 
+Run the full local check without Docker:
+
+```powershell
+scripts/run_full_check.ps1 -SkipDocker
+```
+
+Run the full local check with Docker E2E and a clean Docker volume first:
+
+```powershell
+scripts/run_full_check.ps1 -CleanDocker
+```
+
+Run only Docker E2E through the full-check wrapper:
+
+```powershell
+scripts/run_full_check.ps1 -DockerOnly
+```
+
+## When to Run Checks
+
+- Fast checks: run Python tests, frontend tests, and frontend build before a
+  normal commit that changes Python, TypeScript, or dashboard assets.
+- Package check: run before building or handing off `anki_study_report.ankiaddon`.
+- Docker E2E: run before merging renderer, dashboard runtime, or Anki desktop
+  integration changes.
+- Docker E2E with `KEEP_E2E_DATA=1`: use only for debugging an E2E failure where
+  preserving the temporary profile helps diagnosis.
+- Full check script: run before a large merge, checkpoint, or branch handoff.
+
 ## Architecture
 
 - Base image: `mcr.microsoft.com/playwright:v1.49.1-noble`
@@ -111,6 +140,22 @@ Build the image:
 
 ```bash
 docker compose -f docker/anki-e2e/docker-compose.yml build
+```
+
+For local development, `ANKI_SHA256` is optional. The downloaded Anki archive is
+verified when the hash is provided, but the Docker E2E flow remains runnable
+without a checksum for quick local iteration.
+
+For CI or strict reproducibility, require the hash explicitly:
+
+```bash
+docker compose -f docker/anki-e2e/docker-compose.yml build --build-arg ANKI_REQUIRE_SHA256=1 --build-arg ANKI_SHA256=<sha256>
+```
+
+The equivalent environment-variable form is:
+
+```bash
+ANKI_REQUIRE_SHA256=1 ANKI_SHA256=<sha256> docker compose -f docker/anki-e2e/docker-compose.yml build
 ```
 
 If `apt-get update` or `apt-get install` fails while fetching Ubuntu packages
@@ -241,3 +286,17 @@ If browser smoke fails, it writes:
 - Media fixtures are tiny synthetic files.
 - API response samples are sanitized and checked for token leakage.
 - Docker E2E is a heavy command and requires Docker Desktop/WSL2 on Windows.
+
+## Security Notes
+
+- This container is test-only infrastructure for Docker E2E.
+- Host Anki data is not mounted into the container.
+- The project source mount is read-only; the runner copies it to a writable
+  container-local build directory.
+- Fixture data is synthetic and recreated for normal runs.
+- The container may run as `root` to keep the Qt, Anki, and Xvfb setup simple in
+  this test harness.
+- `QTWEBENGINE_DISABLE_SANDBOX=1` is used only inside this test-only Docker E2E
+  environment.
+- The root container setup and Qt WebEngine sandbox override are not production
+  or runtime recommendations.

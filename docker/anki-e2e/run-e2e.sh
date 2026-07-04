@@ -71,12 +71,8 @@ if [ -f web-dashboard/pnpm-workspace.yaml ]; then
   echo "web-dashboard pnpm-workspace.yaml:"
   sed -n '1,40p' web-dashboard/pnpm-workspace.yaml
   if ! grep -Eq '^[[:space:]]*packages:' web-dashboard/pnpm-workspace.yaml; then
-    echo "Adding E2E-local packages entry to copied web-dashboard/pnpm-workspace.yaml"
-    cp web-dashboard/pnpm-workspace.yaml web-dashboard/pnpm-workspace.e2e-original.yaml
-    {
-      printf '%s\n' 'packages:' '  - "."'
-      cat web-dashboard/pnpm-workspace.e2e-original.yaml
-    } > web-dashboard/pnpm-workspace.yaml
+    echo "web-dashboard/pnpm-workspace.yaml must declare packages; expected packages: [\".\"]" >&2
+    exit 1
   fi
 fi
 "$PNPM_BIN" --dir "$FRONTEND_DIR" install --frozen-lockfile

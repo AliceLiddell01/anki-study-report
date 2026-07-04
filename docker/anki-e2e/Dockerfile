@@ -2,11 +2,13 @@ FROM mcr.microsoft.com/playwright:v1.49.1-noble
 
 ARG ANKI_VERSION=26.05
 ARG ANKI_SHA256=
+ARG ANKI_REQUIRE_SHA256=0
 ARG ANKI_PYTHON_PACKAGE=anki==26.5
 ARG UBUNTU_MIRROR=https://archive.ubuntu.com/ubuntu
 
 ENV ANKI_VERSION=${ANKI_VERSION}
 ENV ANKI_SHA256=${ANKI_SHA256}
+ENV ANKI_REQUIRE_SHA256=${ANKI_REQUIRE_SHA256}
 ENV ANKI_PYTHON_PACKAGE=${ANKI_PYTHON_PACKAGE}
 ENV ANKI_BIN=/opt/anki/anki
 ENV PATH="/e2e/node_modules/.bin:${PATH}"
@@ -82,7 +84,8 @@ RUN mkdir -p /e2e/bin /e2e/artifacts /e2e/anki-data \
 
 COPY docker/anki-e2e/*.sh docker/anki-e2e/*.py docker/anki-e2e/*.mjs /e2e/bin/
 
-RUN chmod +x /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
+RUN sed -i 's/\r$//' /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
+    && chmod +x /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
     && /e2e/bin/install-anki.sh
 
 WORKDIR /workspace

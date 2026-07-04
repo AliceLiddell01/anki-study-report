@@ -1,0 +1,3 @@
+docker/anki-e2e/*.sh text eol=lf
+docker/anki-e2e/*.py text eol=lf
+docker/anki-e2e/*.mjs text eol=lf

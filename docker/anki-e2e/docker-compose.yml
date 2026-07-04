@@ -6,6 +6,7 @@ services:
       args:
         ANKI_VERSION: ${ANKI_VERSION:-26.05}
         ANKI_SHA256: ${ANKI_SHA256:-}
+        ANKI_REQUIRE_SHA256: ${ANKI_REQUIRE_SHA256:-0}
         ANKI_PYTHON_PACKAGE: ${ANKI_PYTHON_PACKAGE:-anki==26.5}
     environment:
       ANKI_BASE: /e2e/anki-data

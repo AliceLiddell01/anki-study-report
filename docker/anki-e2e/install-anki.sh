@@ -3,6 +3,12 @@ set -Eeuo pipefail
 
 : "${ANKI_VERSION:=26.05}"
 : "${ANKI_SHA256:=}"
+: "${ANKI_REQUIRE_SHA256:=0}"
+
+if [ "$ANKI_REQUIRE_SHA256" = "1" ] && [ -z "$ANKI_SHA256" ]; then
+  echo "ANKI_REQUIRE_SHA256=1 requires ANKI_SHA256 to be set for reproducible Anki downloads." >&2
+  exit 1
+fi
 
 case "$(uname -m)" in
   x86_64 | amd64)
