@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 import re
 
+from .note_intelligence import media_ref_for_name, sanitize_card_css, sanitize_media_filename, sanitize_rendered_html
 from .session_tracker import unavailable_tracked_time
 
 
@@ -967,6 +968,7 @@ def _dashboard_rendered_preview(value) -> dict:
         "backPlainText": _dashboard_preview_text(data.get("backPlainText") or data.get("back_plain_text")),
         "css": _dashboard_preview_css(data.get("css")),
         "mediaRefs": media_refs[:20],
+        "cardOrd": max(0, dashboard_int(data.get("cardOrd") if data.get("cardOrd") is not None else data.get("card_ord"))),
         "reason": _dashboard_preview_text(data.get("reason")),
     }
     if payload["frontHtml"] or payload["backHtml"] or payload["css"]:
@@ -993,24 +995,16 @@ def _dashboard_media_refs(value) -> list[dict[str, str]]:
         extension = name.rsplit(".", 1)[-1].lower() if "." in name else ""
         if media_type not in {"image", "audio"}:
             media_type = "audio" if extension in {"mp3", "ogg", "wav", "m4a", "flac"} else "image"
-        if not url or re.search(r"\b[A-Za-z]:\\|file://|https?://|token=", url, flags=re.IGNORECASE):
-            url = f"/api/media?name={name}"
-        ref = {"name": name, "type": media_type, "url": url[:220]}
+        ref = media_ref_for_name(name)
+        if ref["type"] != media_type:
+            ref["type"] = media_type
         if ref not in refs:
             refs.append(ref)
     return refs
 
 
 def _dashboard_media_name(value) -> str:
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    if "/" in text or "\\" in text or ".." in text or re.search(r"^[a-z][a-z0-9+.-]*:", text, flags=re.IGNORECASE):
-        return ""
-    extension = text.rsplit(".", 1)[-1].lower() if "." in text else ""
-    if extension not in {"gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac"}:
-        return ""
-    return text[:160]
+    return sanitize_media_filename(value)[:160]
 
 
 def _dashboard_note_type_catalog(value) -> list[dict]:
@@ -1043,23 +1037,12 @@ def _dashboard_note_type_catalog(value) -> list[dict]:
 
 
 def _dashboard_preview_html(value) -> str:
-    text = str(value or "")
-    text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"\b(?:src|href)\s*=\s*(['\"])(?:file://|https?://|[A-Za-z]:\\).*?\1", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
-    text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"token=[^\s&<>\"']+", "token=[redacted]", text, flags=re.IGNORECASE)
+    text, _media_refs = sanitize_rendered_html(value)
     return text[:4000]
 
 
 def _dashboard_preview_css(value) -> str:
-    text = str(value or "")
-    text = re.sub(r"@import[^;]+;", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"url\((?:file://|https?://|[A-Za-z]:\\)[^)]+\)", "url()", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b[A-Za-z]:\\[^\s;{}]+", " ", text)
-    text = re.sub(r"token=[^\s;{}]+", "token=[redacted]", text, flags=re.IGNORECASE)
-    return text[:3000]
+    return sanitize_card_css(value)[:3000]
 
 
 def _dashboard_attention_cards_status(status, cards) -> dict:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from html import escape, unescape
 import re
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 
 FIELD_SEPARATOR = "\x1f"
@@ -13,6 +13,48 @@ PREVIEW_SCHEMA_VERSION = 1
 IMAGE_MEDIA_EXTENSIONS = {"gif", "png", "jpg", "jpeg", "webp"}
 AUDIO_MEDIA_EXTENSIONS = {"mp3", "ogg", "wav", "m4a", "flac"}
 MEDIA_EXTENSIONS = IMAGE_MEDIA_EXTENSIONS | AUDIO_MEDIA_EXTENSIONS
+SAFE_INLINE_STYLE_PROPERTIES = {
+    "color",
+    "background-color",
+    "font-weight",
+    "font-style",
+    "text-decoration",
+    "text-align",
+    "vertical-align",
+    "white-space",
+    "font-size",
+    "line-height",
+    "margin",
+    "margin-top",
+    "margin-right",
+    "margin-bottom",
+    "margin-left",
+    "padding",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "border",
+    "border-color",
+    "border-width",
+    "border-style",
+    "border-radius",
+    "display",
+}
+SAFE_DISPLAY_VALUES = {
+    "block",
+    "inline",
+    "inline-block",
+    "flex",
+    "inline-flex",
+    "grid",
+    "inline-grid",
+    "none",
+}
+UNSAFE_STYLE_VALUE_RE = re.compile(
+    r"(?:expression\s*\(|url\s*\(|@import|javascript\s*:|vbscript\s*:|data\s*:|behavior\s*:|position\s*:|z-index\s*:)",
+    re.IGNORECASE,
+)
 
 _ROLE_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("reading", ("чтение", "reading", "kana", "furigana", "yomi", "pronunciation")),
@@ -148,6 +190,9 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
     media_refs = _unique_media_refs(front_media)
     front_plain = safe_plain_text(front_raw, 240)
     back_plain = safe_plain_text(back_raw, 320)
+    reason = "template renderer"
+    if _template_contains_javascript(qfmt) or _template_contains_javascript(afmt):
+        reason = "template renderer; template contains JavaScript, scripts are not executed in card list preview for safety."
 
     if not front_html and not back_html and not front_plain and not back_plain:
         return {
@@ -156,6 +201,7 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
             "backPlainText": "",
             "css": css,
             "mediaRefs": media_refs,
+            "cardOrd": _safe_int(card_ord),
             "reason": "Template rendered no visible front/back content.",
         }
 
@@ -167,7 +213,8 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
         "frontPlainText": front_plain,
         "backPlainText": back_plain,
         "mediaRefs": media_refs,
-        "reason": "template renderer",
+        "cardOrd": _safe_int(card_ord),
+        "reason": reason,
     }
 
 
@@ -181,8 +228,9 @@ def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
     text = re.sub(r"<(?:iframe|object|embed|meta|link)\b[^>]*>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r"\son\w+\s*=\s*[^\s>]+", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\sstyle\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = _sanitize_style_attributes(text)
     text = re.sub(r"\ssrcset\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"\ssrcset\s*=\s*[^\s>]+", "", text, flags=re.IGNORECASE)
     text = _rewrite_media_attributes(text, media_refs)
     text = _rewrite_sound_tags(text, media_refs)
     text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
@@ -199,6 +247,38 @@ def sanitize_card_css(value: Any) -> str:
     text = re.sub(r"\b[A-Za-z]:\\[^\s;{}]+", " ", text)
     text = re.sub(r"token=[^\s;{}]+", "token=[redacted]", text, flags=re.IGNORECASE)
     return text[:4000]
+
+
+def _sanitize_style_attributes(text: str) -> str:
+    def replace_quoted(match: re.Match[str]) -> str:
+        quote_char = match.group(1)
+        safe_style = _sanitize_inline_style(match.group(2))
+        if not safe_style:
+            return ""
+        return f" style={quote_char}{escape(safe_style, quote=True)}{quote_char}"
+
+    text = re.sub(r"\sstyle\s*=\s*(['\"])(.*?)\1", replace_quoted, text, flags=re.IGNORECASE | re.DOTALL)
+    return re.sub(r"\sstyle\s*=\s*(?!['\"])[^\s>]+", "", text, flags=re.IGNORECASE)
+
+
+def _sanitize_inline_style(value: Any) -> str:
+    declarations: list[str] = []
+    for raw_declaration in str(value or "").split(";"):
+        if ":" not in raw_declaration:
+            continue
+        raw_property, raw_value = raw_declaration.split(":", 1)
+        property_name = re.sub(r"\s+", "", raw_property.strip().lower())
+        property_value = raw_value.strip()
+        if property_name not in SAFE_INLINE_STYLE_PROPERTIES or not property_value:
+            continue
+        if property_name in {"position", "z-index", "behavior"}:
+            continue
+        if "<" in property_value or ">" in property_value or UNSAFE_STYLE_VALUE_RE.search(property_value):
+            continue
+        if property_name == "display" and property_value.lower() not in SAFE_DISPLAY_VALUES:
+            continue
+        declarations.append(f"{property_name}: {property_value}")
+    return "; ".join(declarations)
 
 
 def missing_fields_for_profile(profile: dict[str, Any], raw_fields: Any) -> list[str]:
@@ -294,7 +374,7 @@ def media_ref_for_name(name: str) -> dict[str, str]:
     return {
         "name": name,
         "type": media_type,
-        "url": f"/api/media?name={quote(name)}",
+        "url": f"/api/media?name={quote(name, safe='')}",
     }
 
 
@@ -411,26 +491,49 @@ def _rewrite_sound_tags(text: str, media_refs: list[dict[str, str]]) -> str:
             return '<span class="asr-card-media-missing">медиа недоступно</span>'
         ref = media_ref_for_name(name)
         media_refs.append(ref)
-        return f'<audio class="asr-card-audio" controls preload="none" src="{escape(ref["url"], quote=True)}"></audio>'
+        return f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="{escape(ref["url"], quote=True)}"></audio>'
 
     return re.sub(r"\[sound:([^\]]+)\]", replace, text, flags=re.IGNORECASE)
 
 
 def _rewrite_media_attributes(text: str, media_refs: list[dict[str, str]]) -> str:
-    def replace(match: re.Match[str]) -> str:
+    def replace_quoted(match: re.Match[str]) -> str:
         attr = match.group(1).lower()
         quote_char = match.group(2)
-        raw_url = match.group(3)
-        if re.search(r"^(?:https?://|file://|[A-Za-z]:\\)", raw_url, flags=re.IGNORECASE):
-            return ""
-        name = sanitize_media_filename(raw_url)
+        name = _media_name_from_attribute_url(match.group(3))
         if not name:
             return ""
         ref = media_ref_for_name(name)
         media_refs.append(ref)
         return f'{attr}={quote_char}{escape(ref["url"], quote=True)}{quote_char}'
 
-    return re.sub(r"\b(src|href)\s*=\s*(['\"])(.*?)\2", replace, text, flags=re.IGNORECASE | re.DOTALL)
+    def replace_unquoted(match: re.Match[str]) -> str:
+        attr = match.group(1).lower()
+        name = _media_name_from_attribute_url(match.group(2))
+        if not name:
+            return ""
+        ref = media_ref_for_name(name)
+        media_refs.append(ref)
+        return f'{attr}="{escape(ref["url"], quote=True)}"'
+
+    text = re.sub(r"\b(src|href)\s*=\s*(['\"])(.*?)\2", replace_quoted, text, flags=re.IGNORECASE | re.DOTALL)
+    return re.sub(r"\b(src|href)\s*=\s*(?!['\"])([^\s>]+)", replace_unquoted, text, flags=re.IGNORECASE)
+
+
+def _media_name_from_attribute_url(value: Any) -> str:
+    raw = unescape(str(value or "").strip())
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    if parsed.path == "/api/media":
+        names = parse_qs(parsed.query).get("name") or []
+        return sanitize_media_filename(names[0] if names else "")
+    return sanitize_media_filename(raw)
+
+
+def _template_contains_javascript(value: Any) -> bool:
+    text = str(value or "")
+    return bool(re.search(r"<script\b|\son\w+\s*=|javascript\s*:", text, flags=re.IGNORECASE))
 
 
 def _unique_media_refs(refs: list[dict[str, str]]) -> list[dict[str, str]]:

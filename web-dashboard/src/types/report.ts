@@ -127,6 +127,7 @@ export interface RenderedCardPreview {
   backPlainText?: string;
   css?: string;
   mediaRefs?: CardMediaRef[];
+  cardOrd?: number;
   renderStatus: "available" | "unavailable" | "sanitized" | "fallback" | "error";
   reason?: string;
 }
