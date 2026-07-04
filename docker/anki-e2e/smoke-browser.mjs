@@ -64,6 +64,9 @@ try {
     shadowDetails.imgCount < 2 ||
     shadowDetails.audioCount < 1 ||
     shadowDetails.renderSource !== "anki_native" ||
+    shadowDetails.hasRawAnkiPlayMarker ||
+    shadowDetails.hasRawSoundMarker ||
+    !shadowDetails.audioBeforeExample ||
     (!shadowDetails.hasWordFocus && !shadowDetails.hasInlineColor)
   ) {
     throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
@@ -196,6 +199,11 @@ async function inspectShadowPreview(page) {
       const html = shadowRoot?.innerHTML || "";
       const template = host.querySelector("template")?.innerHTML || "";
       const searchable = `${host.getAttribute("title") || ""}\n${template}\n${html}`;
+      const cardHtml = shadowRoot?.querySelector(".card")?.innerHTML || html;
+      const audioIndex = Math.max(cardHtml.indexOf("asr-card-audio"), cardHtml.indexOf("<audio"));
+      const replayIndex = cardHtml.indexOf("asr-card-replay");
+      const controlIndex = audioIndex >= 0 ? audioIndex : replayIndex;
+      const exampleIndex = cardHtml.indexOf("word-focus");
       if (!searchable.includes("要望") && !searchable.includes("%E8%A6%81")) {
         continue;
       }
@@ -210,6 +218,9 @@ async function inspectShadowPreview(page) {
         audioCount: shadowRoot?.querySelectorAll("audio, .asr-card-audio").length || 0,
         hasWordFocus: Boolean(shadowRoot?.querySelector(".word-focus")),
         hasInlineColor: Boolean(shadowRoot?.querySelector('[style*="color"]')),
+        hasRawAnkiPlayMarker: html.includes("[anki:play:"),
+        hasRawSoundMarker: html.toLowerCase().includes("[sound:"),
+        audioBeforeExample: controlIndex >= 0 && exampleIndex >= 0 && controlIndex < exampleIndex,
         hasScrollbarMarker: Boolean(shadowRoot?.querySelector(".inner-scrollbar, .scrollbar")),
         html,
       };
@@ -225,6 +236,9 @@ async function inspectShadowPreview(page) {
       audioCount: 0,
       hasWordFocus: false,
       hasInlineColor: false,
+      hasRawAnkiPlayMarker: false,
+      hasRawSoundMarker: false,
+      audioBeforeExample: false,
       hasScrollbarMarker: false,
       html: "",
     };

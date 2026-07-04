@@ -115,16 +115,35 @@ def assert_fixture_preview(card: dict[str, Any]) -> None:
     assert_true(isinstance(rendered, dict), "fixture card has renderedPreview")
     rendered = rendered if isinstance(rendered, dict) else {}
     front_html = str(rendered.get("frontHtml") or "")
+    back_html = str(rendered.get("backHtml") or "")
+    front_plain = str(rendered.get("frontPlainText") or "")
+    back_plain = str(rendered.get("backPlainText") or "")
     rendered_dump = json.dumps(rendered, ensure_ascii=False)
     assert_true(rendered.get("renderStatus") in {"available", "sanitized", "fallback"}, "renderStatus marker present")
     assert_true(rendered.get("renderSource") == "anki_native", "fixture card used native Anki render")
     assert_true(not rendered.get("fallbackReason"), "native fixture has no fallback reason")
+    for label, value in (
+        ("frontHtml", front_html),
+        ("backHtml", back_html),
+        ("frontPlainText", front_plain),
+        ("backPlainText", back_plain),
+    ):
+        assert_true("[anki:play:" not in value, f"{label} has no raw Anki AV marker")
+        assert_true("[sound:" not in value.lower(), f"{label} has no raw sound marker")
     assert_true("要望" in rendered_dump, "rendered preview contains 要望")
     assert_true("word-focus" in front_html, "word-focus class preserved")
     assert_true("rgb(255, 165, 0)" in front_html or "orange" in front_html.lower(), "inline color style preserved")
+    assert_true("asr-card-audio" in front_html or "<audio" in front_html.lower(), "audio control present in frontHtml")
+    assert_true(front_html.find("asr-card-audio") < 0 or front_html.find("asr-card-audio") < front_html.find("word-focus"), "audio control keeps native marker placement")
     assert_true("要.gif" in rendered_dump or "%E8%A6%81.gif" in rendered_dump, "要.gif reference present")
     assert_true("望.gif" in rendered_dump or "%E6%9C%9B.gif" in rendered_dump, "望.gif reference present")
     assert_true("要望.mp3" in rendered_dump or "%E8%A6%81%E6%9C%9B.mp3" in rendered_dump, "audio reference present")
+    media_names = {
+        str(item.get("name") or "")
+        for item in rendered.get("mediaRefs", [])
+        if isinstance(item, dict)
+    }
+    assert_true({"要.gif", "望.gif", "要望.mp3"}.issubset(media_names), "fixture mediaRefs contain images and audio")
     assert_true("<script" not in front_html.lower(), "scripts stripped from preview")
     assert_true("file://" not in front_html.lower(), "file URLs stripped from preview")
 

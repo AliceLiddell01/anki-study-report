@@ -227,10 +227,16 @@ def render_card_preview_native(card: Any, *, card_id: Any = None, card_ord: Any 
         if native is None:
             return None, "native_render_failed"
 
-        front_raw = native.get("frontHtml") or ""
-        back_raw = native.get("backHtml") or ""
-        front_raw = _append_av_media_html(front_raw, native.get("frontAvTags"))
-        back_raw = _append_av_media_html(back_raw, native.get("backAvTags"))
+        front_raw = _replace_native_av_markers(
+            native.get("frontHtml") or "",
+            question_av_tags=native.get("frontAvTags"),
+            answer_av_tags=None,
+        )
+        back_raw = _replace_native_av_markers(
+            native.get("backHtml") or "",
+            question_av_tags=native.get("frontAvTags"),
+            answer_av_tags=native.get("backAvTags"),
+        )
         front_html, front_media = sanitize_rendered_html(front_raw)
         back_html, back_media = sanitize_rendered_html(back_raw)
         css = sanitize_card_css(native.get("css"))
@@ -565,6 +571,48 @@ def _native_output_attr(output: Any, attr: str) -> Any:
         return None
 
 
+def _replace_native_av_markers(
+    html: Any,
+    *,
+    question_av_tags: Any,
+    answer_av_tags: Any,
+) -> str:
+    text = str(html or "")
+    refs_by_side = {
+        "q": _media_refs_from_av_tags(question_av_tags),
+        "a": _media_refs_from_av_tags(answer_av_tags),
+    }
+    used: set[tuple[str, int]] = set()
+
+    def replace(match: re.Match[str]) -> str:
+        side = match.group(1).lower()
+        index = _safe_int(match.group(2), -1)
+        refs = refs_by_side.get(side) or []
+        if 0 <= index < len(refs):
+            used.add((side, index))
+            return _audio_control_html(refs[index])
+        return ""
+
+    replaced = re.sub(r"\[anki:play:([qa]):(\d+)\]", replace, text, flags=re.IGNORECASE)
+    missing_marker = not re.search(r"\[anki:play:[qa]:\d+\]", text, flags=re.IGNORECASE)
+    if not missing_marker:
+        return replaced
+
+    additions = []
+    for side, refs in refs_by_side.items():
+        for index, ref in enumerate(refs):
+            if (side, index) not in used:
+                additions.append(_audio_control_html(ref))
+    return replaced + "".join(additions)
+
+
+def _audio_control_html(ref: dict[str, str]) -> str:
+    return (
+        f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" '
+        f'src="{escape(ref["url"], quote=True)}"></audio>'
+    )
+
+
 def _append_av_media_html(html: Any, av_tags: Any) -> str:
     text = str(html or "")
     refs = _media_refs_from_av_tags(av_tags)
@@ -575,10 +623,7 @@ def _append_av_media_html(html: Any, av_tags: Any) -> str:
     for ref in refs:
         if ref["name"] in existing_names:
             continue
-        additions.append(
-            f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" '
-            f'src="{escape(ref["url"], quote=True)}"></audio>'
-        )
+        additions.append(_audio_control_html(ref))
     return text + "".join(additions)
 
 
@@ -923,6 +968,7 @@ def _role_value_is_empty(role: str, value: str) -> bool:
 
 def _plain_text(value: Any) -> str:
     text = str(value or "")
+    text = re.sub(r"\[anki:play:[qa]:\d+\]", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\[sound:[^\]]+\]", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)

@@ -223,6 +223,77 @@ def test_native_rendered_preview_uses_card_question_answer_and_sanitizer():
     assert "/api/media?name=%E8%A6%81%E6%9C%9B.mp3" in rendered["backHtml"]
 
 
+def test_native_rendered_preview_replaces_anki_av_markers_in_place():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    class FakeAvTag:
+        def __init__(self, filename):
+            self.filename = filename
+
+    class FakeRenderOutput:
+        css = ".word-focus { color: #2563eb; }"
+        question_av_tags = [FakeAvTag("要望.mp3")]
+        answer_av_tags = [FakeAvTag("answer.mp3")]
+
+        def question_and_style(self):
+            return '[anki:play:q:0]<br><span class="word-focus">要望する</span>'
+
+        def answer_and_style(self):
+            return '[anki:play:q:0]<hr>[anki:play:a:0]<span>answer</span>'
+
+    class FakeCard:
+        id = 456
+        ord = 0
+
+        def render_output(self, **_kwargs):
+            return FakeRenderOutput()
+
+    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=456)
+
+    assert reason is None
+    assert rendered["renderSource"] == "anki_native"
+    assert "[anki:play:" not in rendered["frontHtml"]
+    assert "[anki:play:" not in rendered["backHtml"]
+    assert "[anki:play:" not in rendered["frontPlainText"]
+    assert "[anki:play:" not in rendered["backPlainText"]
+    assert rendered["frontHtml"].index("asr-card-audio") < rendered["frontHtml"].index("word-focus")
+    assert rendered["backHtml"].count("asr-card-audio") == 2
+    assert rendered["mediaRefs"] == [
+        {"name": "要望.mp3", "type": "audio", "url": "/api/media?name=%E8%A6%81%E6%9C%9B.mp3"},
+        {"name": "answer.mp3", "type": "audio", "url": "/api/media?name=answer.mp3"},
+    ]
+
+
+def test_native_rendered_preview_removes_unmatched_anki_av_markers():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    class FakeRenderOutput:
+        question_av_tags = []
+        answer_av_tags = []
+        css = ""
+
+        def question_and_style(self):
+            return "[anki:play:q:0]<span>front</span>"
+
+        def answer_and_style(self):
+            return "[anki:play:a:0]<span>back</span>"
+
+    class FakeCard:
+        def render_output(self, **_kwargs):
+            return FakeRenderOutput()
+
+    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=789)
+
+    assert reason is None
+    assert rendered["renderSource"] == "anki_native"
+    assert "[anki:play:" not in rendered["frontHtml"]
+    assert "[anki:play:" not in rendered["backHtml"]
+    assert "[anki:play:" not in rendered["frontPlainText"]
+    assert "[anki:play:" not in rendered["backPlainText"]
+    assert rendered["frontHtml"] == "<span>front</span>"
+    assert rendered["backHtml"] == "<span>back</span>"
+
+
 def test_native_first_preview_falls_back_when_collection_has_no_card_api():
     note_intelligence = fresh_import_addon_module("note_intelligence")
 
