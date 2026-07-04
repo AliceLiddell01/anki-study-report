@@ -35,25 +35,166 @@ JAPANESE_FRONT = (
 
 JAPANESE_CSS = """
 .card {
-  font-family: "Noto Sans JP", "Yu Gothic", sans-serif;
-  font-size: 32px;
-  line-height: 1.45;
+  font-family: "Hiragino Kaku Gothic Pro", "Meiryo", "Noto Sans JP", Arial, sans-serif;
+  font-size: 20px;
   text-align: center;
-  color: #1f2937;
-  background: #ffffff;
+  color: #333;
+  background-color: #fcfcfc;
+  line-height: 1.6;
 }
 .nightMode .card, .card.nightMode {
-  color: #f9fafb;
-  background: #111827;
+  background-color: #2f2f31;
+  color: #dcdcdc;
+}
+.main-word {
+  font-size: 36px;
+  font-weight: bold;
+  color: #000;
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+.nightMode .main-word, .card.nightMode .main-word {
+  color: #fff;
 }
 .word-focus {
-  font-weight: 700;
-  color: #2563eb;
+  color: rgb(255, 170, 0);
+  font-weight: bold;
+}
+.align-left {
+  text-align: left;
+  padding: 10px 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.meaning-box {
+  background-color: #e8f4fd;
+  border-left: 5px solid #3498db;
+  padding: 15px;
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: 600;
+  border-radius: 5px;
+  color: #2c3e50;
+}
+.reading-box {
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+}
+.section-label {
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #f39c12;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.reading-content {
+  font-family: "Consolas", monospace;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+.pos-tag {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: normal;
+  color: #555;
+  background-color: #e0e0e0;
+  padding: 4px 10px;
+  border-radius: 15px;
+  margin-bottom: 8px;
+}
+.section-container {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+.text-body {
+  font-size: 20px;
+  line-height: 1.8;
+}
+.examples {
+  font-style: italic;
+  color: #555;
+  margin-left: 10px;
+  border-left: 2px solid #ddd;
+  padding-left: 10px;
+}
+.similar-box {
+  background-color: #f3f3f3;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #9aa0a6;
+  border-radius: 5px;
+  padding: 12px 14px;
+  margin-top: 5px;
+}
+.similar-item {
+  display: inline-block;
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 14px;
+  padding: 3px 10px;
+  margin: 0 6px 8px 0;
+  font-size: 20px;
 }
 .card img {
-  max-height: 96px;
-  max-width: 120px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 3px;
 }
+"""
+
+JAPANESE_QFMT = """
+<div class="card-content">
+  <div class="main-word">
+    {{Слово}}
+  </div>
+</div>
+"""
+
+JAPANESE_AFMT = """
+{{FrontSide}}
+
+<hr id="answer">
+
+<div class="card-content align-left">
+  {{#Часть речи}}
+  <div class="pos-tag">{{Часть речи}}</div>
+  {{/Часть речи}}
+
+  {{#Значение}}
+  <div class="meaning-box">{{Значение}}</div>
+  {{/Значение}}
+
+  {{#Ударение}}
+  <div class="reading-box">
+    <div class="section-label">Чтение:</div>
+    <div class="reading-content">{{Ударение}}</div>
+  </div>
+  {{/Ударение}}
+
+  {{#Пример}}
+  <div class="section-container">
+    <div class="section-title">Примеры:</div>
+    <div class="text-body examples">{{Пример}}</div>
+  </div>
+  {{/Пример}}
+
+  {{#Похожие слова}}
+  <div class="section-container similar-box">
+    <div class="section-title">Похожие:</div>
+    <div class="text-body">{{Похожие слова}}</div>
+  </div>
+  {{/Похожие слова}}
+</div>
 """
 
 
@@ -118,9 +259,9 @@ def create_collection(collection_path: Path) -> None:
         japanese_model = create_model(
             col,
             "E2E Japanese Vocabulary",
-            ["Слово", "Значение", "Пример", "Часть речи", "Аудио", "Изображение"],
-            "{{Слово}}",
-            "{{FrontSide}}<hr id=\"answer\">{{Значение}}<br>{{Пример}}",
+            ["Слово", "Значение", "Пример", "Часть речи", "Ударение", "Похожие слова", "Аудио", "Изображение"],
+            JAPANESE_QFMT,
+            JAPANESE_AFMT,
             JAPANESE_CSS,
         )
         generic_model = create_model(
@@ -154,8 +295,10 @@ def create_collection(collection_path: Path) -> None:
             {
                 "Слово": JAPANESE_FRONT,
                 "Значение": "request; demand",
-                "Пример": "改善を要望する。",
+                "Пример": '<div class="example-item"><div class="jp">改善を<span class="word-focus">要望する</span>。</div><div class="ru">просить улучшения</div></div>',
                 "Часть речи": "する-verb",
+                "Ударение": "ようぼう",
+                "Похожие слова": '<span class="similar-item">要求</span><span class="similar-item">希望</span>',
                 "Аудио": "[sound:要望.mp3]",
                 "Изображение": '<img src="要.gif"><img src="望.gif">',
             },

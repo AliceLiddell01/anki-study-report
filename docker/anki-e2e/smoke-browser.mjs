@@ -70,7 +70,12 @@ try {
     shadowDetails.hasRawAnkiPlayMarker ||
     shadowDetails.hasRawSoundMarker ||
     !shadowDetails.audioBeforeExample ||
-    (!shadowDetails.hasWordFocus && !shadowDetails.hasInlineColor)
+    !shadowDetails.hasWordFocus ||
+    !shadowDetails.hasMainWord ||
+    !shadowDetails.hasCardContent ||
+    !shadowDetails.wordFocusColorMatchesExpected ||
+    shadowDetails.wordFocusColorIsOldBlue ||
+    !shadowDetails.hasInlineColor
   ) {
     throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
   }
@@ -226,6 +231,13 @@ async function inspectShadowPreview(page) {
         const rect = audio.getBoundingClientRect();
         return audio.hasAttribute("controls") && rect.width > 0 && rect.height > 0;
       });
+      const normalizeRgb = (value) => {
+        const match = String(value || "").match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/i);
+        return match ? `rgb(${Number(match[1])}, ${Number(match[2])}, ${Number(match[3])})` : String(value || "").trim().toLowerCase();
+      };
+      const wordFocus = shadowRoot?.querySelector(".word-focus");
+      const wordFocusColor = wordFocus ? getComputedStyle(wordFocus).color : "";
+      const normalizedWordFocusColor = normalizeRgb(wordFocusColor);
       const imagesLoaded =
         imageDetails.length === 2 &&
         imageDetails.every(
@@ -251,7 +263,13 @@ async function inspectShadowPreview(page) {
         imagesLoaded,
         imageDetails,
         hasWordFocus: Boolean(shadowRoot?.querySelector(".word-focus")),
+        hasMainWord: Boolean(shadowRoot?.querySelector(".main-word")),
+        hasCardContent: Boolean(shadowRoot?.querySelector(".card-content")),
         hasInlineColor: Boolean(shadowRoot?.querySelector('[style*="color"]')),
+        wordFocusColor,
+        normalizedWordFocusColor,
+        wordFocusColorMatchesExpected: normalizedWordFocusColor === "rgb(255, 170, 0)",
+        wordFocusColorIsOldBlue: normalizedWordFocusColor === "rgb(37, 99, 235)",
         hasRawAnkiPlayMarker: html.includes("[anki:play:"),
         hasRawSoundMarker: html.toLowerCase().includes("[sound:"),
         audioBeforeExample: controlIndex >= 0 && exampleIndex >= 0 && controlIndex < exampleIndex,
@@ -274,7 +292,13 @@ async function inspectShadowPreview(page) {
       imagesLoaded: false,
       imageDetails: [],
       hasWordFocus: false,
+      hasMainWord: false,
+      hasCardContent: false,
       hasInlineColor: false,
+      wordFocusColor: "",
+      normalizedWordFocusColor: "",
+      wordFocusColorMatchesExpected: false,
+      wordFocusColorIsOldBlue: false,
       hasRawAnkiPlayMarker: false,
       hasRawSoundMarker: false,
       audioBeforeExample: false,
