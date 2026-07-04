@@ -188,6 +188,8 @@ def test_collect_attention_cards_builds_read_only_payload():
         },
         "renderedPreview": {
             "renderStatus": "sanitized",
+            "renderSource": "anki_like_fallback",
+            "fallbackReason": "native_unavailable_no_get_card",
             "frontHtml": "<b>鑑みる</b>",
             "backHtml": "<b>鑑みる</b><hr>consider",
             "css": ".card { color: red; }",
@@ -195,6 +197,7 @@ def test_collect_attention_cards_builds_read_only_payload():
             "backPlainText": "鑑みる consider",
             "mediaRefs": [],
             "cardOrd": 0,
+            "cardId": 123,
             "reason": "template renderer",
         },
         "issues": [

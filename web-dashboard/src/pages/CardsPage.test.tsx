@@ -227,6 +227,7 @@ describe("CardsPage v4 UX corrections", () => {
         css=".word-focus { font-weight: 700; }"
         title="要望する"
         cardOrd={1}
+        renderSource="anki_native"
         nightMode
       />,
     );
@@ -239,6 +240,7 @@ describe("CardsPage v4 UX corrections", () => {
     });
 
     expect(renderedHost).toContain('data-shadow-preview="true"');
+    expect(renderedHost).toContain('data-render-source="anki_native"');
     expect(renderedHost).toContain("data-shadow-preview-template");
     expect(renderedHost).toContain("word-focus");
     expect(document.cardClassName).toBe("card card2 nightMode");

@@ -164,6 +164,8 @@ def test_dashboard_payload_includes_sanitized_attention_cards():
             },
             "renderedPreview": {
                 "renderStatus": "unavailable",
+                "renderSource": "",
+                "fallbackReason": "",
                 "frontHtml": "",
                 "backHtml": "",
                 "frontPlainText": "",
@@ -171,6 +173,7 @@ def test_dashboard_payload_includes_sanitized_attention_cards():
                 "css": "",
                 "mediaRefs": [],
                 "cardOrd": 0,
+                "cardId": 0,
                 "reason": "",
             },
             "issues": ["repeated again", "missing_audio"],
@@ -223,6 +226,7 @@ def test_dashboard_payload_sanitizes_rendered_preview():
                 "issues": ["leech"],
                 "renderedPreview": {
                     "renderStatus": "available",
+                    "renderSource": "anki_native",
                     "frontHtml": '<script>alert(1)</script><img src="file:///C:/Users/KykLa/secret.png"><b>front</b>',
                     "backHtml": '<a href="https://example.com/?token=secret">x</a>C:\\Users\\KykLa\\secret',
                     "css": '@import url("https://example.com/x.css"); .card { background: url(file:///secret.png); }',
@@ -236,6 +240,8 @@ def test_dashboard_payload_sanitizes_rendered_preview():
     rendered = payload["attentionCards"][0]["renderedPreview"]
 
     assert rendered["renderStatus"] == "sanitized"
+    assert rendered["renderSource"] == "anki_native"
+    assert rendered["fallbackReason"] == ""
     assert "<script" not in rendered["frontHtml"]
     assert "file://" not in rendered["frontHtml"]
     assert "https://" not in rendered["backHtml"]
@@ -259,6 +265,8 @@ def test_dashboard_payload_preserves_safe_rendered_style_class_and_media_refs():
                 "issues": ["missing_audio"],
                 "renderedPreview": {
                     "renderStatus": "available",
+                    "renderSource": "anki_like_fallback",
+                    "fallbackReason": "native_render_failed",
                     "frontHtml": (
                         '<span class="word-focus" style="color: rgb(255, 165, 0); position:absolute">要望する</span>'
                         '<img src="/api/media?name=%E8%A6%81.gif&token=secret">'
@@ -277,6 +285,8 @@ def test_dashboard_payload_preserves_safe_rendered_style_class_and_media_refs():
     rendered = payload["attentionCards"][0]["renderedPreview"]
 
     assert rendered["renderStatus"] == "sanitized"
+    assert rendered["renderSource"] == "anki_like_fallback"
+    assert rendered["fallbackReason"] == "native_render_failed"
     assert 'class="word-focus"' in rendered["frontHtml"]
     assert 'style="color: rgb(255, 165, 0)"' in rendered["frontHtml"]
     assert "position" not in rendered["frontHtml"]

@@ -125,6 +125,8 @@ def test_rendered_preview_uses_front_template_and_front_media_only():
     )
 
     assert rendered["frontPlainText"] == "承"
+    assert rendered["renderSource"] == "anki_like_fallback"
+    assert rendered["fallbackReason"] == "native_unavailable_not_requested"
     assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=front.mp3"></audio>' in rendered["frontHtml"]
     assert '<div class="main-word">' in rendered["frontHtml"]
     assert "承" in rendered["frontHtml"]
@@ -155,6 +157,7 @@ def test_rendered_preview_preserves_safe_inline_styles_class_and_media_order():
     )
 
     html = rendered["frontHtml"]
+    assert rendered["renderSource"] == "anki_like_fallback"
     assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=%E8%A6%81%E6%9C%9B.mp3"></audio>' in html
     assert 'style="color: rgb(170, 170, 127)"' in html
     assert 'style="color: rgb(255, 165, 0)"' in html
@@ -189,6 +192,50 @@ def test_rendered_preview_removes_dangerous_html_urls_and_styles():
     assert 'class="word-focus"' in html
     assert 'style="color: red; font-weight: 700"' in html
     assert refs == [{"name": "x.gif", "type": "image", "url": "/api/media?name=x.gif"}]
+
+
+def test_native_rendered_preview_uses_card_question_answer_and_sanitizer():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    class FakeCard:
+        id = 123
+        ord = 1
+
+        def question(self, **_kwargs):
+            return '<script>alert(1)</script><span class="word-focus" style="color: red; position:absolute">要望</span><img src="要.gif">'
+
+        def answer(self, **_kwargs):
+            return '[sound:要望.mp3]<span onclick="bad()">answer</span>'
+
+    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=123, card_ord=1)
+
+    assert reason is None
+    assert rendered["renderSource"] == "anki_native"
+    assert rendered["fallbackReason"] is None
+    assert rendered["cardId"] == 123
+    assert rendered["cardOrd"] == 1
+    assert "<script" not in rendered["frontHtml"]
+    assert "position" not in rendered["frontHtml"]
+    assert 'class="word-focus"' in rendered["frontHtml"]
+    assert 'style="color: red"' in rendered["frontHtml"]
+    assert "onclick" not in rendered["backHtml"]
+    assert "/api/media?name=%E8%A6%81.gif" in rendered["frontHtml"]
+    assert "/api/media?name=%E8%A6%81%E6%9C%9B.mp3" in rendered["backHtml"]
+
+
+def test_native_first_preview_falls_back_when_collection_has_no_card_api():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    rendered = note_intelligence.build_rendered_preview_native_first(
+        object(),
+        123,
+        model("Basic", ["Front", "Back"], [{"ord": 0, "name": "Card", "qfmt": "{{Front}}", "afmt": "{{Back}}"}]),
+        "\x1f".join(["front", "back"]),
+    )
+
+    assert rendered["renderSource"] == "anki_like_fallback"
+    assert rendered["fallbackReason"] == "native_unavailable_no_get_card"
+    assert rendered["frontHtml"] == "front"
 
 
 def test_preview_front_fallback_uses_primary_only_when_template_is_unavailable():

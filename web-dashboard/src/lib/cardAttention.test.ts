@@ -572,6 +572,8 @@ describe("cardAttention", () => {
           frontPreview: "front",
           renderedPreview: {
             renderStatus: "unavailable",
+            renderSource: "anki_like_fallback",
+            fallbackReason: "native_unavailable_no_card_id",
             reason: "structured preview is used",
           },
           issues: ["leech"],
@@ -581,6 +583,8 @@ describe("cardAttention", () => {
 
     expect(rows[0].renderedPreview).toMatchObject({
       renderStatus: "unavailable",
+      renderSource: "anki_like_fallback",
+      fallbackReason: "native_unavailable_no_card_id",
       reason: "structured preview is used",
     });
   });

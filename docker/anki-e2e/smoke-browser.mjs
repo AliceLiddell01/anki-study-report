@@ -63,12 +63,13 @@ try {
     !shadowDetails.hasCard ||
     shadowDetails.imgCount < 2 ||
     shadowDetails.audioCount < 1 ||
+    shadowDetails.renderSource !== "anki_native" ||
     (!shadowDetails.hasWordFocus && !shadowDetails.hasInlineColor)
   ) {
     throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
   }
 
-  await fs.writeFile(path.join(artifacts, `cards-shadow-dom-dump-${label}.html`), shadowDetails.html, "utf8");
+  await fs.writeFile(path.join(artifacts, `cards-shadow-dom-dump-${label}.html`), redactArtifact(shadowDetails.html), "utf8");
   await capture(page, "table", "dark", `cards-table-dark-${label}.png`);
   await capture(page, "tiles", "dark", `cards-tile-${label}.png`);
   await capture(page, "ankiPreview", "dark", `cards-anki-preview-${label}.png`);
@@ -201,6 +202,7 @@ async function inspectShadowPreview(page) {
       return {
         exists: true,
         mode: host.getAttribute("data-shadow-preview-mode") || "",
+        renderSource: host.getAttribute("data-render-source") || "",
         hasOpenShadowRoot: Boolean(shadowRoot),
         hasStyle: Boolean(shadowRoot?.querySelector("style")),
         hasCard: Boolean(shadowRoot?.querySelector(".card")),
@@ -215,6 +217,7 @@ async function inspectShadowPreview(page) {
     return {
       exists: false,
       mode: "",
+      renderSource: "",
       hasOpenShadowRoot: false,
       hasStyle: false,
       hasCard: false,
@@ -244,7 +247,7 @@ async function writeBrowserFailureArtifacts(page, error) {
   await fs.mkdir(artifacts, { recursive: true });
   const errorText = String(error?.stack || error?.message || error);
   await saveBestEffort(() => page.screenshot({ path: path.join(artifacts, `browser-failure-${label}.png`), fullPage: true }));
-  await saveBestEffort(async () => fs.writeFile(path.join(artifacts, `browser-failure-${label}.html`), await page.content(), "utf8"));
+  await saveBestEffort(async () => fs.writeFile(path.join(artifacts, `browser-failure-${label}.html`), redactArtifact(await page.content()), "utf8"));
   await saveBestEffort(() => writeConsoleLog(`browser-console-${label}.log`));
   await saveBestEffort(() => writeJson(`browser-network-${label}.json`, networkEvents));
   await saveBestEffort(async () => writeJson(`browser-dom-summary-${label}.json`, await buildDomSummary(page)));
@@ -320,7 +323,7 @@ async function writeConsoleLog(fileName) {
 }
 
 async function writeJson(fileName, value) {
-  await fs.writeFile(path.join(artifacts, fileName), JSON.stringify(value, null, 2), "utf8");
+  await fs.writeFile(path.join(artifacts, fileName), JSON.stringify(redactArtifact(value), null, 2), "utf8");
 }
 
 async function saveBestEffort(action) {
@@ -329,4 +332,20 @@ async function saveBestEffort(action) {
   } catch {
     // Failure artifacts should never hide the original browser smoke error.
   }
+}
+
+function redactArtifact(value) {
+  if (typeof value === "string") {
+    const tokenEscaped = ready.token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value
+      .replace(new RegExp(tokenEscaped, "g"), "<redacted-token>")
+      .replace(/token=([^&"'<>\\\s]+)/gi, "token=<redacted>");
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => redactArtifact(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactArtifact(item)]));
+  }
+  return value;
 }

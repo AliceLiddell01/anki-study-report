@@ -57,6 +57,11 @@ def main() -> int:
                 "ok": True,
                 "cardCount": len(cards),
                 "fixtureCardId": fixture_card.get("cardId") if isinstance(fixture_card, dict) else None,
+                "fixtureRenderSource": (
+                    fixture_card.get("renderedPreview", {}).get("renderSource")
+                    if isinstance(fixture_card.get("renderedPreview"), dict)
+                    else None
+                ) if isinstance(fixture_card, dict) else None,
                 "checkedMedia": ["要.gif", "望.gif", "要望.mp3"],
             },
             ensure_ascii=False,
@@ -112,6 +117,8 @@ def assert_fixture_preview(card: dict[str, Any]) -> None:
     front_html = str(rendered.get("frontHtml") or "")
     rendered_dump = json.dumps(rendered, ensure_ascii=False)
     assert_true(rendered.get("renderStatus") in {"available", "sanitized", "fallback"}, "renderStatus marker present")
+    assert_true(rendered.get("renderSource") == "anki_native", "fixture card used native Anki render")
+    assert_true(not rendered.get("fallbackReason"), "native fixture has no fallback reason")
     assert_true("要望" in rendered_dump, "rendered preview contains 要望")
     assert_true("word-focus" in front_html, "word-focus class preserved")
     assert_true("rgb(255, 165, 0)" in front_html or "orange" in front_html.lower(), "inline color style preserved")
