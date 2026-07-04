@@ -13,6 +13,7 @@ _CACHE_STATUS_KEY_FIELDS = (
     "cachedDeckDays",
     "lastRevlogId",
 )
+CARD_LEVEL_REPORT_SCHEMA_VERSION = 2
 
 
 def report_cache_state_key(cache_status: dict[str, Any] | None) -> tuple[tuple[str, object], ...]:
@@ -32,6 +33,7 @@ def report_metrics_cache_key(
     """Build the memo key for metrics that later publish /api/report."""
     return (
         base_cache_key,
+        CARD_LEVEL_REPORT_SCHEMA_VERSION,
         answer_mode,
         bool(use_study_time_stats),
         bool(track_reviewer_sessions),

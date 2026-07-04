@@ -3,14 +3,31 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from html import unescape
 import math
+import re
+import time
 from typing import Any
+
+from .note_intelligence import (
+    analyze_note_type,
+    build_note_preview,
+    build_rendered_preview,
+    missing_fields_for_profile,
+)
 
 
 ANSWER_TIME_CAP_MS = 120_000
 SECONDS_IN_DAY = 86_400
 PROBLEM_DECK_PASS_RATE = 0.80
 PROBLEM_DECK_MIN_REVIEWS = 5
+ATTENTION_CARD_LIMIT = 100
+ATTENTION_CARD_SLOW_SECONDS = 10.0
+ATTENTION_CARD_LOW_PASS_RATE = 0.60
+ATTENTION_CARD_LOW_PASS_MIN_REVIEWS = 3
+ATTENTION_CARD_REPEATED_AGAIN_MIN = 2
+ATTENTION_CARD_LEECH_LAPSE_THRESHOLD = 8
+ATTENTION_CARD_STATUS_VERSION = 2
 FSRS_FORECAST_DAYS = 30
 FSRS_LOW_RECALL_THRESHOLD = 0.90
 FSRS_MEDIUM_RECALL_THRESHOLD = 0.80
@@ -69,6 +86,13 @@ def collect_metrics(
     )
     pass_fail = _pass_fail_metrics(total_reviews, again_count, answer_distribution)
     deck_breakdown = _deck_breakdown(col, start_ms, end_ms, expanded_deck_ids)
+    attention_cards, attention_cards_status = collect_attention_cards_with_status(
+        col,
+        start_ms,
+        end_ms,
+        expanded_deck_ids,
+        max_results=ATTENTION_CARD_LIMIT,
+    )
     due_tomorrow = _due_tomorrow(col, expanded_deck_ids)
     from .forecast_metrics import collect_forecast_metrics
 
@@ -98,6 +122,9 @@ def collect_metrics(
         "pass_fail": pass_fail,
         "answer_distribution": answer_distribution,
         "deck_breakdown": deck_breakdown,
+        "attention_cards": attention_cards,
+        "attention_cards_status": attention_cards_status,
+        "note_type_catalog": attention_cards_status.get("noteTypeCatalog", []),
         "due_tomorrow": due_tomorrow,
         "forecast": forecast,
         "fsrs": fsrs,
@@ -113,6 +140,188 @@ def expand_deck_ids(
     """Return selected deck ids plus descendants when Anki exposes them."""
 
     return _expand_deck_ids(col, deck_ids)
+
+
+def collect_attention_cards(
+    col: Any,
+    start_ts: int | float,
+    end_ts: int | float,
+    deck_ids: Sequence[int] | None = None,
+    max_results: int = ATTENTION_CARD_LIMIT,
+) -> list[dict[str, Any]]:
+    """Return read-only card-level attention rows for the dashboard.
+
+    The payload is intentionally small: no full revlog history and no raw HTML.
+    Any collection/model incompatibility falls back to an empty list so report
+    generation can keep using the deck-level fallback.
+    """
+
+    cards, _status = collect_attention_cards_with_status(
+        col,
+        start_ts,
+        end_ts,
+        deck_ids,
+        max_results=max_results,
+    )
+    return cards
+
+
+def collect_attention_cards_with_status(
+    col: Any,
+    start_ts: int | float,
+    end_ts: int | float,
+    deck_ids: Sequence[int] | None = None,
+    max_results: int = ATTENTION_CARD_LIMIT,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return card-level attention rows plus collector status metadata."""
+
+    start_ms, start_normalized, start_reason = _ensure_epoch_ms(start_ts, name="periodStartRaw", default=0)
+    end_ms, end_normalized, end_reason = _ensure_epoch_ms(end_ts, name="periodEndRaw", default=_now_ms())
+    time_unit_normalized = start_normalized or end_normalized
+    if end_ms <= start_ms:
+        return [], _attention_cards_status(
+            "skipped",
+            scanned_cards=0,
+            returned_cards=0,
+            reason=start_reason or end_reason or "Invalid report period.",
+            collector_ran=True,
+            collection_available=_collection_available(col),
+            source="fresh",
+            period_start_raw=start_ts,
+            period_end_raw=end_ts,
+            period_start_ms=start_ms,
+            period_end_ms=end_ms,
+            time_unit_normalized=time_unit_normalized,
+        )
+
+    if not _collection_available(col):
+        return [], _attention_cards_status(
+            "unavailable",
+            scanned_cards=0,
+            returned_cards=0,
+            reason="collection unavailable",
+            collector_ran=True,
+            collection_available=False,
+            source="fresh",
+            period_start_raw=start_ts,
+            period_end_raw=end_ts,
+            period_start_ms=start_ms,
+            period_end_ms=end_ms,
+            time_unit_normalized=time_unit_normalized,
+        )
+
+    try:
+        raw_selected_deck_ids = _normalized_deck_ids(deck_ids or [])
+        expanded_deck_ids = _expand_deck_ids(col, deck_ids) if raw_selected_deck_ids else None
+        probe = _attention_collection_probe(col, start_ms, end_ms, expanded_deck_ids)
+        if start_ms == 0 and probe.get("revlogMaxId") is not None:
+            end_ms = max(end_ms, _as_int(probe.get("revlogMaxId")) + 1)
+            probe = _attention_collection_probe(col, start_ms, end_ms, expanded_deck_ids)
+        if not probe.get("collectionAvailable"):
+            return [], _attention_cards_status(
+                "unavailable",
+                scanned_cards=0,
+                returned_cards=0,
+                reason="collection unavailable",
+                collector_ran=True,
+                collection_available=False,
+                source="fresh",
+                period_start_raw=start_ts,
+                period_end_raw=end_ts,
+                period_start_ms=start_ms,
+                period_end_ms=end_ms,
+                time_unit_normalized=time_unit_normalized,
+                selected_deck_ids_count=len(raw_selected_deck_ids),
+                deck_filter_applied=bool(raw_selected_deck_ids),
+                **probe,
+            )
+        rows = _attention_card_rows(col, start_ms, end_ms, expanded_deck_ids)
+        deck_names = _deck_names_by_id(col)
+        attention_cards = [
+            _attention_card_payload(col, row, deck_names)
+            for row in rows
+        ]
+        attention_cards = [card for card in attention_cards if card is not None]
+        attention_cards.sort(
+            key=lambda card: (
+                -_as_int(card.get("riskScore")),
+                -_as_int(card.get("againCount")),
+                -_as_int(card.get("lapses")),
+                _as_int(card.get("cardId")),
+            )
+        )
+        used_note_type_ids = {
+            _as_int(card.get("noteTypeId"))
+            for card in attention_cards
+            if _as_int(card.get("noteTypeId")) > 0
+        }
+        note_type_catalog = _note_type_catalog(col, used_note_type_ids)
+        issue_counts = _attention_issue_counts(attention_cards)
+        note_profile_diagnostics = _attention_note_profile_diagnostics(attention_cards)
+        limit = max(0, _as_int(max_results))
+        limited_cards = attention_cards[:limit]
+        reason = None
+        if _as_int(probe.get("revlogTotalRows")) == 0:
+            reason = "revlog table is empty"
+        elif _as_int(probe.get("revlogRowsInPeriod")) == 0:
+            reason = "no revlog rows in selected period"
+        elif bool(raw_selected_deck_ids) and _as_int(probe.get("revlogRowsAfterDeckFilter")) == 0:
+            reason = "deck filter removed all revlog rows"
+        elif _as_int(probe.get("candidateCards")) == 0:
+            reason = "no candidate cards after revlog lookup"
+        elif not rows:
+            reason = "no candidate cards after revlog lookup"
+        elif not limited_cards:
+            reason = "no attention issues found"
+        diagnostic_warning = None
+        if (
+            start_ms == 0
+            and _as_int(probe.get("revlogTotalRows")) > 0
+            and _as_int(probe.get("revlogRowsInPeriod")) == 0
+        ):
+            diagnostic_warning = "all-time revlog period returned zero rows despite non-empty revlog"
+        return limited_cards, _attention_cards_status(
+            "available",
+            scanned_cards=len(rows),
+            returned_cards=len(limited_cards),
+            reason=reason,
+            collector_ran=True,
+            collection_available=True,
+            source="fresh",
+            candidate_cards=probe.get("candidateCards"),
+            revlog_rows=probe.get("revlogRowsAfterDeckFilter"),
+            notes_loaded=sum(1 for row in rows if _attention_row_raw_fields(row) is not None),
+            field_scan_cards=len(rows),
+            issue_counts=issue_counts,
+            max_results=limit,
+            period_start_raw=start_ts,
+            period_end_raw=end_ts,
+            period_start_ms=start_ms,
+            period_end_ms=end_ms,
+            time_unit_normalized=time_unit_normalized,
+            selected_deck_ids_count=len(raw_selected_deck_ids),
+            deck_filter_applied=bool(raw_selected_deck_ids),
+            diagnostic_warning=diagnostic_warning,
+            **note_profile_diagnostics,
+            noteTypeCatalog=note_type_catalog,
+            noteTypeCatalogCount=len(note_type_catalog),
+            **probe,
+        )
+    except Exception:
+        return [], _attention_cards_status(
+            "error",
+            scanned_cards=0,
+            returned_cards=0,
+            reason="Card-level collector failed.",
+            collector_ran=True,
+            collection_available=_collection_available(col),
+            source="fresh",
+            period_start_raw=start_ts,
+            period_end_raw=end_ts,
+            period_start_ms=start_ms,
+            period_end_ms=end_ms,
+            time_unit_normalized=time_unit_normalized,
+        )
 
 
 def collect_action_card_ids(
@@ -171,6 +380,16 @@ def _empty_metrics() -> dict[str, Any]:
         "pass_fail": _empty_pass_fail_metrics(),
         "answer_distribution": _empty_answer_distribution(),
         "deck_breakdown": [],
+        "attention_cards": [],
+        "attention_cards_status": {
+            "status": "skipped",
+            "scannedCards": 0,
+            "returnedCards": 0,
+            "reason": "No reviews in the selected period.",
+            "collectorRan": False,
+            "collectionAvailable": False,
+            "source": "fresh",
+        },
         "due_tomorrow": 0,
         "forecast": {
             "available": False,
@@ -239,6 +458,27 @@ def _to_revlog_ms(ts: int | float) -> int:
     if abs(value) < 10_000_000_000:
         return value * 1000
     return value
+
+
+def _ensure_epoch_ms(value: Any, *, name: str, default: int = 0) -> tuple[int, bool, str | None]:
+    if value is None:
+        return default, False, None
+    try:
+        number = int(float(value))
+    except (TypeError, ValueError):
+        return default, False, f"{name} is not a valid timestamp"
+    if number == 0:
+        return 0, False, None
+    absolute = abs(number)
+    if 1_000_000_000 <= absolute < 100_000_000_000:
+        return number * 1000, True, None
+    if absolute >= 100_000_000_000:
+        return number, False, None
+    return max(0, number), False, f"{name} is outside expected epoch timestamp range"
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
 
 
 def _review_summary(
@@ -525,6 +765,720 @@ def _problem_deck_card_ids(
         problem_deck_ids,
         max_results=max_results,
     )
+
+
+def _attention_card_rows(
+    col: Any,
+    start_ms: int,
+    end_ms: int,
+    deck_ids: Sequence[int] | None,
+) -> list[tuple[Any, ...]]:
+    deck_sql, deck_params = _deck_filter_sql(deck_ids)
+    return col.db.all(
+        f"""
+        select
+            c.id as card_id,
+            c.nid as note_id,
+            c.did as deck_id,
+            c.lapses as lapses,
+            n.mid as model_id,
+            c.ord as card_ord,
+            n.tags as tags,
+            n.flds as fields,
+            count(*) as total_reviews,
+            coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0) as again_count,
+            coalesce(sum(
+                case
+                    when r.time < 0 then 0
+                    when r.time > ? then ?
+                    else r.time
+                end
+            ), 0) as total_ms,
+            max(r.id) as last_reviewed_ms
+        from revlog r
+        join cards c on c.id = r.cid
+        left join notes n on n.id = c.nid
+        where r.id >= ?
+          and r.id < ?
+          {REVLOG_REVIEW_FILTER_SQL}
+          {deck_sql}
+        group by c.id, c.nid, c.did, c.lapses, n.mid, c.ord, n.tags, n.flds
+        """,
+        ANSWER_TIME_CAP_MS,
+        ANSWER_TIME_CAP_MS,
+        start_ms,
+        end_ms,
+        *deck_params,
+    )
+
+
+def _attention_card_payload(
+    col: Any,
+    row: tuple[Any, ...],
+    deck_names: dict[int, str],
+) -> dict[str, Any] | None:
+    if len(row) >= 12:
+        (
+            card_id,
+            note_id,
+            deck_id,
+            lapses,
+            model_id,
+            card_ord,
+            tags,
+            raw_fields,
+            total_reviews,
+            again_count,
+            total_ms,
+            last_reviewed_ms,
+        ) = row[:12]
+    else:
+        (
+            card_id,
+            note_id,
+            deck_id,
+            lapses,
+            model_id,
+            tags,
+            raw_fields,
+            total_reviews,
+            again_count,
+            total_ms,
+            last_reviewed_ms,
+        ) = row[:11]
+        card_ord = 0
+    total_reviews_int = _as_int(total_reviews)
+    if total_reviews_int <= 0:
+        return None
+
+    card_id_int = _as_int(card_id)
+    note_id_int = _as_int(note_id) if note_id is not None else None
+    deck_id_int = _as_int(deck_id) if deck_id is not None else None
+    deck_name = _deck_name_for_breakdown(deck_id_int, deck_names)
+    lapses_int = _as_int(lapses)
+    again_count_int = _as_int(again_count)
+    total_seconds = _as_int(round(_as_int(total_ms) / 1000))
+    average_answer_seconds = _average_seconds(total_seconds, total_reviews_int)
+    pass_rate = _pass_rate(total_reviews_int, again_count_int)
+    tag_list = _attention_tags(tags)
+    fields = _note_fields_by_name(col, model_id, raw_fields)
+    model = _model_by_id(col, model_id)
+    profile = analyze_note_type(model, raw_fields)
+    preview = build_note_preview(model, raw_fields, card_ord)
+    missing_fields = _attention_missing_fields(fields, profile, raw_fields)
+    issues = _attention_issues(
+        tags=tag_list,
+        lapses=lapses_int,
+        again_count=again_count_int,
+        total_reviews=total_reviews_int,
+        average_answer_seconds=average_answer_seconds,
+        pass_rate=pass_rate,
+        missing_fields=missing_fields,
+    )
+    if not issues:
+        return None
+
+    front_preview = preview.get("primary") or _front_preview(fields)
+    return {
+        "cardId": card_id_int,
+        "noteId": note_id_int,
+        "noteTypeId": _as_int(model_id),
+        "deckName": deck_name,
+        "frontPreview": front_preview,
+        "preview": preview,
+        "renderedPreview": build_rendered_preview(model, raw_fields, card_ord),
+        "issues": issues,
+        "riskScore": _attention_risk_score(issues, lapses_int),
+        "againCount": again_count_int,
+        "lapses": lapses_int,
+        "averageAnswerSeconds": average_answer_seconds,
+        "passRate": pass_rate,
+        "lastReviewedAt": _revlog_ms_to_iso(last_reviewed_ms),
+        "searchQuery": _attention_search_query(card_id_int, note_id_int, deck_name, front_preview),
+        "missingFields": missing_fields,
+        "noteTypeName": preview.get("noteTypeName") or profile.get("noteTypeName") or "",
+        "cardTemplateName": preview.get("cardTemplateName") or "",
+        "detectedKind": preview.get("detectedKind") or profile.get("detectedKind") or "unknown",
+}
+
+
+def _rendered_preview_fallback() -> dict[str, Any]:
+    return {
+        "renderStatus": "unavailable",
+        "reason": "Anki rendered preview is unavailable in this read-only dashboard path; structured preview is used.",
+        "mediaRefs": [],
+    }
+
+
+def _attention_cards_status(
+    status: str,
+    *,
+    scanned_cards: int,
+    returned_cards: int,
+    reason: str | None = None,
+    collector_ran: bool,
+    collection_available: bool,
+    revlog_rows: Any = None,
+    candidate_cards: Any = None,
+    notes_loaded: Any = None,
+    field_scan_cards: Any = None,
+    source: str = "unknown",
+    issue_counts: dict[str, Any] | None = None,
+    max_results: Any = None,
+    period_start_raw: Any = None,
+    period_end_raw: Any = None,
+    period_start_ms: Any = None,
+    period_end_ms: Any = None,
+    time_unit_normalized: bool = False,
+    selected_deck_ids_count: Any = None,
+    deck_filter_applied: Any = None,
+    diagnostic_warning: str | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "status": status if status in {"available", "unavailable", "skipped", "error"} else "unavailable",
+        "scannedCards": max(0, _as_int(scanned_cards)),
+        "returnedCards": max(0, _as_int(returned_cards)),
+        "collectorRan": bool(collector_ran),
+        "collectionAvailable": bool(collection_available),
+        "source": source if source in {"fresh", "cache", "mock", "unknown"} else "unknown",
+        "issueCounts": _attention_issue_counts_payload(issue_counts),
+        "thresholds": _attention_thresholds(max_results),
+        "periodStartRaw": _safe_timestamp_value(period_start_raw),
+        "periodEndRaw": _safe_timestamp_value(period_end_raw),
+        "periodStartMs": max(0, _as_int(period_start_ms)),
+        "periodEndMs": max(0, _as_int(period_end_ms)),
+        "timeUnitNormalized": bool(time_unit_normalized),
+        "selectedDeckIdsCount": max(0, _as_int(selected_deck_ids_count)),
+        "deckFilterApplied": bool(deck_filter_applied),
+    }
+    if reason:
+        payload["reason"] = _attention_status_reason(reason)
+    if diagnostic_warning:
+        payload["diagnosticWarning"] = _attention_status_reason(diagnostic_warning)
+    for key, value in (
+        ("revlogRows", revlog_rows if revlog_rows is not None else extra.get("revlogRows")),
+        ("candidateCards", candidate_cards if candidate_cards is not None else extra.get("candidateCards")),
+        ("notesLoaded", notes_loaded if notes_loaded is not None else extra.get("notesLoaded")),
+        ("fieldScanCards", field_scan_cards if field_scan_cards is not None else extra.get("fieldScanCards")),
+        ("cardsTotal", extra.get("cardsTotal")),
+        ("notesTotal", extra.get("notesTotal")),
+        ("revlogTotalRows", extra.get("revlogTotalRows")),
+        ("revlogMinId", extra.get("revlogMinId")),
+        ("revlogMaxId", extra.get("revlogMaxId")),
+        ("revlogRowsInPeriod", extra.get("revlogRowsInPeriod")),
+        ("revlogRowsAfterDeckFilter", extra.get("revlogRowsAfterDeckFilter")),
+        ("noteTypeProfilesCount", extra.get("noteTypeProfilesCount")),
+        ("unknownNoteTypesCount", extra.get("unknownNoteTypesCount")),
+        ("noteTypeCatalogCount", extra.get("noteTypeCatalogCount")),
+    ):
+        if value is not None:
+            payload[key] = max(0, _as_int(value))
+    detected_kinds = extra.get("detectedKinds")
+    if isinstance(detected_kinds, dict):
+        payload["detectedKinds"] = {
+            str(key): max(0, _as_int(value))
+            for key, value in detected_kinds.items()
+            if str(key).strip()
+        }
+    if extra.get("previewStrategy"):
+        payload["previewStrategy"] = _attention_status_reason(extra.get("previewStrategy"))
+    if extra.get("missingFieldRoleSource"):
+        payload["missingFieldRoleSource"] = _attention_status_reason(extra.get("missingFieldRoleSource"))
+    note_type_catalog = extra.get("noteTypeCatalog")
+    if isinstance(note_type_catalog, list):
+        payload["noteTypeCatalog"] = [item for item in note_type_catalog if isinstance(item, dict)]
+    return payload
+
+
+def _safe_timestamp_value(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _attention_issue_counts(cards: list[dict[str, Any]]) -> dict[str, int]:
+    counts = _empty_attention_issue_counts()
+    for card in cards:
+        issues = card.get("issues")
+        if not isinstance(issues, list):
+            continue
+        for issue in issues:
+            key = _attention_issue_count_key(issue)
+            if key in counts:
+                counts[key] += 1
+    return counts
+
+
+def _attention_issue_counts_payload(value: dict[str, Any] | None = None) -> dict[str, int]:
+    counts = _empty_attention_issue_counts()
+    if isinstance(value, dict):
+        for key in counts:
+            counts[key] = max(0, _as_int(value.get(key)))
+    return counts
+
+
+def _empty_attention_issue_counts() -> dict[str, int]:
+    return {
+        "leech": 0,
+        "repeatedAgain": 0,
+        "slowAnswer": 0,
+        "lowPassRate": 0,
+        "missingAudio": 0,
+        "missingExample": 0,
+        "missingPitch": 0,
+        "missingImage": 0,
+        "missingMeaning": 0,
+        "missingPartOfSpeech": 0,
+    }
+
+
+def _attention_issue_count_key(value: Any) -> str:
+    normalized = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+    return {
+        "leech": "leech",
+        "repeated_again": "repeatedAgain",
+        "slow_answer": "slowAnswer",
+        "low_pass_rate": "lowPassRate",
+        "missing_audio": "missingAudio",
+        "missing_example": "missingExample",
+        "missing_pitch": "missingPitch",
+        "missing_image": "missingImage",
+        "missing_meaning": "missingMeaning",
+        "missing_part_of_speech": "missingPartOfSpeech",
+    }.get(normalized, "")
+
+
+def _attention_thresholds(max_results: Any = None) -> dict[str, Any]:
+    limit = _as_int(max_results)
+    if limit <= 0:
+        limit = ATTENTION_CARD_LIMIT
+    return {
+        "repeatedAgainThreshold": ATTENTION_CARD_REPEATED_AGAIN_MIN,
+        "slowAnswerSeconds": ATTENTION_CARD_SLOW_SECONDS,
+        "lowPassRateThreshold": ATTENTION_CARD_LOW_PASS_RATE,
+        "leechLapsesFallback": ATTENTION_CARD_LEECH_LAPSE_THRESHOLD,
+        "maxResults": limit,
+    }
+
+
+def _collection_available(col: Any) -> bool:
+    return bool(col is not None and getattr(col, "db", None) is not None)
+
+
+def _attention_collection_probe(
+    col: Any,
+    start_ms: int,
+    end_ms: int,
+    deck_ids: Sequence[int] | None,
+) -> dict[str, Any]:
+    if not _collection_available(col):
+        return {
+            "collectionAvailable": False,
+            "revlogRows": 0,
+            "candidateCards": 0,
+            "revlogTotalRows": 0,
+            "revlogRowsInPeriod": 0,
+            "revlogRowsAfterDeckFilter": 0,
+        }
+    deck_sql, deck_params = _deck_filter_sql(deck_ids)
+    deck_filter_applied = bool(deck_sql.strip())
+    revlog_total_rows = _safe_db_scalar(col, "select count(*) from revlog")
+    revlog_min_id = _safe_db_scalar(col, "select min(id) from revlog")
+    revlog_max_id = _safe_db_scalar(col, "select max(id) from revlog")
+    revlog_rows_in_period = _safe_db_scalar(
+        col,
+        """
+        select count(*)
+        from revlog r
+        where r.id >= ?
+          and r.id < ?
+        """,
+        start_ms,
+        end_ms,
+    )
+    revlog_rows_after_deck_filter = _safe_db_scalar(
+        col,
+        f"""
+        select count(*)
+        from revlog r
+        left join cards c on c.id = r.cid
+        where r.id >= ?
+          and r.id < ?
+          {deck_sql}
+        """,
+        start_ms,
+        end_ms,
+        *deck_params,
+    )
+    candidate_cards = _safe_db_scalar(
+        col,
+        f"""
+        select count(distinct r.cid)
+        from revlog r
+        left join cards c on c.id = r.cid
+        where r.id >= ?
+          and r.id < ?
+          {REVLOG_REVIEW_FILTER_SQL}
+          {deck_sql}
+        """,
+        start_ms,
+        end_ms,
+        *deck_params,
+    )
+    return {
+        "collectionAvailable": True,
+        "cardsTotal": _safe_db_scalar(col, "select count(*) from cards"),
+        "notesTotal": _safe_db_scalar(col, "select count(*) from notes"),
+        "revlogTotalRows": revlog_total_rows,
+        "revlogMinId": revlog_min_id,
+        "revlogMaxId": revlog_max_id,
+        "revlogRowsInPeriod": revlog_rows_in_period,
+        "revlogRowsAfterDeckFilter": revlog_rows_after_deck_filter,
+        "revlogRows": revlog_rows_after_deck_filter,
+        "candidateCards": candidate_cards,
+        "deckFilterApplied": deck_filter_applied,
+    }
+
+
+def _safe_db_scalar(col: Any, query: str, *params: Any) -> int:
+    try:
+        return max(0, _as_int(col.db.scalar(query, *params)))
+    except Exception:
+        return 0
+
+
+def _attention_status_reason(value: Any) -> str:
+    text = _plain_text(value)
+    text = re.sub(r"\b[A-Za-z]:\\[^\s]+", "", text)
+    text = re.sub(r"token=[^\s&]+", "token=[redacted]", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _truncate_text(text, 160) or "Card-level collector unavailable."
+
+
+def _attention_search_query(
+    card_id: Any,
+    note_id: Any,
+    deck_name: str,
+    front_preview: str,
+) -> str:
+    card_id_int = _as_int(card_id)
+    if card_id_int > 0:
+        return f"cid:{card_id_int}"
+    note_id_int = _as_int(note_id)
+    if note_id_int > 0:
+        return f"nid:{note_id_int}"
+    deck_query = f'deck:{_quote_anki_search_value(deck_name)}'
+    front_query = _attention_search_text(front_preview)
+    return f"{deck_query} {front_query}".strip()
+
+
+def _attention_search_text(value: Any, limit: int = 40) -> str:
+    text = _plain_text(value)
+    text = re.sub(r'["\\]', " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _truncate_text(text, limit)
+
+
+def _quote_anki_search_value(value: Any) -> str:
+    text = str(value or "").strip() or "Default"
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _attention_tags(raw_tags: Any) -> list[str]:
+    return [
+        tag.strip().lower()
+        for tag in str(raw_tags or "").split()
+        if tag.strip()
+    ]
+
+
+def _note_fields_by_name(
+    col: Any,
+    model_id: Any,
+    raw_fields: Any,
+) -> dict[str, str]:
+    values = str(raw_fields or "").split("\x1f")
+    names = _model_field_names(col, model_id)
+    if not names:
+        return {f"field_{index + 1}": value for index, value in enumerate(values)}
+    return {
+        name: values[index] if index < len(values) else ""
+        for index, name in enumerate(names)
+    }
+
+
+def _model_field_names(col: Any, model_id: Any) -> list[str]:
+    model = _model_by_id(col, model_id)
+    if not isinstance(model, dict):
+        return []
+    fields = model.get("flds")
+    if not isinstance(fields, list):
+        return []
+    names: list[str] = []
+    for field in fields:
+        if isinstance(field, dict):
+            name = str(field.get("name") or "").strip()
+            if name:
+                names.append(name)
+    return names
+
+
+def _model_by_id(col: Any, model_id: Any) -> dict[str, Any] | None:
+    try:
+        model = col.models.get(_as_int(model_id))
+    except Exception:
+        model = None
+    return model if isinstance(model, dict) else None
+
+
+def _note_type_catalog(col: Any, used_note_type_ids: set[int] | None = None) -> list[dict[str, Any]]:
+    used_ids = used_note_type_ids or set()
+    models = _all_models(col)
+    catalog = []
+    for model in models:
+        model_id = _as_int(model.get("id") or model.get("mid"))
+        fields = [
+            str(field.get("name") or "").strip()
+            for field in model.get("flds", [])
+            if isinstance(field, dict) and str(field.get("name") or "").strip()
+        ]
+        templates = []
+        for index, template in enumerate(model.get("tmpls", []) if isinstance(model.get("tmpls"), list) else []):
+            if not isinstance(template, dict):
+                continue
+            templates.append(
+                {
+                    "ord": _as_int(template.get("ord")) if template.get("ord") is not None else index,
+                    "name": str(template.get("name") or f"Card {index + 1}").strip(),
+                    "qfmtAvailable": bool(str(template.get("qfmt") or "").strip()),
+                    "afmtAvailable": bool(str(template.get("afmt") or "").strip()),
+                }
+            )
+        catalog.append(
+            {
+                "noteTypeId": model_id,
+                "name": str(model.get("name") or f"Note type {model_id}").strip(),
+                "noteCount": _note_count_for_model(col, model_id),
+                "cardTemplateCount": len(templates),
+                "fields": fields,
+                "templates": templates,
+                "cssAvailable": bool(str(model.get("css") or "").strip()),
+                "usedInCurrentCards": model_id in used_ids,
+            }
+        )
+    return sorted(catalog, key=lambda item: (str(item.get("name") or "").lower(), _as_int(item.get("noteTypeId"))))
+
+
+def _all_models(col: Any) -> list[dict[str, Any]]:
+    models = getattr(col, "models", None)
+    if models is None:
+        return []
+    try:
+        raw_models = models.all()
+    except Exception:
+        raw_models = []
+    if isinstance(raw_models, dict):
+        raw_models = list(raw_models.values())
+    if not isinstance(raw_models, list):
+        return []
+    return [model for model in raw_models if isinstance(model, dict)]
+
+
+def _note_count_for_model(col: Any, model_id: int) -> int:
+    if model_id <= 0 or getattr(col, "db", None) is None:
+        return 0
+    try:
+        return max(0, _as_int(col.db.scalar("select count(*) from notes where mid = ?", model_id)))
+    except Exception:
+        return 0
+
+
+def _attention_row_raw_fields(row: tuple[Any, ...]) -> Any:
+    if len(row) >= 12:
+        return row[7]
+    if len(row) >= 7:
+        return row[6]
+    return None
+
+
+def _attention_missing_fields(
+    fields: dict[str, str],
+    profile: dict[str, Any] | None = None,
+    raw_fields: Any = None,
+) -> list[str]:
+    if isinstance(profile, dict):
+        missing = missing_fields_for_profile(profile, raw_fields)
+        missing = [issue for issue in missing if issue != "missing_pitch"]
+        if missing or profile.get("fields"):
+            return missing
+    missing: list[str] = []
+    for issue, aliases in _attention_field_aliases().items():
+        matches = _matching_field_values(fields, aliases)
+        if not matches:
+            continue
+        if issue == "missing_audio":
+            if all("[sound:" not in value.lower() for value in matches):
+                missing.append(issue)
+        elif issue == "missing_image":
+            if all("<img" not in value.lower() for value in matches):
+                missing.append(issue)
+        elif all(not _plain_text(value) for value in matches):
+            missing.append(issue)
+    return missing
+
+
+def _attention_note_profile_diagnostics(cards: list[dict[str, Any]]) -> dict[str, Any]:
+    profiles = set()
+    detected_kinds: dict[str, int] = {}
+    unknown_count = 0
+    for card in cards:
+        note_type_name = str(card.get("noteTypeName") or "").strip()
+        template_name = str(card.get("cardTemplateName") or "").strip()
+        kind = str(card.get("detectedKind") or "unknown").strip() or "unknown"
+        if note_type_name or template_name:
+            profiles.add((note_type_name, template_name))
+        detected_kinds[kind] = detected_kinds.get(kind, 0) + 1
+        if kind == "unknown":
+            unknown_count += 1
+    return {
+        "noteTypeProfilesCount": len(profiles),
+        "unknownNoteTypesCount": unknown_count,
+        "detectedKinds": detected_kinds,
+        "previewStrategy": "role-based-note-intelligence",
+        "missingFieldRoleSource": "detected_roles",
+    }
+
+
+def _attention_field_aliases() -> dict[str, set[str]]:
+    return {
+        "missing_audio": {"audio", "sound", "аудио", "звук"},
+        "missing_example": {"example", "examples", "sentence", "context", "пример", "предложение"},
+        "missing_image": {"image", "picture", "photo", "img", "картинка", "изображение"},
+        "missing_meaning": {"meaning", "translation", "definition", "gloss", "перевод", "значение"},
+        "missing_part_of_speech": {"part of speech", "part_of_speech", "pos", "speech", "часть речи"},
+    }
+
+
+def _matching_field_values(fields: dict[str, str], aliases: set[str]) -> list[str]:
+    values: list[str] = []
+    for name, value in fields.items():
+        normalized = _normalize_field_name(name)
+        if any(alias in normalized for alias in aliases):
+            values.append(str(value or ""))
+    return values
+
+
+def _attention_issues(
+    *,
+    tags: list[str],
+    lapses: int,
+    again_count: int,
+    total_reviews: int,
+    average_answer_seconds: float,
+    pass_rate: float,
+    missing_fields: list[str],
+) -> list[str]:
+    issues: list[str] = []
+    tag_set = set(tags)
+    if "leech" in tag_set or lapses >= ATTENTION_CARD_LEECH_LAPSE_THRESHOLD:
+        issues.append("leech")
+    if again_count >= ATTENTION_CARD_REPEATED_AGAIN_MIN:
+        issues.append("repeated again")
+    if average_answer_seconds >= ATTENTION_CARD_SLOW_SECONDS:
+        issues.append("slow answer")
+    if (
+        total_reviews >= ATTENTION_CARD_LOW_PASS_MIN_REVIEWS
+        and pass_rate < ATTENTION_CARD_LOW_PASS_RATE
+    ):
+        issues.append("low pass rate")
+    issues.extend(missing_fields)
+    return issues
+
+
+def _attention_risk_score(issues: list[str], lapses: int) -> int:
+    score = 0
+    if "leech" in issues:
+        score += 30
+    if "repeated again" in issues:
+        score += 20
+    if "slow answer" in issues:
+        score += 15
+    if "low pass rate" in issues:
+        score += 15
+    if lapses >= 3:
+        score += 10
+    if any(issue.startswith("missing_") for issue in issues):
+        score += 10
+    return min(100, score)
+
+
+def _front_preview(fields: dict[str, str], limit: int = 100) -> str:
+    preferred_aliases = {
+        "front",
+        "word",
+        "expression",
+        "term",
+        "question",
+        "слово",
+        "выражение",
+        "вопрос",
+    }
+    for name, value in fields.items():
+        normalized = _normalize_field_name(name)
+        if any(alias in normalized for alias in preferred_aliases):
+            text = _plain_text(value)
+            if text:
+                return _truncate_text(text, limit)
+    for value in fields.values():
+        text = _plain_text(value)
+        if text:
+            return _truncate_text(text, limit)
+    return "Карточка без front preview"
+
+
+def _plain_text(value: Any) -> str:
+    text = str(value or "")
+    text = re.sub(r"\[sound:[^\]]+\]", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
+    text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
+    text = unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+    return value[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _normalize_field_name(value: Any) -> str:
+    return re.sub(r"[_\-\s]+", " ", str(value or "").strip().lower())
+
+
+def _revlog_ms_to_iso(value: Any) -> str | None:
+    milliseconds = _as_int(value)
+    if milliseconds <= 0:
+        return None
+    try:
+        return datetime_from_revlog_ms(milliseconds)
+    except Exception:
+        return None
+
+
+def datetime_from_revlog_ms(milliseconds: int) -> str:
+    return datetime_from_timestamp_ms(milliseconds).strftime("%Y-%m-%d")
+
+
+def datetime_from_timestamp_ms(milliseconds: int):
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(milliseconds / 1000, tz=timezone.utc)
 
 
 def _deck_breakdown(

@@ -13,6 +13,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import re
 import secrets
 import shutil
 import tempfile
@@ -83,6 +84,7 @@ class DashboardServerManager:
         self._server_status_provider = None
         self._display_settings_provider = None
         self._display_settings_handler = None
+        self._media_file_provider = None
 
     def start(
         self,
@@ -236,6 +238,10 @@ class DashboardServerManager:
             self._display_settings_provider = settings_provider
             self._display_settings_handler = settings_handler
 
+    def configure_media_handler(self, media_file_provider=None) -> None:
+        with self._lock:
+            self._media_file_provider = media_file_provider
+
     def cache_status(self) -> dict[str, Any]:
         with self._lock:
             provider = self._cache_status_provider
@@ -332,6 +338,22 @@ class DashboardServerManager:
             log_exception("settings.update.error", "Dashboard settings update failed")
             return {"ok": False, "error": "Dashboard settings update failed."}
 
+    def media_file(self, name: str) -> Path | None:
+        with self._lock:
+            provider = self._media_file_provider
+        if provider is None:
+            return None
+        try:
+            path = provider(name)
+        except Exception:
+            traceback.print_exc()
+            log_exception("media.resolve.error", "Dashboard media lookup failed")
+            return None
+        if not path:
+            return None
+        target = Path(path)
+        return target if target.is_file() else None
+
     def state(self) -> DashboardServerState:
         with self._lock:
             running = self._server is not None
@@ -395,6 +417,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/report":
             self._send_report(_query_token(parsed))
+            return
+        if path == "/api/media":
+            self._send_media(_query_token(parsed), parsed)
             return
         if path == "/api/cache/status":
             self._send_cache_status(_query_token(parsed))
@@ -932,6 +957,21 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def _send_media(self, token: str | None, parsed) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        name_values = parse_qs(parsed.query).get("name") or []
+        name = _safe_media_name(name_values[0] if name_values else "")
+        if not name:
+            self.send_error(HTTPStatus.BAD_REQUEST, "Invalid media name")
+            return
+        target = self.manager.media_file(name)
+        if target is None:
+            self.send_error(HTTPStatus.NOT_FOUND, "Media not found")
+            return
+        self._send_file(target, content_type=_media_content_type(target), cache_control="no-store")
+
     def _send_cache_status(self, token: str | None) -> None:
         if not self.manager.token_is_valid(token):
             self._send_forbidden()
@@ -997,7 +1037,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return None
         return data if isinstance(data, dict) else None
 
-    def _send_file(self, target: Path) -> None:
+    def _send_file(self, target: Path, *, content_type: str | None = None, cache_control: str = "no-cache") -> None:
         try:
             payload = target.read_bytes()
         except OSError:
@@ -1005,9 +1045,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
 
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", _content_type(target))
+        self.send_header("Content-Type", content_type or _content_type(target))
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", cache_control)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -1050,11 +1090,51 @@ def _content_type(path: Path) -> str:
         ".html": "text/html; charset=utf-8",
         ".js": "application/javascript; charset=utf-8",
         ".json": "application/json; charset=utf-8",
+        ".gif": "image/gif",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".mp3": "audio/mpeg",
+        ".ogg": "audio/ogg",
         ".png": "image/png",
+        ".wav": "audio/wav",
+        ".m4a": "audio/mp4",
+        ".flac": "audio/flac",
         ".svg": "image/svg+xml",
         ".txt": "text/plain; charset=utf-8",
         ".webp": "image/webp",
     }.get(suffix, "application/octet-stream")
+
+
+def _media_content_type(path: Path) -> str:
+    suffix = path.suffix.lower()
+    return {
+        ".gif": "image/gif",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".mp3": "audio/mpeg",
+        ".ogg": "audio/ogg",
+        ".wav": "audio/wav",
+        ".m4a": "audio/mp4",
+        ".flac": "audio/flac",
+    }.get(suffix, "application/octet-stream")
+
+
+def _safe_media_name(value: str) -> str:
+    name = unquote(str(value or "").strip())
+    if not name:
+        return ""
+    if "/" in name or "\\" in name or ".." in name or name.startswith("."):
+        return ""
+    if re.search(r"^[a-z][a-z0-9+.-]*:", name, flags=re.IGNORECASE):
+        return ""
+    if re.match(r"^[A-Za-z]:", name):
+        return ""
+    suffix = Path(name).suffix.lower().lstrip(".")
+    if suffix not in {"gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac"}:
+        return ""
+    return name
 
 
 def _safe_port(value: int) -> int:

@@ -14,9 +14,11 @@ except Exception:
 
 from .browser_actions import (
     BROWSER_ACTION_CARD_LIMIT,
+    BrowserSearchQueryError,
     card_ids_search_query,
     collect_browser_action_card_ids,
     open_browser_search,
+    sanitize_browser_search_query,
 )
 
 
@@ -86,6 +88,8 @@ class DashboardActions:
         if safe_action == "open-browser":
             kind = str(payload.get("kind") or "problematic-decks")
             return self._request_dashboard_browser_action(kind)
+        if safe_action == "open-browser-search":
+            return self._request_dashboard_browser_search(payload.get("query"))
         if safe_action == "open-problematic":
             return self._request_dashboard_browser_action("problematic-decks")
         if safe_action == "open-again":
@@ -207,6 +211,18 @@ class DashboardActions:
         if result.get("truncated"):
             message = f"Opened Anki Browser with the first {BROWSER_ACTION_CARD_LIMIT} cards."
         return dashboard_action_ok(response_action, message)
+
+    def _request_dashboard_browser_search(self, query: object) -> dict:
+        try:
+            safe_query = sanitize_browser_search_query(query)
+        except BrowserSearchQueryError as error:
+            return dashboard_action_error("open-browser-search", str(error))
+        if mw is None:
+            return dashboard_action_error("open-browser-search", "Anki collection is unavailable.")
+        result = self._run_on_main(lambda: open_browser_search(safe_query))
+        if not result["ok"]:
+            return dashboard_action_error("open-browser-search", result["error"])
+        return dashboard_action_ok("open-browser-search", f"Opened Anki Browser for {safe_query}.")
 
     def _collect_browser_action_on_background(
         self,

@@ -41,7 +41,12 @@ from aqt.qt import (
 )
 from aqt.utils import showCritical, showInfo
 
-from .metrics import collect_metrics, expand_deck_ids
+from .metrics import (
+    ATTENTION_CARD_LIMIT,
+    collect_attention_cards_with_status,
+    collect_metrics,
+    expand_deck_ids,
+)
 from .heatmap_metrics import diagnose_review_heatmap_personal
 from .report_builder import build_markdown_report, render_html_report
 from .report_from_cache import build_cached_report_parts, merge_cached_report_parts
@@ -1820,6 +1825,7 @@ def _configure_dashboard_cache_handlers() -> None:
         settings_provider=_dashboard_display_settings_response,
         settings_handler=_update_dashboard_display_settings,
     )
+    _DASHBOARD_SERVER.configure_media_handler(_dashboard_media_file)
 
 
 def _cache_status_response() -> dict:
@@ -2204,6 +2210,7 @@ def _prepare_default_dashboard_report() -> dict:
         display_settings=display_settings,
     )
     metrics = metrics_from_cache_snapshot(snapshot, today_key, display_settings)
+    metrics = _apply_default_dashboard_attention_cards(metrics, metadata, display_settings)
     report = _dashboard_report_payload(metrics, metadata)
     try:
         markdown = build_markdown_report(metrics, metadata)
@@ -2220,6 +2227,110 @@ def _prepare_default_dashboard_report() -> dict:
         "markdown": markdown,
         "metadata": metadata,
     }
+
+
+def _dashboard_media_file(name: str) -> str | None:
+    from .note_intelligence import sanitize_media_filename
+
+    safe_name = sanitize_media_filename(name)
+    if not safe_name or mw is None or getattr(mw, "col", None) is None:
+        return None
+    media = getattr(mw.col, "media", None)
+    if media is None:
+        return None
+    media_dir = None
+    try:
+        dir_attr = getattr(media, "dir", None)
+        media_dir = dir_attr() if callable(dir_attr) else dir_attr
+    except Exception:
+        media_dir = None
+    if not media_dir:
+        return None
+    root = Path(media_dir).resolve()
+    target = (root / safe_name).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None
+    return str(target) if target.is_file() else None
+
+
+def _apply_default_dashboard_attention_cards(
+    metrics: dict,
+    metadata: dict,
+    display_settings: dict,
+) -> dict:
+    """Overlay fresh card-level rows onto cache-backed default dashboard metrics."""
+
+    updated = dict(metrics if isinstance(metrics, dict) else {})
+    col = getattr(mw, "col", None) if mw is not None else None
+    if col is None or getattr(col, "db", None) is None:
+        updated["attention_cards"] = []
+        updated["note_type_catalog"] = []
+        updated["attention_cards_status"] = {
+            "status": "unavailable",
+            "scannedCards": 0,
+            "returnedCards": 0,
+            "reason": "collection unavailable",
+            "collectorRan": False,
+            "collectionAvailable": False,
+            "source": "fresh",
+        }
+        return updated
+
+    start_ts = dashboard_int(metadata.get("period_start_ts"))
+    end_ts = dashboard_int(metadata.get("period_end_ts"))
+    selected_deck_ids = display_settings.get("selected_deck_ids") if isinstance(display_settings, dict) else None
+    try:
+        attention_cards, attention_status = collect_attention_cards_with_status(
+            col,
+            start_ts,
+            end_ts,
+            selected_deck_ids if isinstance(selected_deck_ids, list) else None,
+            max_results=ATTENTION_CARD_LIMIT,
+        )
+        updated["attention_cards"] = attention_cards
+        status_payload = attention_status if isinstance(attention_status, dict) else {}
+        if isinstance(status_payload.get("noteTypeCatalog"), list):
+            updated["note_type_catalog"] = status_payload["noteTypeCatalog"]
+        normalized_status = str(status_payload.get("status") or "unavailable")
+        updated["attention_cards_status"] = {
+            **status_payload,
+            "status": normalized_status,
+            "collectorRan": True,
+            "collectionAvailable": bool(
+                status_payload.get("collectionAvailable")
+                if status_payload.get("collectionAvailable") is not None
+                else normalized_status == "available"
+            ),
+            "source": "fresh",
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        updated["attention_cards"] = []
+        updated["attention_cards_status"] = {
+            "status": "error",
+            "scannedCards": 0,
+            "returnedCards": 0,
+            "reason": _safe_dashboard_attention_reason(exc),
+            "collectorRan": True,
+            "collectionAvailable": col is not None and getattr(col, "db", None) is not None,
+            "source": "fresh",
+        }
+    return updated
+
+
+def _safe_dashboard_attention_reason(error: object) -> str:
+    text = str(error or "").replace("\r", " ").replace("\n", " ")
+    text = " ".join(text.split())
+    if not text:
+        return "Card-level collector failed."
+    for marker in ("token=", "Traceback", "File "):
+        if marker.lower() in text.lower():
+            return "Card-level collector failed."
+    if len(text) > 160:
+        return text[:159].rstrip() + "…"
+    return text
 
 
 def _ensure_default_dashboard_cache_current() -> dict:

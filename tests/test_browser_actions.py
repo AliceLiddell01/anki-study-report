@@ -78,3 +78,23 @@ def test_collect_browser_action_card_ids_uses_limit_and_reports_truncation(monke
     assert seen["max_results"] == 4
     assert seen["deck_ids"] == [1, 2]
     assert seen["action"] == "again"
+
+
+def test_sanitize_browser_search_query_accepts_cid_and_nid():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    assert browser_actions.sanitize_browser_search_query("cid:123") == "cid:123"
+    assert browser_actions.sanitize_browser_search_query("nid:456") == "nid:456"
+
+
+def test_sanitize_browser_search_query_rejects_huge_or_and_unsafe_text():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    huge = " OR ".join(f"cid:{index}" for index in range(500))
+    for query in [huge, "cid:1\ncid:2", "cid:1 token=secret", "deck:\"x\" C:\\Users\\secret", "<b>cid:1</b>"]:
+        try:
+            browser_actions.sanitize_browser_search_query(query)
+        except browser_actions.BrowserSearchQueryError:
+            pass
+        else:
+            raise AssertionError(f"Expected unsafe query to fail: {query[:40]}")

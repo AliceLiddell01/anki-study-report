@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import re
 
 from .session_tracker import unavailable_tracked_time
 
@@ -45,6 +46,10 @@ def build_dashboard_report_payload(
     risk_status = _dashboard_risk_status(risk)
     quality_status = _dashboard_quality_status(pass_rate, total_reviews)
     fail_status = "danger" if fail_rate >= 0.22 else "warning" if fail_rate >= 0.15 else "good"
+    attention_status = _dashboard_attention_cards_status(
+        metrics.get("attention_cards_status"),
+        metrics.get("attention_cards"),
+    )
 
     summary_verdict = _dashboard_summary_verdict(
         pass_rate,
@@ -70,9 +75,13 @@ def build_dashboard_report_payload(
                 else "standard"
             ),
             "createdAt": str(metadata.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M")),
+            "todayDate": str(metadata.get("today_date") or ""),
             "detailMode": str(metadata.get("detail_level") or "normal"),
             "deletedCardReviews": _dashboard_deleted_reviews(metrics.get("deck_breakdown")),
             "unavailableTrackerNotes": _dashboard_tracker_notes(metrics),
+            "reportSchemaVersion": dashboard_int(metadata.get("report_schema_version") or 2),
+            "cardLevelSchemaVersion": dashboard_int(metadata.get("card_level_schema_version") or 2),
+            "cardLevelSource": _dashboard_attention_status_source(attention_status.get("source")),
         },
         "summary": {
             "verdict": summary_verdict,
@@ -100,6 +109,12 @@ def build_dashboard_report_payload(
         "activity": _dashboard_activity(heatmap),
         "comparison": _dashboard_comparison(metrics.get("comparison")),
         "decks": decks,
+        "attentionCards": _dashboard_attention_cards(metrics.get("attention_cards")),
+        "attentionCardsStatus": attention_status,
+        "noteTypeCatalog": _dashboard_note_type_catalog(
+            metrics.get("note_type_catalog")
+            or attention_status.get("noteTypeCatalog")
+        ),
         "forecast": _dashboard_forecast(forecast, tomorrow, next_7, next_30, baseline, risk_status),
         "fsrs": _dashboard_fsrs(fsrs, next_30),
         "recommendations": {
@@ -127,9 +142,16 @@ def build_default_dashboard_metadata(
         else _filter_snapshot_daily_rows(_sorted_snapshot_rows(snapshot.get("daily")), display, today_key)
     )
     dates = _snapshot_date_keys(daily_rows)
-    start_date = dates[0] if dates else "1970-01-01"
-    end_date = dates[-1] if dates else today_key
+    bound_start, bound_end = _dashboard_period_bounds(display, today_key)
+    start_date = bound_start or (dates[0] if dates else "1970-01-01")
+    end_date = bound_end or (dates[-1] if dates else today_key)
     current = now or datetime.now()
+    period_start_ts, period_end_ts = _dashboard_period_timestamps(
+        display,
+        start_date,
+        end_date,
+        current,
+    )
     selected_deck_names = (
         display.get("selected_deck_names")
         if display.get("selected_deck_ids")
@@ -146,13 +168,15 @@ def build_default_dashboard_metadata(
         "created_at": current.strftime("%Y-%m-%d %H:%M"),
         "detail_level": "normal",
         "requested_answer_mode": "pass_fail",
-        "period_start_ts": 0,
-        "period_end_ts": int(current.timestamp()),
+        "period_start_ts": period_start_ts,
+        "period_end_ts": period_end_ts,
         "period_start_date": start_date,
         "period_end_date": end_date,
         "today_date": today_key,
         "force_stats_cache_for_report": True,
         "dashboard_display_deck_filter": bool(display.get("selected_deck_ids")),
+        "report_schema_version": 2,
+        "card_level_schema_version": 2,
     }
 
 
@@ -206,6 +230,16 @@ def metrics_from_cache_snapshot(snapshot: dict, today_key: str, display_settings
             "cache_default_dashboard",
             "Default dashboard uses the persistent stats cache; live session tracking is not recalculated here.",
         ),
+        "attention_cards": [],
+        "attention_cards_status": {
+            "status": "unavailable",
+            "scannedCards": 0,
+            "returnedCards": 0,
+            "reason": "cache snapshot has no card-level payload; fresh overlay not applied",
+            "collectorRan": False,
+            "collectionAvailable": False,
+            "source": "cache",
+        },
         "due_tomorrow": 0,
     }
 
@@ -285,6 +319,25 @@ def _dashboard_period_bounds(settings: dict, today_key: str) -> tuple[str | None
         if start is not None and end is not None and end >= start:
             return start.isoformat(), end.isoformat()
     return None, None
+
+
+def _dashboard_period_timestamps(
+    settings: dict,
+    start_date: str,
+    end_date: str,
+    current: datetime,
+) -> tuple[int, int]:
+    period = str(settings.get("period") or "all_time")
+    end_ts = max(0, int(current.timestamp()))
+    if period == "all_time":
+        return 0, end_ts
+    parsed_start = _parse_date_key(start_date)
+    parsed_end = _parse_date_key(end_date)
+    if parsed_start is None or parsed_end is None:
+        return 0, end_ts
+    start_dt = datetime.combine(parsed_start, datetime.min.time())
+    end_dt = datetime.combine(parsed_end + timedelta(days=1), datetime.min.time())
+    return max(0, int(start_dt.timestamp())), max(int(start_dt.timestamp()) + 1, int(end_dt.timestamp()))
 
 
 def _filter_snapshot_daily_rows(rows: list[dict], settings: dict, today_key: str) -> list[dict]:
@@ -816,6 +869,376 @@ def _dashboard_decks(deck_breakdown) -> list[dict]:
             }
         )
     return decks
+
+
+def _dashboard_attention_cards(cards) -> list[dict]:
+    normalized: list[dict] = []
+    for card in _dashboard_list(cards):
+        if not isinstance(card, dict):
+            continue
+        card_id = card.get("cardId") or card.get("card_id")
+        deck_name = str(card.get("deckName") or card.get("deck_name") or "").strip()
+        front_preview = str(card.get("frontPreview") or card.get("front_preview") or "").strip()
+        preview = _dashboard_card_preview(card.get("preview"), front_preview)
+        if not front_preview and preview.get("primary"):
+            front_preview = preview["primary"]
+        issues = _dashboard_string_list(card.get("issues"))
+        if not card_id or not deck_name or not front_preview or not issues:
+            continue
+        item = {
+            "cardId": card_id,
+            "deckName": deck_name,
+            "frontPreview": front_preview,
+            "preview": preview,
+            "renderedPreview": _dashboard_rendered_preview(card.get("renderedPreview") or card.get("rendered_preview")),
+            "issues": issues,
+            "riskScore": max(0, min(100, dashboard_int(card.get("riskScore") or card.get("risk_score")))),
+            "againCount": dashboard_int(card.get("againCount") or card.get("again_count")),
+            "lapses": dashboard_int(card.get("lapses")),
+            "averageAnswerSeconds": dashboard_float(
+                card.get("averageAnswerSeconds")
+                if card.get("averageAnswerSeconds") is not None
+                else card.get("average_answer_seconds")
+            ),
+            "passRate": dashboard_rate(
+                card.get("passRate")
+                if card.get("passRate") is not None
+                else card.get("pass_rate")
+            ),
+            "lastReviewedAt": str(card.get("lastReviewedAt") or card.get("last_reviewed_at") or ""),
+            "searchQuery": str(card.get("searchQuery") or card.get("search_query") or ""),
+            "missingFields": _dashboard_string_list(card.get("missingFields") or card.get("missing_fields")),
+        }
+        note_id = card.get("noteId") or card.get("note_id")
+        if note_id:
+            item["noteId"] = note_id
+        normalized.append(item)
+    return normalized
+
+
+def _dashboard_card_preview(value, fallback_primary: str = "") -> dict:
+    data = value if isinstance(value, dict) else {}
+    badges = []
+    for item in _dashboard_string_list(data.get("mediaBadges") or data.get("media_badges")):
+        normalized = item.strip().lower()
+        if normalized in {"audio", "image", "gif", "pitch", "example"} and normalized not in badges:
+            badges.append(normalized)
+    return {
+        "frontText": _dashboard_preview_text(
+            data.get("frontText")
+            or data.get("front_text")
+            or data.get("frontOnly")
+            or data.get("front_only")
+            or data.get("primary")
+            or fallback_primary
+        ),
+        "backText": _dashboard_preview_text(data.get("backText") or data.get("back_text")),
+        "primary": _dashboard_preview_text(data.get("primary") or fallback_primary),
+        "secondary": _dashboard_preview_text(data.get("secondary")),
+        "tertiary": _dashboard_preview_text(data.get("tertiary")),
+        "mediaBadges": badges,
+        "noteTypeName": _dashboard_preview_text(data.get("noteTypeName") or data.get("note_type_name")),
+        "cardTemplateName": _dashboard_preview_text(data.get("cardTemplateName") or data.get("card_template_name")),
+        "detectedKind": _dashboard_preview_text(data.get("detectedKind") or data.get("detected_kind")),
+    }
+
+
+def _dashboard_preview_text(value) -> str:
+    text = str(value or "")
+    text = re.sub(r"\[sound:[^\]]+\]", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
+    text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:160]
+
+
+def _dashboard_rendered_preview(value) -> dict:
+    data = value if isinstance(value, dict) else {}
+    status = str(data.get("renderStatus") or data.get("render_status") or "unavailable").strip()
+    if status not in {"available", "unavailable", "sanitized", "fallback", "error"}:
+        status = "unavailable"
+    media_refs = _dashboard_media_refs(data.get("mediaRefs") or data.get("media_refs"))
+    payload = {
+        "renderStatus": status,
+        "frontHtml": _dashboard_preview_html(data.get("frontHtml") or data.get("front_html")),
+        "backHtml": _dashboard_preview_html(data.get("backHtml") or data.get("back_html")),
+        "frontPlainText": _dashboard_preview_text(data.get("frontPlainText") or data.get("front_plain_text")),
+        "backPlainText": _dashboard_preview_text(data.get("backPlainText") or data.get("back_plain_text")),
+        "css": _dashboard_preview_css(data.get("css")),
+        "mediaRefs": media_refs[:20],
+        "reason": _dashboard_preview_text(data.get("reason")),
+    }
+    if payload["frontHtml"] or payload["backHtml"] or payload["css"]:
+        if status == "available":
+            payload["renderStatus"] = "sanitized"
+    return payload
+
+
+def _dashboard_media_refs(value) -> list[dict[str, str]]:
+    refs = []
+    if not isinstance(value, list):
+        return refs
+    for item in value:
+        if isinstance(item, dict):
+            name = _dashboard_media_name(item.get("name"))
+            media_type = str(item.get("type") or "").strip().lower()
+            url = str(item.get("url") or "").strip()
+        else:
+            name = _dashboard_media_name(item)
+            media_type = ""
+            url = ""
+        if not name:
+            continue
+        extension = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+        if media_type not in {"image", "audio"}:
+            media_type = "audio" if extension in {"mp3", "ogg", "wav", "m4a", "flac"} else "image"
+        if not url or re.search(r"\b[A-Za-z]:\\|file://|https?://|token=", url, flags=re.IGNORECASE):
+            url = f"/api/media?name={name}"
+        ref = {"name": name, "type": media_type, "url": url[:220]}
+        if ref not in refs:
+            refs.append(ref)
+    return refs
+
+
+def _dashboard_media_name(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if "/" in text or "\\" in text or ".." in text or re.search(r"^[a-z][a-z0-9+.-]*:", text, flags=re.IGNORECASE):
+        return ""
+    extension = text.rsplit(".", 1)[-1].lower() if "." in text else ""
+    if extension not in {"gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac"}:
+        return ""
+    return text[:160]
+
+
+def _dashboard_note_type_catalog(value) -> list[dict]:
+    catalog = []
+    for item in _dashboard_list(value):
+        fields = _dashboard_string_list(item.get("fields"))
+        templates = []
+        for template in _dashboard_list(item.get("templates")):
+            templates.append(
+                {
+                    "ord": dashboard_int(template.get("ord")),
+                    "name": _dashboard_preview_text(template.get("name")),
+                    "qfmtAvailable": bool(template.get("qfmtAvailable")),
+                    "afmtAvailable": bool(template.get("afmtAvailable")),
+                }
+            )
+        catalog.append(
+            {
+                "noteTypeId": dashboard_int(item.get("noteTypeId") or item.get("note_type_id")),
+                "name": _dashboard_preview_text(item.get("name")),
+                "noteCount": max(0, dashboard_int(item.get("noteCount") or item.get("note_count"))),
+                "cardTemplateCount": max(0, dashboard_int(item.get("cardTemplateCount") or item.get("card_template_count") or len(templates))),
+                "fields": fields[:80],
+                "templates": templates[:40],
+                "cssAvailable": bool(item.get("cssAvailable") if item.get("cssAvailable") is not None else item.get("css_available")),
+                "usedInCurrentCards": bool(item.get("usedInCurrentCards") if item.get("usedInCurrentCards") is not None else item.get("used_in_current_cards")),
+            }
+        )
+    return catalog[:200]
+
+
+def _dashboard_preview_html(value) -> str:
+    text = str(value or "")
+    text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"\b(?:src|href)\s*=\s*(['\"])(?:file://|https?://|[A-Za-z]:\\).*?\1", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
+    text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"token=[^\s&<>\"']+", "token=[redacted]", text, flags=re.IGNORECASE)
+    return text[:4000]
+
+
+def _dashboard_preview_css(value) -> str:
+    text = str(value or "")
+    text = re.sub(r"@import[^;]+;", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"url\((?:file://|https?://|[A-Za-z]:\\)[^)]+\)", "url()", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b[A-Za-z]:\\[^\s;{}]+", " ", text)
+    text = re.sub(r"token=[^\s;{}]+", "token=[redacted]", text, flags=re.IGNORECASE)
+    return text[:3000]
+
+
+def _dashboard_attention_cards_status(status, cards) -> dict:
+    normalized_cards = _dashboard_attention_cards(cards)
+    if isinstance(status, dict):
+        raw_status = str(status.get("status") or "").strip().lower()
+        if raw_status not in {"available", "unavailable", "skipped", "error"}:
+            raw_status = "unavailable"
+        collector_ran = status.get("collectorRan") if status.get("collectorRan") is not None else status.get("collector_ran")
+        collection_available = (
+            status.get("collectionAvailable")
+            if status.get("collectionAvailable") is not None
+            else status.get("collection_available")
+        )
+        payload = {
+            "status": raw_status,
+            "scannedCards": max(0, dashboard_int(status.get("scannedCards") or status.get("scanned_cards"))),
+            "returnedCards": max(
+                0,
+                dashboard_int(
+                    status.get("returnedCards")
+                    if status.get("returnedCards") is not None
+                    else status.get("returned_cards")
+                ),
+            ),
+            "collectorRan": bool(collector_ran) if collector_ran is not None else raw_status == "available",
+            "collectionAvailable": bool(collection_available) if collection_available is not None else raw_status == "available",
+            "source": _dashboard_attention_status_source(status.get("source")),
+            "periodStartRaw": _dashboard_optional_int(status.get("periodStartRaw") if status.get("periodStartRaw") is not None else status.get("period_start_raw")),
+            "periodEndRaw": _dashboard_optional_int(status.get("periodEndRaw") if status.get("periodEndRaw") is not None else status.get("period_end_raw")),
+            "periodStartMs": max(0, dashboard_int(status.get("periodStartMs") or status.get("period_start_ms"))),
+            "periodEndMs": max(0, dashboard_int(status.get("periodEndMs") or status.get("period_end_ms"))),
+            "timeUnitNormalized": bool(status.get("timeUnitNormalized") if status.get("timeUnitNormalized") is not None else status.get("time_unit_normalized")),
+            "selectedDeckIdsCount": max(0, dashboard_int(status.get("selectedDeckIdsCount") or status.get("selected_deck_ids_count"))),
+            "deckFilterApplied": bool(status.get("deckFilterApplied") if status.get("deckFilterApplied") is not None else status.get("deck_filter_applied")),
+        }
+        reason = _dashboard_attention_status_reason(status.get("reason"))
+        if reason:
+            payload["reason"] = reason
+        warning = _dashboard_attention_status_reason(status.get("diagnosticWarning") or status.get("diagnostic_warning"))
+        if warning:
+            payload["diagnosticWarning"] = warning
+        if payload["status"] == "available" and payload["returnedCards"] == 0 and normalized_cards:
+            payload["returnedCards"] = len(normalized_cards)
+        for key, raw_key in (
+            ("revlogRows", "revlog_rows"),
+            ("candidateCards", "candidate_cards"),
+            ("notesLoaded", "notes_loaded"),
+            ("fieldScanCards", "field_scan_cards"),
+            ("cardsTotal", "cards_total"),
+            ("notesTotal", "notes_total"),
+            ("revlogTotalRows", "revlog_total_rows"),
+            ("revlogMinId", "revlog_min_id"),
+            ("revlogMaxId", "revlog_max_id"),
+            ("revlogRowsInPeriod", "revlog_rows_in_period"),
+            ("revlogRowsAfterDeckFilter", "revlog_rows_after_deck_filter"),
+            ("noteTypeProfilesCount", "note_type_profiles_count"),
+            ("unknownNoteTypesCount", "unknown_note_types_count"),
+            ("noteTypeCatalogCount", "note_type_catalog_count"),
+        ):
+            value = status.get(key)
+            if value is None:
+                value = status.get(raw_key)
+            if value is not None:
+                payload[key] = max(0, dashboard_int(value))
+        detected_kinds = status.get("detectedKinds")
+        if detected_kinds is None:
+            detected_kinds = status.get("detected_kinds")
+        if isinstance(detected_kinds, dict):
+            payload["detectedKinds"] = {
+                str(key): max(0, dashboard_int(value))
+                for key, value in detected_kinds.items()
+                if str(key).strip()
+            }
+        preview_strategy = _dashboard_attention_status_reason(status.get("previewStrategy") or status.get("preview_strategy"))
+        if preview_strategy:
+            payload["previewStrategy"] = preview_strategy
+        missing_role_source = _dashboard_attention_status_reason(status.get("missingFieldRoleSource") or status.get("missing_field_role_source"))
+        if missing_role_source:
+            payload["missingFieldRoleSource"] = missing_role_source
+        if isinstance(status.get("noteTypeCatalog"), list):
+            payload["noteTypeCatalog"] = _dashboard_note_type_catalog(status.get("noteTypeCatalog"))
+        payload["issueCounts"] = _dashboard_attention_issue_counts(status.get("issueCounts") or status.get("issue_counts"))
+        payload["thresholds"] = _dashboard_attention_thresholds(status.get("thresholds"))
+        return payload
+    if normalized_cards:
+        return {
+            "status": "available",
+            "scannedCards": len(normalized_cards),
+            "returnedCards": len(normalized_cards),
+            "collectorRan": True,
+            "collectionAvailable": True,
+            "source": "unknown",
+            "issueCounts": _dashboard_attention_issue_counts(None),
+            "thresholds": _dashboard_attention_thresholds(None),
+            "periodStartRaw": None,
+            "periodEndRaw": None,
+            "periodStartMs": 0,
+            "periodEndMs": 0,
+            "timeUnitNormalized": False,
+            "selectedDeckIdsCount": 0,
+            "deckFilterApplied": False,
+        }
+    return {
+        "status": "unavailable",
+        "scannedCards": 0,
+        "returnedCards": 0,
+        "reason": "collector not invoked",
+        "collectorRan": False,
+        "collectionAvailable": False,
+        "source": "unknown",
+        "issueCounts": _dashboard_attention_issue_counts(None),
+        "thresholds": _dashboard_attention_thresholds(None),
+        "periodStartRaw": None,
+        "periodEndRaw": None,
+        "periodStartMs": 0,
+        "periodEndMs": 0,
+        "timeUnitNormalized": False,
+        "selectedDeckIdsCount": 0,
+        "deckFilterApplied": False,
+    }
+
+
+def _dashboard_attention_status_source(value) -> str:
+    source = str(value or "unknown").strip().lower()
+    return source if source in {"fresh", "cache", "mock", "unknown"} else "unknown"
+
+
+def _dashboard_attention_status_reason(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("\r", " ").replace("\n", " ")
+    text = re.sub(r"\b[A-Za-z]:\\[^\s]+", "[path]", text)
+    text = re.sub(r"token=[^\s&]+", "token=[redacted]", text, flags=re.IGNORECASE)
+    text = " ".join(text.split())
+    if len(text) > 160:
+        text = text[:159].rstrip() + "…"
+    return text
+
+
+def _dashboard_string_list(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _dashboard_attention_issue_counts(value) -> dict[str, int]:
+    source = value if isinstance(value, dict) else {}
+    keys = (
+        "leech",
+        "repeatedAgain",
+        "slowAnswer",
+        "lowPassRate",
+        "missingAudio",
+        "missingExample",
+        "missingPitch",
+        "missingImage",
+        "missingMeaning",
+        "missingPartOfSpeech",
+    )
+    return {key: max(0, dashboard_int(source.get(key))) for key in keys}
+
+
+def _dashboard_attention_thresholds(value) -> dict[str, float | int]:
+    source = value if isinstance(value, dict) else {}
+    return {
+        "repeatedAgainThreshold": max(0, dashboard_int(source.get("repeatedAgainThreshold") or 2)),
+        "slowAnswerSeconds": max(0.0, dashboard_float(source.get("slowAnswerSeconds") or 10)),
+        "lowPassRateThreshold": dashboard_rate(source.get("lowPassRateThreshold") if source.get("lowPassRateThreshold") is not None else 0.60),
+        "leechLapsesFallback": max(0, dashboard_int(source.get("leechLapsesFallback") or 8)),
+        "maxResults": max(0, dashboard_int(source.get("maxResults") or 100)),
+    }
+
+
+def _dashboard_optional_int(value):
+    if value is None:
+        return None
+    return dashboard_int(value)
 
 
 def _dashboard_forecast(

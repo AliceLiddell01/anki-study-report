@@ -59,3 +59,34 @@ def test_dashboard_server_smoke_endpoints():
         manager.stop()
 
     assert manager.state().running is False
+
+
+def test_dashboard_server_serves_token_protected_media(tmp_path):
+    dashboard_server = import_addon_module("dashboard_server")
+    media_dir = tmp_path / "collection.media"
+    media_dir.mkdir()
+    media_file = media_dir / "front.gif"
+    media_file.write_bytes(b"GIF89a")
+
+    manager = dashboard_server.DashboardServerManager()
+    manager.configure_media_handler(lambda name: str(media_dir / name))
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+
+    try:
+        status, content_type, body = fetch(f"{base_url}/api/media?name=front.gif")
+        assert status == 403
+
+        status, content_type, body = fetch(f"{base_url}/api/media?name=front.gif&token={token}")
+        assert status == 200
+        assert content_type == "image/gif"
+        assert body == b"GIF89a"
+
+        status, _, _ = fetch(f"{base_url}/api/media?name=..%2Fsecret.txt&token={token}")
+        assert status == 400
+
+        status, _, _ = fetch(f"{base_url}/api/media?name=file:///secret.gif&token={token}")
+        assert status == 400
+    finally:
+        manager.stop()

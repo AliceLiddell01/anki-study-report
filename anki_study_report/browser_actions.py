@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import traceback
+import re
 
 from aqt import dialogs, mw
 
@@ -10,6 +11,11 @@ from .metrics import collect_action_card_ids
 
 
 BROWSER_ACTION_CARD_LIMIT = 500
+BROWSER_SEARCH_DIRECT_MAX_LENGTH = 1800
+
+
+class BrowserSearchQueryError(ValueError):
+    """Raised when a dashboard browser search query is unsafe."""
 
 
 def collect_browser_action_card_ids(
@@ -59,6 +65,7 @@ def balanced_or_search_query(terms: list[str]) -> str:
 
 
 def open_browser_search(search_query: str) -> None:
+    search_query = sanitize_browser_search_query(search_query)
     if mw is None:
         raise RuntimeError("Главное окно Anki недоступно.")
 
@@ -80,3 +87,37 @@ def open_browser_search(search_query: str) -> None:
         browser.search()
     elif hasattr(browser, "onSearch"):
         browser.onSearch()
+
+
+def sanitize_browser_search_query(search_query: object, *, max_length: int = BROWSER_SEARCH_DIRECT_MAX_LENGTH) -> str:
+    query = str(search_query or "").strip()
+    if not query:
+        raise BrowserSearchQueryError("Search query is empty.")
+    if len(query) > max_length:
+        raise BrowserSearchQueryError("Search query is too long for direct Browser open.")
+    if re.search(r"[\r\n\t<>]", query):
+        raise BrowserSearchQueryError("Search query contains unsafe characters.")
+    if re.search(r"\b[A-Za-z]:\\|file://|https?://|token=", query, flags=re.IGNORECASE):
+        raise BrowserSearchQueryError("Search query contains unsafe path, URL, or token text.")
+    if not _browser_search_query_allowed(query):
+        raise BrowserSearchQueryError("Search query is not allowed for dashboard Browser open.")
+    return query
+
+
+def _browser_search_query_allowed(query: str) -> bool:
+    if re.fullmatch(r"cid:\d+", query):
+        return True
+    if re.fullmatch(r"nid:\d+", query):
+        return True
+    if re.fullmatch(r'deck:"[^"\r\n<>]{1,180}"(?:\s+[\w-]+:"?[^"\r\n<>]{1,120}"?)*', query):
+        return True
+    if re.fullmatch(r"(tag|rated|is):[A-Za-z0-9_:\-]+", query):
+        return True
+    if " OR " in query:
+        terms = [
+            term.strip("() ")
+            for term in query.split(" OR ")
+            if term.strip("() ")
+        ]
+        return bool(terms) and all(re.fullmatch(r"cid:\d+|nid:\d+", term) for term in terms)
+    return False
