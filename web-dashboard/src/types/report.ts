@@ -12,9 +12,13 @@ export interface ReportMetadata {
   includeChildren: boolean;
   answerMode: AnswerMode;
   createdAt: string;
+  todayDate?: string;
   detailMode: "compact" | "normal" | "full";
   deletedCardReviews: number;
   unavailableTrackerNotes: string[];
+  reportSchemaVersion?: number;
+  cardLevelSchemaVersion?: number;
+  cardLevelSource?: "fresh" | "cache" | "mock" | "unknown";
 }
 
 export interface KpiMetric {
@@ -69,6 +73,181 @@ export interface DeckPerformance {
   studyMinutes: number;
   status: Status;
   explanation: string;
+}
+
+export type CardIssueType =
+  | "leech"
+  | "repeated_again"
+  | "slow_answer"
+  | "low_pass_rate"
+  | "missing_audio"
+  | "missing_example"
+  | "missing_image"
+  | "missing_meaning"
+  | "missing_part_of_speech";
+
+export interface CardAttention {
+  id: string;
+  cardId?: number;
+  noteId?: number;
+  deckId?: number;
+  deckName: string;
+  front: string;
+  preview?: CardPreview;
+  renderedPreview?: RenderedCardPreview;
+  issues: CardIssueType[];
+  againCount: number;
+  lapses: number;
+  averageAnswerSeconds: number | null;
+  passRate: number | null;
+  lastReviewed: string | null;
+  riskScore: number;
+  browserSearch?: string;
+  periods?: Array<"today" | "7d" | "30d" | "all">;
+  answerPattern?: string;
+}
+
+export interface CardPreview {
+  frontText: string;
+  backText?: string;
+  primary: string;
+  secondary?: string;
+  tertiary?: string;
+  frontOnly?: string;
+  mediaBadges?: string[];
+  noteTypeName?: string;
+  cardTemplateName?: string;
+  detectedKind?: string;
+}
+
+export interface RenderedCardPreview {
+  frontHtml?: string;
+  backHtml?: string;
+  frontPlainText?: string;
+  backPlainText?: string;
+  css?: string;
+  mediaRefs?: CardMediaRef[];
+  renderStatus: "available" | "unavailable" | "sanitized" | "fallback" | "error";
+  reason?: string;
+}
+
+export interface CardMediaRef {
+  name: string;
+  type: "image" | "audio";
+  url: string;
+}
+
+export interface NoteTypeCatalogItem {
+  noteTypeId: number;
+  name: string;
+  noteCount: number;
+  cardTemplateCount: number;
+  fields: string[];
+  templates: Array<{
+    ord: number;
+    name: string;
+    qfmtAvailable?: boolean;
+    afmtAvailable?: boolean;
+  }>;
+  cssAvailable: boolean;
+  usedInCurrentCards: boolean;
+}
+
+// Optional raw card-level payload shape for the next backend iteration.
+// The dashboard accepts this under `cards`, `attentionCards`, `cardIssues`, or `problemCards`
+// and normalizes it client-side without changing the current backend API.
+export interface RawCardAttentionPayload {
+  cardId: number | string;
+  noteId?: number | string;
+  deckName: string;
+  frontPreview: string;
+  preview?: CardPreview;
+  renderedPreview?: RenderedCardPreview;
+  issues: string[];
+  riskScore?: number;
+  againCount?: number;
+  lapses?: number;
+  averageAnswerSeconds?: number;
+  passRate?: number;
+  lastReviewedAt?: string;
+  searchQuery?: string;
+  missingFields?: string[];
+}
+
+export interface AttentionCardsStatus {
+  status: "available" | "unavailable" | "skipped" | "error";
+  scannedCards?: number;
+  returnedCards?: number;
+  reason?: string;
+  collectorRan?: boolean;
+  collectionAvailable?: boolean;
+  revlogRows?: number;
+  candidateCards?: number;
+  notesLoaded?: number;
+  fieldScanCards?: number;
+  cardsTotal?: number;
+  notesTotal?: number;
+  source?: "fresh" | "cache" | "mock" | "unknown";
+  issueCounts?: AttentionIssueCounts;
+  thresholds?: AttentionThresholds;
+  periodStartRaw?: number | null;
+  periodEndRaw?: number | null;
+  periodStartMs?: number;
+  periodEndMs?: number;
+  timeUnitNormalized?: boolean;
+  selectedDeckIdsCount?: number;
+  deckFilterApplied?: boolean;
+  revlogTotalRows?: number;
+  revlogMinId?: number;
+  revlogMaxId?: number;
+  revlogRowsInPeriod?: number;
+  revlogRowsAfterDeckFilter?: number;
+  diagnosticWarning?: string;
+  noteTypeProfilesCount?: number;
+  unknownNoteTypesCount?: number;
+  detectedKinds?: Record<string, number>;
+  previewStrategy?: string;
+  missingFieldRoleSource?: string;
+}
+
+export interface AttentionIssueCounts {
+  leech?: number;
+  repeatedAgain?: number;
+  slowAnswer?: number;
+  lowPassRate?: number;
+  missingAudio?: number;
+  missingExample?: number;
+  missingPitch?: number;
+  missingImage?: number;
+  missingMeaning?: number;
+  missingPartOfSpeech?: number;
+}
+
+export interface AttentionThresholds {
+  repeatedAgainThreshold?: number;
+  slowAnswerSeconds?: number;
+  lowPassRateThreshold?: number;
+  leechLapsesFallback?: number;
+  maxResults?: number;
+}
+
+export interface CardsPreviewSettings {
+  displayMode: "table" | "tiles" | "ankiPreview";
+  noteTypeOverrides: Record<
+    string,
+    {
+      kind?: string;
+      primaryField?: string;
+      secondaryField?: string;
+      tertiaryField?: string;
+      roleOverrides?: Record<string, string>;
+      previewMode?: "auto" | "structured" | "ankiLike" | "disabled";
+      cardTemplate?: "auto" | number | string;
+      customFrontTemplate?: string;
+      customBackTemplate?: string;
+      customCss?: string;
+    }
+  >;
 }
 
 export interface ForecastDay {
@@ -282,6 +461,12 @@ export interface StudyReport {
   };
   comparison?: ProgressComparison;
   decks: DeckPerformance[];
+  cards?: CardAttention[];
+  attentionCards?: RawCardAttentionPayload[];
+  attentionCardsStatus?: AttentionCardsStatus;
+  noteTypeCatalog?: NoteTypeCatalogItem[];
+  cardIssues?: RawCardAttentionPayload[];
+  problemCards?: RawCardAttentionPayload[];
   forecast: {
     available: boolean;
     tomorrow: number;

@@ -573,3 +573,48 @@ select {
 .recharts-surface {
   outline: none;
 }
+
+.asr-front-preview {
+  color: inherit;
+}
+
+.asr-front-preview-html {
+  max-width: 100%;
+  width: fit-content;
+}
+
+.asr-front-preview-html img,
+.asr-front-preview img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.asr-front-preview-table {
+  font-weight: 600;
+}
+
+.asr-front-preview-table .asr-front-preview-html img,
+.asr-front-preview-table img {
+  max-height: 6rem;
+}
+
+.asr-front-preview-tile .asr-front-preview-html img,
+.asr-front-preview-tile img {
+  max-height: 10rem;
+}
+
+.asr-card-rendered.asr-front-preview:not(.asr-front-preview-table):not(.asr-front-preview-tile) img {
+  max-height: 14rem;
+}
+
+.asr-front-preview audio,
+.asr-card-rendered.asr-front-preview audio {
+  display: block;
+  width: min(100%, 16rem);
+  max-width: 100%;
+  height: 2rem;
+  margin-bottom: 0.75rem;
+}

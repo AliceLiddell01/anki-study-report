@@ -1,5 +1,6 @@
 import { Database, RefreshCw, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { cardAttentionState } from "../lib/cardAttention";
 import { formatInteger, safeText } from "../lib/formatters";
 import type { StudyReport, StatsCacheSummary, StatsCacheStatus } from "../types/report";
 
@@ -97,6 +98,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
   const reportFallback = reportCache?.fallbackReason || "нет";
   const reportFlag = cache?.useStatsCacheForReport ?? reportCache?.useStatsCacheForReport ?? false;
   const parityMismatches = report?.cacheDebug?.mismatches?.length ?? 0;
+  const cardLevel = cardAttentionState(report);
 
   return (
     <div className="grid gap-5">
@@ -156,6 +158,25 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
           <CacheDetail label="Parity check" value={report?.cacheDebug?.parityChecked ? `${formatInteger(parityMismatches)} расхождений` : "Не проверялось"} />
           <CacheDetail label="Чтение кэша" value={formatMilliseconds(report?.performance?.cacheReadMs)} />
         </div>
+      </section>
+
+      <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
+        <h2 className="text-lg font-semibold tracking-normal text-report-text">Card-level collector</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <CacheDetail label="Status" value={cardLevel.status} />
+          <CacheDetail label="Source" value={cardLevel.source} />
+          <CacheDetail label="Collector ran" value={formatBoolean(cardLevel.collectorRan)} />
+          <CacheDetail label="Collection available" value={formatBoolean(cardLevel.collectionAvailable)} />
+          <CacheDetail label="Scanned cards" value={formatNullableInteger(cardLevel.scannedCards)} />
+          <CacheDetail label="Candidate cards" value={formatNullableInteger(cardLevel.candidateCards)} />
+          <CacheDetail label="Revlog rows" value={formatNullableInteger(cardLevel.revlogRows)} />
+          <CacheDetail label="Returned cards" value={formatNullableInteger(cardLevel.returnedCards)} />
+        </div>
+        {cardLevel.reason ? (
+          <p className="mt-4 rounded-lg border border-ink-700 bg-ink-900/45 px-3 py-2 text-sm leading-6 text-report-muted">
+            {cardLevel.reason}
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
@@ -307,6 +328,17 @@ function statusTone(status: StatsCacheStatus): "good" | "neutral" | "warning" | 
 
 function finiteNumberOrZero(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function formatNullableInteger(value: number | null): string {
+  return value === null ? "Нет данных" : formatInteger(value);
+}
+
+function formatBoolean(value: boolean | null): string {
+  if (value === null) {
+    return "Нет данных";
+  }
+  return value ? "true" : "false";
 }
 
 function formatUnixSeconds(value: unknown): string {

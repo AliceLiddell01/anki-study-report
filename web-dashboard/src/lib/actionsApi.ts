@@ -2,6 +2,7 @@ export type ReportAction =
   | "copy-markdown"
   | "save-markdown"
   | "open-browser"
+  | "open-browser-search"
   | "open-problematic"
   | "open-again"
   | "open-new"
@@ -20,7 +21,7 @@ export type ActionResponse = {
 
 export async function runReportAction(
   action: ReportAction,
-  body: { kind?: BrowserActionKind } = {},
+  body: { kind?: BrowserActionKind; query?: string } = {},
 ): Promise<ActionResponse> {
   const token = dashboardToken();
   const response = await fetch(`/api/actions/${action}?token=${encodeURIComponent(token)}`, {

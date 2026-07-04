@@ -64,7 +64,7 @@ export function renderRoute(
     case "/decks":
       return <DecksPage report={report} loadState={loadState} />;
     case "/cards":
-      return <CardsPage />;
+      return <CardsPage report={report} loadState={loadState} />;
     case "/stats":
       return <StatsPage />;
     case "/calendar":
