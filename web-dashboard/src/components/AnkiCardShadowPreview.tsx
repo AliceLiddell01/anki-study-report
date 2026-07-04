@@ -77,10 +77,47 @@ const SHADOW_SAFETY_CSS = `
 
 .card audio,
 .card .asr-card-audio {
+  display: none;
+}
+
+.card .asr-card-replay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 0 12px;
+}
+
+.card .asr-card-replay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(37, 99, 235, 0.42);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  padding: 0;
+}
+
+.card .asr-card-replay-button:hover {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(37, 99, 235, 0.62);
+}
+
+.card .asr-card-replay-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+.card .asr-card-replay-icon {
   display: block;
-  width: min(100%, 260px);
-  height: 32px;
-  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1;
+  transform: translateX(1px);
 }
 
 .card .asr-card-media-missing {
@@ -166,6 +203,30 @@ export function AnkiCardShadowPreview({
 
     viewport.appendChild(card);
     shadowRoot.append(style, viewport);
+
+    const handleReplayClick = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest(".asr-card-replay-button");
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const wrapper = button.closest(".asr-card-replay");
+      const audio = wrapper?.querySelector("audio.asr-card-audio");
+      if (!(audio instanceof HTMLAudioElement)) {
+        return;
+      }
+      try {
+        audio.currentTime = 0;
+        const playResult = audio.play();
+        if (playResult && typeof playResult.catch === "function") {
+          playResult.catch(() => undefined);
+        }
+      } catch {
+        // Browser playback restrictions should not break the preview.
+      }
+    };
+    shadowRoot.addEventListener("click", handleReplayClick);
+    return () => shadowRoot.removeEventListener("click", handleReplayClick);
   }, [shadowDocument]);
 
   return (

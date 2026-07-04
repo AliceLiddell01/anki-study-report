@@ -87,7 +87,26 @@ The collection includes:
 - Unsafe sanitizer card with script/file/javascript examples for API-level
   sanitizer checks.
 
-Tiny media fixtures are written into `/e2e/anki-data/E2E/collection.media`.
+Synthetic media fixtures are written into
+`/e2e/anki-data/E2E/collection.media`. The default GIF fixtures are large
+enough for browser smoke tests to verify image loading and rendered dimensions.
+
+For local visual checks against real Anki media, set a read-only media source
+before running `scripts/run_anki_e2e_docker.ps1`:
+
+```powershell
+$env:ANKI_E2E_REAL_MEDIA_DIR="C:\Users\KykLa\AppData\Roaming\Anki2\1-й пользователь\collection.media"
+$env:ANKI_E2E_REQUIRE_REAL_MEDIA="1"
+.\scripts\run_anki_e2e_docker.ps1
+Remove-Item Env:\ANKI_E2E_REAL_MEDIA_DIR
+Remove-Item Env:\ANKI_E2E_REQUIRE_REAL_MEDIA
+```
+
+Only the allowlisted files `要.gif`, `望.gif`, and `要望.mp3` are copied into
+the isolated E2E profile. The real `collection.anki2`, profile folder,
+backups, add-on data, trash, and other personal files are not mounted or
+copied. Without these environment variables, Docker E2E uses the synthetic
+fixtures and remains CI-safe.
 
 ## Add-on E2E Mode
 

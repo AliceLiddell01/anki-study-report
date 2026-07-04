@@ -56,7 +56,8 @@ const baseReport: StudyReport = {
       },
       renderedPreview: {
         renderStatus: "sanitized",
-        frontHtml: '<span class="word">表だけ</span><img src="/api/media?name=front.gif">',
+        frontHtml:
+          '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word">表だけ</span><img src="/api/media?name=front.gif">',
         backHtml: "<b>back-side meaning</b>",
         frontPlainText: "表だけ",
         backPlainText: "back-side meaning",
@@ -65,6 +66,7 @@ const baseReport: StudyReport = {
         mediaRefs: [
           { name: "front.gif", type: "image", url: "/api/media?name=front.gif" },
           { name: "voice.mp3", type: "audio", url: "/api/media?name=voice.mp3" },
+          { name: "answer.mp3", type: "audio", url: "/api/media?name=answer.mp3" },
         ],
       },
       issues: ["missing pitch", "AUDIO", "missing_audio"],
@@ -199,9 +201,13 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).toContain("表だけ");
     expect(html).toContain(".asr-card-rendered .word");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
+    expect(html).toContain("/api/media?name=voice.mp3&token=test-token");
+    expect(html).toContain("asr-card-replay-button");
+    expect(html).toContain("asr-card-audio");
+    expect(html).not.toContain(" controls");
     expect(html).not.toContain(">Back</h3>");
     expect(html).not.toContain("back-side meaning");
-    expect(html).not.toContain("/api/media?name=voice.mp3");
+    expect(html).not.toContain("/api/media?name=answer.mp3");
     expect(html).not.toContain("Both");
     expect(html).not.toContain("Anki-like preview fallback");
     expect(html).not.toContain("Упрощённое превью");
@@ -223,7 +229,7 @@ describe("CardsPage v4 UX corrections", () => {
     const renderedHost = renderToStaticMarkup(
       <AnkiCardShadowPreview
         mode="table"
-        html='<span class="word-focus" style="color: rgb(255, 165, 0)">要望する</span>'
+        html='<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word-focus" style="color: rgb(255, 165, 0)">要望する</span>'
         css=".word-focus { font-weight: 700; }"
         title="要望する"
         cardOrd={1}
@@ -233,7 +239,7 @@ describe("CardsPage v4 UX corrections", () => {
     );
     const document = buildShadowPreviewDocument({
       mode: "table",
-      html: '<span class="word-focus">要望する</span>',
+      html: '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word-focus">要望する</span>',
       css: ".word-focus { font-weight: 700; }",
       cardOrd: 1,
       nightMode: true,
@@ -242,11 +248,19 @@ describe("CardsPage v4 UX corrections", () => {
     expect(renderedHost).toContain('data-shadow-preview="true"');
     expect(renderedHost).toContain('data-render-source="anki_native"');
     expect(renderedHost).toContain("data-shadow-preview-template");
+    expect(renderedHost).toContain("asr-card-replay-button");
+    expect(renderedHost).toContain("asr-card-audio");
+    expect(renderedHost).not.toContain(" controls");
     expect(renderedHost).toContain("word-focus");
     expect(document.cardClassName).toBe("card card2 nightMode");
     expect(document.viewportClassName).toBe("asr-shadow-card-viewport asr-shadow-card-viewport--table");
     expect(document.styleText).toContain(".word-focus { font-weight: 700; }");
+    expect(document.styleText).toContain(".asr-card-replay-button");
+    expect(document.styleText).toContain(".asr-card-audio");
+    expect(document.styleText).toContain("display: none");
     expect(document.styleText).toContain("transform: scale(0.36)");
+    expect(document.html).toContain("asr-card-replay-button");
+    expect(document.html).toContain("asr-card-audio");
     expect(document.html).toContain("要望する");
   });
 });

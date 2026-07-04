@@ -127,7 +127,10 @@ def test_rendered_preview_uses_front_template_and_front_media_only():
     assert rendered["frontPlainText"] == "承"
     assert rendered["renderSource"] == "anki_like_fallback"
     assert rendered["fallbackReason"] == "native_unavailable_not_requested"
-    assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=front.mp3"></audio>' in rendered["frontHtml"]
+    assert 'class="asr-card-replay-button"' in rendered["frontHtml"]
+    assert 'class="asr-card-audio"' in rendered["frontHtml"]
+    assert 'src="/api/media?name=front.mp3"' in rendered["frontHtml"]
+    assert " controls" not in rendered["frontHtml"]
     assert '<div class="main-word">' in rendered["frontHtml"]
     assert "承" in rendered["frontHtml"]
     assert "/api/media?name=front.gif" in rendered["frontHtml"]
@@ -158,11 +161,14 @@ def test_rendered_preview_preserves_safe_inline_styles_class_and_media_order():
 
     html = rendered["frontHtml"]
     assert rendered["renderSource"] == "anki_like_fallback"
-    assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=%E8%A6%81%E6%9C%9B.mp3"></audio>' in html
+    assert 'class="asr-card-replay-button"' in html
+    assert 'class="asr-card-audio"' in html
+    assert 'src="/api/media?name=%E8%A6%81%E6%9C%9B.mp3"' in html
+    assert " controls" not in html
     assert 'style="color: rgb(170, 170, 127)"' in html
     assert 'style="color: rgb(255, 165, 0)"' in html
     assert 'class="word-focus"' in html
-    assert html.index("asr-card-audio") < html.index("rgb(170, 170, 127)") < html.index("%E8%A6%81.gif") < html.index("%E6%9C%9B.gif") < html.index("word-focus")
+    assert html.index("asr-card-replay-button") < html.index("rgb(170, 170, 127)") < html.index("%E8%A6%81.gif") < html.index("%E6%9C%9B.gif") < html.index("word-focus")
     assert rendered["css"].startswith(".word-focus")
     assert rendered["cardOrd"] == 0
     assert rendered["mediaRefs"] == [
@@ -221,6 +227,9 @@ def test_native_rendered_preview_uses_card_question_answer_and_sanitizer():
     assert "onclick" not in rendered["backHtml"]
     assert "/api/media?name=%E8%A6%81.gif" in rendered["frontHtml"]
     assert "/api/media?name=%E8%A6%81%E6%9C%9B.mp3" in rendered["backHtml"]
+    assert 'class="asr-card-replay-button"' in rendered["backHtml"]
+    assert 'class="asr-card-audio"' in rendered["backHtml"]
+    assert " controls" not in rendered["backHtml"]
 
 
 def test_native_rendered_preview_replaces_anki_av_markers_in_place():
@@ -256,8 +265,11 @@ def test_native_rendered_preview_replaces_anki_av_markers_in_place():
     assert "[anki:play:" not in rendered["backHtml"]
     assert "[anki:play:" not in rendered["frontPlainText"]
     assert "[anki:play:" not in rendered["backPlainText"]
-    assert rendered["frontHtml"].index("asr-card-audio") < rendered["frontHtml"].index("word-focus")
+    assert rendered["frontHtml"].index("asr-card-replay-button") < rendered["frontHtml"].index("word-focus")
+    assert rendered["backHtml"].count("asr-card-replay-button") == 2
     assert rendered["backHtml"].count("asr-card-audio") == 2
+    assert " controls" not in rendered["frontHtml"]
+    assert " controls" not in rendered["backHtml"]
     assert rendered["mediaRefs"] == [
         {"name": "要望.mp3", "type": "audio", "url": "/api/media?name=%E8%A6%81%E6%9C%9B.mp3"},
         {"name": "answer.mp3", "type": "audio", "url": "/api/media?name=answer.mp3"},

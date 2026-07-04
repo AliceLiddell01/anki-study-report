@@ -38,7 +38,16 @@ try {
     }
 
     $volume = "$($ArtifactsDir):/e2e/artifacts"
-    Invoke-DockerCompose @("run", "--rm", "-v", $volume, "anki-e2e")
+    $runArgs = @("run", "--rm", "-v", $volume)
+    if ($env:ANKI_E2E_REAL_MEDIA_DIR) {
+        $realMediaPath = Resolve-Path -LiteralPath $env:ANKI_E2E_REAL_MEDIA_DIR -ErrorAction Stop
+        $runArgs += @("-v", "$($realMediaPath.Path):/e2e/real-media:ro", "-e", "ANKI_E2E_REAL_MEDIA_DIR=/e2e/real-media")
+    }
+    if ($env:ANKI_E2E_REQUIRE_REAL_MEDIA) {
+        $runArgs += @("-e", "ANKI_E2E_REQUIRE_REAL_MEDIA=$($env:ANKI_E2E_REQUIRE_REAL_MEDIA)")
+    }
+    $runArgs += "anki-e2e"
+    Invoke-DockerCompose $runArgs
 } finally {
     Pop-Location
 }

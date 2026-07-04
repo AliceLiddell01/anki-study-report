@@ -61,8 +61,11 @@ try {
     !shadowDetails.hasOpenShadowRoot ||
     !shadowDetails.hasStyle ||
     !shadowDetails.hasCard ||
-    shadowDetails.imgCount < 2 ||
-    shadowDetails.audioCount < 1 ||
+    shadowDetails.imgCount !== 2 ||
+    shadowDetails.audioElementCount < 1 ||
+    !shadowDetails.hasReplayButton ||
+    shadowDetails.hasVisibleNativeAudioControls ||
+    !shadowDetails.imagesLoaded ||
     shadowDetails.renderSource !== "anki_native" ||
     shadowDetails.hasRawAnkiPlayMarker ||
     shadowDetails.hasRawSoundMarker ||
@@ -200,13 +203,39 @@ async function inspectShadowPreview(page) {
       const template = host.querySelector("template")?.innerHTML || "";
       const searchable = `${host.getAttribute("title") || ""}\n${template}\n${html}`;
       const cardHtml = shadowRoot?.querySelector(".card")?.innerHTML || html;
+      const replayIndex = cardHtml.indexOf("asr-card-replay-button");
       const audioIndex = Math.max(cardHtml.indexOf("asr-card-audio"), cardHtml.indexOf("<audio"));
-      const replayIndex = cardHtml.indexOf("asr-card-replay");
-      const controlIndex = audioIndex >= 0 ? audioIndex : replayIndex;
+      const controlIndex = replayIndex >= 0 ? replayIndex : audioIndex;
       const exampleIndex = cardHtml.indexOf("word-focus");
       if (!searchable.includes("要望") && !searchable.includes("%E8%A6%81")) {
         continue;
       }
+      const imageDetails = [...(shadowRoot?.querySelectorAll("img") || [])].map((image) => {
+        const rect = image.getBoundingClientRect();
+        return {
+          src: image.getAttribute("src") || "",
+          complete: image.complete,
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          renderedWidth: rect.width,
+          renderedHeight: rect.height,
+        };
+      });
+      const audioElements = [...(shadowRoot?.querySelectorAll("audio") || [])];
+      const hasVisibleNativeAudioControls = audioElements.some((audio) => {
+        const rect = audio.getBoundingClientRect();
+        return audio.hasAttribute("controls") && rect.width > 0 && rect.height > 0;
+      });
+      const imagesLoaded =
+        imageDetails.length === 2 &&
+        imageDetails.every(
+          (image) =>
+            image.complete &&
+            image.naturalWidth > 20 &&
+            image.naturalHeight > 20 &&
+            image.renderedWidth > 20 &&
+            image.renderedHeight > 20,
+        );
       return {
         exists: true,
         mode: host.getAttribute("data-shadow-preview-mode") || "",
@@ -215,7 +244,12 @@ async function inspectShadowPreview(page) {
         hasStyle: Boolean(shadowRoot?.querySelector("style")),
         hasCard: Boolean(shadowRoot?.querySelector(".card")),
         imgCount: shadowRoot?.querySelectorAll("img").length || 0,
-        audioCount: shadowRoot?.querySelectorAll("audio, .asr-card-audio").length || 0,
+        audioCount: audioElements.length,
+        audioElementCount: audioElements.length,
+        hasReplayButton: Boolean(shadowRoot?.querySelector(".asr-card-replay-button")),
+        hasVisibleNativeAudioControls,
+        imagesLoaded,
+        imageDetails,
         hasWordFocus: Boolean(shadowRoot?.querySelector(".word-focus")),
         hasInlineColor: Boolean(shadowRoot?.querySelector('[style*="color"]')),
         hasRawAnkiPlayMarker: html.includes("[anki:play:"),
@@ -234,6 +268,11 @@ async function inspectShadowPreview(page) {
       hasCard: false,
       imgCount: 0,
       audioCount: 0,
+      audioElementCount: 0,
+      hasReplayButton: false,
+      hasVisibleNativeAudioControls: false,
+      imagesLoaded: false,
+      imageDetails: [],
       hasWordFocus: false,
       hasInlineColor: false,
       hasRawAnkiPlayMarker: false,

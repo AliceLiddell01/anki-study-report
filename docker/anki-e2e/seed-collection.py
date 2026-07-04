@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
@@ -12,10 +13,17 @@ from typing import Any
 
 
 FIELD_SEPARATOR = "\x1f"
-GIF_1X1 = base64.b64decode(
-    "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+GIF_96X96 = base64.b64decode(
+    "R0lGODdhYABgAIEAAP///yVj6wAAAAAAACwAAAAAYABgAEAI/wABCBxIsKDBgwgTKlzIsKHDhxAjSpzYMIBFiwQvYhyoMUBGjR8vhtwosONIjxxJTjSZUmRLlSxLgnyJ"
+    "UqZLmzBrUowJgKfPmTh1/rzZE2hPiieT0lQalGlRojx3Oh2aE6pRqkKNrsxqtWvVr1zBOpXoNazZqVfTlkWqVuzSt03hPnVLtu1ZuVjRekXKt6/fv4ADC4Z4N67huYUR"
+    "61W5dXHivHjt8l0bmfJhyIcjSq5MVzHnxIQ3XxbtefTenaQxl16tmmhdy6xTy7bat/Xszq392oa9u7PUz46DAx9MvLjx48iTK19eEfftx891Rx9uGjdq57ynV9d5Hbt36"
+    "LC7g///Lrz67+3lY2d3vXU9eerqUafvPR50+/fo4f+8Pl+7et/31defe0J1NyB+/9n3GoL0pSfegQLqx55DEeZnYYLSEQjhgPJJqKGHjAW4IYjQ8UfiiBcyp+KKLLbo4"
+    "oswxijjjDTWaOONOOaYEooYnvhXgz6myJZ/QF4YIoVEJumeiUYqiaBmPBbZY4YMOvnYkB82meVTBgY55ZdRPVTlllJOZmWUWmE55poliuillFQxCeaZ8EH5Jp2ZqVnhnG"
+    "TqiSaZanWpJZsOirknnP6ZCeiiAD54J6NZOTroobfJiSikYxH2J6FyKcrppFP5+einXN63KaXhGXrqqj/iyWejboI1Omqksb6KqneWunrpkRSyKmuektrq61HB7norV4I"
+    "KO2umSA5rLGDPLqvjtNRWa+212Gb7V0AAOw=="
 )
 TINY_MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00TIT2\x00\x00\x00\x05\x00\x00\x03e2e\x00"
+REAL_MEDIA_ALLOWLIST = ("要.gif", "望.gif", "要望.mp3")
 
 JAPANESE_FRONT = (
     '[sound:要望.mp3]<br>'
@@ -64,7 +72,7 @@ def main() -> int:
     media_dir = profile_dir / "collection.media"
     reset_collection(collection_path, media_dir)
     create_collection(collection_path)
-    write_media(media_dir)
+    media_summary = write_media(media_dir)
     card_ids = seed_review_history(collection_path)
 
     fixture_summary = {
@@ -77,6 +85,7 @@ def main() -> int:
             "Custom CSS fixture",
             "Unsafe sanitizer fixture",
         ],
+        "media": media_summary,
     }
     (artifacts_dir / "fixture-summary.json").write_text(
         json.dumps(fixture_summary, ensure_ascii=False, indent=2),
@@ -252,11 +261,42 @@ def close_collection(col: Any) -> None:
         method()
 
 
-def write_media(media_dir: Path) -> None:
+def write_media(media_dir: Path) -> dict[str, Any]:
     media_dir.mkdir(parents=True, exist_ok=True)
     for name in ("要.gif", "望.gif"):
-        (media_dir / name).write_bytes(GIF_1X1)
+        (media_dir / name).write_bytes(GIF_96X96)
     (media_dir / "要望.mp3").write_bytes(TINY_MP3)
+    summary = {
+        "mode": "synthetic",
+        "syntheticFiles": list(REAL_MEDIA_ALLOWLIST),
+        "realMediaDir": "",
+        "copiedRealMedia": [],
+        "missingRealMedia": [],
+        "requireRealMedia": os.environ.get("ANKI_E2E_REQUIRE_REAL_MEDIA") == "1",
+    }
+    real_media_dir = Path(os.environ.get("ANKI_E2E_REAL_MEDIA_DIR") or "/e2e/real-media")
+    if real_media_dir.exists():
+        summary["mode"] = "real-media"
+        summary["realMediaDir"] = str(real_media_dir)
+        for name in REAL_MEDIA_ALLOWLIST:
+            source = real_media_dir / name
+            if source.is_file():
+                shutil.copyfile(source, media_dir / name)
+                summary["copiedRealMedia"].append(name)
+            else:
+                summary["missingRealMedia"].append(name)
+    elif summary["requireRealMedia"]:
+        summary["missingRealMedia"] = list(REAL_MEDIA_ALLOWLIST)
+
+    if summary["requireRealMedia"] and summary["missingRealMedia"]:
+        missing = ", ".join(summary["missingRealMedia"])
+        raise RuntimeError(f"Required real media files are missing: {missing}")
+
+    print(
+        "Media fixture mode: "
+        f"{summary['mode']}; copied={summary['copiedRealMedia']}; missing={summary['missingRealMedia']}"
+    )
+    return summary
 
 
 def seed_review_history(collection_path: Path) -> dict[str, list[int]]:

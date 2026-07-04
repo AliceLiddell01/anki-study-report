@@ -607,9 +607,16 @@ def _replace_native_av_markers(
 
 
 def _audio_control_html(ref: dict[str, str]) -> str:
+    name = sanitize_media_filename(ref.get("name"))
+    label = f"Play audio {name}" if name else "Play audio"
     return (
-        f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" '
-        f'src="{escape(ref["url"], quote=True)}"></audio>'
+        '<span class="asr-card-replay">'
+        f'<button class="asr-card-replay-button" type="button" aria-label="{escape(label, quote=True)}" '
+        f'data-audio-name="{escape(name, quote=True)}">'
+        '<span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span>'
+        "</button>"
+        f'<audio class="asr-card-audio" preload="none" src="{escape(ref["url"], quote=True)}"></audio>'
+        "</span>"
     )
 
 
@@ -765,7 +772,7 @@ def _rewrite_sound_tags(text: str, media_refs: list[dict[str, str]]) -> str:
             return '<span class="asr-card-media-missing">медиа недоступно</span>'
         ref = media_ref_for_name(name)
         media_refs.append(ref)
-        return f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="{escape(ref["url"], quote=True)}"></audio>'
+        return _audio_control_html(ref)
 
     return re.sub(r"\[sound:([^\]]+)\]", replace, text, flags=re.IGNORECASE)
 
@@ -970,10 +977,24 @@ def _plain_text(value: Any) -> str:
     text = str(value or "")
     text = re.sub(r"\[anki:play:[qa]:\d+\]", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\[sound:[^\]]+\]", " ", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"<button\b[^>]*class=(['\"])[^'\"]*\basr-card-replay-button\b[^'\"]*\1[^>]*>.*?</button>",
+        " ",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = re.sub(
+        r"<audio\b[^>]*class=(['\"])[^'\"]*\basr-card-audio\b[^'\"]*\1[^>]*>.*?</audio>",
+        " ",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = re.sub(r"&#(?:9658|x25ba);", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
     text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
     text = unescape(text)
+    text = text.replace("▶", " ")
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
