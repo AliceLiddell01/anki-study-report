@@ -170,6 +170,7 @@ def test_dashboard_payload_includes_sanitized_attention_cards():
                 "backPlainText": "",
                 "css": "",
                 "mediaRefs": [],
+                "cardOrd": 0,
                 "reason": "",
             },
             "issues": ["repeated again", "missing_audio"],
@@ -242,6 +243,47 @@ def test_dashboard_payload_sanitizes_rendered_preview():
     assert "https://" not in rendered["css"]
     assert "file://" not in rendered["css"]
     assert rendered["mediaRefs"] == [{"name": "safe-media.mp3", "type": "audio", "url": "/api/media?name=safe-media.mp3"}]
+    assert rendered["cardOrd"] == 0
+
+
+def test_dashboard_payload_preserves_safe_rendered_style_class_and_media_refs():
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    fixture = load_dashboard_fixture("normal_day")
+    metrics = {
+        **fixture["metrics"],
+        "attention_cards": [
+            {
+                "cardId": 123,
+                "deckName": "Japanese::Core",
+                "frontPreview": "要望する",
+                "issues": ["missing_audio"],
+                "renderedPreview": {
+                    "renderStatus": "available",
+                    "frontHtml": (
+                        '<span class="word-focus" style="color: rgb(255, 165, 0); position:absolute">要望する</span>'
+                        '<img src="/api/media?name=%E8%A6%81.gif&token=secret">'
+                    ),
+                    "css": ".word-focus { color: orange; }",
+                    "mediaRefs": [
+                        {"name": "要.gif", "type": "image", "url": "/api/media?name=%E8%A6%81.gif&token=secret"},
+                    ],
+                    "cardOrd": 1,
+                },
+            }
+        ],
+    }
+
+    payload = dashboard_payload.build_dashboard_report_payload(metrics, fixture["metadata"], cache_summary=fixture["cache"])
+    rendered = payload["attentionCards"][0]["renderedPreview"]
+
+    assert rendered["renderStatus"] == "sanitized"
+    assert 'class="word-focus"' in rendered["frontHtml"]
+    assert 'style="color: rgb(255, 165, 0)"' in rendered["frontHtml"]
+    assert "position" not in rendered["frontHtml"]
+    assert "token=secret" not in rendered["frontHtml"]
+    assert rendered["css"] == ".word-focus { color: orange; }"
+    assert rendered["mediaRefs"] == [{"name": "要.gif", "type": "image", "url": "/api/media?name=%E8%A6%81.gif"}]
+    assert rendered["cardOrd"] == 1
 
 
 def test_dashboard_payload_marks_missing_attention_card_collector_unavailable():

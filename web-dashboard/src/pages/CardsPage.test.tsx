@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AnkiCardShadowPreview, buildShadowPreviewDocument } from "../components/AnkiCardShadowPreview";
 import CardsPage from "./CardsPage";
 import type { StudyReport } from "../types/report";
 
@@ -60,6 +61,7 @@ const baseReport: StudyReport = {
         frontPlainText: "表だけ",
         backPlainText: "back-side meaning",
         css: ".word { color: red; }",
+        cardOrd: 0,
         mediaRefs: [
           { name: "front.gif", type: "image", url: "/api/media?name=front.gif" },
           { name: "voice.mp3", type: "audio", url: "/api/media?name=voice.mp3" },
@@ -159,6 +161,14 @@ describe("CardsPage v4 UX corrections", () => {
     const html = renderCards("table");
 
     expect(html).toContain("表だけ");
+    expect(html).toContain("cards-risk-table");
+    expect(html).toContain("cards-risk-badge");
+    expect(html).toContain("Высокий ·");
+    expect(html).toContain("cards-row-open");
+    expect(html).toContain("Открыть в Anki");
+    expect(html).toContain("cards-row-copy");
+    expect(html).toContain("anki-card-shadow-preview");
+    expect(html).toContain('data-shadow-preview="true"');
     expect(html).toContain("asr-front-preview-table");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
@@ -175,6 +185,7 @@ describe("CardsPage v4 UX corrections", () => {
     const html = renderCards("tiles");
 
     expect(html).toContain("表だけ");
+    expect(html).toContain("anki-card-shadow-preview");
     expect(html).toContain("asr-front-preview-tile");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
@@ -184,7 +195,7 @@ describe("CardsPage v4 UX corrections", () => {
   it("renders simplified Anki preview from the front template only", () => {
     const html = renderCards("ankiPreview");
 
-    expect(html).toContain("Front");
+    expect(html).toContain("Лицевая сторона");
     expect(html).toContain("表だけ");
     expect(html).toContain(".asr-card-rendered .word");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
@@ -193,18 +204,47 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).not.toContain("/api/media?name=voice.mp3");
     expect(html).not.toContain("Both");
     expect(html).not.toContain("Anki-like preview fallback");
-    expect(html).not.toContain("Упрощённый preview");
+    expect(html).not.toContain("Упрощённое превью");
   });
 
-  it("keeps display settings compact and hides raw debug wording", () => {
+  it("keeps template diagnostics closed and hides raw debug wording", () => {
     const html = renderCards("table");
 
     expect(html).toContain("Настройки отображения");
-    expect(html).toContain("Всего типов записей в коллекции");
-    expect(html).toContain("Типы записей коллекции");
+    expect(html).toContain("Диагностика шаблонов");
+    expect(html).toContain("Типов записей в коллекции");
     expect(html).toContain("Japanese vocab");
     expect(html).not.toContain("localStorage");
     expect(html).not.toContain("Config contract");
     expect(html).not.toContain("strategy auto/structured");
+  });
+
+  it("builds a shadow preview document with card classes, note CSS, and safe HTML", () => {
+    const renderedHost = renderToStaticMarkup(
+      <AnkiCardShadowPreview
+        mode="table"
+        html='<span class="word-focus" style="color: rgb(255, 165, 0)">要望する</span>'
+        css=".word-focus { font-weight: 700; }"
+        title="要望する"
+        cardOrd={1}
+        nightMode
+      />,
+    );
+    const document = buildShadowPreviewDocument({
+      mode: "table",
+      html: '<span class="word-focus">要望する</span>',
+      css: ".word-focus { font-weight: 700; }",
+      cardOrd: 1,
+      nightMode: true,
+    });
+
+    expect(renderedHost).toContain('data-shadow-preview="true"');
+    expect(renderedHost).toContain("data-shadow-preview-template");
+    expect(renderedHost).toContain("word-focus");
+    expect(document.cardClassName).toBe("card card2 nightMode");
+    expect(document.viewportClassName).toBe("asr-shadow-card-viewport asr-shadow-card-viewport--table");
+    expect(document.styleText).toContain(".word-focus { font-weight: 700; }");
+    expect(document.styleText).toContain("transform: scale(0.36)");
+    expect(document.html).toContain("要望する");
   });
 });

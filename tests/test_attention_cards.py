@@ -194,6 +194,7 @@ def test_collect_attention_cards_builds_read_only_payload():
             "frontPlainText": "鑑みる",
             "backPlainText": "鑑みる consider",
             "mediaRefs": [],
+            "cardOrd": 0,
             "reason": "template renderer",
         },
         "issues": [

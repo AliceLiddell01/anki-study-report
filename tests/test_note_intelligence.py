@@ -3,12 +3,13 @@ from __future__ import annotations
 from conftest import fresh_import_addon_module
 
 
-def model(name, fields, templates=None):
+def model(name, fields, templates=None, css=""):
     return {
         "id": 42,
         "name": name,
         "flds": [{"name": field} for field in fields],
         "tmpls": templates or [{"ord": 0, "name": "Card 1", "qfmt": "{{Слово}}", "afmt": "{{Значение}}"}],
+        "css": css,
     }
 
 
@@ -124,7 +125,7 @@ def test_rendered_preview_uses_front_template_and_front_media_only():
     )
 
     assert rendered["frontPlainText"] == "承"
-    assert '<audio class="asr-card-audio" controls preload="none" src="/api/media?name=front.mp3"></audio>' in rendered["frontHtml"]
+    assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=front.mp3"></audio>' in rendered["frontHtml"]
     assert '<div class="main-word">' in rendered["frontHtml"]
     assert "承" in rendered["frontHtml"]
     assert "/api/media?name=front.gif" in rendered["frontHtml"]
@@ -133,6 +134,61 @@ def test_rendered_preview_uses_front_template_and_front_media_only():
         {"name": "front.gif", "type": "image", "url": "/api/media?name=front.gif"},
         {"name": "front.mp3", "type": "audio", "url": "/api/media?name=front.mp3"},
     ]
+
+
+def test_rendered_preview_preserves_safe_inline_styles_class_and_media_order():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    front = (
+        '[sound:要望.mp3]<br>【<span style="color: rgb(170, 170, 127);"><b>を</b></span>】'
+        '<img src="要.gif"><img src="望.gif">（<span style="color: rgb(255, 165, 0);"><b>する</b></span>）'
+        '<br><br>（改善を<span class="word-focus">要望する</span>。）'
+    )
+
+    rendered = note_intelligence.build_rendered_preview(
+        model(
+            "Any user note type",
+            ["Слово"],
+            [{"ord": 0, "name": "Recognition", "qfmt": "{{Слово}}", "afmt": "{{FrontSide}}"}],
+            css=".word-focus { color: #67d391; font-weight: 700; } .card.nightMode { background: #111827; }",
+        ),
+        front,
+    )
+
+    html = rendered["frontHtml"]
+    assert '<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" src="/api/media?name=%E8%A6%81%E6%9C%9B.mp3"></audio>' in html
+    assert 'style="color: rgb(170, 170, 127)"' in html
+    assert 'style="color: rgb(255, 165, 0)"' in html
+    assert 'class="word-focus"' in html
+    assert html.index("asr-card-audio") < html.index("rgb(170, 170, 127)") < html.index("%E8%A6%81.gif") < html.index("%E6%9C%9B.gif") < html.index("word-focus")
+    assert rendered["css"].startswith(".word-focus")
+    assert rendered["cardOrd"] == 0
+    assert rendered["mediaRefs"] == [
+        {"name": "要.gif", "type": "image", "url": "/api/media?name=%E8%A6%81.gif"},
+        {"name": "望.gif", "type": "image", "url": "/api/media?name=%E6%9C%9B.gif"},
+        {"name": "要望.mp3", "type": "audio", "url": "/api/media?name=%E8%A6%81%E6%9C%9B.mp3"},
+    ]
+
+
+def test_rendered_preview_removes_dangerous_html_urls_and_styles():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    html, refs = note_intelligence.sanitize_rendered_html(
+        '<script>alert(1)</script>'
+        '<span class="word-focus" style="position:absolute;color:red;background-image:url(javascript:alert(1));font-weight:700">x</span>'
+        '<img src="x.gif" onerror="alert(1)" srcset="evil.gif 2x">'
+        '<a href="javascript:alert(1)">bad</a>'
+        '<img src="file:///C:/secret.png">'
+        '<img src="C:\\Users\\KykLa\\secret.png">'
+    )
+
+    assert "<script" not in html
+    assert "onerror" not in html
+    assert "javascript:" not in html
+    assert "file://" not in html
+    assert "C:\\Users" not in html
+    assert "srcset" not in html
+    assert 'class="word-focus"' in html
+    assert 'style="color: red; font-weight: 700"' in html
+    assert refs == [{"name": "x.gif", "type": "image", "url": "/api/media?name=x.gif"}]
 
 
 def test_preview_front_fallback_uses_primary_only_when_template_is_unavailable():
