@@ -959,9 +959,14 @@ def _dashboard_rendered_preview(value) -> dict:
     status = str(data.get("renderStatus") or data.get("render_status") or "unavailable").strip()
     if status not in {"available", "unavailable", "sanitized", "fallback", "error"}:
         status = "unavailable"
+    render_source = str(data.get("renderSource") or data.get("render_source") or "").strip()
+    if render_source not in {"anki_native", "anki_like_fallback"}:
+        render_source = "anki_like_fallback" if status in {"sanitized", "fallback"} else ""
     media_refs = _dashboard_media_refs(data.get("mediaRefs") or data.get("media_refs"))
     payload = {
         "renderStatus": status,
+        "renderSource": render_source,
+        "fallbackReason": _dashboard_preview_text(data.get("fallbackReason") or data.get("fallback_reason")),
         "frontHtml": _dashboard_preview_html(data.get("frontHtml") or data.get("front_html")),
         "backHtml": _dashboard_preview_html(data.get("backHtml") or data.get("back_html")),
         "frontPlainText": _dashboard_preview_text(data.get("frontPlainText") or data.get("front_plain_text")),
@@ -969,6 +974,7 @@ def _dashboard_rendered_preview(value) -> dict:
         "css": _dashboard_preview_css(data.get("css")),
         "mediaRefs": media_refs[:20],
         "cardOrd": max(0, dashboard_int(data.get("cardOrd") if data.get("cardOrd") is not None else data.get("card_ord"))),
+        "cardId": max(0, dashboard_int(data.get("cardId") if data.get("cardId") is not None else data.get("card_id"))),
         "reason": _dashboard_preview_text(data.get("reason")),
     }
     if payload["frontHtml"] or payload["backHtml"] or payload["css"]:

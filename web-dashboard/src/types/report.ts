@@ -128,7 +128,10 @@ export interface RenderedCardPreview {
   css?: string;
   mediaRefs?: CardMediaRef[];
   cardOrd?: number;
+  cardId?: number;
+  renderSource?: "anki_native" | "anki_like_fallback" | string;
   renderStatus: "available" | "unavailable" | "sanitized" | "fallback" | "error";
+  fallbackReason?: string;
   reason?: string;
 }
 

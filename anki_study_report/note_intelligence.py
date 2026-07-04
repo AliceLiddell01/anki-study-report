@@ -10,6 +10,8 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 FIELD_SEPARATOR = "\x1f"
 PREVIEW_SCHEMA_VERSION = 1
+RENDER_SOURCE_ANKI_NATIVE = "anki_native"
+RENDER_SOURCE_ANKI_LIKE_FALLBACK = "anki_like_fallback"
 IMAGE_MEDIA_EXTENSIONS = {"gif", "png", "jpg", "jpeg", "webp"}
 AUDIO_MEDIA_EXTENSIONS = {"mp3", "ogg", "wav", "m4a", "flac"}
 MEDIA_EXTENSIONS = IMAGE_MEDIA_EXTENSIONS | AUDIO_MEDIA_EXTENSIONS
@@ -166,7 +168,101 @@ def build_note_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> dict[s
     }
 
 
-def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> dict[str, Any]:
+def build_rendered_preview_native_first(
+    col: Any,
+    card_id: Any,
+    model: Any,
+    raw_fields: Any,
+    card_ord: Any = 0,
+) -> dict[str, Any]:
+    """Render from a live Anki Card first, with the template renderer as fallback."""
+
+    native, fallback_reason = try_render_native_card_preview(col, card_id, card_ord=card_ord)
+    if native is not None:
+        return native
+    return build_rendered_preview(
+        model,
+        raw_fields,
+        card_ord,
+        card_id=card_id,
+        fallback_reason=fallback_reason or "native_unavailable",
+    )
+
+
+def try_render_native_card_preview(col: Any, card_id: Any, card_ord: Any = 0) -> tuple[dict[str, Any] | None, str | None]:
+    """Best-effort native Anki render for one card.
+
+    The add-on may also run in unit tests without Anki, so this function never
+    raises to callers. It returns a short machine-readable fallback reason when
+    native rendering is unavailable.
+    """
+
+    card_id_int = _safe_int(card_id)
+    if card_id_int <= 0:
+        return None, "native_unavailable_no_card_id"
+    if col is None:
+        return None, "native_unavailable_no_collection"
+    try:
+        get_card = getattr(col, "get_card")
+    except Exception:
+        return None, "native_unavailable_no_get_card"
+    if not callable(get_card):
+        return None, "native_unavailable_no_get_card"
+    try:
+        card = get_card(card_id_int)
+    except Exception:
+        return None, "native_unavailable_get_card_failed"
+    if card is None:
+        return None, "native_unavailable_card_missing"
+    return render_card_preview_native(card, card_id=card_id_int, card_ord=card_ord)
+
+
+def render_card_preview_native(card: Any, *, card_id: Any = None, card_ord: Any = 0) -> tuple[dict[str, Any] | None, str | None]:
+    """Render a safe card preview using Anki's Card/TemplateRenderOutput APIs."""
+
+    try:
+        native = _native_render_output(card)
+        if native is None:
+            native = _native_question_answer(card)
+        if native is None:
+            return None, "native_render_failed"
+
+        front_raw = native.get("frontHtml") or ""
+        back_raw = native.get("backHtml") or ""
+        front_raw = _append_av_media_html(front_raw, native.get("frontAvTags"))
+        back_raw = _append_av_media_html(back_raw, native.get("backAvTags"))
+        front_html, front_media = sanitize_rendered_html(front_raw)
+        back_html, back_media = sanitize_rendered_html(back_raw)
+        css = sanitize_card_css(native.get("css"))
+        media_refs = _unique_media_refs(front_media + back_media)
+        if not front_html and not back_html and not safe_plain_text(front_raw) and not safe_plain_text(back_raw):
+            return None, "native_render_empty"
+        return {
+            "renderStatus": "sanitized",
+            "renderSource": RENDER_SOURCE_ANKI_NATIVE,
+            "fallbackReason": None,
+            "frontHtml": front_html,
+            "backHtml": back_html,
+            "css": css,
+            "frontPlainText": safe_plain_text(front_raw, 240),
+            "backPlainText": safe_plain_text(back_raw, 320),
+            "mediaRefs": media_refs,
+            "cardOrd": _safe_int(card_ord, _safe_int(getattr(card, "ord", 0))),
+            "cardId": _safe_int(card_id, _safe_int(getattr(card, "id", 0))),
+            "reason": "native Anki renderer",
+        }, None
+    except Exception:
+        return None, "native_render_failed"
+
+
+def build_rendered_preview(
+    model: Any,
+    raw_fields: Any,
+    card_ord: Any = 0,
+    *,
+    card_id: Any = None,
+    fallback_reason: str = "native_unavailable_not_requested",
+) -> dict[str, Any]:
     """Render a safe Anki-like front/back preview from card templates."""
 
     model_dict = model if isinstance(model, dict) else {}
@@ -174,8 +270,12 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
     if not template:
         return {
             "renderStatus": "unavailable",
+            "renderSource": RENDER_SOURCE_ANKI_LIKE_FALLBACK,
+            "fallbackReason": fallback_reason or "anki_like_template_unavailable",
             "reason": "Card template is unavailable; structured preview is used.",
             "mediaRefs": [],
+            "cardOrd": _safe_int(card_ord),
+            "cardId": _safe_int(card_id),
         }
 
     fields = _field_value_map(model_dict, split_field_values(raw_fields))
@@ -197,16 +297,21 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
     if not front_html and not back_html and not front_plain and not back_plain:
         return {
             "renderStatus": "fallback",
+            "renderSource": RENDER_SOURCE_ANKI_LIKE_FALLBACK,
+            "fallbackReason": fallback_reason,
             "frontPlainText": "Карточка без front preview",
             "backPlainText": "",
             "css": css,
             "mediaRefs": media_refs,
             "cardOrd": _safe_int(card_ord),
+            "cardId": _safe_int(card_id),
             "reason": "Template rendered no visible front/back content.",
         }
 
     return {
         "renderStatus": "sanitized",
+        "renderSource": RENDER_SOURCE_ANKI_LIKE_FALLBACK,
+        "fallbackReason": fallback_reason,
         "frontHtml": front_html,
         "backHtml": back_html,
         "css": css,
@@ -214,6 +319,7 @@ def build_rendered_preview(model: Any, raw_fields: Any, card_ord: Any = 0) -> di
         "backPlainText": back_plain,
         "mediaRefs": media_refs,
         "cardOrd": _safe_int(card_ord),
+        "cardId": _safe_int(card_id),
         "reason": reason,
     }
 
@@ -224,6 +330,7 @@ def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
     media_refs: list[dict[str, str]] = []
     text = str(value or "")
     text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style\b[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r"<(?:iframe|object|embed|meta|link)\b[^>]*>.*?</(?:iframe|object|embed)>", " ", text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r"<(?:iframe|object|embed|meta|link)\b[^>]*>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
@@ -376,6 +483,128 @@ def media_ref_for_name(name: str) -> dict[str, str]:
         "type": media_type,
         "url": f"/api/media?name={quote(name, safe='')}",
     }
+
+
+def _native_render_output(card: Any) -> dict[str, Any] | None:
+    render_output = getattr(card, "render_output", None)
+    if not callable(render_output):
+        return None
+    output = _call_native_render_output(render_output)
+    if output is None:
+        return None
+    front = _native_output_text(output, ("question_text", "question_html", "question"), "question_and_style")
+    back = _native_output_text(output, ("answer_text", "answer_html", "answer"), "answer_and_style")
+    css = _native_output_attr(output, "css")
+    return {
+        "frontHtml": front,
+        "backHtml": back,
+        "css": css,
+        "frontAvTags": _native_output_attr(output, "question_av_tags"),
+        "backAvTags": _native_output_attr(output, "answer_av_tags"),
+    }
+
+
+def _native_question_answer(card: Any) -> dict[str, Any] | None:
+    question = _call_native_card_method(getattr(card, "question", None))
+    answer = _call_native_card_method(getattr(card, "answer", None))
+    if question is None and answer is None:
+        return None
+    return {"frontHtml": question or "", "backHtml": answer or "", "css": ""}
+
+
+def _call_native_render_output(render_output: Any) -> Any:
+    for kwargs in (
+        {"reload": True, "browser": True},
+        {"browser": True},
+        {"reload": True},
+        {},
+    ):
+        try:
+            return render_output(**kwargs)
+        except TypeError:
+            continue
+    return None
+
+
+def _call_native_card_method(method: Any) -> str | None:
+    if not callable(method):
+        return None
+    for kwargs in (
+        {"reload": True, "browser": True},
+        {"browser": True},
+        {"reload": True},
+        {},
+    ):
+        try:
+            return str(method(**kwargs) or "")
+        except TypeError:
+            continue
+    return None
+
+
+def _native_output_text(output: Any, attrs: tuple[str, ...], method_name: str) -> str:
+    for attr in attrs:
+        value = _native_output_attr(output, attr)
+        if value:
+            return str(value)
+    method = getattr(output, method_name, None)
+    if callable(method):
+        try:
+            return str(method() or "")
+        except Exception:
+            return ""
+    return ""
+
+
+def _native_output_attr(output: Any, attr: str) -> Any:
+    try:
+        if isinstance(output, dict):
+            return output.get(attr)
+        return getattr(output, attr)
+    except Exception:
+        return None
+
+
+def _append_av_media_html(html: Any, av_tags: Any) -> str:
+    text = str(html or "")
+    refs = _media_refs_from_av_tags(av_tags)
+    if not refs:
+        return text
+    existing_names = {ref["name"] for ref in _unique_media_refs(sanitize_rendered_html(text)[1])}
+    additions = []
+    for ref in refs:
+        if ref["name"] in existing_names:
+            continue
+        additions.append(
+            f'<audio class="asr-card-audio" controls controlsList="nodownload noplaybackrate" preload="none" '
+            f'src="{escape(ref["url"], quote=True)}"></audio>'
+        )
+    return text + "".join(additions)
+
+
+def _media_refs_from_av_tags(av_tags: Any) -> list[dict[str, str]]:
+    raw_tags = av_tags if isinstance(av_tags, (list, tuple, set)) else ([av_tags] if av_tags else [])
+    refs: list[dict[str, str]] = []
+    for tag in raw_tags:
+        name = ""
+        for attr in ("filename", "fname", "sound", "path"):
+            try:
+                name = sanitize_media_filename(getattr(tag, attr))
+            except Exception:
+                name = ""
+            if name:
+                break
+        if not name and isinstance(tag, dict):
+            for key in ("filename", "fname", "sound", "path"):
+                name = sanitize_media_filename(tag.get(key))
+                if name:
+                    break
+        if not name:
+            match = re.search(r"([^\\/\s'\"<>]+\.(?:mp3|ogg|wav|m4a|flac))", str(tag), flags=re.IGNORECASE)
+            name = sanitize_media_filename(match.group(1) if match else "")
+        if name:
+            refs.append(media_ref_for_name(name))
+    return _unique_media_refs(refs)
 
 
 def safe_plain_text(value: Any, limit: int | None = None) -> str:

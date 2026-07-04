@@ -510,6 +510,7 @@ function normalizeRenderedPreview(value: unknown): RenderedCardPreview | undefin
   }
   const record = value as Record<string, unknown>;
   const renderStatus = safeText(record.renderStatus ?? record.render_status, "unavailable");
+  const renderSource = safeText(record.renderSource ?? record.render_source, "");
   return {
     renderStatus:
       renderStatus === "available" || renderStatus === "sanitized" || renderStatus === "fallback" || renderStatus === "error" || renderStatus === "unavailable"
@@ -521,6 +522,10 @@ function normalizeRenderedPreview(value: unknown): RenderedCardPreview | undefin
     backPlainText: safeText(record.backPlainText ?? record.back_plain_text, "") || undefined,
     css: safeText(record.css, "") || undefined,
     mediaRefs: normalizeMediaRefs(record.mediaRefs ?? record.media_refs),
+    cardOrd: finiteOptionalInteger(record.cardOrd ?? record.card_ord),
+    cardId: finiteOptionalInteger(record.cardId ?? record.card_id),
+    renderSource: renderSource || undefined,
+    fallbackReason: safeText(record.fallbackReason ?? record.fallback_reason, "") || undefined,
     reason: safeText(record.reason, "") || undefined,
   };
 }

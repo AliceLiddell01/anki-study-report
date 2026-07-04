@@ -7,6 +7,7 @@ export interface AnkiCardShadowPreviewProps {
   css?: string;
   title?: string;
   cardOrd?: number;
+  renderSource?: string;
   nightMode?: boolean;
   mode: AnkiCardShadowPreviewMode;
   className?: string;
@@ -114,6 +115,7 @@ export function AnkiCardShadowPreview({
   css = "",
   title = "",
   cardOrd = 0,
+  renderSource = "",
   nightMode,
   mode,
   className = "",
@@ -175,6 +177,7 @@ export function AnkiCardShadowPreview({
       data-testid="anki-card-shadow-preview"
       data-shadow-preview="true"
       data-shadow-preview-mode={mode}
+      data-render-source={renderSource}
     >
       <template data-shadow-preview-template dangerouslySetInnerHTML={{ __html: html }} />
     </div>

@@ -885,6 +885,7 @@ function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttentio
         css={row.renderedPreview?.css || ""}
         title={front}
         cardOrd={row.renderedPreview?.cardOrd || 0}
+        renderSource={row.renderedPreview?.renderSource || ""}
         className={`asr-card-rendered asr-front-preview asr-front-preview-${variant} min-w-0 ${className}`}
       />
     );

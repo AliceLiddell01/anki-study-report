@@ -12,7 +12,7 @@ from typing import Any
 from .note_intelligence import (
     analyze_note_type,
     build_note_preview,
-    build_rendered_preview,
+    build_rendered_preview_native_first,
     missing_fields_for_profile,
 )
 
@@ -886,7 +886,7 @@ def _attention_card_payload(
         "deckName": deck_name,
         "frontPreview": front_preview,
         "preview": preview,
-        "renderedPreview": build_rendered_preview(model, raw_fields, card_ord),
+        "renderedPreview": build_rendered_preview_native_first(col, card_id_int, model, raw_fields, card_ord),
         "issues": issues,
         "riskScore": _attention_risk_score(issues, lapses_int),
         "againCount": again_count_int,
