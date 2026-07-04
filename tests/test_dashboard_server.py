@@ -35,6 +35,21 @@ def test_dashboard_server_smoke_endpoints():
         assert "application/json" in content_type
         assert json.loads(body)["running"] is True
 
+        status, _, _ = fetch(f"{base_url}/api/health")
+        assert status == 403
+
+        manager.configure_health_handler(lambda: {"mode": "e2e", "profile": "E2E"})
+        status, content_type, body = fetch(f"{base_url}/api/health?token={token}")
+        assert status == 200
+        assert "application/json" in content_type
+        assert json.loads(body) == {
+            "ok": True,
+            "addon": "Anki Study Report",
+            "mode": "e2e",
+            "profile": "E2E",
+            "hasReport": False,
+        }
+
         status, _, _ = fetch(f"{base_url}/api/report")
         assert status == 403
 

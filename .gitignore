@@ -11,6 +11,7 @@ web-dashboard/dev-server.log
 web-dashboard/dev-server.err
 web-dashboard/.vite-*.log
 web-dashboard/screenshots/
+e2e-artifacts/
 
 anki_study_report/user_files/*.sqlite3
 anki_study_report/user_files/*.sqlite3-wal

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export HOME="${HOME:-/e2e/home}"
+export ANKI_BASE="${ANKI_BASE:-/e2e/anki-data}"
+export ANKI_PROFILE="${ANKI_PROFILE:-E2E}"
+export ANKI_PROFILE_DIR="${ANKI_PROFILE_DIR:-${ANKI_BASE}/${ANKI_PROFILE}}"
+export ANKI_STUDY_REPORT_E2E_ARTIFACTS="${ANKI_STUDY_REPORT_E2E_ARTIFACTS:-/e2e/artifacts}"
+export ANKI_STUDY_REPORT_E2E_READY_FILE="${ANKI_STUDY_REPORT_E2E_READY_FILE:-${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/dashboard-ready.json}"
+export DISPLAY="${DISPLAY:-:99}"
+
+mkdir -p "$HOME" "$ANKI_BASE" "$ANKI_PROFILE_DIR" "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+
+if [ "$#" -eq 0 ]; then
+  set -- /e2e/bin/run-e2e.sh
+fi
+
+exec "$@"

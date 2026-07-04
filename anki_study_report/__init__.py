@@ -7,11 +7,78 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+import json
+import os
 from pathlib import Path
 from time import monotonic
 import shutil
 import threading
 import traceback
+
+
+def _e2e_events_enabled() -> bool:
+    return os.environ.get("ANKI_STUDY_REPORT_E2E") == "1"
+
+
+def _e2e_events_path() -> Path:
+    artifacts = (
+        os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR")
+        or os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS")
+        or "/e2e/artifacts"
+    )
+    return Path(artifacts) / "addon-e2e-events.jsonl"
+
+
+def _e2e_json_safe(value):
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Path):
+        return str(value)
+    return repr(value)
+
+
+def _e2e_safe_repr(value) -> str:
+    try:
+        text = repr(value)
+    except Exception:
+        text = f"<unreprable {type(value).__name__}>"
+    return text[:500]
+
+
+def _write_e2e_event(stage: str, **fields) -> None:
+    if not _e2e_events_enabled():
+        return
+    try:
+        payload = {
+            "stage": str(stage),
+            "time": datetime.now().isoformat(timespec="milliseconds"),
+            "pid": os.getpid(),
+        }
+        payload.update({str(key): _e2e_json_safe(value) for key, value in fields.items()})
+        path = _e2e_events_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+            file.write("\n")
+        print(f"[ASR:E2E] stage={stage}")
+    except Exception:
+        pass
+
+
+_write_e2e_event("import_start")
+if _e2e_events_enabled():
+    _addon_dir = Path(__file__).resolve().parent
+    _write_e2e_event(
+        "addon_folder_present",
+        path=str(_addon_dir),
+        hasInit=(_addon_dir / "__init__.py").is_file(),
+        hasManifest=(_addon_dir / "manifest.json").is_file(),
+    )
+    _write_e2e_event(
+        "e2e_env_detected",
+        artifacts=str(_e2e_events_path().parent),
+        envVar="ANKI_STUDY_REPORT_E2E",
+    )
 
 from aqt import gui_hooks, mw
 from aqt.qt import (
@@ -208,6 +275,8 @@ _WEB_DASHBOARD_DIALOG: WebDashboardSettingsDialog | None = None
 _LAUNCHER_DIALOG: LauncherDialog | None = None
 _DASHBOARD_SERVER = DashboardServerManager()
 _STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3")
+_E2E_BOOTSTRAP_STARTED = False
+_E2E_BOOTSTRAP_DONE = False
 
 
 class StudyReportDialog(QDialog):
@@ -1821,6 +1890,7 @@ def _configure_dashboard_cache_handlers() -> None:
         action_handler=actions.request_server_action,
         status_provider=_server_status_response,
     )
+    _DASHBOARD_SERVER.configure_health_handler(_dashboard_health_response)
     _DASHBOARD_SERVER.configure_display_settings_handlers(
         settings_provider=_dashboard_display_settings_response,
         settings_handler=_update_dashboard_display_settings,
@@ -1860,6 +1930,17 @@ def _server_status_response() -> dict:
         },
         "logs": logs,
         "integrations": integrations,
+    }
+
+
+def _dashboard_health_response() -> dict:
+    state = _DASHBOARD_SERVER.state()
+    return {
+        "ok": state.running,
+        "addon": ADDON_NAME,
+        "mode": "e2e" if _is_e2e_mode() else "normal",
+        "profile": _current_anki_profile_name(),
+        "hasReport": state.report_available,
     }
 
 
@@ -2394,6 +2475,203 @@ def _maybe_auto_start_web_dashboard() -> None:
             log_exception("server.auto_start", "Dashboard auto-start failed")
 
 
+def _is_e2e_mode() -> bool:
+    return os.environ.get("ANKI_STUDY_REPORT_E2E") == "1"
+
+
+def _e2e_artifacts_dir() -> Path:
+    return Path(
+        os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR")
+        or os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS")
+        or "/e2e/artifacts"
+    )
+
+
+def _e2e_ready_file() -> Path:
+    return Path(
+        os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE")
+        or str(_e2e_artifacts_dir() / "dashboard-ready.json")
+    )
+
+
+def _current_mw():
+    try:
+        import aqt as _aqt
+
+        current = getattr(_aqt, "mw", None)
+    except Exception:
+        current = None
+    return current if current is not None else mw
+
+
+def _maybe_configure_e2e_logging() -> None:
+    if not _is_e2e_mode():
+        return
+    artifacts_dir = _e2e_artifacts_dir()
+    try:
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        configure_log_dir(artifacts_dir)
+    except Exception:
+        error_traceback = traceback.format_exc()
+        _write_e2e_event(
+            "error",
+            where="e2e_logging_config",
+            error=str(error_traceback.splitlines()[-1] if error_traceback else ""),
+            traceback=error_traceback,
+        )
+
+
+def _e2e_context_fields() -> dict[str, object]:
+    main_window = _current_mw()
+    collection = getattr(main_window, "col", None) if main_window is not None else None
+    profile_manager = getattr(main_window, "pm", None) if main_window is not None else None
+    return {
+        "mwExists": main_window is not None,
+        "mwRepr": _e2e_safe_repr(main_window),
+        "colExists": collection is not None,
+        "colRepr": _e2e_safe_repr(collection),
+        "profileManagerRepr": _e2e_safe_repr(profile_manager),
+        "profile": _current_anki_profile_name(),
+        "profileFolder": _safe_profile_folder(),
+    }
+
+
+def _safe_profile_folder() -> str | None:
+    try:
+        main_window = _current_mw()
+        return str(main_window.pm.profileFolder())
+    except Exception:
+        return None
+
+
+def _schedule_e2e_dashboard_bootstrap(hook_name: str) -> None:
+    global _E2E_BOOTSTRAP_STARTED
+    if not _is_e2e_mode():
+        return
+    if _E2E_BOOTSTRAP_STARTED or _E2E_BOOTSTRAP_DONE:
+        _write_e2e_event(
+            "bootstrap_already_started",
+            hook=hook_name,
+            started=_E2E_BOOTSTRAP_STARTED,
+            done=_E2E_BOOTSTRAP_DONE,
+        )
+        return
+    _E2E_BOOTSTRAP_STARTED = True
+    _write_e2e_event("bootstrap_scheduled", hook=hook_name, delayMs=0)
+    _schedule_e2e_on_main_thread(_maybe_start_e2e_dashboard)
+
+
+def _schedule_e2e_on_main_thread(callback: Callable[[], None]) -> None:
+    try:
+        from aqt.qt import QTimer as _QTimer
+
+        _QTimer.singleShot(0, callback)
+    except Exception:
+        _write_e2e_event("timer_unavailable", fallback="direct_call")
+        callback()
+
+
+def _maybe_start_e2e_dashboard() -> None:
+    global mw, _E2E_BOOTSTRAP_DONE
+    if not _is_e2e_mode():
+        return
+
+    _maybe_configure_e2e_logging()
+    try:
+        artifacts_dir = _e2e_artifacts_dir()
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        current_main_window = _current_mw()
+        if current_main_window is not None and current_main_window is not mw:
+            mw = current_main_window
+            _write_e2e_event("main_window_refreshed")
+        if mw is None or getattr(mw, "col", None) is None:
+            _write_e2e_event("collection_unavailable", **_e2e_context_fields())
+            return
+        _write_e2e_event("collection_available", **_e2e_context_fields())
+        _configure_dashboard_cache_handlers()
+        _write_e2e_event("report_build_start")
+        result = _prepare_default_dashboard_report()
+        report = result.get("report")
+        _write_e2e_event("report_build_done", hasReport=isinstance(report, dict))
+        state = _DASHBOARD_SERVER.state()
+        e2e_port = _e2e_port()
+        _write_e2e_event("server_start_start", port=e2e_port, alreadyRunning=state.running)
+        if not state.running:
+            state = _DASHBOARD_SERVER.start(port=e2e_port, idle_timeout_seconds=0)
+            _write_e2e_event("server_start_done", port=state.port)
+        else:
+            _write_e2e_event("server_start_done", port=state.port, alreadyRunning=True)
+        _write_e2e_event("report_publish_start", hasReport=isinstance(report, dict))
+        if isinstance(report, dict):
+            _DASHBOARD_SERVER.publish_report(report)
+        _write_e2e_event("report_publish_done", hasReport=isinstance(report, dict))
+        _write_e2e_event("report_published", hasReport=isinstance(report, dict))
+        _publish_dashboard_action_context(
+            result.get("markdown") if isinstance(result.get("markdown"), str) else "",
+            result.get("metadata") if isinstance(result.get("metadata"), dict) else {},
+            None,
+        )
+        _write_e2e_event("readiness_write_start", path=str(_e2e_ready_file()))
+        _write_e2e_readiness_file(_DASHBOARD_SERVER.state())
+        _write_e2e_event("readiness_write_done", path=str(_e2e_ready_file()))
+        log_event("e2e.ready", "Dashboard E2E readiness file written")
+        _E2E_BOOTSTRAP_DONE = True
+    except Exception:
+        error_traceback = traceback.format_exc()
+        _write_e2e_event(
+            "error",
+            where="e2e_bootstrap",
+            error=str(error_traceback.splitlines()[-1] if error_traceback else ""),
+            traceback=error_traceback,
+        )
+        traceback.print_exc()
+        log_exception("e2e.startup", "Dashboard E2E startup failed")
+
+
+def _e2e_port() -> int:
+    try:
+        return int(os.environ.get("ANKI_STUDY_REPORT_E2E_PORT") or DEFAULT_PORT)
+    except (TypeError, ValueError):
+        return DEFAULT_PORT
+
+
+def _write_e2e_readiness_file(state) -> None:
+    ready_file = _e2e_ready_file()
+    ready_file.parent.mkdir(parents=True, exist_ok=True)
+    base_url = f"http://{state.host}:{state.port}"
+    payload = {
+        "port": state.port,
+        "baseUrl": base_url,
+        "url": f"{base_url}/?token={_dashboard_token_from_url(state.url)}#/home",
+        "token": _dashboard_token_from_url(state.url),
+        "startedAt": datetime.now().isoformat(timespec="seconds"),
+        "addonVersion": _addon_manifest_version(),
+        "profile": _current_anki_profile_name(),
+        "mode": "e2e",
+        "reportAvailable": bool(state.report_available),
+    }
+    ready_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _dashboard_token_from_url(url: str | None) -> str:
+    if not url or "token=" not in url:
+        return ""
+    token = url.split("token=", 1)[1]
+    for delimiter in ("&", "#"):
+        if delimiter in token:
+            token = token.split(delimiter, 1)[0]
+    return token
+
+
+def _addon_manifest_version() -> str:
+    try:
+        manifest = json.loads((Path(__file__).resolve().parent / "manifest.json").read_text(encoding="utf-8"))
+    except Exception:
+        return "unknown"
+    value = manifest.get("version") or manifest.get("mod") or "unknown"
+    return str(value)
+
+
 def _web_dashboard_status_text() -> str:
     state = _DASHBOARD_SERVER.state()
     running = "да" if state.running else "нет"
@@ -2735,14 +3013,35 @@ def _setup_menu(main_window) -> None:
     main_window.form.menuTools.addAction(action)
 
     setup_session_tracking(gui_hooks, mw)
+    _maybe_configure_e2e_logging()
     log_event("addon.startup", "Anki Study Report add-on initialized")
     _maybe_auto_start_web_dashboard()
+    _schedule_e2e_dashboard_bootstrap("main_window_did_init")
 
 
-gui_hooks.main_window_did_init.append(lambda: _setup_menu(mw))
+def _on_main_window_did_init() -> None:
+    _write_e2e_event("hook_fired", hook="main_window_did_init")
+    _setup_menu(_current_mw())
+
+
+def _on_profile_did_open(*_args) -> None:
+    _write_e2e_event("hook_fired", hook="profile_did_open")
+    _schedule_e2e_dashboard_bootstrap("profile_did_open")
+
+
+if hasattr(gui_hooks, "main_window_did_init"):
+    gui_hooks.main_window_did_init.append(_on_main_window_did_init)
+    _write_e2e_event("hook_registered", hook="main_window_did_init")
+elif hasattr(gui_hooks, "profile_did_open"):
+    gui_hooks.profile_did_open.append(_on_profile_did_open)
+    _write_e2e_event("hook_registered", hook="profile_did_open")
+else:
+    _write_e2e_event("error", where="hook_registration", error="No supported startup hook found")
 
 if hasattr(gui_hooks, "profile_will_close"):
     gui_hooks.profile_will_close.append(_stop_web_dashboard_server)
 
 if hasattr(gui_hooks, "main_window_will_close"):
     gui_hooks.main_window_will_close.append(_stop_web_dashboard_server)
+
+_write_e2e_event("import_done")

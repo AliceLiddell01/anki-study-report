@@ -82,6 +82,7 @@ class DashboardServerManager:
         self._action_handler = None
         self._server_action_handler = None
         self._server_status_provider = None
+        self._health_provider = None
         self._display_settings_provider = None
         self._display_settings_handler = None
         self._media_file_provider = None
@@ -229,6 +230,10 @@ class DashboardServerManager:
             self._server_action_handler = action_handler
             self._server_status_provider = status_provider
 
+    def configure_health_handler(self, health_provider=None) -> None:
+        with self._lock:
+            self._health_provider = health_provider
+
     def configure_display_settings_handlers(
         self,
         settings_provider=None,
@@ -314,6 +319,30 @@ class DashboardServerManager:
         if isinstance(extra, dict):
             state.update(extra)
         return state
+
+    def health(self) -> dict[str, Any]:
+        state = self.state()
+        payload: dict[str, Any] = {
+            "ok": state.running,
+            "addon": "Anki Study Report",
+            "mode": "normal",
+            "profile": None,
+            "hasReport": state.report_available,
+        }
+        with self._lock:
+            provider = self._health_provider
+        if provider is not None:
+            try:
+                extra = provider()
+            except Exception:
+                traceback.print_exc()
+                log_exception("server.health.error", "Dashboard health check failed")
+                extra = {"ok": False, "error": "Dashboard health check failed."}
+            if isinstance(extra, dict):
+                payload.update(extra)
+        payload["ok"] = bool(payload.get("ok", True)) and state.running
+        payload["hasReport"] = bool(payload.get("hasReport", state.report_available))
+        return payload
 
     def display_settings(self) -> dict[str, Any]:
         with self._lock:
@@ -411,6 +440,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/status":
             self._send_json(_state_to_dict(self.manager.state()))
+            return
+        if path == "/api/health":
+            self._send_health(_query_token(parsed))
             return
         if path == "/api/server/status":
             self._send_server_status(_query_token(parsed))
@@ -514,6 +546,14 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_forbidden()
             return
         self._send_json(self.manager.server_status())
+
+    def _send_health(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self.manager.health()
+        status = HTTPStatus.OK if payload.get("ok") else HTTPStatus.SERVICE_UNAVAILABLE
+        self._send_json(payload, status)
 
     def _send_server_action(self, token: str | None, action: str) -> None:
         if not self.manager.token_is_valid(token):
