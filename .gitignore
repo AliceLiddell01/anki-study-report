@@ -12,6 +12,7 @@ web-dashboard/dev-server.err
 web-dashboard/.vite-*.log
 web-dashboard/screenshots/
 e2e-artifacts/
+e2e-artifacts.zip
 docker/anki-e2e/local-input/
 
 anki_study_report/user_files/*.sqlite3

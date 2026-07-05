@@ -16,6 +16,11 @@ const artifacts = process.env.ANKI_STUDY_REPORT_E2E_ARTIFACTS || "/e2e/artifacts
 const readyFile = process.env.ANKI_STUDY_REPORT_E2E_READY_FILE || path.join(artifacts, "dashboard-ready.json");
 const ready = JSON.parse(await fs.readFile(readyFile, "utf8"));
 const cardsUrl = `${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/cards`;
+const baseViewport = { name: "desktop-1440", width: 1440, height: 1000 };
+const responsiveViewports = [
+  baseViewport,
+  { name: "narrow-1280", width: 1280, height: 900 },
+];
 const consoleEvents = [];
 const networkEvents = [];
 const pageErrors = [];
@@ -25,7 +30,7 @@ const browser = await chromium.launch({ headless: true });
 let page;
 try {
   await deleteStaleFailureArtifacts();
-  page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+  page = await browser.newPage({ viewport: { width: baseViewport.width, height: baseViewport.height }, deviceScaleFactor: 1 });
   page.on("console", (message) => {
     consoleEvents.push({
       type: message.type(),
@@ -180,6 +185,13 @@ async function assertApkgBrowserIfEnabled(page) {
   const report = await fetchReport();
   const apkgCards = findApkgCards(report, importSummary);
   const importedCardCount = Number(importSummary.cardCount || 0);
+  const importedNoteCount = Number(importSummary.noteCount || 0);
+  const importedNoteTypeCount = (importSummary.noteTypeNames || []).length;
+  const importedMediaFileCount = (importSummary.mediaFilesFound || []).length;
+  assertBrowser(importedNoteCount === 10, `APKG fixture imported 10 notes: ${importedNoteCount}`);
+  assertBrowser(importedCardCount === 10, `APKG fixture imported 10 cards: ${importedCardCount}`);
+  assertBrowser(importedNoteTypeCount === 4, `APKG fixture imported 4 note types: ${importedNoteTypeCount}`);
+  assertBrowser(importedMediaFileCount === 13, `APKG fixture imported 13 media files: ${importedMediaFileCount}`);
   assertBrowser(apkgCards.length >= Math.min(3, importedCardCount), "APKG cards are present in browser report data.");
   if (importedCardCount <= 100) {
     assertBrowser(apkgCards.length >= importedCardCount, "All imported APKG cards are visible in browser report data.");
@@ -187,17 +199,23 @@ async function assertApkgBrowserIfEnabled(page) {
   const distinctNoteTypes = unique(apkgCards.map(cardNoteType).filter(Boolean));
   assertBrowser(distinctNoteTypes.length >= Math.min(3, (importSummary.noteTypeNames || []).length || 3), "APKG browser data has at least 3 note types.");
   assertRepresentativeApkgCards(apkgCards, importSummary);
+  const renderSourceNativeCount = apkgCards.filter((card) => card?.renderedPreview?.renderSource === "anki_native").length;
+  assertBrowser(renderSourceNativeCount >= importedCardCount, `APKG browser cards use native render source: ${renderSourceNativeCount}`);
 
   const deckName = (importSummary.deckNames || [])[0] || "asr-e2e-render-fixtures";
   await captureApkg(page, "table", "light", `cards-apkg-table-light-${label}.png`, deckName);
   const tableLightDetails = await inspectApkgShadowPreviews(page, "table");
+  const tableLightLayout = await inspectTableLayout(page);
   assertBrowser(tableLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light table previews found: ${tableLightDetails.hostCount}`);
   assertShadowSummary(tableLightDetails, "table light");
+  assertTableLayoutSummary(tableLightLayout, "APKG light table");
 
   await captureApkg(page, "table", "dark", `cards-apkg-table-dark-${label}.png`, deckName);
   const tableDetails = await inspectApkgShadowPreviews(page, "table");
+  const tableLayout = await inspectTableLayout(page);
   assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
   assertShadowSummary(tableDetails, "table");
+  assertTableLayoutSummary(tableLayout, "APKG dark table");
 
   await captureApkg(page, "tiles", "light", `cards-apkg-tiles-light-${label}.png`, deckName);
   const tileLightDetails = await inspectApkgShadowPreviews(page, "tile");
@@ -236,26 +254,64 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(!previewDetails.hasExternalCdnLink, "APKG Anki preview has no external CDN link.");
   const documentNoteCssLeak = await inspectDocumentNoteCssLeak(page);
   assertBrowser(documentNoteCssLeak.count === 0, "APKG note CSS did not leak into document-level style tags.");
+  const responsiveLayouts = await inspectApkgResponsiveLayouts(page, deckName);
 
   const summary = {
     enabled: true,
     fixturePath: "docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg",
-    noteCount: Number(importSummary.noteCount || 0),
+    noteCount: importedNoteCount,
     cardCount: importedCardCount,
-    noteTypeCount: (importSummary.noteTypeNames || []).length,
-    mediaFileCount: (importSummary.mediaFilesFound || []).length,
-    renderSourceNativeCount: apkgCards.filter((card) => card?.renderedPreview?.renderSource === "anki_native").length,
+    noteTypeCount: importedNoteTypeCount,
+    mediaFileCount: importedMediaFileCount,
+    renderSourceNativeCount,
     attentionCardsFromApkg: apkgCards.length,
     distinctNoteTypes,
     deckName,
+    viewport: baseViewport,
     tableLightDetails,
+    tableLightLayout,
     tableDetails,
+    tableLayout,
     tileLightDetails,
     tileDetails,
     tileLightLayout,
     tileLayout,
     previewLightDetails,
     previewDetails,
+    responsiveLayouts,
+    modes: {
+      table: {
+        light: tableLightLayout,
+        dark: tableLayout,
+      },
+      tiles: {
+        light: tileLightLayout,
+        dark: tileLayout,
+      },
+      ankiPreview: {
+        light: {
+          answerPreviewBottomClippedCount: previewLightDetails.clippedHostCount,
+          frontDuplicateSectionCount: previewLightDetails.frontHostCount,
+          unmeasuredHostCount: previewLightDetails.unmeasuredHostCount,
+          clippedHostCount: previewLightDetails.clippedHostCount,
+        },
+        dark: {
+          answerPreviewBottomClippedCount: previewDetails.clippedHostCount,
+          frontDuplicateSectionCount: previewDetails.frontHostCount,
+          unmeasuredHostCount: previewDetails.unmeasuredHostCount,
+          clippedHostCount: previewDetails.clippedHostCount,
+        },
+      },
+    },
+    media: {
+      rawSoundMarkerCount:
+        tableLightDetails.rawSoundMarkersFound + tableDetails.rawSoundMarkersFound + tileLightDetails.rawSoundMarkersFound + tileDetails.rawSoundMarkersFound,
+      rawAnkiPlayMarkerCount:
+        tableLightDetails.rawAnkiPlayMarkersFound +
+        tableDetails.rawAnkiPlayMarkersFound +
+        tileLightDetails.rawAnkiPlayMarkersFound +
+        tileDetails.rawAnkiPlayMarkersFound,
+    },
     documentNoteCssLeak,
     representatives: summarizeRepresentatives(apkgCards),
   };
@@ -799,6 +855,140 @@ async function inspectTileLayout(page) {
   });
 }
 
+async function inspectTableLayout(page) {
+  return page.evaluate(() => {
+    const tolerance = 2;
+    const verticalScrollTolerance = 32;
+    const wrapper = document.querySelector('[data-testid="cards-table-wrap"]') || document.querySelector(".cards-table-wrap");
+    const rows = [...document.querySelectorAll('[data-testid="cards-table-row"]')].filter((row) => {
+      const rect = row.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    const rectOf = (element) => {
+      if (!element) {
+        return null;
+      }
+      const rect = element.getBoundingClientRect();
+      return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      };
+    };
+    const zeroSized = (rect) => !rect || rect.width <= tolerance || rect.height <= tolerance;
+    const bottomClippedBy = (inner, outer) =>
+      Boolean(inner && outer && inner.top < outer.bottom - tolerance && inner.bottom > outer.bottom + tolerance);
+    const outside = (inner, outer) =>
+      Boolean(
+        inner &&
+          outer &&
+          (inner.left < outer.left - tolerance ||
+            inner.right > outer.right + tolerance ||
+            inner.top < outer.top - tolerance ||
+            inner.bottom > outer.bottom + tolerance)
+      );
+    const actionCovered = (button) => {
+      const rect = button.getBoundingClientRect();
+      if (rect.width <= tolerance || rect.height <= tolerance) {
+        return true;
+      }
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
+        return false;
+      }
+      const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return !(target === button || button.contains(target) || target?.closest("button") === button);
+    };
+    const wrapperRect = rectOf(wrapper);
+    const wrapperStyle = wrapper ? getComputedStyle(wrapper) : null;
+    const wrapperHasVerticalScroll =
+      Boolean(wrapper) &&
+      /(auto|scroll|overlay)/.test(wrapperStyle?.overflowY || "") &&
+      wrapper.scrollHeight > wrapper.clientHeight + verticalScrollTolerance;
+    const rowDetails = rows.map((row, index) => {
+      const rowRect = rectOf(row);
+      const previewCell = row.querySelector('[data-testid="cards-table-preview-cell"]');
+      const previewHost = row.querySelector('[data-testid="anki-card-shadow-preview"]');
+      const issues = row.querySelector('[data-testid="cards-table-issues"]');
+      const actions = row.querySelector('[data-testid="cards-table-actions"]');
+      const previewRect = rectOf(previewHost || previewCell);
+      const actionsRect = rectOf(actions);
+      const issuesRect = rectOf(issues);
+      const issueBadges = [...(issues?.querySelectorAll(".status-pill") || [])].map(rectOf);
+      const buttons = [...(actions?.querySelectorAll("button") || [])];
+      return {
+        index,
+        cardId: row.getAttribute("data-card-id") || "",
+        measured: previewHost?.getAttribute("data-preview-measured") === "true",
+        previewOverflow: previewHost?.getAttribute("data-preview-overflow") || "",
+        rowRect,
+        previewRect,
+        actionsRect,
+        issuesRect,
+        rowBottomClipped: wrapperHasVerticalScroll && bottomClippedBy(rowRect, wrapperRect),
+        previewBottomClipped: wrapperHasVerticalScroll && bottomClippedBy(previewRect, wrapperRect),
+        actionsBottomClipped: wrapperHasVerticalScroll && bottomClippedBy(actionsRect, wrapperRect),
+        badgesBottomClipped: wrapperHasVerticalScroll && issueBadges.some((rect) => bottomClippedBy(rect, wrapperRect)),
+        actionsClippedByRow: zeroSized(actionsRect) || outside(actionsRect, rowRect),
+        badgesClippedByRow: issueBadges.some((rect) => zeroSized(rect) || outside(rect, rowRect)),
+        coveredActions: buttons.filter(actionCovered).length,
+        buttonCount: buttons.length,
+      };
+    });
+    const pageText = document.body.innerText || "";
+    return {
+      tableRowCount: rowDetails.length,
+      tableInternalScrollCount: wrapperHasVerticalScroll ? 1 : 0,
+      tableWrapperOverflowY: wrapperStyle?.overflowY || "",
+      tableWrapperClientHeight: wrapper?.clientHeight || 0,
+      tableWrapperScrollHeight: wrapper?.scrollHeight || 0,
+      tableRowBottomClippedCount: rowDetails.filter((detail) => detail.rowBottomClipped).length,
+      tablePreviewBottomClippedCount: rowDetails.filter((detail) => detail.previewBottomClipped).length,
+      tableActionsBottomClippedCount: rowDetails.filter((detail) => detail.actionsBottomClipped || detail.actionsClippedByRow).length,
+      tableBadgesBottomClippedCount: rowDetails.filter((detail) => detail.badgesBottomClipped || detail.badgesClippedByRow).length,
+      tableCoveredActionsCount: rowDetails.reduce((sum, detail) => sum + detail.coveredActions, 0),
+      unmeasuredHostCount: rowDetails.filter((detail) => !detail.measured).length,
+      rawSoundCount: (pageText.match(/\[sound:/gi) || []).length,
+      rawAnkiPlayCount: (pageText.match(/\[anki:play:/gi) || []).length,
+      details: rowDetails.slice(0, 12),
+    };
+  });
+}
+
+async function inspectApkgResponsiveLayouts(page, deckName) {
+  const result = [];
+  for (const viewport of responsiveViewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+
+    await prepareCardsPage(page, "table", "dark");
+    await applyDeckFilter(page, deckName);
+    await waitForApkgShadowPreviews(page, "table");
+    await waitForLayoutStabilization(page);
+    const table = await inspectTableLayout(page);
+    assertTableLayoutSummary(table, `APKG ${viewport.name} table`);
+
+    await prepareCardsPage(page, "tiles", "dark");
+    await applyDeckFilter(page, deckName);
+    await waitForApkgShadowPreviews(page, "tile");
+    await waitForLayoutStabilization(page);
+    const tiles = await inspectTileLayout(page);
+    assertTileLayoutSummary(tiles, `APKG ${viewport.name} tiles`);
+
+    await prepareCardsPage(page, "ankiPreview", "dark");
+    await applyDeckFilter(page, deckName);
+    await waitForApkgAnkiPreview(page);
+    await waitForLayoutStabilization(page);
+    const ankiPreview = await inspectApkgAnkiPreview(page);
+    assertApkgAnkiPreviewSummary(ankiPreview, `APKG ${viewport.name} Anki preview`);
+
+    result.push({ viewport, table, tiles, ankiPreview });
+  }
+  await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+  return result;
+}
+
 async function inspectApkgAnkiPreview(page) {
   return page.evaluate(() => {
     const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
@@ -869,6 +1059,30 @@ function assertTileLayoutSummary(details, labelText) {
   assertBrowser(details.unmeasuredHostCount === 0, `${labelText} preview hosts completed adaptive measurement.`);
   assertBrowser(details.rawSoundCount === 0, `${labelText} has no visible raw sound macro.`);
   assertBrowser(details.rawAnkiPlayCount === 0, `${labelText} has no visible raw Anki play macro.`);
+}
+
+function assertTableLayoutSummary(details, labelText) {
+  assertBrowser(details.tableRowCount > 0, `${labelText} rendered table rows.`);
+  assertBrowser(details.tableInternalScrollCount === 0, `${labelText} has no nested vertical table scroll.`);
+  assertBrowser(details.tableRowBottomClippedCount === 0, `${labelText} rows are not clipped by the table wrapper.`);
+  assertBrowser(details.tablePreviewBottomClippedCount === 0, `${labelText} preview hosts are not clipped by the table wrapper.`);
+  assertBrowser(details.tableActionsBottomClippedCount === 0, `${labelText} action cells remain visible inside rows.`);
+  assertBrowser(details.tableBadgesBottomClippedCount === 0, `${labelText} issue badges remain visible inside rows.`);
+  assertBrowser(details.tableCoveredActionsCount === 0, `${labelText} action buttons are not covered by overlays.`);
+  assertBrowser(details.unmeasuredHostCount === 0, `${labelText} preview hosts completed adaptive measurement.`);
+  assertBrowser(details.rawSoundCount === 0, `${labelText} has no visible raw sound macro.`);
+  assertBrowser(details.rawAnkiPlayCount === 0, `${labelText} has no visible raw Anki play macro.`);
+}
+
+function assertApkgAnkiPreviewSummary(details, labelText) {
+  assertBrowser(details.previewCount > 0, `${labelText} rendered answer previews.`);
+  assertBrowser(details.frontHostCount === 0, `${labelText} has no separate front preview host.`);
+  assertBrowser(details.unmeasuredHostCount === 0, `${labelText} answer hosts completed adaptive measurement.`);
+  assertBrowser(details.clippedHostCount === 0, `${labelText} answer hosts are not clipped at the bottom.`);
+  assertBrowser(!details.hasRawSoundMarker, `${labelText} has no raw sound marker.`);
+  assertBrowser(!details.hasRawAnkiPlayMarker, `${labelText} has no raw Anki AV marker.`);
+  assertBrowser(!details.hasScriptTag, `${labelText} has no script tag.`);
+  assertBrowser(!details.hasExternalCdnLink, `${labelText} has no external CDN link.`);
 }
 
 async function inspectShadowPreview(page, expectedMode = "") {

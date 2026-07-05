@@ -170,6 +170,12 @@ describe("CardsPage v5 adaptive card previews", () => {
 
     expect(html).toContain("表だけ");
     expect(html).toContain("cards-risk-table");
+    expect(html).toContain('data-testid="cards-table-wrap"');
+    expect(html).toContain('data-testid="cards-risk-table"');
+    expect(html).toContain('data-testid="cards-table-row"');
+    expect(html).toContain('data-testid="cards-table-preview-cell"');
+    expect(html).toContain('data-testid="cards-table-issues"');
+    expect(html).toContain('data-testid="cards-table-actions"');
     expect(html).toContain("cards-risk-badge");
     expect(html).toContain("Высокий ·");
     expect(html).toContain("cards-row-open");

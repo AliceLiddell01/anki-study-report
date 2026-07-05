@@ -575,9 +575,8 @@ select {
 }
 
 .cards-table-wrap {
-  max-height: min(72vh, 820px);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
+  max-height: none;
+  overflow-y: visible;
 }
 
 [data-theme="light"] .cards-table-wrap {

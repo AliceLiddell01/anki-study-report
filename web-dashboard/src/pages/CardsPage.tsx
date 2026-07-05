@@ -632,8 +632,8 @@ function RiskTable({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="cards-table-wrap overflow-x-auto rounded-lg border border-ink-700">
-      <table className="cards-risk-table table-readable w-full min-w-[1320px] border-collapse">
+    <div className="cards-table-wrap overflow-x-auto rounded-lg border border-ink-700" data-testid="cards-table-wrap">
+      <table className="cards-risk-table table-readable w-full min-w-[1320px] border-collapse" data-testid="cards-risk-table">
         <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
           <tr>
             <th className="text-left">Риск</th>
@@ -649,11 +649,11 @@ function RiskTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="cards-risk-row border-t border-ink-700/80 hover:bg-ink-800/45">
-              <td className="w-[120px]">
+            <tr key={row.id} className="cards-risk-row border-t border-ink-700/80 hover:bg-ink-800/45" data-testid="cards-table-row" data-card-id={row.id}>
+              <td className="w-[120px]" data-testid="cards-table-risk">
                 <RiskBadge score={row.riskScore} />
               </td>
-              <td className="cards-preview-table-cell">
+              <td className="cards-preview-table-cell" data-testid="cards-table-preview-cell">
                 <CardPreviewCell row={row} />
               </td>
               <td className="max-w-[210px] text-report-muted">
@@ -661,14 +661,14 @@ function RiskTable({
                   {row.deckName}
                 </span>
               </td>
-              <td className="max-w-[240px]">
+              <td className="max-w-[240px]" data-testid="cards-table-issues">
                 <IssueChips issues={row.issues} />
               </td>
               <td className="w-[72px] text-right tabular-nums">{formatInteger(row.againCount)}</td>
               <td className="w-[78px] text-right tabular-nums">{formatInteger(row.lapses)}</td>
               <td className="w-[112px] text-right tabular-nums">{formatCompactSeconds(row.averageAnswerSeconds)}</td>
               <td className="w-[150px] text-report-muted">{safeText(row.lastReviewed, "Нет данных")}</td>
-              <td className="w-[150px]">
+              <td className="w-[150px]" data-testid="cards-table-actions">
                 <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
               </td>
             </tr>
