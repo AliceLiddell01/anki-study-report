@@ -1,6 +1,6 @@
 # Release checklist
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Чеклист перед публикацией или передачей `anki_study_report.ankiaddon`.
 
@@ -63,6 +63,17 @@ Run Docker E2E for startup/rendering/server/media/package-layout changes:
 .\scripts\run_full_check.ps1 -CleanDocker
 ```
 
+For final Cards preview release handoff, use the strict APKG Perf100 profile:
+
+```powershell
+.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
+```
+
+This imports `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg`, verifies
+the APKG import path, clones imported cards/notes inside the Docker collection
+for the 100-card smoke, and leaves timings as diagnostics rather than release
+thresholds.
+
 Do not run heavy Docker E2E for docs-only changes.
 
 ## Manual local Anki smoke
@@ -74,6 +85,9 @@ Do not run heavy Docker E2E for docs-only changes.
 - Build/open report.
 - Open dashboard.
 - Check Cards page preview mode.
+  - `table`/`tiles`: front-only Shadow DOM preview, normal page scroll.
+  - `ankiPreview`: answer-only from `renderedPreview.backHtml`, no separate
+    front duplication.
 - Check one media preview if rendering/media changed.
 - Check Actions page only with non-destructive actions unless explicitly needed.
 
@@ -97,4 +111,3 @@ Before publishing manually:
 - If token-bearing artifacts are staged.
 - If Docker/live Anki failed for a runtime-risk change and the failure is not
   understood.
-

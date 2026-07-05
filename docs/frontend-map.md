@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Source of truth:
 
@@ -76,16 +76,22 @@ web-dashboard/src/components/AnkiCardShadowPreview.tsx
 data-testid="anki-card-shadow-preview"
 ```
 
-`ankiPreview` использует тот же Shadow DOM host, но как единственную
-answer-only секцию:
+`ankiPreview` не использует `AnkiCardShadowPreview` и не дублирует front. Этот
+режим показывает единственную answer-only секцию из `renderedPreview.backHtml`:
 
 ```text
 data-testid="anki-preview-answer"
-data-testid="anki-card-shadow-preview"
-data-preview-side="answer"
+.asr-front-preview-html
 ```
 
-При smoke failure сначала проверить active mode, потом DOM selector.
+Если `backHtml` отсутствует, UI показывает diagnostic fallback. Preview не
+исполняет JS templates и не использует iframe; sanitizer остается backend
+barrier. Целевой layout для этого dashboard - desktop/laptop, не mobile widths
+ниже рабочего desktop surface.
+
+При smoke failure сначала проверить active mode, потом DOM selector. Для
+`table`/`tiles` искать Shadow DOM host; для `ankiPreview` искать answer-only
+HTML в обычном DOM.
 
 ## Payload keys по страницам
 

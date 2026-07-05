@@ -1,6 +1,6 @@
 # Диагностика типовых проблем
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Этот документ помогает быстро понять, где искать причину, прежде чем менять
 production code. Для выбора проверок см. `docs/test-matrix.md`.
@@ -199,8 +199,10 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
 
 - `table` и `tiles` используют `AnkiCardShadowPreview` и
   `data-testid="anki-card-shadow-preview"`.
-- `ankiPreview` использует `data-testid="anki-preview-answer"` и Shadow DOM
-  host `data-preview-side="answer"`.
+- `ankiPreview` использует `data-testid="anki-preview-answer"` и обычный DOM
+  блок `.asr-front-preview-html` с answer-only HTML из
+  `renderedPreview.backHtml`; front отдельно не дублируется.
+- Если `backHtml` отсутствует, ожидается diagnostic fallback.
 - `CardsPage.tsx` хранит display mode в
   `anki-study-report.cards.displayMode`.
 - `cardAttention.ts` нормализует `cards`, `cardIssues`, `problemCards`,
@@ -225,6 +227,8 @@ tests/test_note_intelligence.py
 ### Чего не делать
 
 Не ослаблять sanitizer ради красивого preview.
+
+Не добавлять iframe или исполнение JS templates ради более похожего preview.
 
 ## Media preview failures
 

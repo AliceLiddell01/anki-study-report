@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -39,6 +39,7 @@ pnpm run test:all
 .\scripts\run_full_check.ps1 -SkipDocker
 .\scripts\run_full_check.ps1 -CleanDocker
 .\scripts\run_full_check.ps1 -DockerOnly
+.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
 ```
 
 ## Когда не запускать Docker E2E
@@ -49,5 +50,8 @@ pnpm run test:all
 
 Для Cards preview финальный Docker browser smoke должен покрывать screenshots
 `table`, `tiles` и `ankiPreview` в light/dark темах; `table`/`tiles` остаются
-front-only, а `ankiPreview` проверяет единственную answer-only Shadow DOM
-секцию из `backHtml`.
+front-only через Shadow DOM, а `ankiPreview` проверяет единственный answer-only
+DOM блок из `renderedPreview.backHtml`. Perf100 использует tracked APKG fixture,
+клонирует импортированные cards/notes в Docker collection до 100 cards, не
+создает новую APKG и не вводит virtualization; timings сохраняются только как
+diagnostics.
