@@ -186,7 +186,7 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
 ### Признаки
 
 - Cards page есть, но preview пустой.
-- Browser smoke падает на Shadow DOM или `.asr-front-preview-html`.
+- Browser smoke падает на Shadow DOM preview host или answer-only секцию.
 - Table/tiles проходят, а `ankiPreview` падает, или наоборот.
 
 ### Вероятные причины
@@ -199,7 +199,8 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
 
 - `table` и `tiles` используют `AnkiCardShadowPreview` и
   `data-testid="anki-card-shadow-preview"`.
-- `ankiPreview` использует `.asr-front-preview-html`.
+- `ankiPreview` использует `data-testid="anki-preview-answer"` и Shadow DOM
+  host `data-preview-side="answer"`.
 - `CardsPage.tsx` хранит display mode в
   `anki-study-report.cards.displayMode`.
 - `cardAttention.ts` нормализует `cards`, `cardIssues`, `problemCards`,
@@ -415,4 +416,3 @@ web-dashboard/src/data/mockReport.ts
 - Не править generated assets руками.
 - Не коммитить runtime artifacts.
 - Не логировать и не прикладывать token-bearing URL как обычный артефакт.
-

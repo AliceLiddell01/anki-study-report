@@ -15,27 +15,27 @@ export interface AnkiPreviewModeConfig {
 export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPreviewModeConfig> = {
   table: {
     baseWidth: 640,
-    baseHeight: 392,
-    targetWidth: 292,
-    targetHeight: 174,
-    scale: 0.43,
-    audioButtonSize: 32,
+    baseHeight: 340,
+    targetWidth: 320,
+    targetHeight: 170,
+    scale: 0.5,
+    audioButtonSize: 30,
   },
   tile: {
-    baseWidth: 640,
-    baseHeight: 380,
-    targetWidth: 520,
-    targetHeight: 292,
-    scale: 0.72,
-    audioButtonSize: 38,
+    baseWidth: 600,
+    baseHeight: 330,
+    targetWidth: 500,
+    targetHeight: 268,
+    scale: 0.78,
+    audioButtonSize: 36,
   },
   preview: {
-    baseWidth: 640,
+    baseWidth: 720,
     baseHeight: 420,
-    targetWidth: 640,
-    targetHeight: 420,
-    scale: 0.94,
-    audioButtonSize: 42,
+    targetWidth: 720,
+    targetHeight: 390,
+    scale: 0.88,
+    audioButtonSize: 40,
   },
 };
 
@@ -86,12 +86,22 @@ const SHADOW_BASE_CSS = `
   overflow: hidden;
 }
 
+.asr-shadow-card-shell--preview {
+  align-items: flex-start;
+  overflow: auto;
+  padding: 10px;
+}
+
 .asr-shadow-card-viewport {
   flex: 0 0 var(--asr-preview-base-width);
   width: var(--asr-preview-base-width);
   min-height: var(--asr-preview-base-height);
   transform: scale(var(--asr-preview-scale));
   transform-origin: center center;
+}
+
+.asr-shadow-card-viewport--preview {
+  transform-origin: top center;
 }
 
 .card {
@@ -105,6 +115,24 @@ const SHADOW_BASE_CSS = `
   font-size: 28px;
   line-height: 1.45;
   text-align: center;
+}
+
+.asr-shadow-card-viewport--table .card {
+  padding: 18px;
+  font-size: 30px;
+  line-height: 1.35;
+}
+
+.asr-shadow-card-viewport--tile .card {
+  padding: 22px;
+  font-size: 30px;
+  line-height: 1.4;
+}
+
+.asr-shadow-card-viewport--preview .card {
+  padding: 28px;
+  font-size: 28px;
+  line-height: 1.5;
 }
 
 .nightMode .card,

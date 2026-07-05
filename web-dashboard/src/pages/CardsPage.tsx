@@ -649,7 +649,7 @@ function RiskTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-ink-700/80 hover:bg-ink-800/45">
+            <tr key={row.id} className="cards-risk-row border-t border-ink-700/80 hover:bg-ink-800/45">
               <td className="w-[120px]">
                 <RiskBadge score={row.riskScore} />
               </td>
@@ -750,15 +750,15 @@ function CardTiles({
           </div>
           <FrontPreviewFrame row={row} variant="tile" className="mt-3" />
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-report-muted">{row.deckName}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-report-muted">
+          <div className="cards-tile-metrics mt-3 grid grid-cols-3 gap-2 text-xs text-report-muted">
             <DetailMini label="Again" value={formatInteger(row.againCount)} />
             <DetailMini label="срывы" value={formatInteger(row.lapses)} />
             <DetailMini label="успех" value={formatPercent(row.passRate)} />
           </div>
-          <div className="mt-3">
+          <div className="cards-tile-issues mt-3">
             <IssueChips issues={row.issues} />
           </div>
-          <div className="mt-4">
+          <div className="cards-tile-actions mt-4">
             <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
           </div>
         </article>
@@ -788,10 +788,10 @@ function AnkiPreviewGrid({
               <span className="text-xs text-report-muted">{row.preview?.noteTypeName || row.preview?.detectedKind || "авто-превью"}</span>
             </div>
             <AnkiPreviewBox row={row} />
-            <div className="mt-3">
+            <div className="cards-anki-preview-issues mt-3">
               <IssueChips issues={row.issues} />
             </div>
-            <div className="mt-4">
+            <div className="cards-anki-preview-actions mt-4">
               <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
             </div>
           </article>
@@ -831,7 +831,7 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
     );
   }
   return (
-    <div className="mt-3 grid max-h-[320px] gap-3 overflow-hidden rounded-lg border border-ink-700 bg-ink-950 p-4">
+    <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-4">
       <p className="w-fit rounded-md border border-ink-700 bg-ink-900/70 px-2 py-0.5 text-xs text-report-muted">Упрощённое превью</p>
       <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
         <PlainPreviewText text={cardFrontText(row)} />
@@ -861,7 +861,7 @@ function PlainPreviewText({ text, muted = false }: { text: string; muted?: boole
 
 function DetailMini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-ink-700 bg-ink-900/45 px-2 py-1.5">
+    <div className="cards-tile-metric rounded-lg border border-ink-700 bg-ink-900/45 px-2 py-1.5">
       <p className="uppercase tracking-[0.04em]">{label}</p>
       <p className="mt-0.5 font-semibold text-report-text">{value}</p>
     </div>

@@ -76,10 +76,13 @@ web-dashboard/src/components/AnkiCardShadowPreview.tsx
 data-testid="anki-card-shadow-preview"
 ```
 
-`ankiPreview` использует обычный HTML контейнер:
+`ankiPreview` использует тот же Shadow DOM host, но как единственную
+answer-only секцию:
 
 ```text
-.asr-front-preview-html
+data-testid="anki-preview-answer"
+data-testid="anki-card-shadow-preview"
+data-preview-side="answer"
 ```
 
 При smoke failure сначала проверить active mode, потом DOM selector.
@@ -122,4 +125,3 @@ web-dashboard/src/pages/CardsPage.test.tsx
   side, но backend sanitizer остается главным барьером.
 - Note CSS должен оставаться внутри preview, а не протекать в документ.
 - Cards page требует browser/live smoke после изменений rendering/media.
-
