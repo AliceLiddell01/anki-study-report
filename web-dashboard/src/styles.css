@@ -733,6 +733,12 @@ select {
   border-radius: 0.55rem;
 }
 
+.anki-card-shadow-preview--preview {
+  width: 100%;
+  min-height: 20rem;
+  border-radius: 0.45rem;
+}
+
 [data-theme="light"] .anki-card-shadow-preview {
   border-color: rgb(var(--color-border-strong) / 0.5);
   background: rgb(var(--color-surface-1));

@@ -19,6 +19,7 @@ const cardsUrl = `${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/ca
 const consoleEvents = [];
 const networkEvents = [];
 const pageErrors = [];
+const assetResponses = [];
 
 const browser = await chromium.launch({ headless: true });
 let page;
@@ -43,6 +44,13 @@ try {
     });
   });
   page.on("response", (response) => {
+    if (/\/assets\/.*\.(css|js)(?:[?#]|$)/.test(response.url())) {
+      assetResponses.push({
+        status: response.status(),
+        url: response.url(),
+        contentType: response.headers()["content-type"] || "",
+      });
+    }
     if (response.status() >= 400) {
       networkEvents.push({
         kind: "response",
@@ -85,6 +93,7 @@ try {
   await capture(page, "tiles", "dark", `cards-tile-${label}.png`);
   await capture(page, "ankiPreview", "dark", `cards-anki-preview-${label}.png`);
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
+  const cssDiagnostics = await assertCssDiagnostics(page);
 
   await writeJson(`browser-smoke-${label}.json`, {
     ok: true,
@@ -92,6 +101,7 @@ try {
     networkEvents,
     pageErrors,
     shadowDetails,
+    cssDiagnostics,
     apkg: apkgDetails,
   });
 
@@ -168,6 +178,8 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(!previewDetails.hasRawAnkiPlayMarker, "APKG Anki preview has no raw Anki AV marker.");
   assertBrowser(!previewDetails.hasScriptTag, "APKG Anki preview has no script tag.");
   assertBrowser(!previewDetails.hasExternalCdnLink, "APKG Anki preview has no external CDN link.");
+  const documentNoteCssLeak = await inspectDocumentNoteCssLeak(page);
+  assertBrowser(documentNoteCssLeak.count === 0, "APKG note CSS did not leak into document-level style tags.");
 
   const summary = {
     enabled: true,
@@ -178,10 +190,195 @@ async function assertApkgBrowserIfEnabled(page) {
     tableDetails,
     tileDetails,
     previewDetails,
+    documentNoteCssLeak,
     representatives: summarizeRepresentatives(apkgCards),
   };
   await writeJson(`browser-smoke-apkg-${label}.json`, { apkg: summary });
   return summary;
+}
+
+async function assertCssDiagnostics(page) {
+  const diagnostics = {};
+
+  await prepareDashboardRoute(page, "/cards", "light", "Карточки");
+  await waitForCardsPageReady(page);
+  diagnostics.cardsLight = await inspectDashboardCss(page, "cards-light");
+  assertDashboardCss(diagnostics.cardsLight, { theme: "light", page: "Cards" });
+
+  await prepareDashboardRoute(page, "/settings/server", "light", "Настройки");
+  diagnostics.settingsLight = await inspectDashboardCss(page, "settings-light");
+  assertDashboardCss(diagnostics.settingsLight, { theme: "light", page: "Settings" });
+
+  await prepareDashboardRoute(page, "/settings/server", "dark", "Настройки");
+  diagnostics.settingsDark = await inspectDashboardCss(page, "settings-dark");
+  assertDashboardCss(diagnostics.settingsDark, { theme: "dark", page: "Settings" });
+
+  await prepareDashboardRoute(page, "/cards", "light", "Карточки");
+  await waitForCardsPageReady(page);
+  diagnostics.cardsAfterSettingsLight = await inspectDashboardCss(page, "cards-after-settings-light");
+  assertDashboardCss(diagnostics.cardsAfterSettingsLight, { theme: "light", page: "Cards after Settings" });
+
+  await writeJson(`browser-css-diagnostics-${label}.json`, diagnostics);
+  return diagnostics;
+}
+
+async function prepareDashboardRoute(page, route, theme, headingName) {
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#${route}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60000,
+  });
+  await page.evaluate((selectedTheme) => {
+    window.localStorage.setItem("anki-study-report-theme", selectedTheme);
+    document.documentElement.dataset.theme = selectedTheme;
+    document.documentElement.style.colorScheme = selectedTheme;
+  }, theme);
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: headingName, exact: true }).waitFor({ timeout: 60000 });
+}
+
+async function inspectDashboardCss(page, pageName) {
+  const assetResponseSnapshot = [...assetResponses];
+  return page.evaluate(
+    ({ currentPageName, responses }) => {
+      const noteCssMarkers = [".word-focus", ".main-word", ".main-grammar", ".meaning-box"];
+      const linkedStylesheets = [...document.querySelectorAll('link[rel~="stylesheet"]')].map((link) => {
+        let ruleCount = 0;
+        let readable = false;
+        try {
+          ruleCount = link.sheet?.cssRules?.length || 0;
+          readable = Boolean(link.sheet);
+        } catch {
+          readable = false;
+        }
+        const response = responses.find((item) => stripQuery(item.url) === stripQuery(link.href));
+        return {
+          href: link.href,
+          loaded: Boolean(link.sheet),
+          readable,
+          ruleCount,
+          status: response?.status || null,
+          contentType: response?.contentType || "",
+        };
+      });
+      const loadedStylesheets = [...document.styleSheets].map((sheet) => {
+        let ruleCount = 0;
+        let readable = false;
+        try {
+          ruleCount = sheet.cssRules?.length || 0;
+          readable = true;
+        } catch {
+          readable = false;
+        }
+        const href = sheet.href || "";
+        const response = responses.find((item) => href && stripQuery(item.url) === stripQuery(href));
+        return {
+          href,
+          readable,
+          ruleCount,
+          status: response?.status || null,
+          contentType: response?.contentType || "",
+        };
+      });
+      const styleTagsWithNoteMarkers = [...document.querySelectorAll("style")]
+        .map((style, index) => ({ index, text: style.textContent || "" }))
+        .filter((style) => noteCssMarkers.some((marker) => style.text.includes(marker)))
+        .map((style) => ({
+          index: style.index,
+          markers: noteCssMarkers.filter((marker) => style.text.includes(marker)),
+          excerpt: style.text.slice(0, 500),
+        }));
+      const appRoot = document.querySelector("#root > div") || document.querySelector("#root") || document.body;
+      const main = document.querySelector("main") || appRoot;
+      const pageRoot = document.querySelector("main > div") || main;
+      return {
+        pageName: currentPageName,
+        url: window.location.href,
+        loadedStylesheets,
+        linkedStylesheets,
+        documentThemeAttribute: document.documentElement.getAttribute("data-theme") || "",
+        bodyClassName: document.body.className || "",
+        rootClassName: document.documentElement.className || "",
+        appRoot: computedSnapshot(appRoot),
+        main: computedSnapshot(main),
+        pageRoot: computedSnapshot(pageRoot),
+        settingsPageRoot: document.body.innerText.includes("Настройки") ? computedSnapshot(pageRoot) : null,
+        cardsPageRoot: document.body.innerText.includes("Карточки") ? computedSnapshot(pageRoot) : null,
+        documentStyleTagsWithNoteCssMarkers: styleTagsWithNoteMarkers,
+        documentStyleTagsWithNoteCssMarkerCount: styleTagsWithNoteMarkers.length,
+      };
+
+      function stripQuery(value) {
+        return String(value || "").split("#", 1)[0].split("?", 1)[0];
+      }
+
+      function computedSnapshot(element) {
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName.toLowerCase(),
+          className: element.className || "",
+          backgroundColor: style.backgroundColor,
+          effectiveBackgroundColor: effectiveBackgroundColor(element),
+          color: style.color,
+        };
+      }
+
+      function effectiveBackgroundColor(element) {
+        let current = element;
+        while (current && current instanceof Element) {
+          const color = getComputedStyle(current).backgroundColor;
+          if (color && color !== "transparent" && !/^rgba\(\s*0,\s*0,\s*0,\s*0\s*\)$/i.test(color)) {
+            return color;
+          }
+          current = current.parentElement;
+        }
+        return getComputedStyle(document.body).backgroundColor;
+      }
+    },
+    { currentPageName: pageName, responses: assetResponseSnapshot },
+  );
+}
+
+async function inspectDocumentNoteCssLeak(page) {
+  return page.evaluate(() => {
+    const markers = [".word-focus", ".main-word", ".main-grammar", ".meaning-box"];
+    const matches = [...document.querySelectorAll("style")]
+      .map((style, index) => ({ index, text: style.textContent || "" }))
+      .filter((style) => markers.some((marker) => style.text.includes(marker)))
+      .map((style) => ({
+        index: style.index,
+        markers: markers.filter((marker) => style.text.includes(marker)),
+        excerpt: style.text.slice(0, 500),
+      }));
+    return { count: matches.length, matches };
+  });
+}
+
+function assertDashboardCss(diagnostics, { theme, page }) {
+  assertBrowser(diagnostics.documentThemeAttribute === theme, `${page} document theme is ${theme}.`);
+  assertBrowser(diagnostics.linkedStylesheets.length > 0, `${page} has linked stylesheets.`);
+  assertBrowser(
+    diagnostics.linkedStylesheets.every((sheet) => sheet.loaded && sheet.ruleCount > 0 && (sheet.status === null || sheet.status === 200)),
+    `${page} linked stylesheets loaded with CSS rules.`,
+  );
+  assertBrowser(
+    diagnostics.documentStyleTagsWithNoteCssMarkerCount === 0,
+    `${page} has no document-level note CSS markers.`,
+  );
+  const luminance = colorLuminance(diagnostics.appRoot.effectiveBackgroundColor);
+  if (theme === "light") {
+    assertBrowser(luminance > 180, `${page} light theme background is light: ${diagnostics.appRoot.effectiveBackgroundColor}.`);
+  } else {
+    assertBrowser(luminance < 90, `${page} dark theme background is dark: ${diagnostics.appRoot.effectiveBackgroundColor}.`);
+  }
+}
+
+function colorLuminance(value) {
+  const match = String(value || "").match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/i);
+  if (!match) {
+    return 0;
+  }
+  const [, red, green, blue] = match.map(Number);
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
 async function captureApkg(page, mode, theme, fileName, deckName) {
@@ -270,14 +467,13 @@ async function waitForShadowFixture(page, mode) {
 }
 
 async function waitForAnkiPreview(page) {
-  await page.locator(".asr-front-preview-html").first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]').first().waitFor({ state: "visible", timeout: 60000 });
   await page.waitForFunction(
     () => {
-      const previews = [...document.querySelectorAll(".asr-front-preview-html")];
-      return previews.some((preview) => {
-        const html = preview.innerHTML;
-        const text = preview.textContent || "";
-        return text.includes("要望") || html.includes("要望") || html.includes("%E8%A6%81");
+      const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
+      return hosts.some((host) => {
+        const html = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
+        return html.includes("要望") || html.includes("%E8%A6%81");
       });
     },
     undefined,
@@ -302,9 +498,15 @@ async function waitForApkgShadowPreviews(page, mode) {
 }
 
 async function waitForApkgAnkiPreview(page) {
-  await page.locator(".asr-front-preview-html").first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]').first().waitFor({ state: "visible", timeout: 60000 });
   await page.waitForFunction(
-    () => /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(document.documentElement.innerHTML),
+    () => {
+      const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
+      return hosts.some((host) => {
+        const searchable = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
+        return /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(searchable);
+      });
+    },
     undefined,
     { timeout: 60000 },
   );
@@ -389,20 +591,23 @@ async function inspectApkgShadowPreviews(page, mode) {
 
 async function inspectApkgAnkiPreview(page) {
   return page.evaluate(() => {
-    const previews = [...document.querySelectorAll(".asr-front-preview-html")];
-    const html = previews.map((preview) => preview.innerHTML).join("\n");
+    const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
+    const html = hosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
+    const shadowRoots = hosts.map((host) => host.shadowRoot).filter(Boolean);
+    const images = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("img")]);
+    const audioElements = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("audio")]);
     return {
-      previewCount: previews.length,
-      imgCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll("img").length, 0),
-      audioElementCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll("audio").length, 0),
-      replayButtonCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll(".asr-card-replay-button").length, 0),
+      previewCount: hosts.length,
+      imgCount: images.length,
+      audioElementCount: audioElements.length,
+      replayButtonCount: shadowRoots.reduce((sum, shadowRoot) => sum + shadowRoot.querySelectorAll(".asr-card-replay-button").length, 0),
       hasRawSoundMarker: html.toLowerCase().includes("[sound:"),
       hasRawAnkiPlayMarker: html.includes("[anki:play:"),
       hasScriptTag: /<script/i.test(html),
       hasExternalCdnLink: /cdnjs|<link\b/i.test(html),
       hasWordFocus: html.includes("word-focus"),
       hasGrammarFocus: /grammar-focus|grammar-pattern|main-grammar/.test(html),
-      textSample: previews.map((preview) => preview.textContent || "").join("\n").slice(0, 500),
+      textSample: shadowRoots.map((shadowRoot) => shadowRoot.textContent || "").join("\n").slice(0, 500),
     };
   });
 }
@@ -600,7 +805,7 @@ async function buildDomSummary(page) {
       cardTableRows: document.querySelectorAll(".cards-risk-table tbody tr").length,
       cardTiles: document.querySelectorAll(".status-border-danger, .status-border-warning, .status-border-neutral").length,
       shadowPreviewHosts: document.querySelectorAll('[data-testid="anki-card-shadow-preview"], [data-shadow-preview="true"]').length,
-      ankiPreviewSections: document.querySelectorAll(".asr-front-preview-html").length,
+      ankiPreviewSections: document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]').length,
       images: document.querySelectorAll("img").length,
       audio: document.querySelectorAll("audio").length,
       buttons: document.querySelectorAll("button").length,

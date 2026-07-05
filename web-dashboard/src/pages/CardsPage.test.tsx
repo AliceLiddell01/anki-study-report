@@ -199,7 +199,8 @@ describe("CardsPage v4 UX corrections", () => {
 
     expect(html).toContain("Лицевая сторона");
     expect(html).toContain("表だけ");
-    expect(html).toContain(".asr-card-rendered .word");
+    expect(html).toContain('data-shadow-preview-mode="preview"');
+    expect(html).not.toContain(".asr-card-rendered .word");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).toContain("/api/media?name=voice.mp3&token=test-token");
     expect(html).toContain("asr-card-replay-button");

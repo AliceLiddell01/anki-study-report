@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from html.parser import HTMLParser
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -39,6 +40,16 @@ FORBIDDEN_SUFFIXES = {
     ".zip",
 }
 
+DASHBOARD_CSS_MARKERS = (
+    "[data-theme=light]",
+    ".topbar-surface",
+    ".shadow-panel",
+    ".cards-risk-table",
+    ".anki-card-shadow-preview",
+)
+
+MIN_DASHBOARD_ASSET_SIZE_BYTES = 1
+
 
 @dataclass(frozen=True)
 class ArchiveValidation:
@@ -47,6 +58,11 @@ class ArchiveValidation:
     forbidden: list[str]
     has_js_asset: bool
     has_css_asset: bool
+    linked_assets: list[str]
+    missing_linked_assets: list[str]
+    empty_linked_assets: list[str]
+    unreferenced_dashboard_assets: list[str]
+    css_markers_missing: list[str]
     testzip_result: str | None
 
     @property
@@ -56,6 +72,10 @@ class ArchiveValidation:
             and not self.forbidden
             and self.has_js_asset
             and self.has_css_asset
+            and not self.missing_linked_assets
+            and not self.empty_linked_assets
+            and not self.unreferenced_dashboard_assets
+            and not self.css_markers_missing
             and self.testzip_result is None
         )
 
@@ -91,6 +111,14 @@ def validate_archive(path: Path = DEFAULT_OUTPUT) -> ArchiveValidation:
     with ZipFile(path) as archive:
         names = sorted(archive.namelist())
         testzip_result = archive.testzip()
+        index_html = archive.read("web_dashboard/index.html").decode("utf-8", errors="replace") if "web_dashboard/index.html" in names else ""
+        sizes = {info.filename: info.file_size for info in archive.infolist()}
+        linked_assets = sorted(extract_dashboard_asset_refs(index_html))
+        css_payload = "\n".join(
+            archive.read(name).decode("utf-8", errors="replace")
+            for name in linked_assets
+            if name.endswith(".css") and name in names
+        )
 
     name_set = set(names)
     missing = sorted(REQUIRED_FILES - name_set)
@@ -103,12 +131,30 @@ def validate_archive(path: Path = DEFAULT_OUTPUT) -> ArchiveValidation:
         for name in names
     )
     forbidden = [name for name in names if is_forbidden_archive_name(name)]
+    missing_linked_assets = [name for name in linked_assets if name not in name_set]
+    empty_linked_assets = [
+        name
+        for name in linked_assets
+        if name in sizes and sizes[name] <= MIN_DASHBOARD_ASSET_SIZE_BYTES
+    ]
+    dashboard_assets = sorted(
+        name
+        for name in names
+        if name.startswith("web_dashboard/assets/") and PurePosixPath(name).suffix.lower() in {".css", ".js"}
+    )
+    unreferenced_dashboard_assets = [name for name in dashboard_assets if name not in linked_assets]
+    css_markers_missing = [marker for marker in DASHBOARD_CSS_MARKERS if marker not in css_payload]
     return ArchiveValidation(
         names=names,
         missing=missing,
         forbidden=forbidden,
         has_js_asset=has_js_asset,
         has_css_asset=has_css_asset,
+        linked_assets=linked_assets,
+        missing_linked_assets=missing_linked_assets,
+        empty_linked_assets=empty_linked_assets,
+        unreferenced_dashboard_assets=unreferenced_dashboard_assets,
+        css_markers_missing=css_markers_missing,
         testzip_result=testzip_result,
     )
 
@@ -121,6 +167,39 @@ def is_forbidden_archive_name(name: str) -> bool:
     if any(part in FORBIDDEN_DIR_NAMES for part in path.parts):
         return True
     return path.suffix.lower() in FORBIDDEN_SUFFIXES
+
+
+class DashboardAssetParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if tag == "script" and values.get("src"):
+            self.refs.append(values["src"] or "")
+        if tag == "link" and values.get("href"):
+            rel = str(values.get("rel") or "").lower()
+            if "stylesheet" in rel:
+                self.refs.append(values["href"] or "")
+
+
+def extract_dashboard_asset_refs(index_html: str) -> list[str]:
+    parser = DashboardAssetParser()
+    parser.feed(index_html)
+    refs: list[str] = []
+    for raw_ref in parser.refs:
+        ref = raw_ref.split("#", 1)[0].split("?", 1)[0].strip()
+        if not ref:
+            continue
+        if ref.startswith("/"):
+            ref = ref.lstrip("/")
+        if ref.startswith("./"):
+            ref = ref[2:]
+        normalized = PurePosixPath(ref)
+        if normalized.parts and normalized.parts[0] == "assets":
+            refs.append(str(PurePosixPath("web_dashboard") / normalized))
+    return sorted(set(refs))
 
 
 def main() -> int:
@@ -142,6 +221,11 @@ def main() -> int:
         print(f"Forbidden entries: {validation.forbidden}")
         print(f"JS asset present: {validation.has_js_asset}")
         print(f"CSS asset present: {validation.has_css_asset}")
+        print(f"Linked dashboard assets: {validation.linked_assets}")
+        print(f"Missing linked dashboard assets: {validation.missing_linked_assets}")
+        print(f"Empty linked dashboard assets: {validation.empty_linked_assets}")
+        print(f"Unreferenced dashboard JS/CSS assets: {validation.unreferenced_dashboard_assets}")
+        print(f"Missing dashboard CSS markers: {validation.css_markers_missing}")
         print(f"Zip test result: {validation.testzip_result}")
         if not validation.ok:
             return 1

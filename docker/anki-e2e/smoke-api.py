@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
+from urllib.parse import urljoin
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -30,6 +32,7 @@ def main() -> int:
     report = fetch_json(base_url, "/api/report", token)
     assert_true(isinstance(report, dict), "report is an object")
     assert_true("token=" not in json.dumps(report, ensure_ascii=False), "token is absent from report payload")
+    asset_summary = assert_dashboard_assets(base_url, token, artifacts, args.label)
 
     cards = report_cards(report)
     assert_true(cards, "report contains card-level payload")
@@ -64,6 +67,7 @@ def main() -> int:
                     else None
                 ) if isinstance(fixture_card, dict) else None,
                 "checkedMedia": ["要.gif", "望.gif", "要望.mp3"],
+                "assets": asset_summary,
                 "apkg": apkg_summary,
             },
             ensure_ascii=False,
@@ -95,6 +99,83 @@ def fetch_bytes(base_url: str, path: str, token: str, params: dict[str, str] | N
             return response.status, response.headers.get("Content-Type", ""), response.read()
     except HTTPError as error:
         return error.code, error.headers.get("Content-Type", ""), error.read()
+
+
+class DashboardAssetParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if tag == "script" and values.get("src"):
+            self.refs.append(str(values.get("src") or ""))
+        if tag == "link" and values.get("href"):
+            rel = str(values.get("rel") or "").lower()
+            if "stylesheet" in rel:
+                self.refs.append(str(values.get("href") or ""))
+
+
+def assert_dashboard_assets(base_url: str, token: str, artifacts: Path, label: str) -> dict[str, Any]:
+    status, content_type, body = fetch_bytes(base_url, "/", token)
+    assert_true(status == 200, "dashboard index returned 200")
+    assert_true("text/html" in content_type.lower(), "dashboard index content-type is HTML")
+    html = body.decode("utf-8", errors="replace")
+    parser = DashboardAssetParser()
+    parser.feed(html)
+    refs = sorted({ref.split("#", 1)[0].split("?", 1)[0] for ref in parser.refs if ref.strip()})
+    assert_true(refs, "dashboard index links JS/CSS assets")
+
+    checked: list[dict[str, Any]] = []
+    css_payloads: list[str] = []
+    for ref in refs:
+        path = ref if ref.startswith("/") else f"/{ref}"
+        status, asset_type, asset_body = fetch_bytes(base_url, path, token)
+        suffix = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        assert_true(status == 200, f"dashboard asset returned 200: {ref}")
+        assert_true(len(asset_body) > 0, f"dashboard asset body is non-empty: {ref}")
+        if suffix == "css":
+            assert_true("text/css" in asset_type.lower(), f"CSS asset content-type is text/css: {ref}")
+            css_payloads.append(asset_body.decode("utf-8", errors="replace"))
+        if suffix == "js":
+            lower_type = asset_type.lower()
+            assert_true(
+                "javascript" in lower_type or "text/plain" not in lower_type,
+                f"JS asset content-type is script-like: {ref}",
+            )
+        checked.append(
+            {
+                "href": urljoin(base_url, path),
+                "path": path,
+                "status": status,
+                "contentType": asset_type,
+                "size": len(asset_body),
+            }
+        )
+
+    css_payload = "\n".join(css_payloads)
+    markers = [
+        "[data-theme=light]",
+        ".topbar-surface",
+        ".shadow-panel",
+        ".cards-risk-table",
+        ".anki-card-shadow-preview",
+    ]
+    missing_markers = [marker for marker in markers if marker not in css_payload]
+    assert_true(not missing_markers, f"dashboard CSS markers missing: {missing_markers}")
+    summary = {
+        "ok": True,
+        "indexContentType": content_type,
+        "assetCount": len(checked),
+        "cssAssetCount": len(css_payloads),
+        "assets": checked,
+        "missingCssMarkers": missing_markers,
+    }
+    (artifacts / f"api-asset-smoke-{label}.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return summary
 
 
 def report_cards(report: dict[str, Any]) -> list[dict[str, Any]]:

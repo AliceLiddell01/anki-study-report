@@ -44,6 +44,30 @@ scripts/run_full_check.ps1 -DockerOnly
   preserving the temporary profile helps diagnosis.
 - Full check script: run before a large merge, checkpoint, or branch handoff.
 
+## Release Package CSS Checks
+
+Build the release add-on from the project root:
+
+```powershell
+.\build_ankiaddon.ps1
+```
+
+The script validates that it is running from the Anki Study Report checkout by
+checking `web-dashboard/package.json`, `anki_study_report/manifest.json`, and
+`scripts/package_addon.py`. The package validator also reads
+`web_dashboard/index.html` inside the archive and checks that every linked
+Vite JS/CSS asset exists in the `.ankiaddon`, is non-empty, and that dashboard
+CSS markers such as theme rules, app shell styles, Cards table styles, and
+Shadow DOM preview host styles are present.
+
+For manual Anki checks, remove the old installed add-on folder from
+`addons21` before installing a new `.ankiaddon`, or verify that Anki fully
+replaced the previous install. Then restart Anki and reopen/restart the
+dashboard server. This avoids judging a fresh archive through stale installed
+`web_dashboard/assets` files. Runtime outputs such as `e2e-artifacts/`,
+screenshots, logs, and old generated dashboard assets must stay out of the
+release archive.
+
 ## Architecture
 
 - Base image: `mcr.microsoft.com/playwright:v1.49.1-noble`

@@ -10,6 +10,24 @@ $DashboardDir = Join-Path $Root "web-dashboard"
 $AddonDir = Join-Path $Root "anki_study_report"
 $Archive = Join-Path $Root "anki_study_report.ankiaddon"
 
+function Assert-ProjectRoot {
+    $requiredFiles = @(
+        (Join-Path $DashboardDir "package.json"),
+        (Join-Path $AddonDir "manifest.json"),
+        (Join-Path $Root "scripts\package_addon.py")
+    )
+
+    $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($missing.Count -gt 0) {
+        throw @"
+build_ankiaddon.ps1 must be run from the Anki Study Report project root.
+Resolved root: $Root
+Missing required files:
+$($missing -join "`n")
+"@
+    }
+}
+
 function Write-Section {
     param([string]$Message)
     Write-Host ""
@@ -136,6 +154,7 @@ function Remove-PythonCaches {
 }
 
 Set-Location $Root
+Assert-ProjectRoot
 Add-BundledNodeToPath
 
 Invoke-Step "Check JSON files" {

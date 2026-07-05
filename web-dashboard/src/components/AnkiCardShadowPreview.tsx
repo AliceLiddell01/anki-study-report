@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export type AnkiCardShadowPreviewMode = "table" | "tile";
+export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
 
 export interface AnkiCardShadowPreviewProps {
   html: string;
@@ -46,6 +46,10 @@ const SHADOW_BASE_CSS = `
 
 .asr-shadow-card-viewport--tile {
   transform: scale(0.5);
+}
+
+.asr-shadow-card-viewport--preview {
+  transform: scale(0.6);
 }
 
 .card {

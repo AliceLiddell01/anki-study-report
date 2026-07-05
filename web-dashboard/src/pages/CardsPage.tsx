@@ -807,9 +807,16 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
   if (canRender) {
     return (
       <div className="asr-card-rendered asr-front-preview mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-3">
-        {rendered?.css ? <style>{scopeCardCss(rendered.css)}</style> : null}
         <PreviewSection title="Лицевая сторона">
-          <FrontPreviewHtml row={row} />
+          <AnkiCardShadowPreview
+            mode="preview"
+            html={htmlWithMediaToken(rendered?.frontHtml || "")}
+            css={rendered?.css || ""}
+            title={cardFrontText(row)}
+            cardOrd={rendered?.cardOrd || 0}
+            renderSource={rendered?.renderSource || ""}
+            className="asr-front-preview-anki min-w-0"
+          />
         </PreviewSection>
       </div>
     );
@@ -1366,24 +1373,6 @@ function mediaUrlWithToken(url: string) {
     return url;
   }
   return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
-}
-
-function scopeCardCss(css: string) {
-  return css
-    .split("}")
-    .map((rule) => {
-      const [selector, body] = rule.split("{");
-      if (!selector || !body || selector.trim().startsWith("@")) {
-        return "";
-      }
-      const scoped = selector
-        .split(",")
-        .map((part) => `.asr-card-rendered ${part.trim()}`)
-        .join(", ");
-      return `${scoped} {${body}}`;
-    })
-    .filter(Boolean)
-    .join("\n");
 }
 
 export default CardsPage;
