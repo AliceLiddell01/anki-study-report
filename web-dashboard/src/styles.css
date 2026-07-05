@@ -591,8 +591,13 @@ select {
 }
 
 .cards-risk-table td {
-  padding: 0.45rem 0.65rem;
+  padding: 0.55rem 0.65rem;
   vertical-align: middle;
+}
+
+.cards-preview-table-cell {
+  width: 320px;
+  max-width: 320px;
 }
 
 .cards-risk-table tbody tr {
@@ -701,20 +706,39 @@ select {
 }
 
 .cards-row-status {
-  max-width: 8.5rem;
+  max-width: 14rem;
   overflow-wrap: anywhere;
   font-size: 0.72rem;
   line-height: 1.35;
   color: rgb(var(--color-text-muted));
 }
 
+.cards-tiles-grid {
+  align-items: stretch;
+}
+
+.cards-tile-card,
+.cards-anki-preview-card {
+  background-color: rgb(var(--color-surface-1) / 0.52);
+  box-shadow: inset 0 1px 0 rgb(var(--color-text-primary) / 0.03);
+}
+
+[data-theme="light"] .cards-tile-card,
+[data-theme="light"] .cards-anki-preview-card {
+  background-color: rgb(var(--color-surface-1) / 0.94);
+  box-shadow: 0 12px 28px rgba(45, 62, 84, 0.1);
+}
+
 .anki-card-shadow-preview {
-  display: block;
+  display: grid;
+  place-items: center;
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgb(var(--color-border-subtle));
-  background: rgb(var(--color-surface-0));
+  border: 1px solid rgb(var(--color-border-subtle) / 0.74);
+  background:
+    linear-gradient(180deg, rgb(var(--color-surface-2) / 0.72), rgb(var(--color-bg-elevated) / 0.78));
+  box-shadow: inset 0 1px 0 rgb(var(--color-text-primary) / 0.04);
 }
 
 .anki-card-shadow-preview template {
@@ -722,26 +746,30 @@ select {
 }
 
 .anki-card-shadow-preview--table {
-  width: min(100%, 15.5rem);
-  height: 11.75rem;
+  width: min(100%, 19rem);
+  height: 11.25rem;
   border-radius: 0.5rem;
 }
 
 .anki-card-shadow-preview--tile {
   width: 100%;
-  height: 16rem;
+  height: 19rem;
   border-radius: 0.55rem;
 }
 
 .anki-card-shadow-preview--preview {
   width: 100%;
-  min-height: 20rem;
+  min-height: 28rem;
   border-radius: 0.45rem;
 }
 
 [data-theme="light"] .anki-card-shadow-preview {
-  border-color: rgb(var(--color-border-strong) / 0.5);
-  background: rgb(var(--color-surface-1));
+  border-color: rgb(var(--color-border-strong) / 0.58);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(var(--color-surface-2) / 0.82));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 10px 24px rgba(45, 62, 84, 0.1);
 }
 
 .asr-front-preview {
@@ -797,6 +825,43 @@ select {
 .asr-front-preview-tile .asr-front-preview-html img,
 .asr-front-preview-tile img {
   max-height: 10rem;
+}
+
+.asr-front-preview-tile {
+  display: grid;
+  place-items: center;
+}
+
+.asr-front-preview-anki {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.asr-anki-preview-panel {
+  border-radius: 0.6rem;
+  background: transparent;
+}
+
+.asr-preview-section {
+  border-color: rgb(var(--color-border-subtle) / 0.56);
+  background-color: rgb(var(--color-bg-elevated) / 0.42);
+}
+
+.asr-preview-section h3 {
+  width: fit-content;
+  border-radius: 999px;
+  background-color: rgb(var(--color-surface-2) / 0.65);
+  padding: 0.16rem 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+[data-theme="light"] .asr-preview-section {
+  border-color: rgb(var(--color-border-subtle) / 0.68);
+  background-color: rgb(var(--color-surface-2) / 0.48);
+}
+
+[data-theme="light"] .asr-preview-section h3 {
+  background-color: rgb(var(--color-surface-1) / 0.9);
 }
 
 .asr-card-rendered.asr-front-preview:not(.asr-front-preview-table):not(.asr-front-preview-tile) img {

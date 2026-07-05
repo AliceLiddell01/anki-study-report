@@ -1,6 +1,42 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
+
+export interface AnkiPreviewModeConfig {
+  baseWidth: number;
+  baseHeight: number;
+  targetWidth: number;
+  targetHeight: number;
+  scale: number;
+  audioButtonSize: number;
+}
+
+export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPreviewModeConfig> = {
+  table: {
+    baseWidth: 640,
+    baseHeight: 392,
+    targetWidth: 292,
+    targetHeight: 174,
+    scale: 0.43,
+    audioButtonSize: 32,
+  },
+  tile: {
+    baseWidth: 640,
+    baseHeight: 380,
+    targetWidth: 520,
+    targetHeight: 292,
+    scale: 0.72,
+    audioButtonSize: 38,
+  },
+  preview: {
+    baseWidth: 640,
+    baseHeight: 420,
+    targetWidth: 640,
+    targetHeight: 420,
+    scale: 0.94,
+    audioButtonSize: 42,
+  },
+};
 
 export interface AnkiCardShadowPreviewProps {
   html: string;
@@ -16,6 +52,7 @@ export interface AnkiCardShadowPreviewProps {
 interface ShadowPreviewDocument {
   cardClassName: string;
   html: string;
+  shellClassName: string;
   styleText: string;
   viewportClassName: string;
 }
@@ -23,7 +60,8 @@ interface ShadowPreviewDocument {
 const SHADOW_BASE_CSS = `
 :host {
   all: initial;
-  display: block;
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
   contain: content;
@@ -35,26 +73,28 @@ const SHADOW_BASE_CSS = `
   box-sizing: border-box;
 }
 
+.asr-shadow-card-shell {
+  display: flex;
+  width: var(--asr-preview-target-width);
+  height: var(--asr-preview-target-height);
+  max-width: 100%;
+  max-height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .asr-shadow-card-viewport {
-  width: 640px;
-  transform-origin: top left;
-}
-
-.asr-shadow-card-viewport--table {
-  transform: scale(0.36);
-}
-
-.asr-shadow-card-viewport--tile {
-  transform: scale(0.5);
-}
-
-.asr-shadow-card-viewport--preview {
-  transform: scale(0.6);
+  flex: 0 0 var(--asr-preview-base-width);
+  width: var(--asr-preview-base-width);
+  min-height: var(--asr-preview-base-height);
+  transform: scale(var(--asr-preview-scale));
+  transform-origin: center center;
 }
 
 .card {
-  width: 640px;
-  min-height: 480px;
+  width: var(--asr-preview-base-width);
+  min-height: var(--asr-preview-base-height);
   overflow: visible;
   padding: 24px;
   background: #ffffff;
@@ -65,6 +105,7 @@ const SHADOW_BASE_CSS = `
   text-align: center;
 }
 
+.nightMode .card,
 .card.nightMode {
   background: #111827;
   color: #f8fafc;
@@ -96,8 +137,8 @@ const SHADOW_SAFETY_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: var(--asr-card-audio-size);
+  height: var(--asr-card-audio-size);
   border: 1px solid rgba(37, 99, 235, 0.42);
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.1);
@@ -146,9 +187,22 @@ export function buildShadowPreviewDocument({
   return {
     cardClassName: cardClasses.join(" "),
     html: html || "",
+    shellClassName: ["asr-shadow-card-shell", `asr-shadow-card-shell--${mode}`, nightMode ? "nightMode" : ""].filter(Boolean).join(" "),
     styleText: [SHADOW_BASE_CSS, css || "", SHADOW_SAFETY_CSS].join("\n"),
     viewportClassName: `asr-shadow-card-viewport asr-shadow-card-viewport--${mode}`,
   };
+}
+
+function previewModeStyle(mode: AnkiCardShadowPreviewMode): CSSProperties {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  return {
+    "--asr-preview-base-width": `${config.baseWidth}px`,
+    "--asr-preview-base-height": `${config.baseHeight}px`,
+    "--asr-preview-target-width": `${config.targetWidth}px`,
+    "--asr-preview-target-height": `${config.targetHeight}px`,
+    "--asr-preview-scale": config.scale,
+    "--asr-card-audio-size": `${config.audioButtonSize}px`,
+  } as CSSProperties;
 }
 
 export function AnkiCardShadowPreview({
@@ -168,6 +222,7 @@ export function AnkiCardShadowPreview({
     () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, className }),
     [cardOrd, className, css, html, mode, resolvedNightMode, title],
   );
+  const hostStyle = useMemo(() => previewModeStyle(mode), [mode]);
 
   useEffect(() => {
     if (nightMode !== undefined || typeof document === "undefined") {
@@ -198,6 +253,9 @@ export function AnkiCardShadowPreview({
     const style = document.createElement("style");
     style.textContent = shadowDocument.styleText;
 
+    const shell = document.createElement("div");
+    shell.className = shadowDocument.shellClassName;
+
     const viewport = document.createElement("div");
     viewport.className = shadowDocument.viewportClassName;
 
@@ -206,7 +264,8 @@ export function AnkiCardShadowPreview({
     card.innerHTML = shadowDocument.html;
 
     viewport.appendChild(card);
-    shadowRoot.append(style, viewport);
+    shell.appendChild(viewport);
+    shadowRoot.append(style, shell);
 
     const handleReplayClick = (event: Event) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -239,8 +298,10 @@ export function AnkiCardShadowPreview({
       className={`anki-card-shadow-preview anki-card-shadow-preview--${mode} ${className}`.trim()}
       title={title}
       aria-label={title}
+      style={hostStyle}
       data-testid="anki-card-shadow-preview"
       data-shadow-preview="true"
+      data-preview-mode={mode}
       data-shadow-preview-mode={mode}
       data-render-source={renderSource}
     >

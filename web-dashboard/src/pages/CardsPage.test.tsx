@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnkiCardShadowPreview, buildShadowPreviewDocument } from "../components/AnkiCardShadowPreview";
+import { ANKI_PREVIEW_MODE_CONFIG, AnkiCardShadowPreview, buildShadowPreviewDocument } from "../components/AnkiCardShadowPreview";
 import CardsPage from "./CardsPage";
 import type { StudyReport } from "../types/report";
 
@@ -171,6 +171,7 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).toContain("cards-row-copy");
     expect(html).toContain("anki-card-shadow-preview");
     expect(html).toContain('data-shadow-preview="true"');
+    expect(html).toContain('data-preview-mode="table"');
     expect(html).toContain("asr-front-preview-table");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
@@ -188,6 +189,7 @@ describe("CardsPage v4 UX corrections", () => {
 
     expect(html).toContain("表だけ");
     expect(html).toContain("anki-card-shadow-preview");
+    expect(html).toContain('data-preview-mode="tile"');
     expect(html).toContain("asr-front-preview-tile");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
@@ -200,6 +202,7 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).toContain("Лицевая сторона");
     expect(html).toContain("表だけ");
     expect(html).toContain('data-shadow-preview-mode="preview"');
+    expect(html).toContain('data-preview-mode="preview"');
     expect(html).not.toContain(".asr-card-rendered .word");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).toContain("/api/media?name=voice.mp3&token=test-token");
@@ -254,12 +257,17 @@ describe("CardsPage v4 UX corrections", () => {
     expect(renderedHost).not.toContain(" controls");
     expect(renderedHost).toContain("word-focus");
     expect(document.cardClassName).toBe("card card2 nightMode");
+    expect(document.shellClassName).toBe("asr-shadow-card-shell asr-shadow-card-shell--table nightMode");
     expect(document.viewportClassName).toBe("asr-shadow-card-viewport asr-shadow-card-viewport--table");
     expect(document.styleText).toContain(".word-focus { font-weight: 700; }");
+    expect(document.styleText).toContain(".nightMode .card");
     expect(document.styleText).toContain(".asr-card-replay-button");
     expect(document.styleText).toContain(".asr-card-audio");
     expect(document.styleText).toContain("display: none");
-    expect(document.styleText).toContain("transform: scale(0.36)");
+    expect(document.styleText).toContain("transform: scale(var(--asr-preview-scale))");
+    expect(ANKI_PREVIEW_MODE_CONFIG.table.scale).toBeGreaterThan(0.36);
+    expect(ANKI_PREVIEW_MODE_CONFIG.tile.targetWidth).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.table.targetWidth);
+    expect(ANKI_PREVIEW_MODE_CONFIG.preview.targetHeight).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.tile.targetHeight);
     expect(document.html).toContain("asr-card-replay-button");
     expect(document.html).toContain("asr-card-audio");
     expect(document.html).toContain("要望する");

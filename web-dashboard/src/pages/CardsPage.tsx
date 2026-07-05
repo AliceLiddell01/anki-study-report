@@ -633,7 +633,7 @@ function RiskTable({
 }) {
   return (
     <div className="cards-table-wrap overflow-x-auto rounded-lg border border-ink-700">
-      <table className="cards-risk-table table-readable w-full min-w-[1220px] border-collapse">
+      <table className="cards-risk-table table-readable w-full min-w-[1320px] border-collapse">
         <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
           <tr>
             <th className="text-left">Риск</th>
@@ -653,7 +653,7 @@ function RiskTable({
               <td className="w-[120px]">
                 <RiskBadge score={row.riskScore} />
               </td>
-              <td className="w-[280px] max-w-[280px]">
+              <td className="cards-preview-table-cell">
                 <CardPreviewCell row={row} />
               </td>
               <td className="max-w-[210px] text-report-muted">
@@ -741,9 +741,9 @@ function CardTiles({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="cards-tiles-grid grid gap-3 lg:grid-cols-2">
       {rows.map((row) => (
-        <article key={row.id} className={`rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
+        <article key={row.id} className={`cards-tile-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
             <span className="text-xs text-report-muted">{tabLabel(tab)}</span>
@@ -759,7 +759,7 @@ function CardTiles({
             <IssueChips issues={row.issues} />
           </div>
           <div className="mt-4">
-            <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} />
+            <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
           </div>
         </article>
       ))}
@@ -779,10 +779,10 @@ function AnkiPreviewGrid({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="grid gap-3">
-      <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-4">
+      <div className="grid gap-4">
         {rows.map((row) => (
-          <article key={row.id} className={`rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
+          <article key={row.id} className={`cards-anki-preview-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
               <span className="text-xs text-report-muted">{row.preview?.noteTypeName || row.preview?.detectedKind || "авто-превью"}</span>
@@ -792,7 +792,7 @@ function AnkiPreviewGrid({
               <IssueChips issues={row.issues} />
             </div>
             <div className="mt-4">
-              <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} />
+              <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
             </div>
           </article>
         ))}
@@ -806,7 +806,7 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
   const canRender = canRenderFrontHtml(row);
   if (canRender) {
     return (
-      <div className="asr-card-rendered asr-front-preview mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-3">
+      <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3">
         <PreviewSection title="Лицевая сторона">
           <AnkiCardShadowPreview
             mode="preview"
@@ -834,7 +834,7 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
 
 function PreviewSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="min-h-[78px] overflow-hidden rounded-md border border-ink-700 bg-ink-900/45 p-3">
+    <section className="asr-preview-section min-h-[78px] overflow-hidden rounded-md border border-ink-700 bg-ink-900/45 p-3">
       <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-report-muted">{title}</h3>
       <div className="asr-preview-section-body mt-2">{children}</div>
     </section>
