@@ -743,22 +743,31 @@ function CardTiles({
   return (
     <div className="cards-tiles-grid grid gap-3 lg:grid-cols-2">
       {rows.map((row) => (
-        <article key={row.id} className={`cards-tile-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <article
+          key={row.id}
+          className={`cards-tile-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}
+          data-testid="cards-tile"
+          data-card-id={row.id}
+        >
+          <div className="cards-tile-header flex flex-wrap items-center justify-between gap-2" data-testid="cards-tile-header">
             <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
             <span className="text-xs text-report-muted">{tabLabel(tab)}</span>
           </div>
-          <FrontPreviewFrame row={row} variant="tile" className="mt-3" />
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-report-muted">{row.deckName}</p>
-          <div className="cards-tile-metrics mt-3 grid grid-cols-3 gap-2 text-xs text-report-muted">
+          <div className="cards-tile-preview-slot" data-testid="cards-tile-preview-slot">
+            <FrontPreviewFrame row={row} variant="tile" />
+          </div>
+          <p className="cards-tile-meta line-clamp-2 text-sm leading-6 text-report-muted" data-testid="cards-tile-meta">
+            {row.deckName}
+          </p>
+          <div className="cards-tile-metrics grid grid-cols-3 gap-2 text-xs text-report-muted" data-testid="cards-tile-metrics">
             <DetailMini label="Again" value={formatInteger(row.againCount)} />
             <DetailMini label="срывы" value={formatInteger(row.lapses)} />
             <DetailMini label="успех" value={formatPercent(row.passRate)} />
           </div>
-          <div className="cards-tile-issues mt-3">
+          <div className="cards-tile-issues" data-testid="cards-tile-issues">
             <IssueChips issues={row.issues} />
           </div>
-          <div className="cards-tile-actions mt-4">
+          <div className="cards-tile-actions" data-testid="cards-tile-actions">
             <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
           </div>
         </article>

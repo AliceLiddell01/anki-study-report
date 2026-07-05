@@ -160,6 +160,7 @@ async function capture(page, mode, theme, fileName) {
   } else {
     await waitForAnkiPreview(page);
   }
+  await waitForLayoutStabilization(page);
   await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
 }
 
@@ -188,15 +189,40 @@ async function assertApkgBrowserIfEnabled(page) {
   assertRepresentativeApkgCards(apkgCards, importSummary);
 
   const deckName = (importSummary.deckNames || [])[0] || "asr-e2e-render-fixtures";
+  await captureApkg(page, "table", "light", `cards-apkg-table-light-${label}.png`, deckName);
+  const tableLightDetails = await inspectApkgShadowPreviews(page, "table");
+  assertBrowser(tableLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light table previews found: ${tableLightDetails.hostCount}`);
+  assertShadowSummary(tableLightDetails, "table light");
+
   await captureApkg(page, "table", "dark", `cards-apkg-table-dark-${label}.png`, deckName);
   const tableDetails = await inspectApkgShadowPreviews(page, "table");
   assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
   assertShadowSummary(tableDetails, "table");
 
+  await captureApkg(page, "tiles", "light", `cards-apkg-tiles-light-${label}.png`, deckName);
+  const tileLightDetails = await inspectApkgShadowPreviews(page, "tile");
+  const tileLightLayout = await inspectTileLayout(page);
+  assertBrowser(tileLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light tile previews found: ${tileLightDetails.hostCount}`);
+  assertShadowSummary(tileLightDetails, "tile light");
+  assertTileLayoutSummary(tileLightLayout, "APKG light tiles");
+
   await captureApkg(page, "tiles", "dark", `cards-apkg-tiles-dark-${label}.png`, deckName);
   const tileDetails = await inspectApkgShadowPreviews(page, "tile");
+  const tileLayout = await inspectTileLayout(page);
   assertBrowser(tileDetails.hostCount >= Math.min(3, apkgCards.length), `APKG tile previews found: ${tileDetails.hostCount}`);
   assertShadowSummary(tileDetails, "tile");
+  assertTileLayoutSummary(tileLayout, "APKG dark tiles");
+
+  await captureApkg(page, "ankiPreview", "light", `cards-apkg-anki-preview-light-${label}.png`, deckName);
+  const previewLightDetails = await inspectApkgAnkiPreview(page);
+  assertBrowser(previewLightDetails.previewCount >= Math.min(3, apkgCards.length), `APKG light Anki answer previews found: ${previewLightDetails.previewCount}`);
+  assertBrowser(previewLightDetails.frontHostCount === 0, "APKG light Anki preview has no separate front preview host.");
+  assertBrowser(previewLightDetails.unmeasuredHostCount === 0, "APKG light Anki preview answer hosts completed adaptive measurement.");
+  assertBrowser(previewLightDetails.clippedHostCount === 0, "APKG light Anki preview answer hosts are not clipped at the bottom.");
+  assertBrowser(!previewLightDetails.hasRawSoundMarker, "APKG light Anki preview has no raw sound marker.");
+  assertBrowser(!previewLightDetails.hasRawAnkiPlayMarker, "APKG light Anki preview has no raw Anki AV marker.");
+  assertBrowser(!previewLightDetails.hasScriptTag, "APKG light Anki preview has no script tag.");
+  assertBrowser(!previewLightDetails.hasExternalCdnLink, "APKG light Anki preview has no external CDN link.");
 
   await captureApkg(page, "ankiPreview", "dark", `cards-apkg-anki-preview-${label}.png`, deckName);
   const previewDetails = await inspectApkgAnkiPreview(page);
@@ -213,12 +239,22 @@ async function assertApkgBrowserIfEnabled(page) {
 
   const summary = {
     enabled: true,
+    fixturePath: "docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg",
+    noteCount: Number(importSummary.noteCount || 0),
     cardCount: importedCardCount,
+    noteTypeCount: (importSummary.noteTypeNames || []).length,
+    mediaFileCount: (importSummary.mediaFilesFound || []).length,
+    renderSourceNativeCount: apkgCards.filter((card) => card?.renderedPreview?.renderSource === "anki_native").length,
     attentionCardsFromApkg: apkgCards.length,
     distinctNoteTypes,
     deckName,
+    tableLightDetails,
     tableDetails,
+    tileLightDetails,
     tileDetails,
+    tileLightLayout,
+    tileLayout,
+    previewLightDetails,
     previewDetails,
     documentNoteCssLeak,
     representatives: summarizeRepresentatives(apkgCards),
@@ -419,6 +455,7 @@ async function captureApkg(page, mode, theme, fileName, deckName) {
   } else {
     await waitForApkgAnkiPreview(page);
   }
+  await waitForLayoutStabilization(page);
   await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
 }
 
@@ -488,7 +525,11 @@ async function waitForShadowFixture(page, mode) {
         const html = shadowRoot?.innerHTML || "";
         const template = host.querySelector("template")?.innerHTML || "";
         const searchable = `${host.getAttribute("title") || ""}\n${template}\n${html}`;
-        return Boolean(shadowRoot && (searchable.includes("要望") || searchable.includes("%E8%A6%81")));
+        return Boolean(
+          shadowRoot &&
+            host.getAttribute("data-preview-measured") === "true" &&
+            (searchable.includes("要望") || searchable.includes("%E8%A6%81")),
+        );
       });
     },
     { expectedMode: mode },
@@ -522,7 +563,7 @@ async function waitForApkgShadowPreviews(page, mode) {
       const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"]')].filter(
         (host) => host.getAttribute("data-shadow-preview-mode") === expectedMode,
       );
-      return hosts.some((host) => {
+      return hosts.length > 0 && hosts.every((host) => host.getAttribute("data-preview-measured") === "true") && hosts.some((host) => {
         const searchable = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
         return /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(searchable);
       });
@@ -530,6 +571,19 @@ async function waitForApkgShadowPreviews(page, mode) {
     { expectedMode: mode },
     { timeout: 60000 },
   );
+}
+
+async function waitForLayoutStabilization(page) {
+  await page.evaluate(async () => {
+    await document.fonts?.ready?.catch(() => undefined);
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(resolve);
+        });
+      });
+    });
+  });
 }
 
 async function waitForApkgAnkiPreview(page) {
@@ -624,6 +678,127 @@ async function inspectApkgShadowPreviews(page, mode) {
   }, mode);
 }
 
+async function inspectTileLayout(page) {
+  return page.evaluate(() => {
+    const tolerance = 2;
+    const tiles = [...document.querySelectorAll('[data-testid="cards-tile"]')].filter((tile) => {
+      const rect = tile.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    const rectOf = (element) => {
+      if (!element) {
+        return null;
+      }
+      const rect = element.getBoundingClientRect();
+      return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      };
+    };
+    const intersects = (first, second) =>
+      Boolean(
+        first &&
+          second &&
+          first.left < second.right - tolerance &&
+          first.right > second.left + tolerance &&
+          first.top < second.bottom - tolerance &&
+          first.bottom > second.top + tolerance,
+      );
+    const outside = (inner, outer) =>
+      Boolean(
+        inner &&
+          outer &&
+          (inner.left < outer.left - tolerance ||
+            inner.right > outer.right + tolerance ||
+            inner.top < outer.top - tolerance ||
+            inner.bottom > outer.bottom + tolerance)
+      );
+    const zeroSized = (rect) => !rect || rect.width <= tolerance || rect.height <= tolerance;
+    const actionCovered = (button) => {
+      const rect = button.getBoundingClientRect();
+      if (rect.width <= tolerance || rect.height <= tolerance) {
+        return true;
+      }
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
+        return false;
+      }
+      const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return !(target === button || button.contains(target) || target?.closest("button") === button);
+    };
+
+    const tileDetails = tiles.map((tile, index) => {
+      const tileRect = rectOf(tile);
+      const previewSlot = tile.querySelector('[data-testid="cards-tile-preview-slot"]');
+      const previewHost = tile.querySelector('[data-testid="anki-card-shadow-preview"]');
+      const metrics = tile.querySelector('[data-testid="cards-tile-metrics"]');
+      const issues = tile.querySelector('[data-testid="cards-tile-issues"]');
+      const actions = tile.querySelector('[data-testid="cards-tile-actions"]');
+      const previewRect = rectOf(previewSlot || previewHost);
+      const hostRect = rectOf(previewHost);
+      const metricsRect = rectOf(metrics);
+      const issuesRect = rectOf(issues);
+      const actionsRect = rectOf(actions);
+      const issueBadges = [...(issues?.querySelectorAll(".status-pill") || [])].map(rectOf);
+      const buttons = [...(actions?.querySelectorAll("button") || [])];
+      const previewOverlapsMetrics = intersects(previewRect, metricsRect);
+      const previewOverlapsIssues = intersects(previewRect, issuesRect);
+      const previewOverlapsActions = intersects(previewRect, actionsRect);
+      const hostOutsidePreviewSlot = Boolean(hostRect && previewRect && outside(hostRect, previewRect));
+      return {
+        index,
+        cardId: tile.getAttribute("data-card-id") || "",
+        measured: previewHost?.getAttribute("data-preview-measured") === "true",
+        previewOverflow: previewHost?.getAttribute("data-preview-overflow") || "",
+        tileRect,
+        previewRect,
+        hostRect,
+        metricsRect,
+        issuesRect,
+        actionsRect,
+        previewOverlapsMetrics,
+        previewOverlapsIssues,
+        previewOverlapsActions,
+        hostOutsidePreviewSlot,
+        metricsClipped: zeroSized(metricsRect) || outside(metricsRect, tileRect),
+        actionsClipped: zeroSized(actionsRect) || outside(actionsRect, tileRect),
+        badgesClipped: issueBadges.some((rect) => zeroSized(rect) || outside(rect, tileRect)),
+        coveredActions: buttons.filter(actionCovered).length,
+        buttonCount: buttons.length,
+      };
+    });
+
+    let tileOverlapCount = 0;
+    for (let outerIndex = 0; outerIndex < tileDetails.length; outerIndex += 1) {
+      for (let innerIndex = outerIndex + 1; innerIndex < tileDetails.length; innerIndex += 1) {
+        if (intersects(tileDetails[outerIndex].tileRect, tileDetails[innerIndex].tileRect)) {
+          tileOverlapCount += 1;
+        }
+      }
+    }
+    const pageText = document.body.innerText || "";
+    return {
+      tileCount: tileDetails.length,
+      tileOverlapCount,
+      tilePreviewOverlapCount: tileDetails.filter(
+        (detail) => detail.previewOverlapsMetrics || detail.previewOverlapsIssues || detail.previewOverlapsActions,
+      ).length,
+      tileMetricsClippedCount: tileDetails.filter((detail) => detail.metricsClipped).length,
+      tileActionsClippedCount: tileDetails.filter((detail) => detail.actionsClipped).length,
+      tileBadgesClippedCount: tileDetails.filter((detail) => detail.badgesClipped).length,
+      tileCoveredActionsCount: tileDetails.reduce((sum, detail) => sum + detail.coveredActions, 0),
+      tilePreviewHostOutsideSlotCount: tileDetails.filter((detail) => detail.hostOutsidePreviewSlot).length,
+      unmeasuredHostCount: tileDetails.filter((detail) => !detail.measured).length,
+      rawSoundCount: (pageText.match(/\[sound:/gi) || []).length,
+      rawAnkiPlayCount: (pageText.match(/\[anki:play:/gi) || []).length,
+      details: tileDetails.slice(0, 12),
+    };
+  });
+}
+
 async function inspectApkgAnkiPreview(page) {
   return page.evaluate(() => {
     const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
@@ -680,6 +855,20 @@ function assertShadowSummary(details, mode) {
   if (details.mediaHostCount > 0) {
     assertBrowser(details.details.filter((detail) => detail.imgCount > 0).every((detail) => detail.imagesLoaded), `APKG ${mode} images loaded.`);
   }
+}
+
+function assertTileLayoutSummary(details, labelText) {
+  assertBrowser(details.tileCount > 0, `${labelText} rendered tile cards.`);
+  assertBrowser(details.tileOverlapCount === 0, `${labelText} cards do not overlap each other.`);
+  assertBrowser(details.tilePreviewOverlapCount === 0, `${labelText} previews do not overlap metrics, badges, or actions.`);
+  assertBrowser(details.tileMetricsClippedCount === 0, `${labelText} metrics remain inside tile bounds.`);
+  assertBrowser(details.tileActionsClippedCount === 0, `${labelText} actions remain inside tile bounds.`);
+  assertBrowser(details.tileBadgesClippedCount === 0, `${labelText} issue badges remain inside tile bounds.`);
+  assertBrowser(details.tileCoveredActionsCount === 0, `${labelText} action buttons are not covered by overlays.`);
+  assertBrowser(details.tilePreviewHostOutsideSlotCount === 0, `${labelText} preview hosts remain inside preview slots.`);
+  assertBrowser(details.unmeasuredHostCount === 0, `${labelText} preview hosts completed adaptive measurement.`);
+  assertBrowser(details.rawSoundCount === 0, `${labelText} has no visible raw sound macro.`);
+  assertBrowser(details.rawAnkiPlayCount === 0, `${labelText} has no visible raw Anki play macro.`);
 }
 
 async function inspectShadowPreview(page, expectedMode = "") {

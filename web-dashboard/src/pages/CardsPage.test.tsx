@@ -194,10 +194,22 @@ describe("CardsPage v5 adaptive card previews", () => {
 
   it("renders tiles main preview from frontText only", () => {
     const html = renderCards("tiles");
+    const tileIndex = html.indexOf('data-testid="cards-tile"');
+    const previewSlotIndex = html.indexOf('data-testid="cards-tile-preview-slot"');
+    const metricsIndex = html.indexOf('data-testid="cards-tile-metrics"');
+    const issuesIndex = html.indexOf('data-testid="cards-tile-issues"');
+    const actionsIndex = html.indexOf('data-testid="cards-tile-actions"');
 
     expect(html).toContain("表だけ");
+    expect(tileIndex).toBeGreaterThanOrEqual(0);
+    expect(previewSlotIndex).toBeGreaterThan(tileIndex);
+    expect(metricsIndex).toBeGreaterThan(previewSlotIndex);
+    expect(issuesIndex).toBeGreaterThan(metricsIndex);
+    expect(actionsIndex).toBeGreaterThan(issuesIndex);
     expect(html).toContain("anki-card-shadow-preview");
     expect(html).toContain('data-preview-mode="tile"');
+    expect(html).toContain('data-preview-side="front"');
+    expect(html).toContain('data-testid="cards-tile-meta"');
     expect(html).toContain("asr-front-preview-tile");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");

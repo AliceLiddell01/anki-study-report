@@ -720,7 +720,8 @@ select {
 }
 
 .cards-tiles-grid {
-  align-items: stretch;
+  align-items: start;
+  grid-auto-rows: auto;
 }
 
 .cards-tile-card,
@@ -730,9 +731,30 @@ select {
 }
 
 .cards-tile-card {
-  display: flex;
-  min-height: 25.5rem;
-  flex-direction: column;
+  display: grid;
+  min-height: 0;
+  height: auto;
+  align-content: start;
+  gap: 0.75rem;
+  overflow: visible;
+}
+
+.cards-tile-header,
+.cards-tile-preview-slot,
+.cards-tile-meta,
+.cards-tile-metrics,
+.cards-tile-issues,
+.cards-tile-actions {
+  min-width: 0;
+}
+
+.cards-tile-preview-slot {
+  position: relative;
+  overflow: visible;
+}
+
+.cards-tile-preview-slot > .anki-card-shadow-preview {
+  display: grid;
 }
 
 .cards-tile-metrics {
@@ -753,9 +775,12 @@ select {
   font-size: 0.88rem;
 }
 
-.cards-tile-actions,
 .cards-anki-preview-actions {
   margin-top: auto;
+}
+
+.cards-tile-actions {
+  margin-top: 0;
 }
 
 .cards-tile-issues .status-pill,
