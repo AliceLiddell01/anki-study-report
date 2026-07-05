@@ -58,7 +58,8 @@ const baseReport: StudyReport = {
         renderStatus: "sanitized",
         frontHtml:
           '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word">表だけ</span><img src="/api/media?name=front.gif">',
-        backHtml: "<b>back-side meaning</b>",
+        backHtml:
+          '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio answer.mp3" data-audio-name="answer.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=answer.mp3"></audio></span><b>back-side meaning</b>',
         frontPlainText: "表だけ",
         backPlainText: "back-side meaning",
         css: ".word { color: red; }",
@@ -145,7 +146,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderCards(displayMode: "table" | "tiles" | "ankiPreview" = "table") {
+function renderCards(displayMode: "table" | "tiles" | "ankiPreview" = "table", report: StudyReport = baseReport) {
   vi.stubGlobal("window", {
     location: {
       search: "?token=test-token",
@@ -155,7 +156,7 @@ function renderCards(displayMode: "table" | "tiles" | "ankiPreview" = "table") {
       setItem: () => undefined,
     },
   });
-  return renderToStaticMarkup(<CardsPage report={baseReport} loadState="ready" />);
+  return renderToStaticMarkup(<CardsPage report={report} loadState="ready" />);
 }
 
 describe("CardsPage v4 UX corrections", () => {
@@ -175,6 +176,8 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).toContain("asr-front-preview-table");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
+    expect(html).not.toContain("back-side meaning");
+    expect(html).not.toContain("/api/media?name=answer.mp3");
     expect(html).not.toContain("cid:999");
     expect(html).not.toContain("AUDIO");
     expect(html).not.toContain("IMAGE");
@@ -193,28 +196,50 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).toContain("asr-front-preview-tile");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).not.toContain("translation must stay hidden");
+    expect(html).not.toContain("back-side meaning");
+    expect(html).not.toContain("/api/media?name=answer.mp3");
     expect(html).not.toContain("cid:123");
   });
 
-  it("renders simplified Anki preview from the front template only", () => {
+  it("renders Anki preview with front and back templates", () => {
     const html = renderCards("ankiPreview");
 
     expect(html).toContain("Лицевая сторона");
+    expect(html).toContain("Ответ / оборотная сторона");
+    expect(html).toContain('data-testid="anki-preview-front"');
+    expect(html).toContain('data-testid="anki-preview-back"');
     expect(html).toContain("表だけ");
     expect(html).toContain('data-shadow-preview-mode="preview"');
     expect(html).toContain('data-preview-mode="preview"');
+    expect(html).toContain('data-preview-side="front"');
+    expect(html).toContain('data-preview-side="back"');
     expect(html).not.toContain(".asr-card-rendered .word");
     expect(html).toContain("/api/media?name=front.gif&token=test-token");
     expect(html).toContain("/api/media?name=voice.mp3&token=test-token");
+    expect(html).toContain("back-side meaning");
+    expect(html).toContain("/api/media?name=answer.mp3&token=test-token");
     expect(html).toContain("asr-card-replay-button");
     expect(html).toContain("asr-card-audio");
     expect(html).not.toContain(" controls");
     expect(html).not.toContain(">Back</h3>");
-    expect(html).not.toContain("back-side meaning");
-    expect(html).not.toContain("/api/media?name=answer.mp3");
     expect(html).not.toContain("Both");
     expect(html).not.toContain("Anki-like preview fallback");
     expect(html).not.toContain("Упрощённое превью");
+  });
+
+  it("renders a back preview fallback when the rendered answer is unavailable", () => {
+    const report = JSON.parse(JSON.stringify(baseReport)) as StudyReport;
+    const rendered = report.attentionCards?.[0]?.renderedPreview;
+    if (rendered) {
+      rendered.backHtml = "";
+      rendered.reason = "answer render skipped";
+    }
+    const html = renderCards("ankiPreview", report);
+
+    expect(html).toContain("Лицевая сторона");
+    expect(html).toContain("Ответ / оборотная сторона");
+    expect(html).toContain("Оборотная сторона недоступна для этого шаблона: answer render skipped");
+    expect(html).not.toContain("back-side meaning");
   });
 
   it("keeps template diagnostics closed and hides raw debug wording", () => {
@@ -250,6 +275,7 @@ describe("CardsPage v4 UX corrections", () => {
     });
 
     expect(renderedHost).toContain('data-shadow-preview="true"');
+    expect(renderedHost).toContain('data-preview-side="front"');
     expect(renderedHost).toContain('data-render-source="anki_native"');
     expect(renderedHost).toContain("data-shadow-preview-template");
     expect(renderedHost).toContain("asr-card-replay-button");
@@ -257,7 +283,7 @@ describe("CardsPage v4 UX corrections", () => {
     expect(renderedHost).not.toContain(" controls");
     expect(renderedHost).toContain("word-focus");
     expect(document.cardClassName).toBe("card card2 nightMode");
-    expect(document.shellClassName).toBe("asr-shadow-card-shell asr-shadow-card-shell--table nightMode");
+    expect(document.shellClassName).toBe("asr-shadow-card-shell asr-shadow-card-shell--table asr-shadow-card-shell--front nightMode");
     expect(document.viewportClassName).toBe("asr-shadow-card-viewport asr-shadow-card-viewport--table");
     expect(document.styleText).toContain(".word-focus { font-weight: 700; }");
     expect(document.styleText).toContain(".nightMode .card");

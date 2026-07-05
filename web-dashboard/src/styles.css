@@ -840,11 +840,16 @@ select {
 .asr-anki-preview-panel {
   border-radius: 0.6rem;
   background: transparent;
+  gap: 1rem;
 }
 
 .asr-preview-section {
   border-color: rgb(var(--color-border-subtle) / 0.56);
   background-color: rgb(var(--color-bg-elevated) / 0.42);
+}
+
+.asr-preview-section[data-preview-side="back"] {
+  background-color: rgb(var(--color-surface-1) / 0.5);
 }
 
 .asr-preview-section h3 {
@@ -860,8 +865,17 @@ select {
   background-color: rgb(var(--color-surface-2) / 0.48);
 }
 
+[data-theme="light"] .asr-preview-section[data-preview-side="back"] {
+  background-color: rgb(var(--color-surface-1) / 0.7);
+}
+
 [data-theme="light"] .asr-preview-section h3 {
   background-color: rgb(var(--color-surface-1) / 0.9);
+}
+
+.asr-preview-unavailable {
+  max-width: 760px;
+  margin-inline: auto;
 }
 
 .asr-card-rendered.asr-front-preview:not(.asr-front-preview-table):not(.asr-front-preview-tile) img {

@@ -47,3 +47,6 @@ pnpm run test:all
 если они не касаются startup/rendering/media/server/package layout. Docker E2E
 дорогой и нужен там, где unit tests не видят реальный Anki Desktop.
 
+Для Cards preview финальный Docker browser smoke должен покрывать screenshots
+`table`, `tiles` и `ankiPreview` в light/dark темах; `table`/`tiles` остаются
+front-only, а `ankiPreview` проверяет front/back Shadow DOM секции.

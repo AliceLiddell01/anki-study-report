@@ -326,7 +326,7 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 9. Start Anki in Xvfb with `-b /e2e/anki-data -p E2E`.
 10. Wait for `dashboard-ready.json` and `/api/health`.
 11. Run `smoke-api.py`.
-12. Run `smoke-browser.mjs` and save screenshots.
+12. Run `smoke-browser.mjs`, verify Cards preview modes, and save screenshots.
 13. Stop Anki.
 14. Start Anki again with the same profile.
 15. Wait for readiness and rerun API smoke.
@@ -364,8 +364,10 @@ Expected files include:
 - `apkg-problematic-summary.json`
 - `cards-table-light-first.png`
 - `cards-table-dark-first.png`
-- `cards-tile-first.png`
-- `cards-anki-preview-first.png`
+- `cards-tiles-light-first.png`
+- `cards-tiles-dark-first.png`
+- `cards-anki-preview-light-first.png`
+- `cards-anki-preview-dark-first.png`
 - `cards-apkg-table-dark-first.png` when APKG mode is enabled
 - `cards-apkg-tile-first.png` when APKG mode is enabled
 - `cards-apkg-anki-preview-first.png` when APKG mode is enabled

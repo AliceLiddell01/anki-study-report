@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
+export type AnkiCardShadowPreviewSide = "front" | "back";
 
 export interface AnkiPreviewModeConfig {
   baseWidth: number;
@@ -46,6 +47,7 @@ export interface AnkiCardShadowPreviewProps {
   renderSource?: string;
   nightMode?: boolean;
   mode: AnkiCardShadowPreviewMode;
+  side?: AnkiCardShadowPreviewSide;
   className?: string;
 }
 
@@ -181,13 +183,16 @@ export function buildShadowPreviewDocument({
   cardOrd = 0,
   nightMode = false,
   mode,
+  side = "front",
 }: AnkiCardShadowPreviewProps): ShadowPreviewDocument {
   const normalizedOrd = Number.isFinite(cardOrd) ? Math.max(0, Math.floor(cardOrd)) : 0;
   const cardClasses = ["card", `card${normalizedOrd + 1}`, nightMode ? "nightMode" : ""].filter(Boolean);
   return {
     cardClassName: cardClasses.join(" "),
     html: html || "",
-    shellClassName: ["asr-shadow-card-shell", `asr-shadow-card-shell--${mode}`, nightMode ? "nightMode" : ""].filter(Boolean).join(" "),
+    shellClassName: ["asr-shadow-card-shell", `asr-shadow-card-shell--${mode}`, `asr-shadow-card-shell--${side}`, nightMode ? "nightMode" : ""]
+      .filter(Boolean)
+      .join(" "),
     styleText: [SHADOW_BASE_CSS, css || "", SHADOW_SAFETY_CSS].join("\n"),
     viewportClassName: `asr-shadow-card-viewport asr-shadow-card-viewport--${mode}`,
   };
@@ -213,14 +218,15 @@ export function AnkiCardShadowPreview({
   renderSource = "",
   nightMode,
   mode,
+  side = "front",
   className = "",
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [autoNightMode, setAutoNightMode] = useState(false);
   const resolvedNightMode = nightMode ?? autoNightMode;
   const shadowDocument = useMemo(
-    () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, className }),
-    [cardOrd, className, css, html, mode, resolvedNightMode, title],
+    () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, side, className }),
+    [cardOrd, className, css, html, mode, resolvedNightMode, side, title],
   );
   const hostStyle = useMemo(() => previewModeStyle(mode), [mode]);
 
@@ -302,7 +308,9 @@ export function AnkiCardShadowPreview({
       data-testid="anki-card-shadow-preview"
       data-shadow-preview="true"
       data-preview-mode={mode}
+      data-preview-side={side}
       data-shadow-preview-mode={mode}
+      data-shadow-preview-side={side}
       data-render-source={renderSource}
     >
       <template data-shadow-preview-template dangerouslySetInnerHTML={{ __html: html }} />

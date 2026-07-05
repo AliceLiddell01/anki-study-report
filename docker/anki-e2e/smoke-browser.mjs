@@ -24,6 +24,7 @@ const assetResponses = [];
 const browser = await chromium.launch({ headless: true });
 let page;
 try {
+  await deleteStaleFailureArtifacts();
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   page.on("console", (message) => {
     consoleEvents.push({
@@ -60,8 +61,9 @@ try {
     }
   });
 
+  const visualStates = [];
   await capture(page, "table", "light", `cards-table-light-${label}.png`);
-  const shadowDetails = await inspectShadowPreview(page);
+  const shadowDetails = await inspectShadowPreview(page, "table");
   if (!shadowDetails.exists) {
     throw new Error("Shadow DOM preview host for fixture card was not found.");
   }
@@ -87,11 +89,35 @@ try {
   ) {
     throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
   }
+  assertFrontOnlyMode(shadowDetails, "table");
+  visualStates.push({ mode: "table", theme: "light", screenshot: `cards-table-light-${label}.png`, details: shadowDetails });
 
   await fs.writeFile(path.join(artifacts, `cards-shadow-dom-dump-${label}.html`), redactArtifact(shadowDetails.html), "utf8");
   await capture(page, "table", "dark", `cards-table-dark-${label}.png`);
-  await capture(page, "tiles", "dark", `cards-tile-${label}.png`);
-  await capture(page, "ankiPreview", "dark", `cards-anki-preview-${label}.png`);
+  const tableDarkDetails = await inspectShadowPreview(page, "table");
+  assertFrontOnlyMode(tableDarkDetails, "table");
+  visualStates.push({ mode: "table", theme: "dark", screenshot: `cards-table-dark-${label}.png`, details: tableDarkDetails });
+
+  await capture(page, "tiles", "light", `cards-tiles-light-${label}.png`);
+  const tilesLightDetails = await inspectShadowPreview(page, "tile");
+  assertFrontOnlyMode(tilesLightDetails, "tile");
+  visualStates.push({ mode: "tiles", theme: "light", screenshot: `cards-tiles-light-${label}.png`, details: tilesLightDetails });
+
+  await capture(page, "tiles", "dark", `cards-tiles-dark-${label}.png`);
+  const tilesDarkDetails = await inspectShadowPreview(page, "tile");
+  assertFrontOnlyMode(tilesDarkDetails, "tile");
+  visualStates.push({ mode: "tiles", theme: "dark", screenshot: `cards-tiles-dark-${label}.png`, details: tilesDarkDetails });
+
+  await capture(page, "ankiPreview", "light", `cards-anki-preview-light-${label}.png`);
+  const ankiPreviewLightDetails = await inspectAnkiPreview(page);
+  assertAnkiPreviewFrontBack(ankiPreviewLightDetails, "light");
+  visualStates.push({ mode: "ankiPreview", theme: "light", screenshot: `cards-anki-preview-light-${label}.png`, details: ankiPreviewLightDetails });
+
+  await capture(page, "ankiPreview", "dark", `cards-anki-preview-dark-${label}.png`);
+  const ankiPreviewDarkDetails = await inspectAnkiPreview(page);
+  assertAnkiPreviewFrontBack(ankiPreviewDarkDetails, "dark");
+  visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: `cards-anki-preview-dark-${label}.png`, details: ankiPreviewDarkDetails });
+
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
 
@@ -101,6 +127,7 @@ try {
     networkEvents,
     pageErrors,
     shadowDetails,
+    visualStates,
     cssDiagnostics,
     apkg: apkgDetails,
   });
@@ -467,14 +494,20 @@ async function waitForShadowFixture(page, mode) {
 }
 
 async function waitForAnkiPreview(page) {
-  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-preview-front"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-preview-back"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]').first().waitFor({ state: "visible", timeout: 60000 });
   await page.waitForFunction(
     () => {
-      const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
-      return hosts.some((host) => {
+      const frontHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]')];
+      const backHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]')];
+      const hasFixtureFront = frontHosts.some((host) => {
         const html = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
         return html.includes("要望") || html.includes("%E8%A6%81");
       });
+      const hasUsableBack = backHosts.some((host) => (host.shadowRoot?.textContent || host.querySelector("template")?.innerHTML || "").trim().length > 0);
+      return hasFixtureFront && hasUsableBack;
     },
     undefined,
     { timeout: 60000 },
@@ -624,12 +657,15 @@ function assertShadowSummary(details, mode) {
   }
 }
 
-async function inspectShadowPreview(page) {
-  return page.evaluate(() => {
+async function inspectShadowPreview(page, expectedMode = "") {
+  return page.evaluate((mode) => {
     const hosts = [
       ...document.querySelectorAll('[data-testid="anki-card-shadow-preview"], [data-shadow-preview="true"]'),
     ];
     for (const host of hosts) {
+      if (mode && host.getAttribute("data-shadow-preview-mode") !== mode) {
+        continue;
+      }
       const shadowRoot = host.shadowRoot;
       const html = shadowRoot?.innerHTML || "";
       const template = host.querySelector("template")?.innerHTML || "";
@@ -678,7 +714,10 @@ async function inspectShadowPreview(page) {
       return {
         exists: true,
         mode: host.getAttribute("data-shadow-preview-mode") || "",
+        side: host.getAttribute("data-preview-side") || host.getAttribute("data-shadow-preview-side") || "",
         renderSource: host.getAttribute("data-render-source") || "",
+        frontSectionCount: document.querySelectorAll('[data-testid="anki-preview-front"]').length,
+        backSectionCount: document.querySelectorAll('[data-testid="anki-preview-back"]').length,
         hasOpenShadowRoot: Boolean(shadowRoot),
         hasStyle: Boolean(shadowRoot?.querySelector("style")),
         hasCard: Boolean(shadowRoot?.querySelector(".card")),
@@ -707,7 +746,10 @@ async function inspectShadowPreview(page) {
     return {
       exists: false,
       mode: "",
+      side: "",
       renderSource: "",
+      frontSectionCount: 0,
+      backSectionCount: 0,
       hasOpenShadowRoot: false,
       hasStyle: false,
       hasCard: false,
@@ -732,7 +774,69 @@ async function inspectShadowPreview(page) {
       hasScrollbarMarker: false,
       html: "",
     };
+  }, expectedMode);
+}
+
+async function inspectAnkiPreview(page) {
+  return page.evaluate(() => {
+    const frontHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]')];
+    const backHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]')];
+    const hosts = [...frontHosts, ...backHosts];
+    const html = hosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
+    const frontHtml = frontHosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
+    const backHtml = backHosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
+    const shadowRoots = hosts.map((host) => host.shadowRoot).filter(Boolean);
+    const images = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("img")]);
+    const audioElements = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("audio")]);
+    const visibleNativeAudioControls = audioElements.some((audio) => {
+      const rect = audio.getBoundingClientRect();
+      return audio.hasAttribute("controls") && rect.width > 0 && rect.height > 0;
+    });
+    return {
+      frontSectionCount: document.querySelectorAll('[data-testid="anki-preview-front"]').length,
+      backSectionCount: document.querySelectorAll('[data-testid="anki-preview-back"]').length,
+      frontHostCount: frontHosts.length,
+      backHostCount: backHosts.length,
+      renderSources: [...new Set(hosts.map((host) => host.getAttribute("data-render-source") || "").filter(Boolean))],
+      imgCount: images.length,
+      audioElementCount: audioElements.length,
+      replayButtonCount: shadowRoots.reduce((sum, shadowRoot) => sum + shadowRoot.querySelectorAll(".asr-card-replay-button").length, 0),
+      hasVisibleNativeAudioControls: visibleNativeAudioControls,
+      hasRawSoundMarker: html.toLowerCase().includes("[sound:"),
+      hasRawAnkiPlayMarker: html.includes("[anki:play:"),
+      hasScriptTag: Boolean(shadowRoots.some((shadowRoot) => shadowRoot.querySelector("script"))) || /<script/i.test(html),
+      hasExternalCdnLink: /cdnjs|<link\b/i.test(html),
+      hasWordFocus: frontHtml.includes("word-focus"),
+      hasBackContent: backHtml.trim().length > 0 && !backHtml.includes("Оборотная сторона недоступна"),
+      hasBackFallback: document.body.innerText.includes("Оборотная сторона недоступна"),
+      hasBackAnswerText: /обрат|ответ|meaning|translation|改善|要望|back|answer/i.test(backHtml),
+      textSample: shadowRoots.map((shadowRoot) => shadowRoot.textContent || "").join("\n").slice(0, 500),
+    };
   });
+}
+
+function assertFrontOnlyMode(details, mode) {
+  assertBrowser(details.exists, `${mode} preview exists.`);
+  assertBrowser(details.mode === mode, `${mode} preview mode marker is present.`);
+  assertBrowser(details.side === "front", `${mode} preview is front-only.`);
+  assertBrowser(details.frontSectionCount === 0, `${mode} has no Anki Preview front section.`);
+  assertBrowser(details.backSectionCount === 0, `${mode} has no Anki Preview back section.`);
+  assertBrowser(!details.hasRawSoundMarker, `${mode} has no raw sound marker.`);
+  assertBrowser(!details.hasRawAnkiPlayMarker, `${mode} has no raw Anki AV marker.`);
+}
+
+function assertAnkiPreviewFrontBack(details, theme) {
+  assertBrowser(details.frontSectionCount > 0, `Anki Preview ${theme} has front section.`);
+  assertBrowser(details.backSectionCount > 0, `Anki Preview ${theme} has back section.`);
+  assertBrowser(details.frontHostCount > 0, `Anki Preview ${theme} has front Shadow preview.`);
+  assertBrowser(details.backHostCount > 0, `Anki Preview ${theme} has back Shadow preview.`);
+  assertBrowser(details.hasBackContent, `Anki Preview ${theme} has rendered back content.`);
+  assertBrowser(!details.hasBackFallback, `Anki Preview ${theme} did not fall back for fixture card.`);
+  assertBrowser(!details.hasVisibleNativeAudioControls, `Anki Preview ${theme} has no visible native audio controls.`);
+  assertBrowser(!details.hasRawSoundMarker, `Anki Preview ${theme} has no raw sound marker.`);
+  assertBrowser(!details.hasRawAnkiPlayMarker, `Anki Preview ${theme} has no raw Anki AV marker.`);
+  assertBrowser(!details.hasScriptTag, `Anki Preview ${theme} has no script tag.`);
+  assertBrowser(!details.hasExternalCdnLink, `Anki Preview ${theme} has no external CDN refs.`);
 }
 
 async function visibleErrorText(page) {
@@ -764,6 +868,19 @@ async function writeBrowserFailureArtifacts(page, error) {
       pageErrors,
     }),
   );
+}
+
+async function deleteStaleFailureArtifacts() {
+  await fs.mkdir(artifacts, { recursive: true });
+  const entries = await fs.readdir(artifacts).catch(() => []);
+  const staleNames = new Set([
+    `browser-failure-${label}.png`,
+    `browser-failure-${label}.html`,
+    `browser-console-${label}.log`,
+    `browser-network-${label}.json`,
+    `browser-dom-summary-${label}.json`,
+  ]);
+  await Promise.all(entries.filter((entry) => staleNames.has(entry)).map((entry) => fs.rm(path.join(artifacts, entry), { force: true })));
 }
 
 async function buildDomSummary(page) {
