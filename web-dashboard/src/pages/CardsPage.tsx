@@ -10,7 +10,7 @@ import {
   Search,
   Wand2,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   buildCardAttentionRows,
@@ -129,14 +129,14 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     window.localStorage.setItem(CARDS_DISPLAY_MODE_STORAGE_KEY, displayMode);
   }, [displayMode]);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setPeriod(DEFAULT_CARD_FILTERS.period);
     setDeck(DEFAULT_CARD_FILTERS.deck);
     setIssue(DEFAULT_CARD_FILTERS.issue);
     setQuery(DEFAULT_CARD_FILTERS.query);
     setSortKey(DEFAULT_CARD_FILTERS.sortKey);
     setTab("risk");
-  };
+  }, []);
 
   const openProblemDecks = async (): Promise<boolean> => {
     if (!reportReady || !tokenAvailable) {
@@ -160,7 +160,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     }
   };
 
-  const copySearch = async (row: CardAttention) => {
+  const copySearch = useCallback(async (row: CardAttention) => {
     const search = buildCardBrowserSearch(row);
     try {
       await navigator.clipboard.writeText(search);
@@ -168,9 +168,9 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     } catch {
       setRowStatus((current) => ({ ...current, [row.id]: search }));
     }
-  };
+  }, []);
 
-  const openRow = async (row: CardAttention) => {
+  const openRow = useCallback(async (row: CardAttention) => {
     const search = buildCardBrowserSearch(row);
     if (!tokenAvailable) {
       setRowStatus((current) => ({ ...current, [row.id]: "Нет действующей ссылки дашборда. Запрос поиска скопирован." }));
@@ -184,7 +184,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       ...current,
       [row.id]: response.ok ? `Открыто в Anki Browser: ${search}` : response.error || `Не удалось открыть: ${search}`,
     }));
-  };
+  }, [copySearch, tokenAvailable]);
 
   const openFilteredRows = async () => {
     if (!tokenAvailable) {
@@ -620,7 +620,7 @@ function CardsHero({
   );
 }
 
-function RiskTable({
+const RiskTable = memo(function RiskTable({
   rows,
   rowStatus,
   onCopySearch,
@@ -677,7 +677,7 @@ function RiskTable({
       </table>
     </div>
   );
-}
+});
 
 function InsightGrid({
   rows,
@@ -727,7 +727,7 @@ function InsightGrid({
   );
 }
 
-function CardTiles({
+const CardTiles = memo(function CardTiles({
   rows,
   tab,
   rowStatus,
@@ -774,9 +774,9 @@ function CardTiles({
       ))}
     </div>
   );
-}
+});
 
-function AnkiPreviewGrid({
+const AnkiPreviewGrid = memo(function AnkiPreviewGrid({
   rows,
   rowStatus,
   onCopySearch,
@@ -808,9 +808,9 @@ function AnkiPreviewGrid({
       </div>
     </div>
   );
-}
+});
 
-function AnkiPreviewBox({ row }: { row: CardAttention }) {
+const AnkiPreviewBox = memo(function AnkiPreviewBox({ row }: { row: CardAttention }) {
   const rendered = row.renderedPreview;
   const canRenderFront = canRenderFrontHtml(row);
   const canRenderBack = canRenderBackHtml(row);
@@ -849,7 +849,7 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
       {rendered?.reason ? <p className="text-xs leading-5 text-report-muted">{rendered.reason}</p> : null}
     </div>
   );
-}
+});
 
 function PreviewSection({ title, children, testId, side }: { title: string; children: ReactNode; testId?: string; side?: "front" | "back" | "answer" }) {
   const overflowClass = side === "answer" ? "overflow-visible" : "overflow-hidden";
@@ -906,7 +906,7 @@ function CardPreviewCell({ row }: { row: CardAttention }) {
   return <FrontPreviewFrame row={row} variant="table" />;
 }
 
-function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttention; variant: "table" | "tile"; className?: string }) {
+const FrontPreviewFrame = memo(function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttention; variant: "table" | "tile"; className?: string }) {
   const front = cardFrontText(row);
   if (canRenderFrontHtml(row)) {
     return (
@@ -928,7 +928,7 @@ function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttentio
       </div>
     </div>
   );
-}
+});
 
 function FrontPreviewHtml({ row }: { row: CardAttention }) {
   const html = row.renderedPreview?.frontHtml;

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sqlite3
 import time
@@ -51,6 +52,10 @@ def main() -> int:
     if not imported_card_ids:
         raise RuntimeError("No imported APKG cards were found to mark problematic.")
 
+    performance_scenario = build_performance_scenario(collection_path, imported_card_ids)
+    if performance_scenario.get("enabled"):
+        imported_card_ids = [int(value) for value in performance_scenario["cardIds"]]
+
     result = mark_cards(collection_path, imported_card_ids)
     write_json(
         problem_summary_path,
@@ -61,6 +66,7 @@ def main() -> int:
             "cardIds": result["cardIds"],
             "revlogRowsAdded": result["revlogRowsAdded"],
             "riskPlan": result["riskPlan"],
+            "performanceScenario": performance_scenario,
         },
     )
     print(f"Marked {len(result['cardIds'])} APKG cards problematic with {result['revlogRowsAdded']} revlog rows.")
@@ -109,6 +115,133 @@ def find_imported_cards(collection_path: Path, import_summary: dict[str, Any]) -
             params,
         ).fetchall()
         return [int(row[0]) for row in rows]
+    finally:
+        conn.close()
+
+
+def build_performance_scenario(collection_path: Path, imported_card_ids: list[int]) -> dict[str, Any]:
+    if os.environ.get("ANKI_E2E_PERF100") != "1":
+        return {
+            "enabled": False,
+            "scenario": "cards-performance-100",
+            "skipReason": "ANKI_E2E_PERF100 is not enabled.",
+        }
+    target_count = int(os.environ.get("ANKI_E2E_PERF100_TARGET") or "100")
+    if target_count <= 0:
+        raise RuntimeError("ANKI_E2E_PERF100_TARGET must be positive.")
+    buffer_count = int(os.environ.get("ANKI_E2E_PERF100_BUFFER") or "4")
+    scenario = clone_imported_cards(collection_path, imported_card_ids, max(target_count + max(0, buffer_count), len(imported_card_ids)))
+    scenario["targetCardCount"] = target_count
+    scenario["bufferCardCount"] = max(0, buffer_count)
+    scenario["generatedCardCount"] = len(scenario["cardIds"])
+    return scenario
+
+
+def clone_imported_cards(collection_path: Path, source_card_ids: list[int], target_count: int) -> dict[str, Any]:
+    conn = sqlite3.connect(collection_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        source_rows = conn.execute(
+            f"""
+            select
+                c.id as card_id,
+                c.nid as note_id,
+                c.did,
+                c.ord,
+                c.flags as card_flags,
+                c.data as card_data,
+                n.mid,
+                n.tags,
+                n.flds,
+                n.sfld,
+                n.csum,
+                n.flags as note_flags,
+                n.data as note_data
+            from cards c
+            join notes n on n.id = c.nid
+            where c.id in ({", ".join("?" for _ in source_card_ids)})
+            order by c.id
+            """,
+            source_card_ids,
+        ).fetchall()
+        if not source_rows:
+            raise RuntimeError("No APKG source cards are available for the 100-card performance scenario.")
+
+        card_ids = [int(row["card_id"]) for row in source_rows]
+        clone_count = max(0, target_count - len(card_ids))
+        if clone_count == 0:
+            return {
+                "enabled": True,
+                "scenario": "cards-performance-100",
+                "targetCardCount": target_count,
+                "sourceCardCount": len(source_rows),
+                "clonedNoteCount": 0,
+                "clonedCardCount": 0,
+                "cardIds": card_ids,
+            }
+
+        now_seconds = int(time.time())
+        id_base = int(time.time() * 1000)
+        next_note_id = max(id_base, int(conn.execute("select coalesce(max(id), 0) + 1 from notes").fetchone()[0] or 1))
+        next_card_id = max(id_base + 100_000, int(conn.execute("select coalesce(max(id), 0) + 1 from cards").fetchone()[0] or 1))
+        deck_due = {
+            int(row[0]): int(row[1] or 0)
+            for row in conn.execute("select did, coalesce(max(due), 0) from cards group by did").fetchall()
+        }
+
+        for clone_index in range(clone_count):
+            source = source_rows[clone_index % len(source_rows)]
+            note_id = next_note_id + clone_index
+            card_id = next_card_id + clone_index
+            deck_id = int(source["did"])
+            due = deck_due.get(deck_id, 0) + clone_index + 1
+            tags = normalize_tags(str(source["tags"] or ""), "asr_e2e_perf100")
+            conn.execute(
+                """
+                insert into notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data)
+                values (?, ?, ?, ?, -1, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    note_id,
+                    f"asr-e2e-perf100-{note_id}-{clone_index}",
+                    int(source["mid"]),
+                    now_seconds,
+                    tags,
+                    source["flds"],
+                    source["sfld"],
+                    int(source["csum"] or 0),
+                    int(source["note_flags"] or 0),
+                    source["note_data"] or "",
+                ),
+            )
+            conn.execute(
+                """
+                insert into cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data)
+                values (?, ?, ?, ?, ?, -1, 2, 2, ?, 1, 2100, 0, 0, 0, 0, 0, ?, ?)
+                """,
+                (
+                    card_id,
+                    note_id,
+                    deck_id,
+                    int(source["ord"]),
+                    now_seconds,
+                    due,
+                    int(source["card_flags"] or 0),
+                    source["card_data"] or "",
+                ),
+            )
+            card_ids.append(card_id)
+
+        conn.commit()
+        return {
+            "enabled": True,
+            "scenario": "cards-performance-100",
+            "targetCardCount": target_count,
+            "sourceCardCount": len(source_rows),
+            "clonedNoteCount": clone_count,
+            "clonedCardCount": clone_count,
+            "cardIds": card_ids,
+        }
     finally:
         conn.close()
 
@@ -201,7 +334,7 @@ def review_plan(index: int) -> dict[str, Any]:
     ]
     if index < len(plans):
         return plans[index]
-    return {"reviews": [(1, 11_000), (1, 12_000), (3, 10_000)], "lapses": 1, "leechTag": False}
+    return {"reviews": [(1, 24_000), (1, 22_000), (1, 20_000), (1, 18_000), (3, 16_000)], "lapses": 8, "leechTag": True}
 
 
 def add_note_tag(conn: sqlite3.Connection, note_id: int, tag: str) -> None:
@@ -210,6 +343,12 @@ def add_note_tag(conn: sqlite3.Connection, note_id: int, tag: str) -> None:
     normalized = {item for item in tags.split() if item}
     normalized.add(tag)
     conn.execute("update notes set tags = ? where id = ?", (" " + " ".join(sorted(normalized)) + " ", note_id))
+
+
+def normalize_tags(current_tags: str, tag: str) -> str:
+    normalized = {item for item in current_tags.split() if item}
+    normalized.add(tag)
+    return " " + " ".join(sorted(normalized)) + " "
 
 
 def model_names_by_path(collection_path: Path) -> dict[int, str]:

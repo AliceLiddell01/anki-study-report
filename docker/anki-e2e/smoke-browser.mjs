@@ -67,12 +67,13 @@ try {
   });
 
   const visualStates = [];
+  const perf100Enabled = await isPerformance100Enabled();
   await capture(page, "table", "light", `cards-table-light-${label}.png`);
   const shadowDetails = await inspectShadowPreview(page, "table");
   if (!shadowDetails.exists) {
     throw new Error("Shadow DOM preview host for fixture card was not found.");
   }
-  if (
+  const strictSyntheticFixtureIncomplete =
     !shadowDetails.hasOpenShadowRoot ||
     !shadowDetails.hasStyle ||
     !shadowDetails.hasCard ||
@@ -90,9 +91,15 @@ try {
     !shadowDetails.hasCardContent ||
     !shadowDetails.wordFocusColorMatchesExpected ||
     shadowDetails.wordFocusColorIsOldBlue ||
-    !shadowDetails.hasInlineColor
-  ) {
+    !shadowDetails.hasInlineColor;
+  if (!perf100Enabled && strictSyntheticFixtureIncomplete) {
     throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
+  }
+  if (perf100Enabled) {
+    assertBrowser(shadowDetails.hasOpenShadowRoot, "Perf100 table preview has an open shadow root.");
+    assertBrowser(shadowDetails.hasCard, "Perf100 table preview has a rendered card.");
+    assertBrowser(shadowDetails.renderSource === "anki_native", "Perf100 table preview uses native render.");
+    assertBrowser(!shadowDetails.hasRawAnkiPlayMarker && !shadowDetails.hasRawSoundMarker, "Perf100 table preview has no raw media markers.");
   }
   assertFrontOnlyMode(shadowDetails, "table");
   visualStates.push({ mode: "table", theme: "light", screenshot: `cards-table-light-${label}.png`, details: shadowDetails });
@@ -255,6 +262,7 @@ async function assertApkgBrowserIfEnabled(page) {
   const documentNoteCssLeak = await inspectDocumentNoteCssLeak(page);
   assertBrowser(documentNoteCssLeak.count === 0, "APKG note CSS did not leak into document-level style tags.");
   const responsiveLayouts = await inspectApkgResponsiveLayouts(page, deckName);
+  const performance100 = await inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName);
 
   const summary = {
     enabled: true,
@@ -279,6 +287,7 @@ async function assertApkgBrowserIfEnabled(page) {
     previewLightDetails,
     previewDetails,
     responsiveLayouts,
+    performance100,
     modes: {
       table: {
         light: tableLightLayout,
@@ -989,6 +998,219 @@ async function inspectApkgResponsiveLayouts(page, deckName) {
   return result;
 }
 
+async function inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName) {
+  const scenario = problemSummary.performanceScenario || {};
+  if (!scenario.enabled) {
+    return {
+      enabled: false,
+      scenario: "cards-performance-100",
+      skipReason: scenario.skipReason || "ANKI_E2E_PERF100 is not enabled.",
+    };
+  }
+
+  const apkgCards = findApkgCards(report, importSummary);
+  const targetCardCount = Number(scenario.targetCardCount || 100);
+  const renderSourceCounts = countRenderSources(apkgCards);
+  assertBrowser(targetCardCount === 100, `Performance scenario target is 100 cards: ${targetCardCount}`);
+  assertBrowser(apkgCards.length >= targetCardCount, `Performance scenario cards reached dashboard: ${apkgCards.length}`);
+  assertBrowser((renderSourceCounts.anki_native || 0) >= targetCardCount, `Performance scenario cards use native render: ${renderSourceCounts.anki_native || 0}`);
+
+  const modes = [];
+  for (const viewport of responsiveViewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const mode of ["table", "tiles", "ankiPreview"]) {
+      const initialStart = Date.now();
+      await prepareCardsPage(page, mode, "dark");
+      await applyDeckFilter(page, deckName);
+      if (mode === "table") {
+        await waitForApkgShadowPreviews(page, "table");
+      } else if (mode === "tiles") {
+        await waitForApkgShadowPreviews(page, "tile");
+      } else {
+        await waitForApkgAnkiPreview(page);
+      }
+      await waitForLayoutStabilization(page);
+      const initialStableMs = Date.now() - initialStart;
+      const layout = mode === "table" ? await inspectTableLayout(page) : mode === "tiles" ? await inspectTileLayout(page) : await inspectApkgAnkiPreview(page);
+      if (mode === "table") {
+        assertTableLayoutSummary(layout, `Performance 100 ${viewport.name} table`);
+      } else if (mode === "tiles") {
+        assertTileLayoutSummary(layout, `Performance 100 ${viewport.name} tiles`);
+      } else {
+        assertApkgAnkiPreviewSummary(layout, `Performance 100 ${viewport.name} Anki preview`);
+      }
+      const hostSummary = await inspectPerformanceHostSummary(page, mode);
+      const scrollStart = Date.now();
+      const scrollSamples = await samplePerformanceScroll(page, mode);
+      const scrollSampleMs = Date.now() - scrollStart;
+      assertPerformanceModeSummary({
+        mode,
+        viewport,
+        targetCardCount,
+        layout,
+        hostSummary,
+        scrollSamples,
+      });
+      modes.push({
+        scenario: "cards-performance-100",
+        cardCount: targetCardCount,
+        mode,
+        theme: "dark",
+        viewport: `${viewport.width}x${viewport.height}`,
+        shadowHostCount: hostSummary.shadowHostCount,
+        frontHostCount: hostSummary.frontHostCount,
+        answerHostCount: hostSummary.answerHostCount,
+        measuredHostCount: hostSummary.measuredHostCount,
+        unmeasuredHostCount: hostSummary.unmeasuredHostCount,
+        clippedHostCount: hostSummary.clippedHostCount,
+        overflowHostCount: hostSummary.overflowHostCount,
+        coveredActionsCount: hostSummary.coveredActionsCount,
+        consoleErrorCount: consoleEvents.filter((event) => event.type === "error").length,
+        pageErrorCount: pageErrors.length,
+        initialStableMs,
+        modeSwitchStableMs: initialStableMs,
+        scrollSampleMs,
+        renderSourceCounts: hostSummary.renderSourceCounts,
+        rawSoundMarkerCount: hostSummary.rawSoundMarkerCount,
+        rawAnkiPlayMarkerCount: hostSummary.rawAnkiPlayMarkerCount,
+        layout,
+        scrollSamples,
+      });
+    }
+  }
+  await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+
+  const summary = {
+    enabled: true,
+    scenario: "cards-performance-100",
+    targetCardCount,
+    sourceImportedCardCount: Number(importSummary.cardCount || 0),
+    dashboardCardCount: apkgCards.length,
+    clonedCardCount: Number(scenario.clonedCardCount || 0),
+    clonedNoteCount: Number(scenario.clonedNoteCount || 0),
+    renderSourceCounts,
+    modes,
+  };
+  await writeJson(`browser-smoke-performance-100-${label}.json`, { performance100: summary });
+  return summary;
+}
+
+async function inspectPerformanceHostSummary(page, mode) {
+  return page.evaluate((selectedMode) => {
+    const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"]')];
+    const frontHosts = hosts.filter((host) => host.getAttribute("data-preview-side") === "front");
+    const answerHosts = hosts.filter((host) => host.getAttribute("data-preview-side") === "answer");
+    const clipChecks = hosts.map((host) => {
+      const viewport = host.shadowRoot?.querySelector('[data-testid="asr-shadow-card-viewport"]') || host.shadowRoot?.querySelector(".asr-shadow-card-viewport");
+      const hostRect = host.getBoundingClientRect();
+      const viewportRect = viewport?.getBoundingClientRect();
+      return {
+        measured: host.getAttribute("data-preview-measured") === "true",
+        overflow: host.getAttribute("data-preview-overflow") === "true",
+        clipped: selectedMode === "ankiPreview" && (!viewportRect || viewportRect.bottom > hostRect.bottom + 3),
+        renderSource: host.getAttribute("data-render-source") || "other",
+      };
+    });
+    const renderSourceCounts = {};
+    for (const check of clipChecks) {
+      renderSourceCounts[check.renderSource] = (renderSourceCounts[check.renderSource] || 0) + 1;
+    }
+    const buttons = [...document.querySelectorAll('[data-testid="cards-table-actions"] button, [data-testid="cards-tile-actions"] button, .cards-anki-preview-actions button')];
+    const coveredActionsCount = buttons.filter((button) => {
+      const rect = button.getBoundingClientRect();
+      if (rect.width <= 2 || rect.height <= 2) {
+        return true;
+      }
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
+        return false;
+      }
+      const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return !(target === button || button.contains(target) || target?.closest("button") === button);
+    }).length;
+    const pageText = document.body.innerText || "";
+    return {
+      mode: selectedMode,
+      tableRowCount: document.querySelectorAll('[data-testid="cards-table-row"]').length,
+      tileCount: document.querySelectorAll('[data-testid="cards-tile"]').length,
+      ankiPreviewCardCount: document.querySelectorAll(".cards-anki-preview-card").length,
+      shadowHostCount: hosts.length,
+      frontHostCount: frontHosts.length,
+      answerHostCount: answerHosts.length,
+      measuredHostCount: clipChecks.filter((check) => check.measured).length,
+      unmeasuredHostCount: clipChecks.filter((check) => !check.measured).length,
+      clippedHostCount: clipChecks.filter((check) => check.clipped).length,
+      overflowHostCount: clipChecks.filter((check) => check.overflow).length,
+      coveredActionsCount,
+      rawSoundMarkerCount: (pageText.match(/\[sound:/gi) || []).length,
+      rawAnkiPlayMarkerCount: (pageText.match(/\[anki:play:/gi) || []).length,
+      renderSourceCounts,
+    };
+  }, mode);
+}
+
+async function samplePerformanceScroll(page, mode) {
+  const positions = await page.evaluate(() => {
+    const scrolling = document.scrollingElement || document.documentElement;
+    const maxScroll = Math.max(0, scrolling.scrollHeight - window.innerHeight);
+    return [...new Set([0, Math.round(maxScroll / 2), maxScroll])];
+  });
+  const samples = [];
+  for (const position of positions) {
+    const started = Date.now();
+    await page.evaluate((scrollTop) => window.scrollTo(0, scrollTop), position);
+    await waitForLayoutStabilization(page);
+    const sample = await page.evaluate((selectedMode) => {
+      const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"]')];
+      const visibleHosts = hosts.filter((host) => {
+        const rect = host.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0 && rect.height > 0;
+      });
+      const visibleClipChecks = visibleHosts.map((host) => {
+        const viewport = host.shadowRoot?.querySelector('[data-testid="asr-shadow-card-viewport"]') || host.shadowRoot?.querySelector(".asr-shadow-card-viewport");
+        const hostRect = host.getBoundingClientRect();
+        const viewportRect = viewport?.getBoundingClientRect();
+        return {
+          measured: host.getAttribute("data-preview-measured") === "true",
+          clipped: selectedMode === "ankiPreview" && (!viewportRect || viewportRect.bottom > hostRect.bottom + 3),
+        };
+      });
+      return {
+        scrollY: Math.round(window.scrollY),
+        visibleHostCount: visibleHosts.length,
+        visibleMeasuredHostCount: visibleClipChecks.filter((check) => check.measured).length,
+        visibleUnmeasuredHostCount: visibleClipChecks.filter((check) => !check.measured).length,
+        visibleClippedHostCount: visibleClipChecks.filter((check) => check.clipped).length,
+      };
+    }, mode);
+    samples.push({ ...sample, stableMs: Date.now() - started });
+  }
+  return samples;
+}
+
+function assertPerformanceModeSummary({ mode, targetCardCount, layout, hostSummary, scrollSamples }) {
+  assertBrowser(pageErrors.length === 0, `Performance 100 ${mode} has no page errors.`);
+  assertBrowser(consoleEvents.filter((event) => event.type === "error").length === 0, `Performance 100 ${mode} has no console errors.`);
+  assertBrowser(hostSummary.rawSoundMarkerCount === 0, `Performance 100 ${mode} has no visible raw sound markers.`);
+  assertBrowser(hostSummary.rawAnkiPlayMarkerCount === 0, `Performance 100 ${mode} has no visible raw Anki play markers.`);
+  assertBrowser(hostSummary.coveredActionsCount === 0, `Performance 100 ${mode} action buttons are not covered.`);
+  assertBrowser(scrollSamples.every((sample) => sample.visibleUnmeasuredHostCount === 0), `Performance 100 ${mode} visible hosts stay measured while scrolling.`);
+  assertBrowser(scrollSamples.every((sample) => sample.visibleClippedHostCount === 0), `Performance 100 ${mode} visible answer hosts are not clipped while scrolling.`);
+  if (mode === "table") {
+    assertBrowser(layout.tableRowCount >= targetCardCount, `Performance 100 table rendered ${targetCardCount} rows.`);
+    assertBrowser(hostSummary.frontHostCount >= targetCardCount, `Performance 100 table rendered front hosts.`);
+    assertBrowser(hostSummary.answerHostCount === 0, "Performance 100 table did not mount answer hosts.");
+  } else if (mode === "tiles") {
+    assertBrowser(layout.tileCount >= targetCardCount, `Performance 100 tiles rendered ${targetCardCount} tiles.`);
+    assertBrowser(hostSummary.frontHostCount >= targetCardCount, `Performance 100 tiles rendered front hosts.`);
+    assertBrowser(hostSummary.answerHostCount === 0, "Performance 100 tiles did not mount answer hosts.");
+  } else {
+    assertBrowser(hostSummary.ankiPreviewCardCount >= targetCardCount, `Performance 100 Anki preview rendered ${targetCardCount} cards.`);
+    assertBrowser(hostSummary.answerHostCount >= targetCardCount, `Performance 100 Anki preview rendered answer hosts.`);
+    assertBrowser(hostSummary.frontHostCount === 0, "Performance 100 Anki preview did not mount front hosts.");
+    assertBrowser(hostSummary.clippedHostCount === 0, "Performance 100 Anki preview answer hosts are not clipped.");
+  }
+}
+
 async function inspectApkgAnkiPreview(page) {
   return page.evaluate(() => {
     const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
@@ -1090,6 +1312,7 @@ async function inspectShadowPreview(page, expectedMode = "") {
     const hosts = [
       ...document.querySelectorAll('[data-testid="anki-card-shadow-preview"], [data-shadow-preview="true"]'),
     ];
+    let fallback = null;
     for (const host of hosts) {
       if (mode && host.getAttribute("data-shadow-preview-mode") !== mode) {
         continue;
@@ -1139,7 +1362,7 @@ async function inspectShadowPreview(page, expectedMode = "") {
             image.renderedWidth > 20 &&
             image.renderedHeight > 20,
         );
-      return {
+      const details = {
         exists: true,
         mode: host.getAttribute("data-shadow-preview-mode") || "",
         side: host.getAttribute("data-preview-side") || host.getAttribute("data-shadow-preview-side") || "",
@@ -1171,6 +1394,13 @@ async function inspectShadowPreview(page, expectedMode = "") {
         hasScrollbarMarker: Boolean(shadowRoot?.querySelector(".inner-scrollbar, .scrollbar")),
         html,
       };
+      if (details.hasCardContent) {
+        return details;
+      }
+      fallback ||= details;
+    }
+    if (fallback) {
+      return fallback;
     }
     return {
       exists: false,
@@ -1477,6 +1707,23 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+function countRenderSources(cards) {
+  const result = { anki_native: 0, fallback: 0, sanitized: 0, other: 0 };
+  for (const card of cards) {
+    const source = String(card?.renderedPreview?.renderSource || "");
+    if (source === "anki_native") {
+      result.anki_native += 1;
+    } else if (source === "fallback") {
+      result.fallback += 1;
+    } else if (source === "sanitized") {
+      result.sanitized += 1;
+    } else {
+      result.other += 1;
+    }
+  }
+  return result;
+}
+
 async function readJsonIfExists(filePath) {
   try {
     return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -1486,6 +1733,11 @@ async function readJsonIfExists(filePath) {
     }
     throw error;
   }
+}
+
+async function isPerformance100Enabled() {
+  const problemSummary = await readJsonIfExists(path.join(artifacts, "apkg-problematic-summary.json"));
+  return Boolean(problemSummary?.performanceScenario?.enabled);
 }
 
 function assertBrowser(condition, message) {

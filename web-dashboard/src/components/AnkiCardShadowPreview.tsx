@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
 export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
@@ -334,7 +334,7 @@ function previewModeStyle(mode: AnkiCardShadowPreviewMode, layout: AdaptivePrevi
   } as CSSProperties;
 }
 
-export function AnkiCardShadowPreview({
+function AnkiCardShadowPreviewComponent({
   html,
   css = "",
   title = "",
@@ -515,5 +515,21 @@ export function AnkiCardShadowPreview({
     >
       <template data-shadow-preview-template dangerouslySetInnerHTML={{ __html: html }} />
     </div>
+  );
+}
+
+export const AnkiCardShadowPreview = memo(AnkiCardShadowPreviewComponent, arePreviewPropsEqual);
+
+function arePreviewPropsEqual(previous: AnkiCardShadowPreviewProps, next: AnkiCardShadowPreviewProps): boolean {
+  return (
+    previous.html === next.html &&
+    (previous.css || "") === (next.css || "") &&
+    (previous.title || "") === (next.title || "") &&
+    (previous.cardOrd || 0) === (next.cardOrd || 0) &&
+    (previous.renderSource || "") === (next.renderSource || "") &&
+    previous.nightMode === next.nightMode &&
+    previous.mode === next.mode &&
+    (previous.side || "front") === (next.side || "front") &&
+    (previous.className || "") === (next.className || "")
   );
 }

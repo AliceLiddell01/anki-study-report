@@ -36,9 +36,13 @@ def main() -> int:
 
     cards = report_cards(report)
     assert_true(cards, "report contains card-level payload")
+    problem_summary = read_json_if_exists(artifacts / "apkg-problematic-summary.json")
+    perf100_enabled = bool(problem_summary.get("performanceScenario", {}).get("enabled"))
     fixture_card = find_fixture_card(cards)
-    assert_true(fixture_card is not None, "fixture card with 要望 found")
-    assert_fixture_preview(fixture_card or {})
+    if fixture_card is None:
+        assert_true(perf100_enabled, "fixture card with 要望 found")
+    else:
+        assert_fixture_preview(fixture_card)
     apkg_summary = assert_apkg_report_if_enabled(artifacts, args.label, base_url, token, cards)
 
     for media_name in ("要.gif", "望.gif", "要望.mp3"):
@@ -188,7 +192,9 @@ def report_cards(report: dict[str, Any]) -> list[dict[str, Any]]:
 
 def find_fixture_card(cards: list[dict[str, Any]]) -> dict[str, Any] | None:
     for card in cards:
-        if "要望" in json.dumps(card, ensure_ascii=False):
+        rendered = card.get("renderedPreview") if isinstance(card.get("renderedPreview"), dict) else {}
+        front_html = str(rendered.get("frontHtml") or "")
+        if "要望" in json.dumps(card, ensure_ascii=False) and 'class="card-content"' in front_html:
             return card
     return None
 
@@ -335,6 +341,7 @@ def assert_apkg_report_if_enabled(
         "enabled": True,
         "cardCount": imported_card_count,
         "attentionCardsFromApkg": len(apkg_cards),
+        "performanceScenario": problem_summary.get("performanceScenario") or {"enabled": False},
         "distinctNoteTypes": distinct_note_types,
         "renderSources": render_sources,
         "rawSoundMarkersFound": raw_sound_markers,

@@ -3,7 +3,8 @@ param(
     [switch]$CleanDocker,
     [switch]$DockerOnly,
     [string]$ApkgFixture = "",
-    [switch]$RequireApkgFixture
+    [switch]$RequireApkgFixture,
+    [switch]$Perf100
 )
 
 $ErrorActionPreference = "Stop"
@@ -139,11 +140,15 @@ if (-not $SkipDocker) {
 
     $previousApkgFixture = $env:ANKI_E2E_APKG_FIXTURE
     $previousRequireApkgFixture = $env:ANKI_E2E_REQUIRE_APKG_FIXTURE
+    $previousPerf100 = $env:ANKI_E2E_PERF100
     if ($ApkgFixture) {
         $env:ANKI_E2E_APKG_FIXTURE = $ApkgFixture
     }
     if ($RequireApkgFixture) {
         $env:ANKI_E2E_REQUIRE_APKG_FIXTURE = "1"
+    }
+    if ($Perf100) {
+        $env:ANKI_E2E_PERF100 = "1"
     }
 
     try {
@@ -161,6 +166,11 @@ if (-not $SkipDocker) {
             Remove-Item Env:\ANKI_E2E_REQUIRE_APKG_FIXTURE -ErrorAction SilentlyContinue
         } else {
             $env:ANKI_E2E_REQUIRE_APKG_FIXTURE = $previousRequireApkgFixture
+        }
+        if ($null -eq $previousPerf100) {
+            Remove-Item Env:\ANKI_E2E_PERF100 -ErrorAction SilentlyContinue
+        } else {
+            $env:ANKI_E2E_PERF100 = $previousPerf100
         }
     }
 }

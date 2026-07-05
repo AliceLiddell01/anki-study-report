@@ -175,6 +175,18 @@ Run strict APKG fixture E2E with the tracked fixture:
 .\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
 ```
 
+Run APKG-derived Cards performance smoke with 100 problematic cards:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```
+
+`-Perf100` sets `ANKI_E2E_PERF100=1`. The E2E setup keeps the tracked APKG as
+the source fixture, clones its imported notes/cards inside the isolated Docker
+collection until 100 cards are problematic, and writes
+`browser-smoke-performance-100-<label>.json` with mode, viewport, host,
+render-source, scroll, and layout counters.
+
 Run strict APKG local fixture E2E while iterating on an ignored local file:
 
 ```powershell

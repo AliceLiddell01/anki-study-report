@@ -159,6 +159,16 @@ Strict APKG прогон:
 .\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
 ```
 
+APKG-derived performance smoke на 100 карточек:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```
+
+Этот режим не создает новую APKG fixture. После импорта tracked fixture Docker
+E2E клонирует импортированные notes/cards внутри изолированной коллекции до
+100 problematic cards и проверяет Cards page через тот же native render path.
+
 Если smoke падает на Cards page, сначала проверить активный mode и текущую DOM
 форму. Не менять production component, пока не доказано, что проблема не в
 ожиданиях smoke script.
