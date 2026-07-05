@@ -848,7 +848,7 @@ select {
   background-color: rgb(var(--color-bg-elevated) / 0.42);
 }
 
-.asr-preview-section[data-preview-side="back"] {
+.asr-preview-section[data-preview-side="answer"] {
   background-color: rgb(var(--color-surface-1) / 0.5);
 }
 
@@ -865,7 +865,7 @@ select {
   background-color: rgb(var(--color-surface-2) / 0.48);
 }
 
-[data-theme="light"] .asr-preview-section[data-preview-side="back"] {
+[data-theme="light"] .asr-preview-section[data-preview-side="answer"] {
   background-color: rgb(var(--color-surface-1) / 0.7);
 }
 
@@ -873,7 +873,7 @@ select {
   background-color: rgb(var(--color-surface-1) / 0.9);
 }
 
-.asr-preview-unavailable {
+.asr-preview-fallback-note {
   max-width: 760px;
   margin-inline: auto;
 }

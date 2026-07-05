@@ -201,23 +201,21 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).not.toContain("cid:123");
   });
 
-  it("renders Anki preview with front and back templates", () => {
+  it("renders Anki preview as answer-only from the back template", () => {
     const html = renderCards("ankiPreview");
 
-    expect(html).toContain("Лицевая сторона");
-    expect(html).toContain("Ответ / оборотная сторона");
-    expect(html).toContain('data-testid="anki-preview-front"');
-    expect(html).toContain('data-testid="anki-preview-back"');
-    expect(html).toContain("表だけ");
+    expect(html).toContain("Вид после ответа");
+    expect(html).toContain('data-testid="anki-preview-answer"');
     expect(html).toContain('data-shadow-preview-mode="preview"');
     expect(html).toContain('data-preview-mode="preview"');
-    expect(html).toContain('data-preview-side="front"');
-    expect(html).toContain('data-preview-side="back"');
+    expect(html).toContain('data-preview-side="answer"');
+    expect(html).not.toContain('data-testid="anki-preview-front"');
+    expect(html).not.toContain('data-testid="anki-preview-back"');
     expect(html).not.toContain(".asr-card-rendered .word");
-    expect(html).toContain("/api/media?name=front.gif&token=test-token");
-    expect(html).toContain("/api/media?name=voice.mp3&token=test-token");
     expect(html).toContain("back-side meaning");
     expect(html).toContain("/api/media?name=answer.mp3&token=test-token");
+    expect(html).not.toContain("/api/media?name=front.gif&token=test-token");
+    expect(html).not.toContain("/api/media?name=voice.mp3&token=test-token");
     expect(html).toContain("asr-card-replay-button");
     expect(html).toContain("asr-card-audio");
     expect(html).not.toContain(" controls");
@@ -227,7 +225,7 @@ describe("CardsPage v4 UX corrections", () => {
     expect(html).not.toContain("Упрощённое превью");
   });
 
-  it("renders a back preview fallback when the rendered answer is unavailable", () => {
+  it("falls back to the front preview when the rendered answer is unavailable", () => {
     const report = JSON.parse(JSON.stringify(baseReport)) as StudyReport;
     const rendered = report.attentionCards?.[0]?.renderedPreview;
     if (rendered) {
@@ -236,9 +234,11 @@ describe("CardsPage v4 UX corrections", () => {
     }
     const html = renderCards("ankiPreview", report);
 
-    expect(html).toContain("Лицевая сторона");
-    expect(html).toContain("Ответ / оборотная сторона");
-    expect(html).toContain("Оборотная сторона недоступна для этого шаблона: answer render skipped");
+    expect(html).toContain("Вид после ответа");
+    expect(html).toContain('data-testid="anki-preview-answer"');
+    expect(html).toContain("表だけ");
+    expect(html).toContain("/api/media?name=front.gif&token=test-token");
+    expect(html).toContain("Ответ недоступен, показана лицевая сторона: answer render skipped");
     expect(html).not.toContain("back-side meaning");
   });
 

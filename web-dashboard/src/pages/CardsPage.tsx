@@ -805,36 +805,27 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
   const rendered = row.renderedPreview;
   const canRenderFront = canRenderFrontHtml(row);
   const canRenderBack = canRenderBackHtml(row);
-  if (canRenderFront) {
+  if (canRenderBack || canRenderFront) {
+    const usesAnswerFallback = !canRenderBack;
+    const previewHtml = canRenderBack ? rendered?.backHtml || "" : rendered?.frontHtml || "";
     return (
       <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3">
-        <PreviewSection title="Лицевая сторона" testId="anki-preview-front" side="front">
+        <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
           <AnkiCardShadowPreview
             mode="preview"
-            side="front"
-            html={htmlWithMediaToken(rendered?.frontHtml || "")}
+            side="answer"
+            html={htmlWithMediaToken(previewHtml)}
             css={rendered?.css || ""}
-            title={cardFrontText(row)}
+            title={canRenderBack ? rendered?.backPlainText || cardFrontText(row) : cardFrontText(row)}
             cardOrd={rendered?.cardOrd || 0}
             renderSource={rendered?.renderSource || ""}
-            className="asr-front-preview-anki min-w-0"
+            className="asr-front-preview-anki asr-front-preview-anki-answer min-w-0"
           />
-        </PreviewSection>
-        <PreviewSection title="Ответ / оборотная сторона" testId="anki-preview-back" side="back">
-          {canRenderBack ? (
-            <AnkiCardShadowPreview
-              mode="preview"
-              side="back"
-              html={htmlWithMediaToken(rendered?.backHtml || "")}
-              css={rendered?.css || ""}
-              title={rendered?.backPlainText || cardFrontText(row)}
-              cardOrd={rendered?.cardOrd || 0}
-              renderSource={rendered?.renderSource || ""}
-              className="asr-front-preview-anki asr-front-preview-anki-back min-w-0"
-            />
-          ) : (
-            <BackPreviewFallback reason={rendered?.reason || rendered?.fallbackReason} />
-          )}
+          {usesAnswerFallback ? (
+            <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">
+              Ответ недоступен, показана лицевая сторона{rendered?.reason || rendered?.fallbackReason ? `: ${rendered.reason || rendered.fallbackReason}` : "."}
+            </p>
+          ) : null}
         </PreviewSection>
       </div>
     );
@@ -842,18 +833,16 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
   return (
     <div className="mt-3 grid max-h-[320px] gap-3 overflow-hidden rounded-lg border border-ink-700 bg-ink-950 p-4">
       <p className="w-fit rounded-md border border-ink-700 bg-ink-900/70 px-2 py-0.5 text-xs text-report-muted">Упрощённое превью</p>
-      <PreviewSection title="Лицевая сторона" testId="anki-preview-front" side="front">
+      <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
         <PlainPreviewText text={cardFrontText(row)} />
-      </PreviewSection>
-      <PreviewSection title="Ответ / оборотная сторона" testId="anki-preview-back" side="back">
-        <BackPreviewFallback reason={rendered?.reason || rendered?.fallbackReason} />
+        <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">Ответ недоступен, показана лицевая сторона.</p>
       </PreviewSection>
       {rendered?.reason ? <p className="text-xs leading-5 text-report-muted">{rendered.reason}</p> : null}
     </div>
   );
 }
 
-function PreviewSection({ title, children, testId, side }: { title: string; children: ReactNode; testId?: string; side?: "front" | "back" }) {
+function PreviewSection({ title, children, testId, side }: { title: string; children: ReactNode; testId?: string; side?: "front" | "back" | "answer" }) {
   return (
     <section
       className="asr-preview-section min-h-[78px] overflow-hidden rounded-md border border-ink-700 bg-ink-900/45 p-3"
@@ -863,14 +852,6 @@ function PreviewSection({ title, children, testId, side }: { title: string; chil
       <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-report-muted">{title}</h3>
       <div className="asr-preview-section-body mt-2">{children}</div>
     </section>
-  );
-}
-
-function BackPreviewFallback({ reason }: { reason?: string }) {
-  return (
-    <p className="asr-preview-unavailable rounded-md border border-dashed border-ink-700 bg-ink-900/35 px-3 py-4 text-sm leading-6 text-report-muted">
-      Оборотная сторона недоступна для этого шаблона{reason ? `: ${reason}` : "."}
-    </p>
   );
 }
 

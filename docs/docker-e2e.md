@@ -142,10 +142,22 @@ Cards preview smoke mode-specific:
 
 - `table` и `tiles` проверяют Shadow DOM host
   `data-testid="anki-card-shadow-preview"` и остаются front-only.
-- `ankiPreview` проверяет отдельные Shadow DOM секции
-  `data-testid="anki-preview-front"` и `data-testid="anki-preview-back"`.
+- `ankiPreview` проверяет единственную answer-only секцию
+  `data-testid="anki-preview-answer"`, построенную из `backHtml`.
 - Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
   light/dark темах.
+
+Tracked APKG fixture находится здесь:
+
+```text
+docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
+```
+
+Strict APKG прогон:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+```
 
 Если smoke падает на Cards page, сначала проверить активный mode и текущую DOM
 форму. Не менять production component, пока не доказано, что проблема не в

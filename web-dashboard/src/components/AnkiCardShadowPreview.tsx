@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
-export type AnkiCardShadowPreviewSide = "front" | "back";
+export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
 
 export interface AnkiPreviewModeConfig {
   baseWidth: number;

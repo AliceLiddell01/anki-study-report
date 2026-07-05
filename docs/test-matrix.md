@@ -49,4 +49,5 @@ pnpm run test:all
 
 Для Cards preview финальный Docker browser smoke должен покрывать screenshots
 `table`, `tiles` и `ankiPreview` в light/dark темах; `table`/`tiles` остаются
-front-only, а `ankiPreview` проверяет front/back Shadow DOM секции.
+front-only, а `ankiPreview` проверяет единственную answer-only Shadow DOM
+секцию из `backHtml`.

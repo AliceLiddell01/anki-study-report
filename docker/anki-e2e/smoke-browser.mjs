@@ -110,12 +110,12 @@ try {
 
   await capture(page, "ankiPreview", "light", `cards-anki-preview-light-${label}.png`);
   const ankiPreviewLightDetails = await inspectAnkiPreview(page);
-  assertAnkiPreviewFrontBack(ankiPreviewLightDetails, "light");
+  assertAnkiPreviewAnswerOnly(ankiPreviewLightDetails, "light");
   visualStates.push({ mode: "ankiPreview", theme: "light", screenshot: `cards-anki-preview-light-${label}.png`, details: ankiPreviewLightDetails });
 
   await capture(page, "ankiPreview", "dark", `cards-anki-preview-dark-${label}.png`);
   const ankiPreviewDarkDetails = await inspectAnkiPreview(page);
-  assertAnkiPreviewFrontBack(ankiPreviewDarkDetails, "dark");
+  assertAnkiPreviewAnswerOnly(ankiPreviewDarkDetails, "dark");
   visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: `cards-anki-preview-dark-${label}.png`, details: ankiPreviewDarkDetails });
 
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
@@ -193,14 +193,15 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
   assertShadowSummary(tableDetails, "table");
 
-  await captureApkg(page, "tiles", "dark", `cards-apkg-tile-${label}.png`, deckName);
+  await captureApkg(page, "tiles", "dark", `cards-apkg-tiles-dark-${label}.png`, deckName);
   const tileDetails = await inspectApkgShadowPreviews(page, "tile");
   assertBrowser(tileDetails.hostCount >= Math.min(3, apkgCards.length), `APKG tile previews found: ${tileDetails.hostCount}`);
   assertShadowSummary(tileDetails, "tile");
 
   await captureApkg(page, "ankiPreview", "dark", `cards-apkg-anki-preview-${label}.png`, deckName);
   const previewDetails = await inspectApkgAnkiPreview(page);
-  assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki previews found: ${previewDetails.previewCount}`);
+  assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki answer previews found: ${previewDetails.previewCount}`);
+  assertBrowser(previewDetails.frontHostCount === 0, "APKG Anki preview has no separate front preview host.");
   assertBrowser(!previewDetails.hasRawSoundMarker, "APKG Anki preview has no raw sound marker.");
   assertBrowser(!previewDetails.hasRawAnkiPlayMarker, "APKG Anki preview has no raw Anki AV marker.");
   assertBrowser(!previewDetails.hasScriptTag, "APKG Anki preview has no script tag.");
@@ -494,20 +495,15 @@ async function waitForShadowFixture(page, mode) {
 }
 
 async function waitForAnkiPreview(page) {
-  await page.locator('[data-testid="anki-preview-front"]').first().waitFor({ state: "visible", timeout: 60000 });
-  await page.locator('[data-testid="anki-preview-back"]').first().waitFor({ state: "visible", timeout: 60000 });
-  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]').first().waitFor({ state: "visible", timeout: 60000 });
-  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-preview-answer"]').first().waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]').first().waitFor({ state: "visible", timeout: 60000 });
   await page.waitForFunction(
     () => {
-      const frontHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]')];
-      const backHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]')];
-      const hasFixtureFront = frontHosts.some((host) => {
+      const answerHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
+      return answerHosts.some((host) => {
         const html = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
-        return html.includes("要望") || html.includes("%E8%A6%81");
+        return (html.includes("要望") || html.includes("%E8%A6%81")) && (host.shadowRoot?.textContent || "").trim().length > 0;
       });
-      const hasUsableBack = backHosts.some((host) => (host.shadowRoot?.textContent || host.querySelector("template")?.innerHTML || "").trim().length > 0);
-      return hasFixtureFront && hasUsableBack;
     },
     undefined,
     { timeout: 60000 },
@@ -624,13 +620,15 @@ async function inspectApkgShadowPreviews(page, mode) {
 
 async function inspectApkgAnkiPreview(page) {
   return page.evaluate(() => {
-    const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
+    const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
+    const frontHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]')];
     const html = hosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
     const shadowRoots = hosts.map((host) => host.shadowRoot).filter(Boolean);
     const images = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("img")]);
     const audioElements = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("audio")]);
     return {
       previewCount: hosts.length,
+      frontHostCount: frontHosts.length,
       imgCount: images.length,
       audioElementCount: audioElements.length,
       replayButtonCount: shadowRoots.reduce((sum, shadowRoot) => sum + shadowRoot.querySelectorAll(".asr-card-replay-button").length, 0),
@@ -718,6 +716,7 @@ async function inspectShadowPreview(page, expectedMode = "") {
         renderSource: host.getAttribute("data-render-source") || "",
         frontSectionCount: document.querySelectorAll('[data-testid="anki-preview-front"]').length,
         backSectionCount: document.querySelectorAll('[data-testid="anki-preview-back"]').length,
+        answerSectionCount: document.querySelectorAll('[data-testid="anki-preview-answer"]').length,
         hasOpenShadowRoot: Boolean(shadowRoot),
         hasStyle: Boolean(shadowRoot?.querySelector("style")),
         hasCard: Boolean(shadowRoot?.querySelector(".card")),
@@ -750,6 +749,7 @@ async function inspectShadowPreview(page, expectedMode = "") {
       renderSource: "",
       frontSectionCount: 0,
       backSectionCount: 0,
+      answerSectionCount: 0,
       hasOpenShadowRoot: false,
       hasStyle: false,
       hasCard: false,
@@ -781,10 +781,10 @@ async function inspectAnkiPreview(page) {
   return page.evaluate(() => {
     const frontHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="front"]')];
     const backHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="back"]')];
-    const hosts = [...frontHosts, ...backHosts];
+    const answerHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
+    const hosts = [...answerHosts];
     const html = hosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
-    const frontHtml = frontHosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
-    const backHtml = backHosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
+    const answerHtml = answerHosts.map((host) => `${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`).join("\n");
     const shadowRoots = hosts.map((host) => host.shadowRoot).filter(Boolean);
     const images = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("img")]);
     const audioElements = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("audio")]);
@@ -795,8 +795,10 @@ async function inspectAnkiPreview(page) {
     return {
       frontSectionCount: document.querySelectorAll('[data-testid="anki-preview-front"]').length,
       backSectionCount: document.querySelectorAll('[data-testid="anki-preview-back"]').length,
+      answerSectionCount: document.querySelectorAll('[data-testid="anki-preview-answer"]').length,
       frontHostCount: frontHosts.length,
       backHostCount: backHosts.length,
+      answerHostCount: answerHosts.length,
       renderSources: [...new Set(hosts.map((host) => host.getAttribute("data-render-source") || "").filter(Boolean))],
       imgCount: images.length,
       audioElementCount: audioElements.length,
@@ -806,10 +808,11 @@ async function inspectAnkiPreview(page) {
       hasRawAnkiPlayMarker: html.includes("[anki:play:"),
       hasScriptTag: Boolean(shadowRoots.some((shadowRoot) => shadowRoot.querySelector("script"))) || /<script/i.test(html),
       hasExternalCdnLink: /cdnjs|<link\b/i.test(html),
-      hasWordFocus: frontHtml.includes("word-focus"),
-      hasBackContent: backHtml.trim().length > 0 && !backHtml.includes("Оборотная сторона недоступна"),
-      hasBackFallback: document.body.innerText.includes("Оборотная сторона недоступна"),
-      hasBackAnswerText: /обрат|ответ|meaning|translation|改善|要望|back|answer/i.test(backHtml),
+      hasWordFocus: answerHtml.includes("word-focus"),
+      hasAnswerContent: answerHtml.trim().length > 0,
+      hasAnswerFallback: document.body.innerText.includes("Ответ недоступен, показана лицевая сторона"),
+      hasAnswerText: /обрат|ответ|meaning|translation|改善|要望|back|answer|request|demand/i.test(answerHtml),
+      hasAnswerSeparator: /id=["']answer["']|<hr\b/i.test(answerHtml),
       textSample: shadowRoots.map((shadowRoot) => shadowRoot.textContent || "").join("\n").slice(0, 500),
     };
   });
@@ -821,17 +824,20 @@ function assertFrontOnlyMode(details, mode) {
   assertBrowser(details.side === "front", `${mode} preview is front-only.`);
   assertBrowser(details.frontSectionCount === 0, `${mode} has no Anki Preview front section.`);
   assertBrowser(details.backSectionCount === 0, `${mode} has no Anki Preview back section.`);
+  assertBrowser(details.answerSectionCount === 0, `${mode} has no Anki Preview answer section.`);
   assertBrowser(!details.hasRawSoundMarker, `${mode} has no raw sound marker.`);
   assertBrowser(!details.hasRawAnkiPlayMarker, `${mode} has no raw Anki AV marker.`);
 }
 
-function assertAnkiPreviewFrontBack(details, theme) {
-  assertBrowser(details.frontSectionCount > 0, `Anki Preview ${theme} has front section.`);
-  assertBrowser(details.backSectionCount > 0, `Anki Preview ${theme} has back section.`);
-  assertBrowser(details.frontHostCount > 0, `Anki Preview ${theme} has front Shadow preview.`);
-  assertBrowser(details.backHostCount > 0, `Anki Preview ${theme} has back Shadow preview.`);
-  assertBrowser(details.hasBackContent, `Anki Preview ${theme} has rendered back content.`);
-  assertBrowser(!details.hasBackFallback, `Anki Preview ${theme} did not fall back for fixture card.`);
+function assertAnkiPreviewAnswerOnly(details, theme) {
+  assertBrowser(details.answerSectionCount > 0, `Anki Preview ${theme} has answer section.`);
+  assertBrowser(details.frontSectionCount === 0, `Anki Preview ${theme} has no separate front section.`);
+  assertBrowser(details.backSectionCount === 0, `Anki Preview ${theme} has no separate back section.`);
+  assertBrowser(details.answerHostCount > 0, `Anki Preview ${theme} has answer Shadow preview.`);
+  assertBrowser(details.frontHostCount === 0, `Anki Preview ${theme} has no separate front Shadow preview.`);
+  assertBrowser(details.backHostCount === 0, `Anki Preview ${theme} has no separate back Shadow preview.`);
+  assertBrowser(details.hasAnswerContent, `Anki Preview ${theme} has rendered answer content.`);
+  assertBrowser(!details.hasAnswerFallback, `Anki Preview ${theme} did not fall back for fixture card.`);
   assertBrowser(!details.hasVisibleNativeAudioControls, `Anki Preview ${theme} has no visible native audio controls.`);
   assertBrowser(!details.hasRawSoundMarker, `Anki Preview ${theme} has no raw sound marker.`);
   assertBrowser(!details.hasRawAnkiPlayMarker, `Anki Preview ${theme} has no raw Anki AV marker.`);
