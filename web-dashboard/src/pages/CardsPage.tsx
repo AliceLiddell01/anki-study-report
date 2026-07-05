@@ -843,9 +843,10 @@ function AnkiPreviewBox({ row }: { row: CardAttention }) {
 }
 
 function PreviewSection({ title, children, testId, side }: { title: string; children: ReactNode; testId?: string; side?: "front" | "back" | "answer" }) {
+  const overflowClass = side === "answer" ? "overflow-visible" : "overflow-hidden";
   return (
     <section
-      className="asr-preview-section min-h-[78px] overflow-hidden rounded-md border border-ink-700 bg-ink-900/45 p-3"
+      className={`asr-preview-section min-h-[78px] ${overflowClass} rounded-md border border-ink-700 bg-ink-900/45 p-3`}
       data-testid={testId}
       data-preview-side={side}
     >

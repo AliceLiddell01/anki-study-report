@@ -1,7 +1,12 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ANKI_PREVIEW_MODE_CONFIG, AnkiCardShadowPreview, buildShadowPreviewDocument } from "../components/AnkiCardShadowPreview";
+import {
+  ANKI_PREVIEW_MODE_CONFIG,
+  AnkiCardShadowPreview,
+  buildShadowPreviewDocument,
+  calculateAdaptivePreviewLayout,
+} from "../components/AnkiCardShadowPreview";
 import CardsPage from "./CardsPage";
 import type { StudyReport } from "../types/report";
 
@@ -159,7 +164,7 @@ function renderCards(displayMode: "table" | "tiles" | "ankiPreview" = "table", r
   return renderToStaticMarkup(<CardsPage report={report} loadState="ready" />);
 }
 
-describe("CardsPage v4 UX corrections", () => {
+describe("CardsPage v5 adaptive card previews", () => {
   it("renders table preview from frontText without secondary, tertiary, cid, or raw media words", () => {
     const html = renderCards("table");
 
@@ -277,6 +282,9 @@ describe("CardsPage v4 UX corrections", () => {
     expect(renderedHost).toContain('data-shadow-preview="true"');
     expect(renderedHost).toContain('data-preview-side="front"');
     expect(renderedHost).toContain('data-render-source="anki_native"');
+    expect(renderedHost).toContain('data-preview-measured="false"');
+    expect(renderedHost).toContain('data-preview-overflow="false"');
+    expect(renderedHost).toContain('data-preview-scale="0.500"');
     expect(renderedHost).toContain("data-shadow-preview-template");
     expect(renderedHost).toContain("asr-card-replay-button");
     expect(renderedHost).toContain("asr-card-audio");
@@ -291,11 +299,44 @@ describe("CardsPage v4 UX corrections", () => {
     expect(document.styleText).toContain(".asr-card-audio");
     expect(document.styleText).toContain("display: none");
     expect(document.styleText).toContain("transform: scale(var(--asr-preview-scale))");
+    expect(document.styleText).toContain("overflow: visible");
     expect(ANKI_PREVIEW_MODE_CONFIG.table.scale).toBeGreaterThan(0.36);
+    expect(ANKI_PREVIEW_MODE_CONFIG.table.minScale).toBeLessThan(ANKI_PREVIEW_MODE_CONFIG.table.maxScale);
     expect(ANKI_PREVIEW_MODE_CONFIG.tile.targetWidth).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.table.targetWidth);
     expect(ANKI_PREVIEW_MODE_CONFIG.preview.targetHeight).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.tile.targetHeight);
     expect(document.html).toContain("asr-card-replay-button");
     expect(document.html).toContain("asr-card-audio");
     expect(document.html).toContain("要望する");
+  });
+
+  it("calculates adaptive height for answer preview without clipping normal long cards", () => {
+    const previewLayout = calculateAdaptivePreviewLayout({
+      mode: "preview",
+      availableWidth: 720,
+      contentWidth: 720,
+      contentHeight: 900,
+    });
+    const tableLayout = calculateAdaptivePreviewLayout({
+      mode: "table",
+      availableWidth: 336,
+      contentWidth: 640,
+      contentHeight: 900,
+    });
+    const tileLayout = calculateAdaptivePreviewLayout({
+      mode: "tile",
+      availableWidth: 500,
+      contentWidth: 640,
+      contentHeight: 260,
+    });
+
+    expect(previewLayout.overflow).toBe(false);
+    expect(previewLayout.hostHeight).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.preview.targetHeight);
+    expect(previewLayout.scale).toBeGreaterThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.preview.minScale);
+    expect(previewLayout.scale).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.preview.maxScale);
+    expect(tableLayout.hostHeight).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.table.maxHeight ?? Infinity);
+    expect(tableLayout.overflow).toBe(true);
+    expect(tableLayout.scale).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.table.maxScale);
+    expect(tileLayout.overflow).toBe(false);
+    expect(tileLayout.hostHeight).toBeLessThan(ANKI_PREVIEW_MODE_CONFIG.tile.maxHeight ?? Infinity);
   });
 });

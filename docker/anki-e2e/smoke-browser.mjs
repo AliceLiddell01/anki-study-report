@@ -202,6 +202,8 @@ async function assertApkgBrowserIfEnabled(page) {
   const previewDetails = await inspectApkgAnkiPreview(page);
   assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki answer previews found: ${previewDetails.previewCount}`);
   assertBrowser(previewDetails.frontHostCount === 0, "APKG Anki preview has no separate front preview host.");
+  assertBrowser(previewDetails.unmeasuredHostCount === 0, "APKG Anki preview answer hosts completed adaptive measurement.");
+  assertBrowser(previewDetails.clippedHostCount === 0, "APKG Anki preview answer hosts are not clipped at the bottom.");
   assertBrowser(!previewDetails.hasRawSoundMarker, "APKG Anki preview has no raw sound marker.");
   assertBrowser(!previewDetails.hasRawAnkiPlayMarker, "APKG Anki preview has no raw Anki AV marker.");
   assertBrowser(!previewDetails.hasScriptTag, "APKG Anki preview has no script tag.");
@@ -502,7 +504,11 @@ async function waitForAnkiPreview(page) {
       const answerHosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"][data-preview-side="answer"]')];
       return answerHosts.some((host) => {
         const html = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
-        return (html.includes("要望") || html.includes("%E8%A6%81")) && (host.shadowRoot?.textContent || "").trim().length > 0;
+        return (
+          host.getAttribute("data-preview-measured") === "true" &&
+          (html.includes("要望") || html.includes("%E8%A6%81")) &&
+          (host.shadowRoot?.textContent || "").trim().length > 0
+        );
       });
     },
     undefined,
@@ -533,7 +539,7 @@ async function waitForApkgAnkiPreview(page) {
       const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-shadow-preview-mode="preview"]')];
       return hosts.some((host) => {
         const searchable = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
-        return /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(searchable);
+        return host.getAttribute("data-preview-measured") === "true" && /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(searchable);
       });
     },
     undefined,
@@ -626,6 +632,24 @@ async function inspectApkgAnkiPreview(page) {
     const shadowRoots = hosts.map((host) => host.shadowRoot).filter(Boolean);
     const images = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("img")]);
     const audioElements = shadowRoots.flatMap((shadowRoot) => [...shadowRoot.querySelectorAll("audio")]);
+    const clipChecks = hosts.map((host) => {
+      const root = host.shadowRoot;
+      const viewport = root?.querySelector('[data-testid="asr-shadow-card-viewport"]') || root?.querySelector(".asr-shadow-card-viewport");
+      const hostRect = host.getBoundingClientRect();
+      const viewportRect = viewport?.getBoundingClientRect();
+      return {
+        hasHost: Boolean(host),
+        hasViewport: Boolean(viewport),
+        measured: host.getAttribute("data-preview-measured") === "true",
+        overflow: host.getAttribute("data-preview-overflow") === "true",
+        scale: Number(host.getAttribute("data-preview-scale") || 0),
+        hostHeight: hostRect.height,
+        hostBottom: hostRect.bottom,
+        viewportHeight: viewportRect?.height || 0,
+        viewportBottom: viewportRect?.bottom || 0,
+        clipped: !viewportRect || viewportRect.bottom > hostRect.bottom + 3,
+      };
+    });
     return {
       previewCount: hosts.length,
       frontHostCount: frontHosts.length,
@@ -638,6 +662,9 @@ async function inspectApkgAnkiPreview(page) {
       hasExternalCdnLink: /cdnjs|<link\b/i.test(html),
       hasWordFocus: html.includes("word-focus"),
       hasGrammarFocus: /grammar-focus|grammar-pattern|main-grammar/.test(html),
+      clipChecks,
+      clippedHostCount: clipChecks.filter((check) => check.clipped).length,
+      unmeasuredHostCount: clipChecks.filter((check) => !check.measured).length,
       textSample: shadowRoots.map((shadowRoot) => shadowRoot.textContent || "").join("\n").slice(0, 500),
     };
   });
@@ -792,6 +819,24 @@ async function inspectAnkiPreview(page) {
       const rect = audio.getBoundingClientRect();
       return audio.hasAttribute("controls") && rect.width > 0 && rect.height > 0;
     });
+    const clipChecks = hosts.map((host) => {
+      const root = host.shadowRoot;
+      const viewport = root?.querySelector('[data-testid="asr-shadow-card-viewport"]') || root?.querySelector(".asr-shadow-card-viewport");
+      const hostRect = host.getBoundingClientRect();
+      const viewportRect = viewport?.getBoundingClientRect();
+      return {
+        hasHost: Boolean(host),
+        hasViewport: Boolean(viewport),
+        measured: host.getAttribute("data-preview-measured") === "true",
+        overflow: host.getAttribute("data-preview-overflow") === "true",
+        scale: Number(host.getAttribute("data-preview-scale") || 0),
+        hostHeight: hostRect.height,
+        hostBottom: hostRect.bottom,
+        viewportHeight: viewportRect?.height || 0,
+        viewportBottom: viewportRect?.bottom || 0,
+        clipped: !viewportRect || viewportRect.bottom > hostRect.bottom + 3,
+      };
+    });
     return {
       frontSectionCount: document.querySelectorAll('[data-testid="anki-preview-front"]').length,
       backSectionCount: document.querySelectorAll('[data-testid="anki-preview-back"]').length,
@@ -813,6 +858,9 @@ async function inspectAnkiPreview(page) {
       hasAnswerFallback: document.body.innerText.includes("Ответ недоступен, показана лицевая сторона"),
       hasAnswerText: /обрат|ответ|meaning|translation|改善|要望|back|answer|request|demand/i.test(answerHtml),
       hasAnswerSeparator: /id=["']answer["']|<hr\b/i.test(answerHtml),
+      clipChecks,
+      clippedHostCount: clipChecks.filter((check) => check.clipped).length,
+      unmeasuredHostCount: clipChecks.filter((check) => !check.measured).length,
       textSample: shadowRoots.map((shadowRoot) => shadowRoot.textContent || "").join("\n").slice(0, 500),
     };
   });
@@ -836,6 +884,8 @@ function assertAnkiPreviewAnswerOnly(details, theme) {
   assertBrowser(details.answerHostCount > 0, `Anki Preview ${theme} has answer Shadow preview.`);
   assertBrowser(details.frontHostCount === 0, `Anki Preview ${theme} has no separate front Shadow preview.`);
   assertBrowser(details.backHostCount === 0, `Anki Preview ${theme} has no separate back Shadow preview.`);
+  assertBrowser(details.unmeasuredHostCount === 0, `Anki Preview ${theme} answer hosts completed adaptive measurement.`);
+  assertBrowser(details.clippedHostCount === 0, `Anki Preview ${theme} answer hosts are not clipped at the bottom.`);
   assertBrowser(details.hasAnswerContent, `Anki Preview ${theme} has rendered answer content.`);
   assertBrowser(!details.hasAnswerFallback, `Anki Preview ${theme} did not fall back for fixture card.`);
   assertBrowser(!details.hasVisibleNativeAudioControls, `Anki Preview ${theme} has no visible native audio controls.`);

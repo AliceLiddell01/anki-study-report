@@ -9,6 +9,12 @@ export interface AnkiPreviewModeConfig {
   targetWidth: number;
   targetHeight: number;
   scale: number;
+  minScale: number;
+  maxScale: number;
+  minHeight: number;
+  maxHeight?: number;
+  allowAutoHeight: boolean;
+  verticalPadding: number;
   audioButtonSize: number;
 }
 
@@ -19,6 +25,12 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 320,
     targetHeight: 170,
     scale: 0.5,
+    minScale: 0.32,
+    maxScale: 0.5,
+    minHeight: 118,
+    maxHeight: 190,
+    allowAutoHeight: false,
+    verticalPadding: 18,
     audioButtonSize: 30,
   },
   tile: {
@@ -27,6 +39,12 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 500,
     targetHeight: 268,
     scale: 0.78,
+    minScale: 0.48,
+    maxScale: 0.82,
+    minHeight: 190,
+    maxHeight: 340,
+    allowAutoHeight: false,
+    verticalPadding: 24,
     audioButtonSize: 36,
   },
   preview: {
@@ -35,6 +53,11 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 720,
     targetHeight: 390,
     scale: 0.88,
+    minScale: 0.58,
+    maxScale: 1,
+    minHeight: 260,
+    allowAutoHeight: true,
+    verticalPadding: 36,
     audioButtonSize: 40,
   },
 };
@@ -59,13 +82,30 @@ interface ShadowPreviewDocument {
   viewportClassName: string;
 }
 
+export interface AdaptivePreviewLayoutInput {
+  mode: AnkiCardShadowPreviewMode;
+  availableWidth: number;
+  contentWidth: number;
+  contentHeight: number;
+}
+
+export interface AdaptivePreviewLayout {
+  scale: number;
+  hostHeight: number;
+  targetWidth: number;
+  contentWidth: number;
+  contentHeight: number;
+  measured: boolean;
+  overflow: boolean;
+}
+
 const SHADOW_BASE_CSS = `
 :host {
   all: initial;
   display: grid;
   place-items: center;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   contain: content;
 }
 
@@ -80,7 +120,6 @@ const SHADOW_BASE_CSS = `
   width: var(--asr-preview-target-width);
   height: var(--asr-preview-target-height);
   max-width: 100%;
-  max-height: 100%;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -88,7 +127,7 @@ const SHADOW_BASE_CSS = `
 
 .asr-shadow-card-shell--preview {
   align-items: flex-start;
-  overflow: auto;
+  overflow: visible;
   padding: 10px;
 }
 
@@ -141,6 +180,62 @@ const SHADOW_BASE_CSS = `
   color: #f8fafc;
 }
 `;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function measuredNumber(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function calculateAdaptivePreviewLayout({
+  mode,
+  availableWidth,
+  contentWidth,
+  contentHeight,
+}: AdaptivePreviewLayoutInput): AdaptivePreviewLayout {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  const measuredContentWidth = Math.max(config.baseWidth, measuredNumber(contentWidth, config.baseWidth));
+  const measuredContentHeight = Math.max(config.baseHeight, measuredNumber(contentHeight, config.baseHeight));
+  const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
+  const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
+  const widthScale = targetWidth / measuredContentWidth;
+  let scale = clamp(widthScale, config.minScale, config.maxScale);
+
+  if (!config.allowAutoHeight && config.maxHeight) {
+    const heightScale = Math.max(config.minScale, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
+    scale = clamp(Math.min(scale, heightScale), config.minScale, config.maxScale);
+  }
+
+  const scaledHeight = Math.ceil(measuredContentHeight * scale + config.verticalPadding);
+  const unclampedHeight = Math.max(config.minHeight, scaledHeight);
+  const hostHeight = config.allowAutoHeight || !config.maxHeight ? unclampedHeight : Math.min(config.maxHeight, unclampedHeight);
+  const overflow = !config.allowAutoHeight && scaledHeight > hostHeight + 1;
+
+  return {
+    scale,
+    hostHeight,
+    targetWidth,
+    contentWidth: measuredContentWidth,
+    contentHeight: measuredContentHeight,
+    measured: true,
+    overflow,
+  };
+}
+
+function initialAdaptiveLayout(mode: AnkiCardShadowPreviewMode): AdaptivePreviewLayout {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  return {
+    scale: config.scale,
+    hostHeight: config.targetHeight,
+    targetWidth: config.targetWidth,
+    contentWidth: config.baseWidth,
+    contentHeight: config.baseHeight,
+    measured: false,
+    overflow: false,
+  };
+}
 
 const SHADOW_SAFETY_CSS = `
 .card img {
@@ -226,14 +321,15 @@ export function buildShadowPreviewDocument({
   };
 }
 
-function previewModeStyle(mode: AnkiCardShadowPreviewMode): CSSProperties {
+function previewModeStyle(mode: AnkiCardShadowPreviewMode, layout: AdaptivePreviewLayout): CSSProperties {
   const config = ANKI_PREVIEW_MODE_CONFIG[mode];
   return {
     "--asr-preview-base-width": `${config.baseWidth}px`,
     "--asr-preview-base-height": `${config.baseHeight}px`,
-    "--asr-preview-target-width": `${config.targetWidth}px`,
-    "--asr-preview-target-height": `${config.targetHeight}px`,
-    "--asr-preview-scale": config.scale,
+    "--asr-preview-target-width": `${layout.targetWidth}px`,
+    "--asr-preview-target-height": `${layout.hostHeight}px`,
+    "--asr-preview-scale": layout.scale,
+    "--asr-shadow-host-height": `${layout.hostHeight}px`,
     "--asr-card-audio-size": `${config.audioButtonSize}px`,
   } as CSSProperties;
 }
@@ -251,12 +347,17 @@ export function AnkiCardShadowPreview({
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [autoNightMode, setAutoNightMode] = useState(false);
+  const [layout, setLayout] = useState<AdaptivePreviewLayout>(() => initialAdaptiveLayout(mode));
   const resolvedNightMode = nightMode ?? autoNightMode;
   const shadowDocument = useMemo(
     () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, side, className }),
     [cardOrd, className, css, html, mode, resolvedNightMode, side, title],
   );
-  const hostStyle = useMemo(() => previewModeStyle(mode), [mode]);
+  const hostStyle = useMemo(() => previewModeStyle(mode, layout), [layout, mode]);
+
+  useEffect(() => {
+    setLayout(initialAdaptiveLayout(mode));
+  }, [mode]);
 
   useEffect(() => {
     if (nightMode !== undefined || typeof document === "undefined") {
@@ -289,12 +390,15 @@ export function AnkiCardShadowPreview({
 
     const shell = document.createElement("div");
     shell.className = shadowDocument.shellClassName;
+    shell.setAttribute("data-testid", "asr-shadow-card-shell");
 
     const viewport = document.createElement("div");
     viewport.className = shadowDocument.viewportClassName;
+    viewport.setAttribute("data-testid", "asr-shadow-card-viewport");
 
     const card = document.createElement("div");
     card.className = shadowDocument.cardClassName;
+    card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
 
     viewport.appendChild(card);
@@ -323,8 +427,73 @@ export function AnkiCardShadowPreview({
       }
     };
     shadowRoot.addEventListener("click", handleReplayClick);
-    return () => shadowRoot.removeEventListener("click", handleReplayClick);
-  }, [shadowDocument]);
+
+    let measureFrame = 0;
+    let disposed = false;
+    const scheduleMeasure = () => {
+      if (disposed || measureFrame) {
+        return;
+      }
+      measureFrame = window.requestAnimationFrame(() => {
+        measureFrame = 0;
+        if (disposed) {
+          return;
+        }
+        const hostRect = host.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const nextLayout = calculateAdaptivePreviewLayout({
+          mode,
+          availableWidth: hostRect.width || host.clientWidth || ANKI_PREVIEW_MODE_CONFIG[mode].targetWidth,
+          contentWidth: Math.max(card.scrollWidth, viewport.scrollWidth, cardRect.width, ANKI_PREVIEW_MODE_CONFIG[mode].baseWidth),
+          contentHeight: Math.max(card.scrollHeight, viewport.scrollHeight, cardRect.height, ANKI_PREVIEW_MODE_CONFIG[mode].baseHeight),
+        });
+        setLayout((current) => {
+          const heightChanged = Math.abs(current.hostHeight - nextLayout.hostHeight) > 1;
+          const scaleChanged = Math.abs(current.scale - nextLayout.scale) > 0.005;
+          const widthChanged = Math.abs(current.targetWidth - nextLayout.targetWidth) > 1;
+          if (
+            current.measured === nextLayout.measured &&
+            current.overflow === nextLayout.overflow &&
+            !heightChanged &&
+            !scaleChanged &&
+            !widthChanged
+          ) {
+            return current;
+          }
+          return nextLayout;
+        });
+      });
+    };
+
+    scheduleMeasure();
+
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleMeasure) : null;
+    resizeObserver?.observe(host);
+    resizeObserver?.observe(card);
+
+    const media = [...shadowRoot.querySelectorAll("img, video")];
+    media.forEach((element) => {
+      element.addEventListener("load", scheduleMeasure);
+      element.addEventListener("loadedmetadata", scheduleMeasure);
+      element.addEventListener("error", scheduleMeasure);
+    });
+
+    document.fonts?.ready?.then(scheduleMeasure).catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      if (measureFrame) {
+        window.cancelAnimationFrame(measureFrame);
+      }
+      resizeObserver?.disconnect();
+      media.forEach((element) => {
+        element.removeEventListener("load", scheduleMeasure);
+        element.removeEventListener("loadedmetadata", scheduleMeasure);
+        element.removeEventListener("error", scheduleMeasure);
+      });
+      shadowRoot.removeEventListener("click", handleReplayClick);
+    };
+  }, [mode, shadowDocument]);
 
   return (
     <div
@@ -340,6 +509,9 @@ export function AnkiCardShadowPreview({
       data-shadow-preview-mode={mode}
       data-shadow-preview-side={side}
       data-render-source={renderSource}
+      data-preview-measured={layout.measured ? "true" : "false"}
+      data-preview-overflow={layout.overflow ? "true" : "false"}
+      data-preview-scale={layout.scale.toFixed(3)}
     >
       <template data-shadow-preview-template dangerouslySetInnerHTML={{ __html: html }} />
     </div>
