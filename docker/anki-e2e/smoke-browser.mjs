@@ -84,6 +84,7 @@ try {
   await capture(page, "table", "dark", `cards-table-dark-${label}.png`);
   await capture(page, "tiles", "dark", `cards-tile-${label}.png`);
   await capture(page, "ankiPreview", "dark", `cards-anki-preview-${label}.png`);
+  const apkgDetails = await assertApkgBrowserIfEnabled(page);
 
   await writeJson(`browser-smoke-${label}.json`, {
     ok: true,
@@ -91,6 +92,7 @@ try {
     networkEvents,
     pageErrors,
     shadowDetails,
+    apkg: apkgDetails,
   });
 
   if (pageErrors.length > 0) {
@@ -124,6 +126,75 @@ async function capture(page, mode, theme, fileName) {
   await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
 }
 
+async function assertApkgBrowserIfEnabled(page) {
+  const importSummary = await readJsonIfExists(path.join(artifacts, "apkg-import-summary.json"));
+  if (!importSummary.enabled) {
+    const summary = {
+      enabled: false,
+      skipReason: importSummary.skipReason || "APKG fixture mode disabled.",
+    };
+    await writeJson(`browser-smoke-apkg-${label}.json`, { apkg: summary });
+    return summary;
+  }
+  assertBrowser(importSummary.imported === true, "APKG import summary reports imported.");
+  const problemSummary = await readJsonIfExists(path.join(artifacts, "apkg-problematic-summary.json"));
+  assertBrowser(problemSummary.enabled === true, "APKG problematic summary enabled.");
+  const report = await fetchReport();
+  const apkgCards = findApkgCards(report, importSummary);
+  const importedCardCount = Number(importSummary.cardCount || 0);
+  assertBrowser(apkgCards.length >= Math.min(3, importedCardCount), "APKG cards are present in browser report data.");
+  if (importedCardCount <= 100) {
+    assertBrowser(apkgCards.length >= importedCardCount, "All imported APKG cards are visible in browser report data.");
+  }
+  const distinctNoteTypes = unique(apkgCards.map(cardNoteType).filter(Boolean));
+  assertBrowser(distinctNoteTypes.length >= Math.min(3, (importSummary.noteTypeNames || []).length || 3), "APKG browser data has at least 3 note types.");
+  assertRepresentativeApkgCards(apkgCards, importSummary);
+
+  const deckName = (importSummary.deckNames || [])[0] || "asr-e2e-render-fixtures";
+  await captureApkg(page, "table", "dark", `cards-apkg-table-dark-${label}.png`, deckName);
+  const tableDetails = await inspectApkgShadowPreviews(page, "table");
+  assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
+  assertShadowSummary(tableDetails, "table");
+
+  await captureApkg(page, "tiles", "dark", `cards-apkg-tile-${label}.png`, deckName);
+  const tileDetails = await inspectApkgShadowPreviews(page, "tile");
+  assertBrowser(tileDetails.hostCount >= Math.min(3, apkgCards.length), `APKG tile previews found: ${tileDetails.hostCount}`);
+  assertShadowSummary(tileDetails, "tile");
+
+  await captureApkg(page, "ankiPreview", "dark", `cards-apkg-anki-preview-${label}.png`, deckName);
+  const previewDetails = await inspectApkgAnkiPreview(page);
+  assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki previews found: ${previewDetails.previewCount}`);
+  assertBrowser(!previewDetails.hasRawSoundMarker, "APKG Anki preview has no raw sound marker.");
+  assertBrowser(!previewDetails.hasRawAnkiPlayMarker, "APKG Anki preview has no raw Anki AV marker.");
+  assertBrowser(!previewDetails.hasScriptTag, "APKG Anki preview has no script tag.");
+  assertBrowser(!previewDetails.hasExternalCdnLink, "APKG Anki preview has no external CDN link.");
+
+  const summary = {
+    enabled: true,
+    cardCount: importedCardCount,
+    attentionCardsFromApkg: apkgCards.length,
+    distinctNoteTypes,
+    deckName,
+    tableDetails,
+    tileDetails,
+    previewDetails,
+    representatives: summarizeRepresentatives(apkgCards),
+  };
+  await writeJson(`browser-smoke-apkg-${label}.json`, { apkg: summary });
+  return summary;
+}
+
+async function captureApkg(page, mode, theme, fileName, deckName) {
+  await prepareCardsPage(page, mode, theme);
+  await applyDeckFilter(page, deckName);
+  if (mode === "table" || mode === "tiles") {
+    await waitForApkgShadowPreviews(page, mode === "tiles" ? "tile" : "table");
+  } else {
+    await waitForApkgAnkiPreview(page);
+  }
+  await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
+}
+
 async function prepareCardsPage(page, mode, theme) {
   await page.goto(cardsUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.evaluate(
@@ -136,6 +207,23 @@ async function prepareCardsPage(page, mode, theme) {
   );
   await page.reload({ waitUntil: "networkidle", timeout: 60000 });
   await waitForCardsPageReady(page);
+}
+
+async function applyDeckFilter(page, deckName) {
+  await page.evaluate((wantedDeck) => {
+    const selects = [...document.querySelectorAll("select")];
+    const deckSelect = selects.find((select) => [...select.options].some((option) => option.value === wantedDeck));
+    if (!(deckSelect instanceof HTMLSelectElement)) {
+      throw new Error(`Deck filter option not found: ${wantedDeck}`);
+    }
+    deckSelect.value = wantedDeck;
+    deckSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  }, deckName);
+  await page.waitForFunction(
+    (wantedDeck) => document.body.innerText.includes(wantedDeck),
+    deckName,
+    { timeout: 15000 },
+  );
 }
 
 async function waitForCardsPageReady(page) {
@@ -195,6 +283,140 @@ async function waitForAnkiPreview(page) {
     undefined,
     { timeout: 60000 },
   );
+}
+
+async function waitForApkgShadowPreviews(page, mode) {
+  await page.waitForFunction(
+    ({ expectedMode }) => {
+      const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"]')].filter(
+        (host) => host.getAttribute("data-shadow-preview-mode") === expectedMode,
+      );
+      return hosts.some((host) => {
+        const searchable = `${host.getAttribute("title") || ""}\n${host.querySelector("template")?.innerHTML || ""}\n${host.shadowRoot?.innerHTML || ""}`;
+        return /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(searchable);
+      });
+    },
+    { expectedMode: mode },
+    { timeout: 60000 },
+  );
+}
+
+async function waitForApkgAnkiPreview(page) {
+  await page.locator(".asr-front-preview-html").first().waitFor({ state: "visible", timeout: 60000 });
+  await page.waitForFunction(
+    () => /要望|遺伝子型|なくて|WebSocket|%E8%A6%81/.test(document.documentElement.innerHTML),
+    undefined,
+    { timeout: 60000 },
+  );
+}
+
+async function inspectApkgShadowPreviews(page, mode) {
+  return page.evaluate((expectedMode) => {
+    const hosts = [...document.querySelectorAll('[data-testid="anki-card-shadow-preview"]')].filter(
+      (host) => host.getAttribute("data-shadow-preview-mode") === expectedMode,
+    );
+    const details = hosts.map((host) => {
+      const shadowRoot = host.shadowRoot;
+      const html = shadowRoot?.innerHTML || "";
+      const template = host.querySelector("template")?.innerHTML || "";
+      const searchable = `${host.getAttribute("title") || ""}\n${template}\n${html}`;
+      const images = [...(shadowRoot?.querySelectorAll("img") || [])].map((image) => {
+        const rect = image.getBoundingClientRect();
+        return {
+          src: image.getAttribute("src") || "",
+          complete: image.complete,
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          renderedWidth: rect.width,
+          renderedHeight: rect.height,
+        };
+      });
+      const audioElements = [...(shadowRoot?.querySelectorAll("audio") || [])];
+      const visibleNativeAudioControls = audioElements.some((audio) => {
+        const rect = audio.getBoundingClientRect();
+        return audio.hasAttribute("controls") && rect.width > 0 && rect.height > 0;
+      });
+      const wordFocus = shadowRoot?.querySelector(".word-focus");
+      const grammarFocus = shadowRoot?.querySelector(".grammar-focus, .grammar-pattern, .main-grammar");
+      return {
+        title: host.getAttribute("title") || "",
+        renderSource: host.getAttribute("data-render-source") || "",
+        hasOpenShadowRoot: Boolean(shadowRoot),
+        imgCount: shadowRoot?.querySelectorAll("img").length || 0,
+        audioElementCount: audioElements.length,
+        hasReplayButton: Boolean(shadowRoot?.querySelector(".asr-card-replay-button")),
+        hasVisibleNativeAudioControls: visibleNativeAudioControls,
+        imagesLoaded: images.every(
+          (image) =>
+            image.complete &&
+            image.naturalWidth > 0 &&
+            image.naturalHeight > 0 &&
+            image.renderedWidth > 0 &&
+            image.renderedHeight > 0,
+        ),
+        imageDetails: images,
+        hasRawSoundMarker: searchable.toLowerCase().includes("[sound:"),
+        hasRawAnkiPlayMarker: searchable.includes("[anki:play:"),
+        hasScriptTag: Boolean(shadowRoot?.querySelector("script")) || /<script/i.test(template),
+        hasExternalCdnLink: /cdnjs|<link\b/i.test(searchable),
+        hasWordFocus: Boolean(wordFocus),
+        hasGrammarFocus: Boolean(grammarFocus),
+        wordFocusColor: wordFocus ? getComputedStyle(wordFocus).color : "",
+        grammarFocusColor: grammarFocus ? getComputedStyle(grammarFocus).color : "",
+        hasCardContent: Boolean(shadowRoot?.querySelector(".card-content")),
+        hasMainWord: Boolean(shadowRoot?.querySelector(".main-word")),
+        hasMainGrammar: Boolean(shadowRoot?.querySelector(".main-grammar")),
+        textSample: (shadowRoot?.textContent || host.getAttribute("title") || "").slice(0, 300),
+      };
+    });
+    const apkgDetails = details.filter((detail) => /要望|遺伝子型|なくて|WebSocket|要|遺/.test(detail.textSample) || detail.imgCount > 0 || detail.hasReplayButton);
+    return {
+      mode: expectedMode,
+      hostCount: hosts.length,
+      apkgLikeHostCount: apkgDetails.length,
+      details: apkgDetails.length ? apkgDetails.slice(0, 12) : details.slice(0, 12),
+      rawSoundMarkersFound: details.filter((detail) => detail.hasRawSoundMarker).length,
+      rawAnkiPlayMarkersFound: details.filter((detail) => detail.hasRawAnkiPlayMarker).length,
+      scriptTagsFound: details.filter((detail) => detail.hasScriptTag).length,
+      externalCdnLinksFound: details.filter((detail) => detail.hasExternalCdnLink).length,
+      replayButtonCount: details.filter((detail) => detail.hasReplayButton).length,
+      mediaHostCount: details.filter((detail) => detail.imgCount > 0 || detail.audioElementCount > 0).length,
+      wordFocusCount: details.filter((detail) => detail.hasWordFocus).length,
+      grammarFocusCount: details.filter((detail) => detail.hasGrammarFocus).length,
+    };
+  }, mode);
+}
+
+async function inspectApkgAnkiPreview(page) {
+  return page.evaluate(() => {
+    const previews = [...document.querySelectorAll(".asr-front-preview-html")];
+    const html = previews.map((preview) => preview.innerHTML).join("\n");
+    return {
+      previewCount: previews.length,
+      imgCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll("img").length, 0),
+      audioElementCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll("audio").length, 0),
+      replayButtonCount: previews.reduce((sum, preview) => sum + preview.querySelectorAll(".asr-card-replay-button").length, 0),
+      hasRawSoundMarker: html.toLowerCase().includes("[sound:"),
+      hasRawAnkiPlayMarker: html.includes("[anki:play:"),
+      hasScriptTag: /<script/i.test(html),
+      hasExternalCdnLink: /cdnjs|<link\b/i.test(html),
+      hasWordFocus: html.includes("word-focus"),
+      hasGrammarFocus: /grammar-focus|grammar-pattern|main-grammar/.test(html),
+      textSample: previews.map((preview) => preview.textContent || "").join("\n").slice(0, 500),
+    };
+  });
+}
+
+function assertShadowSummary(details, mode) {
+  assertBrowser(details.rawSoundMarkersFound === 0, `APKG ${mode} previews have no raw sound markers.`);
+  assertBrowser(details.rawAnkiPlayMarkersFound === 0, `APKG ${mode} previews have no raw Anki AV markers.`);
+  assertBrowser(details.scriptTagsFound === 0, `APKG ${mode} previews have no script tags.`);
+  assertBrowser(details.externalCdnLinksFound === 0, `APKG ${mode} previews have no external CDN refs.`);
+  assertBrowser(details.details.every((detail) => detail.renderSource === "anki_native"), `APKG ${mode} previews use native render.`);
+  assertBrowser(details.details.every((detail) => detail.hasOpenShadowRoot), `APKG ${mode} previews have open shadow roots.`);
+  if (details.mediaHostCount > 0) {
+    assertBrowser(details.details.filter((detail) => detail.imgCount > 0).every((detail) => detail.imagesLoaded), `APKG ${mode} images loaded.`);
+  }
 }
 
 async function inspectShadowPreview(page) {
@@ -385,6 +607,110 @@ async function buildDomSummary(page) {
       hasFixtureText: (document.body.innerText || "").includes("要望") || document.documentElement.innerHTML.includes("要望"),
     };
   });
+}
+
+async function fetchReport() {
+  const response = await fetch(`${ready.baseUrl}/api/report?token=${encodeURIComponent(ready.token)}`);
+  if (!response.ok) {
+    throw new Error(`/api/report returned ${response.status}`);
+  }
+  return response.json();
+}
+
+function findApkgCards(report, importSummary) {
+  const cards = Array.isArray(report?.attentionCards)
+    ? report.attentionCards
+    : Array.isArray(report?.cards)
+      ? report.cards
+      : [];
+  const deckNames = new Set((importSummary.deckNames || []).map(String));
+  const noteTypeNames = new Set((importSummary.noteTypeNames || []).map(String));
+  const cardIds = new Set((importSummary.cardIds || []).map((value) => Number(value)).filter(Number.isFinite));
+  return cards.filter((card) => {
+    const cardId = Number(card?.cardId || card?.card_id || 0);
+    return (
+      cardIds.has(cardId) ||
+      deckNames.has(String(card?.deckName || card?.deck_name || "")) ||
+      noteTypeNames.has(cardNoteType(card))
+    );
+  });
+}
+
+function cardNoteType(card) {
+  return String(card?.preview?.noteTypeName || card?.preview?.note_type_name || card?.noteTypeName || card?.note_type_name || "");
+}
+
+function assertRepresentativeApkgCards(cards, importSummary) {
+  const renderedDumps = cards.map((card) => JSON.stringify(card?.renderedPreview || {}, null, 0)).join("\n");
+  const textDump = cards.map((card) => JSON.stringify(card, null, 0)).join("\n");
+  const noteTypes = new Set(cards.map(cardNoteType));
+  for (const expected of ["Основная", "Грамматика", "Слова", "Копия Грамматика"]) {
+    if ((importSummary.noteTypeNames || []).includes(expected)) {
+      assertBrowser(noteTypes.has(expected), `APKG browser card represented note type: ${expected}`);
+    }
+  }
+  assertBrowser(cards.every((card) => card?.renderedPreview?.renderSource === "anki_native"), "APKG browser cards use native render.");
+  assertBrowser(cards.every((card) => !card?.renderedPreview?.fallbackReason), "APKG browser cards have no fallback reason.");
+  assertBrowser(!renderedDumps.toLowerCase().includes("[sound:"), "APKG browser rendered data has no raw sound markers.");
+  assertBrowser(!renderedDumps.includes("[anki:play:"), "APKG browser rendered data has no raw Anki AV markers.");
+  assertBrowser(!/<script/i.test(renderedDumps), "APKG browser rendered data has no script tag.");
+  assertBrowser(!/cdnjs|<link\b/i.test(renderedDumps), "APKG browser rendered data has no external CDN refs.");
+  if (textDump.includes("要望")) {
+    assertBrowser(renderedDumps.includes("word-focus"), "APKG 要望 card preserves word-focus class.");
+    assertBrowser(renderedDumps.includes("asr-card-replay-button"), "APKG 要望 card has replay button.");
+  }
+  if (textDump.includes("遺伝子型")) {
+    assertBrowser(renderedDumps.includes("asr-card-replay-button"), "APKG 遺伝子型 card has replay button.");
+  }
+  if (textDump.includes("なくて")) {
+    assertBrowser(/grammar-focus|grammar-pattern|main-grammar/.test(renderedDumps), "APKG なくて card preserves grammar classes.");
+  }
+  if (textDump.includes("WebSocket")) {
+    assertBrowser(/<b>|font-weight|span/i.test(renderedDumps), "APKG WebSocket card preserves safe static HTML.");
+  }
+}
+
+function summarizeRepresentatives(cards) {
+  const result = {};
+  for (const [key, pattern] of Object.entries({
+    youbou: /要望/,
+    idenshigata: /遺伝子型/,
+    nakute: /なくて/,
+    websocket: /WebSocket/i,
+  })) {
+    const card = cards.find((item) => pattern.test(JSON.stringify(item)));
+    if (card) {
+      result[key] = {
+        cardId: card.cardId,
+        noteTypeName: cardNoteType(card),
+        cardTemplateName: card.preview?.cardTemplateName || "",
+        renderSource: card.renderedPreview?.renderSource || "",
+        mediaRefs: (card.renderedPreview?.mediaRefs || []).map((item) => item.name),
+      };
+    }
+  }
+  return result;
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+async function readJsonIfExists(filePath) {
+  try {
+    return JSON.parse(await fs.readFile(filePath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
+}
+
+function assertBrowser(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function relevantConsoleEvents() {

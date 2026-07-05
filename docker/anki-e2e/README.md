@@ -108,6 +108,59 @@ backups, add-on data, trash, and other personal files are not mounted or
 copied. Without these environment variables, Docker E2E uses the synthetic
 fixtures and remains CI-safe.
 
+## APKG Fixture Mode
+
+The default Docker E2E run does not require an APKG. If no APKG fixture is
+present, the runner keeps using the synthetic collection and writes
+`apkg-import-summary.json` with `enabled: false`.
+
+Optional APKG mode imports a sanitized test deck into the isolated E2E
+collection after the synthetic fixture is seeded and before Anki starts. The
+APKG is fixture-only regression data for card rendering and dashboard previews;
+do not use a real personal collection or full Anki profile here. Imported cards
+are made problematic programmatically with deterministic E2E-only `revlog` and
+card stats, so they appear in Cards page / `attentionCards`.
+
+Tracked fixture path, only for small sanitized test decks:
+
+```text
+docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
+```
+
+Local-only fixture mode is preferred while iterating. The PowerShell wrapper
+copies the host file into ignored staging:
+
+```text
+docker/anki-e2e/local-input/asr-e2e-render-fixtures.apkg
+```
+
+Docker mounts that directory read-only at `/e2e/local-input/`. The staged
+`local-input` folder, screenshots, logs, HTML dumps, and JSON runtime artifacts
+are ignored and must not be committed.
+
+Run the default synthetic E2E:
+
+```powershell
+.\scripts\run_anki_e2e_docker.ps1
+```
+
+Run strict APKG local fixture E2E:
+
+```powershell
+$env:ANKI_E2E_APKG_FIXTURE="C:\path\to\asr-e2e-render-fixtures.apkg"
+$env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
+docker compose -f docker\anki-e2e\docker-compose.yml down -v
+.\scripts\run_anki_e2e_docker.ps1
+Remove-Item Env:\ANKI_E2E_APKG_FIXTURE
+Remove-Item Env:\ANKI_E2E_REQUIRE_APKG_FIXTURE
+```
+
+The APKG importer first uses Anki's package importer API
+`anki.importing.apkg.AnkiPackageImporter`. If that API is not available in the
+installed Anki package, the script tries the collection backend package import
+method and otherwise fails with a clear diagnostic rather than manually
+unpacking the APKG.
+
 ## Add-on E2E Mode
 
 The add-on only enables E2E shortcuts when:
@@ -281,10 +334,17 @@ Expected files include:
 - `api-report-sample-first.json`
 - `api-smoke-first.json`
 - `api-smoke-restart.json`
+- `api-smoke-apkg-first.json` when APKG mode is enabled or explicitly skipped
+- `browser-smoke-apkg-first.json` when APKG mode is enabled or explicitly skipped
+- `apkg-import-summary.json`
+- `apkg-problematic-summary.json`
 - `cards-table-light-first.png`
 - `cards-table-dark-first.png`
 - `cards-tile-first.png`
 - `cards-anki-preview-first.png`
+- `cards-apkg-table-dark-first.png` when APKG mode is enabled
+- `cards-apkg-tile-first.png` when APKG mode is enabled
+- `cards-apkg-anki-preview-first.png` when APKG mode is enabled
 - `cards-shadow-dom-dump-first.html`
 - `fixture-summary.json`
 - `anki_study_report.ankiaddon`

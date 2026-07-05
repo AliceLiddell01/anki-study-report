@@ -7,6 +7,9 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $ComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
+$LocalInputDir = Join-Path $Root "docker\anki-e2e\local-input"
+$LocalApkgName = "asr-e2e-render-fixtures.apkg"
+$LocalApkgPath = Join-Path $LocalInputDir $LocalApkgName
 
 if (-not (Test-Path $ComposeFile)) {
     throw "Docker compose file not found: $ComposeFile"
@@ -17,6 +20,18 @@ if (-not $ArtifactsDir) {
 }
 
 New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
+New-Item -ItemType Directory -Force -Path $LocalInputDir | Out-Null
+
+if ($env:ANKI_E2E_APKG_FIXTURE) {
+    $sourceApkg = Resolve-Path -LiteralPath $env:ANKI_E2E_APKG_FIXTURE -ErrorAction Stop
+    Copy-Item -LiteralPath $sourceApkg.Path -Destination $LocalApkgPath -Force
+    $env:ANKI_E2E_APKG_FIXTURE_PATH = "/e2e/local-input/$LocalApkgName"
+    Write-Host "Staged APKG fixture for Docker E2E: $($sourceApkg.Path) -> docker/anki-e2e/local-input/$LocalApkgName"
+} elseif (Test-Path -LiteralPath $LocalApkgPath) {
+    $env:ANKI_E2E_APKG_FIXTURE_PATH = "/e2e/local-input/$LocalApkgName"
+} elseif ($env:ANKI_E2E_APKG_FIXTURE_PATH -eq "/e2e/local-input/$LocalApkgName") {
+    Remove-Item Env:\ANKI_E2E_APKG_FIXTURE_PATH
+}
 
 function Invoke-DockerCompose {
     param([string[]]$Arguments)

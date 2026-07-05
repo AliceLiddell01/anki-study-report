@@ -1,7 +1,9 @@
 param(
     [switch]$SkipDocker,
     [switch]$CleanDocker,
-    [switch]$DockerOnly
+    [switch]$DockerOnly,
+    [string]$ApkgFixture = "",
+    [switch]$RequireApkgFixture
 )
 
 $ErrorActionPreference = "Stop"
@@ -135,10 +137,32 @@ if (-not $SkipDocker) {
         Invoke-DockerCompose @("down", "-v")
     }
 
-    Invoke-CheckedCommand `
-        -Name "Docker E2E" `
-        -FilePath "powershell" `
-        -Arguments @("-ExecutionPolicy", "Bypass", "-File", $DockerRunner)
+    $previousApkgFixture = $env:ANKI_E2E_APKG_FIXTURE
+    $previousRequireApkgFixture = $env:ANKI_E2E_REQUIRE_APKG_FIXTURE
+    if ($ApkgFixture) {
+        $env:ANKI_E2E_APKG_FIXTURE = $ApkgFixture
+    }
+    if ($RequireApkgFixture) {
+        $env:ANKI_E2E_REQUIRE_APKG_FIXTURE = "1"
+    }
+
+    try {
+        Invoke-CheckedCommand `
+            -Name "Docker E2E" `
+            -FilePath "powershell" `
+            -Arguments @("-ExecutionPolicy", "Bypass", "-File", $DockerRunner)
+    } finally {
+        if ($null -eq $previousApkgFixture) {
+            Remove-Item Env:\ANKI_E2E_APKG_FIXTURE -ErrorAction SilentlyContinue
+        } else {
+            $env:ANKI_E2E_APKG_FIXTURE = $previousApkgFixture
+        }
+        if ($null -eq $previousRequireApkgFixture) {
+            Remove-Item Env:\ANKI_E2E_REQUIRE_APKG_FIXTURE -ErrorAction SilentlyContinue
+        } else {
+            $env:ANKI_E2E_REQUIRE_APKG_FIXTURE = $previousRequireApkgFixture
+        }
+    }
 }
 
 Write-Host ""

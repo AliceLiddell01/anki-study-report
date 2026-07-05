@@ -27,6 +27,8 @@ section "Prepare artifacts"
 mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
 rm -f "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
   "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/api-*.json \
+  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/apkg-*.json \
+  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/browser-smoke-apkg-*.json \
   "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/cards-*.png \
   "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/cards-*.html \
   "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/anki-stdout-*.log \
@@ -95,6 +97,18 @@ if [ "${KEEP_E2E_DATA:-0}" != "1" ]; then
 fi
 /e2e/bin/bootstrap-prefs.py "${bootstrap_prefs_args[@]}"
 /e2e/bin/seed-collection.py --profile-dir "$ANKI_PROFILE_DIR" --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+import_apkg_args=(
+  --profile-dir "$ANKI_PROFILE_DIR"
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+)
+if [ "${ANKI_E2E_REQUIRE_APKG_FIXTURE:-0}" = "1" ]; then
+  import_apkg_args+=(--require)
+fi
+/e2e/bin/import-apkg-fixture.py \
+  "${import_apkg_args[@]}"
+/e2e/bin/mark-apkg-cards-problematic.py \
+  --profile-dir "$ANKI_PROFILE_DIR" \
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
 /e2e/bin/install-addon.sh "$E2E_BUILD_DIR/anki_study_report"
 
 section "First Anki start"

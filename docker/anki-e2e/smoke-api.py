@@ -36,6 +36,7 @@ def main() -> int:
     fixture_card = find_fixture_card(cards)
     assert_true(fixture_card is not None, "fixture card with 要望 found")
     assert_fixture_preview(fixture_card or {})
+    apkg_summary = assert_apkg_report_if_enabled(artifacts, args.label, base_url, token, cards)
 
     for media_name in ("要.gif", "望.gif", "要望.mp3"):
         status, content_type, body = fetch_bytes(base_url, "/api/media", token, {"name": media_name})
@@ -63,6 +64,7 @@ def main() -> int:
                     else None
                 ) if isinstance(fixture_card, dict) else None,
                 "checkedMedia": ["要.gif", "望.gif", "要望.mp3"],
+                "apkg": apkg_summary,
             },
             ensure_ascii=False,
             indent=2,
@@ -158,6 +160,145 @@ def assert_fixture_preview(card: dict[str, Any]) -> None:
     assert_true({"要.gif", "望.gif", "要望.mp3"}.issubset(media_names), "fixture mediaRefs contain images and audio")
     assert_true("<script" not in front_html.lower(), "scripts stripped from preview")
     assert_true("file://" not in front_html.lower(), "file URLs stripped from preview")
+
+
+def assert_apkg_report_if_enabled(
+    artifacts: Path,
+    label: str,
+    base_url: str,
+    token: str,
+    cards: list[dict[str, Any]],
+) -> dict[str, Any]:
+    import_summary = read_json_if_exists(artifacts / "apkg-import-summary.json")
+    if not import_summary.get("enabled"):
+        summary = {
+            "enabled": False,
+            "skipReason": import_summary.get("skipReason") or "APKG fixture mode disabled.",
+        }
+        (artifacts / f"api-smoke-apkg-{label}.json").write_text(
+            json.dumps({"apkg": summary}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return summary
+
+    assert_true(import_summary.get("imported") is True, "APKG import summary reports imported")
+    problem_summary = read_json_if_exists(artifacts / "apkg-problematic-summary.json")
+    assert_true(problem_summary.get("enabled") is True, "APKG problematic summary enabled")
+    imported_card_count = int(import_summary.get("cardCount") or 0)
+    marked_count = int(problem_summary.get("cardsMarked") or 0)
+    assert_true(imported_card_count > 0, "APKG imported card count is non-zero")
+    assert_true(marked_count >= imported_card_count, "APKG cards were marked problematic")
+
+    apkg_cards = find_apkg_cards(cards, import_summary)
+    assert_true(len(apkg_cards) >= min(3, imported_card_count), "APKG cards present in attentionCards")
+    if imported_card_count <= 100:
+        assert_true(len(apkg_cards) >= imported_card_count, "all imported APKG cards present in attentionCards")
+
+    distinct_note_types = sorted({card_note_type(card) for card in apkg_cards if card_note_type(card)})
+    expected_note_types = [str(name) for name in import_summary.get("noteTypeNames", []) if str(name).strip()]
+    assert_true(len(distinct_note_types) >= min(3, len(expected_note_types) or 3), "APKG cards represent at least 3 note types")
+    for expected in ("Основная", "Грамматика", "Слова", "Копия Грамматика"):
+        if expected in expected_note_types:
+            assert_true(expected in distinct_note_types, f"APKG note type represented: {expected}")
+
+    raw_sound_markers = 0
+    raw_anki_markers = 0
+    media_cards_checked = 0
+    render_sources: dict[str, int] = {}
+    fetched_media: list[str] = []
+    for card in apkg_cards:
+        preview = card.get("preview") if isinstance(card.get("preview"), dict) else {}
+        assert_true(bool(card_note_type(card)), "APKG card has note type name")
+        assert_true(bool(preview.get("cardTemplateName")), "APKG card has card template name")
+        rendered = card.get("renderedPreview")
+        assert_true(isinstance(rendered, dict), "APKG card has renderedPreview")
+        rendered = rendered if isinstance(rendered, dict) else {}
+        source = str(rendered.get("renderSource") or "")
+        render_sources[source] = render_sources.get(source, 0) + 1
+        assert_true(source == "anki_native", "APKG card used native Anki render")
+        assert_true(not rendered.get("fallbackReason"), "APKG native card has empty fallbackReason")
+        front_html = str(rendered.get("frontHtml") or "")
+        back_html = str(rendered.get("backHtml") or "")
+        front_plain = str(rendered.get("frontPlainText") or "")
+        back_plain = str(rendered.get("backPlainText") or "")
+        rendered_text = "\n".join([front_html, back_html, front_plain, back_plain])
+        lower_rendered = rendered_text.lower()
+        if "[sound:" in lower_rendered:
+            raw_sound_markers += 1
+        if "[anki:play:" in lower_rendered:
+            raw_anki_markers += 1
+        assert_true("[sound:" not in lower_rendered, "APKG rendered preview has no raw sound marker")
+        assert_true("[anki:play:" not in lower_rendered, "APKG rendered preview has no raw Anki AV marker")
+        assert_true("<script" not in lower_rendered, "APKG rendered preview strips script tags")
+        assert_true("javascript:" not in lower_rendered, "APKG rendered preview strips javascript URLs")
+        assert_true("cdnjs" not in lower_rendered, "APKG rendered preview strips external CDN refs from HTML")
+        assert_true("<link" not in lower_rendered, "APKG rendered preview strips link tags")
+        media_refs = [item for item in rendered.get("mediaRefs", []) if isinstance(item, dict)]
+        if media_refs:
+            media_cards_checked += 1
+        for ref in media_refs[:2]:
+            name = str(ref.get("name") or "")
+            if not name or name in fetched_media:
+                continue
+            status, _content_type, body = fetch_bytes(base_url, "/api/media", token, {"name": name})
+            assert_true(status == 200, f"APKG media returned 200: {name}")
+            assert_true(len(body) > 0, f"APKG media body is non-empty: {name}")
+            fetched_media.append(name)
+
+    assert_true(raw_sound_markers == 0, "APKG raw sound marker count is zero")
+    assert_true(raw_anki_markers == 0, "APKG raw Anki AV marker count is zero")
+    if import_summary.get("mediaFilesFound"):
+        assert_true(media_cards_checked >= 2, "APKG media cards have media refs")
+
+    summary = {
+        "enabled": True,
+        "cardCount": imported_card_count,
+        "attentionCardsFromApkg": len(apkg_cards),
+        "distinctNoteTypes": distinct_note_types,
+        "renderSources": render_sources,
+        "rawSoundMarkersFound": raw_sound_markers,
+        "rawAnkiPlayMarkersFound": raw_anki_markers,
+        "mediaCardsChecked": media_cards_checked,
+        "fetchedMedia": fetched_media,
+    }
+    (artifacts / f"api-smoke-apkg-{label}.json").write_text(
+        json.dumps({"apkg": summary}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return summary
+
+
+def find_apkg_cards(cards: list[dict[str, Any]], import_summary: dict[str, Any]) -> list[dict[str, Any]]:
+    deck_names = {str(name) for name in import_summary.get("deckNames", []) if str(name).strip()}
+    note_type_names = {str(name) for name in import_summary.get("noteTypeNames", []) if str(name).strip()}
+    card_ids = {int(value) for value in import_summary.get("cardIds", []) if str(value).strip().isdigit()}
+    result = []
+    for card in cards:
+        try:
+            card_id = int(card.get("cardId") or 0)
+        except (TypeError, ValueError):
+            card_id = 0
+        if card_id in card_ids:
+            result.append(card)
+            continue
+        if str(card.get("deckName") or "") in deck_names:
+            result.append(card)
+            continue
+        if card_note_type(card) in note_type_names:
+            result.append(card)
+    return result
+
+
+def card_note_type(card: dict[str, Any]) -> str:
+    preview = card.get("preview") if isinstance(card.get("preview"), dict) else {}
+    return str(preview.get("noteTypeName") or card.get("noteTypeName") or "")
+
+
+def read_json_if_exists(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
 
 
 def redact(value: Any) -> Any:
