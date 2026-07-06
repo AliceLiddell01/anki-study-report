@@ -102,6 +102,83 @@ def test_dashboard_payload_cache_snapshot_fixture():
     assert payload["activity"]["activeDays"] == 2
     assert payload["decks"][0]["totalReviews"] == 50
     assert payload["cache"]["status"] == "ready"
+    assert payload["attentionCards"] == []
+    assert_subset(payload["attentionCardsStatus"], {
+        "status": "unavailable",
+        "source": "cache",
+        "reason": "cache snapshot has no card-level payload; fresh overlay not applied",
+        "collectorRan": False,
+        "collectionAvailable": False,
+    })
+    assert payload["noteTypeCatalog"] == []
+    assert "cards" not in payload
+    assert "cardIssues" not in payload
+    assert "problemCards" not in payload
+
+
+def test_dashboard_payload_emits_canonical_attention_card_keys_only():
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    fixture = load_dashboard_fixture("normal_day")
+    metrics = {
+        **fixture["metrics"],
+        "attention_cards": [
+            {
+                "cardId": 123,
+                "noteId": 456,
+                "deckName": "Japanese::Core",
+                "frontPreview": "canonical front",
+                "issues": ["leech"],
+                "riskScore": 42,
+            }
+        ],
+        "attention_cards_status": {
+            "status": "available",
+            "scannedCards": 1,
+            "returnedCards": 1,
+            "source": "fresh",
+            "noteTypeCatalog": [
+                {
+                    "noteTypeId": 9,
+                    "name": "Japanese vocab",
+                    "noteCount": 1,
+                    "cardTemplateCount": 1,
+                    "fields": ["Front", "Back"],
+                    "templates": [{"ord": 0, "name": "Card 1"}],
+                    "cssAvailable": True,
+                    "usedInCurrentCards": True,
+                }
+            ],
+        },
+    }
+
+    payload = dashboard_payload.build_dashboard_report_payload(
+        metrics,
+        fixture["metadata"],
+        cache_summary=fixture["cache"],
+    )
+
+    assert payload["attentionCards"][0]["cardId"] == 123
+    assert_subset(payload["attentionCardsStatus"], {
+        "status": "available",
+        "scannedCards": 1,
+        "returnedCards": 1,
+        "source": "fresh",
+    })
+    assert payload["noteTypeCatalog"] == [
+        {
+            "noteTypeId": 9,
+            "name": "Japanese vocab",
+            "noteCount": 1,
+            "cardTemplateCount": 1,
+            "fields": ["Front", "Back"],
+            "templates": [{"ord": 0, "name": "Card 1", "qfmtAvailable": False, "afmtAvailable": False}],
+            "cssAvailable": True,
+            "usedInCurrentCards": True,
+        }
+    ]
+    assert "cards" not in payload
+    assert "cardIssues" not in payload
+    assert "problemCards" not in payload
 
 
 def test_dashboard_payload_includes_sanitized_attention_cards():

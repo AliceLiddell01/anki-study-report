@@ -77,6 +77,31 @@ const baseReport = {
   },
 } satisfies StudyReport;
 
+function aliasRow(label: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id: `alias-${label}`,
+    cardId: "456",
+    noteId: "789",
+    deckName: "Legacy::Deck",
+    frontPreview: `front from ${label}`,
+    preview: {
+      primary: `preview primary ${label}`,
+      secondary: `preview secondary ${label}`,
+      tertiary: "legacy meta",
+      mediaBadges: ["audio"],
+    },
+    issues: ["missing audio"],
+    riskScore: 77,
+    againCount: 1,
+    lapses: 0,
+    averageAnswerSeconds: 8,
+    passRate: 0.9,
+    lastReviewedAt: "2026-07-01",
+    search_query: "nid:789",
+    ...overrides,
+  };
+}
+
 describe("cardAttention", () => {
   it("keeps the Cards reset-filter target on all time and all decks", () => {
     expect(DEFAULT_CARD_FILTERS).toEqual({
@@ -589,7 +614,60 @@ describe("cardAttention", () => {
     });
   });
 
-  it("accepts the planned raw card-level payload aliases", () => {
+  it.each([
+    "attentionCards",
+    "cards",
+    "cardIssues",
+    "problemCards",
+  ] as const)("characterizes raw card-level payload alias %s", (key) => {
+    const rows = buildCardAttentionRows({
+      ...baseReport,
+      [key]: [aliasRow(key)],
+    } as unknown as StudyReport);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: `alias-${key}`,
+      cardId: 456,
+      noteId: 789,
+      deckName: "Legacy::Deck",
+      front: `preview primary ${key}`,
+      lastReviewed: "2026-07-01",
+      browserSearch: "nid:789",
+      issues: ["missing_audio"],
+      riskScore: 77,
+      averageAnswerSeconds: 8,
+      passRate: 0.9,
+    });
+    expect(rows[0].preview).toMatchObject({
+      frontText: `preview primary ${key}`,
+      primary: `preview primary ${key}`,
+      secondary: `preview secondary ${key}`,
+      mediaBadges: ["audio"],
+    });
+  });
+
+  it("documents mixed-key precedence as legacy-first before attentionCards", () => {
+    const canonical = aliasRow("attentionCards", { cardId: 100, frontPreview: "canonical", riskScore: 10 });
+    const cards = aliasRow("cards", { cardId: 200, frontPreview: "cards alias", riskScore: 20 });
+    const cardIssues = aliasRow("cardIssues", { cardId: 300, frontPreview: "cardIssues alias", riskScore: 30 });
+    const problemCards = aliasRow("problemCards", { cardId: 400, frontPreview: "problemCards alias", riskScore: 40 });
+
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([300]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], problemCards: [problemCards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([400]);
+    expect(
+      buildCardAttentionRows({
+        ...baseReport,
+        attentionCards: [canonical],
+        cards: [cards],
+        cardIssues: [cardIssues],
+        problemCards: [problemCards],
+      } as unknown as StudyReport).map((row) => row.cardId),
+    ).toEqual([200]);
+  });
+
+  it("accepts snake_case legacy row fields without changing the normalized card contract", () => {
     const rows = buildCardAttentionRows({
       ...baseReport,
       attentionCards: [

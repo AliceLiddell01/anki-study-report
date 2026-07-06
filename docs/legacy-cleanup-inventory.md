@@ -270,3 +270,20 @@ docs/dashboard-api.md
 | Dashboard static/build cleanup | `pnpm run build:addon`, `node scripts/run_python.mjs scripts/package_addon.py --check`, and full build for release. |
 | Placeholder route cleanup | Router/nav tests, `docs/frontend-map.md`, screenshots/smoke if visible navigation changes. |
 | Pure docs inventory update | `git diff --check`, link search for `legacy-cleanup-inventory`. |
+
+## Current characterization coverage
+
+Stage 4 adds targeted tests that freeze the current compatibility behavior before
+future cleanup:
+
+- `web-dashboard/src/lib/cardAttention.test.ts` covers `attentionCards`,
+  `cards`, `cardIssues`, `problemCards`, snake_case row fields, and the current
+  mixed-key precedence: `cards` > `cardIssues` > `problemCards` >
+  `attentionCards`.
+- `tests/test_dashboard_payload.py` covers canonical backend output keys:
+  `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, and absence of
+  frontend legacy aliases in backend-generated payload.
+- `tests/test_stats_cache.py` covers `report_from_cache.py` fallback/mixed
+  adapter shape, `dataSource`, `fallbackReason`, `periodSummary`,
+  `cacheDeckSummary`, parity diagnostics, and preserving live-only fields during
+  cache merge.
