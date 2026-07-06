@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Source of truth:
 
@@ -76,13 +76,22 @@ web-dashboard/src/components/AnkiCardShadowPreview.tsx
 data-testid="anki-card-shadow-preview"
 ```
 
-`ankiPreview` использует обычный HTML контейнер:
+`ankiPreview` не использует `AnkiCardShadowPreview` и не дублирует front. Этот
+режим показывает единственную answer-only секцию из `renderedPreview.backHtml`:
 
 ```text
+data-testid="anki-preview-answer"
 .asr-front-preview-html
 ```
 
-При smoke failure сначала проверить active mode, потом DOM selector.
+Если `backHtml` отсутствует, UI показывает diagnostic fallback. Preview не
+исполняет JS templates и не использует iframe; sanitizer остается backend
+barrier. Целевой layout для этого dashboard - desktop/laptop, не mobile widths
+ниже рабочего desktop surface.
+
+При smoke failure сначала проверить active mode, потом DOM selector. Для
+`table`/`tiles` искать Shadow DOM host; для `ankiPreview` искать answer-only
+HTML в обычном DOM.
 
 ## Payload keys по страницам
 
@@ -122,4 +131,3 @@ web-dashboard/src/pages/CardsPage.test.tsx
   side, но backend sanitizer остается главным барьером.
 - Note CSS должен оставаться внутри preview, а не протекать в документ.
 - Cards page требует browser/live smoke после изменений rendering/media.
-

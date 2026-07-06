@@ -1,6 +1,6 @@
 # Упаковка и релиз
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Практический чеклист перед публикацией: `docs/release-checklist.md`.
 
@@ -98,11 +98,13 @@ tests
 anki_study_report/
 web-dashboard/node_modules/
 web-dashboard/src/
+web-dashboard/dist/
 *.ankiaddon
 *.pyc
 *.pyo
 *.zip
 user_files/
+e2e-artifacts/
 ```
 
 Смысл: archive должен быть installable add-on, а не snapshot всего репозитория и
@@ -133,6 +135,9 @@ name: Anki Study Report
 min_point_version: 260500
 max_point_version: 0
 ```
+
+`mod` меняется только при осознанном release/versioning шаге. Для docs-only
+handoff cleanup его не нужно bump-ать.
 
 Текущий default dashboard port в `config.json`:
 

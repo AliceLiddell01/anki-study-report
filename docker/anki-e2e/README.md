@@ -134,16 +134,17 @@ fixtures and remains CI-safe.
 
 ## APKG Fixture Mode
 
-The default Docker E2E run does not require an APKG. If no APKG fixture is
-present, the runner keeps using the synthetic collection and writes
+The default Docker E2E run always seeds the synthetic collection and then
+imports the tracked APKG fixture when it is present in the checkout. If no APKG
+fixture is present, the runner keeps using the synthetic collection and writes
 `apkg-import-summary.json` with `enabled: false`.
 
-Optional APKG mode imports a sanitized test deck into the isolated E2E
-collection after the synthetic fixture is seeded and before Anki starts. The
-APKG is fixture-only regression data for card rendering and dashboard previews;
-do not use a real personal collection or full Anki profile here. Imported cards
-are made problematic programmatically with deterministic E2E-only `revlog` and
-card stats, so they appear in Cards page / `attentionCards`.
+APKG mode imports a sanitized test deck into the isolated E2E collection after
+the synthetic fixture is seeded and before Anki starts. The APKG is fixture-only
+regression data for card rendering and dashboard previews; do not use a real
+personal collection or full Anki profile here. Imported cards are made
+problematic programmatically with deterministic E2E-only `revlog` and card
+stats, so they appear in Cards page / `attentionCards`.
 
 Tracked fixture path, only for small sanitized test decks:
 
@@ -168,7 +169,25 @@ Run the default synthetic E2E:
 .\scripts\run_anki_e2e_docker.ps1
 ```
 
-Run strict APKG local fixture E2E:
+Run strict APKG fixture E2E with the tracked fixture:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+```
+
+Run APKG-derived Cards performance smoke with 100 problematic cards:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```
+
+`-Perf100` sets `ANKI_E2E_PERF100=1`. The E2E setup keeps the tracked APKG as
+the source fixture, clones its imported notes/cards inside the isolated Docker
+collection until 100 cards are problematic, and writes
+`browser-smoke-performance-100-<label>.json` with mode, viewport, host,
+render-source, scroll, and layout counters.
+
+Run strict APKG local fixture E2E while iterating on an ignored local file:
 
 ```powershell
 $env:ANKI_E2E_APKG_FIXTURE="C:\path\to\asr-e2e-render-fixtures.apkg"
@@ -326,7 +345,9 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 9. Start Anki in Xvfb with `-b /e2e/anki-data -p E2E`.
 10. Wait for `dashboard-ready.json` and `/api/health`.
 11. Run `smoke-api.py`.
-12. Run `smoke-browser.mjs` and save screenshots.
+12. Run `smoke-browser.mjs`, verify Cards preview modes, and save screenshots.
+    `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
+    preview section rendered from `backHtml`.
 13. Stop Anki.
 14. Start Anki again with the same profile.
 15. Wait for readiness and rerun API smoke.
@@ -364,10 +385,12 @@ Expected files include:
 - `apkg-problematic-summary.json`
 - `cards-table-light-first.png`
 - `cards-table-dark-first.png`
-- `cards-tile-first.png`
-- `cards-anki-preview-first.png`
+- `cards-tiles-light-first.png`
+- `cards-tiles-dark-first.png`
+- `cards-anki-preview-light-first.png`
+- `cards-anki-preview-dark-first.png`
 - `cards-apkg-table-dark-first.png` when APKG mode is enabled
-- `cards-apkg-tile-first.png` when APKG mode is enabled
+- `cards-apkg-tiles-dark-first.png` when APKG mode is enabled
 - `cards-apkg-anki-preview-first.png` when APKG mode is enabled
 - `cards-shadow-dom-dump-first.html`
 - `fixture-summary.json`

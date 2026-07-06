@@ -1,6 +1,66 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
+export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
+
+export interface AnkiPreviewModeConfig {
+  baseWidth: number;
+  baseHeight: number;
+  targetWidth: number;
+  targetHeight: number;
+  scale: number;
+  minScale: number;
+  maxScale: number;
+  minHeight: number;
+  maxHeight?: number;
+  allowAutoHeight: boolean;
+  verticalPadding: number;
+  audioButtonSize: number;
+}
+
+export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPreviewModeConfig> = {
+  table: {
+    baseWidth: 640,
+    baseHeight: 340,
+    targetWidth: 320,
+    targetHeight: 170,
+    scale: 0.5,
+    minScale: 0.32,
+    maxScale: 0.5,
+    minHeight: 118,
+    maxHeight: 190,
+    allowAutoHeight: false,
+    verticalPadding: 18,
+    audioButtonSize: 30,
+  },
+  tile: {
+    baseWidth: 600,
+    baseHeight: 330,
+    targetWidth: 500,
+    targetHeight: 268,
+    scale: 0.78,
+    minScale: 0.48,
+    maxScale: 0.82,
+    minHeight: 190,
+    maxHeight: 340,
+    allowAutoHeight: false,
+    verticalPadding: 24,
+    audioButtonSize: 36,
+  },
+  preview: {
+    baseWidth: 720,
+    baseHeight: 420,
+    targetWidth: 720,
+    targetHeight: 390,
+    scale: 0.88,
+    minScale: 0.58,
+    maxScale: 1,
+    minHeight: 260,
+    allowAutoHeight: true,
+    verticalPadding: 36,
+    audioButtonSize: 40,
+  },
+};
 
 export interface AnkiCardShadowPreviewProps {
   html: string;
@@ -10,22 +70,42 @@ export interface AnkiCardShadowPreviewProps {
   renderSource?: string;
   nightMode?: boolean;
   mode: AnkiCardShadowPreviewMode;
+  side?: AnkiCardShadowPreviewSide;
   className?: string;
 }
 
 interface ShadowPreviewDocument {
   cardClassName: string;
   html: string;
+  shellClassName: string;
   styleText: string;
   viewportClassName: string;
+}
+
+export interface AdaptivePreviewLayoutInput {
+  mode: AnkiCardShadowPreviewMode;
+  availableWidth: number;
+  contentWidth: number;
+  contentHeight: number;
+}
+
+export interface AdaptivePreviewLayout {
+  scale: number;
+  hostHeight: number;
+  targetWidth: number;
+  contentWidth: number;
+  contentHeight: number;
+  measured: boolean;
+  overflow: boolean;
 }
 
 const SHADOW_BASE_CSS = `
 :host {
   all: initial;
-  display: block;
+  display: grid;
+  place-items: center;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   contain: content;
 }
 
@@ -35,26 +115,37 @@ const SHADOW_BASE_CSS = `
   box-sizing: border-box;
 }
 
+.asr-shadow-card-shell {
+  display: flex;
+  width: var(--asr-preview-target-width);
+  height: var(--asr-preview-target-height);
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.asr-shadow-card-shell--preview {
+  align-items: flex-start;
+  overflow: visible;
+  padding: 10px;
+}
+
 .asr-shadow-card-viewport {
-  width: 640px;
-  transform-origin: top left;
-}
-
-.asr-shadow-card-viewport--table {
-  transform: scale(0.36);
-}
-
-.asr-shadow-card-viewport--tile {
-  transform: scale(0.5);
+  flex: 0 0 var(--asr-preview-base-width);
+  width: var(--asr-preview-base-width);
+  min-height: var(--asr-preview-base-height);
+  transform: scale(var(--asr-preview-scale));
+  transform-origin: center center;
 }
 
 .asr-shadow-card-viewport--preview {
-  transform: scale(0.6);
+  transform-origin: top center;
 }
 
 .card {
-  width: 640px;
-  min-height: 480px;
+  width: var(--asr-preview-base-width);
+  min-height: var(--asr-preview-base-height);
   overflow: visible;
   padding: 24px;
   background: #ffffff;
@@ -65,11 +156,86 @@ const SHADOW_BASE_CSS = `
   text-align: center;
 }
 
+.asr-shadow-card-viewport--table .card {
+  padding: 18px;
+  font-size: 30px;
+  line-height: 1.35;
+}
+
+.asr-shadow-card-viewport--tile .card {
+  padding: 22px;
+  font-size: 30px;
+  line-height: 1.4;
+}
+
+.asr-shadow-card-viewport--preview .card {
+  padding: 28px;
+  font-size: 28px;
+  line-height: 1.5;
+}
+
+.nightMode .card,
 .card.nightMode {
   background: #111827;
   color: #f8fafc;
 }
 `;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function measuredNumber(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function calculateAdaptivePreviewLayout({
+  mode,
+  availableWidth,
+  contentWidth,
+  contentHeight,
+}: AdaptivePreviewLayoutInput): AdaptivePreviewLayout {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  const measuredContentWidth = Math.max(config.baseWidth, measuredNumber(contentWidth, config.baseWidth));
+  const measuredContentHeight = Math.max(config.baseHeight, measuredNumber(contentHeight, config.baseHeight));
+  const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
+  const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
+  const widthScale = targetWidth / measuredContentWidth;
+  let scale = clamp(widthScale, config.minScale, config.maxScale);
+
+  if (!config.allowAutoHeight && config.maxHeight) {
+    const heightScale = Math.max(config.minScale, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
+    scale = clamp(Math.min(scale, heightScale), config.minScale, config.maxScale);
+  }
+
+  const scaledHeight = Math.ceil(measuredContentHeight * scale + config.verticalPadding);
+  const unclampedHeight = Math.max(config.minHeight, scaledHeight);
+  const hostHeight = config.allowAutoHeight || !config.maxHeight ? unclampedHeight : Math.min(config.maxHeight, unclampedHeight);
+  const overflow = !config.allowAutoHeight && scaledHeight > hostHeight + 1;
+
+  return {
+    scale,
+    hostHeight,
+    targetWidth,
+    contentWidth: measuredContentWidth,
+    contentHeight: measuredContentHeight,
+    measured: true,
+    overflow,
+  };
+}
+
+function initialAdaptiveLayout(mode: AnkiCardShadowPreviewMode): AdaptivePreviewLayout {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  return {
+    scale: config.scale,
+    hostHeight: config.targetHeight,
+    targetWidth: config.targetWidth,
+    contentWidth: config.baseWidth,
+    contentHeight: config.baseHeight,
+    measured: false,
+    overflow: false,
+  };
+}
 
 const SHADOW_SAFETY_CSS = `
 .card img {
@@ -96,8 +262,8 @@ const SHADOW_SAFETY_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: var(--asr-card-audio-size);
+  height: var(--asr-card-audio-size);
   border: 1px solid rgba(37, 99, 235, 0.42);
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.1);
@@ -140,18 +306,35 @@ export function buildShadowPreviewDocument({
   cardOrd = 0,
   nightMode = false,
   mode,
+  side = "front",
 }: AnkiCardShadowPreviewProps): ShadowPreviewDocument {
   const normalizedOrd = Number.isFinite(cardOrd) ? Math.max(0, Math.floor(cardOrd)) : 0;
   const cardClasses = ["card", `card${normalizedOrd + 1}`, nightMode ? "nightMode" : ""].filter(Boolean);
   return {
     cardClassName: cardClasses.join(" "),
     html: html || "",
+    shellClassName: ["asr-shadow-card-shell", `asr-shadow-card-shell--${mode}`, `asr-shadow-card-shell--${side}`, nightMode ? "nightMode" : ""]
+      .filter(Boolean)
+      .join(" "),
     styleText: [SHADOW_BASE_CSS, css || "", SHADOW_SAFETY_CSS].join("\n"),
     viewportClassName: `asr-shadow-card-viewport asr-shadow-card-viewport--${mode}`,
   };
 }
 
-export function AnkiCardShadowPreview({
+function previewModeStyle(mode: AnkiCardShadowPreviewMode, layout: AdaptivePreviewLayout): CSSProperties {
+  const config = ANKI_PREVIEW_MODE_CONFIG[mode];
+  return {
+    "--asr-preview-base-width": `${config.baseWidth}px`,
+    "--asr-preview-base-height": `${config.baseHeight}px`,
+    "--asr-preview-target-width": `${layout.targetWidth}px`,
+    "--asr-preview-target-height": `${layout.hostHeight}px`,
+    "--asr-preview-scale": layout.scale,
+    "--asr-shadow-host-height": `${layout.hostHeight}px`,
+    "--asr-card-audio-size": `${config.audioButtonSize}px`,
+  } as CSSProperties;
+}
+
+function AnkiCardShadowPreviewComponent({
   html,
   css = "",
   title = "",
@@ -159,15 +342,22 @@ export function AnkiCardShadowPreview({
   renderSource = "",
   nightMode,
   mode,
+  side = "front",
   className = "",
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [autoNightMode, setAutoNightMode] = useState(false);
+  const [layout, setLayout] = useState<AdaptivePreviewLayout>(() => initialAdaptiveLayout(mode));
   const resolvedNightMode = nightMode ?? autoNightMode;
   const shadowDocument = useMemo(
-    () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, className }),
-    [cardOrd, className, css, html, mode, resolvedNightMode, title],
+    () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, side, className }),
+    [cardOrd, className, css, html, mode, resolvedNightMode, side, title],
   );
+  const hostStyle = useMemo(() => previewModeStyle(mode, layout), [layout, mode]);
+
+  useEffect(() => {
+    setLayout(initialAdaptiveLayout(mode));
+  }, [mode]);
 
   useEffect(() => {
     if (nightMode !== undefined || typeof document === "undefined") {
@@ -198,15 +388,22 @@ export function AnkiCardShadowPreview({
     const style = document.createElement("style");
     style.textContent = shadowDocument.styleText;
 
+    const shell = document.createElement("div");
+    shell.className = shadowDocument.shellClassName;
+    shell.setAttribute("data-testid", "asr-shadow-card-shell");
+
     const viewport = document.createElement("div");
     viewport.className = shadowDocument.viewportClassName;
+    viewport.setAttribute("data-testid", "asr-shadow-card-viewport");
 
     const card = document.createElement("div");
     card.className = shadowDocument.cardClassName;
+    card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
 
     viewport.appendChild(card);
-    shadowRoot.append(style, viewport);
+    shell.appendChild(viewport);
+    shadowRoot.append(style, shell);
 
     const handleReplayClick = (event: Event) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -230,8 +427,73 @@ export function AnkiCardShadowPreview({
       }
     };
     shadowRoot.addEventListener("click", handleReplayClick);
-    return () => shadowRoot.removeEventListener("click", handleReplayClick);
-  }, [shadowDocument]);
+
+    let measureFrame = 0;
+    let disposed = false;
+    const scheduleMeasure = () => {
+      if (disposed || measureFrame) {
+        return;
+      }
+      measureFrame = window.requestAnimationFrame(() => {
+        measureFrame = 0;
+        if (disposed) {
+          return;
+        }
+        const hostRect = host.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const nextLayout = calculateAdaptivePreviewLayout({
+          mode,
+          availableWidth: hostRect.width || host.clientWidth || ANKI_PREVIEW_MODE_CONFIG[mode].targetWidth,
+          contentWidth: Math.max(card.scrollWidth, viewport.scrollWidth, cardRect.width, ANKI_PREVIEW_MODE_CONFIG[mode].baseWidth),
+          contentHeight: Math.max(card.scrollHeight, viewport.scrollHeight, cardRect.height, ANKI_PREVIEW_MODE_CONFIG[mode].baseHeight),
+        });
+        setLayout((current) => {
+          const heightChanged = Math.abs(current.hostHeight - nextLayout.hostHeight) > 1;
+          const scaleChanged = Math.abs(current.scale - nextLayout.scale) > 0.005;
+          const widthChanged = Math.abs(current.targetWidth - nextLayout.targetWidth) > 1;
+          if (
+            current.measured === nextLayout.measured &&
+            current.overflow === nextLayout.overflow &&
+            !heightChanged &&
+            !scaleChanged &&
+            !widthChanged
+          ) {
+            return current;
+          }
+          return nextLayout;
+        });
+      });
+    };
+
+    scheduleMeasure();
+
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleMeasure) : null;
+    resizeObserver?.observe(host);
+    resizeObserver?.observe(card);
+
+    const media = [...shadowRoot.querySelectorAll("img, video")];
+    media.forEach((element) => {
+      element.addEventListener("load", scheduleMeasure);
+      element.addEventListener("loadedmetadata", scheduleMeasure);
+      element.addEventListener("error", scheduleMeasure);
+    });
+
+    document.fonts?.ready?.then(scheduleMeasure).catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      if (measureFrame) {
+        window.cancelAnimationFrame(measureFrame);
+      }
+      resizeObserver?.disconnect();
+      media.forEach((element) => {
+        element.removeEventListener("load", scheduleMeasure);
+        element.removeEventListener("loadedmetadata", scheduleMeasure);
+        element.removeEventListener("error", scheduleMeasure);
+      });
+      shadowRoot.removeEventListener("click", handleReplayClick);
+    };
+  }, [mode, shadowDocument]);
 
   return (
     <div
@@ -239,12 +501,35 @@ export function AnkiCardShadowPreview({
       className={`anki-card-shadow-preview anki-card-shadow-preview--${mode} ${className}`.trim()}
       title={title}
       aria-label={title}
+      style={hostStyle}
       data-testid="anki-card-shadow-preview"
       data-shadow-preview="true"
+      data-preview-mode={mode}
+      data-preview-side={side}
       data-shadow-preview-mode={mode}
+      data-shadow-preview-side={side}
       data-render-source={renderSource}
+      data-preview-measured={layout.measured ? "true" : "false"}
+      data-preview-overflow={layout.overflow ? "true" : "false"}
+      data-preview-scale={layout.scale.toFixed(3)}
     >
       <template data-shadow-preview-template dangerouslySetInnerHTML={{ __html: html }} />
     </div>
+  );
+}
+
+export const AnkiCardShadowPreview = memo(AnkiCardShadowPreviewComponent, arePreviewPropsEqual);
+
+function arePreviewPropsEqual(previous: AnkiCardShadowPreviewProps, next: AnkiCardShadowPreviewProps): boolean {
+  return (
+    previous.html === next.html &&
+    (previous.css || "") === (next.css || "") &&
+    (previous.title || "") === (next.title || "") &&
+    (previous.cardOrd || 0) === (next.cardOrd || 0) &&
+    (previous.renderSource || "") === (next.renderSource || "") &&
+    previous.nightMode === next.nightMode &&
+    previous.mode === next.mode &&
+    (previous.side || "front") === (next.side || "front") &&
+    (previous.className || "") === (next.className || "")
   );
 }

@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация этого репозитория описывает текущую версию проекта на 2026-07-05.
+Документация этого репозитория описывает текущую версию проекта на 2026-07-06.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
 почему часть решений устроена именно так.
@@ -59,6 +59,12 @@ pnpm run test:all
 .\scripts\run_full_check.ps1 -DockerOnly
 ```
 
+Финальный Cards/APKG/Perf100 smoke на реальном Anki Desktop:
+
+```powershell
+.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
+```
+
 Быстрая упаковка и проверка архива:
 
 ```powershell
@@ -100,3 +106,6 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
    смешивались с временными файлами.
 5. Для изменений dashboard/runtime/рендеринга карточек по возможности
    подтверждать поведение на реальном локальном surface или Docker E2E.
+6. Cards preview target - desktop/local dashboard: `table` и `tiles` остаются
+   front-only через Shadow DOM host, а `ankiPreview` показывает только answer
+   из `renderedPreview.backHtml` без iframe и без отдельного дублирования front.

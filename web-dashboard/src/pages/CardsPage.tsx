@@ -10,7 +10,7 @@ import {
   Search,
   Wand2,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   buildCardAttentionRows,
@@ -129,14 +129,14 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     window.localStorage.setItem(CARDS_DISPLAY_MODE_STORAGE_KEY, displayMode);
   }, [displayMode]);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setPeriod(DEFAULT_CARD_FILTERS.period);
     setDeck(DEFAULT_CARD_FILTERS.deck);
     setIssue(DEFAULT_CARD_FILTERS.issue);
     setQuery(DEFAULT_CARD_FILTERS.query);
     setSortKey(DEFAULT_CARD_FILTERS.sortKey);
     setTab("risk");
-  };
+  }, []);
 
   const openProblemDecks = async (): Promise<boolean> => {
     if (!reportReady || !tokenAvailable) {
@@ -160,7 +160,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     }
   };
 
-  const copySearch = async (row: CardAttention) => {
+  const copySearch = useCallback(async (row: CardAttention) => {
     const search = buildCardBrowserSearch(row);
     try {
       await navigator.clipboard.writeText(search);
@@ -168,9 +168,9 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     } catch {
       setRowStatus((current) => ({ ...current, [row.id]: search }));
     }
-  };
+  }, []);
 
-  const openRow = async (row: CardAttention) => {
+  const openRow = useCallback(async (row: CardAttention) => {
     const search = buildCardBrowserSearch(row);
     if (!tokenAvailable) {
       setRowStatus((current) => ({ ...current, [row.id]: "Нет действующей ссылки дашборда. Запрос поиска скопирован." }));
@@ -184,7 +184,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       ...current,
       [row.id]: response.ok ? `Открыто в Anki Browser: ${search}` : response.error || `Не удалось открыть: ${search}`,
     }));
-  };
+  }, [copySearch, tokenAvailable]);
 
   const openFilteredRows = async () => {
     if (!tokenAvailable) {
@@ -620,7 +620,7 @@ function CardsHero({
   );
 }
 
-function RiskTable({
+const RiskTable = memo(function RiskTable({
   rows,
   rowStatus,
   onCopySearch,
@@ -632,8 +632,8 @@ function RiskTable({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="cards-table-wrap overflow-x-auto rounded-lg border border-ink-700">
-      <table className="cards-risk-table table-readable w-full min-w-[1220px] border-collapse">
+    <div className="cards-table-wrap overflow-x-auto rounded-lg border border-ink-700" data-testid="cards-table-wrap">
+      <table className="cards-risk-table table-readable w-full min-w-[1320px] border-collapse" data-testid="cards-risk-table">
         <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
           <tr>
             <th className="text-left">Риск</th>
@@ -649,11 +649,11 @@ function RiskTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-ink-700/80 hover:bg-ink-800/45">
-              <td className="w-[120px]">
+            <tr key={row.id} className="cards-risk-row border-t border-ink-700/80 hover:bg-ink-800/45" data-testid="cards-table-row" data-card-id={row.id}>
+              <td className="w-[120px]" data-testid="cards-table-risk">
                 <RiskBadge score={row.riskScore} />
               </td>
-              <td className="w-[280px] max-w-[280px]">
+              <td className="cards-preview-table-cell" data-testid="cards-table-preview-cell">
                 <CardPreviewCell row={row} />
               </td>
               <td className="max-w-[210px] text-report-muted">
@@ -661,14 +661,14 @@ function RiskTable({
                   {row.deckName}
                 </span>
               </td>
-              <td className="max-w-[240px]">
+              <td className="max-w-[240px]" data-testid="cards-table-issues">
                 <IssueChips issues={row.issues} />
               </td>
               <td className="w-[72px] text-right tabular-nums">{formatInteger(row.againCount)}</td>
               <td className="w-[78px] text-right tabular-nums">{formatInteger(row.lapses)}</td>
               <td className="w-[112px] text-right tabular-nums">{formatCompactSeconds(row.averageAnswerSeconds)}</td>
               <td className="w-[150px] text-report-muted">{safeText(row.lastReviewed, "Нет данных")}</td>
-              <td className="w-[150px]">
+              <td className="w-[150px]" data-testid="cards-table-actions">
                 <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
               </td>
             </tr>
@@ -677,7 +677,7 @@ function RiskTable({
       </table>
     </div>
   );
-}
+});
 
 function InsightGrid({
   rows,
@@ -727,7 +727,7 @@ function InsightGrid({
   );
 }
 
-function CardTiles({
+const CardTiles = memo(function CardTiles({
   rows,
   tab,
   rowStatus,
@@ -741,33 +741,42 @@ function CardTiles({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="cards-tiles-grid grid gap-3 lg:grid-cols-2">
       {rows.map((row) => (
-        <article key={row.id} className={`rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <article
+          key={row.id}
+          className={`cards-tile-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}
+          data-testid="cards-tile"
+          data-card-id={row.id}
+        >
+          <div className="cards-tile-header flex flex-wrap items-center justify-between gap-2" data-testid="cards-tile-header">
             <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
             <span className="text-xs text-report-muted">{tabLabel(tab)}</span>
           </div>
-          <FrontPreviewFrame row={row} variant="tile" className="mt-3" />
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-report-muted">{row.deckName}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-report-muted">
+          <div className="cards-tile-preview-slot" data-testid="cards-tile-preview-slot">
+            <FrontPreviewFrame row={row} variant="tile" />
+          </div>
+          <p className="cards-tile-meta line-clamp-2 text-sm leading-6 text-report-muted" data-testid="cards-tile-meta">
+            {row.deckName}
+          </p>
+          <div className="cards-tile-metrics grid grid-cols-3 gap-2 text-xs text-report-muted" data-testid="cards-tile-metrics">
             <DetailMini label="Again" value={formatInteger(row.againCount)} />
             <DetailMini label="срывы" value={formatInteger(row.lapses)} />
             <DetailMini label="успех" value={formatPercent(row.passRate)} />
           </div>
-          <div className="mt-3">
+          <div className="cards-tile-issues" data-testid="cards-tile-issues">
             <IssueChips issues={row.issues} />
           </div>
-          <div className="mt-4">
-            <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} />
+          <div className="cards-tile-actions" data-testid="cards-tile-actions">
+            <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
           </div>
         </article>
       ))}
     </div>
   );
-}
+});
 
-function AnkiPreviewGrid({
+const AnkiPreviewGrid = memo(function AnkiPreviewGrid({
   rows,
   rowStatus,
   onCopySearch,
@@ -779,62 +788,77 @@ function AnkiPreviewGrid({
   onOpenRow: (row: CardAttention) => void;
 }) {
   return (
-    <div className="grid gap-3">
-      <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-4">
+      <div className="grid gap-4">
         {rows.map((row) => (
-          <article key={row.id} className={`rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
+          <article key={row.id} className={`cards-anki-preview-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
               <span className="text-xs text-report-muted">{row.preview?.noteTypeName || row.preview?.detectedKind || "авто-превью"}</span>
             </div>
             <AnkiPreviewBox row={row} />
-            <div className="mt-3">
+            <div className="cards-anki-preview-issues mt-3">
               <IssueChips issues={row.issues} />
             </div>
-            <div className="mt-4">
-              <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} />
+            <div className="cards-anki-preview-actions mt-4">
+              <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
             </div>
           </article>
         ))}
       </div>
     </div>
   );
-}
+});
 
-function AnkiPreviewBox({ row }: { row: CardAttention }) {
+const AnkiPreviewBox = memo(function AnkiPreviewBox({ row }: { row: CardAttention }) {
   const rendered = row.renderedPreview;
-  const canRender = canRenderFrontHtml(row);
-  if (canRender) {
+  const canRenderFront = canRenderFrontHtml(row);
+  const canRenderBack = canRenderBackHtml(row);
+  if (canRenderBack || canRenderFront) {
+    const usesAnswerFallback = !canRenderBack;
+    const previewHtml = canRenderBack ? rendered?.backHtml || "" : rendered?.frontHtml || "";
     return (
-      <div className="asr-card-rendered asr-front-preview mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-3">
-        <PreviewSection title="Лицевая сторона">
+      <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3">
+        <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
           <AnkiCardShadowPreview
             mode="preview"
-            html={htmlWithMediaToken(rendered?.frontHtml || "")}
+            side="answer"
+            html={htmlWithMediaToken(previewHtml)}
             css={rendered?.css || ""}
-            title={cardFrontText(row)}
+            title={canRenderBack ? rendered?.backPlainText || cardFrontText(row) : cardFrontText(row)}
             cardOrd={rendered?.cardOrd || 0}
             renderSource={rendered?.renderSource || ""}
-            className="asr-front-preview-anki min-w-0"
+            className="asr-front-preview-anki asr-front-preview-anki-answer min-w-0"
           />
+          {usesAnswerFallback ? (
+            <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">
+              Ответ недоступен, показана лицевая сторона{rendered?.reason || rendered?.fallbackReason ? `: ${rendered.reason || rendered.fallbackReason}` : "."}
+            </p>
+          ) : null}
         </PreviewSection>
       </div>
     );
   }
   return (
-    <div className="mt-3 grid max-h-[320px] gap-3 overflow-hidden rounded-lg border border-ink-700 bg-ink-950 p-4">
+    <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-4">
       <p className="w-fit rounded-md border border-ink-700 bg-ink-900/70 px-2 py-0.5 text-xs text-report-muted">Упрощённое превью</p>
-      <PreviewSection title="Лицевая сторона">
+      <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
         <PlainPreviewText text={cardFrontText(row)} />
+        <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">Ответ недоступен, показана лицевая сторона.</p>
       </PreviewSection>
       {rendered?.reason ? <p className="text-xs leading-5 text-report-muted">{rendered.reason}</p> : null}
     </div>
   );
-}
+});
 
-function PreviewSection({ title, children }: { title: string; children: ReactNode }) {
+function PreviewSection({ title, children, testId, side }: { title: string; children: ReactNode; testId?: string; side?: "front" | "back" | "answer" }) {
+  const overflowClass = side === "answer" ? "overflow-visible" : "overflow-hidden";
   return (
-    <section className="min-h-[78px] overflow-hidden rounded-md border border-ink-700 bg-ink-900/45 p-3">
+    <section
+      className={`asr-preview-section min-h-[78px] ${overflowClass} rounded-md border border-ink-700 bg-ink-900/45 p-3`}
+      data-testid={testId}
+      data-preview-side={side}
+    >
       <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-report-muted">{title}</h3>
       <div className="asr-preview-section-body mt-2">{children}</div>
     </section>
@@ -847,7 +871,7 @@ function PlainPreviewText({ text, muted = false }: { text: string; muted?: boole
 
 function DetailMini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-ink-700 bg-ink-900/45 px-2 py-1.5">
+    <div className="cards-tile-metric rounded-lg border border-ink-700 bg-ink-900/45 px-2 py-1.5">
       <p className="uppercase tracking-[0.04em]">{label}</p>
       <p className="mt-0.5 font-semibold text-report-text">{value}</p>
     </div>
@@ -882,7 +906,7 @@ function CardPreviewCell({ row }: { row: CardAttention }) {
   return <FrontPreviewFrame row={row} variant="table" />;
 }
 
-function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttention; variant: "table" | "tile"; className?: string }) {
+const FrontPreviewFrame = memo(function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttention; variant: "table" | "tile"; className?: string }) {
   const front = cardFrontText(row);
   if (canRenderFrontHtml(row)) {
     return (
@@ -904,7 +928,7 @@ function FrontPreviewFrame({ row, variant, className = "" }: { row: CardAttentio
       </div>
     </div>
   );
-}
+});
 
 function FrontPreviewHtml({ row }: { row: CardAttention }) {
   const html = row.renderedPreview?.frontHtml;
@@ -917,6 +941,11 @@ function FrontPreviewHtml({ row }: { row: CardAttention }) {
 function canRenderFrontHtml(row: CardAttention) {
   const rendered = row.renderedPreview;
   return Boolean(rendered && (rendered.renderStatus === "available" || rendered.renderStatus === "sanitized") && rendered.frontHtml);
+}
+
+function canRenderBackHtml(row: CardAttention) {
+  const rendered = row.renderedPreview;
+  return Boolean(rendered && (rendered.renderStatus === "available" || rendered.renderStatus === "sanitized") && rendered.backHtml);
 }
 
 function FloatingStatusIndicator({

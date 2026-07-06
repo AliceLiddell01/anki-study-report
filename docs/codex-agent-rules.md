@@ -1,6 +1,6 @@
 # Правила для Codex/AI-агента
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Этот файл можно дать новому агенту как prompt-like инструкцию для работы в
 репозитории.
@@ -40,6 +40,9 @@ git ls-files --others --exclude-standard
 - Не открывать dashboard server наружу.
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.
+- Не превращать Cards preview в iframe/JS execution surface. `table`/`tiles`
+  проверять как front-only Shadow DOM, `ankiPreview` - как answer-only DOM из
+  `renderedPreview.backHtml`.
 
 Generated/runtime outputs:
 
@@ -125,4 +128,3 @@ Commit(s):
 
 Если commit не делался, явно написать это и показать смысл текущего
 `git status --short --branch`.
-

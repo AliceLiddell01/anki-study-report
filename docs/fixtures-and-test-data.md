@@ -1,6 +1,6 @@
 # Fixtures and test data
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Этот документ разделяет существующие fixtures и рекомендованное покрытие.
 
@@ -52,15 +52,34 @@ Synthetic media allowlist:
 
 ## APKG fixtures
 
-`docker/anki-e2e/README.md` описывает optional APKG path:
+Tracked APKG fixture:
 
 ```text
 docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
 ```
 
-В текущем checkout tracked `.apkg` fixture не обнаружен. Поэтому APKG mode в
-этой документации считается рекомендуемым/optional покрытием, а не существующим
-inventory.
+Это sanitized regression deck для Cards rendering preview. В fixture сейчас:
+
+- 10 cards;
+- 10 notes;
+- 4 note types;
+- 13 media entries.
+
+Default Docker E2E сначала создает synthetic collection, затем importer
+автоматически добавляет tracked APKG fixture, если файл есть в checkout. Strict
+APKG mode делает отсутствие или неудачный import ошибкой:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+```
+
+Perf100 smoke использует эту же tracked APKG fixture и не создает новую APKG.
+Docker E2E импортирует fixture, затем клонирует импортированные notes/cards в
+изолированной collection до 100 problematic cards:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```
 
 Local-only APKG можно передать через:
 
@@ -83,7 +102,7 @@ $env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
 | dangerous HTML/CSS | Есть unsafe sanitizer fixture/tests | `seed-collection.py`, `test_note_intelligence.py` |
 | large fields | Рекомендуется держать в synthetic/unit coverage | Добавлять как sanitized fixture |
 | non-Japanese/general note types | Есть generic basic | `seed-collection.py`, `test_note_intelligence.py` |
-| several card templates | Рекомендуется APKG/synthetic coverage | Optional APKG mode или new synthetic fixture |
+| several card templates | Есть tracked sanitized APKG + synthetic coverage | `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg`, `seed-collection.py` |
 
 ## Что можно коммитить
 
@@ -112,4 +131,3 @@ $env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
 4. Добавить test, который действительно использует fixture.
 5. Для Cards/rendering проверить unit tests и, при необходимости, Docker E2E.
 6. Обновить этот документ, если появляется новый tracked fixture.
-

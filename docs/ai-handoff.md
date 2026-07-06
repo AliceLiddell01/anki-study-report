@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-06.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -120,6 +120,12 @@ pnpm run test:all
 .\scripts\run_full_check.ps1 -CleanDocker
 ```
 
+Для финального Cards/APKG/Perf100 release smoke:
+
+```powershell
+.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
+```
+
 ## Текущая архитектурная договоренность
 
 `anki_study_report/__init__.py` - adapter/orchestration layer: Anki UI, hooks,
@@ -162,6 +168,40 @@ e2e-artifacts/addon-e2e-events.jsonl
 
 Если Docker E2E падает, сначала смотреть layout/profile/readiness artifacts,
 а не менять production код наугад.
+
+## Cards preview: текущая release truth
+
+- `table` и `tiles` используют Shadow DOM host
+  `data-testid="anki-card-shadow-preview"` и показывают front-only preview.
+- `ankiPreview` не дублирует front: он показывает answer-only HTML из
+  `renderedPreview.backHtml` через `.asr-front-preview-html` и
+  `data-testid="anki-preview-answer"`.
+- Если `backHtml` отсутствует, UI должен показывать диагностический fallback,
+  а не молча подставлять отдельный front.
+- Preview не использует iframe, JS templates не исполняются, sanitizer нельзя
+  ослаблять ради визуального совпадения.
+- Целевой surface - локальный desktop/laptop dashboard, не mobile-first ширины.
+
+Tracked APKG fixture:
+
+```text
+docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
+```
+
+Fixture содержит 10 notes, 10 cards, 4 note types и 13 media files. Strict APKG
+smoke:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+```
+
+Perf100 smoke использует эту же APKG fixture, клонирует импортированные
+cards/notes внутри Docker collection, не создает новую APKG и не включает UI
+virtualization. Timings являются diagnostic output, а не release thresholds:
+
+```powershell
+.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```
 
 ## Перед финальным ответом по задачам
 
