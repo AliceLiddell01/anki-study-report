@@ -347,7 +347,7 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 11. Run `smoke-api.py`.
 12. Run `smoke-browser.mjs`, verify Cards preview modes, and save screenshots.
     `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
-    preview section rendered from `backHtml`.
+    `AnkiCardShadowPreview` host rendered from `backHtml`.
 13. Stop Anki.
 14. Start Anki again with the same profile.
 15. Wait for readiness and rerun API smoke.

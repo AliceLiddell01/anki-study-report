@@ -51,7 +51,8 @@ pnpm run test:all
 Для Cards preview финальный Docker browser smoke должен покрывать screenshots
 `table`, `tiles` и `ankiPreview` в light/dark темах; `table`/`tiles` остаются
 front-only через Shadow DOM, а `ankiPreview` проверяет единственный answer-only
-DOM блок из `renderedPreview.backHtml`. Perf100 использует tracked APKG fixture,
-клонирует импортированные cards/notes в Docker collection до 100 cards, не
-создает новую APKG и не вводит virtualization; timings сохраняются только как
-diagnostics.
+preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
+(`data-shadow-preview-mode="preview"`, `data-preview-side="answer"`). Perf100
+использует tracked APKG fixture, клонирует импортированные cards/notes в Docker
+collection до 100 cards, не создает новую APKG и не вводит virtualization;
+timings сохраняются только как diagnostics.

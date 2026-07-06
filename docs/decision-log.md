@@ -108,8 +108,9 @@ Anki note CSS может конфликтовать с dashboard CSS.
 ### Решение
 
 Для `table` и `tiles` preview использовать `AnkiCardShadowPreview` и Shadow
-DOM. Для `ankiPreview` показывать answer-only HTML из
-`renderedPreview.backHtml` без отдельного front duplication.
+DOM как front-only hosts. Для `ankiPreview` использовать тот же isolated
+preview component в `mode="preview"` / `side="answer"` и показывать answer-only
+HTML из `renderedPreview.backHtml` без отдельного front duplication.
 
 ### Последствия
 

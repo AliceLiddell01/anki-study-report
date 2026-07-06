@@ -86,8 +86,8 @@ Do not run heavy Docker E2E for docs-only changes.
 - Open dashboard.
 - Check Cards page preview mode.
   - `table`/`tiles`: front-only Shadow DOM preview, normal page scroll.
-  - `ankiPreview`: answer-only from `renderedPreview.backHtml`, no separate
-    front duplication.
+  - `ankiPreview`: answer-only `AnkiCardShadowPreview` host from
+    `renderedPreview.backHtml`, no separate front duplication.
 - Check one media preview if rendering/media changed.
 - Check Actions page only with non-destructive actions unless explicitly needed.
 

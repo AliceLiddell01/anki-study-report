@@ -107,5 +107,6 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 5. Для изменений dashboard/runtime/рендеринга карточек по возможности
    подтверждать поведение на реальном локальном surface или Docker E2E.
 6. Cards preview target - desktop/local dashboard: `table` и `tiles` остаются
-   front-only через Shadow DOM host, а `ankiPreview` показывает только answer
-   из `renderedPreview.backHtml` без iframe и без отдельного дублирования front.
+   front-only через `AnkiCardShadowPreview` / Shadow DOM host, а `ankiPreview`
+   использует тот же isolated preview host в answer-only режиме из
+   `renderedPreview.backHtml` без iframe и без отдельного дублирования front.

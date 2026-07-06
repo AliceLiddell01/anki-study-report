@@ -69,29 +69,34 @@ Storage key:
 anki-study-report.cards.displayMode
 ```
 
-`table` и `tiles` используют `AnkiCardShadowPreview`:
+`table` и `tiles` используют `AnkiCardShadowPreview` как front-only preview:
 
 ```text
 web-dashboard/src/components/AnkiCardShadowPreview.tsx
 data-testid="anki-card-shadow-preview"
 ```
 
-`ankiPreview` не использует `AnkiCardShadowPreview` и не дублирует front. Этот
-режим показывает единственную answer-only секцию из `renderedPreview.backHtml`:
+`ankiPreview` тоже использует `AnkiCardShadowPreview`, но в режиме
+`mode="preview"` / `side="answer"`. Он показывает единственную answer-only
+секцию из `renderedPreview.backHtml` и не дублирует отдельный front:
 
 ```text
 data-testid="anki-preview-answer"
-.asr-front-preview-html
+data-testid="anki-card-shadow-preview"
+data-shadow-preview-mode="preview"
+data-preview-side="answer"
 ```
 
-Если `backHtml` отсутствует, UI показывает diagnostic fallback. Preview не
-исполняет JS templates и не использует iframe; sanitizer остается backend
-barrier. Целевой layout для этого dashboard - desktop/laptop, не mobile widths
-ниже рабочего desktop surface.
+Если `backHtml` отсутствует, UI показывает diagnostic fallback внутри answer
+section; это не штатное отдельное front preview. Preview не исполняет JS
+templates и не использует iframe; sanitizer остается backend barrier, а note
+CSS должен оставаться внутри Shadow DOM preview host. Целевой layout для этого
+dashboard - desktop/laptop, не mobile widths ниже рабочего desktop surface.
 
 При smoke failure сначала проверить active mode, потом DOM selector. Для
-`table`/`tiles` искать Shadow DOM host; для `ankiPreview` искать answer-only
-HTML в обычном DOM.
+`table`/`tiles` искать Shadow DOM host с `data-shadow-preview-mode="table"` или
+`tile`; для `ankiPreview` искать `data-testid="anki-preview-answer"` и
+answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 
 ## Payload keys по страницам
 

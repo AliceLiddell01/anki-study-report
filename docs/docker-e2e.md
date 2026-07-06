@@ -146,11 +146,13 @@ Cards preview smoke mode-specific:
   обычным page scroll.
 - `ankiPreview` проверяет единственную answer-only секцию
   `data-testid="anki-preview-answer"`, построенную из
-  `renderedPreview.backHtml` и rendered как `.asr-front-preview-html`.
+  `renderedPreview.backHtml` и rendered через `AnkiCardShadowPreview` host
+  `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
   Отдельный front в этом режиме не дублируется; если `backHtml` отсутствует,
   ожидается диагностический fallback.
-- Preview не использует iframe. Shadow DOM обязателен для `table`/`tiles`;
-  sanitizer не ослабляется, JS templates не исполняются.
+- Preview не использует iframe. Shadow DOM isolation обязателен для всех
+  текущих rendered modes: `table`, `tiles` и `ankiPreview`; sanitizer не
+  ослабляется, JS templates не исполняются.
 - Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
   light/dark темах.
 

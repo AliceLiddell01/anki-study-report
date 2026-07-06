@@ -171,15 +171,18 @@ e2e-artifacts/addon-e2e-events.jsonl
 
 ## Cards preview: текущая release truth
 
-- `table` и `tiles` используют Shadow DOM host
+- `table` и `tiles` используют `AnkiCardShadowPreview` / Shadow DOM host
   `data-testid="anki-card-shadow-preview"` и показывают front-only preview.
-- `ankiPreview` не дублирует front: он показывает answer-only HTML из
-  `renderedPreview.backHtml` через `.asr-front-preview-html` и
-  `data-testid="anki-preview-answer"`.
+- `ankiPreview` тоже использует `AnkiCardShadowPreview`, но как answer-only
+  host: `data-testid="anki-preview-answer"` плюс
+  `data-testid="anki-card-shadow-preview"`,
+  `data-shadow-preview-mode="preview"`, `data-preview-side="answer"`.
+  Source HTML - `renderedPreview.backHtml`; отдельный front не дублируется.
 - Если `backHtml` отсутствует, UI должен показывать диагностический fallback,
-  а не молча подставлять отдельный front.
+  а не молча подставлять отдельный штатный front preview.
 - Preview не использует iframe, JS templates не исполняются, sanitizer нельзя
-  ослаблять ради визуального совпадения.
+  ослаблять ради визуального совпадения, note CSS остается внутри Shadow DOM
+  preview host.
 - Целевой surface - локальный desktop/laptop dashboard, не mobile-first ширины.
 
 Tracked APKG fixture:

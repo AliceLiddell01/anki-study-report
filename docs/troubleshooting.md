@@ -199,10 +199,12 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
 
 - `table` и `tiles` используют `AnkiCardShadowPreview` и
   `data-testid="anki-card-shadow-preview"`.
-- `ankiPreview` использует `data-testid="anki-preview-answer"` и обычный DOM
-  блок `.asr-front-preview-html` с answer-only HTML из
-  `renderedPreview.backHtml`; front отдельно не дублируется.
-- Если `backHtml` отсутствует, ожидается diagnostic fallback.
+- `ankiPreview` использует `data-testid="anki-preview-answer"` и
+  `AnkiCardShadowPreview` host с `data-shadow-preview-mode="preview"` /
+  `data-preview-side="answer"`; штатный source - answer-only HTML из
+  `renderedPreview.backHtml`, front отдельно не дублируется.
+- Если `backHtml` отсутствует, ожидается diagnostic fallback внутри answer
+  section, а не обычное отдельное front preview.
 - `CardsPage.tsx` хранит display mode в
   `anki-study-report.cards.displayMode`.
 - `cardAttention.ts` нормализует `cards`, `cardIssues`, `problemCards`,

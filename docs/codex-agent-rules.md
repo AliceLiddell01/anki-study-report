@@ -41,8 +41,8 @@ git ls-files --others --exclude-standard
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.
 - Не превращать Cards preview в iframe/JS execution surface. `table`/`tiles`
-  проверять как front-only Shadow DOM, `ankiPreview` - как answer-only DOM из
-  `renderedPreview.backHtml`.
+  проверять как front-only Shadow DOM, `ankiPreview` - как answer-only
+  `AnkiCardShadowPreview` / Shadow DOM host из `renderedPreview.backHtml`.
 
 Generated/runtime outputs:
 
