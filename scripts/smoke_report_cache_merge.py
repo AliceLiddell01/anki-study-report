@@ -53,6 +53,11 @@ def main() -> None:
             "liveOnly": {"nested": True},
         },
         "cache": {"status": "ready", "usedFor": ["legacy"]},
+        "attentionCards": [{"cardId": 1}],
+        "attentionCardsStatus": {"status": "available", "source": "fresh"},
+        "noteTypeCatalog": [{"noteTypeId": 10}],
+        "forecast": {"available": True},
+        "recommendations": [{"id": "keep"}],
     }
     cache_parts = {
         "dataSource": "mixed",
@@ -71,6 +76,14 @@ def main() -> None:
         },
         "cache": {"status": "ready", "usedFor": ["activity.days", "comparison"]},
         "performance": {"reportBuildMs": 4, "cacheReadMs": 1},
+        "attentionCards": [{"cardId": 999}],
+        "attentionCardsStatus": {"status": "unavailable", "source": "cache"},
+        "noteTypeCatalog": [],
+        "forecast": {"available": False},
+        "recommendations": [],
+        "cards": [{"cardId": 999}],
+        "cardIssues": [{"cardId": 999}],
+        "problemCards": [{"cardId": 999}],
     }
 
     merged = adapter.merge_cached_report_parts(live_report, cache_parts)
@@ -93,6 +106,14 @@ def main() -> None:
     assert comparison["cacheOnly"] == {"nested": True}, comparison
     assert merged["cache"]["usedFor"] == ["activity.days", "comparison"], merged["cache"]
     assert merged["performance"]["cacheReadMs"] == 1, merged["performance"]
+    assert merged["attentionCards"] == [{"cardId": 1}], merged
+    assert merged["attentionCardsStatus"] == {"status": "available", "source": "fresh"}, merged
+    assert merged["noteTypeCatalog"] == [{"noteTypeId": 10}], merged
+    assert merged["forecast"] == {"available": True}, merged
+    assert merged["recommendations"] == [{"id": "keep"}], merged
+    assert "cards" not in merged, merged
+    assert "cardIssues" not in merged, merged
+    assert "problemCards" not in merged, merged
 
     print("REPORT_CACHE_MERGE_SMOKE_OK")
 

@@ -418,6 +418,12 @@ tests/test_addon_structure.py
 
 ### Что проверить
 
+В report payload смотреть `cache.status`, `cache.version`,
+`cache.isBuilding`, `cache.error`, `cache.lastError`, `cache.fallbackReason` и
+`cache.usedFor`. `legacy` означает, что dashboard использует live path;
+`mixed` означает, что cache overlay ограничен activity/comparison и
+diagnostics.
+
 ```text
 anki_study_report/stats_cache.py
 anki_study_report/report_from_cache.py

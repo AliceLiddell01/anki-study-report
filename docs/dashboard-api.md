@@ -214,6 +214,11 @@ performance
 Cache может быть source для части dashboard, но не должен менять публичный
 frontend contract.
 
+Когда report строится через cache adapter, summary сохраняет status diagnostics
+(`version`, `isBuilding`, `error`, `lastError`) вместе с `fallbackReason`.
+`mixed` overlay ограничен cache-backed sections; card-level поля остаются за
+canonical live payload (`attentionCards` / `attentionCardsStatus`).
+
 ## Правило изменения контракта
 
 Если меняется форма payload:

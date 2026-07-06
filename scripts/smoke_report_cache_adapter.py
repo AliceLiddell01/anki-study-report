@@ -155,6 +155,10 @@ def main() -> None:
 
     mixed = adapter.build_cached_report_parts(manager, "last_7_days", config, legacy_report=legacy_report)
     assert mixed["dataSource"] == "mixed", mixed
+    assert mixed["cache"]["version"] == adapter.CACHE_SCHEMA_VERSION, mixed["cache"]
+    assert mixed["cache"]["isBuilding"] is False, mixed["cache"]
+    assert mixed["cache"]["error"] is None, mixed["cache"]
+    assert mixed["cache"]["lastError"] is None, mixed["cache"]
     assert mixed["cache"]["usedFor"] == ["activity.days", "activity.summary", "comparison"], mixed["cache"]
     assert mixed["activity"]["days"][0]["date"] == "2026-06-24", mixed["activity"]["days"]
     assert mixed["activity"]["days"][1]["date"] == "2026-06-25", mixed["activity"]["days"]
@@ -183,12 +187,24 @@ def main() -> None:
     assert_json_safe(empty)
 
     errored = adapter.build_cached_report_parts(
-        FakeCacheManager({"status": "error", "cachedDays": 3, "cachedDeckDays": 0}),
+        FakeCacheManager({
+            "status": "error",
+            "version": adapter.CACHE_SCHEMA_VERSION,
+            "cachedDays": 3,
+            "cachedDeckDays": 0,
+            "isBuilding": True,
+            "error": "cache read failed\nsecond line",
+            "lastError": "previous rebuild failed",
+        }),
         "last_7_days",
         config,
     )
     assert errored["dataSource"] == "legacy", errored
     assert errored["cache"]["fallbackReason"] == "cache_not_ready:error", errored["cache"]
+    assert errored["cache"]["version"] == adapter.CACHE_SCHEMA_VERSION, errored["cache"]
+    assert errored["cache"]["isBuilding"] is True, errored["cache"]
+    assert errored["cache"]["error"] == "cache read failed", errored["cache"]
+    assert errored["cache"]["lastError"] == "previous rebuild failed", errored["cache"]
     assert_json_safe(errored)
 
     all_time = adapter.build_cached_report_parts(manager, "all_time", config)

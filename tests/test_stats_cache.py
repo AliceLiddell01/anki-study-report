@@ -104,9 +104,11 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     report_from_cache = import_addon_module("report_from_cache")
     manager = StaticCacheManager({
         "status": "empty",
+        "version": 1,
         "updatedAt": 0,
         "cachedDays": 0,
         "cachedDeckDays": 0,
+        "isBuilding": False,
         "lastRevlogId": 0,
     })
 
@@ -120,6 +122,10 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     assert parts["dataSource"] == "legacy"
     assert parts["cache"]["dataSource"] == "legacy"
     assert parts["cache"]["usedFor"] == []
+    assert parts["cache"]["version"] == 1
+    assert parts["cache"]["isBuilding"] is False
+    assert parts["cache"]["error"] is None
+    assert parts["cache"]["lastError"] is None
     assert parts["cache"]["fallbackReason"] == "cache_not_ready:empty"
     assert parts["cache"]["cachedDays"] == 0
     assert parts["cacheDebug"] == {
@@ -132,13 +138,49 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     assert "comparison" not in parts
 
 
+def test_cached_report_fallback_preserves_cache_status_diagnostics():
+    report_from_cache = import_addon_module("report_from_cache")
+    manager = StaticCacheManager({
+        "status": "stale",
+        "version": 99,
+        "updatedAt": 1_782_925_200,
+        "cachedDays": 12,
+        "cachedDeckDays": 5,
+        "isBuilding": True,
+        "error": "schema mismatch\nsecond line",
+        "lastError": "previous rebuild failed",
+        "lastRevlogId": 456,
+    })
+
+    parts = report_from_cache.build_cached_report_parts(
+        manager,
+        "today",
+        {"use_stats_cache_for_report": True, "today_date": "2026-07-01"},
+    )
+
+    assert parts["dataSource"] == "legacy"
+    assert parts["cache"]["dataSource"] == "legacy"
+    assert parts["cache"]["usedFor"] == []
+    assert parts["cache"]["fallbackReason"] == "cache_not_ready:stale"
+    assert parts["cache"]["version"] == 99
+    assert parts["cache"]["isBuilding"] is True
+    assert parts["cache"]["error"] == "schema mismatch"
+    assert parts["cache"]["lastError"] == "previous rebuild failed"
+    assert parts["cache"]["cachedDays"] == 12
+    assert parts["cache"]["cachedDeckDays"] == 5
+    assert parts["cache"]["lastRevlogId"] == 456
+    assert parts["cacheDebug"]["reason"] == "cache_not_ready:stale"
+
+
 def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     report_from_cache = import_addon_module("report_from_cache")
     status = {
         "status": "ready",
+        "version": 1,
         "updatedAt": 1_782_925_200,
         "cachedDays": 2,
         "cachedDeckDays": 2,
+        "isBuilding": False,
         "lastRevlogId": 123,
     }
     manager = StaticCacheManager(
@@ -173,6 +215,10 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     assert parts["dataSource"] == "mixed"
     assert parts["cache"]["dataSource"] == "mixed"
     assert parts["cache"]["usedFor"] == ["activity.days", "activity.summary", "comparison"]
+    assert parts["cache"]["version"] == 1
+    assert parts["cache"]["isBuilding"] is False
+    assert parts["cache"]["error"] is None
+    assert parts["cache"]["lastError"] is None
     assert parts["cache"]["fallbackReason"] is None
     assert parts["cache"]["periodSummary"] == {
         "total_reviews": 20,
@@ -214,3 +260,54 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     assert merged["attentionCards"] == []
     assert merged["attentionCardsStatus"] == {"status": "unavailable", "source": "cache"}
     assert merged["forecast"] == {"available": False}
+
+
+def test_cached_report_merge_preserves_live_only_contract_and_ignores_removed_aliases():
+    report_from_cache = import_addon_module("report_from_cache")
+    live_report = {
+        "dataSource": "legacy",
+        "metadata": {"period": "today"},
+        "activity": {"available": False, "days": [], "liveOnly": "kept"},
+        "comparison": {"available": False, "liveOnly": {"nested": True}},
+        "attentionCards": [{"cardId": 1}],
+        "attentionCardsStatus": {"status": "available", "source": "fresh"},
+        "noteTypeCatalog": [{"noteTypeId": 10}],
+        "forecast": {"available": True, "tomorrow": 20},
+        "recommendations": [{"id": "keep"}],
+        "cache": {"status": "ready", "liveOnly": "kept"},
+    }
+    cache_parts = {
+        "dataSource": "mixed",
+        "activity": {"available": True, "cacheOnly": "added"},
+        "comparison": {"cacheOnly": {"nested": True}},
+        "cache": {"usedFor": ["activity.days"], "fallbackReason": None},
+        "cacheDebug": {"parityChecked": True, "mismatches": []},
+        "performance": {"cacheReadMs": 1},
+        "metadata": {"period": "Cache"},
+        "attentionCards": [{"cardId": 999}],
+        "attentionCardsStatus": {"status": "unavailable", "source": "cache"},
+        "noteTypeCatalog": [],
+        "forecast": {"available": False},
+        "recommendations": [],
+        "cards": [{"cardId": 999}],
+        "cardIssues": [{"cardId": 999}],
+        "problemCards": [{"cardId": 999}],
+    }
+
+    merged = report_from_cache.merge_cached_report_parts(live_report, cache_parts)
+
+    assert merged["dataSource"] == "mixed"
+    assert merged["activity"] == {"available": True, "days": [], "liveOnly": "kept", "cacheOnly": "added"}
+    assert merged["comparison"] == {"available": False, "liveOnly": {"nested": True}, "cacheOnly": {"nested": True}}
+    assert merged["cache"] == {"status": "ready", "liveOnly": "kept", "usedFor": ["activity.days"]}
+    assert merged["cacheDebug"] == {"parityChecked": True}
+    assert merged["performance"] == {"cacheReadMs": 1}
+    assert merged["metadata"] == {"period": "today"}
+    assert merged["attentionCards"] == [{"cardId": 1}]
+    assert merged["attentionCardsStatus"] == {"status": "available", "source": "fresh"}
+    assert merged["noteTypeCatalog"] == [{"noteTypeId": 10}]
+    assert merged["forecast"] == {"available": True, "tomorrow": 20}
+    assert merged["recommendations"] == [{"id": "keep"}]
+    assert "cards" not in merged
+    assert "cardIssues" not in merged
+    assert "problemCards" not in merged

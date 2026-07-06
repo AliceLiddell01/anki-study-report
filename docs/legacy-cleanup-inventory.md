@@ -87,6 +87,34 @@ Package validation remains the release guard for archives: required
 unreferenced dashboard assets, forbidden entries and CSS markers are still
 checked by `scripts/package_addon.py`.
 
+### Stage 14 cache/report bridge characterization snapshot
+
+Stage 14 kept the cache/report bridge as a transitional adapter and narrowed the
+contract around its diagnostics. `report_from_cache.py` now carries cache status
+diagnostics into the report `cache` summary: `version`, `isBuilding`, `error`
+and `lastError` travel with `status`, counts and `fallbackReason`. Error text is
+kept to a single short line for dashboard safety.
+
+The characterization boundary is:
+
+- fallback returns `dataSource=legacy`, empty `usedFor`, `fallbackReason` and
+  `cacheDebug.reason`;
+- mixed cache can overlay only `cache`, `cacheDebug`, `performance`,
+  `activity` and `comparison`;
+- live-only report fields such as `metadata`, `attentionCards`,
+  `attentionCardsStatus`, `noteTypeCatalog`, `forecast` and `recommendations`
+  remain owned by the live payload path;
+- removed card aliases `cards`, `cardIssues` and `problemCards` must not be
+  reintroduced by cache merge.
+
+Tests and smoke scripts now cover these boundaries:
+
+```text
+tests/test_stats_cache.py
+scripts/smoke_report_cache_adapter.py
+scripts/smoke_report_cache_merge.py
+```
+
 ### Markdown/HTML report snapshot
 
 `report_builder.py` не legacy целиком. `build_markdown_report` и
