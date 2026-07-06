@@ -157,8 +157,7 @@ export interface NoteTypeCatalogItem {
   usedInCurrentCards: boolean;
 }
 
-// Optional raw card-level payload shape. `attentionCards` is canonical; `cards`
-// remains the compatibility fallback.
+// Optional raw card-level payload shape. `attentionCards` is the canonical input.
 export interface RawCardAttentionPayload {
   cardId: number | string;
   noteId?: number | string;
@@ -464,7 +463,6 @@ export interface StudyReport {
   };
   comparison?: ProgressComparison;
   decks: DeckPerformance[];
-  cards?: CardAttention[];
   attentionCards?: RawCardAttentionPayload[];
   attentionCardsStatus?: AttentionCardsStatus;
   noteTypeCatalog?: NoteTypeCatalogItem[];

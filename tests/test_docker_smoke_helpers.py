@@ -40,10 +40,10 @@ def test_smoke_api_card_rows_keep_empty_canonical_result():
     ) == []
 
 
-def test_smoke_api_card_rows_fall_back_to_cards_alias():
+def test_smoke_api_card_rows_ignore_removed_cards_alias():
     smoke_api = load_smoke_api_module()
 
-    assert smoke_api._card_rows_from_report({"cards": [row("cards")]}) == [row("cards")]
+    assert smoke_api._card_rows_from_report({"cards": [row("cards")]}) == []
 
 
 def test_smoke_api_card_rows_ignore_removed_card_issues_alias():

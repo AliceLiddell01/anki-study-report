@@ -1631,9 +1631,7 @@ async function fetchReport() {
 function findApkgCards(report, importSummary) {
   const cards = Array.isArray(report?.attentionCards)
     ? report.attentionCards
-    : Array.isArray(report?.cards)
-      ? report.cards
-      : [];
+    : [];
   const deckNames = new Set((importSummary.deckNames || []).map(String));
   const noteTypeNames = new Set((importSummary.noteTypeNames || []).map(String));
   const cardIds = new Set((importSummary.cardIds || []).map((value) => Number(value)).filter(Number.isFinite));

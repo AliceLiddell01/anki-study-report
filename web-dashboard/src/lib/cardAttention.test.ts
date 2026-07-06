@@ -116,7 +116,7 @@ describe("cardAttention", () => {
   it("normalizes explicit and inferred issue chips", () => {
     const rows = buildCardAttentionRows({
       ...baseReport,
-      cards: [
+      attentionCards: [
         {
           id: "one",
           cardId: 123,
@@ -141,8 +141,8 @@ describe("cardAttention", () => {
   it("distinguishes missing, unavailable, and empty available card-level states", () => {
     expect(hasCardAttentionSource(baseReport)).toBe(false);
     expect(cardAttentionState(baseReport).status).toBe("absent");
-    expect(hasCardAttentionSource({ ...baseReport, cards: [] })).toBe(false);
-    expect(cardAttentionState({ ...baseReport, cards: [] }).status).toBe("unavailable");
+    expect(hasCardAttentionSource({ ...baseReport, cards: [] } as unknown as StudyReport)).toBe(false);
+    expect(cardAttentionState({ ...baseReport, cards: [] } as unknown as StudyReport).status).toBe("absent");
     expect(hasCardAttentionSource({ ...baseReport, attentionCards: [], attentionCardsStatus: { status: "available", scannedCards: 10, returnedCards: 0 } })).toBe(true);
     expect(
       cardAttentionState({
@@ -187,7 +187,7 @@ describe("cardAttention", () => {
       issueCounts: expect.objectContaining({ repeatedAgain: 2 }),
       thresholds: expect.objectContaining({ slowAnswerSeconds: 10 }),
     });
-    expect(buildCardAttentionRows({ ...baseReport, cards: [] })).toEqual([]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [] })).toEqual([]);
   });
 
   it("treats explicit collector errors as unavailable card-level data", () => {
@@ -366,7 +366,7 @@ describe("cardAttention", () => {
   it("filters by period, deck, issue, query and sort order", () => {
     const rows = buildCardAttentionRows({
       ...baseReport,
-      cards: [
+      attentionCards: [
         {
           id: "slow",
           cardId: 2,
@@ -394,7 +394,7 @@ describe("cardAttention", () => {
           riskScore: 80,
         },
       ],
-    });
+    } as unknown as StudyReport);
 
     expect(
       filterCardAttentionRows(rows, {
@@ -410,7 +410,7 @@ describe("cardAttention", () => {
   it("filters card rows locally by last reviewed date and updates KPI inputs", () => {
     const rows = buildCardAttentionRows({
       ...baseReport,
-      cards: [
+      attentionCards: [
         {
           id: "old",
           cardId: 1,
@@ -438,7 +438,7 @@ describe("cardAttention", () => {
           riskScore: 40,
         },
       ],
-    });
+    } as unknown as StudyReport);
 
     const filtered = filterCardAttentionRows(rows, { period: "7d", deck: "all", issue: "all", query: "", sortKey: "risk" }, { today: "2026-07-03" });
 
@@ -614,10 +614,8 @@ describe("cardAttention", () => {
     });
   });
 
-  it.each([
-    "attentionCards",
-    "cards",
-  ] as const)("characterizes raw card-level payload alias %s", (key) => {
+  it("characterizes canonical raw card-level payload attentionCards", () => {
+    const key = "attentionCards";
     const rows = buildCardAttentionRows({
       ...baseReport,
       [key]: [aliasRow(key)],
@@ -636,26 +634,30 @@ describe("cardAttention", () => {
       riskScore: 77,
       averageAnswerSeconds: 8,
       passRate: 0.9,
-    });
+    } as unknown as StudyReport);
     expect(rows[0].preview).toMatchObject({
       frontText: `preview primary ${key}`,
       primary: `preview primary ${key}`,
       secondary: `preview secondary ${key}`,
       mediaBadges: ["audio"],
-    });
+    } as unknown as StudyReport);
   });
 
-  it("documents mixed-key precedence as canonical-first before legacy aliases", () => {
+  it("keeps canonical attentionCards when removed legacy aliases are also present", () => {
     const canonical = aliasRow("attentionCards", { cardId: 100, frontPreview: "canonical", riskScore: 10 });
     const cards = aliasRow("cards", { cardId: 200, frontPreview: "cards alias", riskScore: 20 });
 
     expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
   });
 
-  it("keeps legacy fallback precedence when attentionCards is absent", () => {
+  it("ignores removed top-level cards payload alias", () => {
     const cards = aliasRow("cards", { cardId: 200, riskScore: 20 });
 
-    expect(buildCardAttentionRows({ ...baseReport, cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
+    expect(buildCardAttentionRows({ ...baseReport, cards: [cards] } as unknown as StudyReport)).toEqual([]);
+    expect(cardAttentionState({ ...baseReport, cards: [cards] } as unknown as StudyReport)).toMatchObject({
+      status: "absent",
+      hasRowsKey: false,
+    } as unknown as StudyReport);
   });
 
   it("ignores removed top-level problemCards payload alias", () => {
@@ -665,7 +667,7 @@ describe("cardAttention", () => {
     expect(cardAttentionState({ ...baseReport, problemCards: [problemCards] } as unknown as StudyReport)).toMatchObject({
       status: "absent",
       hasRowsKey: false,
-    });
+    } as unknown as StudyReport);
   });
 
   it("ignores removed top-level cardIssues payload alias", () => {
@@ -678,7 +680,7 @@ describe("cardAttention", () => {
     });
   });
 
-  it("does not fall back to legacy aliases when canonical attentionCards is an empty array", () => {
+  it("does not fall back to removed legacy aliases when canonical attentionCards is an empty array", () => {
     const cards = aliasRow("cards", { cardId: 200, riskScore: 20 });
 
     expect(buildCardAttentionRows({ ...baseReport, attentionCards: [], cards: [cards] } as unknown as StudyReport)).toEqual([]);

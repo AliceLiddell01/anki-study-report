@@ -90,7 +90,6 @@ answerDistribution
 activity
 comparison?
 decks
-cards?
 attentionCards?
 attentionCardsStatus?
 noteTypeCatalog?
@@ -129,19 +128,17 @@ cache
 
 ## Card-level contract
 
-Карточки внимания могут приходить в нескольких совместимых legacy/new ключах:
+Карточки внимания приходят в canonical ключе:
 
 ```text
 attentionCards
-cards
 ```
 
-Frontend нормализует их клиент-side, но backend должен стремиться отдавать
-актуальный `attentionCards` плюс `attentionCardsStatus`. Если payload содержит
-несколько card-level ключей, frontend выбирает canonical `attentionCards`, затем
-fallback `cards`. Top-level `problemCards` больше не является supported payload
-alias после Stage 9; top-level `cardIssues` удален как supported payload alias
-после Stage 10.
+Backend должен отдавать актуальный `attentionCards` плюс
+`attentionCardsStatus`; frontend больше не fallback-ит к legacy top-level
+aliases. Top-level `problemCards` больше не является supported payload alias
+после Stage 9; top-level `cardIssues` удален после Stage 10; top-level `cards`
+удален после Stage 11.
 
 Важные поля карточки:
 
