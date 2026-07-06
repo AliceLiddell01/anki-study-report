@@ -24,10 +24,10 @@ attentionCards > cards > cardIssues > problemCards
 
 | Alias/key | Current role | Producers found | Consumers found | Fixtures/tests | Docs mentions | Removal readiness |
 | --- | --- | --- | --- | --- | --- | --- |
-| `attentionCards` | Canonical card-level payload key | Yes: `dashboard_payload.py` emits it from internal `attention_cards`; default dashboard overlay and `metrics.py` produce internal `attention_cards`. | Yes: `cardAttention.ts`, `CardsPage`, `mockReport`, Docker browser/API smokes, Tampermonkey QA. | Backend contract tests, frontend normalizer/UI tests, mockReport canonical data. | Public API/docs, architecture, frontend map, troubleshooting, payload examples, legacy inventory. | Keep. |
-| `cards` | Legacy fallback alias; also a very noisy normal word | No backend producer for top-level `cards` found. | Yes: `cardAttention.ts`, Tampermonkey QA, Docker API helper; Docker browser helper checks `attentionCards` then `cards`. | Compatibility tests in `cardAttention.test.ts`; no JSON dashboard fixtures. | Public compatibility docs and inventory. | Not first; highest ambiguity and possible old payload risk. |
-| `cardIssues` | Legacy fallback alias | No backend producer found. | Yes: `cardAttention.ts`, Tampermonkey QA, Docker API helper. | Compatibility tests in `cardAttention.test.ts`; backend tests assert it is absent from generated payload. | Public compatibility docs and inventory. | Candidate after `problemCards`. |
-| `problemCards` | Legacy fallback alias; also UI KPI name in normalized summary | No backend producer for top-level `problemCards` found. | Yes: `cardAttention.ts`, Tampermonkey QA, Docker API helper. | Compatibility tests in `cardAttention.test.ts`; backend tests assert it is absent from generated payload. | Public compatibility docs and inventory. | Best first removal candidate, after deprecation docs/tests update. |
+| `attentionCards` | Canonical card-level payload key | Yes: `dashboard_payload.py` emits it from internal `attention_cards`; default dashboard overlay and `metrics.py` produce internal `attention_cards`. | Yes: `cardAttention.ts`, `CardsPage`, `mockReport`, Docker browser/API smokes. | Backend contract tests, frontend normalizer/UI tests, mockReport canonical data. | Public API/docs, architecture, frontend map, troubleshooting, payload examples, legacy inventory. | Keep. |
+| `cards` | Legacy fallback alias; also a very noisy normal word | No backend producer for top-level `cards` found. | Yes: `cardAttention.ts`, Docker API helper; Docker browser helper checks `attentionCards` then `cards`. | Compatibility tests in `cardAttention.test.ts`; no JSON dashboard fixtures. | Public compatibility docs and inventory. | Not first; highest ambiguity and possible old payload risk. |
+| `cardIssues` | Legacy fallback alias | No backend producer found. | Yes: `cardAttention.ts`, Docker API helper. | Compatibility tests in `cardAttention.test.ts`; backend tests assert it is absent from generated payload. | Public compatibility docs and inventory. | Candidate after `problemCards`. |
+| `problemCards` | Legacy fallback alias; also UI KPI name in normalized summary | No backend producer for top-level `problemCards` found. | Yes: `cardAttention.ts`, Docker API helper. | Compatibility tests in `cardAttention.test.ts`; backend tests assert it is absent from generated payload. | Public compatibility docs and inventory. | Best first removal candidate, after deprecation docs/tests update. |
 
 ## Findings by area
 
@@ -92,6 +92,9 @@ canonical `attentionCards` and `attentionCardsStatus`.
 
 ### QA and E2E helpers
 
+The old Tampermonkey manual QA helper was removed in Stage 7 because Docker
+E2E/browser/API smoke is now the supported QA path.
+
 `docker/anki-e2e/smoke-browser.mjs` is mostly canonical-first for APKG checks:
 it reads `attentionCards` first and only then `cards`.
 
@@ -104,19 +107,9 @@ cardIssues
 problemCards
 ```
 
-`scripts/anki_dashboard_tampermonkey.user.js` also accepts all aliases in this
-order:
-
-```text
-cards
-cardIssues
-problemCards
-attentionCards
-```
-
-These are compatibility QA helpers, not backend producers. Before removing any
-alias, update these helper checks or intentionally keep them as external-old-
-payload probes.
+The Docker smoke helpers are compatibility QA helpers, not backend producers.
+Before removing any alias, update these helper checks or intentionally keep them
+as external-old-payload probes.
 
 ### Docs
 
@@ -150,7 +143,7 @@ source key, a test payload key, or an explicit compatibility-doc mention.
 
 | Candidate | Can remove now? | Blockers | Required tests/docs before removal | Suggested stage |
 | --- | --- | --- | --- | --- |
-| `problemCards` | No. | Still supported by `cardAttention.ts`, TS type, compatibility tests, Tampermonkey QA, Docker API helper, public docs. | Remove or rewrite `problemCards` test cases, update `StudyReport`, `dashboard-api`, `frontend-map`, inventory/audit, QA helpers. Keep canonical and other legacy alias tests. | First staged removal candidate. |
+| `problemCards` | No. | Still supported by `cardAttention.ts`, TS type, compatibility tests, Docker API helper, public docs. | Remove or rewrite `problemCards` test cases, update `StudyReport`, `dashboard-api`, `frontend-map`, inventory/audit, QA helpers. Keep canonical and other legacy alias tests. | First staged removal candidate. |
 | `cardIssues` | No. | Same as `problemCards`, but semantically closer to issue rows and may be more plausible in old payload samples. | Same as above, after `problemCards` is gone and a release has carried the deprecation. | Second. |
 | `cards` | No. | Most ambiguous name; may exist in old manual payload samples or external scripts, and broad search has heavy unrelated noise. | Keep until last; add a deprecation note first, update QA helpers, and run broad UI/API smoke after removal. | Last. |
 
@@ -159,9 +152,8 @@ source key, a test payload key, or an explicit compatibility-doc mention.
 1. Keep all aliases through at least one canonical-first release.
 2. If cleanup continues, deprecate `problemCards` first in docs and QA helpers
    before deleting runtime support.
-3. Update `docker/anki-e2e/smoke-api.py` and
-   `scripts/anki_dashboard_tampermonkey.user.js` to canonical-first before any
-   removal stage, or document that they intentionally test old external payloads.
+3. Update `docker/anki-e2e/smoke-api.py` to canonical-first before any removal
+   stage, or document that it intentionally tests old external payloads.
 4. Preserve tests for `attentionCards`, empty canonical `attentionCards: []`,
    and at least one remaining legacy fallback until all aliases are removed.
 5. After the last alias is removed, update `StudyReport`, `dashboard-api`,
