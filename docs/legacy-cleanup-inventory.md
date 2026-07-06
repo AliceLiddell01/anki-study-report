@@ -65,6 +65,28 @@ placeholder routes и security boundaries. Вывод: это audit/prep stage, 
 | `/api/status` and server status | Keep / diagnostics | State включает `static_available`, `static_dir`, `report_available`, port collision и lifecycle details. | Средний: Settings/server pages и troubleshooting используют эти признаки. | Сохранять поля или менять синхронно с frontend/docs. |
 | Package validator | Keep / release guard | `scripts/package_addon.py` проверяет required entries, linked dashboard assets, empty/unreferenced assets и CSS markers. | Высокий: ослабление вернет stale/missing assets в `.ankiaddon`. | Не ослаблять; при изменениях запускать package validation. |
 
+### Stage 13 dashboard static fallback snapshot
+
+Stage 13 hardened dashboard static diagnostics without deleting fallback
+surface. Runtime static lookup now treats a directory as available only when:
+
+- `index.html` exists;
+- local linked `assets/...` script/stylesheet files from `index.html` stay
+  inside the static root;
+- those linked files exist and are non-empty.
+
+Packaged static path still wins over dev `web-dashboard/dist` when both are
+complete. If packaged assets are incomplete, server can fall through to a
+complete dev build. If neither static directory is complete, `/api/status`
+reports `static_available=false`, `static_dir=null`, and the root route serves
+the built-in fallback page with a visible fallback diagnostic. The status
+payload keeps token-bearing URL redacted.
+
+Package validation remains the release guard for archives: required
+`web_dashboard/index.html`, linked JS/CSS assets, empty linked assets,
+unreferenced dashboard assets, forbidden entries and CSS markers are still
+checked by `scripts/package_addon.py`.
+
 ### Markdown/HTML report snapshot
 
 `report_builder.py` не legacy целиком. `build_markdown_report` и
@@ -202,6 +224,11 @@ runtime hooks. Плохой cleanup - удалить или "упростить"
 stale assets должны быть диагностируемыми. Stage 2 закрепил, что full check
 валидирует fresh dashboard assets перед package validation.
 
+После Stage 13 static directory считается доступной не только по наличию
+`index.html`, но и по linked local `assets/...` из этого `index.html`: они
+должны существовать, оставаться внутри static root и быть non-empty. Это
+закрывает blank-dashboard риск для неполного generated bundle.
+
 Не удалять fallback HTML/status только потому, что normal path работает. Эта
 диагностика нужна, когда packaged artifact собран без свежего frontend build или
 когда пользователь запускает add-on из неполного checkout.
@@ -303,18 +330,14 @@ runtime path невозможен.
 
 ## Recommended next stages
 
-1. Stage 13: dashboard static fallback diagnostics audit/hardening. Focus:
-   `/api/status`, built-in fallback page, package asset validation and stale
-   asset diagnostics. Goal is characterization and stronger diagnostics, not
-   removal.
-2. Stage 14: cache/report bridge characterization. Focus:
+1. Stage 14: cache/report bridge characterization. Focus:
    `report_from_cache.py`, `StatsCacheManager`, `dataSource`, `fallbackReason`,
    `periodSummary`, `cacheDeckSummary`, and live-only field preservation.
-3. Stage 15: placeholder route product decision. Decide whether `Stats`,
+2. Stage 15: placeholder route product decision. Decide whether `Stats`,
    `FSRS`, and `Browse` should be developed, hidden, or removed from nav.
-4. Stage 16: verified helper cleanup. One helper or one tightly related helper
+3. Stage 16: verified helper cleanup. One helper or one tightly related helper
    group per commit, with targeted tests before deletion.
-5. Stage 17: security boundary review only if a concrete change is needed.
+4. Stage 17: security boundary review only if a concrete change is needed.
    Treat token, media sanitizer, action allowlists and Cards rendering as
    protected runtime boundaries.
 

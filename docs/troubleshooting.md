@@ -11,6 +11,7 @@ production code. Для выбора проверок см. `docs/test-matrix.md
 | --- | --- | --- | --- |
 | Dashboard показывает forbidden | Нет token или token устарел | URL, `/api/report`, `dashboard_server.py` | Открыть dashboard из Anki заново |
 | После свежей установки видны старые стили | Anki использует старую папку add-on/assets | `addons21`, `web_dashboard/assets` | Удалить старую установленную папку, переустановить, перезапустить Anki |
+| Dashboard открыл fallback-страницу | Static assets отсутствуют или неполные | `/api/status`, `web_dashboard/index.html`, `web_dashboard/assets` | Пересобрать `build:addon`, проверить package validation |
 | Docker E2E не доходит до readiness | Add-on не импортирован, профиль не создан, server/report не стартовал | `e2e-artifacts/addon-e2e-events.jsonl` | Читать markers по порядку, проверить layout и `prefs21.db` |
 | Cards preview пустой или smoke ждет не тот DOM | Несовпадение display mode и ожиданий smoke | `CardsPage.tsx`, `smoke-browser.mjs` | Проверить mode: `table`/`tiles` или `ankiPreview` |
 | Media preview возвращает 400/404 | Unsafe name, файла нет, token не передан | `/api/media`, `note_intelligence.py` | Проверить `name`, token и provider media file |
@@ -96,6 +97,60 @@ anki_study_report/web_dashboard/
 ### Чего не делать
 
 Не править `anki_study_report/web_dashboard/` руками. Это generated output.
+
+## Missing/incomplete dashboard static assets
+
+### Признаки
+
+- Root dashboard route открывается, но показывает fallback diagnostic banner.
+- `/api/status` возвращает `static_available: false` и `static_dir: null`.
+- В installed add-on нет `web_dashboard/index.html` или linked files под
+  `web_dashboard/assets/`.
+- `index.html` есть, но linked JS/CSS assets отсутствуют или пустые.
+
+### Вероятные причины
+
+- Не запускался `pnpm run build:addon`.
+- `web_dashboard/` скопирован не полностью.
+- `.ankiaddon` собран из stale или неполного generated output.
+- Пользователь проверяет неполный checkout вместо packaged artifact.
+
+### Что проверить
+
+- `/api/status` без token показывает lifecycle diagnostics и redacted URL; real
+  token там не должен появляться.
+- `web_dashboard/index.html` ссылается на существующие non-empty JS/CSS assets.
+- `scripts/package_addon.py` не сообщает `missing_linked_assets`,
+  `empty_linked_assets`, `unreferenced_dashboard_assets` или
+  `css_markers_missing`.
+- `scripts/run_full_check.ps1 -SkipDocker` сначала запускает `build:addon`, а
+  уже потом package validation.
+
+### Команды / файлы
+
+```powershell
+cd web-dashboard
+pnpm run build:addon
+cd ..
+node scripts/run_python.mjs scripts/package_addon.py --check
+```
+
+```text
+anki_study_report/dashboard_server.py
+scripts/package_addon.py
+scripts/run_full_check.ps1
+```
+
+### Как исправлять безопасно
+
+Пересобрать dashboard через `build:addon`, затем валидировать archive. Если
+fallback остался, смотреть `/api/status` и installed `web_dashboard/assets`.
+
+### Чего не делать
+
+Не удалять built-in fallback page: она нужна, чтобы неполный build не
+превращался в blank dashboard. Не использовать frontend `mockReport` как
+доказательство production dashboard/API.
 
 ## Docker E2E startup/import/readiness failures
 

@@ -125,6 +125,12 @@ Package validator проверяет, что dashboard CSS содержит ва
 Это защита от ситуации, где архив собран со stale или неполными dashboard
 assets.
 
+Runtime server также не считает static dashboard доступным только по наличию
+`web_dashboard/index.html`: linked local JS/CSS assets из `index.html` должны
+существовать и быть non-empty. Если packaged и dev static directories неполные,
+dashboard server отдает built-in fallback page и `/api/status` показывает
+`static_available: false`.
+
 ## Manifest/config
 
 Текущий `manifest.json`:

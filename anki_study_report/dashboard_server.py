@@ -9,10 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
+from html.parser import HTMLParser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import secrets
 import shutil
@@ -737,6 +738,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
   </style>
 </head>
 <body>
+  <div class="shell">
+    <section class="empty" data-testid="dashboard-static-fallback">
+      <h1>Dashboard работает в fallback-режиме</h1>
+      <p>Собранные React assets отсутствуют или неполные. Используется встроенная диагностическая страница; для полного dashboard пересоберите assets через build:addon и проверьте package validation.</p>
+    </section>
+  </div>
   <div class="shell" id="app">
     <section class="empty">Загрузка отчёта...</section>
   </div>
@@ -1099,9 +1106,65 @@ def _find_static_dir() -> Path | None:
         package_dir.parent / "web-dashboard" / "dist",
     ]
     for candidate in candidates:
-        if (candidate / "index.html").is_file():
+        if _static_dir_is_available(candidate):
             return candidate
     return None
+
+
+def _static_dir_is_available(candidate: Path) -> bool:
+    index_path = candidate / "index.html"
+    if not index_path.is_file():
+        return False
+    try:
+        index_html = index_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    root = candidate.resolve()
+    for relative_ref in _extract_static_asset_refs(index_html):
+        target = (candidate / relative_ref).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            return False
+        try:
+            if not target.is_file() or target.stat().st_size <= 0:
+                return False
+        except OSError:
+            return False
+    return True
+
+
+class _StaticAssetParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if tag == "script" and values.get("src"):
+            self.refs.append(values["src"] or "")
+        if tag == "link" and values.get("href"):
+            rel = str(values.get("rel") or "").lower()
+            if "stylesheet" in rel:
+                self.refs.append(values["href"] or "")
+
+
+def _extract_static_asset_refs(index_html: str) -> list[str]:
+    parser = _StaticAssetParser()
+    parser.feed(index_html)
+    refs: list[str] = []
+    for raw_ref in parser.refs:
+        ref = raw_ref.split("#", 1)[0].split("?", 1)[0].strip()
+        if not ref or re.match(r"^[a-z][a-z0-9+.-]*:", ref, flags=re.IGNORECASE):
+            continue
+        if ref.startswith("/"):
+            ref = ref.lstrip("/")
+        if ref.startswith("./"):
+            ref = ref[2:]
+        normalized = PurePosixPath(ref)
+        if normalized.parts and normalized.parts[0] == "assets":
+            refs.append(normalized.as_posix())
+    return sorted(set(refs))
 
 
 def _safe_static_target(static_dir: Path, path: str) -> Path | None:
