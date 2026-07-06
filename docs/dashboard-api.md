@@ -134,14 +134,16 @@ cache
 Карточки внимания могут приходить в нескольких совместимых legacy/new ключах:
 
 ```text
-cards
 attentionCards
+cards
 cardIssues
 problemCards
 ```
 
 Frontend нормализует их клиент-side, но backend должен стремиться отдавать
-актуальный `attentionCards` плюс `attentionCardsStatus`.
+актуальный `attentionCards` плюс `attentionCardsStatus`. Если payload содержит
+несколько card-level ключей, frontend выбирает canonical `attentionCards`;
+`cards`, `cardIssues` и `problemCards` остаются только compatibility fallback.
 
 Важные поля карточки:
 
@@ -227,4 +229,3 @@ frontend contract.
 4. Обновить frontend normalization/tests.
 5. Обновить этот документ.
 6. Прогнать минимум payload tests + frontend typecheck/tests.
-

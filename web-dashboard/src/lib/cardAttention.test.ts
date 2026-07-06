@@ -647,15 +647,15 @@ describe("cardAttention", () => {
     });
   });
 
-  it("documents mixed-key precedence as legacy-first before attentionCards", () => {
+  it("documents mixed-key precedence as canonical-first before legacy aliases", () => {
     const canonical = aliasRow("attentionCards", { cardId: 100, frontPreview: "canonical", riskScore: 10 });
     const cards = aliasRow("cards", { cardId: 200, frontPreview: "cards alias", riskScore: 20 });
     const cardIssues = aliasRow("cardIssues", { cardId: 300, frontPreview: "cardIssues alias", riskScore: 30 });
     const problemCards = aliasRow("problemCards", { cardId: 400, frontPreview: "problemCards alias", riskScore: 40 });
 
-    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
-    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([300]);
-    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], problemCards: [problemCards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([400]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], problemCards: [problemCards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
     expect(
       buildCardAttentionRows({
         ...baseReport,
@@ -664,7 +664,27 @@ describe("cardAttention", () => {
         cardIssues: [cardIssues],
         problemCards: [problemCards],
       } as unknown as StudyReport).map((row) => row.cardId),
-    ).toEqual([200]);
+    ).toEqual([100]);
+  });
+
+  it("keeps legacy fallback precedence when attentionCards is absent", () => {
+    const cards = aliasRow("cards", { cardId: 200, riskScore: 20 });
+    const cardIssues = aliasRow("cardIssues", { cardId: 300, riskScore: 30 });
+    const problemCards = aliasRow("problemCards", { cardId: 400, riskScore: 40 });
+
+    expect(buildCardAttentionRows({ ...baseReport, cards: [cards], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
+    expect(buildCardAttentionRows({ ...baseReport, cards: [cards], problemCards: [problemCards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
+    expect(buildCardAttentionRows({ ...baseReport, cardIssues: [cardIssues], problemCards: [problemCards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([300]);
+  });
+
+  it("does not fall back to legacy aliases when canonical attentionCards is an empty array", () => {
+    const cards = aliasRow("cards", { cardId: 200, riskScore: 20 });
+
+    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [], cards: [cards] } as unknown as StudyReport)).toEqual([]);
+    expect(cardAttentionState({ ...baseReport, attentionCards: [], cards: [cards] } as unknown as StudyReport)).toMatchObject({
+      status: "unavailable",
+      hasRowsKey: true,
+    });
   });
 
   it("accepts snake_case legacy row fields without changing the normalized card contract", () => {

@@ -109,7 +109,7 @@ answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 | `activity` | Home, Calendar |
 | `comparison` | Home |
 | `decks` | Home, Decks, Cards filters/actions |
-| `attentionCards` / legacy aliases | Cards |
+| `attentionCards` / legacy aliases | Cards; `attentionCards` wins, then fallback aliases `cards`, `cardIssues`, `problemCards` |
 | `attentionCardsStatus` | Cards, Settings |
 | `noteTypeCatalog` | Cards diagnostics |
 | `forecast` | Home, Calendar forecast metric |

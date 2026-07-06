@@ -27,7 +27,7 @@ compatibility layer или cleanup-кандидаты. Это не список 
 
 | Область | Файлы | Статус | Текущее назначение | Что проверить перед cleanup |
 | --- | --- | --- | --- | --- |
-| Card payload aliases | `anki_study_report/dashboard_payload.py`, `web-dashboard/src/types/report.ts`, `web-dashboard/src/lib/cardAttention.ts`, `tests/test_attention_cards.py`, `web-dashboard/src/lib/cardAttention.test.ts` | Compatibility bridge | Backend сейчас публикует `attentionCards` и `attentionCardsStatus`; frontend дополнительно читает `cards`, `cardIssues`, `problemCards`, `attentionCards`. | Зафиксировать приоритет ключей, доказать отсутствие старых producers/fixtures/users, обновить dashboard API docs и frontend tests. |
+| Card payload aliases | `anki_study_report/dashboard_payload.py`, `web-dashboard/src/types/report.ts`, `web-dashboard/src/lib/cardAttention.ts`, `tests/test_attention_cards.py`, `web-dashboard/src/lib/cardAttention.test.ts` | Compatibility bridge | Backend сейчас публикует `attentionCards` и `attentionCardsStatus`; frontend предпочитает `attentionCards`, а `cards`, `cardIssues`, `problemCards` читает как fallback. | Доказать отсутствие старых producers/fixtures/users перед удалением aliases, обновить dashboard API docs и frontend tests. |
 | Cache/report bridge | `anki_study_report/report_from_cache.py`, `anki_study_report/stats_cache.py`, `anki_study_report/dashboard_payload.py`, `anki_study_report/__init__.py` | Transitional adapter | Cache snapshot переводится в публичную форму отчета/dashboard без изменения внешнего контракта. | Проверить mixed/cache fallback, `dataSource`, `fallbackReason`, payload shape, Python tests и frontend consumption. |
 | Markdown/HTML report | `anki_study_report/report_builder.py`, `anki_study_report/__init__.py`, `tests/test_report_builder.py` | Keep / Product decision | Отдельный пользовательский report surface: dialog, Markdown copy/export, HTML render. Dashboard не заменяет его автоматически. | Сначала решить product status; затем проверить UI dialog, report text, HTML render и tests. |
 | Anki entrypoint/orchestration | `anki_study_report/__init__.py` | Keep | Anki hooks, dialogs, dashboard lifecycle, cache wiring, menu/actions, integration diagnostics. | Не рассматривать файл как legacy целиком. Извлекать только чистую логику с сохранением hook/runtime behavior. |
@@ -47,16 +47,25 @@ compatibility layer или cleanup-кандидаты. Это не список 
 `buildCardAttentionRows(report)` читает несколько возможных ключей:
 
 ```text
+attentionCards
 cards
 cardIssues
 problemCards
-attentionCards
 ```
 
 Это выглядит как legacy surface, но пока является compatibility bridge. Он
 защищает Cards page от старых fixtures, тестовых payload и возможных сохраненных
 JSON samples. Удаление aliases может сломать не backend, а frontend preview,
 offline/manual fixtures или старые тестовые сценарии.
+
+Текущий приоритет после Stage 5:
+
+```text
+attentionCards > cards > cardIssues > problemCards
+```
+
+`attentionCards: []` считается явным canonical source и не fallback-ит к legacy
+aliases; это сохраняет смысл "карточек внимания нет" в backend payload.
 
 Cleanup path:
 
@@ -273,13 +282,14 @@ docs/dashboard-api.md
 
 ## Current characterization coverage
 
-Stage 4 adds targeted tests that freeze the current compatibility behavior before
-future cleanup:
+Stage 4 added targeted tests for the compatibility bridge; Stage 5 changed the
+frontend priority to canonical-first:
 
 - `web-dashboard/src/lib/cardAttention.test.ts` covers `attentionCards`,
   `cards`, `cardIssues`, `problemCards`, snake_case row fields, and the current
-  mixed-key precedence: `cards` > `cardIssues` > `problemCards` >
-  `attentionCards`.
+  mixed-key precedence after Stage 5: `attentionCards` > `cards` >
+  `cardIssues` > `problemCards`. Empty canonical `attentionCards: []` also wins
+  over legacy aliases.
 - `tests/test_dashboard_payload.py` covers canonical backend output keys:
   `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, and absence of
   frontend legacy aliases in backend-generated payload.

@@ -157,9 +157,8 @@ export interface NoteTypeCatalogItem {
   usedInCurrentCards: boolean;
 }
 
-// Optional raw card-level payload shape for the next backend iteration.
-// The dashboard accepts this under `cards`, `attentionCards`, `cardIssues`, or `problemCards`
-// and normalizes it client-side without changing the current backend API.
+// Optional raw card-level payload shape. `attentionCards` is canonical; `cards`,
+// `cardIssues`, and `problemCards` remain compatibility fallbacks.
 export interface RawCardAttentionPayload {
   cardId: number | string;
   noteId?: number | string;

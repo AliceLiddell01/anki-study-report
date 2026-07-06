@@ -207,8 +207,8 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
   section, а не обычное отдельное front preview.
 - `CardsPage.tsx` хранит display mode в
   `anki-study-report.cards.displayMode`.
-- `cardAttention.ts` нормализует `cards`, `cardIssues`, `problemCards`,
-  `attentionCards`.
+- `cardAttention.ts` сначала нормализует canonical `attentionCards`, затем
+  fallback aliases `cards`, `cardIssues`, `problemCards`.
 
 ### Команды / файлы
 
