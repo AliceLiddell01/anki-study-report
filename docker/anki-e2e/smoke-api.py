@@ -182,7 +182,7 @@ def assert_dashboard_assets(base_url: str, token: str, artifacts: Path, label: s
     return summary
 
 
-CARD_ROW_KEYS = ("attentionCards", "cards", "cardIssues")
+CARD_ROW_KEYS = ("attentionCards", "cards")
 
 
 def report_cards(report: dict[str, Any]) -> list[dict[str, Any]]:

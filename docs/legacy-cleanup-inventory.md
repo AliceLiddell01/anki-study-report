@@ -27,7 +27,7 @@ compatibility layer или cleanup-кандидаты. Это не список 
 
 | Область | Файлы | Статус | Текущее назначение | Что проверить перед cleanup |
 | --- | --- | --- | --- | --- |
-| Card payload aliases | `anki_study_report/dashboard_payload.py`, `web-dashboard/src/types/report.ts`, `web-dashboard/src/lib/cardAttention.ts`, `tests/test_attention_cards.py`, `web-dashboard/src/lib/cardAttention.test.ts` | Compatibility bridge | Backend сейчас публикует `attentionCards` и `attentionCardsStatus`; frontend предпочитает `attentionCards`, а `cards`, `cardIssues` читает как fallback. `problemCards` удален как top-level alias в Stage 9. | Доказать отсутствие старых producers/fixtures/users перед удалением оставшихся aliases, обновить dashboard API docs и frontend tests. |
+| Card payload aliases | `anki_study_report/dashboard_payload.py`, `web-dashboard/src/types/report.ts`, `web-dashboard/src/lib/cardAttention.ts`, `tests/test_attention_cards.py`, `web-dashboard/src/lib/cardAttention.test.ts` | Compatibility bridge | Backend сейчас публикует `attentionCards` и `attentionCardsStatus`; frontend предпочитает `attentionCards`, а `cards` читает как последний fallback. `problemCards` удален как top-level alias в Stage 9, `cardIssues` - в Stage 10. | Доказать отсутствие старых producers/fixtures/users перед удалением финального alias `cards`, обновить dashboard API docs и frontend tests. |
 | Cache/report bridge | `anki_study_report/report_from_cache.py`, `anki_study_report/stats_cache.py`, `anki_study_report/dashboard_payload.py`, `anki_study_report/__init__.py` | Transitional adapter | Cache snapshot переводится в публичную форму отчета/dashboard без изменения внешнего контракта. | Проверить mixed/cache fallback, `dataSource`, `fallbackReason`, payload shape, Python tests и frontend consumption. |
 | Markdown/HTML report | `anki_study_report/report_builder.py`, `anki_study_report/__init__.py`, `tests/test_report_builder.py` | Keep / Product decision | Отдельный пользовательский report surface: dialog, Markdown copy/export, HTML render. Dashboard не заменяет его автоматически. | Сначала решить product status; затем проверить UI dialog, report text, HTML render и tests. |
 | Anki entrypoint/orchestration | `anki_study_report/__init__.py` | Keep | Anki hooks, dialogs, dashboard lifecycle, cache wiring, menu/actions, integration diagnostics. | Не рассматривать файл как legacy целиком. Извлекать только чистую логику с сохранением hook/runtime behavior. |
@@ -49,7 +49,6 @@ compatibility layer или cleanup-кандидаты. Это не список 
 ```text
 attentionCards
 cards
-cardIssues
 ```
 
 Это выглядит как legacy surface, но пока является compatibility bridge. Он
@@ -57,10 +56,10 @@ cardIssues
 JSON samples. Удаление aliases может сломать не backend, а frontend preview,
 offline/manual fixtures или старые тестовые сценарии.
 
-Текущий приоритет после Stage 5:
+Текущий приоритет после Stage 10:
 
 ```text
-attentionCards > cards > cardIssues
+attentionCards > cards
 ```
 
 `attentionCards: []` считается явным canonical source и не fallback-ит к legacy
@@ -70,6 +69,8 @@ Detailed alias evidence and readiness map: `docs/card-alias-audit.md`.
 Stage 8 aligned Docker browser/API smoke to canonical-first lookup; aliases
 still remain runtime fallback until staged removal.
 Stage 9 removed the top-level `problemCards` payload alias from frontend
+normalization, TS types, Docker API smoke fallback, and compatibility tests.
+Stage 10 removed the top-level `cardIssues` payload alias from frontend
 normalization, TS types, Docker API smoke fallback, and compatibility tests.
 
 Cleanup path:
@@ -291,10 +292,10 @@ Stage 4 added targeted tests for the compatibility bridge; Stage 5 changed the
 frontend priority to canonical-first:
 
 - `web-dashboard/src/lib/cardAttention.test.ts` covers `attentionCards`,
-  `cards`, `cardIssues`, snake_case row fields, and the current mixed-key
-  precedence after Stage 9: `attentionCards` > `cards` > `cardIssues`. Empty
-  canonical `attentionCards: []` also wins over legacy aliases, and
-  `problemCards`-only payloads are ignored.
+  `cards`, snake_case row fields, and the current mixed-key precedence after
+  Stage 10: `attentionCards` > `cards`. Empty canonical `attentionCards: []`
+  also wins over legacy aliases, and `problemCards`-only / `cardIssues`-only
+  payloads are ignored.
 - `tests/test_dashboard_payload.py` covers canonical backend output keys:
   `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, and absence of
   frontend legacy aliases in backend-generated payload.

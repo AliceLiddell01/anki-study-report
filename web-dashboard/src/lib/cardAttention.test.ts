@@ -617,7 +617,6 @@ describe("cardAttention", () => {
   it.each([
     "attentionCards",
     "cards",
-    "cardIssues",
   ] as const)("characterizes raw card-level payload alias %s", (key) => {
     const rows = buildCardAttentionRows({
       ...baseReport,
@@ -649,26 +648,14 @@ describe("cardAttention", () => {
   it("documents mixed-key precedence as canonical-first before legacy aliases", () => {
     const canonical = aliasRow("attentionCards", { cardId: 100, frontPreview: "canonical", riskScore: 10 });
     const cards = aliasRow("cards", { cardId: 200, frontPreview: "cards alias", riskScore: 20 });
-    const cardIssues = aliasRow("cardIssues", { cardId: 300, frontPreview: "cardIssues alias", riskScore: 30 });
 
     expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
-    expect(buildCardAttentionRows({ ...baseReport, attentionCards: [canonical], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([100]);
-    expect(
-      buildCardAttentionRows({
-        ...baseReport,
-        attentionCards: [canonical],
-        cards: [cards],
-        cardIssues: [cardIssues],
-      } as unknown as StudyReport).map((row) => row.cardId),
-    ).toEqual([100]);
   });
 
   it("keeps legacy fallback precedence when attentionCards is absent", () => {
     const cards = aliasRow("cards", { cardId: 200, riskScore: 20 });
-    const cardIssues = aliasRow("cardIssues", { cardId: 300, riskScore: 30 });
 
-    expect(buildCardAttentionRows({ ...baseReport, cards: [cards], cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
-    expect(buildCardAttentionRows({ ...baseReport, cardIssues: [cardIssues] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([300]);
+    expect(buildCardAttentionRows({ ...baseReport, cards: [cards] } as unknown as StudyReport).map((row) => row.cardId)).toEqual([200]);
   });
 
   it("ignores removed top-level problemCards payload alias", () => {
@@ -676,6 +663,16 @@ describe("cardAttention", () => {
 
     expect(buildCardAttentionRows({ ...baseReport, problemCards: [problemCards] } as unknown as StudyReport)).toEqual([]);
     expect(cardAttentionState({ ...baseReport, problemCards: [problemCards] } as unknown as StudyReport)).toMatchObject({
+      status: "absent",
+      hasRowsKey: false,
+    });
+  });
+
+  it("ignores removed top-level cardIssues payload alias", () => {
+    const cardIssues = aliasRow("cardIssues", { cardId: 300, riskScore: 30 });
+
+    expect(buildCardAttentionRows({ ...baseReport, cardIssues: [cardIssues] } as unknown as StudyReport)).toEqual([]);
+    expect(cardAttentionState({ ...baseReport, cardIssues: [cardIssues] } as unknown as StudyReport)).toMatchObject({
       status: "absent",
       hasRowsKey: false,
     });

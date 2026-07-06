@@ -25,7 +25,6 @@ def test_smoke_api_card_rows_prefer_canonical_attention_cards():
         {
             "attentionCards": [row("attentionCards")],
             "cards": [row("cards")],
-            "cardIssues": [row("cardIssues")],
         }
     ) == [row("attentionCards")]
 
@@ -41,11 +40,16 @@ def test_smoke_api_card_rows_keep_empty_canonical_result():
     ) == []
 
 
-def test_smoke_api_card_rows_fall_back_through_legacy_aliases():
+def test_smoke_api_card_rows_fall_back_to_cards_alias():
     smoke_api = load_smoke_api_module()
 
     assert smoke_api._card_rows_from_report({"cards": [row("cards")]}) == [row("cards")]
-    assert smoke_api._card_rows_from_report({"cardIssues": [row("cardIssues")]}) == [row("cardIssues")]
+
+
+def test_smoke_api_card_rows_ignore_removed_card_issues_alias():
+    smoke_api = load_smoke_api_module()
+
+    assert smoke_api._card_rows_from_report({"cardIssues": [row("cardIssues")]}) == []
 
 
 def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():

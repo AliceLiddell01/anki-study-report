@@ -94,7 +94,6 @@ cards?
 attentionCards?
 attentionCardsStatus?
 noteTypeCatalog?
-cardIssues?
 forecast
 fsrs
 recommendations
@@ -135,14 +134,14 @@ cache
 ```text
 attentionCards
 cards
-cardIssues
 ```
 
 Frontend нормализует их клиент-side, но backend должен стремиться отдавать
 актуальный `attentionCards` плюс `attentionCardsStatus`. Если payload содержит
-несколько card-level ключей, frontend выбирает canonical `attentionCards`;
-`cards` и `cardIssues` остаются только compatibility fallback. Top-level
-`problemCards` больше не является supported payload alias после Stage 9.
+несколько card-level ключей, frontend выбирает canonical `attentionCards`, затем
+fallback `cards`. Top-level `problemCards` больше не является supported payload
+alias после Stage 9; top-level `cardIssues` удален как supported payload alias
+после Stage 10.
 
 Важные поля карточки:
 

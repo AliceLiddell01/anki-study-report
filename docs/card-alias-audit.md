@@ -2,23 +2,25 @@
 
 Снимок: 2026-07-06.
 
-Этот документ фиксирует, где используются canonical `attentionCards`, оставшиеся
-legacy fallback aliases `cards` / `cardIssues`, и удаленный в Stage 9 alias
-`problemCards`. Это не removal plan и не изменение runtime behavior.
+Этот документ фиксирует, где используются canonical `attentionCards`, оставшийся
+legacy fallback alias `cards`, удаленный в Stage 10 alias `cardIssues`, и
+удаленный в Stage 9 alias `problemCards`. Это не removal plan и не изменение
+runtime behavior.
 
 ## Current contract
 
 - Backend canonical output: `attentionCards`, `attentionCardsStatus`,
   `noteTypeCatalog`.
-- Frontend priority after Stage 9:
+- Frontend priority after Stage 10:
 
 ```text
-attentionCards > cards > cardIssues
+attentionCards > cards
 ```
 
 - `attentionCards: []` is explicit canonical empty result and does not fall back
   to legacy aliases.
-- `cards` and `cardIssues` remain compatibility fallback.
+- `cards` remains the only compatibility fallback.
+- Top-level `cardIssues` payload alias was removed in Stage 10.
 - Top-level `problemCards` payload alias was removed in Stage 9. Derived
   `summary.problemCards` UI counts are not payload alias support.
 
@@ -28,7 +30,7 @@ attentionCards > cards > cardIssues
 | --- | --- | --- | --- | --- | --- | --- |
 | `attentionCards` | Canonical card-level payload key | Yes: `dashboard_payload.py` emits it from internal `attention_cards`; default dashboard overlay and `metrics.py` produce internal `attention_cards`. | Yes: `cardAttention.ts`, `CardsPage`, `mockReport`, Docker browser/API smokes. | Backend contract tests, frontend normalizer/UI tests, mockReport canonical data, Docker API smoke helper tests. | Public API/docs, architecture, frontend map, troubleshooting, payload examples, legacy inventory. | Keep. |
 | `cards` | Legacy fallback alias; also a very noisy normal word | No backend producer for top-level `cards` found. | Yes: `cardAttention.ts`; Docker browser/API smokes keep it as fallback after `attentionCards`. | Compatibility tests in `cardAttention.test.ts`; Docker API smoke helper tests; no JSON dashboard fixtures. | Public compatibility docs and inventory. | Not first; highest ambiguity and possible old payload risk. |
-| `cardIssues` | Legacy fallback alias | No backend producer found. | Yes: `cardAttention.ts`; Docker API helper keeps it as fallback after `attentionCards` and `cards`. | Compatibility tests in `cardAttention.test.ts`; Docker API smoke helper tests; backend tests assert it is absent from generated payload. | Public compatibility docs and inventory. | Next runtime removal candidate. |
+| `cardIssues` | Removed legacy top-level payload alias | No backend producer found. | No current top-level payload alias consumer after Stage 10. | Negative frontend/smoke helper tests assert it is ignored; backend tests assert it is absent from generated payload. | Historical/removal notes only. | Removed in Stage 10. |
 | `problemCards` | Removed legacy top-level payload alias; also a derived UI KPI name in normalized summary | No backend producer for top-level `problemCards` found. | No current top-level payload alias consumer after Stage 9. `summary.problemCards` remains a derived UI count, not a payload input. | Negative frontend/smoke helper tests assert it is ignored; backend tests assert it is absent from generated payload. | Historical/removal notes only. | Removed in Stage 9. |
 
 ## Findings by area
@@ -46,8 +48,8 @@ fields and then exports camelCase:
   `attentionCardsStatus`, and `noteTypeCatalog`.
 
 No backend producer for top-level public `cards`, `cardIssues`, or
-`problemCards` was found in `anki_study_report/` or backend tests. Stage 4
-backend tests also assert `cardIssues` and `problemCards` are absent from
+`problemCards` was found in `anki_study_report/` or backend tests. Backend tests
+also assert `cardIssues` and `problemCards` are absent from
 backend-generated payload; `cards` is absent in the same canonical-output test.
 
 ### Frontend consumers
@@ -58,15 +60,15 @@ consumer. It reads the first array among:
 ```text
 attentionCards
 cards
-cardIssues
 ```
 
 This means `attentionCards: []` is a real selected source and prevents fallback
 to legacy arrays.
 
-`web-dashboard/src/types/report.ts` keeps optional legacy alias fields for
-`cards` and `cardIssues` in `StudyReport` and comments that `attentionCards` is
-canonical. The optional top-level `problemCards` field was removed in Stage 9.
+`web-dashboard/src/types/report.ts` keeps optional legacy alias field `cards`
+in `StudyReport` and comments that `attentionCards` is canonical. The optional
+top-level `problemCards` and `cardIssues` fields were removed in Stage 9 and
+Stage 10.
 
 `web-dashboard/src/pages/CardsPage.tsx` consumes normalized rows from
 `buildCardAttentionRows(report)`; its `summary.problemCards` is a derived UI KPI
@@ -77,8 +79,8 @@ name, not the top-level legacy payload alias.
 Current coverage:
 
 - `web-dashboard/src/lib/cardAttention.test.ts` covers canonical-only,
-  remaining legacy-only aliases, mixed canonical-first priority, legacy fallback
-  order, negative `problemCards` coverage, snake_case row normalization, and
+  the remaining `cards` legacy alias, mixed canonical-first priority, negative
+  `problemCards` and `cardIssues` coverage, snake_case row normalization, and
   empty canonical behavior.
 - `tests/test_dashboard_payload.py` covers canonical backend output and asserts
   legacy aliases are not emitted.
@@ -109,13 +111,12 @@ compatibility fallback while aliases still exist.
 ```text
 attentionCards
 cards
-cardIssues
 ```
 
 For API smoke, `attentionCards: []` is an explicit canonical empty result and
 does not fall back to legacy aliases. Stage 9 removed `problemCards` from the
-API smoke fallback list. The Docker smoke helpers are compatibility QA helpers,
-not backend producers.
+API smoke fallback list; Stage 10 removed `cardIssues`. The Docker smoke helpers
+are compatibility QA helpers, not backend producers.
 
 ### Docs
 
@@ -150,17 +151,15 @@ source key, a test payload key, or an explicit compatibility-doc mention.
 | Candidate | Can remove now? | Blockers | Required tests/docs before removal | Suggested stage |
 | --- | --- | --- | --- | --- |
 | `problemCards` | Removed. | None for top-level payload input after Stage 9. | Keep negative frontend/smoke tests and backend absence assertions while nearby aliases remain. | Done in Stage 9. |
-| `cardIssues` | No. | Still supported by `cardAttention.ts`, TS type, compatibility tests, Docker API fallback, public docs. | Remove from `cardAttention.ts`, remove from `StudyReport`, remove or rewrite `cardIssues` test cases, drop Docker API fallback, update `dashboard-api`, `frontend-map`, inventory/audit. Keep canonical and `cards` fallback tests. | Next. |
-| `cards` | No. | Most ambiguous name; may exist in old manual payload samples or external scripts, and broad search has heavy unrelated noise. | Keep until last; add a deprecation note first, drop QA helper fallback at its removal stage, and run broad UI/API smoke after removal. | Last. |
+| `cardIssues` | Removed. | None for top-level payload input after Stage 10. | Keep negative frontend/smoke tests and backend absence assertions while `cards` remains. | Done in Stage 10. |
+| `cards` | No. | Final remaining alias; most ambiguous name; may exist in old manual payload samples or external scripts, and broad search has heavy unrelated noise. | Keep until last; add a deprecation note first, drop QA helper fallback at its removal stage, and run broad UI/API smoke after removal. | Last. |
 
 ## Recommended next steps
 
-1. Keep all aliases through at least one canonical-first release.
-2. Remove `cardIssues` next if cleanup continues.
-3. Keep `cards` until the final explicit removal stage because it is the most
+1. Keep `cards` until the final explicit removal stage because it is the most
    ambiguous alias.
-4. Preserve tests for `attentionCards`, empty canonical `attentionCards: []`,
-   and at least one remaining legacy fallback until all aliases are removed.
-5. After the last alias is removed, update `StudyReport`, `dashboard-api`,
+2. Preserve tests for `attentionCards`, empty canonical `attentionCards: []`,
+   the remaining `cards` fallback, and removed-alias negative coverage.
+3. After the last alias is removed, update `StudyReport`, `dashboard-api`,
    `frontend-map`, `troubleshooting`, `legacy-cleanup-inventory`, and this
    audit together.
