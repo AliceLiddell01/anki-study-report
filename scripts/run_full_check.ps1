@@ -109,10 +109,11 @@ if (-not $DockerOnly) {
         -Arguments @("run", "test:frontend") `
         -WorkingDirectory $DashboardDir
 
+    # Package validation must see freshly copied add-on assets, not only web-dashboard/dist.
     Invoke-CheckedCommand `
-        -Name "Frontend production build" `
+        -Name "Build frontend assets for add-on" `
         -FilePath $pnpm `
-        -Arguments @("run", "build") `
+        -Arguments @("run", "build:addon") `
         -WorkingDirectory $DashboardDir
 
     Invoke-CheckedCommand `
