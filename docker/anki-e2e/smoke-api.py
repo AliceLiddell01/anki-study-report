@@ -35,7 +35,7 @@ def main() -> int:
     asset_summary = assert_dashboard_assets(base_url, token, artifacts, args.label)
 
     cards = report_cards(report)
-    assert_true(cards, "report contains card-level payload")
+    assert_true(cards, "No attention cards found in canonical attentionCards or legacy fallback aliases.")
     problem_summary = read_json_if_exists(artifacts / "apkg-problematic-summary.json")
     perf100_enabled = bool(problem_summary.get("performanceScenario", {}).get("enabled"))
     fixture_card = find_fixture_card(cards)
@@ -182,8 +182,15 @@ def assert_dashboard_assets(base_url: str, token: str, artifacts: Path, label: s
     return summary
 
 
+CARD_ROW_KEYS = ("attentionCards", "cards", "cardIssues", "problemCards")
+
+
 def report_cards(report: dict[str, Any]) -> list[dict[str, Any]]:
-    for key in ("cards", "attentionCards", "cardIssues", "problemCards"):
+    return _card_rows_from_report(report)
+
+
+def _card_rows_from_report(report: dict[str, Any]) -> list[dict[str, Any]]:
+    for key in CARD_ROW_KEYS:
         value = report.get(key)
         if isinstance(value, list):
             return [item for item in value if isinstance(item, dict)]
