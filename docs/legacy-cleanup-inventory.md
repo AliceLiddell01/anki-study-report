@@ -67,6 +67,8 @@ attentionCards > cards > cardIssues > problemCards
 `attentionCards: []` считается явным canonical source и не fallback-ит к legacy
 aliases; это сохраняет смысл "карточек внимания нет" в backend payload.
 
+Detailed Stage 6 evidence map: `docs/card-alias-audit.md`.
+
 Cleanup path:
 
 1. Добавить/сохранить tests, которые явно фиксируют новый canonical key.

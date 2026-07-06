@@ -31,6 +31,7 @@ git ls-files --others --exclude-standard
 - Frontend routes: `web-dashboard/src/app/router.tsx`.
 - Config: `config.json`, `manifest.json`, `config_service.py`.
 - Legacy cleanup: `docs/legacy-cleanup-inventory.md`.
+- Card payload aliases: `docs/card-alias-audit.md`.
 
 ## Что нельзя делать
 
@@ -40,6 +41,8 @@ git ls-files --others --exclude-standard
 - Не менять production payload ради устаревшего теста.
 - Не удалять compatibility/fallback/adapter слой без проверки по
   `docs/legacy-cleanup-inventory.md`.
+- Не удалять card payload aliases без проверки по
+  `docs/card-alias-audit.md`.
 - Не открывать dashboard server наружу.
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.

@@ -43,6 +43,7 @@ docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
+docs/card-alias-audit.md         card payload alias evidence/removal readiness
 ```
 
 ## Главные инварианты
@@ -91,6 +92,8 @@ anki_study_report/user_files/
 Для legacy cleanup сначала открыть `docs/legacy-cleanup-inventory.md` и
 определить, является ли место compatibility bridge, fallback, transitional
 adapter, generated output или настоящим кандидатом на удаление.
+Для удаления card payload aliases дополнительно читать
+`docs/card-alias-audit.md`.
 
 Для dashboard/frontend:
 
