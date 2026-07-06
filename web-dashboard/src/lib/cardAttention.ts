@@ -350,7 +350,7 @@ export function buildCardBrowserSearch(row: Pick<CardAttention, "deckName"> & Pa
 
 function readRawCardRows(report: StudyReport): unknown[] {
   const record = report as unknown as Record<string, unknown>;
-  for (const key of ["attentionCards", "cards", "cardIssues", "problemCards"]) {
+  for (const key of ["attentionCards", "cards", "cardIssues"]) {
     const value = record[key];
     if (Array.isArray(value)) {
       return value;
@@ -361,7 +361,7 @@ function readRawCardRows(report: StudyReport): unknown[] {
 
 function hasRawCardRowsKey(report: StudyReport): boolean {
   const record = report as unknown as Record<string, unknown>;
-  return ["attentionCards", "cards", "cardIssues", "problemCards"].some((key) => Array.isArray(record[key]));
+  return ["attentionCards", "cards", "cardIssues"].some((key) => Array.isArray(record[key]));
 }
 
 function emptyCardAttentionState(status: CardAttentionAvailability): CardAttentionState {

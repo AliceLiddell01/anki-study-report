@@ -157,8 +157,8 @@ export interface NoteTypeCatalogItem {
   usedInCurrentCards: boolean;
 }
 
-// Optional raw card-level payload shape. `attentionCards` is canonical; `cards`,
-// `cardIssues`, and `problemCards` remain compatibility fallbacks.
+// Optional raw card-level payload shape. `attentionCards` is canonical; `cards`
+// and `cardIssues` remain compatibility fallbacks.
 export interface RawCardAttentionPayload {
   cardId: number | string;
   noteId?: number | string;
@@ -469,7 +469,6 @@ export interface StudyReport {
   attentionCardsStatus?: AttentionCardsStatus;
   noteTypeCatalog?: NoteTypeCatalogItem[];
   cardIssues?: RawCardAttentionPayload[];
-  problemCards?: RawCardAttentionPayload[];
   forecast: {
     available: boolean;
     tomorrow: number;
