@@ -88,6 +88,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Release checklist](docs/release-checklist.md)
 - [Fixtures and test data](docs/fixtures-and-test-data.md)
 - [Decision log](docs/decision-log.md)
+- [Legacy cleanup inventory](docs/legacy-cleanup-inventory.md)
 - [Codex/AI agent rules](docs/codex-agent-rules.md)
 - [Передача контекста новому чату/нейронке](docs/ai-handoff.md)
 

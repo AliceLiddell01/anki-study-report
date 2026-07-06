@@ -30,6 +30,7 @@ git ls-files --others --exclude-standard
 - Docker E2E: `docker/anki-e2e/README.md`, E2E scripts/artifacts.
 - Frontend routes: `web-dashboard/src/app/router.tsx`.
 - Config: `config.json`, `manifest.json`, `config_service.py`.
+- Legacy cleanup: `docs/legacy-cleanup-inventory.md`.
 
 ## Что нельзя делать
 
@@ -37,6 +38,8 @@ git ls-files --others --exclude-standard
 - Не коммитить runtime outputs.
 - Не ослаблять sanitizer без точечного теста и причины.
 - Не менять production payload ради устаревшего теста.
+- Не удалять compatibility/fallback/adapter слой без проверки по
+  `docs/legacy-cleanup-inventory.md`.
 - Не открывать dashboard server наружу.
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.

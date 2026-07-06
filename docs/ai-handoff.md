@@ -42,6 +42,7 @@ docs/fixtures-and-test-data.md   fixtures, mock data, synthetic E2E data
 docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
+docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
 ```
 
 ## Главные инварианты
@@ -86,6 +87,10 @@ anki_study_report/user_files/
 3. Менять минимальный слой.
 4. Запустить релевантную проверку.
 5. Не форматировать и не откатывать несвязанные файлы.
+
+Для legacy cleanup сначала открыть `docs/legacy-cleanup-inventory.md` и
+определить, является ли место compatibility bridge, fallback, transitional
+adapter, generated output или настоящим кандидатом на удаление.
 
 Для dashboard/frontend:
 
