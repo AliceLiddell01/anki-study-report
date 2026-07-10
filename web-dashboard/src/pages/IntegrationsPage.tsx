@@ -49,7 +49,7 @@ function IntegrationsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className="status-pill status-neutral">опционально</span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Интеграции</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Источники данных</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
               Опциональные локальные источники и диагностика, которые использует Anki Study Report.
             </p>

@@ -591,18 +591,18 @@ function CardsHero({
             <button
               type="button"
               className="toolbar-button justify-center"
-              aria-label="Перейти в Действия"
+              aria-label="Перейти в Инструменты"
               data-href="#/actions"
               onClick={() => {
                 window.location.hash = "#/actions";
               }}
             >
               <Wand2 size={16} aria-hidden="true" />
-              Перейти в Действия
+              Перейти в Инструменты
             </button>
             <a className="toolbar-button justify-center opacity-80" href="#/home">
               <Home size={16} aria-hidden="true" />
-              На главную
+              На страницу «Сегодня»
             </a>
           </div>
           {actionStatus ? (

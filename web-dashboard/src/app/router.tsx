@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import SettingsLayout from "../layout/SettingsLayout";
 import ActionsPage from "../pages/ActionsPage";
 import CalendarPage from "../pages/CalendarPage";
 import CardsPage from "../pages/CardsPage";
@@ -23,19 +24,25 @@ export type RoutePath =
   | "/integrations"
   | "/logs";
 
-export const navItems: Array<{ path: RoutePath; label: string; group: "Основное" | "Аналитика" | "Инструменты" | "Система" }> = [
-  { path: "/home", label: "Главная", group: "Основное" },
-  { path: "/profile", label: "Профиль", group: "Основное" },
-  { path: "/decks", label: "Колоды", group: "Основное" },
-  { path: "/cards", label: "Карточки", group: "Аналитика" },
-  { path: "/calendar", label: "Календарь", group: "Аналитика" },
-  { path: "/actions", label: "Действия", group: "Инструменты" },
-  { path: "/integrations", label: "Интеграции", group: "Система" },
-  { path: "/logs", label: "Логи", group: "Система" },
-  { path: "/settings/server", label: "Настройки", group: "Система" },
+export const primaryNavItems: Array<{ path: RoutePath; label: string }> = [
+  { path: "/home", label: "Сегодня" },
+  { path: "/calendar", label: "Календарь" },
+  { path: "/decks", label: "Колоды" },
+  { path: "/cards", label: "Карточки" },
 ];
 
-const routePaths = new Set<RoutePath>(navItems.map((item) => item.path));
+const routePaths = new Set<RoutePath>([
+  "/home",
+  "/profile",
+  "/decks",
+  "/cards",
+  "/calendar",
+  "/actions",
+  "/settings",
+  "/settings/server",
+  "/integrations",
+  "/logs",
+]);
 
 export function getRouteFromHash(hash: string): RoutePath {
   const rawPath = hash.replace(/^#/, "") || "/home";
@@ -61,13 +68,13 @@ export function renderRoute(
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
     case "/integrations":
-      return <IntegrationsPage />;
+      return <SettingsLayout activeRoute={route}><IntegrationsPage /></SettingsLayout>;
     case "/logs":
-      return <LogsPage />;
+      return <SettingsLayout activeRoute={route}><LogsPage /></SettingsLayout>;
     case "/settings/server":
-      return <ServerSettingsPage />;
+      return <SettingsLayout activeRoute={route}><ServerSettingsPage /></SettingsLayout>;
     case "/settings":
-      return <SettingsPage report={report} />;
+      return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
     case "/home":
     default:
       return <HomePage report={report} loadState={loadState} />;
