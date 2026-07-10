@@ -1,11 +1,21 @@
-import { Brain, ChevronDown, Settings, UserRound, Wrench } from "lucide-react";
+import { Brain, ChevronDown, Heart, Settings, UserRound, Wrench } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { RoutePath } from "../app/router";
 import { primaryNavItems } from "../app/router";
 
+const BOOSTY_SUPPORT_URL = "https://boosty.to/ankistudyreport";
+
+type ProfileMenuItem = {
+  label: string;
+  icon: typeof UserRound;
+} & (
+  | { path: RoutePath; externalHref?: never }
+  | { path?: never; externalHref: string }
+);
+
 const profileMenuSections: Array<{
   label: string;
-  items: Array<{ path: RoutePath; label: string; icon: typeof UserRound }>;
+  items: ProfileMenuItem[];
 }> = [
   {
     label: "Личное меню",
@@ -16,7 +26,10 @@ const profileMenuSections: Array<{
   },
   {
     label: "Утилиты",
-    items: [{ path: "/actions", label: "Инструменты", icon: Wrench }],
+    items: [
+      { path: "/actions", label: "Инструменты", icon: Wrench },
+      { externalHref: BOOSTY_SUPPORT_URL, label: "Поддержать проект", icon: Heart },
+    ],
   },
 ];
 
@@ -152,17 +165,22 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
               {profileMenuSections.map((section, sectionIndex) => (
                 <div
                   key={section.label}
+                  role="group"
+                  aria-label={section.label}
                   className={sectionIndex > 0 ? "mt-2 border-t border-ink-700/80 pt-2" : ""}
                 >
-                  <span className="sr-only">{section.label}</span>
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const active = item.path === activeRoute;
+                    const active = "path" in item && item.path === activeRoute;
+                    const href = "path" in item ? `#${item.path}` : item.externalHref;
                     return (
                       <a
-                        key={item.path}
-                        href={`#${item.path}`}
+                        key={href}
+                        href={href}
                         role="menuitem"
+                        target={"externalHref" in item ? "_blank" : undefined}
+                        rel={"externalHref" in item ? "noopener noreferrer" : undefined}
+                        referrerPolicy={"externalHref" in item ? "no-referrer" : undefined}
                         className={[
                           "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium outline-none transition",
                           active

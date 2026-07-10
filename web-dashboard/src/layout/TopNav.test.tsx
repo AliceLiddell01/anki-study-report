@@ -63,8 +63,29 @@ describe("TopNav", () => {
       ["Профиль", "#/profile"],
       ["Настройки", "#/settings"],
       ["Инструменты", "#/actions"],
+      ["Поддержать проект", "https://boosty.to/ankistudyreport"],
     ]);
     expect(document.activeElement).toBe(items[0]);
+  });
+
+  it("exposes Boosty as a no-referrer external utility without changing the SPA hash", () => {
+    window.location.hash = "#/home";
+    renderNav();
+    const menu = openProfileMenu();
+    const utilityGroup = menu.querySelector<HTMLElement>('[role="group"][aria-label="Утилиты"]')!;
+    const utilityItems = Array.from(utilityGroup.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]'));
+    const support = utilityItems[1];
+
+    expect(utilityItems.map((item) => item.textContent?.trim())).toEqual(["Инструменты", "Поддержать проект"]);
+    expect(support.getAttribute("href")).toBe("https://boosty.to/ankistudyreport");
+    expect(support.getAttribute("target")).toBe("_blank");
+    expect(support.getAttribute("rel")?.split(/\s+/)).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));
+    expect(support.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(support.hasAttribute("aria-current")).toBe(false);
+
+    act(() => support.click());
+    expect(window.location.hash).toBe("#/home");
+    expect(container.querySelector('[role="menu"]')).toBeNull();
   });
 
   it("supports arrow keys and returns focus to the trigger after Escape", () => {
