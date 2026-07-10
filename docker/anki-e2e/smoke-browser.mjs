@@ -249,20 +249,20 @@ async function assertProfileMvp(page) {
   await page.getByRole("heading", { name: "Последние занятия", exact: true }).waitFor({ state: "visible", timeout: 15000 });
   await page.getByRole("heading", { name: "Колоды", exact: true }).waitFor({ state: "visible", timeout: 15000 });
 
-  const sort = page.getByLabel("Сортировка", { exact: true });
+  const sort = page.locator("#profile-deck-sort");
   await sort.selectOption("reviews");
   await page.getByText("Порядок колод сохранён.", { exact: true }).waitFor({ state: "attached", timeout: 15000 });
 
   await page.getByRole("button", { name: "Изменить дату начала", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Дата начала обучения", exact: true });
   await dialog.waitFor({ state: "visible", timeout: 15000 });
-  await dialog.getByLabel("Когда вы начали учиться", { exact: true }).fill("2020-01-01");
+  await dialog.locator("#profile-study-start").fill("2020-01-01");
   await dialog.getByRole("button", { name: "Сохранить", exact: true }).click();
   await dialog.waitFor({ state: "hidden", timeout: 15000 });
 
   await page.reload({ waitUntil: "networkidle", timeout: 60000 });
   await page.getByRole("heading", { name: "E2E", exact: true }).waitFor({ timeout: 60000 });
-  const persistedSort = await page.getByLabel("Сортировка", { exact: true }).inputValue();
+  const persistedSort = await page.locator("#profile-deck-sort").inputValue();
   const profileApi = await page.evaluate(async () => {
     const token = new URLSearchParams(window.location.search).get("token") || "";
     const response = await fetch(`/api/profile?token=${encodeURIComponent(token)}`, { cache: "no-store" });
