@@ -401,15 +401,6 @@ def _daily_rows_from_deck_rows(rows: list[dict]) -> list[dict]:
     return [daily[key] for key in sorted(daily)]
 
 
-def _deck_names_from_rows(rows: list[dict]) -> list[str]:
-    names = []
-    for row in rows:
-        name = str(row.get("deck_name") or "").strip()
-        if name and name not in names:
-            names.append(name)
-    return names
-
-
 def _dashboard_period_label(settings: dict, start_date: str, end_date: str) -> str:
     period = str(settings.get("period") or "all_time")
     if period == "last_7_days":

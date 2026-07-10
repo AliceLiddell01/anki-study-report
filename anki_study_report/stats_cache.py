@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import json
 import re
@@ -480,13 +480,6 @@ class StatsCacheManager:
             self._meta["last_refresh_added_rows"] = 0
         self._building = False
         self._write_meta_best_effort_locked()
-
-
-def revlog_id_ms_to_local_day(revlog_id: int, rollover_hours: int = 4) -> str:
-    shifted = datetime.fromtimestamp(_as_int(revlog_id) / 1000) - timedelta(
-        hours=rollover_hours
-    )
-    return shifted.date().isoformat()
 
 
 def _daily_rows(

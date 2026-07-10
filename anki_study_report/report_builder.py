@@ -33,20 +33,6 @@ def build_report(
     raise ValueError(f"Unknown report template: {template}")
 
 
-def build_short_report(
-    metrics: dict[str, Any],
-    metadata: dict[str, Any] | None = None,
-) -> str:
-    return build_report(metrics, "short", metadata)
-
-
-def build_detailed_report(
-    metrics: dict[str, Any],
-    metadata: dict[str, Any] | None = None,
-) -> str:
-    return build_report(metrics, "detailed", metadata)
-
-
 def build_markdown_report(
     metrics: dict[str, Any],
     metadata: dict[str, Any] | None = None,

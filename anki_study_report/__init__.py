@@ -2753,19 +2753,6 @@ def _idle_timeout_label(seconds: int) -> str:
     return f"{minutes} мин"
 
 
-def _integration_diagnostics_text() -> str:
-    diagnostics = _integration_diagnostics_sections()
-    sections = ["Anki Study Report: диагностика интеграций"]
-    for title, text in (
-        ("Study Time Stats", diagnostics["study_time_stats"]),
-        ("Трекер повторений", diagnostics["session_tracker"]),
-        ("Heatmap", diagnostics["heatmap"]),
-        ("Логи", diagnostics["logs"]),
-    ):
-        sections.extend(("", title, text))
-    return "\n".join(sections)
-
-
 def _integration_diagnostics_sections() -> dict[str, str]:
     col = mw.col if mw and mw.col else None
     return {
