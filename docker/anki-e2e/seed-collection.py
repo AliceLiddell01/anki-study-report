@@ -326,6 +326,15 @@ def create_collection(collection_path: Path) -> None:
             deck_id,
             tags=["e2e", "sanitizer"],
         )
+        for index in range(1, 7):
+            activity_deck_id = get_deck_id(col, f"E2E Activity::Deck {index:02d}")
+            add_note(
+                col,
+                generic_model,
+                {"Front": f"Activity fixture {index}", "Back": "Synthetic activity history"},
+                activity_deck_id,
+                tags=["e2e", "activity-fixture"],
+            )
         save_collection(col)
     finally:
         close_collection(col)
@@ -467,18 +476,18 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
 
         conn.execute("delete from revlog")
         now_ms = int(time.time() * 1000)
-        next_id = now_ms - 600_000
+        day_counters: dict[int, int] = {}
 
-        def add_reviews(card_id: int, reviews: list[tuple[int, int]]) -> None:
-            nonlocal next_id
+        def add_reviews(card_id: int, reviews: list[tuple[int, int]], *, days_ago: int = 0) -> None:
             for ease, answer_ms in reviews:
-                next_id += 1000
+                day_counters[days_ago] = day_counters.get(days_ago, 0) + 1
+                review_id = now_ms - days_ago * 86_400_000 - 600_000 + day_counters[days_ago] * 1000
                 conn.execute(
                     """
                     insert into revlog (id, cid, usn, ease, ivl, lastIvl, factor, time, type)
                     values (?, ?, -1, ?, 1, 0, 2500, ?, 1)
                     """,
-                    (next_id, card_id, ease, answer_ms),
+                    (review_id, card_id, ease, answer_ms),
                 )
 
         for card_id in grouped["japanese"]:
@@ -493,6 +502,32 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
         for card_id in grouped["unsafe"]:
             conn.execute("update cards set reps = 3, lapses = 2, type = 2, queue = 2 where id = ?", (card_id,))
             add_reviews(card_id, [(1, 13_000), (1, 12_000), (1, 15_000)])
+
+        history_cards = [card_id for group in grouped.values() for card_id in group]
+        active_day_plans = {
+            1: 4,
+            2: 5,
+            5: 7,
+            6: 7,
+            8: 6,
+            10: 6,
+            12: 3,
+            13: 3,
+            15: 3,
+            17: 3,
+            20: 4,
+            21: 4,
+            22: 4,
+            26: 3,
+            28: 3,
+            31: 2,
+            34: 2,
+        }
+        for plan_index, (days_ago, review_count) in enumerate(active_day_plans.items()):
+            for review_index in range(review_count):
+                card_id = history_cards[(plan_index + review_index) % len(history_cards)]
+                ease = 1 if review_index % 5 == 0 else 3 if review_index % 3 else 4
+                add_reviews(card_id, [(ease, 4_000 + review_index * 350)], days_ago=days_ago)
 
         conn.commit()
         return grouped

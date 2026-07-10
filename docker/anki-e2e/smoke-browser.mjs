@@ -25,7 +25,7 @@ const responsiveViewports = [
 ];
 const dashboardPageCases = [
   { route: "/home", pageName: "today", heading: "Сегодня", primaryHref: "#/home" },
-  { route: "/calendar", pageName: "calendar", heading: "Календарь", primaryHref: "#/calendar" },
+  { route: "/calendar", pageName: "calendar", heading: "Активность", primaryHref: "#/calendar" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
   { route: "/profile", pageName: "profile", heading: "E2E" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
@@ -154,6 +154,7 @@ try {
 
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
   const profileDetails = await assertProfileMvp(page);
+  const activityDetails = await assertActivityHub(page);
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
@@ -172,6 +173,7 @@ try {
     cssDiagnostics,
     apkg: apkgDetails,
     profile: profileDetails,
+    activity: activityDetails,
     pageScreenshots,
     navigationScreenshots,
   });
@@ -292,6 +294,55 @@ async function assertProfileMvp(page) {
     heatmapVisible,
     heatmapEmptyVisible,
   };
+}
+
+async function assertActivityHub(page) {
+  await prepareDashboardRoute(page, "/calendar", "light", "Активность");
+  const period = page.locator("#activity-period");
+  assertBrowser(await period.inputValue() === "90d", "Activity defaults to the last 90 days.");
+  for (const metric of ["Повторения", "Время", "Новые", "Успешность"]) {
+    await page.getByRole("button", { name: metric, exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  }
+  assertBrowser(await page.getByRole("button", { name: "Прогноз", exact: true }).count() === 0, "Activity has no placeholder forecast metric.");
+  await page.getByRole("button", { name: "Время", exact: true }).click();
+  assertBrowser(await page.getByRole("button", { name: "Время", exact: true }).getAttribute("aria-pressed") === "true", "Activity metric switch updates selection.");
+  await page.getByRole("button", { name: "Повторения", exact: true }).click();
+
+  const selected = page.locator('[data-testid="activity-calendar"] button[aria-pressed="true"]');
+  assertBrowser(await selected.count() === 1, "Activity has exactly one selected day.");
+  const selectedDate = await selected.getAttribute("data-date");
+  const inactive = page.locator('[data-testid="activity-calendar"] button[data-availability="inactive"]').first();
+  await inactive.click();
+  await page.getByTestId("activity-day-detail").getByRole("heading", { name: "Занятий не было", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  const inactiveDate = await inactive.getAttribute("data-date");
+
+  const todayButton = page.locator(`[data-testid="activity-calendar"] button[data-date="${selectedDate}"]`);
+  await todayButton.click();
+  const detail = page.getByTestId("activity-day-detail");
+  await detail.getByText("Активные колоды", { exact: false }).first().waitFor({ state: "visible", timeout: 15000 });
+  const expand = detail.getByRole("button", { name: /Показать ещё \d+/, exact: false });
+  assertBrowser(await expand.count() === 1, "Activity selected day exposes more than five decks.");
+  const collapsedDeckRows = await detail.locator("div.mt-2.grid.gap-2 > div").count();
+  await expand.click();
+  const expandedDeckRows = await detail.locator("div.mt-2.grid.gap-2 > div").count();
+  assertBrowser(expandedDeckRows > collapsedDeckRows && collapsedDeckRows === 5, `Activity deck list expands from five rows: ${collapsedDeckRows} -> ${expandedDeckRows}`);
+  await detail.getByRole("button", { name: "Свернуть", exact: true }).click();
+
+  const feed = page.getByTestId("activity-feed");
+  const initialDaily = await feed.locator('[data-feed-type="daily_summary"]').count();
+  assertBrowser(initialDaily === 14, `Activity feed starts with 14 active days: ${initialDaily}`);
+  await page.getByText(/Возвращение после 2 дней без занятий/).first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText(/Серия достигла 3/).first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText(/Новый максимум:/).first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText("Итоги завершённой недели", { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
+  const loadMore = page.getByRole("button", { name: "Показать более раннюю активность", exact: true });
+  assertBrowser(await loadMore.count() === 1, "Activity feed exposes deterministic load more.");
+  await loadMore.click();
+  const expandedDaily = await feed.locator('[data-feed-type="daily_summary"]').count();
+  assertBrowser(expandedDaily > initialDaily, `Activity feed loads earlier active days: ${initialDaily} -> ${expandedDaily}`);
+  const bodyText = await page.locator("body").innerText();
+  assertBrowser(!bodyText.includes(ready.token), "Activity DOM does not expose the dashboard token.");
+  return { selectedDate, inactiveDate, initialDaily, expandedDaily, collapsedDeckRows, expandedDeckRows };
 }
 
 async function captureAvatarMenu(page) {
