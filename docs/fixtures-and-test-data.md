@@ -32,6 +32,11 @@ Profile fixtures в `mockReport` синтетические: identity `E2E`, nor
 также строит empty/missing-time/custom-date variants; реальные имена и runtime
 `profile.json` не коммитятся.
 
+Stage 4 mock добавляет bounded `activityHub`: 90-day active/inactive pattern,
+unavailable early range, seven daily decks, milestone/return/record и two
+completed weeks. Docker synthetic collection распределяет revlog по нескольким
+дням/неделям и добавляет safe Activity fixture decks; APKG fixture не меняется.
+
 ## Existing Docker synthetic data
 
 Docker E2E создает synthetic collection через:

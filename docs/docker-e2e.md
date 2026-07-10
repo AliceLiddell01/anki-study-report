@@ -178,6 +178,9 @@ Cards preview smoke mode-specific:
   Browser report отдельно публикует `requestFailures` и `consoleErrors` и
   завершает smoke ошибкой, если они не пусты; `ERR_ABORTED` при намеренной
   навигации между screenshots остаётся только в raw `networkEvents`.
+  Activity smoke сохраняет canonical `#/calendar`, проверяет heading/nav
+  «Активность», default 90 days, metric/day selection, inactive detail,
+  five-plus deck expansion, daily/weekly derived feed и explicit load-more.
 
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log

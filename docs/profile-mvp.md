@@ -12,7 +12,7 @@ Anki-профиля. Она показывает identity, lifetime totals, ко
 Разделение ответственности:
 
 - Today — текущий локальный день и ближайший шаг;
-- Calendar — подробная история по датам;
+- Activity (`#/calendar`) — scoped календарь, day detail и derived history;
 - Decks — состояние отдельных колод;
 - Cards — конкретные карточки внимания;
 - Profile — identity и lifetime view всей коллекции;
@@ -180,3 +180,7 @@ Docker browser smoke открывает реальный `#/profile`, прове
 KPI, activity/recent/decks, save/reload двух preferences и сохраняет Profile
 light/dark screenshots. Artifact manifest индексирует их как обычные page
 screenshots; DOM assertion запрещает raw dashboard token.
+
+Stage 4 не переносит Feed в Profile: visible Recent Activity здесь остаётся
+компактным all-collection блоком из `StudyReport.profile`, а полный scoped Feed
+живёт только на `#/calendar`.

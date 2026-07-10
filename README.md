@@ -32,7 +32,7 @@ anki_study_report.ankiaddon
 Он является zip-архивом с плоским содержимым add-on, без верхней папки
 `anki_study_report/`.
 
-Текущая primary navigation dashboard: `Сегодня → Календарь → Колоды → Карточки`.
+Текущая primary navigation dashboard: `Сегодня → Активность → Колоды → Карточки`.
 Профиль, Инструменты, Настройки и безопасная внешняя ссылка «Поддержать проект»
 доступны через profile menu; Сервер, Источники данных и Логи собраны в settings
 navigation. Полное решение и правила эволюции routes описаны в
@@ -40,6 +40,8 @@ navigation. Полное решение и правила эволюции route
 
 `#/profile` — локальная all-collection витрина текущего Anki-профиля с lifetime
 KPI, активностью, обзором колод и per-profile настройками даты/сортировки.
+`#/calendar` сохраняет canonical route, но отображается как «Активность» и
+объединяет scoped calendar, day details и derived history feed.
 
 ## Самые важные команды
 
@@ -93,6 +95,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Navigation / Information Architecture](docs/navigation-ia.md)
 - [Settings Hub](docs/settings-hub.md)
 - [Profile MVP](docs/profile-mvp.md)
+- [Activity / Calendar v2](docs/activity-calendar-v2.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)

@@ -388,6 +388,11 @@ write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
 machine-readable summaries under `reports/`, and console logs under
 `diagnostics/`.
 
+The `calendar` page leaf is the Stage 4 Activity surface at canonical
+`#/calendar`. Browser smoke exercises the default 90-day period, metric/day
+selection, inactive details, five-plus deck expansion, derived daily/weekly
+feed and explicit load-more before the light/dark page capture.
+
 The manifest stores only existing relative paths and route/theme/mode/fixture
 metadata. Validation rejects missing required files, absolute paths, traversal
 and duplicates; missing optional files are omitted. The canonical add-on log is

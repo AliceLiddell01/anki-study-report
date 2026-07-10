@@ -80,6 +80,11 @@ token, absolute path, avatar/banner blobs или remote URL. `profile.json` ле
 Frontend получает уже опубликованный JSON и вызывает ограниченные API. Он не
 читает `collection.anki2`, profile folder или media директории напрямую.
 
+Activity Hub также приходит внутри `/api/report`: только bounded daily и
+deck-day aggregates плюс deterministic derived events. В нём нет raw revlog,
+card/note content, token или runtime paths; новый endpoint/SQL query API не
+добавлен.
+
 ## Dashboard actions allowlist
 
 Разрешенные report actions описаны в `actionsApi.ts` и

@@ -130,6 +130,7 @@ cacheDebug?
 performance?
 today?
 profile?
+activityHub?
 ```
 
 Backend сейчас строит основной contract через:
@@ -177,6 +178,14 @@ Optional `profile` содержит `identity`, `studyHistory`, `activity`, `dec
 `preferences`. В runtime Stage 3 он публикуется всегда и строится из исходного
 all-collection cache snapshot независимо от dashboard scope. Optional type
 сохраняет совместимость frontend с legacy fixtures/старым report.
+
+## Activity Hub slice
+
+Optional `activityHub` — canonical Stage 4 source для `#/calendar`: scoped
+one-year `days`, exact period bounds, availability, day-deck details и derived
+daily/weekly feed. Runtime публикует slice всегда; optional TS field сохраняет
+совместимость со старыми fixtures. Contract не содержит raw revlog/card data и
+не добавляет endpoint. См. `docs/activity-calendar-v2.md`.
 
 ## Card-level contract
 

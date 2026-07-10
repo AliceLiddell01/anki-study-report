@@ -78,6 +78,11 @@ dashboard period/deck filters. Он строит compact Profile slice и обс
 атомарный `<runtime>/profile.json`; frontend не сканирует collection и не
 пересчитывает raw revlog.
 
+`activity_service.py` получает тот же snapshot, но применяет текущий historical
+dashboard deck scope. Он публикует bounded one-year `activityHub`, day-deck
+details и derived daily/weekly events; старый `activity` contract остаётся для
+Home/backward compatibility.
+
 ## Dashboard payload
 
 `dashboard_payload.py` - чистый слой трансформации метрик в JSON. Его ключевые
@@ -108,6 +113,7 @@ recommendations
 cache
 today (optional Home-only slice)
 profile (all-collection lifetime slice)
+activityHub (scoped bounded Activity slice)
 ```
 
 ## Dashboard server
@@ -161,7 +167,7 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 `ActionsPage` и `CardsPage`; unknown hash fallback ведёт на `#/home`.
 
 Видимая primary navigation отделена от полного registry routes. Она содержит
-только `Сегодня`, `Календарь`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
+только `Сегодня`, `Активность`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
 Profile/Settings/Tools в avatar dropdown, а `SettingsLayout.tsx` связывает
 report/data/server/sources/logs постоянным Settings Hub sidebar. Старые
 `#/integrations` и `#/logs` redirect-ятся в canonical diagnostics routes.

@@ -43,6 +43,7 @@ docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/navigation-ia.md            current primary nav, profile menu, settings hierarchy
 docs/settings-hub.md             Stage 2 settings routes, persistence, Today/settings boundary
 docs/profile-mvp.md              Stage 3 all-collection Profile, per-profile persistence/API
+docs/activity-calendar-v2.md     Stage 4 scoped calendar, day details and derived feed
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -163,7 +164,7 @@ profile_service.py
 Primary navigation сейчас строго ограничена четырьмя пунктами:
 
 ```text
-Сегодня → Календарь → Колоды → Карточки
+Сегодня → Активность → Колоды → Карточки
 ```
 
 `#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки,
@@ -182,6 +183,11 @@ all-collection cache snapshot до dashboard filters. Editable
 `customStudyStartedOn` и `deckOverviewSort` живут в per-profile runtime
 `profile.json` и меняются через token-protected `/api/profile`. Полный contract:
 `docs/profile-mvp.md`.
+
+`#/calendar` остаётся route, но nav/heading называется «Активность». Canonical
+`StudyReport.activityHub` содержит максимум год scoped daily/deck-day rows и
+derived feed; Profile остаётся all-collection. Полный contract:
+`docs/activity-calendar-v2.md`.
 
 Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.
