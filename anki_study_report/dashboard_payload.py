@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 import re
 
 from .note_intelligence import media_ref_for_name, sanitize_card_css, sanitize_media_filename, sanitize_rendered_html
+from .report_from_cache import comparison_from_cache_snapshot
 from .session_tracker import unavailable_tracked_time
 
 
@@ -242,6 +243,69 @@ def metrics_from_cache_snapshot(snapshot: dict, today_key: str, display_settings
             "source": "cache",
         },
         "due_tomorrow": 0,
+    }
+
+
+def build_today_dashboard_payload(
+    snapshot: dict,
+    today_key: str,
+    *,
+    display_settings: dict | None = None,
+    cache_summary: dict | None = None,
+    now: datetime | None = None,
+) -> dict:
+    """Build the Home-only current-day view while preserving historical pages."""
+
+    source = _normalize_dashboard_display_settings(display_settings)
+    today_display = {
+        **source,
+        "period": "custom",
+        "custom_start_date": today_key,
+        "custom_end_date": today_key,
+    }
+    metadata = build_default_dashboard_metadata(
+        snapshot,
+        today_key,
+        display_settings=today_display,
+        now=now,
+    )
+    metadata.update(
+        {
+            "period": "Сегодня",
+            "period_id": "today",
+            "period_human": "текущий локальный день",
+            "period_start_date": today_key,
+            "period_end_date": today_key,
+        }
+    )
+    metrics = metrics_from_cache_snapshot(snapshot, today_key, today_display)
+    comparison_snapshot = snapshot
+    if source.get("selected_deck_ids"):
+        history_display = {**source, "period": "all_time"}
+        history_deck_rows = _filter_snapshot_deck_rows(
+            _sorted_snapshot_rows(snapshot.get("deckDaily")),
+            history_display,
+            today_key,
+        )
+        comparison_snapshot = {
+            **snapshot,
+            "daily": _daily_rows_from_deck_rows(history_deck_rows),
+            "deckDaily": history_deck_rows,
+        }
+    metrics["comparison"] = comparison_from_cache_snapshot(comparison_snapshot, today_key)
+    payload = build_dashboard_report_payload(metrics, metadata, cache_summary=cache_summary)
+    return {
+        key: payload[key]
+        for key in (
+            "metadata",
+            "summary",
+            "kpis",
+            "answerDistribution",
+            "activity",
+            "comparison",
+            "decks",
+            "recommendations",
+        )
     }
 
 

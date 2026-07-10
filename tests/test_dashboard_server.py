@@ -9,8 +9,12 @@ from urllib.request import Request, urlopen
 from conftest import import_addon_module
 
 
-def fetch(url: str) -> tuple[int, str, bytes]:
-    request = Request(url, headers={"User-Agent": "anki-study-report-test"})
+def fetch(url: str, *, method: str = "GET", json_body=None) -> tuple[int, str, bytes]:
+    data = None if json_body is None else json.dumps(json_body).encode("utf-8")
+    headers = {"User-Agent": "anki-study-report-test"}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    request = Request(url, data=data, headers=headers, method=method)
     try:
         with urlopen(request, timeout=5) as response:
             return response.status, response.headers.get("Content-Type", ""), response.read()
@@ -167,5 +171,56 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
 
         status, _, _ = fetch(f"{base_url}/api/media?name=file:///secret.gif&token={token}")
         assert status == 400
+    finally:
+        manager.stop()
+
+
+def test_dashboard_settings_endpoint_get_post_validation_and_auth():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    received = []
+    manager.configure_display_settings_handlers(
+        settings_provider=lambda: {"ok": True, "settings": {"dashboard": {"scope": "all"}}},
+        settings_handler=lambda payload: received.append(payload) or {
+            "ok": True,
+            "settings": {"data": {"useStatsCacheForReport": payload["data"]["useStatsCacheForReport"]}},
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+
+    try:
+        status, _, _ = fetch(f"{base_url}/api/dashboard/settings")
+        assert status == 403
+
+        status, _, body = fetch(f"{base_url}/api/dashboard/settings?token={token}")
+        assert status == 200
+        assert json.loads(body)["settings"]["dashboard"]["scope"] == "all"
+
+        partial = {"data": {"useStatsCacheForReport": True}}
+        status, _, body = fetch(
+            f"{base_url}/api/dashboard/settings?token={token}",
+            method="POST",
+            json_body=partial,
+        )
+        assert status == 200
+        assert received == [partial]
+        assert json.loads(body)["settings"]["data"]["useStatsCacheForReport"] is True
+
+        status, _, _ = fetch(
+            f"{base_url}/api/dashboard/settings",
+            method="POST",
+            json_body=partial,
+        )
+        assert status == 403
+
+        status, _, body = fetch(
+            f"{base_url}/api/dashboard/settings?token={token}",
+            method="POST",
+            json_body=["invalid"],
+        )
+        assert status == 400
+        assert json.loads(body)["ok"] is False
     finally:
         manager.stop()

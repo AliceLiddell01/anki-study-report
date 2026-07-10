@@ -116,6 +116,50 @@ def test_dashboard_payload_cache_snapshot_fixture():
     assert "problemCards" not in payload
 
 
+def test_today_dashboard_payload_uses_only_current_local_day_and_keeps_scope():
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    fixture = load_dashboard_fixture("cache_snapshot")
+
+    today = dashboard_payload.build_today_dashboard_payload(
+        fixture["snapshot"],
+        fixture["today"],
+        display_settings={
+            "selected_deck_ids": [10],
+            "selected_deck_names": ["Core"],
+            "include_child_decks": True,
+        },
+        cache_summary=fixture["snapshot"]["status"],
+        now=dashboard_payload.datetime(2026, 7, 1, 12, 0, 0),
+    )
+
+    assert today["metadata"]["period"] == "Сегодня"
+    assert today["metadata"]["periodId"] == "today"
+    assert today["metadata"]["todayDate"] == "2026-07-01"
+    assert today["metadata"]["selectedDecks"] == ["Core"]
+    assert today["kpis"][0]["value"] == "30"
+    assert today["activity"]["days"] == [
+        {
+            "date": "2026-07-01",
+            "reviews": 30,
+            "newCards": 4,
+            "again": 3,
+            "studySeconds": 360,
+        }
+    ]
+    assert today["comparison"]["today"]["reviews"] == 30
+
+
+def test_today_dashboard_payload_does_not_change_historical_snapshot_totals():
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    fixture = load_dashboard_fixture("cache_snapshot")
+
+    historical = dashboard_payload.metrics_from_cache_snapshot(fixture["snapshot"], fixture["today"])
+    today = dashboard_payload.build_today_dashboard_payload(fixture["snapshot"], fixture["today"])
+
+    assert historical["total_reviews"] == 50
+    assert today["kpis"][0]["value"] == "30"
+
+
 def test_dashboard_payload_emits_canonical_attention_card_keys_only():
     dashboard_payload = fresh_import_addon_module("dashboard_payload")
     fixture = load_dashboard_fixture("normal_day")

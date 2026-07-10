@@ -162,6 +162,18 @@ def build_cached_report_parts(
     }
 
 
+def comparison_from_cache_snapshot(snapshot: dict[str, Any], today_key: str) -> dict[str, Any]:
+    """Build the Today comparison model without changing the report period."""
+
+    daily_rows = _clean_daily_rows(snapshot.get("daily"))
+    deck_daily_rows = _clean_deck_daily_rows(snapshot.get("deckDaily"))
+    return _comparison_from_rows(
+        daily_rows,
+        _active_decks_by_date(deck_daily_rows),
+        today_key,
+    )
+
+
 def _safe_cache_status(cache_manager: Any) -> dict[str, Any]:
     try:
         status = cache_manager.status()

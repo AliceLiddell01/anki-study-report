@@ -142,6 +142,7 @@ from .dashboard_actions import DashboardActions
 from .dashboard_payload import (
     build_dashboard_report_payload,
     build_default_dashboard_metadata,
+    build_today_dashboard_payload,
     dashboard_int,
     metrics_from_cache_snapshot,
 )
@@ -153,6 +154,7 @@ from .browser_actions import (
 )
 from .config_service import (
     DEFAULT_ENABLED_METRICS,
+    SettingsValidationError,
     _custom_profiles_from_config,
     dashboard_display_config,
     _enabled_metrics_from_config,
@@ -160,7 +162,8 @@ from .config_service import (
     _read_config,
     _web_dashboard_config,
     _write_config,
-    write_dashboard_display_config,
+    public_settings_config,
+    write_public_settings,
 )
 from .extension_logging import configure_log_dir, log_event, log_exception, log_status
 from .stats_cache import StatsCacheManager
@@ -1948,27 +1951,47 @@ def _dashboard_health_response() -> dict:
 
 
 def _dashboard_display_settings_response() -> dict:
+    deck_options = _dashboard_deck_options()
     return {
         "ok": True,
-        "settings": dashboard_display_config(),
-        "deckOptions": [
-            {"id": deck_id, "name": deck_name}
-            for deck_id, deck_name in _deck_names()
-        ],
+        "settings": public_settings_config(deck_options=deck_options),
+        "deckOptions": deck_options,
     }
 
 
 def _update_dashboard_display_settings(payload: dict) -> dict:
-    settings = write_dashboard_display_config(payload if isinstance(payload, dict) else {})
+    deck_options = _dashboard_deck_options()
+    before = public_settings_config(deck_options=deck_options)
+    try:
+        settings = write_public_settings(
+            payload if isinstance(payload, dict) else {},
+            deck_options=deck_options,
+        )
+    except SettingsValidationError as error:
+        return {
+            "ok": False,
+            "error": "invalid_settings",
+            "message": "Проверьте значения настроек.",
+            "fieldErrors": error.field_errors,
+        }
+    before_server = before.get("server") if isinstance(before.get("server"), dict) else {}
+    saved_server = settings.get("server") if isinstance(settings.get("server"), dict) else {}
+    restart_required = bool(
+        _DASHBOARD_SERVER.state().running
+        and any(
+            before_server.get(key) != saved_server.get(key)
+            for key in ("port", "idleTimeoutSeconds")
+        )
+    )
     response = {
         "ok": True,
-        "message": "Dashboard settings saved.",
+        "message": "Настройки сохранены.",
         "settings": settings,
-        "deckOptions": [
-            {"id": deck_id, "name": deck_name}
-            for deck_id, deck_name in _deck_names()
-        ],
+        "deckOptions": deck_options,
+        "restartRequired": restart_required,
     }
+    if "dashboard" not in payload:
+        return response
     try:
         result = _prepare_default_dashboard_report()
         report = result.get("report")
@@ -1982,26 +2005,31 @@ def _update_dashboard_display_settings(payload: dict) -> dict:
             metadata if isinstance(metadata, dict) else {},
             None,
         )
-        response["message"] = "Dashboard settings saved and report updated."
+        response["message"] = "Настройки сохранены, данные dashboard обновлены."
     except Exception:
         traceback.print_exc()
         response["reportRefreshError"] = "Settings saved, but dashboard report refresh failed."
     return response
 
 
+def _dashboard_deck_options() -> list[dict]:
+    return [
+        {"id": deck_id, "name": deck_name}
+        for deck_id, deck_name in _deck_names()
+    ]
+
+
 def _dashboard_display_settings_for_payload() -> dict:
     settings = dashboard_display_config()
-    selected_ids = [
+    configured_ids = [
         int(deck_id)
         for deck_id in settings.get("selected_deck_ids", [])
         if _is_int_like(deck_id)
     ]
-    if selected_ids and settings.get("include_child_decks", True) and mw and mw.col:
-        selected_ids = expand_deck_ids(mw.col, selected_ids)
     deck_name_by_id = dict(_deck_names())
     selected_names = [
         deck_name_by_id.get(deck_id, f"Колода {deck_id}")
-        for deck_id in selected_ids
+        for deck_id in configured_ids
     ]
     if not selected_names:
         selected_names = [
@@ -2009,6 +2037,9 @@ def _dashboard_display_settings_for_payload() -> dict:
             for name in settings.get("selected_deck_names", [])
             if str(name or "").strip()
         ]
+    selected_ids = configured_ids
+    if selected_ids and settings.get("include_child_decks", True) and mw and mw.col:
+        selected_ids = expand_deck_ids(mw.col, selected_ids)
     return {
         **settings,
         "selected_deck_ids": selected_ids,
@@ -2296,6 +2327,12 @@ def _prepare_default_dashboard_report() -> dict:
     metrics = metrics_from_cache_snapshot(snapshot, today_key, display_settings)
     metrics = _apply_default_dashboard_attention_cards(metrics, metadata, display_settings)
     report = _dashboard_report_payload(metrics, metadata)
+    report["today"] = build_today_dashboard_payload(
+        snapshot,
+        today_key,
+        display_settings=display_settings,
+        cache_summary=_dashboard_cache_summary(),
+    )
     try:
         markdown = build_markdown_report(metrics, metadata)
     except Exception:
