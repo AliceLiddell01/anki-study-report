@@ -41,12 +41,12 @@ describe("TopNav", () => {
     const nav = container.querySelector<HTMLElement>('nav[aria-label="Основная навигация"]')!;
     expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual([
       "Сегодня",
-      "Календарь",
+      "Активность",
       "Колоды",
       "Карточки",
     ]);
     expect(nav.textContent).not.toMatch(/Профиль|Инструменты|Источники данных|Логи|Настройки|Сервер|Stats|FSRS|Browse/);
-    expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe("Календарь");
+    expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe("Активность");
   });
 
   it("opens an accessible profile dropdown with current account and utility routes", () => {

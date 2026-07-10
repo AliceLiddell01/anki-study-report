@@ -8,7 +8,7 @@ const danger = "#ef6f6c";
 
 const mockStartDate = "2026-04-01";
 const mockToday = "2026-06-29";
-const missedDayIndexes = new Set([3, 9, 16, 24, 31, 39, 48, 56, 67, 78]);
+const missedDayIndexes = new Set([3, 9, 16, 24, 31, 39, 48, 56, 67, 78, 85, 86]);
 const overloadDayReviews = new Map([
   [52, 238],
   [74, 312],
@@ -58,6 +58,36 @@ const mockActiveDays = mockActivityDays.filter((day) => day.reviews > 0).length;
 const mockCurrentStreak = [...mockActivityDays].reverse().findIndex((day) => day.reviews <= 0);
 const mockCurrentStreakDays = mockCurrentStreak < 0 ? mockActivityDays.length : mockCurrentStreak;
 const mockBestDay = [...mockActivityDays].sort((a, b) => b.reviews - a.reviews)[0];
+const mockActivityByDate = new Map(mockActivityDays.map((day) => [day.date, day]));
+const mockHubStart = "2025-06-30";
+const mockHubDeckNames = ["Words::N1", "Words::N3", "文法", "Kanji", "Grammar::Core", "Listening", "読解"];
+const mockActivityHubDays = Array.from({ length: 365 }, (_, index) => {
+  const date = addMockDays(mockHubStart, index);
+  const source = mockActivityByDate.get(date);
+  if (!source) return { date, availability: "unavailable" as const, reviews: 0, newCards: 0, pass: 0, fail: 0, successRate: null, studySeconds: null, activeDeckCount: 0, decks: [] };
+  if (!source.reviews) return { date, availability: "inactive" as const, reviews: 0, newCards: 0, pass: 0, fail: 0, successRate: null, studySeconds: null, activeDeckCount: 0, decks: [] };
+  const fail = source.again;
+  const pass = Math.max(0, source.reviews - fail);
+  const decks = mockHubDeckNames.map((name, deckIndex) => {
+    const reviews = Math.max(1, Math.floor(source.reviews / (deckIndex + 4)));
+    const deckFail = Math.min(reviews, Math.floor(fail / (deckIndex + 3)));
+    return { id: deckIndex + 1, name, reviews, pass: reviews - deckFail, fail: deckFail, successRate: reviews ? (reviews - deckFail) / reviews : null };
+  });
+  return { date, availability: "active" as const, reviews: source.reviews, newCards: source.newCards, pass, fail, successRate: source.reviews ? pass / source.reviews : null, studySeconds: source.studySeconds || null, activeDeckCount: decks.length, decks };
+});
+const mockActivityFeedDays = mockActivityHubDays.filter((day) => day.availability === "active").map((day) => ({
+  id: `${day.date}:daily-summary`,
+  type: "daily_summary" as const,
+  date: day.date,
+  highlights: day.date === "2026-06-29"
+    ? [
+        { id: `${day.date}:streak:3`, type: "streak_milestone" as const, days: 3 },
+        { id: `${day.date}:record:${day.reviews}`, type: "new_activity_record" as const, reviews: day.reviews, previousMax: 312 },
+      ]
+    : day.date === "2026-06-27"
+      ? [{ id: `${day.date}:return:2`, type: "return_after_break" as const, inactiveDays: 2 }]
+      : [],
+})).reverse();
 
 export const mockReport: StudyReport = {
   metadata: {
@@ -784,6 +814,29 @@ export const mockReport: StudyReport = {
       helperConfigAvailable: true,
       rescheduleEnabled: false,
       autoDisperse: true,
+    },
+  },
+  activityHub: {
+    schemaVersion: 1,
+    today: mockToday,
+    scope: { kind: "selected", selectedDeckIds: [1, 2, 3, 4], includeChildDecks: true },
+    bounds: { start: mockHubStart, end: mockToday, availableFrom: mockStartDate, maxDays: 365 },
+    periods: {
+      "30d": { start: "2026-05-31", end: mockToday, label: "Последние 30 дней" },
+      "90d": { start: mockStartDate, end: mockToday, label: "Последние 90 дней" },
+      "6m": { start: "2025-12-30", end: mockToday, label: "Последние 6 месяцев" },
+      "1y": { start: mockHubStart, end: mockToday, label: "Последний год" },
+    },
+    metrics: { studyTimeSource: "revlog_estimate" },
+    overview: { currentStreak: 3, bestStreak: bestStreak(mockActivityDays) },
+    days: mockActivityHubDays,
+    feed: {
+      days: mockActivityFeedDays,
+      weeks: [
+        { id: "2026-W26:weekly-summary", type: "weekly_summary", weekStart: "2026-06-22", weekEnd: "2026-06-28", activeDays: 5, reviews: 340, studySeconds: 2880, successRate: 0.86, comparison: { reviewsPercentChange: 12, direction: "more" } },
+        { id: "2026-W25:weekly-summary", type: "weekly_summary", weekStart: "2026-06-15", weekEnd: "2026-06-21", activeDays: 6, reviews: 304, studySeconds: null, successRate: 0.82, comparison: null },
+      ],
+      pageSize: 14,
     },
   },
   profile: {

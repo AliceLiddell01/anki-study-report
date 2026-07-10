@@ -496,6 +496,89 @@ export interface StudyReport {
   };
   today?: TodayStudyReport;
   profile?: ProfileModel;
+  activityHub?: ActivityHubModel;
+}
+
+export type ActivityAvailability = "active" | "inactive" | "unavailable";
+export type ActivityPeriod = "30d" | "90d" | "6m" | "1y";
+export type ActivityMetric = "reviews" | "study_time" | "new_cards" | "success_rate";
+
+export interface ActivityDeckDay {
+  id: number;
+  name: string;
+  reviews: number;
+  pass: number;
+  fail: number;
+  successRate: number | null;
+}
+
+export interface ActivityHubDay {
+  date: string;
+  availability: ActivityAvailability;
+  reviews?: number;
+  newCards?: number;
+  pass?: number;
+  fail?: number;
+  successRate?: number | null;
+  studySeconds?: number | null;
+  activeDeckCount?: number;
+  decks?: ActivityDeckDay[];
+}
+
+export interface ActivityHighlight {
+  id: string;
+  type: "return_after_break" | "streak_milestone" | "new_activity_record";
+  inactiveDays?: number;
+  days?: number;
+  reviews?: number;
+  previousMax?: number;
+}
+
+export interface ActivityFeedDay {
+  id: string;
+  type: "daily_summary";
+  date: string;
+  highlights: ActivityHighlight[];
+}
+
+export interface ActivityWeekSummary {
+  id: string;
+  type: "weekly_summary";
+  weekStart: string;
+  weekEnd: string;
+  activeDays: number;
+  reviews: number;
+  studySeconds: number | null;
+  successRate: number | null;
+  comparison: {
+    reviewsPercentChange: number;
+    direction: "more" | "less" | "same";
+  } | null;
+}
+
+export interface ActivityHubModel {
+  schemaVersion: number;
+  today: string;
+  scope: {
+    kind: "all" | "selected";
+    selectedDeckIds: number[];
+    includeChildDecks: boolean;
+  };
+  bounds: {
+    start: string;
+    end: string;
+    availableFrom: string | null;
+    maxDays: number;
+  };
+  periods: Record<ActivityPeriod, { start: string; end: string; label: string }>;
+  metrics: { studyTimeSource: "revlog_estimate" | "session_tracker" | "study_time_stats" | null };
+  overview: { currentStreak: number; bestStreak: number };
+  days: ActivityHubDay[];
+  feed: {
+    days: ActivityFeedDay[];
+    weeks: ActivityWeekSummary[];
+    pageSize: number;
+  };
 }
 
 export type ProfileDeckSort = "name" | "reviews" | "active_days";

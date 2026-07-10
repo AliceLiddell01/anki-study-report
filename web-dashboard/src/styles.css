@@ -285,6 +285,19 @@ select {
   line-height: 1.25;
 }
 
+.activity-legend-unavailable {
+  background-color: rgb(var(--color-bg-elevated) / 0.4);
+  background-image: linear-gradient(135deg, transparent 40%, rgb(var(--color-text-muted) / 0.35) 41%, rgb(var(--color-text-muted) / 0.35) 59%, transparent 60%);
+}
+
+.activity-legend-inactive {
+  background-color: rgb(var(--color-bg-elevated));
+}
+
+.activity-legend-active {
+  background-color: rgb(var(--color-accent) / 0.72);
+}
+
 .status-good {
   border-color: rgb(var(--color-good) / 0.25);
   background-color: rgb(var(--color-good-soft) / 0.12);

@@ -11,7 +11,7 @@ describe("dashboard router", () => {
   it("advertises only supported product destinations", () => {
     expect(primaryNavItems).toEqual([
       { path: "/home", label: "Сегодня" },
-      { path: "/calendar", label: "Календарь" },
+      { path: "/calendar", label: "Активность" },
       { path: "/decks", label: "Колоды" },
       { path: "/cards", label: "Карточки" },
     ]);
