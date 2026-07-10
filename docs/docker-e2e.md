@@ -171,11 +171,16 @@ Cards preview smoke mode-specific:
   ослабляется, JS templates не исполняются.
 - Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
   light/dark темах отдельно для synthetic и APKG fixtures. Он также сохраняет
-  light/dark пары девяти текущих non-Cards routes и открытого avatar menu.
+  light/dark пары десяти текущих non-Cards routes (включая пять Settings Hub
+  pages) и открытого avatar menu.
 
-`artifact-manifest.json` индексирует только relative paths, status, Anki
-version, timestamp, route/theme/mode/fixture metadata. Token и полный dashboard
-URL туда не записываются.
+`artifact-manifest.json` индексирует только существующие relative paths, status,
+Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log
+— `diagnostics/anki_study_report.log`; alias с дефисами не создаётся. Validator
+отклоняет missing required, absolute, traversal и duplicate paths. Missing
+optional artifacts не индексируются. Token и полный dashboard URL туда не
+записываются; readiness file может содержать token, но manifest хранит только
+его путь. Runtime PID files намеренно не являются required manifest entries.
 
 Tracked APKG fixture находится здесь:
 

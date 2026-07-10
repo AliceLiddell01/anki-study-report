@@ -12,6 +12,7 @@ web-dashboard/src/layout/SettingsLayout.tsx
 web-dashboard/src/pages/
 web-dashboard/src/lib/
 web-dashboard/src/types/report.ts
+web-dashboard/src/types/settings.ts
 ```
 
 ## Загрузка данных
@@ -35,16 +36,17 @@ Primary navigation содержит только `Сегодня`, `Календ
 
 | Route | Component | Данные/API | Тесты | Риски |
 | --- | --- | --- | --- | --- |
-| `#/home` | `HomePage` («Сегодня») | `StudyReport`: summary, kpis, comparison, activity, decks, forecast, fsrs | `router.test.tsx`, `TopNav.test.tsx`, indirect через frontend suite | Страница чувствительна к пустым блокам payload; глубокий redesign не входит в Navigation / IA |
-| `#/profile` | `ProfilePage` | GET/POST `/api/dashboard/settings`, optional refreshed report | `TopNav.test.tsx`, frontend build/typecheck | Доступен через avatar menu; неверная normalizing settings форма меняет dashboard scope |
+| `#/home` | `HomePage` («Сегодня») | `StudyReport.today` + historical forecast/fsrs | `HomePage.test.tsx`, `router.test.tsx` | Today slice должен оставаться current-day; top-level report сохраняется для других pages |
+| `#/profile` | `ProfilePage` | read-only `report.metadata` | `SettingsHub.test.tsx`, `TopNav.test.tsx` | Transitional route, не второе место редактирования settings |
 | `#/decks` | `DecksPage` | `report.decks`, `deckHealth` helpers | `deckHealth` indirectly | Статус/сортировка колод зависят от числовой нормализации |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
 | `#/calendar` | `CalendarPage` | `activity.days`, calendar helpers | `calendarStats.test.ts` | Даты/period filters легко ломают heatmap |
 | `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
-| `#/integrations` | `IntegrationsPage` («Источники данных») | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Settings → Диагностика; реальная read-only диагностика, endpoint token-protected |
-| `#/logs` | `LogsPage` | GET `/api/logs/recent`, POST `/api/logs/clear`, download URL | `router.test.tsx`, typecheck | Settings → Диагностика; логи могут содержать diagnostics, token должен редактироваться |
-| `#/settings/server` | `ServerSettingsPage` | GET `/api/server/status`, POST `/api/server/<action>` | `router.test.tsx`, `actionsApi.test.ts` | Settings → Система; restart/stop меняют server token/lifecycle |
-| `#/settings` | `SettingsPage` | GET `/api/cache/status`, POST `/api/cache/refresh`, `/api/cache/rebuild` | `router.test.tsx`, `TopNav.test.tsx`, typecheck | Вход из avatar menu и раздел «Данные»; cache busy/stale states |
+| `#/settings` | `ReportSettingsPage` | GET/POST `/api/dashboard/settings` | `SettingsHub.test.tsx`, `settingsApi.test.ts` | Dashboard scope и report defaults разделены; Home period не редактируется |
+| `#/settings/data` | `SettingsPage` («Данные») | settings API + cache status/actions | `SettingsHub.test.tsx`, backend cache tests | Form save и cache operations являются разными actions |
+| `#/settings/server` | `ServerSettingsPage` | settings API + server status/actions | `SettingsHub.test.tsx`, server tests | restart/stop меняют token/lifecycle |
+| `#/settings/sources` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Read-only diagnostics; старый `#/integrations` redirect-ится сюда |
+| `#/settings/logs` | `LogsPage` | logs endpoints/download | `router.test.tsx`, typecheck | Token redaction; старый `#/logs` redirect-ится сюда |
 
 Stage 15 удалил `#/stats`, `#/fsrs` и `#/browse`: это были страницы с обещаниями
 будущих функций без собственной live data или workflow. Они больше не

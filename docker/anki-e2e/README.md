@@ -375,21 +375,26 @@ e2e-artifacts/
    ├─ navigation/              avatar-menu-light.png, avatar-menu-dark.png
    ├─ pages/
    │  ├─ today|calendar|decks|profile|tools/
-   │  └─ settings/data|server|sources|logs/
+   │  └─ settings/report|data|server|sources|logs/
    └─ cards/
       ├─ synthetic/table|tiles|anki-preview/
       └─ apkg/table|tiles|anki-preview/
 ```
 
 Each page and Cards leaf contains deterministic `light.png` and `dark.png`
-files. A strict APKG run produces 18 page screenshots, 2 navigation screenshots,
+files. A strict APKG run produces 20 page screenshots, 2 navigation screenshots,
 6 synthetic Cards screenshots and 6 APKG Cards screenshots. Browser failures
 write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
 machine-readable summaries under `reports/`, and console logs under
 `diagnostics/`.
 
-The manifest stores only relative paths and route/theme/mode/fixture metadata;
-it never stores the dashboard token or a full token-bearing URL.
+The manifest stores only existing relative paths and route/theme/mode/fixture
+metadata. Validation rejects missing required files, absolute paths, traversal
+and duplicates; missing optional files are omitted. The canonical add-on log is
+`diagnostics/anki_study_report.log` (no hyphen alias). The readiness JSON may
+contain the runtime token, but the manifest indexes only its path and never its
+contents or a full token-bearing URL. Runtime PID files are intentionally not
+required manifest entries.
 
 ## Safety
 

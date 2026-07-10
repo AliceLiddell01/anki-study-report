@@ -41,6 +41,7 @@ docs/release-checklist.md        публикация .ankiaddon
 docs/fixtures-and-test-data.md   fixtures, mock data, synthetic E2E data
 docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/navigation-ia.md            current primary nav, profile menu, settings hierarchy
+docs/settings-hub.md             Stage 2 settings routes, persistence, Today/Profile transition
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -166,9 +167,13 @@ Primary navigation сейчас строго ограничена четырьм
 `#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки,
 Инструменты (`#/actions`) и «Поддержать проект» доступны через avatar menu
 справа. Support ведёт на `https://boosty.to/ankistudyreport` как статическая
-no-referrer ссылка в новой вкладке; `#/support` не существует. `#/settings`,
-`#/settings/server`, `#/integrations` и `#/logs` объединены settings shell как
-Данные, Система → Сервер и Диагностика → Источники данных/Логи.
+no-referrer ссылка в новой вкладке; `#/support` не существует. Settings Hub
+использует `#/settings`, `#/settings/data`, `#/settings/server`,
+`#/settings/sources`, `#/settings/logs`; старые `#/integrations` и `#/logs`
+redirect-ятся в canonical diagnostics pages. Profile больше не редактирует
+dashboard scope. Home использует отдельный current-day `StudyReport.today`, а
+historical top-level report сохраняется для других pages. Полный contract:
+`docs/settings-hub.md`.
 
 Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.

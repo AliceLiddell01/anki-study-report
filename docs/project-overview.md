@@ -84,6 +84,7 @@ docker/anki-e2e/README.md                  подробности Docker E2E с�
 - `docs/troubleshooting.md` - диагностика типовых проблем.
 - `docs/security-and-safety.md` - token/server/media/rendering safety.
 - `docs/decision-log.md` - почему приняты текущие архитектурные решения.
+- `docs/settings-hub.md` - canonical settings routes, public model и save/runtime boundaries.
 
 ## Что не является source of truth
 

@@ -88,6 +88,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)
 - [Navigation / Information Architecture](docs/navigation-ia.md)
+- [Settings Hub](docs/settings-hub.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)

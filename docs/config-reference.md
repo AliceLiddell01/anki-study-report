@@ -47,9 +47,9 @@ docker/anki-e2e/
 | `web_dashboard.auto_start` | `false` | dashboard lifecycle | Да | Auto-start может создавать лишний local server |
 | `web_dashboard.port` | `8766` | dashboard server | Да | Порт `8765` нормализуется обратно к default |
 | `web_dashboard.idle_timeout_seconds` | `1800` | idle monitor | Да | `0` фактически отключает idle stop |
-| `dashboard_display.period` | `all_time` | dashboard profile/settings | Да | Меняет default dashboard period |
-| `dashboard_display.custom_start_date` | `""` | custom period | Да | Неверный формат даст fallback behavior |
-| `dashboard_display.custom_end_date` | `""` | custom period | Да | Неверный формат даст fallback behavior |
+| `dashboard_display.period` | `all_time` | deprecated migration data | Нет | Stage 2 игнорирует ключ; Home всегда current-day, остальные pages используют history |
+| `dashboard_display.custom_start_date` | `""` | deprecated migration data | Нет | Не публикуется в Settings Hub |
+| `dashboard_display.custom_end_date` | `""` | deprecated migration data | Нет | Не публикуется в Settings Hub |
 | `dashboard_display.selected_deck_ids` | `[]` | dashboard deck filter | Да | Пустой список означает все колоды |
 | `dashboard_display.selected_deck_names` | `[]` | dashboard labels | Да | Label-only, но должен соответствовать IDs |
 | `dashboard_display.include_child_decks` | `true` | dashboard deck filter | Да | Меняет состав дочерних колод |
@@ -130,9 +130,25 @@ forecast
 ## Что можно менять пользователю
 
 - Report period/scope/decks.
-- Dashboard display period/deck filter.
+- Dashboard deck filter; период dashboard больше не является настройкой.
 - Dashboard port/auto-start/idle timeout.
 - Session/study-time/cache options, если понятны последствия.
+
+## Public Settings Hub API
+
+`GET/POST /api/dashboard/settings` публикует только sections `dashboard`,
+`report`, `data`, `server`. Полная shape и save model: `docs/settings-hub.md`.
+
+Validation ranges:
+
+```text
+sessionIdleTimeoutSeconds  60..86400
+sessionGapCapSeconds       1..3600 и не больше session idle timeout
+server.port                0 или 1024..65535, кроме 8765
+server.idleTimeoutSeconds  0..86400
+```
+
+Partial update сохраняет unknown/internal top-level и nested config keys.
 
 ## Internal/dev-only
 

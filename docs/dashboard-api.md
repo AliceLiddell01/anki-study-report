@@ -54,6 +54,25 @@ http://127.0.0.1:8766/?token=<token>#/home
 Server actions и dashboard actions должны оставаться небольшим allowlist-слоем,
 а не произвольным RPC в Anki.
 
+## Settings API
+
+`GET /api/dashboard/settings` возвращает normalized public settings и
+`deckOptions`. `POST` принимает partial nested patch только для allowlisted
+sections `dashboard`, `report`, `data`, `server`. Unknown/internal fields и
+invalid enum/type/range получают `400`:
+
+```json
+{
+  "error": "invalid_settings",
+  "fieldErrors": {"server.port": "..."},
+  "message": "Проверьте значения настроек.",
+  "ok": false
+}
+```
+
+Успешный ответ возвращает фактически сохранённое normalized state. Полный
+contract: `docs/settings-hub.md`.
+
 ## Payload source of truth
 
 Backend builder:
@@ -99,6 +118,7 @@ recommendations
 cache?
 cacheDebug?
 performance?
+today?
 ```
 
 Backend сейчас строит основной contract через:
@@ -125,6 +145,20 @@ fsrs
 recommendations
 cache
 ```
+
+## Today slice
+
+Optional `today` содержит Home-only current-day view:
+
+```text
+metadata, summary, kpis, answerDistribution, activity,
+comparison, decks, recommendations
+```
+
+Он строится строго для `metadata.todayDate`. Top-level historical report не
+урезается и остаётся source для Calendar, Decks и Cards. `#/home` использует
+`today`, когда slice присутствует; fallback на top-level нужен только для
+старого payload/dev fixture.
 
 ## Card-level contract
 

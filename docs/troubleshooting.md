@@ -473,6 +473,45 @@ web-dashboard/src/data/mockReport.ts
 
 Не считать dev mock успешной проверкой dashboard server/API.
 
+## Settings Hub save/validation problems
+
+### Признаки
+
+- Save возвращает `400 invalid_settings`.
+- Поле остаётся в draft после ошибки.
+- Port/timeout сохранён, но текущий server работает со старым значением.
+
+### Что проверить
+
+- `fieldErrors` из `/api/dashboard/settings` и typed model в
+  `web-dashboard/src/types/settings.ts`.
+- Public allowlist/ranges в `config_service.py`.
+- Для port/idle timeout — notice о необходимости явного server restart.
+- `dashboard_display.period` не должен влиять на Home; current-day данные
+  находятся в `StudyReport.today`.
+
+Backend error намеренно не стирает draft. Не добавлять generic config endpoint
+и не редактировать shipped `config.json` во время runtime.
+
+## Broken E2E artifact manifest
+
+### Признаки
+
+- Manifest generation завершает успешный E2E run с ошибкой.
+- Сообщение сообщает missing, absolute, traversal или duplicate path.
+- В diagnostics ожидается log с дефисами, которого нет.
+
+### Что проверить
+
+Canonical log — `e2e-artifacts/diagnostics/anki_study_report.log`. Каждый path,
+который возвращает `manifest_indexed_paths(...)`, должен быть relative,
+уникальным и существовать под artifact root. Missing optional file не должен
+индексироваться; missing required file обязан завершить run с ошибкой.
+
+`runtime/dashboard-ready.json` может содержать token, но manifest хранит только
+его relative path. Не добавлять token-bearing URL или содержимое readiness file
+в manifest/report/screenshots.
+
 ## Что проверять в первую очередь
 
 1. `git status --short --branch`.

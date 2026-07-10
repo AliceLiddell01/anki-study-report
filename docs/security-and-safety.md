@@ -56,6 +56,17 @@ anki_study_report/user_files/logs/
 `extension_logging.redact(...)` и `_redact_token(...)` в server code помогают,
 но не заменяют ручную осторожность.
 
+`artifact-manifest.json` индексирует readiness file только по relative path и
+никогда не копирует его token-bearing content. Canonical add-on log path в E2E:
+`diagnostics/anki_study_report.log`.
+
+## Public settings allowlist
+
+`GET/POST /api/dashboard/settings` требует token. Backend публикует и изменяет
+только nested sections `dashboard`, `report`, `data`, `server`; unknown keys,
+token/runtime paths/package identity и E2E settings отклоняются. Partial write
+сохраняет internal config keys и возвращает normalized saved state.
+
 ## Frontend не читает Anki collection
 
 Frontend получает уже опубликованный JSON и вызывает ограниченные API. Он не

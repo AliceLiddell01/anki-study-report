@@ -77,7 +77,10 @@ thresholds.
 После strict APKG run проверить `e2e-artifacts/artifact-manifest.json`, наличие
 light/dark page/navigation pairs и обе Cards matrices под
 `screenshots/cards/synthetic` и `screenshots/cards/apkg`. В root не должно быть
-старого flat dump; вся папка остаётся ignored.
+старого flat dump; вся папка остаётся ignored. Settings Hub run содержит 20
+page screenshots. Все indexed paths должны существовать, быть relative и
+уникальными; canonical log — `diagnostics/anki_study_report.log`, а raw token
+допустим только внутри ignored `runtime/dashboard-ready.json`.
 
 Do not run heavy Docker E2E for docs-only changes.
 

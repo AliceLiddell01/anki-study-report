@@ -101,6 +101,7 @@ forecast
 fsrs
 recommendations
 cache
+today (optional Home-only slice)
 ```
 
 ## Dashboard server
@@ -141,10 +142,11 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/cards
 #/calendar
 #/actions
-#/integrations
-#/logs
 #/settings
+#/settings/data
 #/settings/server
+#/settings/sources
+#/settings/logs
 ```
 
 Старые placeholder routes `#/stats`, `#/fsrs` и `#/browse` удалены в Stage 15.
@@ -154,9 +156,9 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 Видимая primary navigation отделена от полного registry routes. Она содержит
 только `Сегодня`, `Календарь`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
 Profile/Settings/Tools в avatar dropdown, а `SettingsLayout.tsx` связывает
-существующие data/server/integrations/logs pages общей settings navigation.
-Технические routes остаются рабочими, хотя не показываются как основные
-аналитические вкладки.
+report/data/server/sources/logs постоянным Settings Hub sidebar. Старые
+`#/integrations` и `#/logs` redirect-ятся в canonical diagnostics routes.
+Технические страницы не показываются как основные аналитические вкладки.
 
 Подробная карта frontend routes/pages/helpers: `docs/frontend-map.md`.
 Продуктовое решение по навигации: `docs/navigation-ia.md`.

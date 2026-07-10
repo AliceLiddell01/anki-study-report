@@ -21,7 +21,7 @@
 | E2E artifact paths/screenshots | `node scripts/run_python.mjs -m pytest tests/test_docker_smoke_helpers.py` | `.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture` | Да | Проверяет readers/writers, manifest и synthetic/APKG screenshot hierarchy |
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
 | `.github/workflows/test.yml` или CI commands | Локально запустить измененные команды | `cd web-dashboard; pnpm run test:all` | Нет, если CI-only | CI должен повторять реальные local commands |
-| `config.json` / config defaults | `node scripts/run_python.mjs -m pytest tests/test_config_service.py` | Package check | Нет обычно | Defaults должны нормализоваться без Anki |
+| `config.json` / Settings Hub API | `node scripts/run_python.mjs -m pytest tests/test_config_service.py tests/test_dashboard_server.py` | Frontend settings tests + package check | Нет обычно | Defaults, allowlist, partial update и token contract должны совпадать |
 | Browser search/query actions | `node scripts/run_python.mjs -m pytest tests/test_browser_actions.py tests/test_dashboard_actions.py` | Cards/Actions frontend tests | Иногда | Search query sanitizer защищает Anki Browser actions |
 
 ## Команды-шпаргалка
@@ -58,6 +58,7 @@ preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
 
-Обычный strict APKG browser smoke также фиксирует 18 page screenshots, 2 avatar
+Обычный strict APKG browser smoke также фиксирует 20 page screenshots, 2 avatar
 menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
-`e2e-artifacts/artifact-manifest.json` должен ссылаться только на relative paths.
+`e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
+relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.

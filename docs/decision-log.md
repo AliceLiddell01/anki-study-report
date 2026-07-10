@@ -253,3 +253,36 @@ Notifications появляются только с реальными workflows,
 `docs/navigation-ia.md`, `web-dashboard/src/app/router.tsx`,
 `web-dashboard/src/layout/TopNav.tsx`,
 `web-dashboard/src/layout/SettingsLayout.tsx`.
+
+## ADR-011: Typed Settings Hub и отдельная семантика Today
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Dashboard scope редактировался в Profile, cache/server/logs жили на отдельных
+технических routes, а `#/home` зависел от общего dashboard period и мог
+показывать исторические данные под названием «Сегодня».
+
+### Решение
+
+Собрать canonical Settings Hub с постоянным sidebar и typed allowlisted
+`/api/dashboard/settings`. Anki config остаётся source of truth, unknown/internal
+keys сохраняются. `dashboard_display.period` deprecated. Для Home публикуется
+отдельный `StudyReport.today`, а исторический top-level report остаётся у
+Calendar/Decks/Cards. Profile становится read-only transitional page.
+
+### Последствия
+
+Frontend forms получают единый dirty/save/cancel contract; server/cache/log
+actions остаются отдельными. Payload contract дополняется optional `today`
+slice. Compatibility aliases `#/integrations` и `#/logs` redirect-ятся в
+canonical settings routes.
+
+### Где смотреть
+
+`docs/settings-hub.md`, `anki_study_report/config_service.py`,
+`anki_study_report/dashboard_payload.py`, `web-dashboard/src/lib/settingsApi.ts`,
+`web-dashboard/src/layout/SettingsLayout.tsx`.
