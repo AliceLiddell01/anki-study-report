@@ -172,6 +172,7 @@ from .profile_service import (
     ProfileValidationError,
     build_profile_payload,
 )
+from .activity_service import build_activity_hub_payload
 
 
 ADDON_NAME = "Anki Study Report"
@@ -2801,6 +2802,11 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
         cache_summary=_dashboard_cache_summary(),
     )
     report["profile"] = _profile_model()
+    report["activityHub"] = build_activity_hub_payload(
+        _STATS_CACHE.report_snapshot(),
+        _current_anki_today_date_key(),
+        display_settings=_dashboard_display_settings_for_payload(),
+    )
     cache_config = {
         **_read_config(),
         "period_start_ts": metadata.get("period_start_ts"),
@@ -2821,6 +2827,7 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
     )
     merged = merge_cached_report_parts(report, cache_parts)
     merged["profile"] = report["profile"]
+    merged["activityHub"] = report["activityHub"]
     return merged
 
 
