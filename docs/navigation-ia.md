@@ -1,7 +1,6 @@
 # Navigation / Information Architecture
 
-Статус решения: **Accepted**. Реализация Stage 1 готова 2026-07-10, кроме
-пункта поддержки, который ожидает реальный внешний URL.
+Статус решения: **Accepted / Complete**. Stage 1 завершён 2026-07-10.
 
 ## Границы Stage 1
 
@@ -50,11 +49,14 @@ fallback и chevron. Текущее меню разделено на два бл
 Настройки     → #/settings
 ────────────
 Инструменты   → #/actions
+Поддержать проект → https://boosty.to/ankistudyreport
 ```
 
-Пункт «Поддержать проект» появится только после фиксации реального support URL.
-В репозитории такой ссылки сейчас нет, поэтому Stage 1 намеренно не показывает
-неработающий пункт и не использует фиктивный адрес.
+«Поддержать проект» — статическая HTTPS-ссылка на Boosty. Она открывается в
+новой вкладке с `noopener noreferrer` и `referrerPolicy="no-referrer"`, не
+использует backend action, не получает dashboard token и не изменяет SPA route.
+Route `#/support` не существует. Отдельная support page остаётся возможным
+будущим продуктовым решением только при появлении нескольких providers.
 
 Меню открывается по click или `ArrowDown`, поддерживает `ArrowUp`/`ArrowDown`,
 `Home`/`End`, закрывается по `Escape`, click outside, выбору route и внешней

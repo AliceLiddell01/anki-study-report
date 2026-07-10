@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-10.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -18,6 +18,7 @@
 | Cache/report_from_cache/stats_cache | `node scripts/run_python.mjs -m pytest tests/test_stats_cache.py` | smoke scripts из `scripts/smoke_report_cache_*.py` + full pytest | Нет обычно | Cache не должен менять public dashboard contract |
 | Packaging/build scripts | `node scripts/run_python.mjs scripts/package_addon.py --check` | `.\build_ankiaddon.ps1` | Нет | Validator ловит forbidden files, linked assets, css markers |
 | Docker E2E/runtime behavior | Targeted local checks перед запуском | `.\scripts\run_full_check.ps1 -CleanDocker` | Да | Проверяет реальный Anki Desktop/import/readiness/browser |
+| E2E artifact paths/screenshots | `node scripts/run_python.mjs -m pytest tests/test_docker_smoke_helpers.py` | `.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture` | Да | Проверяет readers/writers, manifest и synthetic/APKG screenshot hierarchy |
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
 | `.github/workflows/test.yml` или CI commands | Локально запустить измененные команды | `cd web-dashboard; pnpm run test:all` | Нет, если CI-only | CI должен повторять реальные local commands |
 | `config.json` / config defaults | `node scripts/run_python.mjs -m pytest tests/test_config_service.py` | Package check | Нет обычно | Defaults должны нормализоваться без Anki |
@@ -56,3 +57,7 @@ preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
 использует tracked APKG fixture, клонирует импортированные cards/notes в Docker
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
+
+Обычный strict APKG browser smoke также фиксирует 18 page screenshots, 2 avatar
+menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
+`e2e-artifacts/artifact-manifest.json` должен ссылаться только на relative paths.

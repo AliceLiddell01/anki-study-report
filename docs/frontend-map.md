@@ -28,9 +28,10 @@ web-dashboard/src/types/report.ts
 ## Routes/pages
 
 Primary navigation содержит только `Сегодня`, `Календарь`, `Колоды` и
-`Карточки` в этом порядке. Profile/Settings/Tools открываются через avatar
-dropdown. Технические settings pages связаны отдельной навигацией и не являются
-primary-вкладками. Полный IA contract: `docs/navigation-ia.md`.
+`Карточки` в этом порядке. Profile/Settings/Tools и внешний Boosty support link
+открываются через avatar dropdown. Support — безопасная статическая ссылка, а
+не SPA route. Технические settings pages связаны отдельной навигацией и не
+являются primary-вкладками. Полный IA contract: `docs/navigation-ia.md`.
 
 | Route | Component | Данные/API | Тесты | Риски |
 | --- | --- | --- | --- | --- |

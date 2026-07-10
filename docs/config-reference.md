@@ -111,8 +111,14 @@ forecast
 | `KEEP_E2E_DATA` | `0` | `create-profile.sh` | Dev-only | `1` сохраняет старые данные для debug |
 | `ANKI_STUDY_REPORT_E2E` | `1` in E2E | add-on bootstrap | Dev-only | Включает E2E shortcuts |
 | `ANKI_STUDY_REPORT_E2E_ARTIFACTS` | `/e2e/artifacts` | E2E artifacts | Dev-only | Token-bearing artifacts не коммитить |
-| `ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR` | empty/fallback | add-on artifact lookup | Dev-only | Alternative artifacts path |
-| `ANKI_STUDY_REPORT_E2E_READY_FILE` | `/e2e/artifacts/dashboard-ready.json` | readiness | Dev-only | Waiter должен читать тот же путь |
+| `ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR` | empty/fallback | E2E artifact root override | Dev-only | Все category paths вычисляются относительно выбранного root |
+| `ANKI_STUDY_REPORT_E2E_RUNTIME_DIR` | `<root>/runtime` | readiness/events/PIDs | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR` | `<root>/diagnostics` | startup/failure logs | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_REPORTS_DIR` | `<root>/reports` | machine-readable summaries | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_HTML_DIR` | `<root>/html` | redacted DOM dumps | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR` | `<root>/screenshots` | visual proof | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_PACKAGE_DIR` | `<root>/package` | Docker-built add-on | Dev-only | Вычисляется runner-ом из artifact root |
+| `ANKI_STUDY_REPORT_E2E_READY_FILE` | `/e2e/artifacts/runtime/dashboard-ready.json` | readiness | Dev-only | Waiter и add-on должны читать/писать тот же path |
 | `ANKI_STUDY_REPORT_E2E_PORT` | `8766` | E2E dashboard start | Dev-only | Порт для E2E server |
 | `ANKI_STUDY_REPORT_E2E_DEBUG_QT` | `0` | `start-anki.sh` | Dev-only | Включает verbose Qt diagnostics |
 | `ANKI_E2E_APKG_FIXTURE` | empty | PowerShell wrapper | Dev-only | Использовать только sanitized fixture |
@@ -136,4 +142,3 @@ forecast
 - Manifest package identity.
 - Dashboard token.
 - Generated frontend assets.
-

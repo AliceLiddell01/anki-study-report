@@ -163,14 +163,17 @@ Primary navigation сейчас строго ограничена четырьм
 Сегодня → Календарь → Колоды → Карточки
 ```
 
-`#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки и
-Инструменты (`#/actions`) доступны через avatar menu справа. `#/settings`,
+`#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки,
+Инструменты (`#/actions`) и «Поддержать проект» доступны через avatar menu
+справа. Support ведёт на `https://boosty.to/ankistudyreport` как статическая
+no-referrer ссылка в новой вкладке; `#/support` не существует. `#/settings`,
 `#/settings/server`, `#/integrations` и `#/logs` объединены settings shell как
 Данные, Система → Сервер и Диагностика → Источники данных/Логи.
 
 Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.
-Полный контракт и причины: `docs/navigation-ia.md`.
+Stage 1 Navigation / IA завершён. Полный контракт и причины:
+`docs/navigation-ia.md`.
 
 ## Docker E2E: что важно не перепутать
 
@@ -189,12 +192,14 @@ Base profile DB:
 E2E artifacts:
 
 ```text
-e2e-artifacts/dashboard-ready.json
-e2e-artifacts/addon-e2e-events.jsonl
+e2e-artifacts/runtime/dashboard-ready.json
+e2e-artifacts/runtime/addon-e2e-events.jsonl
 ```
 
 Если Docker E2E падает, сначала смотреть layout/profile/readiness artifacts,
-а не менять production код наугад.
+затем `diagnostics/`, `reports/` и `html/`, а не менять production код наугад.
+Полный redacted индекс текущего run — `e2e-artifacts/artifact-manifest.json`;
+page/navigation/Cards matrices находятся под `screenshots/`.
 
 ## Cards preview: текущая release truth
 

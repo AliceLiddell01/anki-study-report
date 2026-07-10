@@ -12,7 +12,7 @@ production code. Для выбора проверок см. `docs/test-matrix.md
 | Dashboard показывает forbidden | Нет token или token устарел | URL, `/api/report`, `dashboard_server.py` | Открыть dashboard из Anki заново |
 | После свежей установки видны старые стили | Anki использует старую папку add-on/assets | `addons21`, `web_dashboard/assets` | Удалить старую установленную папку, переустановить, перезапустить Anki |
 | Dashboard открыл fallback-страницу | Static assets отсутствуют или неполные | `/api/status`, `web_dashboard/index.html`, `web_dashboard/assets` | Пересобрать `build:addon`, проверить package validation |
-| Docker E2E не доходит до readiness | Add-on не импортирован, профиль не создан, server/report не стартовал | `e2e-artifacts/addon-e2e-events.jsonl` | Читать markers по порядку, проверить layout и `prefs21.db` |
+| Docker E2E не доходит до readiness | Add-on не импортирован, профиль не создан, server/report не стартовал | `e2e-artifacts/runtime/addon-e2e-events.jsonl` | Читать markers по порядку, проверить layout и `prefs21.db` |
 | Cards preview пустой или smoke ждет не тот DOM | Несовпадение display mode и ожиданий smoke | `CardsPage.tsx`, `smoke-browser.mjs` | Проверить mode: `table`/`tiles` или `ankiPreview` |
 | Media preview возвращает 400/404 | Unsafe name, файла нет, token не передан | `/api/media`, `note_intelligence.py` | Проверить `name`, token и provider media file |
 | Payload test упал на точной форме | Контракт реально изменился или устарел тест | `dashboard_payload.py`, `report.ts`, tests | Сначала проверить фактический payload |
@@ -172,12 +172,17 @@ fallback остался, смотреть `/api/status` и installed `web_dashbo
 В первую очередь смотреть:
 
 ```text
-e2e-artifacts/dashboard-ready.json
-e2e-artifacts/addon-e2e-events.jsonl
-e2e-artifacts/anki-data-tree.txt
-e2e-artifacts/addons-tree.txt
-e2e-artifacts/anki-startup-tail.txt
+e2e-artifacts/runtime/dashboard-ready.json
+e2e-artifacts/runtime/addon-e2e-events.jsonl
+e2e-artifacts/diagnostics/anki-data-tree.txt
+e2e-artifacts/diagnostics/addons-tree.txt
+e2e-artifacts/diagnostics/anki-startup-tail.txt
 ```
+
+Browser/API JSON лежат в `e2e-artifacts/reports/`, redacted DOM dumps — в
+`e2e-artifacts/html/`, screenshots — в тематических подпапках
+`e2e-artifacts/screenshots/`. Сначала сверить `artifact-manifest.json`, затем
+открывать конкретную категорию.
 
 Ожидаемый add-on path внутри контейнера:
 

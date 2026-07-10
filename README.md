@@ -33,9 +33,10 @@ anki_study_report.ankiaddon
 `anki_study_report/`.
 
 Текущая primary navigation dashboard: `Сегодня → Календарь → Колоды → Карточки`.
-Профиль, Инструменты и Настройки доступны через profile menu; Сервер,
-Источники данных и Логи собраны в settings navigation. Полное решение и правила
-эволюции routes описаны в `docs/navigation-ia.md`.
+Профиль, Инструменты, Настройки и безопасная внешняя ссылка «Поддержать проект»
+доступны через profile menu; Сервер, Источники данных и Логи собраны в settings
+navigation. Полное решение и правила эволюции routes описаны в
+`docs/navigation-ia.md`.
 
 ## Самые важные команды
 

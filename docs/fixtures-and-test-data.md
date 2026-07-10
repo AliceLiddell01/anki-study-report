@@ -123,6 +123,10 @@ $env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
 - Screenshots/logs/HTML dumps от локального прогона.
 - `docker/anki-e2e/local-input/`.
 
+Runtime screenshots организованы под `e2e-artifacts/screenshots/cards/` по
+fixture (`synthetic`/`apkg`), mode (`table`/`tiles`/`anki-preview`) и theme.
+Это generated proof, а не source fixture.
+
 ## Как обновлять fixtures безопасно
 
 1. Описать, какой bug/edge case fixture покрывает.

@@ -88,22 +88,38 @@ ANKI_STUDY_REPORT_E2E_READY_FILE
 
 ## Readiness artifacts
 
-Успешный E2E пишет:
+Generated outputs разделены по назначению:
 
 ```text
-e2e-artifacts/dashboard-ready.json
-e2e-artifacts/addon-e2e-events.jsonl
+e2e-artifacts/
+├─ artifact-manifest.json
+├─ runtime/
+│  ├─ dashboard-ready.json
+│  └─ addon-e2e-events.jsonl
+├─ diagnostics/                startup trees, logs and tails
+├─ reports/                    API/browser/APKG JSON summaries
+├─ html/                       redacted DOM dumps
+├─ package/                    Docker-built .ankiaddon
+└─ screenshots/
+   ├─ navigation/              avatar menu, light/dark
+   ├─ pages/                   current non-Cards routes, light/dark
+   └─ cards/
+      ├─ synthetic/            table/tiles/anki-preview, light/dark
+      └─ apkg/                 table/tiles/anki-preview, light/dark
 ```
 
-На timeout/failure полезны:
+Readiness readers и add-on E2E bootstrap используют `runtime/`. На
+timeout/failure в первую очередь полезны:
 
 ```text
-e2e-artifacts/anki-data-tree.txt
-e2e-artifacts/addons-tree.txt
-e2e-artifacts/anki-startup-tail.txt
-e2e-artifacts/browser-smoke-first.json
-e2e-artifacts/*.png
-e2e-artifacts/*.html
+e2e-artifacts/runtime/dashboard-ready.json
+e2e-artifacts/runtime/addon-e2e-events.jsonl
+e2e-artifacts/diagnostics/anki-data-tree.txt
+e2e-artifacts/diagnostics/addons-tree.txt
+e2e-artifacts/diagnostics/anki-startup-tail.txt
+e2e-artifacts/reports/browser-smoke-first.json
+e2e-artifacts/html/failures/
+e2e-artifacts/screenshots/failures/
 ```
 
 Эти файлы помогают диагностировать, дошел ли Anki до import, hook, report build,
@@ -154,7 +170,12 @@ Cards preview smoke mode-specific:
   текущих rendered modes: `table`, `tiles` и `ankiPreview`; sanitizer не
   ослабляется, JS templates не исполняются.
 - Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
-  light/dark темах.
+  light/dark темах отдельно для synthetic и APKG fixtures. Он также сохраняет
+  light/dark пары девяти текущих non-Cards routes и открытого avatar menu.
+
+`artifact-manifest.json` индексирует только relative paths, status, Anki
+version, timestamp, route/theme/mode/fixture metadata. Token и полный dashboard
+URL туда не записываются.
 
 Tracked APKG fixture находится здесь:
 

@@ -74,6 +74,11 @@ the APKG import path, clones imported cards/notes inside the Docker collection
 for the 100-card smoke, and leaves timings as diagnostics rather than release
 thresholds.
 
+После strict APKG run проверить `e2e-artifacts/artifact-manifest.json`, наличие
+light/dark page/navigation pairs и обе Cards matrices под
+`screenshots/cards/synthetic` и `screenshots/cards/apkg`. В root не должно быть
+старого flat dump; вся папка остаётся ignored.
+
 Do not run heavy Docker E2E for docs-only changes.
 
 ## Manual local Anki smoke
