@@ -86,6 +86,8 @@ class DashboardServerManager:
         self._health_provider = None
         self._display_settings_provider = None
         self._display_settings_handler = None
+        self._profile_provider = None
+        self._profile_handler = None
         self._media_file_provider = None
 
     def start(
@@ -244,6 +246,11 @@ class DashboardServerManager:
             self._display_settings_provider = settings_provider
             self._display_settings_handler = settings_handler
 
+    def configure_profile_handlers(self, profile_provider=None, profile_handler=None) -> None:
+        with self._lock:
+            self._profile_provider = profile_provider
+            self._profile_handler = profile_handler
+
     def configure_media_handler(self, media_file_provider=None) -> None:
         with self._lock:
             self._media_file_provider = media_file_provider
@@ -368,6 +375,30 @@ class DashboardServerManager:
             log_exception("settings.update.error", "Dashboard settings update failed")
             return {"ok": False, "error": "Dashboard settings update failed."}
 
+    def profile(self) -> dict[str, Any]:
+        with self._lock:
+            provider = self._profile_provider
+        if provider is None:
+            return {"ok": False, "error": "Profile is not configured."}
+        try:
+            return provider()
+        except Exception:
+            traceback.print_exc()
+            log_exception("profile.read.error", "Profile read failed")
+            return {"ok": False, "error": "Profile read failed."}
+
+    def update_profile(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._profile_handler
+        if handler is None:
+            return {"ok": False, "error": "Profile is not configured."}
+        try:
+            return handler(payload)
+        except Exception:
+            traceback.print_exc()
+            log_exception("profile.update.error", "Profile update failed")
+            return {"ok": False, "error": "Profile update failed."}
+
     def media_file(self, name: str) -> Path | None:
         with self._lock:
             provider = self._media_file_provider
@@ -460,6 +491,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/dashboard/settings":
             self._send_dashboard_settings(_query_token(parsed))
             return
+        if path == "/api/profile":
+            self._send_profile(_query_token(parsed))
+            return
         if path == "/api/logs/status":
             self._send_logs_status(_query_token(parsed))
             return
@@ -505,6 +539,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/dashboard/settings":
             self._send_dashboard_settings_update(_query_token(parsed))
+            return
+        if path == "/api/profile":
+            self._send_profile_update(_query_token(parsed))
             return
         if path.startswith("/api/actions/"):
             action = path.removeprefix("/api/actions/").strip("/")
@@ -1052,6 +1089,24 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(_action_error("dashboard-settings", "Invalid JSON request body."), HTTPStatus.BAD_REQUEST)
             return
         result = self.manager.update_display_settings(payload)
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
+    def _send_profile(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        result = self.manager.profile()
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.SERVICE_UNAVAILABLE)
+
+    def _send_profile_update(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(_action_error("profile", "Invalid JSON request body."), HTTPStatus.BAD_REQUEST)
+            return
+        result = self.manager.update_profile(payload)
         self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
 
     def _send_dashboard_action(self, token: str | None, action: str) -> None:

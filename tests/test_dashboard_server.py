@@ -224,3 +224,42 @@ def test_dashboard_settings_endpoint_get_post_validation_and_auth():
         assert json.loads(body)["ok"] is False
     finally:
         manager.stop()
+
+
+def test_profile_endpoint_get_post_validation_and_auth():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    received = []
+    manager.configure_profile_handlers(
+        profile_provider=lambda: {"ok": True, "profile": {"preferences": {"deckOverviewSort": "name"}}},
+        profile_handler=lambda payload: received.append(payload) or (
+            {"ok": False, "fieldErrors": {"customStudyStartedOn": "invalid"}}
+            if payload.get("customStudyStartedOn") == "invalid"
+            else {"ok": True, "profile": {"preferences": payload}}
+        ),
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        assert fetch(f"{base_url}/api/profile")[0] == 403
+        status, _, body = fetch(f"{base_url}/api/profile?token={token}")
+        assert status == 200
+        assert json.loads(body)["profile"]["preferences"]["deckOverviewSort"] == "name"
+
+        patch = {"deckOverviewSort": "reviews"}
+        status, _, body = fetch(f"{base_url}/api/profile?token={token}", method="POST", json_body=patch)
+        assert status == 200
+        assert received == [patch]
+        assert json.loads(body)["profile"]["preferences"] == patch
+
+        assert fetch(f"{base_url}/api/profile", method="POST", json_body=patch)[0] == 403
+        status, _, body = fetch(
+            f"{base_url}/api/profile?token={token}",
+            method="POST",
+            json_body={"customStudyStartedOn": "invalid"},
+        )
+        assert status == 400
+        assert "customStudyStartedOn" in json.loads(body)["fieldErrors"]
+    finally:
+        manager.stop()

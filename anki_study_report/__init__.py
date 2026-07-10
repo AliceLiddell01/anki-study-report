@@ -167,6 +167,11 @@ from .config_service import (
 )
 from .extension_logging import configure_log_dir, log_event, log_exception, log_status
 from .stats_cache import StatsCacheManager
+from .profile_service import (
+    ProfilePreferencesStore,
+    ProfileValidationError,
+    build_profile_payload,
+)
 
 
 ADDON_NAME = "Anki Study Report"
@@ -281,6 +286,7 @@ _WEB_DASHBOARD_DIALOG: WebDashboardSettingsDialog | None = None
 _LAUNCHER_DIALOG: LauncherDialog | None = None
 _DASHBOARD_SERVER = DashboardServerManager()
 _STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3")
+_PROFILE_STORE = ProfilePreferencesStore(_RUNTIME_DATA_DIR / "profile.json")
 _E2E_BOOTSTRAP_STARTED = False
 _E2E_BOOTSTRAP_DONE = False
 
@@ -1901,6 +1907,10 @@ def _configure_dashboard_cache_handlers() -> None:
         settings_provider=_dashboard_display_settings_response,
         settings_handler=_update_dashboard_display_settings,
     )
+    _DASHBOARD_SERVER.configure_profile_handlers(
+        profile_provider=_profile_response,
+        profile_handler=_update_profile,
+    )
     _DASHBOARD_SERVER.configure_media_handler(_dashboard_media_file)
 
 
@@ -2017,6 +2027,47 @@ def _dashboard_deck_options() -> list[dict]:
         {"id": deck_id, "name": deck_name}
         for deck_id, deck_name in _deck_names()
     ]
+
+
+def _profile_model(snapshot: dict | None = None) -> dict:
+    source = snapshot if isinstance(snapshot, dict) else _STATS_CACHE.report_snapshot()
+    return build_profile_payload(
+        source,
+        _current_anki_today_date_key(),
+        anki_profile_name=_current_anki_profile_name(),
+        preferences=_PROFILE_STORE.read(),
+    )
+
+
+def _profile_response() -> dict:
+    return {"ok": True, "profile": _profile_model()}
+
+
+def _update_profile(payload: dict) -> dict:
+    try:
+        _PROFILE_STORE.update(payload if isinstance(payload, dict) else {})
+    except ProfileValidationError as error:
+        return {
+            "ok": False,
+            "error": "invalid_profile_preferences",
+            "message": "Проверьте данные профиля.",
+            "fieldErrors": error.field_errors,
+        }
+    profile = _profile_model()
+    state = _DASHBOARD_SERVER.state()
+    if state.report_path:
+        try:
+            report = json.loads(Path(state.report_path).read_text(encoding="utf-8"))
+            if isinstance(report, dict):
+                report["profile"] = profile
+                _DASHBOARD_SERVER.publish_report(report)
+        except (OSError, json.JSONDecodeError):
+            pass
+    return {
+        "ok": True,
+        "message": "Профиль сохранён.",
+        "profile": profile,
+    }
 
 
 def _dashboard_display_settings_for_payload() -> dict:
@@ -2749,6 +2800,7 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
         metadata,
         cache_summary=_dashboard_cache_summary(),
     )
+    report["profile"] = _profile_model()
     cache_config = {
         **_read_config(),
         "period_start_ts": metadata.get("period_start_ts"),
@@ -2767,7 +2819,9 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
         cache_config,
         legacy_report={"metrics": metrics, "payload": report},
     )
-    return merge_cached_report_parts(report, cache_parts)
+    merged = merge_cached_report_parts(report, cache_parts)
+    merged["profile"] = report["profile"]
+    return merged
 
 
 def _dashboard_cache_summary() -> dict:
