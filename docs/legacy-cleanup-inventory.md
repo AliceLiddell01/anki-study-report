@@ -10,6 +10,9 @@ compatibility layer или cleanup-кандидаты. Это не список 
 текущему add-on runtime, dashboard payload, packaged artifact, Docker E2E и
 пользовательским отчетам.
 
+Closure: legacy cleanup завершён и подтверждён cumulative Docker E2E 2026-07-10;
+итоговый handoff — `docs/legacy-cleanup-handoff.md`, следующий этап — Navigation / IA.
+
 ## Статусы
 
 | Статус | Что означает | Правило |

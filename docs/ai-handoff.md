@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-10.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -43,6 +43,7 @@ docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
+docs/legacy-cleanup-handoff.md   финальное состояние cleanup-линии и старт следующего этапа
 docs/card-alias-audit.md         card payload alias evidence/removal readiness
 ```
 

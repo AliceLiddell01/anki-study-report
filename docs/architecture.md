@@ -143,6 +143,7 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/actions
 #/integrations
 #/logs
+#/settings
 #/settings/server
 ```
 
