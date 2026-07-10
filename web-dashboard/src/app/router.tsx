@@ -1,17 +1,14 @@
 import type { ReactNode } from "react";
 import ActionsPage from "../pages/ActionsPage";
-import BrowsePage from "../pages/BrowsePage";
 import CalendarPage from "../pages/CalendarPage";
 import CardsPage from "../pages/CardsPage";
 import DecksPage from "../pages/DecksPage";
-import FsrsPage from "../pages/FsrsPage";
 import HomePage, { type LoadState } from "../pages/HomePage";
 import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
-import StatsPage from "../pages/StatsPage";
 import type { StudyReport } from "../types/report";
 
 export type RoutePath =
@@ -19,10 +16,7 @@ export type RoutePath =
   | "/profile"
   | "/decks"
   | "/cards"
-  | "/stats"
   | "/calendar"
-  | "/fsrs"
-  | "/browse"
   | "/actions"
   | "/settings"
   | "/settings/server"
@@ -34,10 +28,7 @@ export const navItems: Array<{ path: RoutePath; label: string; group: "Осно�
   { path: "/profile", label: "Профиль", group: "Основное" },
   { path: "/decks", label: "Колоды", group: "Основное" },
   { path: "/cards", label: "Карточки", group: "Аналитика" },
-  { path: "/stats", label: "Статистика", group: "Аналитика" },
   { path: "/calendar", label: "Календарь", group: "Аналитика" },
-  { path: "/fsrs", label: "FSRS", group: "Аналитика" },
-  { path: "/browse", label: "Поиск", group: "Инструменты" },
   { path: "/actions", label: "Действия", group: "Инструменты" },
   { path: "/integrations", label: "Интеграции", group: "Система" },
   { path: "/logs", label: "Логи", group: "Система" },
@@ -65,14 +56,8 @@ export function renderRoute(
       return <DecksPage report={report} loadState={loadState} />;
     case "/cards":
       return <CardsPage report={report} loadState={loadState} />;
-    case "/stats":
-      return <StatsPage />;
     case "/calendar":
       return <CalendarPage report={report} loadState={loadState} />;
-    case "/fsrs":
-      return <FsrsPage />;
-    case "/browse":
-      return <BrowsePage />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
     case "/integrations":
