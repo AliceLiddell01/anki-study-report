@@ -73,6 +73,11 @@ flowchart TD
 Кэш не должен менять публичный dashboard contract. Если cache и legacy дают
 разную форму данных, адаптер обязан привести ее к тому же payload.
 
+`profile_service.py` получает исходный all-collection snapshot до применения
+dashboard period/deck filters. Он строит compact Profile slice и обслуживает
+атомарный `<runtime>/profile.json`; frontend не сканирует collection и не
+пересчитывает raw revlog.
+
 ## Dashboard payload
 
 `dashboard_payload.py` - чистый слой трансформации метрик в JSON. Его ключевые
@@ -102,6 +107,7 @@ fsrs
 recommendations
 cache
 today (optional Home-only slice)
+profile (all-collection lifetime slice)
 ```
 
 ## Dashboard server
@@ -113,6 +119,7 @@ today (optional Home-only slice)
 - публикует последний report payload в памяти;
 - обслуживает media-preview безопасным allowlist/sanitizer путем;
 - прокидывает dashboard actions обратно в Anki через callbacks.
+- обслуживает narrow token-protected `GET/POST /api/profile`.
 
 Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
 через API server и контролируются Python side.
@@ -171,7 +178,7 @@ Runtime data хранится отдельно от исходников, ког
 <profile>/addon_data/<addon_id>/
 ```
 
-Там размещаются cache и logs. Старый `anki_study_report/user_files/`
+Там размещаются cache, `profile.json` и logs. Старый `anki_study_report/user_files/`
 используется как fallback и мигрируется при возможности.
 
 В git не должны попадать:

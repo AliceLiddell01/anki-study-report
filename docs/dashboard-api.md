@@ -34,6 +34,7 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/media
 /api/cache/status
 /api/dashboard/settings
+/api/profile
 /api/logs/status
 /api/logs/recent
 /api/logs/download
@@ -48,6 +49,7 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/server/<action>
 /api/logs/clear
 /api/dashboard/settings
+/api/profile
 /api/actions/<action>
 ```
 
@@ -72,6 +74,14 @@ invalid enum/type/range получают `400`:
 
 Успешный ответ возвращает фактически сохранённое normalized state. Полный
 contract: `docs/settings-hub.md`.
+
+## Profile API
+
+`GET /api/profile` возвращает public `ProfileModel`; `POST` принимает только
+`customStudyStartedOn` и `deckOverviewSort`. Computed metrics, identity и
+unknown fields не writable. Invalid values получают `400` и `fieldErrors`.
+Source of truth — per-profile runtime `profile.json`; public ответ не содержит
+token или runtime path. Полный contract: `docs/profile-mvp.md`.
 
 ## Payload source of truth
 
@@ -119,6 +129,7 @@ cache?
 cacheDebug?
 performance?
 today?
+profile?
 ```
 
 Backend сейчас строит основной contract через:
@@ -159,6 +170,13 @@ comparison, decks, recommendations
 урезается и остаётся source для Calendar, Decks и Cards. `#/home` использует
 `today`, когда slice присутствует; fallback на top-level нужен только для
 старого payload/dev fixture.
+
+## Profile slice
+
+Optional `profile` содержит `identity`, `studyHistory`, `activity`, `decks` и
+`preferences`. В runtime Stage 3 он публикуется всегда и строится из исходного
+all-collection cache snapshot независимо от dashboard scope. Optional type
+сохраняет совместимость frontend с legacy fixtures/старым report.
 
 ## Card-level contract
 

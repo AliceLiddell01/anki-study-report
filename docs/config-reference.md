@@ -87,6 +87,7 @@ forecast
 | Cache schema | `CACHE_SCHEMA_VERSION = 1` | `stats_cache.py` | Нет | Изменение требует migration/rebuild |
 | Report cache TTL | `5` seconds | `__init__.py` `_REPORT_CACHE` | Нет | Слишком большой TTL даст stale runtime report |
 | Logs dir | `<runtime>/logs` | `extension_logging.py` | Да, через Logs page | Логи могут содержать runtime diagnostics |
+| Profile preferences | `<runtime>/profile.json` | `profile_service.py` | Да, через Profile | Per-profile, atomic; не включать в package/git |
 
 ## Integrations/session/study time
 
@@ -133,6 +134,7 @@ forecast
 - Dashboard deck filter; период dashboard больше не является настройкой.
 - Dashboard port/auto-start/idle timeout.
 - Session/study-time/cache options, если понятны последствия.
+- Profile custom study start date и deck overview sort.
 
 ## Public Settings Hub API
 
@@ -149,6 +151,10 @@ server.idleTimeoutSeconds  0..86400
 ```
 
 Partial update сохраняет unknown/internal top-level и nested config keys.
+
+`GET/POST /api/profile` — отдельный allowlist и не часть add-on config:
+`customStudyStartedOn` (`null` или non-future ISO date) и `deckOverviewSort`
+(`name`, `reviews`, `active_days`).
 
 ## Internal/dev-only
 

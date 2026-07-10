@@ -254,6 +254,39 @@ Notifications появляются только с реальными workflows,
 `web-dashboard/src/layout/TopNav.tsx`,
 `web-dashboard/src/layout/SettingsLayout.tsx`.
 
+## ADR-012: Profile как per-Anki-profile all-collection lifetime view
+
+### Статус
+
+Accepted
+
+### Контекст
+
+После Settings Hub `#/profile` оставался transitional экраном и зависел от
+dashboard metadata. Add-ons общие между Anki profiles, но collection и runtime
+identity принадлежат конкретному profile. Profile metrics не должны меняться
+вместе с dashboard deck scope.
+
+### Решение
+
+Строить typed `StudyReport.profile` из исходного all-collection stats-cache
+snapshot до фильтров. Хранить только `customStudyStartedOn` и
+`deckOverviewSort` в атомарном `<profile>/addon_data/<addon_id>/profile.json`.
+Изменять их через отдельный token-protected allowlisted `/api/profile`.
+Override даты является presentation metadata и не изменяет totals/activity.
+
+### Последствия
+
+Profile не требует нового collection scan и остаётся независимым от Today,
+Calendar, Decks и Cards contracts. Shared add-on config/localStorage не может
+быть authoritative profile storage. Future avatar/banner потребуют отдельных
+validated local files и token-protected serving, но не входят в Stage 3.
+
+### Где смотреть
+
+`docs/profile-mvp.md`, `anki_study_report/profile_service.py`,
+`anki_study_report/__init__.py`, `web-dashboard/src/pages/ProfilePage.tsx`.
+
 ## ADR-011: Typed Settings Hub и отдельная семантика Today
 
 ### Статус

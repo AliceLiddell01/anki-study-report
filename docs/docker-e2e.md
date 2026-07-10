@@ -172,7 +172,9 @@ Cards preview smoke mode-specific:
 - Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
   light/dark темах отдельно для synthetic и APKG fixtures. Он также сохраняет
   light/dark пары десяти текущих non-Cards routes (включая пять Settings Hub
-  pages) и открытого avatar menu.
+  pages) и открытого avatar menu. Profile smoke отдельно проверяет synthetic
+  identity `E2E`, шесть KPI, activity/recent/decks, сохраняет дату и сортировку,
+  перезагружает страницу и доказывает persistence через `/api/profile`.
 
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log

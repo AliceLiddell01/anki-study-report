@@ -37,7 +37,7 @@ Primary navigation содержит только `Сегодня`, `Календ
 | Route | Component | Данные/API | Тесты | Риски |
 | --- | --- | --- | --- | --- |
 | `#/home` | `HomePage` («Сегодня») | `StudyReport.today` + historical forecast/fsrs | `HomePage.test.tsx`, `router.test.tsx` | Today slice должен оставаться current-day; top-level report сохраняется для других pages |
-| `#/profile` | `ProfilePage` | read-only `report.metadata` | `SettingsHub.test.tsx`, `TopNav.test.tsx` | Transitional route, не второе место редактирования settings |
+| `#/profile` | `ProfilePage` | `StudyReport.profile`, POST `/api/profile` | `ProfilePage.test.tsx`, `profileApi.test.ts`, `TopNav.test.tsx` | All-collection lifetime view; preferences per Anki profile, не dashboard scope |
 | `#/decks` | `DecksPage` | `report.decks`, `deckHealth` helpers | `deckHealth` indirectly | Статус/сортировка колод зависят от числовой нормализации |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
 | `#/calendar` | `CalendarPage` | `activity.days`, calendar helpers | `calendarStats.test.ts` | Даты/period filters легко ломают heatmap |
@@ -64,6 +64,7 @@ web-dashboard/src/lib/calendarStats.ts    calendar/heatmap model
 web-dashboard/src/lib/deckHealth.ts       deck status model
 web-dashboard/src/lib/dateUtils.ts        date formatting
 web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
+web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
 web-dashboard/src/lib/theme.ts            theme localStorage
 ```
 
@@ -116,7 +117,8 @@ answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 
 | Payload key | Основные потребители |
 | --- | --- |
-| `metadata` | Home, Profile, Cards, Settings |
+| `metadata` | Home, Cards, Settings |
+| `profile` | Profile identity, lifetime KPI, activity, deck overview/preferences |
 | `summary` | Home |
 | `kpis` | Home |
 | `answerDistribution` | Home |

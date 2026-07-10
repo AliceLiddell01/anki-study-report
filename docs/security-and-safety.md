@@ -67,6 +67,14 @@ anki_study_report/user_files/logs/
 token/runtime paths/package identity и E2E settings отклоняются. Partial write
 сохраняет internal config keys и возвращает normalized saved state.
 
+## Profile allowlist and privacy
+
+`GET/POST /api/profile` также требует token. POST принимает только дату начала
+и enum сортировки; metrics, Anki profile name, paths и unknown fields менять
+нельзя. Public model агрегирован, не содержит card content, collection dump,
+token, absolute path, avatar/banner blobs или remote URL. `profile.json` лежит
+в per-profile runtime и пишется атомарно.
+
 ## Frontend не читает Anki collection
 
 Frontend получает уже опубликованный JSON и вызывает ограниченные API. Он не

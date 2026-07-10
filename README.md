@@ -38,6 +38,9 @@ anki_study_report.ankiaddon
 navigation. Полное решение и правила эволюции routes описаны в
 `docs/navigation-ia.md`.
 
+`#/profile` — локальная all-collection витрина текущего Anki-профиля с lifetime
+KPI, активностью, обзором колод и per-profile настройками даты/сортировки.
+
 ## Самые важные команды
 
 Полная локальная frontend/Python/package проверка без Docker:
@@ -89,6 +92,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Frontend map](docs/frontend-map.md)
 - [Navigation / Information Architecture](docs/navigation-ia.md)
 - [Settings Hub](docs/settings-hub.md)
+- [Profile MVP](docs/profile-mvp.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)

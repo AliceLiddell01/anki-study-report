@@ -85,6 +85,7 @@ docker/anki-e2e/README.md                  подробности Docker E2E с�
 - `docs/security-and-safety.md` - token/server/media/rendering safety.
 - `docs/decision-log.md` - почему приняты текущие архитектурные решения.
 - `docs/settings-hub.md` - canonical settings routes, public model и save/runtime boundaries.
+- `docs/profile-mvp.md` - per-Anki-profile identity, lifetime all-collection contract и persistence.
 
 ## Что не является source of truth
 

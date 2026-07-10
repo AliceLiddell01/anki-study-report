@@ -41,7 +41,8 @@ docs/release-checklist.md        публикация .ankiaddon
 docs/fixtures-and-test-data.md   fixtures, mock data, synthetic E2E data
 docs/frontend-map.md             routes/pages/helpers/tests frontend
 docs/navigation-ia.md            current primary nav, profile menu, settings hierarchy
-docs/settings-hub.md             Stage 2 settings routes, persistence, Today/Profile transition
+docs/settings-hub.md             Stage 2 settings routes, persistence, Today/settings boundary
+docs/profile-mvp.md              Stage 3 all-collection Profile, per-profile persistence/API
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -152,6 +153,7 @@ metrics.py
 note_intelligence.py
 browser_actions.py
 config_service.py
+profile_service.py
 ```
 
 Так ее можно импортировать и тестировать без реального Anki.
@@ -174,6 +176,12 @@ redirect-ятся в canonical diagnostics pages. Profile больше не ре
 dashboard scope. Home использует отдельный current-day `StudyReport.today`, а
 historical top-level report сохраняется для других pages. Полный contract:
 `docs/settings-hub.md`.
+
+Profile MVP использует отдельный `StudyReport.profile`, всегда построенный из
+all-collection cache snapshot до dashboard filters. Editable
+`customStudyStartedOn` и `deckOverviewSort` живут в per-profile runtime
+`profile.json` и меняются через token-protected `/api/profile`. Полный contract:
+`docs/profile-mvp.md`.
 
 Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.

@@ -27,6 +27,11 @@ web-dashboard/src/data/mockReport.ts
 `mockReport` нужен для frontend dev mode и UI tests. Он не является доказательством
 работы реального `/api/report`.
 
+Profile fixtures в `mockReport` синтетические: identity `E2E`, normal history,
+несколько deterministic decks и revlog-estimate time. `ProfilePage.test.tsx`
+также строит empty/missing-time/custom-date variants; реальные имена и runtime
+`profile.json` не коммитятся.
+
 ## Existing Docker synthetic data
 
 Docker E2E создает synthetic collection через:
