@@ -83,7 +83,7 @@ def has_traceback(paths: ArtifactPaths, label: str) -> bool:
     candidates = [
         paths.diagnostics / f"anki-stderr-{label}.log",
         paths.diagnostics / f"anki-stdout-{label}.log",
-        paths.diagnostics / "anki_study_report.log",
+        paths.addon_log,
     ]
     for path in candidates:
         if not path.is_file():
@@ -113,8 +113,7 @@ def write_failure_artifacts(paths: ArtifactPaths, label: str) -> None:
         paths.runtime / "addon-e2e-events.jsonl",
         paths.diagnostics / f"anki-stdout-{label}.log",
         paths.diagnostics / f"anki-stderr-{label}.log",
-        paths.diagnostics / "anki-study-report.log",
-        paths.diagnostics / "anki_study_report.log",
+        paths.addon_log,
         paths.diagnostics / "xvfb.log",
     ]
     lines = [
@@ -168,8 +167,7 @@ def print_readiness_diagnostics(paths: ArtifactPaths, ready_file: Path, label: s
 
     for path in (
         paths.diagnostics / "prefs21-summary.txt",
-        paths.diagnostics / "anki-study-report.log",
-        paths.diagnostics / "anki_study_report.log",
+        paths.addon_log,
         paths.diagnostics / f"anki-stdout-{label}.log",
         paths.diagnostics / f"anki-stderr-{label}.log",
     ):
@@ -220,8 +218,7 @@ def print_log_tails(paths: ArtifactPaths, label: str) -> None:
         paths.diagnostics / f"anki-stdout-{label}.log",
         paths.diagnostics / f"anki-stderr-{label}.log",
         paths.runtime / "addon-e2e-events.jsonl",
-        paths.diagnostics / "anki-study-report.log",
-        paths.diagnostics / "anki_study_report.log",
+        paths.addon_log,
         paths.diagnostics / "xvfb.log",
     ):
         if not path.is_file():

@@ -5,6 +5,9 @@ import os
 from pathlib import Path
 
 
+CANONICAL_ADDON_LOG_NAME = "anki_study_report.log"
+
+
 @dataclass(frozen=True)
 class ArtifactPaths:
     root: Path
@@ -45,5 +48,10 @@ class ArtifactPaths:
             directory.mkdir(parents=True, exist_ok=True)
 
     def relative(self, path: str | Path) -> str:
-        return Path(path).relative_to(self.root).as_posix()
+        root = self.root.resolve()
+        target = Path(path).resolve()
+        return target.relative_to(root).as_posix()
 
+    @property
+    def addon_log(self) -> Path:
+        return self.diagnostics / CANONICAL_ADDON_LOG_NAME

@@ -29,10 +29,15 @@ run_status="failed"
 cleanup() {
   local exit_status=$?
   /e2e/bin/stop-anki.sh || true
-  /e2e/bin/write-artifact-manifest.py \
+  if ! /e2e/bin/write-artifact-manifest.py \
     --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --status "$run_status" \
-    --anki-version "${ANKI_VERSION:-unknown}" || true
+    --anki-version "${ANKI_VERSION:-unknown}"; then
+    echo "E2E artifact manifest generation or validation failed." >&2
+    if [ "$exit_status" -eq 0 ]; then
+      exit_status=1
+    fi
+  fi
   trap - EXIT
   exit "$exit_status"
 }
@@ -59,7 +64,6 @@ mkdir -p \
   "$ANKI_STUDY_REPORT_E2E_HTML_DIR" \
   "$ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR" \
   "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR"
-ln -sf anki_study_report.log "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki-study-report.log" || true
 
 section "Copy workspace to writable build directory"
 rm -rf "$E2E_BUILD_DIR"
@@ -142,9 +146,6 @@ section "Restart Anki"
 /e2e/bin/restart-anki.sh restart
 /e2e/bin/wait-for-dashboard.py --label restart
 /e2e/bin/smoke-api.py --label restart
-
-cp -f "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki_study_report.log" \
-  "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki-study-report.log" 2>/dev/null || true
 
 section "E2E completed"
 echo "Artifacts: ${ANKI_STUDY_REPORT_E2E_ARTIFACTS}"

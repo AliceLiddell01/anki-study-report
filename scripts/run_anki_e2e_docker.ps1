@@ -58,6 +58,38 @@ function Assert-E2EArtifactManifest {
         throw "E2E artifact manifest status is not success: $($manifest.status)"
     }
 
+    $indexedPaths = @()
+    foreach ($property in $manifest.runtime.PSObject.Properties) {
+        if ($property.Value -is [string] -and $property.Value) {
+            $indexedPaths += [string]$property.Value
+        }
+    }
+    foreach ($property in $manifest.artifacts.PSObject.Properties) {
+        foreach ($value in @($property.Value)) {
+            if ($value -is [string] -and $value) {
+                $indexedPaths += [string]$value
+            }
+        }
+    }
+    foreach ($entry in @($manifest.screenshots)) {
+        if ($entry.path) {
+            $indexedPaths += [string]$entry.path
+        }
+    }
+
+    $duplicates = @($indexedPaths | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object Name)
+    if ($duplicates.Count -gt 0) {
+        throw "Manifest contains duplicate artifact paths: $($duplicates -join ', ')"
+    }
+    foreach ($relativePath in $indexedPaths) {
+        if ([IO.Path]::IsPathRooted($relativePath) -or $relativePath -match '^[A-Za-z]:' -or $relativePath -match '(^|[\\/])\.\.([\\/]|$)') {
+            throw "Manifest contains a non-relative artifact path: $relativePath"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $ArtifactsRoot $relativePath) -PathType Leaf)) {
+            throw "Manifest references a missing artifact: $relativePath"
+        }
+    }
+
     $screenshots = @($manifest.screenshots)
     $pageScreenshots = @($screenshots | Where-Object { $_.kind -eq "page" })
     $navigationScreenshots = @($screenshots | Where-Object { $_.kind -eq "navigation" })
@@ -76,15 +108,6 @@ function Assert-E2EArtifactManifest {
         throw "Expected 6 APKG Cards screenshots, found $($apkgCards.Count)."
     }
 
-    foreach ($entry in $screenshots) {
-        $relativePath = [string]$entry.path
-        if ([IO.Path]::IsPathRooted($relativePath) -or $relativePath -match '(^|[\\/])\.\.([\\/]|$)') {
-            throw "Manifest contains a non-relative artifact path: $relativePath"
-        }
-        if (-not (Test-Path -LiteralPath (Join-Path $ArtifactsRoot $relativePath))) {
-            throw "Manifest references a missing screenshot: $relativePath"
-        }
-    }
     Write-Host "Verified structured E2E artifacts: pages=$($pageScreenshots.Count), navigation=$($navigationScreenshots.Count), syntheticCards=$($syntheticCards.Count), apkgCards=$($apkgCards.Count)"
 }
 

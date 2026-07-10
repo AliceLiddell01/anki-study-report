@@ -86,19 +86,24 @@ def test_artifact_paths_create_category_directories(tmp_path: Path):
     assert paths.screenshots.is_dir()
     assert paths.package.is_dir()
     assert paths.relative(paths.runtime / "dashboard-ready.json") == "runtime/dashboard-ready.json"
+    assert paths.addon_log.name == "anki_study_report.log"
+
+
+def create_required_success_artifacts(manifest_module, paths) -> None:
+    for relative_path in manifest_module.REQUIRED_SUCCESS_ARTIFACTS:
+        file_path = paths.root / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text("test", encoding="utf-8")
 
 
 def test_artifact_manifest_uses_relative_redacted_paths(tmp_path: Path):
     manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest")
     paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
     paths.ensure()
+    create_required_success_artifacts(manifest_module, paths)
     files = [
-        paths.runtime / "dashboard-ready.json",
-        paths.runtime / "addon-e2e-events.jsonl",
         paths.diagnostics / "anki-startup-tail.txt",
-        paths.reports / "browser-smoke-first.json",
         paths.html / "cards" / "synthetic-shadow-dom-first.html",
-        paths.package / "anki_study_report.ankiaddon",
         paths.screenshots / "navigation" / "avatar-menu-light.png",
         paths.screenshots / "pages" / "today" / "light.png",
         paths.screenshots / "pages" / "settings" / "logs" / "dark.png",
@@ -121,9 +126,99 @@ def test_artifact_manifest_uses_relative_redacted_paths(tmp_path: Path):
     assert {entry.get("route") for entry in manifest["screenshots"]} >= {"#/home", "#/logs", "#/cards"}
     assert {entry.get("fixture") for entry in manifest["screenshots"] if entry["kind"] == "cards"} == {"synthetic", "apkg"}
     assert str(tmp_path) not in serialized
+    assert "secret-dashboard-token" not in serialized
     manifest_module.assert_manifest_is_redacted(serialized)
     with pytest.raises(ValueError):
         manifest_module.assert_manifest_is_redacted('{"url":"http://127.0.0.1:8766/?token=secret"}')
+
+
+def test_artifact_manifest_missing_required_path_fails(tmp_path: Path):
+    manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest_required")
+    paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
+    paths.ensure()
+    create_required_success_artifacts(manifest_module, paths)
+    (paths.package / "anki_study_report.ankiaddon").unlink()
+
+    with pytest.raises(ValueError, match="Required E2E artifacts are missing"):
+        manifest_module.build_manifest(paths, status="success", anki_version="26.05")
+
+
+def test_artifact_manifest_omits_missing_optional_paths(tmp_path: Path):
+    manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest_optional")
+    paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
+    paths.ensure()
+
+    manifest = manifest_module.build_manifest(paths, status="failed", anki_version="26.05")
+
+    assert manifest["runtime"] == {"dashboardReady": None, "events": None}
+    assert manifest_module.manifest_indexed_paths(manifest) == []
+
+
+@pytest.mark.parametrize(
+    ("bad_path", "message"),
+    [
+        ("diagnostics/anki-study-report.log", "missing file"),
+        ("C:/temp/secret.log", "must be relative"),
+        ("../secret.log", "traversal"),
+    ],
+)
+def test_artifact_manifest_rejects_invalid_or_missing_indexed_paths(
+    tmp_path: Path,
+    bad_path: str,
+    message: str,
+):
+    manifest_module = load_e2e_module(
+        "write-artifact-manifest.py",
+        f"anki_study_report_artifact_manifest_bad_{message.replace(' ', '_')}",
+    )
+    paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
+    paths.ensure()
+    manifest = {
+        "status": "failed",
+        "runtime": {"events": bad_path},
+        "artifacts": {},
+        "screenshots": [],
+    }
+
+    with pytest.raises(ValueError, match=message):
+        manifest_module.validate_manifest(paths, manifest)
+
+
+def test_artifact_manifest_rejects_duplicate_paths(tmp_path: Path):
+    manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest_duplicate")
+    paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
+    paths.ensure()
+    file_path = paths.reports / "same.json"
+    file_path.write_text("{}", encoding="utf-8")
+    manifest = {
+        "status": "failed",
+        "runtime": {},
+        "artifacts": {"reports": ["reports/same.json"]},
+        "screenshots": [{"path": "reports/same.json"}],
+    }
+
+    with pytest.raises(ValueError, match="duplicate paths"):
+        manifest_module.validate_manifest(paths, manifest)
+
+
+def test_artifact_manifest_root_override_and_readiness_token_are_safe(tmp_path: Path):
+    manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest_override")
+    override_root = tmp_path / "custom-artifacts"
+    paths = manifest_module.ArtifactPaths.from_root(override_root)
+    paths.ensure()
+    create_required_success_artifacts(manifest_module, paths)
+    secret = "secret-dashboard-token"
+    (paths.runtime / "dashboard-ready.json").write_text(
+        json.dumps({"token": secret, "baseUrl": "http://127.0.0.1:8766"}),
+        encoding="utf-8",
+    )
+
+    manifest = manifest_module.build_manifest(paths, status="success", anki_version="26.05")
+    serialized = json.dumps(manifest)
+
+    assert all(not Path(path).is_absolute() for path in manifest_module.manifest_indexed_paths(manifest))
+    assert secret not in serialized
+    assert str(override_root) not in serialized
 
 
 def test_browser_artifact_resolver_builds_deterministic_nested_paths(tmp_path: Path):
