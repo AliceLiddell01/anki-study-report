@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getRouteFromHash, primaryNavItems, renderRoute } from "./router";
+import { compatibilityRedirectForHash, getRouteFromHash, primaryNavItems, renderRoute } from "./router";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -22,7 +22,10 @@ describe("dashboard router", () => {
       "/integrations",
       "/logs",
       "/settings",
+      "/settings/data",
       "/settings/server",
+      "/settings/sources",
+      "/settings/logs",
       "/stats",
       "/fsrs",
       "/browse",
@@ -40,9 +43,10 @@ describe("dashboard router", () => {
       "/calendar",
       "/actions",
       "/settings",
+      "/settings/data",
       "/settings/server",
-      "/integrations",
-      "/logs",
+      "/settings/sources",
+      "/settings/logs",
     ].map((path) => getRouteFromHash(`#${path}`))).toEqual([
       "/home",
       "/profile",
@@ -51,10 +55,16 @@ describe("dashboard router", () => {
       "/calendar",
       "/actions",
       "/settings",
+      "/settings/data",
       "/settings/server",
-      "/integrations",
-      "/logs",
+      "/settings/sources",
+      "/settings/logs",
     ]);
+    expect(getRouteFromHash("#/integrations")).toBe("/settings/sources");
+    expect(getRouteFromHash("#/logs")).toBe("/settings/logs");
+    expect(compatibilityRedirectForHash("#/integrations")).toBe("/settings/sources");
+    expect(compatibilityRedirectForHash("#/logs")).toBe("/settings/logs");
+    expect(compatibilityRedirectForHash("#/settings/logs")).toBeNull();
     expect(getRouteFromHash("#/stats")).toBe("/home");
     expect(getRouteFromHash("#/fsrs")).toBe("/home");
     expect(getRouteFromHash("#/browse")).toBe("/home");
@@ -64,14 +74,15 @@ describe("dashboard router", () => {
 
   it("keeps the settings shell, source diagnostics, and real Anki Browser tools available", () => {
     vi.stubGlobal("window", { location: { search: "?token=test-token" } });
-    const integrations = renderToStaticMarkup(renderRoute("/integrations", null, "error"));
+    const integrations = renderToStaticMarkup(renderRoute("/settings/sources", null, "error"));
     const actions = renderToStaticMarkup(renderRoute("/actions", null, "error"));
 
-    expect(integrations).toContain("Разделы настроек");
+    expect(integrations).toContain('aria-label="Настройки"');
     expect(integrations).toContain('href="#/settings"');
+    expect(integrations).toContain('href="#/settings/data"');
     expect(integrations).toContain('href="#/settings/server"');
-    expect(integrations).toContain('href="#/integrations"');
-    expect(integrations).toContain('href="#/logs"');
+    expect(integrations).toContain('href="#/settings/sources"');
+    expect(integrations).toContain('href="#/settings/logs"');
     expect(integrations).toContain("Источники данных");
     expect(integrations).toContain("Диагностика");
     expect(actions).toContain("Инструменты");

@@ -494,4 +494,10 @@ export interface StudyReport {
     cacheReadMs?: number;
     legacyBuildMs?: number;
   };
+  today?: TodayStudyReport;
 }
+
+export type TodayStudyReport = Pick<
+  StudyReport,
+  "metadata" | "summary" | "kpis" | "answerDistribution" | "activity" | "comparison" | "decks" | "recommendations"
+>;

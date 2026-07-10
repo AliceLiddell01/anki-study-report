@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import type { LoadState } from "../pages/HomePage";
 import type { StudyReport } from "../types/report";
-import { getRouteFromHash, renderRoute } from "./router";
+import { compatibilityRedirectForHash, getRouteFromHash, renderRoute } from "./router";
 
 function App() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
@@ -10,7 +10,14 @@ function App() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useEffect(() => {
-    const updateRoute = () => setRoute(getRouteFromHash(window.location.hash));
+    const updateRoute = () => {
+      const redirect = compatibilityRedirectForHash(window.location.hash);
+      if (redirect) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${redirect}`);
+      }
+      setRoute(getRouteFromHash(redirect ? `#${redirect}` : window.location.hash));
+    };
+    updateRoute();
     window.addEventListener("hashchange", updateRoute);
     return () => window.removeEventListener("hashchange", updateRoute);
   }, []);

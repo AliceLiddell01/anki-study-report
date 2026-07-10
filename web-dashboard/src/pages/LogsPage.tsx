@@ -20,6 +20,7 @@ function LogsPage() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const loadLogs = useCallback(() => {
     const token = dashboardToken();
@@ -73,6 +74,7 @@ function LogsPage() {
       return;
     }
     const token = dashboardToken();
+    setClearing(true);
     fetch(`/api/logs/clear?token=${encodeURIComponent(token)}`, { method: "POST", cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
@@ -85,7 +87,8 @@ function LogsPage() {
         setMessage("Логи очищены.");
         return loadLogs();
       })
-      .catch((error: Error) => setMessage(error.message));
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setClearing(false));
   };
 
   const token = dashboardToken();
@@ -117,13 +120,13 @@ function LogsPage() {
               <Download size={16} aria-hidden="true" />
               Скачать
             </a>
-            <button className="toolbar-button toolbar-button-warning" type="button" onClick={clearLogs}>
+            <button className="toolbar-button toolbar-button-warning" type="button" disabled={clearing} onClick={clearLogs}>
               <Trash2 size={16} aria-hidden="true" />
-              {confirmClear ? "Подтвердить очистку" : "Очистить логи"}
+              {clearing ? "Очищаю…" : confirmClear ? "Подтвердить очистку" : "Очистить логи"}
             </button>
           </div>
         </div>
-        {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
+        {message ? <p className="mt-4 text-sm leading-6 text-report-muted" role="status">{message}</p> : null}
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">

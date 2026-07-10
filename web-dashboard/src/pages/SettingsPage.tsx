@@ -1,7 +1,9 @@
 import { Database, RefreshCw, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { CheckboxControl, SettingRow, SettingsFormActions, SettingsSection } from "../components/SettingsControls";
 import { cardAttentionState } from "../lib/cardAttention";
 import { formatInteger, safeText } from "../lib/formatters";
+import { usePublicSettingsForm } from "../lib/settingsApi";
 import type { StudyReport, StatsCacheSummary, StatsCacheStatus } from "../types/report";
 
 function SettingsPage({ report }: { report: StudyReport | null }) {
@@ -9,6 +11,9 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [actionState, setActionState] = useState<"idle" | "refreshing" | "rebuilding">("idle");
   const [message, setMessage] = useState("");
+  const [confirmRebuild, setConfirmRebuild] = useState(false);
+  const settingsForm = usePublicSettingsForm(["data"]);
+  const dataSettings = settingsForm.draft.data;
 
   const loadCacheStatus = useCallback(() => {
     const token = dashboardToken();
@@ -23,7 +28,6 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       .then((status) => {
         setCache(sanitizeCacheStatus(status));
         setLoadState("ready");
-        setMessage("");
       })
       .catch((error: Error) => {
         setLoadState("error");
@@ -48,6 +52,12 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
   }, [cache?.isBuilding, cache?.status, loadCacheStatus]);
 
   const runAction = (action: "refresh" | "rebuild") => {
+    if (action === "rebuild" && !confirmRebuild) {
+      setConfirmRebuild(true);
+      setMessage("Подтвердите перестроение кэша: операция пересчитает всю историю.");
+      return;
+    }
+    setConfirmRebuild(false);
     const token = dashboardToken();
     const nextActionState = action === "refresh" ? "refreshing" : "rebuilding";
     setActionState(nextActionState);
@@ -101,14 +111,14 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
   const cardLevel = cardAttentionState(report);
 
   return (
-    <div className="grid gap-5">
+    <form className="grid gap-5" onSubmit={(event) => { event.preventDefault(); if (settingsForm.dirty && !settingsForm.saving) void settingsForm.save(); }}>
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill status-${statusTone(status)}`}>{cacheStatusLabel(status)}</span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Кэш и диагностика</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Данные</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-              Локальные агрегаты revlog для быстрого фильтра по периодам.
+              Сбор данных, источник времени и локальный кэш статистики.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -130,12 +140,38 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
               title="Пересобрать кэш за всё время"
             >
               <RotateCcw size={16} aria-hidden="true" />
-              Пересобрать кэш
+              {confirmRebuild ? "Подтвердить перестроение" : "Перестроить кэш"}
             </button>
           </div>
         </div>
         {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
       </section>
+
+      <SettingsSection title="Сбор и использование данных" description="Параметры локального учёта времени и использования stats cache.">
+        <SettingRow id="track-sessions" label="Отслеживать review-сессии" description="Сохранять локальные интервалы активности между ответами в Anki.">
+          <CheckboxControl id="track-sessions" checked={dataSettings.trackReviewerSessions} onChange={(trackReviewerSessions) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, trackReviewerSessions } }))} />
+        </SettingRow>
+        <SettingRow id="session-idle" label="Тайм-аут сессии" description="После этого простоя начинается новая сессия. Допустимо 60–86400 секунд." error={settingsForm.fieldErrors["data.sessionIdleTimeoutSeconds"]}>
+          <div className="flex items-center gap-2">
+            <input id="session-idle" type="number" min={60} max={86400} className="form-control w-full px-3 py-2.5 text-sm" value={dataSettings.sessionIdleTimeoutSeconds} disabled={!dataSettings.trackReviewerSessions} onChange={(event) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, sessionIdleTimeoutSeconds: Number(event.target.value) } }))} />
+            <span className="text-sm text-report-muted">сек</span>
+          </div>
+        </SettingRow>
+        <SettingRow id="session-gap" label="Лимит интервала" description="Максимальная длительность одного учтённого промежутка. Не больше тайм-аута сессии." error={settingsForm.fieldErrors["data.sessionGapCapSeconds"]}>
+          <div className="flex items-center gap-2">
+            <input id="session-gap" type="number" min={1} max={3600} className="form-control w-full px-3 py-2.5 text-sm" value={dataSettings.sessionGapCapSeconds} disabled={!dataSettings.trackReviewerSessions} onChange={(event) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, sessionGapCapSeconds: Number(event.target.value) } }))} />
+            <span className="text-sm text-report-muted">сек</span>
+          </div>
+        </SettingRow>
+        <SettingRow id="study-time" label="Использовать Study Time Stats" description="Если встроенный tracker недоступен, использовать обнаруженный локальный источник времени.">
+          <CheckboxControl id="study-time" checked={dataSettings.useStudyTimeStats} onChange={(useStudyTimeStats) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, useStudyTimeStats } }))} />
+        </SettingRow>
+        <SettingRow id="cache-report" label="Использовать кэш для отчёта" description="Исторические activity/comparison читаются из локального cache; card-level данные остаются live.">
+          <CheckboxControl id="cache-report" checked={dataSettings.useStatsCacheForReport} onChange={(useStatsCacheForReport) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, useStatsCacheForReport } }))} />
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsFormActions dirty={settingsForm.dirty} saving={settingsForm.saving} message={settingsForm.message} onSave={() => void settingsForm.save()} onCancel={settingsForm.cancel} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <CacheMetric label="Статус" value={cacheStatusLabel(cache?.status ?? loadState)} tone={statusTone(status)} />
@@ -214,7 +250,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
           </div>
         ) : null}
       </section>
-    </div>
+    </form>
   );
 }
 

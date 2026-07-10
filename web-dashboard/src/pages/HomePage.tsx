@@ -113,21 +113,21 @@ function HomePage({ report, loadState }: { report: StudyReport | null; loadState
     return <EmptyDashboard state={loadState} />;
   }
 
-  const problemDecks = report.decks
+  const homeReport: StudyReport = report.today ? { ...report, ...report.today } : report;
+  const problemDecks = homeReport.decks
     .filter((deck) => deck.status === "danger" || deck.status === "warning")
     .slice(0, 3);
-  const bestDecks = [...report.decks]
+  const bestDecks = [...homeReport.decks]
     .filter((deck) => deck.status === "good")
     .sort((a, b) => b.passRate - a.passRate)
     .slice(0, 3);
 
   return (
-    <ReportContext.Provider value={report}>
+    <ReportContext.Provider value={homeReport}>
       <div className="grid min-w-0 gap-5">
         <Header />
-        <ScopeSummary />
         <HeroSummary />
-        <KpiGrid metrics={report.kpis} />
+        <KpiGrid metrics={homeReport.kpis} />
         <ProgressComparisonSection />
         <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
           <AnswerDistribution />
@@ -172,6 +172,8 @@ function EmptyDashboard({ state }: { state: LoadState }) {
 
 function Header() {
   const { metadata } = useReport();
+  const deckScope = deckScopeSummary(metadata);
+  const filtered = deckScope.summary !== "Все колоды";
 
   return (
     <header className="rounded-xl border border-ink-700/90 bg-ink-850/95 px-4 py-4 shadow-panel sm:px-5">
@@ -179,28 +181,21 @@ function Header() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold tracking-normal text-report-text sm:text-2xl">
-              {metadata.title}
+              Сегодня
             </h1>
             <StatusPill status="warning">личная статистика</StatusPill>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-            Локальная аналитика по текущему набору отчёта.
+            Текущий локальный день{metadata.todayDate ? ` · ${metadata.todayDate}` : ""}.
           </p>
         </div>
+        {filtered ? (
+          <a href="#/settings" className="inline-flex items-center rounded-lg border border-report-blue/40 bg-report-blue/10 px-3 py-2 text-sm font-medium text-report-blue" title={deckScope.detail || deckScope.summary}>
+            {deckScope.summary}
+          </a>
+        ) : null}
       </div>
     </header>
-  );
-}
-
-function ScopeSummary() {
-  const { metadata } = useReport();
-  const deckScope = deckScopeSummary(metadata);
-
-  return (
-    <section className="grid min-w-0 gap-3 md:grid-cols-2">
-      <ScopeTile label="Период статистики" value={metadata.period || "Всё время"} />
-      <ScopeTile label="Статистика по" value={deckScope.summary} detail={deckScope.detail} />
-    </section>
   );
 }
 
@@ -840,16 +835,6 @@ function Panel({
       </div>
       {children}
     </section>
-  );
-}
-
-function ScopeTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <div className="min-w-0 rounded-lg border border-ink-700 bg-ink-850 px-4 py-3 shadow-panel">
-      <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
-      <p className="mt-1 break-words text-sm font-medium leading-6 text-report-text">{value}</p>
-      {detail ? <p className="mt-1 text-xs leading-5 text-report-muted">{detail}</p> : null}
-    </div>
   );
 }
 

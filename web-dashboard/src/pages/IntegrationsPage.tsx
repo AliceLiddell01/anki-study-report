@@ -20,9 +20,11 @@ type IntegrationStatus = {
 function IntegrationsPage() {
   const [data, setData] = useState<IntegrationStatus>({});
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const loadIntegrations = useCallback(() => {
     const token = dashboardToken();
+    setLoading(true);
     return fetch(`/api/integrations/status?token=${encodeURIComponent(token)}`, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
@@ -34,7 +36,8 @@ function IntegrationsPage() {
         setData(status || {});
         setMessage("");
       })
-      .catch((error: Error) => setMessage(error.message));
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -54,12 +57,12 @@ function IntegrationsPage() {
               Опциональные локальные источники и диагностика, которые использует Anki Study Report.
             </p>
           </div>
-          <button className="toolbar-button" type="button" onClick={() => loadIntegrations().catch(() => undefined)}>
+          <button className="toolbar-button" type="button" disabled={loading} onClick={() => loadIntegrations().catch(() => undefined)}>
             <RefreshCw size={16} aria-hidden="true" />
-            Обновить
+            {loading ? "Обновляю…" : "Обновить"}
           </button>
         </div>
-        {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
+        {message ? <p className="mt-4 text-sm leading-6 text-report-muted" role="status">{message}</p> : null}
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

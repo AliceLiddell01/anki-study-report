@@ -8,6 +8,7 @@ import HomePage, { type LoadState } from "../pages/HomePage";
 import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
+import ReportSettingsPage from "../pages/ReportSettingsPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import type { StudyReport } from "../types/report";
@@ -20,9 +21,10 @@ export type RoutePath =
   | "/calendar"
   | "/actions"
   | "/settings"
+  | "/settings/data"
   | "/settings/server"
-  | "/integrations"
-  | "/logs";
+  | "/settings/sources"
+  | "/settings/logs";
 
 export const primaryNavItems: Array<{ path: RoutePath; label: string }> = [
   { path: "/home", label: "Сегодня" },
@@ -39,15 +41,27 @@ const routePaths = new Set<RoutePath>([
   "/calendar",
   "/actions",
   "/settings",
+  "/settings/data",
   "/settings/server",
-  "/integrations",
-  "/logs",
+  "/settings/sources",
+  "/settings/logs",
 ]);
+
+const compatibilityRoutes: Record<string, RoutePath> = {
+  "/integrations": "/settings/sources",
+  "/logs": "/settings/logs",
+};
 
 export function getRouteFromHash(hash: string): RoutePath {
   const rawPath = hash.replace(/^#/, "") || "/home";
   const normalized = rawPath === "/" ? "/home" : rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
-  return routePaths.has(normalized as RoutePath) ? (normalized as RoutePath) : "/home";
+  return compatibilityRoutes[normalized] ?? (routePaths.has(normalized as RoutePath) ? (normalized as RoutePath) : "/home");
+}
+
+export function compatibilityRedirectForHash(hash: string): RoutePath | null {
+  const rawPath = hash.replace(/^#/, "") || "/home";
+  const normalized = rawPath === "/" ? "/home" : rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  return compatibilityRoutes[normalized] ?? null;
 }
 
 export function renderRoute(
@@ -67,14 +81,16 @@ export function renderRoute(
       return <CalendarPage report={report} loadState={loadState} />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
-    case "/integrations":
+    case "/settings/sources":
       return <SettingsLayout activeRoute={route}><IntegrationsPage /></SettingsLayout>;
-    case "/logs":
+    case "/settings/logs":
       return <SettingsLayout activeRoute={route}><LogsPage /></SettingsLayout>;
     case "/settings/server":
       return <SettingsLayout activeRoute={route}><ServerSettingsPage /></SettingsLayout>;
-    case "/settings":
+    case "/settings/data":
       return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
+    case "/settings":
+      return <SettingsLayout activeRoute={route}><ReportSettingsPage onReportUpdated={onReportUpdated} /></SettingsLayout>;
     case "/home":
     default:
       return <HomePage report={report} loadState={loadState} />;
