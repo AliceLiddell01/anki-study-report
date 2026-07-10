@@ -216,8 +216,8 @@ In that mode it starts the dashboard server, publishes the default dashboard
 report, and writes:
 
 ```text
-/e2e/artifacts/dashboard-ready.json
-/e2e/artifacts/addon-e2e-events.jsonl
+/e2e/artifacts/runtime/dashboard-ready.json
+/e2e/artifacts/runtime/addon-e2e-events.jsonl
 ```
 
 The readiness file includes `port`, `baseUrl`, `token`, `startedAt`,
@@ -317,9 +317,9 @@ docker compose -f docker/anki-e2e/docker-compose.yml build --build-arg UBUNTU_MI
 If Anki fails with a Qt `xcb` platform plugin error, inspect:
 
 ```text
-e2e-artifacts/qt-xcb-diagnostics-first.log
-e2e-artifacts/anki-stdout-first.log
-e2e-artifacts/anki-stderr-first.log
+e2e-artifacts/diagnostics/qt-xcb-diagnostics-first.log
+e2e-artifacts/diagnostics/anki-stdout-first.log
+e2e-artifacts/diagnostics/anki-stderr-first.log
 ```
 
 The startup script records `xdpyinfo`, the discovered `libqxcb.so` path, and
@@ -337,15 +337,16 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 1. Copy `/workspace` to `/e2e/workspace-build`.
 2. Run `pnpm install --frozen-lockfile`.
 3. Run `pnpm run build:addon`.
-4. Build and validate `/e2e/artifacts/anki_study_report.ankiaddon`.
+4. Build and validate `/e2e/artifacts/package/anki_study_report.ankiaddon`.
 5. Create the isolated `E2E` Anki profile.
 6. Bootstrap `/e2e/anki-data/prefs21.db` with `_global` and `E2E`.
 7. Seed the fixture collection and media.
 8. Copy the unpacked add-on into `addons21/anki_study_report_e2e`.
 9. Start Anki in Xvfb with `-b /e2e/anki-data -p E2E`.
-10. Wait for `dashboard-ready.json` and `/api/health`.
+10. Wait for `runtime/dashboard-ready.json` and `/api/health`.
 11. Run `smoke-api.py`.
-12. Run `smoke-browser.mjs`, verify Cards preview modes, and save screenshots.
+12. Run `smoke-browser.mjs`, verify Cards preview modes, all existing page
+    routes, avatar menu, and save deterministic light/dark screenshots.
     `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
     `AnkiCardShadowPreview` host rendered from `backHtml`.
 13. Stop Anki.
@@ -360,49 +361,35 @@ The default host artifact folder is:
 e2e-artifacts/
 ```
 
-Expected files include:
+The root contains a redacted `artifact-manifest.json` plus category folders:
 
-- `dashboard-ready.json`
-- `addon-e2e-events.jsonl`
-- `prefs21-summary.txt`
-- `anki_study_report.log`
-- `anki-study-report.log` symlink
-- `e2e-env-first.txt`
-- `anki-stdout-first.log`
-- `anki-stderr-first.log`
-- `anki-data-tree.txt` on readiness failure
-- `addons-tree.txt` on readiness failure
-- `anki-startup-tail.txt` on readiness failure
-- `anki-stdout-restart.log`
-- `anki-stderr-restart.log`
-- `api-health-first.json`
-- `api-report-sample-first.json`
-- `api-smoke-first.json`
-- `api-smoke-restart.json`
-- `api-smoke-apkg-first.json` when APKG mode is enabled or explicitly skipped
-- `browser-smoke-apkg-first.json` when APKG mode is enabled or explicitly skipped
-- `apkg-import-summary.json`
-- `apkg-problematic-summary.json`
-- `cards-table-light-first.png`
-- `cards-table-dark-first.png`
-- `cards-tiles-light-first.png`
-- `cards-tiles-dark-first.png`
-- `cards-anki-preview-light-first.png`
-- `cards-anki-preview-dark-first.png`
-- `cards-apkg-table-dark-first.png` when APKG mode is enabled
-- `cards-apkg-tiles-dark-first.png` when APKG mode is enabled
-- `cards-apkg-anki-preview-first.png` when APKG mode is enabled
-- `cards-shadow-dom-dump-first.html`
-- `fixture-summary.json`
-- `anki_study_report.ankiaddon`
+```text
+e2e-artifacts/
+├─ artifact-manifest.json
+├─ runtime/                    dashboard-ready.json, events and PIDs
+├─ diagnostics/                Anki/Xvfb logs, env, startup trees and tails
+├─ reports/                    API, browser, APKG and fixture JSON
+├─ html/                       redacted Cards/failure DOM dumps
+├─ package/                    anki_study_report.ankiaddon
+└─ screenshots/
+   ├─ navigation/              avatar-menu-light.png, avatar-menu-dark.png
+   ├─ pages/
+   │  ├─ today|calendar|decks|profile|tools/
+   │  └─ settings/data|server|sources|logs/
+   └─ cards/
+      ├─ synthetic/table|tiles|anki-preview/
+      └─ apkg/table|tiles|anki-preview/
+```
 
-If browser smoke fails, it writes:
+Each page and Cards leaf contains deterministic `light.png` and `dark.png`
+files. A strict APKG run produces 18 page screenshots, 2 navigation screenshots,
+6 synthetic Cards screenshots and 6 APKG Cards screenshots. Browser failures
+write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
+machine-readable summaries under `reports/`, and console logs under
+`diagnostics/`.
 
-- `browser-failure-first.png`
-- `browser-failure-first.html`
-- `browser-console-first.log`
-- `browser-network-first.json`
-- `browser-dom-summary-first.json`
+The manifest stores only relative paths and route/theme/mode/fixture metadata;
+it never stores the dashboard token or a full token-bearing URL.
 
 ## Safety
 

@@ -2,6 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { ensureArtifactParent, relativeArtifactPath, resolveArtifactPaths } from "./artifact-paths.mjs";
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 1) {
@@ -13,13 +14,25 @@ for (let index = 2; index < process.argv.length; index += 1) {
 
 const label = args.get("label") || "run";
 const artifacts = process.env.ANKI_STUDY_REPORT_E2E_ARTIFACTS || "/e2e/artifacts";
-const readyFile = process.env.ANKI_STUDY_REPORT_E2E_READY_FILE || path.join(artifacts, "dashboard-ready.json");
+const artifactPaths = resolveArtifactPaths(artifacts);
+const readyFile = process.env.ANKI_STUDY_REPORT_E2E_READY_FILE || path.join(artifactPaths.runtime, "dashboard-ready.json");
 const ready = JSON.parse(await fs.readFile(readyFile, "utf8"));
 const cardsUrl = `${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/cards`;
 const baseViewport = { name: "desktop-1440", width: 1440, height: 1000 };
 const responsiveViewports = [
   baseViewport,
   { name: "narrow-1280", width: 1280, height: 900 },
+];
+const dashboardPageCases = [
+  { route: "/home", pageName: "today", heading: "Anki Study Report", primaryHref: "#/home" },
+  { route: "/calendar", pageName: "calendar", heading: "Календарь", primaryHref: "#/calendar" },
+  { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
+  { route: "/profile", pageName: "profile", heading: "Профиль" },
+  { route: "/actions", pageName: "tools", heading: "Инструменты" },
+  { route: "/settings", pageName: "settings/data", heading: "Кэш и диагностика", settingsHref: "#/settings" },
+  { route: "/settings/server", pageName: "settings/server", heading: "Настройки", settingsHref: "#/settings/server" },
+  { route: "/integrations", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/integrations" },
+  { route: "/logs", pageName: "settings/logs", heading: "Логи", settingsHref: "#/logs" },
 ];
 const consoleEvents = [];
 const networkEvents = [];
@@ -68,7 +81,8 @@ try {
 
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
-  await capture(page, "table", "light", `cards-table-light-${label}.png`);
+  const tableLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "table", "light");
+  await capture(page, "table", "light", tableLightScreenshot);
   const shadowDetails = await inspectShadowPreview(page, "table");
   if (!shadowDetails.exists) {
     throw new Error("Shadow DOM preview host for fixture card was not found.");
@@ -102,35 +116,44 @@ try {
     assertBrowser(!shadowDetails.hasRawAnkiPlayMarker && !shadowDetails.hasRawSoundMarker, "Perf100 table preview has no raw media markers.");
   }
   assertFrontOnlyMode(shadowDetails, "table");
-  visualStates.push({ mode: "table", theme: "light", screenshot: `cards-table-light-${label}.png`, details: shadowDetails });
+  visualStates.push({ mode: "table", theme: "light", screenshot: relativeArtifactPath(artifactPaths, tableLightScreenshot), details: shadowDetails });
 
-  await fs.writeFile(path.join(artifacts, `cards-shadow-dom-dump-${label}.html`), redactArtifact(shadowDetails.html), "utf8");
-  await capture(page, "table", "dark", `cards-table-dark-${label}.png`);
+  const shadowDumpPath = artifactPaths.htmlFile("cards", `synthetic-shadow-dom-${label}.html`);
+  await ensureArtifactParent(shadowDumpPath);
+  await fs.writeFile(shadowDumpPath, redactArtifact(shadowDetails.html), "utf8");
+  const tableDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "table", "dark");
+  await capture(page, "table", "dark", tableDarkScreenshot);
   const tableDarkDetails = await inspectShadowPreview(page, "table");
   assertFrontOnlyMode(tableDarkDetails, "table");
-  visualStates.push({ mode: "table", theme: "dark", screenshot: `cards-table-dark-${label}.png`, details: tableDarkDetails });
+  visualStates.push({ mode: "table", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, tableDarkScreenshot), details: tableDarkDetails });
 
-  await capture(page, "tiles", "light", `cards-tiles-light-${label}.png`);
+  const tilesLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "tiles", "light");
+  await capture(page, "tiles", "light", tilesLightScreenshot);
   const tilesLightDetails = await inspectShadowPreview(page, "tile");
   assertFrontOnlyMode(tilesLightDetails, "tile");
-  visualStates.push({ mode: "tiles", theme: "light", screenshot: `cards-tiles-light-${label}.png`, details: tilesLightDetails });
+  visualStates.push({ mode: "tiles", theme: "light", screenshot: relativeArtifactPath(artifactPaths, tilesLightScreenshot), details: tilesLightDetails });
 
-  await capture(page, "tiles", "dark", `cards-tiles-dark-${label}.png`);
+  const tilesDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "tiles", "dark");
+  await capture(page, "tiles", "dark", tilesDarkScreenshot);
   const tilesDarkDetails = await inspectShadowPreview(page, "tile");
   assertFrontOnlyMode(tilesDarkDetails, "tile");
-  visualStates.push({ mode: "tiles", theme: "dark", screenshot: `cards-tiles-dark-${label}.png`, details: tilesDarkDetails });
+  visualStates.push({ mode: "tiles", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, tilesDarkScreenshot), details: tilesDarkDetails });
 
-  await capture(page, "ankiPreview", "light", `cards-anki-preview-light-${label}.png`);
+  const previewLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "ankiPreview", "light");
+  await capture(page, "ankiPreview", "light", previewLightScreenshot);
   const ankiPreviewLightDetails = await inspectAnkiPreview(page);
   assertAnkiPreviewAnswerOnly(ankiPreviewLightDetails, "light");
-  visualStates.push({ mode: "ankiPreview", theme: "light", screenshot: `cards-anki-preview-light-${label}.png`, details: ankiPreviewLightDetails });
+  visualStates.push({ mode: "ankiPreview", theme: "light", screenshot: relativeArtifactPath(artifactPaths, previewLightScreenshot), details: ankiPreviewLightDetails });
 
-  await capture(page, "ankiPreview", "dark", `cards-anki-preview-dark-${label}.png`);
+  const previewDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "ankiPreview", "dark");
+  await capture(page, "ankiPreview", "dark", previewDarkScreenshot);
   const ankiPreviewDarkDetails = await inspectAnkiPreview(page);
   assertAnkiPreviewAnswerOnly(ankiPreviewDarkDetails, "dark");
-  visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: `cards-anki-preview-dark-${label}.png`, details: ankiPreviewDarkDetails });
+  visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, previewDarkScreenshot), details: ankiPreviewDarkDetails });
 
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
+  const pageScreenshots = await captureDashboardPages(page);
+  const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
 
   await writeJson(`browser-smoke-${label}.json`, {
@@ -142,12 +165,14 @@ try {
     visualStates,
     cssDiagnostics,
     apkg: apkgDetails,
+    pageScreenshots,
+    navigationScreenshots,
   });
 
   if (pageErrors.length > 0) {
     throw new Error(`Browser page errors: ${pageErrors.join("\n")}`);
   }
-  console.log(`Browser smoke passed for ${cardsUrl}`);
+  console.log(`Browser smoke passed for ${ready.baseUrl}`);
 } catch (error) {
   if (page) {
     await writeBrowserFailureArtifacts(page, error);
@@ -165,7 +190,7 @@ try {
   await browser.close();
 }
 
-async function capture(page, mode, theme, fileName) {
+async function capture(page, mode, theme, filePath) {
   await prepareCardsPage(page, mode, theme);
   if (mode === "table" || mode === "tiles") {
     await waitForShadowFixture(page, mode === "tiles" ? "tile" : "table");
@@ -173,11 +198,92 @@ async function capture(page, mode, theme, fileName) {
     await waitForAnkiPreview(page);
   }
   await waitForLayoutStabilization(page);
-  await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
+  await ensureArtifactParent(filePath);
+  await page.screenshot({ path: filePath, fullPage: true });
+}
+
+async function captureDashboardPages(page) {
+  const screenshots = [];
+  for (const theme of ["light", "dark"]) {
+    for (const pageCase of dashboardPageCases) {
+      await prepareDashboardRoute(page, pageCase.route, theme, pageCase.heading);
+      await waitForLayoutStabilization(page);
+      const activeState = await inspectActiveNavigation(page);
+      assertBrowser(
+        activeState.primaryHref === (pageCase.primaryHref || null),
+        `${pageCase.route} ${theme} primary active state is correct: ${activeState.primaryHref}`,
+      );
+      assertBrowser(
+        activeState.settingsHref === (pageCase.settingsHref || null),
+        `${pageCase.route} ${theme} settings active state is correct: ${activeState.settingsHref}`,
+      );
+      const filePath = artifactPaths.pageScreenshot(pageCase.pageName, theme);
+      await ensureArtifactParent(filePath);
+      await page.screenshot({ path: filePath, fullPage: true });
+      screenshots.push({
+        route: `#${pageCase.route}`,
+        page: pageCase.pageName,
+        theme,
+        screenshot: relativeArtifactPath(artifactPaths, filePath),
+        activeState,
+      });
+    }
+  }
+  return screenshots;
+}
+
+async function captureAvatarMenu(page) {
+  const screenshots = [];
+  for (const theme of ["light", "dark"]) {
+    await prepareDashboardRoute(page, "/home", theme, "Anki Study Report");
+    const trigger = page.getByRole("button", { name: "Открыть меню профиля", exact: true });
+    await trigger.click();
+    const menu = page.getByRole("menu", { name: "Меню профиля", exact: true });
+    await menu.waitFor({ state: "visible", timeout: 15000 });
+    const support = menu.getByRole("menuitem", { name: "Поддержать проект", exact: true });
+    await support.waitFor({ state: "visible", timeout: 15000 });
+    const linkContract = await support.evaluate((element) => ({
+      href: element.getAttribute("href"),
+      target: element.getAttribute("target"),
+      rel: element.getAttribute("rel"),
+      referrerPolicy: element.getAttribute("referrerpolicy"),
+    }));
+    assertBrowser(linkContract.href === "https://boosty.to/ankistudyreport", "Boosty support URL is exact.");
+    assertBrowser(linkContract.target === "_blank", "Boosty support link opens a new tab.");
+    assertBrowser(String(linkContract.rel || "").split(/\s+/).includes("noopener"), "Boosty support link uses noopener.");
+    assertBrowser(String(linkContract.rel || "").split(/\s+/).includes("noreferrer"), "Boosty support link uses noreferrer.");
+    assertBrowser(linkContract.referrerPolicy === "no-referrer", "Boosty support link uses no-referrer policy.");
+    const menuItems = await menu.getByRole("menuitem").allTextContents();
+    assertBrowser(
+      JSON.stringify(menuItems.map((item) => item.trim())) === JSON.stringify(["Профиль", "Настройки", "Инструменты", "Поддержать проект"]),
+      `Avatar menu items are complete: ${menuItems.join(", ")}`,
+    );
+    await waitForLayoutStabilization(page);
+    const filePath = artifactPaths.navigationScreenshot(theme);
+    await ensureArtifactParent(filePath);
+    await page.screenshot({ path: filePath, fullPage: false });
+    screenshots.push({
+      route: "#/home",
+      theme,
+      screenshot: relativeArtifactPath(artifactPaths, filePath),
+      items: menuItems.map((item) => item.trim()),
+      support: linkContract,
+    });
+  }
+  return screenshots;
+}
+
+async function inspectActiveNavigation(page) {
+  return page.evaluate(() => ({
+    primaryHref:
+      document.querySelector('nav[aria-label="Основная навигация"] [aria-current="page"]')?.getAttribute("href") || null,
+    settingsHref:
+      document.querySelector('nav[aria-label="Разделы настроек"] [aria-current="page"]')?.getAttribute("href") || null,
+  }));
 }
 
 async function assertApkgBrowserIfEnabled(page) {
-  const importSummary = await readJsonIfExists(path.join(artifacts, "apkg-import-summary.json"));
+  const importSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-import-summary.json"));
   if (!importSummary.enabled) {
     const summary = {
       enabled: false,
@@ -187,7 +293,7 @@ async function assertApkgBrowserIfEnabled(page) {
     return summary;
   }
   assertBrowser(importSummary.imported === true, "APKG import summary reports imported.");
-  const problemSummary = await readJsonIfExists(path.join(artifacts, "apkg-problematic-summary.json"));
+  const problemSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-problematic-summary.json"));
   assertBrowser(problemSummary.enabled === true, "APKG problematic summary enabled.");
   const report = await fetchReport();
   const apkgCards = findApkgCards(report, importSummary);
@@ -210,35 +316,35 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(renderSourceNativeCount >= importedCardCount, `APKG browser cards use native render source: ${renderSourceNativeCount}`);
 
   const deckName = (importSummary.deckNames || [])[0] || "asr-e2e-render-fixtures";
-  await captureApkg(page, "table", "light", `cards-apkg-table-light-${label}.png`, deckName);
+  await captureApkg(page, "table", "light", artifactPaths.cardsScreenshot("apkg", "table", "light"), deckName);
   const tableLightDetails = await inspectApkgShadowPreviews(page, "table");
   const tableLightLayout = await inspectTableLayout(page);
   assertBrowser(tableLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light table previews found: ${tableLightDetails.hostCount}`);
   assertShadowSummary(tableLightDetails, "table light");
   assertTableLayoutSummary(tableLightLayout, "APKG light table");
 
-  await captureApkg(page, "table", "dark", `cards-apkg-table-dark-${label}.png`, deckName);
+  await captureApkg(page, "table", "dark", artifactPaths.cardsScreenshot("apkg", "table", "dark"), deckName);
   const tableDetails = await inspectApkgShadowPreviews(page, "table");
   const tableLayout = await inspectTableLayout(page);
   assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
   assertShadowSummary(tableDetails, "table");
   assertTableLayoutSummary(tableLayout, "APKG dark table");
 
-  await captureApkg(page, "tiles", "light", `cards-apkg-tiles-light-${label}.png`, deckName);
+  await captureApkg(page, "tiles", "light", artifactPaths.cardsScreenshot("apkg", "tiles", "light"), deckName);
   const tileLightDetails = await inspectApkgShadowPreviews(page, "tile");
   const tileLightLayout = await inspectTileLayout(page);
   assertBrowser(tileLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light tile previews found: ${tileLightDetails.hostCount}`);
   assertShadowSummary(tileLightDetails, "tile light");
   assertTileLayoutSummary(tileLightLayout, "APKG light tiles");
 
-  await captureApkg(page, "tiles", "dark", `cards-apkg-tiles-dark-${label}.png`, deckName);
+  await captureApkg(page, "tiles", "dark", artifactPaths.cardsScreenshot("apkg", "tiles", "dark"), deckName);
   const tileDetails = await inspectApkgShadowPreviews(page, "tile");
   const tileLayout = await inspectTileLayout(page);
   assertBrowser(tileDetails.hostCount >= Math.min(3, apkgCards.length), `APKG tile previews found: ${tileDetails.hostCount}`);
   assertShadowSummary(tileDetails, "tile");
   assertTileLayoutSummary(tileLayout, "APKG dark tiles");
 
-  await captureApkg(page, "ankiPreview", "light", `cards-apkg-anki-preview-light-${label}.png`, deckName);
+  await captureApkg(page, "ankiPreview", "light", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "light"), deckName);
   const previewLightDetails = await inspectApkgAnkiPreview(page);
   assertBrowser(previewLightDetails.previewCount >= Math.min(3, apkgCards.length), `APKG light Anki answer previews found: ${previewLightDetails.previewCount}`);
   assertBrowser(previewLightDetails.frontHostCount === 0, "APKG light Anki preview has no separate front preview host.");
@@ -249,7 +355,7 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(!previewLightDetails.hasScriptTag, "APKG light Anki preview has no script tag.");
   assertBrowser(!previewLightDetails.hasExternalCdnLink, "APKG light Anki preview has no external CDN link.");
 
-  await captureApkg(page, "ankiPreview", "dark", `cards-apkg-anki-preview-${label}.png`, deckName);
+  await captureApkg(page, "ankiPreview", "dark", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "dark"), deckName);
   const previewDetails = await inspectApkgAnkiPreview(page);
   assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki answer previews found: ${previewDetails.previewCount}`);
   assertBrowser(previewDetails.frontHostCount === 0, "APKG Anki preview has no separate front preview host.");
@@ -512,7 +618,7 @@ function colorLuminance(value) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
-async function captureApkg(page, mode, theme, fileName, deckName) {
+async function captureApkg(page, mode, theme, filePath, deckName) {
   await prepareCardsPage(page, mode, theme);
   await applyDeckFilter(page, deckName);
   if (mode === "table" || mode === "tiles") {
@@ -521,7 +627,8 @@ async function captureApkg(page, mode, theme, fileName, deckName) {
     await waitForApkgAnkiPreview(page);
   }
   await waitForLayoutStabilization(page);
-  await page.screenshot({ path: path.join(artifacts, fileName), fullPage: true });
+  await ensureArtifactParent(filePath);
+  await page.screenshot({ path: filePath, fullPage: true });
 }
 
 async function prepareCardsPage(page, mode, theme) {
@@ -1541,10 +1648,17 @@ async function visibleErrorText(page) {
 }
 
 async function writeBrowserFailureArtifacts(page, error) {
-  await fs.mkdir(artifacts, { recursive: true });
   const errorText = String(error?.stack || error?.message || error);
-  await saveBestEffort(() => page.screenshot({ path: path.join(artifacts, `browser-failure-${label}.png`), fullPage: true }));
-  await saveBestEffort(async () => fs.writeFile(path.join(artifacts, `browser-failure-${label}.html`), redactArtifact(await page.content()), "utf8"));
+  const failureScreenshot = artifactPaths.failureScreenshot(`browser-${label}-failure.png`);
+  const failureHtml = artifactPaths.htmlFile("failures", `browser-${label}-failure.html`);
+  await saveBestEffort(async () => {
+    await ensureArtifactParent(failureScreenshot);
+    await page.screenshot({ path: failureScreenshot, fullPage: true });
+  });
+  await saveBestEffort(async () => {
+    await ensureArtifactParent(failureHtml);
+    await fs.writeFile(failureHtml, redactArtifact(await page.content()), "utf8");
+  });
   await saveBestEffort(() => writeConsoleLog(`browser-console-${label}.log`));
   await saveBestEffort(() => writeJson(`browser-network-${label}.json`, networkEvents));
   await saveBestEffort(async () => writeJson(`browser-dom-summary-${label}.json`, await buildDomSummary(page)));
@@ -1560,16 +1674,14 @@ async function writeBrowserFailureArtifacts(page, error) {
 }
 
 async function deleteStaleFailureArtifacts() {
-  await fs.mkdir(artifacts, { recursive: true });
-  const entries = await fs.readdir(artifacts).catch(() => []);
-  const staleNames = new Set([
-    `browser-failure-${label}.png`,
-    `browser-failure-${label}.html`,
-    `browser-console-${label}.log`,
-    `browser-network-${label}.json`,
-    `browser-dom-summary-${label}.json`,
-  ]);
-  await Promise.all(entries.filter((entry) => staleNames.has(entry)).map((entry) => fs.rm(path.join(artifacts, entry), { force: true })));
+  const stalePaths = [
+    artifactPaths.failureScreenshot(`browser-${label}-failure.png`),
+    artifactPaths.htmlFile("failures", `browser-${label}-failure.html`),
+    path.join(artifactPaths.diagnostics, `browser-console-${label}.log`),
+    artifactPaths.report(`browser-network-${label}.json`),
+    artifactPaths.report(`browser-dom-summary-${label}.json`),
+  ];
+  await Promise.all(stalePaths.map((filePath) => fs.rm(filePath, { force: true })));
 }
 
 async function buildDomSummary(page) {
@@ -1734,7 +1846,7 @@ async function readJsonIfExists(filePath) {
 }
 
 async function isPerformance100Enabled() {
-  const problemSummary = await readJsonIfExists(path.join(artifacts, "apkg-problematic-summary.json"));
+  const problemSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-problematic-summary.json"));
   return Boolean(problemSummary?.performanceScenario?.enabled);
 }
 
@@ -1753,11 +1865,15 @@ async function writeConsoleLog(fileName) {
     const location = event.location?.url ? ` ${event.location.url}:${event.location.lineNumber || 0}` : "";
     return `[${event.type}]${location} ${event.text}`;
   });
-  await fs.writeFile(path.join(artifacts, fileName), `${lines.join("\n")}\n`, "utf8");
+  const filePath = path.join(artifactPaths.diagnostics, fileName);
+  await ensureArtifactParent(filePath);
+  await fs.writeFile(filePath, `${redactArtifact(lines.join("\n"))}\n`, "utf8");
 }
 
 async function writeJson(fileName, value) {
-  await fs.writeFile(path.join(artifacts, fileName), JSON.stringify(redactArtifact(value), null, 2), "utf8");
+  const filePath = artifactPaths.report(fileName);
+  await ensureArtifactParent(filePath);
+  await fs.writeFile(filePath, JSON.stringify(redactArtifact(value), null, 2), "utf8");
 }
 
 async function saveBestEffort(action) {

@@ -11,6 +11,8 @@ import sqlite3
 import time
 from typing import Any
 
+from artifact_paths import ArtifactPaths
+
 
 DEFAULT_PROFILE = "E2E"
 PICKLE_PROTOCOL = 4
@@ -24,7 +26,7 @@ def main() -> int:
     parser.add_argument(
         "--artifacts-dir",
         type=Path,
-        default=Path(os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS", "/e2e/artifacts")),
+        default=ArtifactPaths.from_env().diagnostics,
     )
     parser.add_argument("--fresh", action="store_true", help="Remove stale prefs DB files before bootstrapping.")
     args = parser.parse_args()

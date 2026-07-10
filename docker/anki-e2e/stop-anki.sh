@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 : "${ANKI_STUDY_REPORT_E2E_ARTIFACTS:=/e2e/artifacts}"
-pid_file="${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki.pid"
+: "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/runtime}"
+pid_file="${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/anki.pid"
 
 if [ ! -f "$pid_file" ]; then
   exit 0

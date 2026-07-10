@@ -7,18 +7,20 @@ label="${1:-run}"
 : "${ANKI_PROFILE:=E2E}"
 : "${ANKI_PROFILE_DIR:=${ANKI_BASE}/${ANKI_PROFILE}}"
 : "${ANKI_STUDY_REPORT_E2E_ARTIFACTS:=/e2e/artifacts}"
-: "${ANKI_STUDY_REPORT_E2E_READY_FILE:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/dashboard-ready.json}"
+: "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/runtime}"
+: "${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/diagnostics}"
+: "${ANKI_STUDY_REPORT_E2E_READY_FILE:=${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/dashboard-ready.json}"
 : "${DISPLAY:=:99}"
 
-mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
-rm -f "$ANKI_STUDY_REPORT_E2E_READY_FILE" "$ANKI_STUDY_REPORT_E2E_ARTIFACTS/anki.pid"
+mkdir -p "$ANKI_STUDY_REPORT_E2E_RUNTIME_DIR" "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR"
+rm -f "$ANKI_STUDY_REPORT_E2E_READY_FILE" "$ANKI_STUDY_REPORT_E2E_RUNTIME_DIR/anki.pid"
 
 write_e2e_runner_event() {
   local stage="$1"
   local addon_dir="${ANKI_BASE}/addons21/anki_study_report_e2e"
   STAGE="$stage" \
   ADDON_DIR="$addon_dir" \
-  ANKI_STUDY_REPORT_E2E_EVENTS_FILE="${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/addon-e2e-events.jsonl" \
+  ANKI_STUDY_REPORT_E2E_EVENTS_FILE="${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/addon-e2e-events.jsonl" \
     python3 - <<'PY'
 from __future__ import annotations
 
@@ -77,12 +79,12 @@ PY
   echo "ANKI_STUDY_REPORT_E2E_ARTIFACTS=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}"
   echo "ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR=${ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR:-}"
   echo "ANKI_STUDY_REPORT_E2E_DEBUG_QT=${ANKI_STUDY_REPORT_E2E_DEBUG_QT:-0}"
-} | tee "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/e2e-env-${label}.txt"
+} | tee "${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/e2e-env-${label}.txt"
 
 if ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
   Xvfb "$DISPLAY" -screen 0 1920x1080x24 +extension GLX +render -noreset \
-    >"${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/xvfb.log" 2>&1 &
-  echo "$!" > "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/xvfb.pid"
+    >"${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/xvfb.log" 2>&1 &
+  echo "$!" > "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/xvfb.pid"
 fi
 
 for _ in $(seq 1 20); do
@@ -98,7 +100,7 @@ fi
 
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
   eval "$(dbus-launch --sh-syntax)"
-  echo "${DBUS_SESSION_BUS_PID:-}" > "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/dbus.pid"
+  echo "${DBUS_SESSION_BUS_PID:-}" > "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/dbus.pid"
 fi
 
 echo "Anki base add-ons before start:"
@@ -125,7 +127,7 @@ if [ -d "${ANKI_PROFILE_DIR}/addons21" ]; then
 fi
 write_e2e_runner_event "addon_folder_present"
 
-diagnostics_file="${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/qt-xcb-diagnostics-${label}.log"
+diagnostics_file="${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/qt-xcb-diagnostics-${label}.log"
 {
   echo "Anki Qt/XCB diagnostics (${label})"
   echo "DISPLAY=${DISPLAY}"
@@ -160,7 +162,7 @@ if grep -q "not found" "$diagnostics_file"; then
 fi
 
 help_text="$("$ANKI_BIN" --help 2>&1 || true)"
-printf '%s\n' "$help_text" > "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki-help.txt"
+printf '%s\n' "$help_text" > "${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/anki-help.txt"
 
 anki_args=()
 if grep -q -- "-b" <<<"$help_text"; then
@@ -182,8 +184,8 @@ if [ "${ANKI_STUDY_REPORT_E2E_DEBUG_QT:-0}" = "1" ]; then
   LIBGL_ALWAYS_SOFTWARE=1 \
   NO_AT_BRIDGE=1 \
   "$ANKI_BIN" "${anki_args[@]}" \
-    >"${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki-stdout-${label}.log" \
-    2>"${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki-stderr-${label}.log" &
+    >"${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/anki-stdout-${label}.log" \
+    2>"${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/anki-stderr-${label}.log" &
 else
   ANKI_STUDY_REPORT_E2E=1 \
   ANKI_STUDY_REPORT_E2E_ARTIFACTS="$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
@@ -194,9 +196,9 @@ else
   LIBGL_ALWAYS_SOFTWARE=1 \
   NO_AT_BRIDGE=1 \
   "$ANKI_BIN" "${anki_args[@]}" \
-    >"${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki-stdout-${label}.log" \
-    2>"${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki-stderr-${label}.log" &
+    >"${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/anki-stdout-${label}.log" \
+    2>"${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR}/anki-stderr-${label}.log" &
 fi
 
-echo "$!" > "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki.pid"
-echo "Anki pid: $(cat "${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/anki.pid")"
+echo "$!" > "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/anki.pid"
+echo "Anki pid: $(cat "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/anki.pid")"

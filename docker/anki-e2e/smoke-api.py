@@ -12,14 +12,18 @@ from urllib.parse import urljoin
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from artifact_paths import ArtifactPaths
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run API smoke checks against Anki Study Report dashboard.")
     parser.add_argument("--label", default="run")
     args = parser.parse_args()
 
-    artifacts = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS", "/e2e/artifacts"))
-    ready_file = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE", str(artifacts / "dashboard-ready.json")))
+    paths = ArtifactPaths.from_env()
+    paths.ensure()
+    artifacts = paths.reports
+    ready_file = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE", str(paths.runtime / "dashboard-ready.json")))
     ready = json.loads(ready_file.read_text(encoding="utf-8"))
     base_url = ready["baseUrl"]
     token = ready["token"]

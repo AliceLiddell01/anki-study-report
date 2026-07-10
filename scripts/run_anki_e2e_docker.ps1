@@ -42,6 +42,52 @@ function Invoke-DockerCompose {
     }
 }
 
+function Assert-E2EArtifactManifest {
+    param([string]$ArtifactsRoot)
+
+    $manifestPath = Join-Path $ArtifactsRoot "artifact-manifest.json"
+    if (-not (Test-Path -LiteralPath $manifestPath)) {
+        throw "E2E artifact manifest not found: $manifestPath"
+    }
+    $manifestText = Get-Content -Raw -LiteralPath $manifestPath
+    if ($manifestText -match '(?i)(token=|\?token)') {
+        throw "E2E artifact manifest contains a token-bearing URL."
+    }
+    $manifest = $manifestText | ConvertFrom-Json
+    if ($manifest.status -ne "success") {
+        throw "E2E artifact manifest status is not success: $($manifest.status)"
+    }
+
+    $screenshots = @($manifest.screenshots)
+    $pageScreenshots = @($screenshots | Where-Object { $_.kind -eq "page" })
+    $navigationScreenshots = @($screenshots | Where-Object { $_.kind -eq "navigation" })
+    $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "synthetic" })
+    $apkgCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "apkg" })
+    if ($pageScreenshots.Count -ne 18) {
+        throw "Expected 18 page screenshots, found $($pageScreenshots.Count)."
+    }
+    if ($navigationScreenshots.Count -ne 2) {
+        throw "Expected 2 avatar menu screenshots, found $($navigationScreenshots.Count)."
+    }
+    if ($syntheticCards.Count -ne 6) {
+        throw "Expected 6 synthetic Cards screenshots, found $($syntheticCards.Count)."
+    }
+    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $apkgCards.Count -ne 6) {
+        throw "Expected 6 APKG Cards screenshots, found $($apkgCards.Count)."
+    }
+
+    foreach ($entry in $screenshots) {
+        $relativePath = [string]$entry.path
+        if ([IO.Path]::IsPathRooted($relativePath) -or $relativePath -match '(^|[\\/])\.\.([\\/]|$)') {
+            throw "Manifest contains a non-relative artifact path: $relativePath"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $ArtifactsRoot $relativePath))) {
+            throw "Manifest references a missing screenshot: $relativePath"
+        }
+    }
+    Write-Host "Verified structured E2E artifacts: pages=$($pageScreenshots.Count), navigation=$($navigationScreenshots.Count), syntheticCards=$($syntheticCards.Count), apkgCards=$($apkgCards.Count)"
+}
+
 Push-Location $Root
 try {
     if (-not $NoBuild) {
@@ -63,6 +109,7 @@ try {
     }
     $runArgs += "anki-e2e"
     Invoke-DockerCompose $runArgs
+    Assert-E2EArtifactManifest -ArtifactsRoot $ArtifactsDir
 } finally {
     Pop-Location
 }

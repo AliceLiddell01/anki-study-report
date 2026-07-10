@@ -21,12 +21,15 @@ def _e2e_events_enabled() -> bool:
 
 
 def _e2e_events_path() -> Path:
+    explicit = os.environ.get("ANKI_STUDY_REPORT_E2E_EVENTS_FILE")
+    if explicit:
+        return Path(explicit)
     artifacts = (
         os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR")
         or os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS")
         or "/e2e/artifacts"
     )
-    return Path(artifacts) / "addon-e2e-events.jsonl"
+    return Path(artifacts) / "runtime" / "addon-e2e-events.jsonl"
 
 
 def _e2e_json_safe(value):
@@ -2490,7 +2493,7 @@ def _e2e_artifacts_dir() -> Path:
 def _e2e_ready_file() -> Path:
     return Path(
         os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE")
-        or str(_e2e_artifacts_dir() / "dashboard-ready.json")
+        or str(_e2e_artifacts_dir() / "runtime" / "dashboard-ready.json")
     )
 
 
@@ -2507,10 +2510,10 @@ def _current_mw():
 def _maybe_configure_e2e_logging() -> None:
     if not _is_e2e_mode():
         return
-    artifacts_dir = _e2e_artifacts_dir()
+    diagnostics_dir = _e2e_artifacts_dir() / "diagnostics"
     try:
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        configure_log_dir(artifacts_dir)
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        configure_log_dir(diagnostics_dir)
     except Exception:
         error_traceback = traceback.format_exc()
         _write_e2e_event(

@@ -7,14 +7,34 @@ set -Eeuo pipefail
 : "${ANKI_PROFILE:=E2E}"
 : "${ANKI_PROFILE_DIR:=${ANKI_BASE}/${ANKI_PROFILE}}"
 : "${ANKI_STUDY_REPORT_E2E_ARTIFACTS:=/e2e/artifacts}"
-: "${ANKI_STUDY_REPORT_E2E_READY_FILE:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/dashboard-ready.json}"
+if [ -n "${ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR:-}" ]; then
+  ANKI_STUDY_REPORT_E2E_ARTIFACTS="$ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR"
+fi
+: "${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/runtime}"
+: "${ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/diagnostics}"
+: "${ANKI_STUDY_REPORT_E2E_REPORTS_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/reports}"
+: "${ANKI_STUDY_REPORT_E2E_HTML_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/html}"
+: "${ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/screenshots}"
+: "${ANKI_STUDY_REPORT_E2E_PACKAGE_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/package}"
+: "${ANKI_STUDY_REPORT_E2E_READY_FILE:=${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/dashboard-ready.json}"
 : "${PNPM_BIN:=/e2e/node_modules/.bin/pnpm}"
 
-export ANKI_BASE ANKI_PROFILE ANKI_PROFILE_DIR ANKI_STUDY_REPORT_E2E_ARTIFACTS ANKI_STUDY_REPORT_E2E_READY_FILE
+export ANKI_BASE ANKI_PROFILE ANKI_PROFILE_DIR ANKI_STUDY_REPORT_E2E_ARTIFACTS
+export ANKI_STUDY_REPORT_E2E_RUNTIME_DIR ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR ANKI_STUDY_REPORT_E2E_REPORTS_DIR
+export ANKI_STUDY_REPORT_E2E_HTML_DIR ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR ANKI_STUDY_REPORT_E2E_PACKAGE_DIR
+export ANKI_STUDY_REPORT_E2E_READY_FILE
 export ANKI_STUDY_REPORT_E2E=1
 
+run_status="failed"
 cleanup() {
+  local exit_status=$?
   /e2e/bin/stop-anki.sh || true
+  /e2e/bin/write-artifact-manifest.py \
+    --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    --status "$run_status" \
+    --anki-version "${ANKI_VERSION:-unknown}" || true
+  trap - EXIT
+  exit "$exit_status"
 }
 trap cleanup EXIT
 
@@ -24,21 +44,22 @@ section() {
 }
 
 section "Prepare artifacts"
+case "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" in
+  ""|"/"|"/e2e"|"/workspace")
+    echo "Refusing to clean unsafe E2E artifacts root: ${ANKI_STUDY_REPORT_E2E_ARTIFACTS}" >&2
+    exit 1
+    ;;
+esac
 mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
-rm -f "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/api-*.json \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/apkg-*.json \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/browser-smoke-apkg-*.json \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/cards-*.png \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/cards-*.html \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/anki-stdout-*.log \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/anki-stderr-*.log \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/addon-e2e-events.jsonl \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/prefs21-summary.txt \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/anki-data-tree.txt \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/addons-tree.txt \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"/anki-startup-tail.txt
-ln -sf anki_study_report.log "$ANKI_STUDY_REPORT_E2E_ARTIFACTS/anki-study-report.log" || true
+find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+mkdir -p \
+  "$ANKI_STUDY_REPORT_E2E_RUNTIME_DIR" \
+  "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR" \
+  "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+  "$ANKI_STUDY_REPORT_E2E_HTML_DIR" \
+  "$ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR" \
+  "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR"
+ln -sf anki_study_report.log "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki-study-report.log" || true
 
 section "Copy workspace to writable build directory"
 rm -rf "$E2E_BUILD_DIR"
@@ -82,7 +103,7 @@ fi
 
 section "Build and validate add-on archive"
 cd "$E2E_BUILD_DIR"
-python3 scripts/package_addon.py --output "$ANKI_STUDY_REPORT_E2E_ARTIFACTS/anki_study_report.ankiaddon" --check
+python3 scripts/package_addon.py --output "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon" --check
 
 section "Create isolated Anki profile and fixture collection"
 /e2e/bin/create-profile.sh
@@ -90,16 +111,16 @@ bootstrap_prefs_args=(
   --base-dir "$ANKI_BASE"
   --profile "$ANKI_PROFILE"
   --profile-dir "$ANKI_PROFILE_DIR"
-  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR"
 )
 if [ "${KEEP_E2E_DATA:-0}" != "1" ]; then
   bootstrap_prefs_args+=(--fresh)
 fi
 /e2e/bin/bootstrap-prefs.py "${bootstrap_prefs_args[@]}"
-/e2e/bin/seed-collection.py --profile-dir "$ANKI_PROFILE_DIR" --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+/e2e/bin/seed-collection.py --profile-dir "$ANKI_PROFILE_DIR" --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 import_apkg_args=(
   --profile-dir "$ANKI_PROFILE_DIR"
-  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 )
 if [ "${ANKI_E2E_REQUIRE_APKG_FIXTURE:-0}" = "1" ]; then
   import_apkg_args+=(--require)
@@ -108,7 +129,7 @@ fi
   "${import_apkg_args[@]}"
 /e2e/bin/mark-apkg-cards-problematic.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
-  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 /e2e/bin/install-addon.sh "$E2E_BUILD_DIR/anki_study_report"
 
 section "First Anki start"
@@ -122,8 +143,9 @@ section "Restart Anki"
 /e2e/bin/wait-for-dashboard.py --label restart
 /e2e/bin/smoke-api.py --label restart
 
-cp -f "$ANKI_STUDY_REPORT_E2E_ARTIFACTS/anki_study_report.log" \
-  "$ANKI_STUDY_REPORT_E2E_ARTIFACTS/anki-study-report.log" 2>/dev/null || true
+cp -f "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki_study_report.log" \
+  "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/anki-study-report.log" 2>/dev/null || true
 
 section "E2E completed"
 echo "Artifacts: ${ANKI_STUDY_REPORT_E2E_ARTIFACTS}"
+run_status="success"

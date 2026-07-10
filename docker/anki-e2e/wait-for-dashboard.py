@@ -12,6 +12,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from artifact_paths import ArtifactPaths
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Wait for Anki Study Report dashboard readiness.")
@@ -19,18 +21,19 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=120.0)
     args = parser.parse_args()
 
-    artifacts = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_ARTIFACTS", "/e2e/artifacts"))
-    ready_file = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE", str(artifacts / "dashboard-ready.json")))
-    pid_file = artifacts / "anki.pid"
+    paths = ArtifactPaths.from_env()
+    paths.ensure()
+    ready_file = Path(os.environ.get("ANKI_STUDY_REPORT_E2E_READY_FILE", str(paths.runtime / "dashboard-ready.json")))
+    pid_file = paths.runtime / "anki.pid"
     deadline = time.monotonic() + args.timeout
     last_error = ""
 
     while time.monotonic() < deadline:
         if pid_file.is_file() and not process_alive(pid_file):
             print("Anki process exited before dashboard became ready.", file=sys.stderr)
-            write_failure_artifacts(artifacts, args.label)
-            print_readiness_diagnostics(artifacts, ready_file, args.label)
-            print_log_tails(artifacts, args.label)
+            write_failure_artifacts(paths, args.label)
+            print_readiness_diagnostics(paths, ready_file, args.label)
+            print_log_tails(paths, args.label)
             return 1
 
         if ready_file.is_file():
@@ -40,13 +43,13 @@ def main() -> int:
                     f"{ready['baseUrl']}/api/health?{urlencode({'token': ready['token']})}"
                 )
                 if health.get("ok") and health.get("hasReport"):
-                    (artifacts / f"api-health-{args.label}.json").write_text(
+                    (paths.reports / f"api-health-{args.label}.json").write_text(
                         json.dumps(health, ensure_ascii=False, indent=2),
                         encoding="utf-8",
                     )
-                    if has_traceback(artifacts, args.label):
+                    if has_traceback(paths, args.label):
                         print("Traceback found in Anki logs after readiness.", file=sys.stderr)
-                        print_log_tails(artifacts, args.label)
+                        print_log_tails(paths, args.label)
                         return 1
                     print(f"Dashboard ready: {ready['baseUrl']}")
                     return 0
@@ -56,9 +59,9 @@ def main() -> int:
         time.sleep(1)
 
     print(f"Timed out waiting for dashboard readiness. Last error: {last_error}", file=sys.stderr)
-    write_failure_artifacts(artifacts, args.label)
-    print_readiness_diagnostics(artifacts, ready_file, args.label)
-    print_log_tails(artifacts, args.label)
+    write_failure_artifacts(paths, args.label)
+    print_readiness_diagnostics(paths, ready_file, args.label)
+    print_log_tails(paths, args.label)
     return 1
 
 
@@ -76,11 +79,11 @@ def process_alive(pid_file: Path) -> bool:
     return Path(f"/proc/{pid}").exists()
 
 
-def has_traceback(artifacts: Path, label: str) -> bool:
+def has_traceback(paths: ArtifactPaths, label: str) -> bool:
     candidates = [
-        artifacts / f"anki-stderr-{label}.log",
-        artifacts / f"anki-stdout-{label}.log",
-        artifacts / "anki_study_report.log",
+        paths.diagnostics / f"anki-stderr-{label}.log",
+        paths.diagnostics / f"anki-stdout-{label}.log",
+        paths.diagnostics / "anki_study_report.log",
     ]
     for path in candidates:
         if not path.is_file():
@@ -91,28 +94,28 @@ def has_traceback(artifacts: Path, label: str) -> bool:
     return False
 
 
-def write_failure_artifacts(artifacts: Path, label: str) -> None:
+def write_failure_artifacts(paths: ArtifactPaths, label: str) -> None:
     anki_base = Path(os.environ.get("ANKI_BASE", "/e2e/anki-data"))
     anki_profile = os.environ.get("ANKI_PROFILE", "E2E")
     profile_dir = Path(os.environ.get("ANKI_PROFILE_DIR", str(anki_base / anki_profile)))
 
     write_command_output(
-        artifacts / "anki-data-tree.txt",
+        paths.diagnostics / "anki-data-tree.txt",
         f"find {shell_quote(anki_base)} -maxdepth 4 -print | sort",
     )
     write_command_output(
-        artifacts / "addons-tree.txt",
+        paths.diagnostics / "addons-tree.txt",
         f"find {shell_quote(anki_base / 'addons21')} -maxdepth 4 -print | sort",
     )
 
     startup_paths = [
-        artifacts / "prefs21-summary.txt",
-        artifacts / "addon-e2e-events.jsonl",
-        artifacts / f"anki-stdout-{label}.log",
-        artifacts / f"anki-stderr-{label}.log",
-        artifacts / "anki-study-report.log",
-        artifacts / "anki_study_report.log",
-        artifacts / "xvfb.log",
+        paths.diagnostics / "prefs21-summary.txt",
+        paths.runtime / "addon-e2e-events.jsonl",
+        paths.diagnostics / f"anki-stdout-{label}.log",
+        paths.diagnostics / f"anki-stderr-{label}.log",
+        paths.diagnostics / "anki-study-report.log",
+        paths.diagnostics / "anki_study_report.log",
+        paths.diagnostics / "xvfb.log",
     ]
     lines = [
         f"ANKI_BASE={anki_base}",
@@ -125,7 +128,7 @@ def write_failure_artifacts(artifacts: Path, label: str) -> None:
         lines.append(f"--- tail {path} ---")
         lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines()[-120:])
         lines.append("")
-    (artifacts / "anki-startup-tail.txt").write_text("\n".join(lines), encoding="utf-8")
+    (paths.diagnostics / "anki-startup-tail.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
 def write_command_output(path: Path, command: str) -> None:
@@ -143,11 +146,11 @@ def shell_quote(path: Path) -> str:
     return "'" + str(path).replace("'", "'\"'\"'") + "'"
 
 
-def print_readiness_diagnostics(artifacts: Path, ready_file: Path, label: str) -> None:
+def print_readiness_diagnostics(paths: ArtifactPaths, ready_file: Path, label: str) -> None:
     print("\n--- readiness diagnostics ---", file=sys.stderr)
     print(f"dashboard-ready.json exists: {ready_file.is_file()} ({ready_file})", file=sys.stderr)
 
-    events_file = artifacts / "addon-e2e-events.jsonl"
+    events_file = paths.runtime / "addon-e2e-events.jsonl"
     print(f"addon-e2e-events.jsonl exists: {events_file.is_file()} ({events_file})", file=sys.stderr)
     if events_file.is_file():
         last_event = read_last_event(events_file)
@@ -164,15 +167,15 @@ def print_readiness_diagnostics(artifacts: Path, ready_file: Path, label: str) -
         print("add-on import_start occurred: False", file=sys.stderr)
 
     for path in (
-        artifacts / "prefs21-summary.txt",
-        artifacts / "anki-study-report.log",
-        artifacts / "anki_study_report.log",
-        artifacts / f"anki-stdout-{label}.log",
-        artifacts / f"anki-stderr-{label}.log",
+        paths.diagnostics / "prefs21-summary.txt",
+        paths.diagnostics / "anki-study-report.log",
+        paths.diagnostics / "anki_study_report.log",
+        paths.diagnostics / f"anki-stdout-{label}.log",
+        paths.diagnostics / f"anki-stderr-{label}.log",
     ):
         print(f"{path.name} exists: {path.is_file()} ({path})", file=sys.stderr)
 
-    for path in (artifacts / "addons-tree.txt", artifacts / "anki-data-tree.txt"):
+    for path in (paths.diagnostics / "addons-tree.txt", paths.diagnostics / "anki-data-tree.txt"):
         if not path.is_file():
             continue
         print(f"\n--- head {path} ---", file=sys.stderr)
@@ -211,15 +214,15 @@ def event_stage_exists(path: Path, stage: str) -> bool:
     return False
 
 
-def print_log_tails(artifacts: Path, label: str) -> None:
+def print_log_tails(paths: ArtifactPaths, label: str) -> None:
     for path in (
-        artifacts / "prefs21-summary.txt",
-        artifacts / f"anki-stdout-{label}.log",
-        artifacts / f"anki-stderr-{label}.log",
-        artifacts / "addon-e2e-events.jsonl",
-        artifacts / "anki-study-report.log",
-        artifacts / "anki_study_report.log",
-        artifacts / "xvfb.log",
+        paths.diagnostics / "prefs21-summary.txt",
+        paths.diagnostics / f"anki-stdout-{label}.log",
+        paths.diagnostics / f"anki-stderr-{label}.log",
+        paths.runtime / "addon-e2e-events.jsonl",
+        paths.diagnostics / "anki-study-report.log",
+        paths.diagnostics / "anki_study_report.log",
+        paths.diagnostics / "xvfb.log",
     ):
         if not path.is_file():
             continue

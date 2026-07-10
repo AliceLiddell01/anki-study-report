@@ -13,7 +13,7 @@ services:
       ANKI_PROFILE: E2E
       ANKI_STUDY_REPORT_E2E: "1"
       ANKI_STUDY_REPORT_E2E_ARTIFACTS: /e2e/artifacts
-      ANKI_STUDY_REPORT_E2E_READY_FILE: /e2e/artifacts/dashboard-ready.json
+      ANKI_STUDY_REPORT_E2E_READY_FILE: /e2e/artifacts/runtime/dashboard-ready.json
       ANKI_STUDY_REPORT_E2E_PORT: "8766"
       ANKI_E2E_APKG_FIXTURE_PATH: ${ANKI_E2E_APKG_FIXTURE_PATH:-}
       ANKI_E2E_REQUIRE_APKG_FIXTURE: ${ANKI_E2E_REQUIRE_APKG_FIXTURE:-}
