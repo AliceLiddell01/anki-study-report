@@ -495,6 +495,61 @@ export interface StudyReport {
     legacyBuildMs?: number;
   };
   today?: TodayStudyReport;
+  profile?: ProfileModel;
+}
+
+export type ProfileDeckSort = "name" | "reviews" | "active_days";
+
+export interface ProfileActivityDay {
+  date: string;
+  reviews: number;
+  studySeconds: number | null;
+  passRate: number | null;
+}
+
+export interface ProfileDeckOverview {
+  id: number;
+  name: string;
+  totalReviews: number;
+  activeDays: number;
+}
+
+export interface ProfileModel {
+  identity: {
+    ankiProfileName: string | null;
+    displayName: string;
+    initials: string;
+    label: "Локальный профиль" | string;
+  };
+  studyHistory: {
+    detectedStartedOn: string | null;
+    customStartedOn: string | null;
+    displayedStartedOn: string | null;
+    statsAvailableFrom: string | null;
+    totalReviews: number;
+    activeDays: number;
+    currentStreak: number;
+    bestStreak: number;
+    studyTimeSeconds: number | null;
+    studyTimeSource: "revlog_estimate" | "session_tracker" | "study_time_stats" | null;
+    averagePassRate: number | null;
+  };
+  activity: {
+    days: ProfileActivityDay[];
+    recentActiveDays: ProfileActivityDay[];
+    rangeStart: string | null;
+    rangeEnd: string | null;
+  };
+  decks: {
+    overview: ProfileDeckOverview[];
+    total: number;
+    limit: number;
+    aggregation: "canonical_current_deck" | string;
+  };
+  preferences: {
+    customStudyStartedOn: string | null;
+    deckOverviewSort: ProfileDeckSort;
+  };
 }
 
 export type TodayStudyReport = Pick<

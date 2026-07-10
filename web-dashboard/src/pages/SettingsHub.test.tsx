@@ -23,12 +23,13 @@ describe("Settings Hub pages", () => {
     expect(markup).toContain("Перестроить кэш");
   });
 
-  it("keeps Profile read-only and links to the canonical report settings route", () => {
+  it("renders the Profile MVP fallback without transitional settings copy", () => {
     const markup = renderToStaticMarkup(<ProfilePage report={null} />);
 
-    expect(markup).toContain("переходный read-only экран");
-    expect(markup).toContain('href="#/settings"');
-    expect(markup).toContain("Открыть настройки");
-    expect(markup).not.toContain("Сохранить");
+    expect(markup).toContain("Пользователь Anki");
+    expect(markup).toContain("Локальный профиль");
+    expect(markup).toContain("Изменить дату начала");
+    expect(markup).not.toContain("переходный read-only экран");
+    expect(markup).not.toContain('href="#/settings"');
   });
 });

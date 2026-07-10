@@ -786,6 +786,57 @@ export const mockReport: StudyReport = {
       autoDisperse: true,
     },
   },
+  profile: {
+    identity: {
+      ankiProfileName: "E2E",
+      displayName: "E2E",
+      initials: "E",
+      label: "Локальный профиль",
+    },
+    studyHistory: {
+      detectedStartedOn: "2026-06-10",
+      customStartedOn: null,
+      displayedStartedOn: "2026-06-10",
+      statsAvailableFrom: "2026-06-10",
+      totalReviews: 2840,
+      activeDays: 19,
+      currentStreak: 4,
+      bestStreak: 8,
+      studyTimeSeconds: 64800,
+      studyTimeSource: "revlog_estimate",
+      averagePassRate: 0.86,
+    },
+    activity: {
+      days: mockActivityDays.filter((day) => day.reviews > 0).map((day) => ({
+        date: day.date,
+        reviews: day.reviews,
+        studySeconds: day.studySeconds || null,
+        passRate: 0.86,
+      })),
+      recentActiveDays: mockActivityDays.filter((day) => day.reviews > 0).slice(-7).reverse().map((day) => ({
+        date: day.date,
+        reviews: day.reviews,
+        studySeconds: day.studySeconds || null,
+        passRate: 0.86,
+      })),
+      rangeStart: "2026-06-10",
+      rangeEnd: "2026-06-29",
+    },
+    decks: {
+      overview: [
+        { id: 1, name: "文法::N3", totalReviews: 810, activeDays: 15 },
+        { id: 2, name: "Words::N1", totalReviews: 1240, activeDays: 18 },
+        { id: 3, name: "Words::N2", totalReviews: 790, activeDays: 12 },
+      ],
+      total: 3,
+      limit: 8,
+      aggregation: "canonical_current_deck",
+    },
+    preferences: {
+      customStudyStartedOn: null,
+      deckOverviewSort: "name",
+    },
+  },
   recommendations: {
     mainAction: "Сначала закрыть две проблемные колоды, затем сделать короткую повторную сессию.",
     why: "Они дают большую часть Fail, а завтрашняя очередь достаточно легкая, чтобы потратить силы на качество.",
