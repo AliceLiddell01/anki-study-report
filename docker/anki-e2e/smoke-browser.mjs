@@ -24,15 +24,16 @@ const responsiveViewports = [
   { name: "narrow-1280", width: 1280, height: 900 },
 ];
 const dashboardPageCases = [
-  { route: "/home", pageName: "today", heading: "Anki Study Report", primaryHref: "#/home" },
+  { route: "/home", pageName: "today", heading: "Сегодня", primaryHref: "#/home" },
   { route: "/calendar", pageName: "calendar", heading: "Календарь", primaryHref: "#/calendar" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
   { route: "/profile", pageName: "profile", heading: "Профиль" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
-  { route: "/settings", pageName: "settings/data", heading: "Кэш и диагностика", settingsHref: "#/settings" },
-  { route: "/settings/server", pageName: "settings/server", heading: "Настройки", settingsHref: "#/settings/server" },
-  { route: "/integrations", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/integrations" },
-  { route: "/logs", pageName: "settings/logs", heading: "Логи", settingsHref: "#/logs" },
+  { route: "/settings", pageName: "settings/report", heading: "Отчёт", settingsHref: "#/settings" },
+  { route: "/settings/data", pageName: "settings/data", heading: "Данные", settingsHref: "#/settings/data" },
+  { route: "/settings/server", pageName: "settings/server", heading: "Сервер", settingsHref: "#/settings/server" },
+  { route: "/settings/sources", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/settings/sources" },
+  { route: "/settings/logs", pageName: "settings/logs", heading: "Логи", settingsHref: "#/settings/logs" },
 ];
 const consoleEvents = [];
 const networkEvents = [];
@@ -235,7 +236,7 @@ async function captureDashboardPages(page) {
 async function captureAvatarMenu(page) {
   const screenshots = [];
   for (const theme of ["light", "dark"]) {
-    await prepareDashboardRoute(page, "/home", theme, "Anki Study Report");
+    await prepareDashboardRoute(page, "/home", theme, "Сегодня");
     const trigger = page.getByRole("button", { name: "Открыть меню профиля", exact: true });
     await trigger.click();
     const menu = page.getByRole("menu", { name: "Меню профиля", exact: true });
@@ -278,7 +279,7 @@ async function inspectActiveNavigation(page) {
     primaryHref:
       document.querySelector('nav[aria-label="Основная навигация"] [aria-current="page"]')?.getAttribute("href") || null,
     settingsHref:
-      document.querySelector('nav[aria-label="Разделы настроек"] [aria-current="page"]')?.getAttribute("href") || null,
+      document.querySelector('nav[aria-label="Настройки"] [aria-current="page"]')?.getAttribute("href") || null,
   }));
 }
 

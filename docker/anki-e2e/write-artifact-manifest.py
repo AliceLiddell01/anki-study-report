@@ -18,10 +18,11 @@ PAGE_ROUTES = {
     "decks": "#/decks",
     "profile": "#/profile",
     "tools": "#/actions",
-    "settings/data": "#/settings",
+    "settings/report": "#/settings",
+    "settings/data": "#/settings/data",
     "settings/server": "#/settings/server",
-    "settings/sources": "#/integrations",
-    "settings/logs": "#/logs",
+    "settings/sources": "#/settings/sources",
+    "settings/logs": "#/settings/logs",
 }
 
 REQUIRED_SUCCESS_ARTIFACTS = (

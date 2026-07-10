@@ -123,7 +123,7 @@ def test_artifact_manifest_uses_relative_redacted_paths(tmp_path: Path):
         "events": "runtime/addon-e2e-events.jsonl",
     }
     assert all(not Path(entry["path"]).is_absolute() for entry in manifest["screenshots"])
-    assert {entry.get("route") for entry in manifest["screenshots"]} >= {"#/home", "#/logs", "#/cards"}
+    assert {entry.get("route") for entry in manifest["screenshots"]} >= {"#/home", "#/settings/logs", "#/cards"}
     assert {entry.get("fixture") for entry in manifest["screenshots"] if entry["kind"] == "cards"} == {"synthetic", "apkg"}
     assert str(tmp_path) not in serialized
     assert "secret-dashboard-token" not in serialized
