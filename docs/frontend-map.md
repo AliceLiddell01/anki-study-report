@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-10.
 
 Source of truth:
 
@@ -31,15 +31,19 @@ web-dashboard/src/types/report.ts
 | `#/profile` | `ProfilePage` | GET/POST `/api/dashboard/settings`, optional refreshed report | frontend build/typecheck | Неверная normalizing settings форма меняет dashboard scope |
 | `#/decks` | `DecksPage` | `report.decks`, `deckHealth` helpers | `deckHealth` indirectly | Статус/сортировка колод зависят от числовой нормализации |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
-| `#/stats` | `StatsPage` | Сейчас placeholder/simple page | typecheck | Не считать аналитикой, пока не подключены данные |
 | `#/calendar` | `CalendarPage` | `activity.days`, calendar helpers | `calendarStats.test.ts` | Даты/period filters легко ломают heatmap |
-| `#/fsrs` | `FsrsPage` | Сейчас simple/placeholder page | typecheck | Не описывать как полный FSRS UI без проверки |
-| `#/browse` | `BrowsePage` | Сейчас simple/placeholder page | typecheck | Не путать с Anki Browser actions |
 | `#/actions` | `ActionsPage` | POST `/api/actions/<action>` | `actionsApi.test.ts`, dashboard action tests backend | Только allowlisted actions |
-| `#/integrations` | `IntegrationsPage` | GET `/api/integrations/status` | typecheck | Endpoint token-protected |
+| `#/integrations` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Реальная read-only диагностика; endpoint token-protected |
 | `#/logs` | `LogsPage` | GET `/api/logs/recent`, POST `/api/logs/clear`, download URL | typecheck | Логи могут содержать diagnostics, token должен редактироваться |
 | `#/settings/server` | `ServerSettingsPage` | GET `/api/server/status`, POST `/api/server/<action>` | `actionsApi.test.ts` | Restart/stop меняют server token/lifecycle |
 | `#/settings` | `SettingsPage` | GET `/api/cache/status`, POST `/api/cache/refresh`, `/api/cache/rebuild` | typecheck | Cache busy/stale states |
+
+Stage 15 удалил `#/stats`, `#/fsrs` и `#/browse`: это были страницы с обещаниями
+будущих функций без собственной live data или workflow. Они больше не
+показываются в primary navigation и не входят в `RoutePath`; старые и
+неизвестные hashes безопасно разрешаются в `#/home`. Реальные статистика и FSRS
+остались на `HomePage`/`CalendarPage`, а действия Anki Browser — на
+`ActionsPage` и `CardsPage`.
 
 ## Важные helpers/normalizers
 
@@ -113,7 +117,7 @@ answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 | `attentionCardsStatus` | Cards, Settings |
 | `noteTypeCatalog` | Cards diagnostics |
 | `forecast` | Home, Calendar forecast metric |
-| `fsrs` | Home, Fsrs page placeholder/future |
+| `fsrs` | Home |
 | `recommendations` | Home, Actions context |
 | `cache` | Settings, ServerSettings |
 
@@ -126,6 +130,7 @@ web-dashboard/src/lib/cardAttention.test.ts
 web-dashboard/src/lib/dateUtils.test.ts
 web-dashboard/src/lib/formatters.test.ts
 web-dashboard/src/pages/CardsPage.test.tsx
+web-dashboard/src/app/router.test.tsx
 ```
 
 ## Visual/runtime risks

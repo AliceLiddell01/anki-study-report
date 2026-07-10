@@ -1,6 +1,6 @@
 # Legacy cleanup inventory
 
-Снимок: 2026-07-06.
+Снимок: 2026-07-10.
 
 Этот документ - карта мест, которые выглядят как legacy, fallback,
 compatibility layer или cleanup-кандидаты. Это не список на удаление. Его цель -
@@ -36,8 +36,8 @@ compatibility layer или cleanup-кандидаты. Это не список 
 | Cards rendering, sanitizer, media | `anki_study_report/note_intelligence.py`, `anki_study_report/dashboard_server.py`, `web-dashboard/src/pages/CardsPage.tsx`, `web-dashboard/src/components/AnkiCardShadowPreview.tsx`, `docker/anki-e2e/smoke-browser.mjs` | Keep | Shadow DOM preview, sanitized HTML, token-protected local media and mode-specific Cards behavior. | Не возвращать iframe/JS execution, не ослаблять sanitizer, проверять real Anki/Docker/browser smoke. |
 | Generated/runtime outputs | `e2e-artifacts/`, `web-dashboard/dist/`, `web-dashboard/screenshots/`, `anki_study_report/web_dashboard/`, `anki_study_report/user_files/`, `*.ankiaddon`, `__pycache__/`, `.pytest_cache/`, `node_modules/` | Generated/runtime | Локальные outputs сборки, тестов, package и runtime. | Не коммитить; чистить через build/test hygiene. Package validator остается guard. |
 | Build/package pipeline | `scripts/package_addon.py`, `scripts/run_full_check.ps1`, `build_ankiaddon.ps1`, `web-dashboard/package.json` | Keep / Transitional risk | Сборка dashboard assets, package validation, full-check/Docker gates. | Не ослаблять `build:addon` и package checks; при изменениях запускать package validation или полный build. |
-| Placeholder/simple dashboard pages | `web-dashboard/src/pages/StatsPage.tsx`, `web-dashboard/src/pages/FsrsPage.tsx`, `web-dashboard/src/pages/BrowsePage.tsx`, `web-dashboard/src/pages/IntegrationsPage.tsx`, `web-dashboard/src/app/router.tsx` | Product decision | `Stats`, `FSRS`, `Browse` сейчас placeholder/simple pages. `Integrations` - легкий read-only status surface через `/api/integrations/status`. | Решить, развивать ли routes или убрать из nav; обновить router/nav/frontend-map/tests. |
-| Possible dead-code helpers | См. раздел ниже | Candidate for verification | Имена найдены статическим поиском как слабо используемые или только определенные. | Подтвердить runtime отсутствием вызовов, добавить targeted regression test, затем удалять узким commit. |
+| Dashboard routes после Stage 15 | `web-dashboard/src/app/router.tsx`, `web-dashboard/src/app/router.test.tsx`, `web-dashboard/src/pages/IntegrationsPage.tsx` | Keep / cleanup complete | `Stats`, `FSRS`, `Browse` placeholders удалены; `Integrations` сохранена как read-only status surface через `/api/integrations/status`. | Сохранять router/nav test и safe unknown-route fallback; новые routes добавлять только с реальной product value. |
+| Verified helper cleanup | `dashboard_payload.py`, `report_builder.py`, `stats_cache.py`, `__init__.py` | Cleanup complete / protected remainder | Пять definition-only helpers удалены; rendering/media helpers оставлены защищёнными. | Не возвращать удалённые wrappers/helpers без caller; protected helpers трогать только с runtime-specific proof. |
 
 ## Stage 12 audit snapshot
 
@@ -115,17 +115,51 @@ scripts/smoke_report_cache_adapter.py
 scripts/smoke_report_cache_merge.py
 ```
 
+### Stage 15 product and helper cleanup snapshot
+
+Stage 15 свёл product-surface и verified-helper cleanup в один checkpoint, не
+затрагивая payload, cache bridge, static fallback или Cards runtime.
+
+Route decisions:
+
+| Route | Evidence | Decision |
+| --- | --- | --- |
+| `#/stats` | Только future-facing placeholder; реальные KPI, comparison и deck analysis уже есть на Home/Calendar/Decks. | Удалён из nav/router вместе со страницей. |
+| `#/fsrs` | Placeholder не читал `report.fsrs`; все существующие FSRS поля уже показаны блоком Home. | Удалён из nav/router вместе со страницей; backend metrics не менялись. |
+| `#/browse` | Placeholder без собственного search workflow; реальные `open-browser` и `open-browser-search` доступны на Actions/Cards. | Удалён из nav/router вместе со страницей. |
+| `#/integrations` | Реальный GET `/api/integrations/status` с token-protected read-only diagnostics и refresh. | Сохранён и покрыт focused router test. |
+
+Старые hashes и неизвестные routes используют существующий fallback на
+`#/home`; отдельный compatibility layer не добавлялся.
+
+Helper decisions:
+
+| Symbol | Evidence | Decision |
+| --- | --- | --- |
+| `_deck_names_from_rows` | Definition-only, без callers/imports/dynamic lookup. | Удалён; `tests/test_dashboard_payload.py` проходит. |
+| `revlog_id_ms_to_local_day` | Definition-only, не участвует в schema/migration/aggregation. | Удалён; `tests/test_stats_cache.py` проходит. |
+| `_integration_diagnostics_text` | Definition-only; dialog и API используют `_integration_diagnostics_sections` напрямую. | Удалён; `__init__.py` компилируется. |
+| `build_short_report`, `build_detailed_report` | Нет callers, re-export, docs/examples или tests как public API; canonical `build_report` сохраняет оба template mode. | Удалены; `tests/test_report_builder.py` проходит. |
+| `_rendered_preview_fallback` | Cards preview/runtime surface, search-only proof недостаточен. | Намеренно сохранён как protected candidate. |
+| `_append_av_media_html` | AV/media/sanitizer/APKG surface, search-only proof недостаточен. | Намеренно сохранён как protected candidate. |
+
+Focused checks включают router/nav coverage, `pnpm run test:frontend`,
+`pnpm run build:addon`, три targeted Python test files и py_compile всех
+изменённых Python files. Финальный acceptance gate:
+`./scripts/run_full_check.ps1 -SkipDocker` — PASS (88 Python tests, 47 frontend
+tests, production build/copy и package validation).
+
 ### Markdown/HTML report snapshot
 
 `report_builder.py` не legacy целиком. `build_markdown_report` и
 `render_html_report` вызываются из `StudyReportDialog`, clipboard/export paths
-и dashboard publish context. `build_short_report` и `build_detailed_report`
-выглядят как тонкие wrappers без текущего caller по source search, но их нельзя
-удалять вместе с пользовательской report surface.
+и dashboard publish context. Stage 15 удалил неиспользуемые
+`build_short_report`/`build_detailed_report`, но canonical `build_report`
+по-прежнему поддерживает `short` и `detailed` template modes.
 
-Минимум для future cleanup report wrappers: targeted search, import/API
-decision, `tests/test_report_builder.py`, и live/manual report window check,
-если меняется dialog path.
+Пользовательский Markdown/HTML report surface не менялся. Его будущие изменения
+по-прежнему требуют `tests/test_report_builder.py` и live/manual report window
+check, если затрагивается dialog path.
 
 ### Frontend dev fallback snapshot
 
@@ -137,10 +171,12 @@ proof. Fixture должен оставаться sanitized и synchronized с
 
 ### Placeholder routes snapshot
 
-`StatsPage`, `FsrsPage` и `BrowsePage` - product decision, а не dead code по
-одному факту placeholder UI. Они подключены через router/navigation и ведут к
-существующим dashboard areas. `IntegrationsPage` не placeholder: он читает
-token-protected `/api/integrations/status` и показывает read-only diagnostics.
+На момент Stage 12 `StatsPage`, `FsrsPage` и `BrowsePage` были product decision,
+а не dead code по одному факту placeholder UI: они ещё были подключены через
+router/navigation. Stage 15 завершил этот decision и удалил их. Уже тогда
+`IntegrationsPage` не была placeholder: она читала token-protected
+`/api/integrations/status` и показывала read-only diagnostics; этот route
+сохранён.
 
 ### Security boundary snapshot
 
@@ -329,45 +365,45 @@ node scripts/run_python.mjs scripts/package_addon.py --check
 
 ### Placeholder/simple dashboard pages
 
-`StatsPage`, `FsrsPage` и `BrowsePage` сейчас описаны как placeholder/simple
-pages. Это не баг, но и не "мертвый код" автоматически: routes могут быть частью
-ожидаемой навигации и будущего UX.
+Stage 15 завершил product decision: `StatsPage`, `FsrsPage`, `BrowsePage` и
+общий `PlaceholderPage` удалены. Primary navigation больше не обещает отдельную
+статистику, FSRS Lab или глобальный поиск без реальной реализации.
 
 `IntegrationsPage` не placeholder: она читает `/api/integrations/status` и
 показывает read-only диагностику. Убирать ее можно только вместе с backend route
 и docs/tests.
 
-## Candidate for verification
+## Remaining work after Stage 15
 
-Следующие имена стоит проверять отдельно перед удалением. Статический поиск
-показывает слабое использование или только definition, но это не доказывает, что
-runtime path невозможен.
+### Concrete next cleanup candidate
 
-| Symbol | File | Current references | Likely classification | Runtime risk | Tests that would catch removal | Recommendation | Suggested future stage |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `_deck_names_from_rows` | `anki_study_report/dashboard_payload.py` | Source search shows definition only. | Candidate for verification | Low/medium: helper is isolated, but deck naming affects cache/deck summary if reintroduced. | `tests/test_dashboard_payload.py`; targeted payload fixture around deck summary. | Verify no planned cache/deck caller, then remove in a narrow helper-only commit. | Stage 16 verified helper cleanup |
-| `_rendered_preview_fallback` | `anki_study_report/metrics.py` | Source search shows definition only. | Candidate for verification | Medium/high: Cards preview fallback contract is user-visible and safety-sensitive. | `tests/test_attention_cards.py`, `web-dashboard/src/lib/cardAttention.test.ts`, Docker/browser Cards smoke. | Do not remove in generic cleanup; first prove native preview fallback path cannot call it. | Stage 16 verified helper cleanup |
-| `_append_av_media_html` | `anki_study_report/note_intelligence.py` | Source search shows definition only. | Candidate for verification | Medium/high: media/AV rendering touches sanitizer and APKG fixture behavior. | `tests/test_note_intelligence.py`, APKG/Docker Cards smoke with media fixture. | Keep until a media-specific audit proves no hidden AV path depends on equivalent behavior. | Stage 16 verified helper cleanup |
-| `build_short_report` | `anki_study_report/report_builder.py` | Source search shows definition only; `build_report(..., "short")` still supports the template. | Candidate for verification / public helper decision | Medium: external/import usage is possible and report surface remains user-facing. | `tests/test_report_builder.py`; import/API compatibility check; manual report dialog only if UI path changes. | Decide whether helper wrappers are public API; do not remove with Markdown/HTML report cleanup. | Stage 16 verified helper cleanup |
-| `build_detailed_report` | `anki_study_report/report_builder.py` | Source search shows definition only; `build_report(..., "detailed")` still supports the template. | Candidate for verification / public helper decision | Medium: external/import usage is possible and report surface remains user-facing. | `tests/test_report_builder.py`; import/API compatibility check; manual report dialog only if UI path changes. | Decide whether helper wrappers are public API; do not remove with Markdown/HTML report cleanup. | Stage 16 verified helper cleanup |
-| `revlog_id_ms_to_local_day` | `anki_study_report/stats_cache.py` | Source search shows definition only. | Candidate for verification | Medium: date/rollover utility sits near cache schema and historical aggregation. | `tests/test_stats_cache.py`; targeted rollover/day-boundary test if removed or replaced. | Verify no migration/read path needs it, then remove separately or add coverage if kept. | Stage 16 verified helper cleanup |
-| `_integration_diagnostics_text` | `anki_study_report/__init__.py` | Source search shows definition only; integration diagnostics UI/status still exists elsewhere. | Candidate for verification | Low/medium: diagnostics are user-visible but helper appears disconnected. | Integration status smoke or targeted test around `_integration_status_response`; manual diagnostics dialog if UI changes. | Verify no menu/dialog path references it dynamically, then remove in a diagnostics-only commit. | Stage 16 verified helper cleanup |
+Конкретного low-risk cleanup-кандидата после Stage 15 не осталось. Новый
+cleanup stage следует открывать только при появлении свежего evidence, caller
+change или отдельного узкого требования.
 
-Если кандидат удаляется, commit должен быть narrow: один helper или одна
-маленькая группа с одинаковым доказательством. Не смешивать с runtime refactor.
+### Protected runtime/safety surfaces
 
-## Recommended next stages
+- `_rendered_preview_fallback`: Cards/native preview fallback; требует
+  attention-card tests и real browser/Docker proof.
+- `_append_av_media_html`: AV/media/sanitizer/APKG surface; требует
+  media-specific tests и APKG/Docker smoke.
+- Token validation, action allowlists, sanitizer, Shadow DOM, cache/report
+  bridge и dashboard static fallback остаются защищёнными boundaries.
 
-1. Stage 14: cache/report bridge characterization. Focus:
-   `report_from_cache.py`, `StatsCacheManager`, `dataSource`, `fallbackReason`,
-   `periodSummary`, `cacheDeckSummary`, and live-only field preservation.
-2. Stage 15: placeholder route product decision. Decide whether `Stats`,
-   `FSRS`, and `Browse` should be developed, hidden, or removed from nav.
-3. Stage 16: verified helper cleanup. One helper or one tightly related helper
-   group per commit, with targeted tests before deletion.
-4. Stage 17: security boundary review only if a concrete change is needed.
-   Treat token, media sanitizer, action allowlists and Cards rendering as
-   protected runtime boundaries.
+### Product backlog, not cleanup
+
+- Отдельные Stats/FSRS/search features можно вернуть только как реальные
+  product surfaces с live data/workflow, а не как placeholder navigation.
+- Mobile/responsive redesign ниже нормальных desktop widths не является
+  cleanup-задачей текущего продукта.
+
+### No-action / keep
+
+- `IntegrationsPage` и `/api/integrations/status`: полезная read-only
+  диагностика.
+- `report_builder.py`: пользовательский Markdown/HTML report surface.
+- `report_from_cache.py`, static fallback и package validators: adapters и
+  guard rails с действующими контрактами.
 
 ## Что не считать legacy
 

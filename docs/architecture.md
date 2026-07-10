@@ -1,6 +1,6 @@
 # Архитектура
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-10.
 
 ## Общий поток данных
 
@@ -139,15 +139,16 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/profile
 #/decks
 #/cards
-#/stats
 #/calendar
-#/fsrs
-#/browse
 #/actions
 #/integrations
 #/logs
 #/settings/server
 ```
+
+Старые placeholder routes `#/stats`, `#/fsrs` и `#/browse` удалены в Stage 15.
+Их данные и реальные workflows уже покрываются `HomePage`, `CalendarPage`,
+`ActionsPage` и `CardsPage`; unknown hash fallback ведёт на `#/home`.
 
 Подробная карта frontend routes/pages/helpers: `docs/frontend-map.md`.
 
