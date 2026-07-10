@@ -443,11 +443,11 @@ async function assertCssDiagnostics(page) {
   diagnostics.cardsLight = await inspectDashboardCss(page, "cards-light");
   assertDashboardCss(diagnostics.cardsLight, { theme: "light", page: "Cards" });
 
-  await prepareDashboardRoute(page, "/settings/server", "light", "Настройки");
+  await prepareDashboardRoute(page, "/settings/server", "light", "Сервер");
   diagnostics.settingsLight = await inspectDashboardCss(page, "settings-light");
   assertDashboardCss(diagnostics.settingsLight, { theme: "light", page: "Settings" });
 
-  await prepareDashboardRoute(page, "/settings/server", "dark", "Настройки");
+  await prepareDashboardRoute(page, "/settings/server", "dark", "Сервер");
   diagnostics.settingsDark = await inspectDashboardCss(page, "settings-dark");
   assertDashboardCss(diagnostics.settingsDark, { theme: "dark", page: "Settings" });
 
