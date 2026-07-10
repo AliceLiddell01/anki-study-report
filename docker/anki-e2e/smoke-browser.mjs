@@ -27,7 +27,7 @@ const dashboardPageCases = [
   { route: "/home", pageName: "today", heading: "Сегодня", primaryHref: "#/home" },
   { route: "/calendar", pageName: "calendar", heading: "Календарь", primaryHref: "#/calendar" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
-  { route: "/profile", pageName: "profile", heading: "Профиль" },
+  { route: "/profile", pageName: "profile", heading: "E2E" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
   { route: "/settings", pageName: "settings/report", heading: "Отчёт", settingsHref: "#/settings" },
   { route: "/settings/data", pageName: "settings/data", heading: "Данные", settingsHref: "#/settings/data" },
@@ -153,6 +153,7 @@ try {
   visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, previewDarkScreenshot), details: ankiPreviewDarkDetails });
 
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
+  const profileDetails = await assertProfileMvp(page);
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
@@ -166,6 +167,7 @@ try {
     visualStates,
     cssDiagnostics,
     apkg: apkgDetails,
+    profile: profileDetails,
     pageScreenshots,
     navigationScreenshots,
   });
@@ -231,6 +233,55 @@ async function captureDashboardPages(page) {
     }
   }
   return screenshots;
+}
+
+async function assertProfileMvp(page) {
+  await prepareDashboardRoute(page, "/profile", "light", "E2E");
+  await page.getByTestId("profile-hero").waitFor({ state: "visible", timeout: 15000 });
+  await page.getByTestId("profile-banner").waitFor({ state: "visible", timeout: 15000 });
+  await page.getByTestId("profile-avatar").waitFor({ state: "visible", timeout: 15000 });
+  for (const label of ["Всего повторений", "Активных дней", "Текущая серия", "Лучшая серия", "Время учёбы", "Средняя успешность"]) {
+    await page.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  }
+  const heatmapVisible = await page.getByTestId("profile-heatmap").isVisible().catch(() => false);
+  const heatmapEmptyVisible = await page.getByText("История активности появится после первых повторений.", { exact: true }).isVisible().catch(() => false);
+  assertBrowser(heatmapVisible || heatmapEmptyVisible, "Profile activity heatmap or explicit empty state is visible.");
+  await page.getByRole("heading", { name: "Последние занятия", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("heading", { name: "Колоды", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  const sort = page.getByLabel("Сортировка", { exact: true });
+  await sort.selectOption("reviews");
+  await page.getByText("Порядок колод сохранён.", { exact: true }).waitFor({ state: "attached", timeout: 15000 });
+
+  await page.getByRole("button", { name: "Изменить дату начала", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Дата начала обучения", exact: true });
+  await dialog.waitFor({ state: "visible", timeout: 15000 });
+  await dialog.getByLabel("Когда вы начали учиться", { exact: true }).fill("2020-01-01");
+  await dialog.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await dialog.waitFor({ state: "hidden", timeout: 15000 });
+
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "E2E", exact: true }).waitFor({ timeout: 60000 });
+  const persistedSort = await page.getByLabel("Сортировка", { exact: true }).inputValue();
+  const profileApi = await page.evaluate(async () => {
+    const token = new URLSearchParams(window.location.search).get("token") || "";
+    const response = await fetch(`/api/profile?token=${encodeURIComponent(token)}`, { cache: "no-store" });
+    return { status: response.status, body: await response.json() };
+  });
+  assertBrowser(profileApi.status === 200 && profileApi.body?.ok === true, "Profile API remains available after reload.");
+  assertBrowser(persistedSort === "reviews", `Profile deck sort persists after reload: ${persistedSort}`);
+  assertBrowser(profileApi.body?.profile?.preferences?.customStudyStartedOn === "2020-01-01", "Profile study start persists after reload.");
+  assertBrowser(profileApi.body?.profile?.studyHistory?.statsAvailableFrom !== "2020-01-01", "Profile override does not fabricate stats availability.");
+  const domText = await page.locator("body").innerText();
+  assertBrowser(!domText.includes(ready.token), "Profile DOM does not expose the dashboard token.");
+  return {
+    identity: profileApi.body?.profile?.identity?.displayName || null,
+    persistedSort,
+    persistedStudyStart: profileApi.body?.profile?.preferences?.customStudyStartedOn || null,
+    statsAvailableFrom: profileApi.body?.profile?.studyHistory?.statsAvailableFrom || null,
+    heatmapVisible,
+    heatmapEmptyVisible,
+  };
 }
 
 async function captureAvatarMenu(page) {
