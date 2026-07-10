@@ -175,6 +175,9 @@ Cards preview smoke mode-specific:
   pages) и открытого avatar menu. Profile smoke отдельно проверяет synthetic
   identity `E2E`, шесть KPI, activity/recent/decks, сохраняет дату и сортировку,
   перезагружает страницу и доказывает persistence через `/api/profile`.
+  Browser report отдельно публикует `requestFailures` и `consoleErrors` и
+  завершает smoke ошибкой, если они не пусты; `ERR_ABORTED` при намеренной
+  навигации между screenshots остаётся только в raw `networkEvents`.
 
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log

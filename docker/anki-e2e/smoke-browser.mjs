@@ -157,11 +157,15 @@ try {
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
+  const requestFailures = actionableNetworkEvents();
+  const consoleErrors = relevantConsoleEvents().filter((event) => event.type === "error");
 
   await writeJson(`browser-smoke-${label}.json`, {
     ok: true,
     consoleEvents: relevantConsoleEvents(),
     networkEvents,
+    requestFailures,
+    consoleErrors,
     pageErrors,
     shadowDetails,
     visualStates,
@@ -174,6 +178,12 @@ try {
 
   if (pageErrors.length > 0) {
     throw new Error(`Browser page errors: ${pageErrors.join("\n")}`);
+  }
+  if (requestFailures.length > 0) {
+    throw new Error(`Browser request failures: ${JSON.stringify(requestFailures)}`);
+  }
+  if (consoleErrors.length > 0) {
+    throw new Error(`Browser console errors: ${JSON.stringify(consoleErrors)}`);
   }
   console.log(`Browser smoke passed for ${ready.baseUrl}`);
 } catch (error) {
@@ -1910,6 +1920,13 @@ function assertBrowser(condition, message) {
 
 function relevantConsoleEvents() {
   return consoleEvents.filter((event) => ["error", "warning"].includes(event.type));
+}
+
+function actionableNetworkEvents() {
+  return networkEvents.filter((event) => {
+    if (event.kind !== "requestfailed") return true;
+    return !String(event.failure || "").includes("ERR_ABORTED");
+  });
 }
 
 async function writeConsoleLog(fileName) {
