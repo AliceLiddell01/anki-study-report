@@ -7,6 +7,8 @@ Source of truth:
 ```text
 web-dashboard/src/app/router.tsx
 web-dashboard/src/app/App.tsx
+web-dashboard/src/layout/TopNav.tsx
+web-dashboard/src/layout/SettingsLayout.tsx
 web-dashboard/src/pages/
 web-dashboard/src/lib/
 web-dashboard/src/types/report.ts
@@ -25,18 +27,23 @@ web-dashboard/src/types/report.ts
 
 ## Routes/pages
 
+Primary navigation содержит только `Сегодня`, `Календарь`, `Колоды` и
+`Карточки` в этом порядке. Profile/Settings/Tools открываются через avatar
+dropdown. Технические settings pages связаны отдельной навигацией и не являются
+primary-вкладками. Полный IA contract: `docs/navigation-ia.md`.
+
 | Route | Component | Данные/API | Тесты | Риски |
 | --- | --- | --- | --- | --- |
-| `#/home` | `HomePage` | `StudyReport`: summary, kpis, comparison, activity, decks, forecast, fsrs | indirect через frontend suite | Главная страница чувствительна к пустым блокам payload |
-| `#/profile` | `ProfilePage` | GET/POST `/api/dashboard/settings`, optional refreshed report | frontend build/typecheck | Неверная normalizing settings форма меняет dashboard scope |
+| `#/home` | `HomePage` («Сегодня») | `StudyReport`: summary, kpis, comparison, activity, decks, forecast, fsrs | `router.test.tsx`, `TopNav.test.tsx`, indirect через frontend suite | Страница чувствительна к пустым блокам payload; глубокий redesign не входит в Navigation / IA |
+| `#/profile` | `ProfilePage` | GET/POST `/api/dashboard/settings`, optional refreshed report | `TopNav.test.tsx`, frontend build/typecheck | Доступен через avatar menu; неверная normalizing settings форма меняет dashboard scope |
 | `#/decks` | `DecksPage` | `report.decks`, `deckHealth` helpers | `deckHealth` indirectly | Статус/сортировка колод зависят от числовой нормализации |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
 | `#/calendar` | `CalendarPage` | `activity.days`, calendar helpers | `calendarStats.test.ts` | Даты/period filters легко ломают heatmap |
-| `#/actions` | `ActionsPage` | POST `/api/actions/<action>` | `actionsApi.test.ts`, dashboard action tests backend | Только allowlisted actions |
-| `#/integrations` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Реальная read-only диагностика; endpoint token-protected |
-| `#/logs` | `LogsPage` | GET `/api/logs/recent`, POST `/api/logs/clear`, download URL | typecheck | Логи могут содержать diagnostics, token должен редактироваться |
-| `#/settings/server` | `ServerSettingsPage` | GET `/api/server/status`, POST `/api/server/<action>` | `actionsApi.test.ts` | Restart/stop меняют server token/lifecycle |
-| `#/settings` | `SettingsPage` | GET `/api/cache/status`, POST `/api/cache/refresh`, `/api/cache/rebuild` | typecheck | Cache busy/stale states |
+| `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
+| `#/integrations` | `IntegrationsPage` («Источники данных») | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Settings → Диагностика; реальная read-only диагностика, endpoint token-protected |
+| `#/logs` | `LogsPage` | GET `/api/logs/recent`, POST `/api/logs/clear`, download URL | `router.test.tsx`, typecheck | Settings → Диагностика; логи могут содержать diagnostics, token должен редактироваться |
+| `#/settings/server` | `ServerSettingsPage` | GET `/api/server/status`, POST `/api/server/<action>` | `router.test.tsx`, `actionsApi.test.ts` | Settings → Система; restart/stop меняют server token/lifecycle |
+| `#/settings` | `SettingsPage` | GET `/api/cache/status`, POST `/api/cache/refresh`, `/api/cache/rebuild` | `router.test.tsx`, `TopNav.test.tsx`, typecheck | Вход из avatar menu и раздел «Данные»; cache busy/stale states |
 
 Stage 15 удалил `#/stats`, `#/fsrs` и `#/browse`: это были страницы с обещаниями
 будущих функций без собственной live data или workflow. Они больше не
@@ -131,6 +138,7 @@ web-dashboard/src/lib/dateUtils.test.ts
 web-dashboard/src/lib/formatters.test.ts
 web-dashboard/src/pages/CardsPage.test.tsx
 web-dashboard/src/app/router.test.tsx
+web-dashboard/src/layout/TopNav.test.tsx
 ```
 
 ## Visual/runtime risks

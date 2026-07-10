@@ -151,7 +151,15 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 Их данные и реальные workflows уже покрываются `HomePage`, `CalendarPage`,
 `ActionsPage` и `CardsPage`; unknown hash fallback ведёт на `#/home`.
 
+Видимая primary navigation отделена от полного registry routes. Она содержит
+только `Сегодня`, `Календарь`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
+Profile/Settings/Tools в avatar dropdown, а `SettingsLayout.tsx` связывает
+существующие data/server/integrations/logs pages общей settings navigation.
+Технические routes остаются рабочими, хотя не показываются как основные
+аналитические вкладки.
+
 Подробная карта frontend routes/pages/helpers: `docs/frontend-map.md`.
+Продуктовое решение по навигации: `docs/navigation-ia.md`.
 
 ## Runtime data
 

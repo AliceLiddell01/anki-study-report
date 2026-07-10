@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация этого репозитория описывает текущую версию проекта на 2026-07-06.
+Документация этого репозитория описывает текущую версию проекта на 2026-07-10.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
 почему часть решений устроена именно так.
@@ -31,6 +31,11 @@ anki_study_report.ankiaddon
 
 Он является zip-архивом с плоским содержимым add-on, без верхней папки
 `anki_study_report/`.
+
+Текущая primary navigation dashboard: `Сегодня → Календарь → Колоды → Карточки`.
+Профиль, Инструменты и Настройки доступны через profile menu; Сервер,
+Источники данных и Логи собраны в settings navigation. Полное решение и правила
+эволюции routes описаны в `docs/navigation-ia.md`.
 
 ## Самые важные команды
 
@@ -81,6 +86,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Матрица проверок](docs/test-matrix.md)
 - [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)
+- [Navigation / Information Architecture](docs/navigation-ia.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)

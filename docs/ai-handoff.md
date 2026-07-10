@@ -40,6 +40,7 @@ docs/security-and-safety.md      server/media/actions/rendering safety
 docs/release-checklist.md        публикация .ankiaddon
 docs/fixtures-and-test-data.md   fixtures, mock data, synthetic E2E data
 docs/frontend-map.md             routes/pages/helpers/tests frontend
+docs/navigation-ia.md            current primary nav, profile menu, settings hierarchy
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -153,6 +154,23 @@ config_service.py
 ```
 
 Так ее можно импортировать и тестировать без реального Anki.
+
+## Текущая Navigation / IA
+
+Primary navigation сейчас строго ограничена четырьмя пунктами:
+
+```text
+Сегодня → Календарь → Колоды → Карточки
+```
+
+`#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки и
+Инструменты (`#/actions`) доступны через avatar menu справа. `#/settings`,
+`#/settings/server`, `#/integrations` и `#/logs` объединены settings shell как
+Данные, Система → Сервер и Диагностика → Источники данных/Логи.
+
+Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
+Notifications или другие placeholders до соответствующего продуктового этапа.
+Полный контракт и причины: `docs/navigation-ia.md`.
 
 ## Docker E2E: что важно не перепутать
 
