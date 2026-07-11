@@ -43,6 +43,7 @@ anki_study_report/metrics.py               сбор основных метри�
 anki_study_report/dashboard_payload.py     чистая сборка JSON payload для dashboard
 anki_study_report/dashboard_server.py      локальный HTTP server и API endpoints
 anki_study_report/stats_cache.py           SQLite cache менеджер
+anki_study_report/statistics_service.py    Statistics v1 queries и current snapshot
 anki_study_report/report_from_cache.py     адаптация cache в report/dashboard parts
 anki_study_report/report_builder.py        Markdown/HTML report builder
 anki_study_report/note_intelligence.py     preview/sanitizer/card intelligence

@@ -1,6 +1,6 @@
 # Dashboard API и payload-контракт
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-12.
 
 Dashboard - это локальное приложение, которое получает один опубликованный
 report payload и несколько служебных API. Оно не читает Anki collection
@@ -50,6 +50,7 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/logs/clear
 /api/dashboard/settings
 /api/profile
+/api/statistics/query
 /api/actions/<action>
 ```
 
@@ -132,6 +133,7 @@ today?
 profile?
 activityHub?
 deckHub?
+statisticsHub?
 ```
 
 Backend сейчас строит основной contract через:
@@ -200,6 +202,17 @@ Optional `deckHub` — canonical Stage 5 source для `#/decks`. Runtime пуб
 Deck Browser использует token-protected `POST /api/actions/open-deck-browser`
 с body `{deckId, mode: subtree|direct}`. Backend разрешает current canonical
 name и не принимает arbitrary query через этот action.
+
+## Statistics Hub и query
+
+Runtime `statisticsHub` содержит default 90d dashboard query и
+`initialResult`, coverage/capabilities и compact normal-deck options.
+`POST /api/statistics/query` принимает только typed
+`scope/period/granularity/comparison` и возвращает тот же result type.
+Endpoint требует token, ограничен 8 KiB, отклоняет arbitrary search/SQL/unknown
+fields и не публикует raw revlog/card/note data. Secondary empty-body action:
+`POST /api/actions/open-native-stats`. Полный contract:
+`docs/statistics-v1.md`.
 
 ## Card-level contract
 

@@ -1,6 +1,6 @@
 # Fixtures and test data
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-12.
 
 Этот документ разделяет существующие fixtures и рекомендованное покрытие.
 
@@ -46,6 +46,11 @@ Stage 5.5 не добавляет backend fixture fields. Те же Activity/Dec
 synthetic rows используются для month grouping, root-only expansion, detail
 sections, theme persistence и 125% visual proof.
 
+Stage 6 mock добавляет typed `statisticsHub.initialResult`: five-section data,
+90d/common controls, ratings/True Retention, overdue/future due, current states,
+card/note totals и non-overlapping deck rows. Unit fixtures генерируют exact
+period bounds, partial baseline, missing answer time и payload ceilings.
+
 ## Existing Docker synthetic data
 
 Docker E2E создает synthetic collection через:
@@ -73,6 +78,12 @@ Decks v2 synthetic data также создаёт `E2E Decks`, `E2E Grammar`, ш
 уровень `E2E Deep`, duplicate `N3` и пустую filtered deck
 `E2E Filtered Health Excluded`. Review patterns детерминированно дают healthy,
 attention, danger и preliminary states.
+
+Statistics history разреженно покрывает более года и содержит current/previous
+periods, gaps, повтор той же карты за local day, ratings 1–4, young/mature
+previous intervals, `ease=0` manual entry, introduced `type=0` events и due
+snapshot для overdue/7/30/90 days с learning/review/relearning. Filtered deck
+остаётся исключённой. Tracked Cards APKG не изменялась.
 
 ## APKG fixtures
 

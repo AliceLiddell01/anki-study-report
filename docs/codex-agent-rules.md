@@ -1,6 +1,6 @@
 # Правила для Codex/AI-агента
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-12.
 
 Этот файл можно дать новому агенту как prompt-like инструкцию для работы в
 репозитории.
@@ -121,11 +121,12 @@ cloud artifacts/screenshots. Bootstrap push trigger должен быть уда
 
 Но нельзя терять или перетирать чужие изменения.
 
-Commit messages писать кратко, в повелительном наклонении:
+Commit messages писать кратко и по фактическому результату, без повелительного
+наклонения, названия этапа или пересказа prompt:
 
 ```text
-docs: update project documentation
-fix: handle empty review periods
+docs: statistics metrics and reference inventory
+fix(stats): partial previous-period coverage
 ```
 
 ## Финальный ответ

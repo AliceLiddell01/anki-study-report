@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-12.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -27,6 +27,7 @@
 | Activity/calendar/feed | `pytest tests/test_activity_feed.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 4 | Scope, date bounds, availability, keyboard, derived events/weeks и real screenshots |
 | Decks hierarchy/health/actions | `pytest tests/test_deck_hierarchy.py tests/test_dashboard_payload.py tests/test_stats_cache.py tests/test_browser_actions.py tests/test_dashboard_actions.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 5 | Direct/subtree aggregation, filtered exclusion, keyboard disclosure, Browser modes и installed UI |
 | App Shell theme / Activity+Decks polish | Targeted AppLayout/Activity/Decks Vitest + `node --check docker/anki-e2e/smoke-browser.mjs` | exact-SHA Fast CI + manual cloud E2E `standard` | Да для final Stage 5.5 | Persistence, route-wide dock, light/dark states и 125% scale proof требуют browser runtime |
+| Statistics v1 (cache/query/routes/five sections) | `pytest tests/test_statistics_service.py tests/test_stats_cache.py tests/test_dashboard_server.py tests/test_dashboard_actions.py` + `pnpm run test:frontend -- Statistics` | exact-SHA Fast CI + manual cloud E2E `standard` | Да для final Stage 6 | True Retention/cache schema, typed endpoint, five routes, current snapshot, screenshots and 125% require both layers |
 | Browser search/query actions | `node scripts/run_python.mjs -m pytest tests/test_browser_actions.py tests/test_dashboard_actions.py` | Cards/Actions frontend tests | Иногда | Search query sanitizer защищает Anki Browser actions |
 
 ## Команды-шпаргалка

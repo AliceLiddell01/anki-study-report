@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-12.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -162,16 +162,19 @@ note_intelligence.py
 browser_actions.py
 config_service.py
 profile_service.py
+activity_service.py
+deck_hub.py
+statistics_service.py
 ```
 
 Так ее можно импортировать и тестировать без реального Anki.
 
 ## Текущая Navigation / IA
 
-Primary navigation сейчас строго ограничена четырьмя пунктами:
+Primary navigation сейчас содержит пять продуктовых пунктов:
 
 ```text
-Сегодня → Активность → Колоды → Карточки
+Сегодня → Активность → Статистика → Колоды → Карточки
 ```
 
 `#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки,
@@ -206,7 +209,13 @@ Stage 5.5 монтирует persistent `GlobalUtilityDock` в `AppLayout`: them
 только presentation/state. Language control пока не рендерится. Полный
 contract: `docs/ui-polish-global-controls.md`.
 
-Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
+`#/stats` и четыре nested routes используют additive
+`StudyReport.statisticsHub`, cache schema v3 и token-protected
+`POST /api/statistics/query`. True Retention хранится как first-review
+daily/deck-day aggregate; current states/due остаются bounded live snapshot.
+Полный contract: `docs/statistics-v1.md`.
+
+Не возвращать `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.
 Stage 1 Navigation / IA завершён. Полный контракт и причины:
 `docs/navigation-ia.md`.

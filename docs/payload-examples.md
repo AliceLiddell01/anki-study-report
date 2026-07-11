@@ -1,6 +1,6 @@
 # Примеры dashboard payload и API responses
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-12.
 
 Это компактные синтетические примеры, а не полный dump. Source of truth:
 
@@ -230,7 +230,7 @@ tests/test_dashboard_payload.py
     "status": "ready",
     "dataSource": "mixed",
     "usedFor": ["activity", "comparison"],
-    "version": 2,
+    "version": 3,
     "updatedAt": 1783260000,
     "lastRevlogId": 987654321,
     "cachedDays": 120,
@@ -243,6 +243,36 @@ tests/test_dashboard_payload.py
   }
 }
 ```
+
+## Statistics initial hub и query
+
+```json
+{
+  "statisticsHub": {
+    "schemaVersion": 1,
+    "availability": "available",
+    "metricDefinitionsVersion": "statistics-v1.0",
+    "defaultQuery": {
+      "scope": {"kind": "dashboard"},
+      "period": "90d",
+      "granularity": "auto",
+      "comparison": true
+    },
+    "initialResult": {
+      "query": {"scope": {"kind": "dashboard"}, "period": "90d", "granularity": "auto", "resolvedGranularity": "week", "comparison": true},
+      "coverage": {"coverage": "full", "sampleSize": 240, "studyTimeSource": "revlog_estimate"},
+      "overview": {"kpis": {"reviews": 240, "successRate": 0.86, "activeDays": 32}},
+      "quality": {"trueRetention": {"overall": 0.88, "young": 0.84, "mature": 0.92}},
+      "load": {"overdue": 5, "futureDue": []},
+      "progress": {"totalCards": 800, "totalNotes": 730, "historicalStateSeriesAvailable": false},
+      "deckComparison": {"mode": "non_overlapping_roots", "limit": 12, "rows": []}
+    }
+  }
+}
+```
+
+Это сокращённый пример. Public result не содержит raw revlog/card/note rows,
+token или paths. Полная shape: `docs/statistics-v1.md`.
 
 ## Forbidden/error response для неверного token
 

@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-Снимок документации: 2026-07-10.
+Снимок документации: 2026-07-12.
 
 Source of truth:
 
@@ -33,7 +33,7 @@ language item предусмотрен как extension slot, но сейчас 
 
 ## Routes/pages
 
-Primary navigation содержит только `Сегодня`, `Активность`, `Колоды` и
+Primary navigation содержит `Сегодня`, `Активность`, `Статистика`, `Колоды` и
 `Карточки` в этом порядке. Profile/Settings/Tools и внешний Boosty support link
 открываются через avatar dropdown. Support — безопасная статическая ссылка, а
 не SPA route. Технические settings pages связаны отдельной навигацией и не
@@ -46,6 +46,7 @@ Primary navigation содержит только `Сегодня`, `Активн
 | `#/decks` | `DecksPage` | `report.deckHub`, legacy `report.decks` fallback, typed Browser action | `DecksPage.test.tsx`, `deckTree.test.ts` | Не смешивать direct/subtree, не flatten hierarchy при filter/sort |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
 | `#/calendar` | `CalendarPage` («Активность») | `StudyReport.activityHub`, `activityHub` helpers | `ActivityPage.test.tsx`, `calendarStats.test.ts` | Scope/date availability, keyboard и derived weekly/feed contracts |
+| `#/stats` + four nested routes | `StatisticsPage` | `statisticsHub.initialResult`, POST `/api/statistics/query`, native Stats action | `StatisticsPage.test.tsx`, `statisticsApi.test.ts` | Bounded query, stale response, current snapshot vs history |
 | `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
 | `#/settings` | `ReportSettingsPage` | GET/POST `/api/dashboard/settings` | `SettingsHub.test.tsx`, `settingsApi.test.ts` | Dashboard scope и report defaults разделены; Home period не редактируется |
 | `#/settings/data` | `SettingsPage` («Данные») | settings API + cache status/actions | `SettingsHub.test.tsx`, backend cache tests | Form save и cache operations являются разными actions |
@@ -53,12 +54,9 @@ Primary navigation содержит только `Сегодня`, `Активн
 | `#/settings/sources` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Read-only diagnostics; старый `#/integrations` redirect-ится сюда |
 | `#/settings/logs` | `LogsPage` | logs endpoints/download | `router.test.tsx`, typecheck | Token redaction; старый `#/logs` redirect-ится сюда |
 
-Stage 15 удалил `#/stats`, `#/fsrs` и `#/browse`: это были страницы с обещаниями
-будущих функций без собственной live data или workflow. Они больше не
-показываются в primary navigation и не входят в `RoutePath`; старые и
-неизвестные hashes безопасно разрешаются в `#/home`. Реальные статистика и FSRS
-остались на `HomePage`/`CalendarPage`, а действия Anki Browser — на
-`ActionsPage` и `CardsPage`.
+Stage 15 удалил placeholder `#/stats`, `#/fsrs` и `#/browse`. Stage 6 вернул
+`#/stats` только как five-section live product; FSRS/Browse не возвращались.
+Неизвестные hashes безопасно разрешаются в `#/home`.
 
 ## Важные helpers/normalizers
 
@@ -72,6 +70,7 @@ web-dashboard/src/lib/deckTree.ts         Decks v2 search/filter/sibling sort/vi
 web-dashboard/src/lib/dateUtils.ts        date formatting
 web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
 web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
+web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
 web-dashboard/src/lib/theme.ts            theme localStorage
 ```
 
@@ -134,6 +133,7 @@ answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 | `comparison` | Home |
 | `decks` | Home, Decks, Cards filters/actions |
 | `deckHub` | Decks v2 scoped hierarchy and detail; additive, normalized |
+| `statisticsHub` | Statistics layout, common controls and all five sections |
 | `attentionCards` | Cards; canonical card-level payload key |
 | `attentionCardsStatus` | Cards, Settings |
 | `noteTypeCatalog` | Cards diagnostics |

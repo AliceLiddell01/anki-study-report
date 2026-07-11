@@ -1,6 +1,7 @@
 # Navigation / Information Architecture
 
-Статус решения: **Accepted / Complete**. Stage 1 завершён 2026-07-10.
+Статус решения: **Accepted / Complete through Stage 6**. Базовая IA завершена
+2026-07-10, Statistics v1 добавлена 2026-07-12.
 
 Settings shell расширен в Stage 2. Актуальный settings contract описан в
 `docs/settings-hub.md`; решения Stage 1 по primary navigation и avatar menu
@@ -28,8 +29,9 @@ sanitizer, actions allowlist и содержимое продуктовых ст
 | --- | --- | --- | --- |
 | 1 | Сегодня | `#/home` | Оперативный центр текущего учебного дня |
 | 2 | Активность | `#/calendar` | Calendar v2, выбранный день и derived history |
-| 3 | Колоды | `#/decks` | Scoped hierarchy, состояние, причины и области внимания |
-| 4 | Карточки | `#/cards` | Карточки, требующие внимания |
+| 3 | Статистика | `#/stats` | Аналитика периодов, качества, нагрузки, прогресса и колод |
+| 4 | Колоды | `#/decks` | Scoped hierarchy, состояние, причины и области внимания |
+| 5 | Карточки | `#/cards` | Карточки, требующие внимания |
 
 Профиль, Инструменты и технические страницы не являются аналитическими
 вкладками и в primary navigation не входят.
@@ -109,6 +111,11 @@ primary Calendar/Decks/Cards routes и не редактирует dashboard sco
 #/decks
 #/cards
 #/calendar
+#/stats
+#/stats/quality
+#/stats/load
+#/stats/progress
+#/stats/decks
 #/actions
 #/settings
 #/settings/data
@@ -134,11 +141,12 @@ Routes ниже скрыты из primary navigation, но доступны че
 
 ## Future routes и правило эволюции
 
-Будущая IA может добавить «Статистика», «Поиск» и «Уведомления»,
+Statistics v1 уже добавлена как полноценный primary route. Будущая IA может
+добавить «Поиск» и «Уведомления»,
 но только вместе с реальными пользовательскими workflows:
 
 - «Активность» сохраняет route `#/calendar`; отдельный `#/activity` не добавляется;
-- Статистика появляется только вместе с Statistics v1;
+- Статистика появилась только вместе с Statistics v1 и содержит пять sections;
 - FSRS живёт внутри Statistics, а не отдельной primary-вкладкой;
 - будущий пользовательский поиск называется «Поиск», старый Browse не служит
   его placeholder;
@@ -148,7 +156,6 @@ Routes ниже скрыты из primary navigation, но доступны че
 ## Routes, которые нельзя возвращать как placeholders
 
 ```text
-#/stats
 #/fsrs
 #/browse
 ```

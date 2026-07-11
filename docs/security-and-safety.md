@@ -1,6 +1,6 @@
 # Security and safety model
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-12.
 
 Этот проект локальный, но он все равно обрабатывает HTML/CSS/media из карточек
 и открывает HTTP server. Поэтому security model является частью контракта.
@@ -85,6 +85,13 @@ deck-day aggregates плюс deterministic derived events. В нём нет raw 
 card/note content, token или runtime paths; новый endpoint/SQL query API не
 добавлен.
 
+Statistics использует additive bounded `statisticsHub` и
+`POST /api/statistics/query`. Query принимает только scope enum/current deck
+ID, period/granularity enum и boolean comparison, ограничен 8 KiB и отклоняет
+unknown fields, arbitrary search и SQL-like payload. Frontend получает только
+daily/deck aggregates и grouped current state/due snapshot: raw revlog,
+individual card/note IDs/text, token и paths не публикуются.
+
 ## Dashboard actions allowlist
 
 Разрешенные report actions описаны в `actionsApi.ts` и
@@ -100,6 +107,7 @@ open-problematic
 open-again
 open-new
 open-dashboard
+open-native-stats
 ```
 
 Server actions:

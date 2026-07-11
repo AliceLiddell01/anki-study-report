@@ -1,6 +1,6 @@
 # Архитектура
 
-Снимок документации: 2026-07-10.
+Снимок документации: 2026-07-12.
 
 ## Общий поток данных
 
@@ -9,10 +9,12 @@ flowchart TD
     A["Anki collection"] --> B["metrics.py"]
     A --> C["stats_cache.py"]
     C --> D["report_from_cache.py"]
+    C --> S["statistics_service.py"]
     B --> E["dashboard_payload.py"]
     D --> E
     E --> F["dashboard_server.py"]
     F --> G["web-dashboard React app"]
+    S --> F
     B --> H["report_builder.py"]
     H --> I["Markdown/HTML report dialog"]
 ```
@@ -85,7 +87,7 @@ Home/backward compatibility.
 
 `deck_hub.py` объединяет current Anki deck catalog с теми же scoped direct
 deck rows. Он исключает filtered decks, сохраняет structural ancestors,
-агрегирует subtree bottom-up и публикует normalized `deckHub`. Cache schema v2
+агрегирует subtree bottom-up и публикует normalized `deckHub`. Cache schema v3
 использует current home deck (`odid`) для карт во filtered deck.
 
 ## Dashboard payload
@@ -120,6 +122,7 @@ today (optional Home-only slice)
 profile (all-collection lifetime slice)
 activityHub (scoped bounded Activity slice)
 deckHub (scoped normalized Decks v2 hierarchy)
+statisticsHub (bounded initial 90d Statistics result)
 ```
 
 ## Dashboard server
@@ -132,6 +135,7 @@ deckHub (scoped normalized Decks v2 hierarchy)
 - обслуживает media-preview безопасным allowlist/sanitizer путем;
 - прокидывает dashboard actions обратно в Anki через callbacks.
 - обслуживает narrow token-protected `GET/POST /api/profile`.
+- обслуживает narrow token-protected `POST /api/statistics/query`.
 
 Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
 через API server и контролируются Python side.
@@ -160,6 +164,11 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/decks
 #/cards
 #/calendar
+#/stats
+#/stats/quality
+#/stats/load
+#/stats/progress
+#/stats/decks
 #/actions
 #/settings
 #/settings/data
@@ -168,12 +177,12 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/settings/logs
 ```
 
-Старые placeholder routes `#/stats`, `#/fsrs` и `#/browse` удалены в Stage 15.
-Их данные и реальные workflows уже покрываются `HomePage`, `CalendarPage`,
-`ActionsPage` и `CardsPage`; unknown hash fallback ведёт на `#/home`.
+Старые placeholder routes `#/fsrs` и `#/browse` удалены в Stage 15. `#/stats`
+вернулся только вместе с полноценным five-section Statistics v1; unknown hash
+fallback ведёт на `#/home`.
 
 Видимая primary navigation отделена от полного registry routes. Она содержит
-только `Сегодня`, `Активность`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
+`Сегодня`, `Активность`, `Статистика`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
 Profile/Settings/Tools в avatar dropdown, а `SettingsLayout.tsx` связывает
 report/data/server/sources/logs постоянным Settings Hub sidebar. Старые
 `#/integrations` и `#/logs` redirect-ятся в canonical diagnostics routes.

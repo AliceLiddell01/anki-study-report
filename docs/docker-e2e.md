@@ -1,6 +1,6 @@
 # Docker E2E
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-12.
 
 Подробный технический README уже есть в `docker/anki-e2e/README.md`. Эта
 страница фиксирует, как Docker E2E вписывается в общий проект и какие решения
@@ -192,6 +192,13 @@ Cards preview smoke mode-specific:
   dock и overlap с profile menu. State screenshots фиксируют expanded Activity
   history и Decks root/parent/leaf. Отдельные zoom screenshots используют
   изолированный Playwright context 1152×800 CSS px при deviceScaleFactor 1.25.
+
+  Stage 6 добавляет пять Statistics routes и light/dark screenshots
+  `stats-overview`, `stats-quality`, `stats-load`, `stats-progress`,
+  `stats-decks`. Smoke проверяет primary order/active state, direct reload,
+  90d default, finite/all-time/single-deck/direct controls, успешный typed
+  statistics query, native Stats callback и отсутствие token в DOM. Zoom 125%
+  дополнительно покрывает Overview и deck comparison.
 
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log

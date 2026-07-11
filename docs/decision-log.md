@@ -1,6 +1,6 @@
 # Decision log
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-12.
 
 Формат легковесный ADR. Статус всех решений ниже: Accepted.
 
@@ -545,3 +545,46 @@ schemas не меняются.
 `web-dashboard/src/layout/GlobalUtilityDock.tsx`,
 `web-dashboard/src/pages/CalendarPage.tsx`,
 `web-dashboard/src/pages/DecksPage.tsx`.
+
+## ADR-020: Statistics v1 использует bounded hub, typed query и честные historical boundaries
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Периодическая аналитика требует пяти пользовательских sections, scope/period
+comparisons, True Retention и current due/states, но frontend не должен
+получать collection/raw revlog или создавать generic analytics RPC.
+
+### Решение
+
+Вернуть Statistics как first-class primary route с Overview, Quality, Load,
+Progress и Deck Comparison. Публиковать additive bounded
+`statisticsHub.initialResult` и narrow token-protected typed query endpoint.
+Cache schema v3 хранит ratings, introduced, answer-time availability и
+first-review-per-card/local-day young/mature retention aggregates; raw rows не
+хранятся в public contract. Current state/due — отдельный bounded snapshot и не
+выдаётся за historical reconstruction. Backend insights используют semantic
+codes. Search Stats Extended и More Overview Stats остаются GPL references, не
+runtime dependencies; FSRS/Advanced классифицированы, но отложены. Expensive
+Time Machine/provider metrics требуют snapshots/lazy/provider architecture.
+
+Cloud CI остаётся primary: успешные exact-SHA Fast CI/E2E не дублируются
+локально. Commit subjects описывают фактический результат и не формулируются
+как команды.
+
+### Последствия
+
+All-time агрегируется по месяцам, series/deck/due/payload bounded. Ordinary
+success и True Retention имеют разные definitions. Parent/descendant rows не
+double-count-ятся. Current state charts не обещают исторической динамики.
+Schema v2 перестраивается как disposable cache.
+
+### Где смотреть
+
+`docs/statistics-v1.md`, `docs/statistics-metric-definitions.md`,
+`docs/statistics-reference-inventory.md`,
+`anki_study_report/statistics_service.py`,
+`web-dashboard/src/pages/StatisticsPage.tsx`.
