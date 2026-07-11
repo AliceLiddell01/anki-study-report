@@ -565,20 +565,21 @@ async function captureZoomProof(page) {
   const session = await page.context().newCDPSession(page);
   const results = [];
   try {
-    await session.send("Emulation.setDeviceMetricsOverride", {
-      width: 1152,
-      height: 800,
-      deviceScaleFactor: 1.25,
-      mobile: false,
-      screenWidth: 1440,
-      screenHeight: 1000,
-    });
     for (const routeCase of [
       { route: "/calendar", pageName: "calendar", heading: "Активность" },
       { route: "/decks", pageName: "decks", heading: "Колоды" },
       { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
     ]) {
       await prepareDashboardRoute(page, routeCase.route, "light", routeCase.heading);
+      await session.send("Emulation.setDeviceMetricsOverride", {
+        width: 1152,
+        height: 800,
+        deviceScaleFactor: 1.25,
+        mobile: false,
+        screenWidth: 1440,
+        screenHeight: 1000,
+      });
+      await page.waitForFunction(() => document.documentElement.clientWidth === 1152 && window.devicePixelRatio === 1.25);
       const layout = await inspectZoomLayout(page);
       assertBrowser(!layout.horizontalOverflow, `${routeCase.route} has no horizontal clipping at emulated 125% scale.`);
       assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale: ${JSON.stringify(layout)}`);
