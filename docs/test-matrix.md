@@ -64,7 +64,7 @@ preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
 
-Обычный strict APKG browser smoke также фиксирует 20 page screenshots, 2 avatar
+Обычный strict APKG browser smoke также фиксирует 30 page screenshots, 2 avatar
 menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
 `e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
 relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.

@@ -96,8 +96,8 @@ function Assert-E2EArtifactManifest {
     $navigationScreenshots = @($screenshots | Where-Object { $_.kind -eq "navigation" })
     $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "synthetic" })
     $apkgCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "apkg" })
-    if ($pageScreenshots.Count -ne 20) {
-        throw "Expected 20 page screenshots, found $($pageScreenshots.Count)."
+    if ($pageScreenshots.Count -ne 30) {
+        throw "Expected 30 page screenshots, found $($pageScreenshots.Count)."
     }
     if ($navigationScreenshots.Count -ne 2) {
         throw "Expected 2 avatar menu screenshots, found $($navigationScreenshots.Count)."
