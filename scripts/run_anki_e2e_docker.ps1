@@ -21,6 +21,7 @@ if (-not $ArtifactsDir) {
 
 New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
 New-Item -ItemType Directory -Force -Path $LocalInputDir | Out-Null
+$ArtifactsDir = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $ArtifactsDir).Path)
 
 if ($env:ANKI_E2E_APKG_FIXTURE) {
     $sourceApkg = Resolve-Path -LiteralPath $env:ANKI_E2E_APKG_FIXTURE -ErrorAction Stop

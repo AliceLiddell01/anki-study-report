@@ -15,6 +15,9 @@ e2e-artifacts/
 e2e-artifacts.zip
 ci-fast/
 ci-fast-download/
+ci-e2e/
+ci-e2e-raw/
+ci-e2e-download/
 docker/anki-e2e/local-input/
 
 anki_study_report/user_files/*.sqlite3

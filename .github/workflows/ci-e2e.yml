@@ -1,0 +1,160 @@
+name: Full Docker / Anki E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: E2E mode
+        required: true
+        default: strict-apkg
+        type: choice
+        options:
+          - standard
+          - strict-apkg
+          - perf100
+  # Bootstrap only: remove after strict-apkg and perf100 branch validation.
+  push:
+    branches:
+      - codex/github-actions-full-e2e
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-e2e-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Real Anki Desktop (${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }}
+      ANKI_VERSION: "26.05"
+      # Official GitHub release asset digest for anki-26.05-linux-x86_64.tar.zst.
+      ANKI_SHA256: 6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274
+      ANKI_REQUIRE_SHA256: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Capture runner and Docker preflight
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-e2e-raw | Out-Null
+          $started = [DateTime]::UtcNow.ToString('o')
+          "CI_E2E_STARTED_AT=$started" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CI_E2E_PWSH_VERSION=$($PSVersionTable.PSVersion)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          @(
+            "runnerOs=$env:RUNNER_OS"
+            "runnerArch=$env:RUNNER_ARCH"
+            "imageOs=$env:ImageOS"
+            "imageVersion=$env:ImageVersion"
+            "commitSha=$env:GITHUB_SHA"
+            "runId=$env:GITHUB_RUN_ID"
+            "runAttempt=$env:GITHUB_RUN_ATTEMPT"
+            "mode=$env:E2E_MODE"
+            "powershellVersion=$($PSVersionTable.PSVersion)"
+            "--- docker version ---"
+          ) | Tee-Object -FilePath ci-e2e-raw/docker-system.txt
+          docker version | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          docker compose version | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          "--- cpu ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          nproc | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          "--- memory ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          free -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          "--- disk before ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          df -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          docker info *> $null
+          if ($LASTEXITCODE -ne 0) { throw "Docker daemon preflight failed." }
+
+      - name: Validate mode and Compose contract
+        shell: pwsh
+        run: |
+          if ($env:E2E_MODE -notin @('standard', 'strict-apkg', 'perf100')) {
+            throw "Unsupported E2E mode: $env:E2E_MODE"
+          }
+          docker compose -f docker/anki-e2e/docker-compose.yml config *>&1 |
+            Tee-Object -FilePath ci-e2e-raw/docker-compose-config.txt
+          if ($LASTEXITCODE -ne 0) { throw "docker compose config failed." }
+
+      - name: Run canonical Docker-only E2E
+        id: canonical_e2e
+        shell: pwsh
+        run: |
+          $modeArgs = switch ($env:E2E_MODE) {
+            'standard' { @('-DockerOnly') }
+            'strict-apkg' { @('-DockerOnly', '-RequireApkgFixture') }
+            'perf100' { @('-DockerOnly', '-RequireApkgFixture', '-Perf100') }
+            default { throw "Unsupported E2E mode: $env:E2E_MODE" }
+          }
+          $exitCode = 0
+          try {
+            & .\scripts\run_full_check.ps1 @modeArgs *>&1 |
+              Tee-Object -FilePath ci-e2e-raw/e2e-run.log
+            if ($LASTEXITCODE -ne 0) { throw "Canonical E2E exited with $LASTEXITCODE" }
+          } catch {
+            $_ | Out-String | Tee-Object -FilePath ci-e2e-raw/e2e-run.log -Append
+            $exitCode = 1
+          }
+          "CI_E2E_EXIT_CODE=$exitCode" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Capture final Docker state
+        if: always()
+        shell: pwsh
+        run: |
+          "--- docker compose ps ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          docker compose -f docker/anki-e2e/docker-compose.yml ps -a *>&1 |
+            Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          "--- disk after ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          df -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+
+      - name: Prepare redacted public E2E artifact
+        if: always()
+        shell: pwsh
+        run: |
+          $artifactExit = 0
+          try {
+            python scripts/prepare_ci_e2e_artifacts.py `
+              --source e2e-artifacts `
+              --output ci-e2e `
+              --raw-logs ci-e2e-raw `
+              --mode $env:E2E_MODE `
+              --e2e-exit-code $env:CI_E2E_EXIT_CODE `
+              --started-at $env:CI_E2E_STARTED_AT `
+              --commit-sha $env:GITHUB_SHA `
+              --ref $env:GITHUB_REF
+            if ($LASTEXITCODE -ne 0) { throw "Artifact preparation exited with $LASTEXITCODE" }
+          } catch {
+            $artifactExit = 1
+            Write-Error $_ -ErrorAction Continue
+          }
+          "CI_E2E_ARTIFACT_EXIT_CODE=$artifactExit" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload redacted E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-e2e-${{ env.E2E_MODE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-e2e/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Clean Docker E2E state
+        if: always()
+        shell: pwsh
+        run: docker compose -f docker/anki-e2e/docker-compose.yml down -v --remove-orphans
+
+      - name: Restore canonical result
+        if: always()
+        shell: pwsh
+        run: |
+          $e2eExit = if ($env:CI_E2E_EXIT_CODE) { [int]$env:CI_E2E_EXIT_CODE } else { 1 }
+          $artifactExit = if ($env:CI_E2E_ARTIFACT_EXIT_CODE) { [int]$env:CI_E2E_ARTIFACT_EXIT_CODE } else { 1 }
+          if ($e2eExit -ne 0 -or $artifactExit -ne 0) {
+            throw "Full E2E failed (e2e=$e2eExit, artifact=$artifactExit)."
+          }

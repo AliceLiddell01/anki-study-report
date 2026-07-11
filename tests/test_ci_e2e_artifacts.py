@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+import pytest
+
+
+def load_module():
+    path = Path(__file__).resolve().parents[1] / "scripts" / "prepare_ci_e2e_artifacts.py"
+    spec = importlib.util.spec_from_file_location("prepare_ci_e2e_artifacts", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def create_source(root: Path) -> str:
+    token = "fixture-dashboard-token-value"
+    files = {
+        "runtime/dashboard-ready.json": json.dumps(
+            {"token": token, "baseUrl": f"http://127.0.0.1:8766/?token={token}", "reportAvailable": True}
+        ),
+        "runtime/addon-e2e-events.jsonl": json.dumps({"stage": "readiness_write_done"}),
+        "reports/browser-smoke-first.json": json.dumps(
+            {
+                "requestFailures": [],
+                "consoleErrors": [],
+                "alreadyRedacted": "http://127.0.0.1/api?name=test&amp;token=<redacted-token>",
+            }
+        ),
+        "diagnostics/anki-startup-tail.txt": f"ready token={token}",
+        "html/cards.html": f'<a href="http://127.0.0.1/?token={token}">safe</a>',
+    }
+    binary = {
+        "screenshots/pages/today/light.png": b"png",
+        "package/anki_study_report.ankiaddon": b"zip",
+    }
+    for relative, content in files.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    for relative, content in binary.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    manifest = {
+        "status": "success",
+        "runtime": {
+            "dashboardReady": "runtime/dashboard-ready.json",
+            "events": "runtime/addon-e2e-events.jsonl",
+        },
+        "artifacts": {
+            "reports": ["reports/browser-smoke-first.json"],
+            "diagnostics": ["diagnostics/anki-startup-tail.txt"],
+            "html": ["html/cards.html"],
+            "package": ["package/anki_study_report.ankiaddon"],
+        },
+        "screenshots": [{"path": "screenshots/pages/today/light.png", "kind": "page"}],
+    }
+    (root / "artifact-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return token
+
+
+def test_export_redacts_readiness_token_and_preserves_safe_evidence(tmp_path: Path):
+    module = load_module()
+    source = tmp_path / "source"
+    destination = tmp_path / "output" / "artifacts"
+    token = create_source(source)
+
+    status, copied = module.copy_safe_artifacts(source, destination, [str(tmp_path)])
+
+    assert status == "success"
+    assert not (destination / "runtime/dashboard-ready.json").exists()
+    readiness = json.loads((destination / "runtime/dashboard-ready.redacted.json").read_text(encoding="utf-8"))
+    assert "token" not in readiness
+    assert readiness["redacted"] is True
+    exported_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in destination.rglob("*")
+        if path.is_file() and path.suffix in module.TEXT_SUFFIXES
+    )
+    assert token not in exported_text
+    assert "?token=" not in exported_text
+    assert "artifacts/screenshots/pages/today/light.png" in copied
+    assert (destination / "package/anki_study_report.ankiaddon").read_bytes() == b"zip"
+    manifest = json.loads((destination / "artifact-manifest.json").read_text(encoding="utf-8"))
+    assert manifest["runtime"]["dashboardReady"] == "runtime/dashboard-ready.redacted.json"
+
+
+def test_export_supports_missing_manifest_and_empty_optional_directories(tmp_path: Path):
+    module = load_module()
+    source = tmp_path / "source"
+    (source / "reports").mkdir(parents=True)
+
+    status, copied = module.copy_safe_artifacts(source, tmp_path / "output", [str(tmp_path)])
+
+    assert status == "missing"
+    assert copied == []
+
+
+@pytest.mark.parametrize("bad_path", ["../secret.txt", "/tmp/secret.txt", "C:/secret.txt"])
+def test_manifest_rejects_absolute_and_traversal_paths(tmp_path: Path, bad_path: str):
+    module = load_module()
+    source = tmp_path / "source"
+    source.mkdir()
+    manifest = {"runtime": {"events": bad_path}, "artifacts": {}, "screenshots": []}
+
+    with pytest.raises(ValueError, match="Unsafe artifact path"):
+        module.validate_manifest(source, manifest)
+
+
+def test_export_rejects_secret_like_text(tmp_path: Path):
+    module = load_module()
+    source = tmp_path / "source"
+    create_source(source)
+    (source / "reports/browser-smoke-first.json").write_text(
+        json.dumps({"credential": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"}), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="Secret-like content"):
+        module.copy_safe_artifacts(source, tmp_path / "output", [str(tmp_path)])
+
+
+def test_export_rejects_unredacted_private_path(tmp_path: Path):
+    module = load_module()
+
+    with pytest.raises(ValueError, match="Private absolute path"):
+        module.assert_safe_text("path=C:/Users/Alice/private.txt", "report.txt")

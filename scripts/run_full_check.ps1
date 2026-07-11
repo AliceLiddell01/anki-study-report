@@ -84,6 +84,20 @@ function Invoke-DockerCompose {
         -Arguments (@("compose", "-f", $ComposeFile) + $Arguments)
 }
 
+function Invoke-CheckedPowerShellScript {
+    param(
+        [string]$Name,
+        [string]$ScriptPath,
+        [string[]]$Arguments
+    )
+
+    Write-Section $Name
+    & $ScriptPath @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$ScriptPath failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Assert-RepositoryHygiene {
     Write-Section "Repository hygiene"
 
@@ -189,10 +203,10 @@ if (-not $SkipDocker) {
     }
 
     try {
-        Invoke-CheckedCommand `
+        Invoke-CheckedPowerShellScript `
             -Name "Docker E2E" `
-            -FilePath "powershell" `
-            -Arguments @("-ExecutionPolicy", "Bypass", "-File", $DockerRunner)
+            -ScriptPath $DockerRunner `
+            -Arguments @()
     } finally {
         if ($null -eq $previousApkgFixture) {
             Remove-Item Env:\ANKI_E2E_APKG_FIXTURE -ErrorAction SilentlyContinue
