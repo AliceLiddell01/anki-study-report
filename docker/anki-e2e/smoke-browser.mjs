@@ -311,7 +311,8 @@ async function assertGlobalThemeDock(page) {
   await dock.waitFor({ state: "visible", timeout: 15000 });
   assertBrowser(await dock.count() === 1, "Global utility dock renders exactly once.");
   assertBrowser(await toggle.getAttribute("aria-label") === "Включить тёмную тему", "Light theme exposes the dark-theme action.");
-  assertBrowser(await page.getByRole("tooltip", { name: "Включить тёмную тему", exact: true }).count() === 1, "Theme tooltip matches the available action.");
+  const tooltip = page.locator("#theme-toggle-tooltip");
+  assertBrowser(await tooltip.count() === 1 && (await tooltip.textContent())?.trim() === "Включить тёмную тему", "Theme tooltip matches the available action.");
   await toggle.focus();
   assertBrowser(await toggle.evaluate((element) => document.activeElement === element), "Theme toggle accepts keyboard focus.");
   await toggle.press("Enter");
