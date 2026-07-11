@@ -413,11 +413,10 @@ reload/navigation persistence, dynamic labels, keyboard focus, and profile-menu
 overlap. Additional state screenshots live under `screenshots/states/`.
 
 Targeted 125% proof for Activity, Decks, and Settings lives under
-`screenshots/zoom-125/`. It uses Chrome DevTools
-`Emulation.setDeviceMetricsOverride` with a 1152x800 CSS viewport,
-`deviceScaleFactor=1.25`, and a 1440x1000 physical target. The smoke records the
-method and rejects horizontal overflow or dock/action overlap; it does not call
-this a browser UI shortcut.
+`screenshots/zoom-125/`. It uses an isolated Playwright browser context with a
+1152x800 CSS viewport, `deviceScaleFactor=1.25`, and a 1440x1000 physical
+target. The smoke records the method and rejects horizontal overflow or
+dock/action overlap; it does not call this a browser UI shortcut.
 
 The manifest stores only existing relative paths and route/theme/mode/fixture
 metadata. Validation rejects missing required files, absolute paths, traversal

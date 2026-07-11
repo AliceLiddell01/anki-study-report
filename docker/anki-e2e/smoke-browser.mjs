@@ -158,7 +158,7 @@ try {
   const activityDetails = await assertActivityHub(page);
   const deckDetails = await assertDeckHub(page);
   const polishStateScreenshots = await capturePolishStates(page);
-  const zoomDetails = await captureZoomProof(page);
+  const zoomDetails = await captureZoomProof();
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
@@ -561,40 +561,36 @@ async function saveStateScreenshot(page, pageName, stateName) {
   return { page: pageName, state: stateName, theme: "light", screenshot: relativeArtifactPath(artifactPaths, filePath) };
 }
 
-async function captureZoomProof(page) {
-  const session = await page.context().newCDPSession(page);
+async function captureZoomProof() {
+  const zoomPage = await browser.newPage({ viewport: { width: 1152, height: 800 }, deviceScaleFactor: 1.25 });
   const results = [];
+  zoomPage.on("console", (message) => consoleEvents.push({ type: message.type(), text: message.text(), location: message.location() }));
+  zoomPage.on("pageerror", (error) => pageErrors.push(String(error?.stack || error?.message || error)));
+  zoomPage.on("requestfailed", (request) => networkEvents.push({ kind: "requestfailed", method: request.method(), url: request.url(), failure: request.failure()?.errorText || null }));
+  zoomPage.on("response", (response) => {
+    if (response.status() >= 400) networkEvents.push({ kind: "response", status: response.status(), url: response.url() });
+  });
   try {
     for (const routeCase of [
       { route: "/calendar", pageName: "calendar", heading: "Активность" },
       { route: "/decks", pageName: "decks", heading: "Колоды" },
       { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
     ]) {
-      await prepareDashboardRoute(page, routeCase.route, "light", routeCase.heading);
-      await session.send("Emulation.setDeviceMetricsOverride", {
-        width: 1152,
-        height: 800,
-        deviceScaleFactor: 1.25,
-        mobile: false,
-        screenWidth: 1440,
-        screenHeight: 1000,
-      });
-      await page.waitForFunction(() => document.documentElement.clientWidth === 1152 && window.devicePixelRatio === 1.25);
-      const layout = await inspectZoomLayout(page);
+      await prepareDashboardRoute(zoomPage, routeCase.route, "light", routeCase.heading);
+      await zoomPage.waitForFunction(() => document.documentElement.clientWidth === 1152 && window.devicePixelRatio === 1.25);
+      const layout = await inspectZoomLayout(zoomPage);
       assertBrowser(!layout.horizontalOverflow, `${routeCase.route} has no horizontal clipping at emulated 125% scale.`);
       assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale: ${JSON.stringify(layout)}`);
       const filePath = artifactPaths.zoomScreenshot(routeCase.pageName);
       await ensureArtifactParent(filePath);
-      await page.screenshot({ path: filePath, fullPage: true });
+      await zoomPage.screenshot({ path: filePath, fullPage: true });
       results.push({ ...routeCase, screenshot: relativeArtifactPath(artifactPaths, filePath), layout });
     }
   } finally {
-    await session.send("Emulation.clearDeviceMetricsOverride");
-    await session.detach();
-    await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+    await zoomPage.close();
   }
   return {
-    method: "Chrome DevTools Emulation.setDeviceMetricsOverride with 1152x800 CSS viewport and deviceScaleFactor 1.25 (1440x1000 physical target)",
+    method: "Playwright isolated browser context with 1152x800 CSS viewport and deviceScaleFactor 1.25 (1440x1000 physical target)",
     pages: results,
   };
 }

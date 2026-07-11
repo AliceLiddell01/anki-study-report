@@ -82,9 +82,9 @@ Docker smoke проверяет toggle на product/settings routes, persistence
 reload, navigation stability, отсутствие duplicate dock и overlap с profile
 menu. Activity и Decks получают light/dark и дополнительные state screenshots.
 
-125% proof использует Chrome DevTools `Emulation.setDeviceMetricsOverride`:
-CSS viewport `1152×800`, `deviceScaleFactor=1.25`, physical target
-`1440×1000`. Это page/device metrics emulation, а не browser UI shortcut.
+125% proof использует изолированный Playwright browser context: CSS viewport
+`1152×800`, `deviceScaleFactor=1.25`, physical target `1440×1000`. Это
+page/device scale emulation, а не browser UI shortcut.
 Activity, Decks и Settings проверяются на horizontal overflow и пересечение
 dock с actionable content; manifest индексирует proof как `kind: zoom`.
 
