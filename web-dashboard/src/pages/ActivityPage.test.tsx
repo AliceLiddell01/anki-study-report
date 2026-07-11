@@ -81,26 +81,42 @@ describe("Activity / Calendar v2", () => {
   it("shows five decks first and expands/collapses the complete selected-day list", async () => {
     await renderPage();
     const detail = container.querySelector('[data-testid="activity-day-detail"]')!;
-    expect(detail.querySelectorAll(".grid.gap-1").length).toBe(5);
+    expect(detail.querySelectorAll('[data-testid="activity-day-deck-row"]')).toHaveLength(5);
+    expect(detail.querySelector('[data-testid="activity-day-deck-row"]')?.textContent).toMatch(/повторений · (\d+%|Нет данных)/);
+    expect(detail.textContent).not.toMatch(/Хорошо|Норма|Внимание|Опасно/);
     expect(button("Показать ещё 2").getAttribute("aria-expanded")).toBe("false");
     await act(async () => button("Показать ещё 2").click());
-    expect(detail.querySelectorAll(".grid.gap-1").length).toBe(7);
+    expect(detail.querySelectorAll('[data-testid="activity-day-deck-row"]')).toHaveLength(7);
     expect(button("Свернуть").getAttribute("aria-expanded")).toBe("true");
     await act(async () => button("Свернуть").click());
-    expect(detail.querySelectorAll(".grid.gap-1").length).toBe(5);
+    expect(detail.querySelectorAll('[data-testid="activity-day-deck-row"]')).toHaveLength(5);
   });
 
   it("renders every visible active day, derived highlights and 14 + 14 pagination", async () => {
     await renderPage();
     expect(container.querySelectorAll('[data-feed-type="daily_summary"]').length).toBe(14);
+    expect(container.textContent).not.toContain("дневная сводка");
+    expect(container.textContent).toContain("серия");
+    expect(container.textContent).toContain("рекорд");
+    expect(container.querySelectorAll("[data-activity-month]").length).toBeGreaterThan(0);
+    expect(uniqueMonthHeadings()).toBe(true);
     expect(container.textContent).toContain("Серия достигла 3 дня");
     expect(container.textContent).toContain("Новый максимум");
     expect(container.textContent).toContain("Итоги завершённой недели");
     expect(container.textContent).toContain("На 12% больше повторений, чем неделей ранее");
     await act(async () => button("Показать более раннюю активность").click());
     expect(container.querySelectorAll('[data-feed-type="daily_summary"]').length).toBe(28);
+    expect(uniqueMonthHeadings()).toBe(true);
     expect(container.textContent).toContain("Возвращение после 2 дней без занятий");
     expect(container.textContent).not.toMatch(/leech|deck_improved|deck_declined|лучше|хуже|эффективнее/i);
+  });
+
+  it("renders the date as primary calendar text and the selected metric as secondary accessible content", async () => {
+    await renderPage();
+    const today = dayButton(mockReport.activityHub!.today);
+    expect(today.querySelector(".activity-calendar-date")?.textContent).toBe(String(Number(mockReport.activityHub!.today.slice(-2))));
+    expect(today.querySelector(".activity-calendar-value")?.textContent).toMatch(/\d|—|н\/д/);
+    expect(today.getAttribute("aria-label")).toMatch(/Повторения:/);
   });
 
   it("renders complete empty and one-day states without fake weekly trends", () => {
@@ -149,6 +165,11 @@ describe("Activity / Calendar v2", () => {
       setter?.call(select, value);
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
+  }
+
+  function uniqueMonthHeadings() {
+    const keys = Array.from(container.querySelectorAll<HTMLElement>("[data-activity-month]"), (item) => item.dataset.activityMonth);
+    return new Set(keys).size === keys.length;
   }
 });
 
