@@ -46,6 +46,7 @@ docs/settings-hub.md             Stage 2 settings routes, persistence, Today/set
 docs/profile-mvp.md              Stage 3 all-collection Profile, per-profile persistence/API
 docs/activity-calendar-v2.md     Stage 4 scoped calendar, day details and derived feed
 docs/decks-v2.md                 Stage 5 scoped hierarchy, direct/subtree health and Browser actions
+docs/ui-polish-global-controls.md Stage 5.5 theme dock and Activity/Decks presentation polish
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -199,6 +200,11 @@ derived feed; Profile остаётся all-collection. Полный contract:
 catalog, scoped direct rows, bottom-up subtree metrics, отдельные health /
 confidence / descendant issues и typed Browser action по deck ID. Filtered
 decks исключены; legacy `decks` сохранён. Полный contract: `docs/decks-v2.md`.
+
+Stage 5.5 монтирует persistent `GlobalUtilityDock` в `AppLayout`: theme toggle
+использует существующий `anki-study-report-theme`, а Activity/Decks меняют
+только presentation/state. Language control пока не рендерится. Полный
+contract: `docs/ui-polish-global-controls.md`.
 
 Не возвращать `#/stats`, `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.

@@ -199,3 +199,8 @@ screenshots и отсутствие console/actionable request errors.
 Stage 5 не меняет Activity contract: day deck rows остаются direct scoped
 historical rows. Иерархия и subtree health публикуются отдельно в `deckHub` и
 не пересчитываются frontend-side внутри `#/calendar`.
+
+Stage 5.5 меняет только presentation: ordinary daily badge удалён, visible feed
+группируется по локальным месяцам, calendar cells показывают secondary metric,
+а selected-day deck rows стали двухстрочными. Feed IDs/order, 14 + 14,
+keyboard/date/scope semantics и `activityHub` сохранены.

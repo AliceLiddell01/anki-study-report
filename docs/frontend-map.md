@@ -9,6 +9,7 @@ web-dashboard/src/app/router.tsx
 web-dashboard/src/app/App.tsx
 web-dashboard/src/layout/TopNav.tsx
 web-dashboard/src/layout/SettingsLayout.tsx
+web-dashboard/src/layout/GlobalUtilityDock.tsx
 web-dashboard/src/pages/
 web-dashboard/src/lib/
 web-dashboard/src/types/report.ts
@@ -25,6 +26,10 @@ web-dashboard/src/types/settings.ts
 
 В dev mode при non-403 ошибке используется `web-dashboard/src/data/mockReport.ts`.
 Это удобно для UI-разработки, но не является проверкой реального API.
+
+`AppLayout` монтирует один `GlobalUtilityDock` для всех routes. Theme toggle
+переиспользует `lib/theme.ts` и storage key `anki-study-report-theme`; будущий
+language item предусмотрен как extension slot, но сейчас не отображается.
 
 ## Routes/pages
 

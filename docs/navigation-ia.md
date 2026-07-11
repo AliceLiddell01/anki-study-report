@@ -37,6 +37,10 @@ sanitizer, actions allowlist и содержимое продуктовых ст
 Stage 5 не меняет IA: `#/decks` остаётся тем же primary route, но его content
 теперь является master-detail Decks v2. См. `docs/decks-v2.md`.
 
+Stage 5.5 также не меняет routes. Постоянный theme control живёт в App Shell
+utility dock вне primary nav, avatar menu и Settings sidebar. Future language
+utility документирован, но не рендерится.
+
 ## Роль Today/Home
 
 Route `#/home` сохраняет техническое имя для совместимости, но в интерфейсе

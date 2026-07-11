@@ -187,6 +187,12 @@ Cards preview smoke mode-specific:
   `screenshots/pages/decks/light.png` и `dark.png` входят в manifest как обычная
   light/dark page pair.
 
+  Stage 5.5 дополнительно проверяет persistent theme toggle на product/settings
+  routes, light/dark persistence после reload/navigation, отсутствие duplicate
+  dock и overlap с profile menu. State screenshots фиксируют expanded Activity
+  history и Decks root/parent/leaf. Отдельные zoom screenshots используют CDP
+  device-metrics emulation 1152×800 CSS px при deviceScaleFactor 1.25.
+
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log
 — `diagnostics/anki_study_report.log`; alias с дефисами не создаётся. Validator

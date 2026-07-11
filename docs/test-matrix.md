@@ -26,6 +26,7 @@
 | Profile payload/persistence/UI | `pytest tests/test_profile_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | `pnpm run build:addon` + `run_full_check.ps1 -CleanDocker` | Да для final Stage 3 | Проверяет all-collection scope, per-profile atomic storage, dialog/save/reload и light/dark surface |
 | Activity/calendar/feed | `pytest tests/test_activity_feed.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 4 | Scope, date bounds, availability, keyboard, derived events/weeks и real screenshots |
 | Decks hierarchy/health/actions | `pytest tests/test_deck_hierarchy.py tests/test_dashboard_payload.py tests/test_stats_cache.py tests/test_browser_actions.py tests/test_dashboard_actions.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 5 | Direct/subtree aggregation, filtered exclusion, keyboard disclosure, Browser modes и installed UI |
+| App Shell theme / Activity+Decks polish | Targeted AppLayout/Activity/Decks Vitest + `node --check docker/anki-e2e/smoke-browser.mjs` | exact-SHA Fast CI + manual cloud E2E `standard` | Да для final Stage 5.5 | Persistence, route-wide dock, light/dark states и 125% scale proof требуют browser runtime |
 | Browser search/query actions | `node scripts/run_python.mjs -m pytest tests/test_browser_actions.py tests/test_dashboard_actions.py` | Cards/Actions frontend tests | Иногда | Search query sanitizer защищает Anki Browser actions |
 
 ## Команды-шпаргалка

@@ -34,6 +34,8 @@ git ls-files --others --exclude-standard
 - Card payload aliases: `docs/card-alias-audit.md`.
 - Fast CI: `.github/workflows/ci-fast.yml`, `scripts/run_full_check.ps1`,
   `docs/ci-cd.md`.
+- Global theme/visual polish: `docs/ui-polish-global-controls.md`,
+  `web-dashboard/src/layout/GlobalUtilityDock.tsx`, Docker browser smoke.
 
 ## Что нельзя делать
 

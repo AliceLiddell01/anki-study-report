@@ -407,6 +407,18 @@ deck. Browser smoke verifies hierarchy/search/filter/sibling sort, direct versus
 subtree detail, both typed Browser actions and the existing light/dark page
 screenshots indexed by the artifact manifest.
 
+Stage 5.5 browser smoke also verifies the persistent Global Utility Dock and
+theme toggle across product and Settings routes, explicit light/dark storage,
+reload/navigation persistence, dynamic labels, keyboard focus, and profile-menu
+overlap. Additional state screenshots live under `screenshots/states/`.
+
+Targeted 125% proof for Activity, Decks, and Settings lives under
+`screenshots/zoom-125/`. It uses Chrome DevTools
+`Emulation.setDeviceMetricsOverride` with a 1152x800 CSS viewport,
+`deviceScaleFactor=1.25`, and a 1440x1000 physical target. The smoke records the
+method and rejects horizontal overflow or dock/action overlap; it does not call
+this a browser UI shortcut.
+
 The manifest stores only existing relative paths and route/theme/mode/fixture
 metadata. Validation rejects missing required files, absolute paths, traversal
 and duplicates; missing optional files are omitted. The canonical add-on log is

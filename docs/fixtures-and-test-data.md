@@ -42,6 +42,10 @@ danger descendant под stable aggregate, attention/preliminary, duplicate shor
 names, long/Unicode names и filtered excluded count. Pure tests отдельно строят
 161-node и malformed/cyclic fixtures.
 
+Stage 5.5 не добавляет backend fixture fields. Те же Activity/Decks mock и
+synthetic rows используются для month grouping, root-only expansion, detail
+sections, theme persistence и 125% visual proof.
+
 ## Existing Docker synthetic data
 
 Docker E2E создает synthetic collection через:

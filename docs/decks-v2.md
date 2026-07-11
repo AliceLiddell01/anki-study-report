@@ -195,6 +195,12 @@ Unicode hierarchy и filtered deck. Smoke проверяет hierarchy interacti
 обе Browser modes, token absence, console/network errors и light/dark Decks
 screenshots в artifact manifest.
 
+Stage 5.5 сохраняет этот data/action contract и меняет только presentation:
+filtered count стал compact info-line, global control раскрывает root groups и
+реально сворачивает manual branches, disclosure target увеличен, detail sections
+разделены, а короткий master больше не растягивается до detail height. Search
+auto-expansion не изменяет manual state.
+
 ## Explicit non-goals
 
 Нет deck create/rename/delete, drag-and-drop, deck options, card moving,

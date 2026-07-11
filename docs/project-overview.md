@@ -88,6 +88,7 @@ docker/anki-e2e/README.md                  подробности Docker E2E с�
 - `docs/profile-mvp.md` - per-Anki-profile identity, lifetime all-collection contract и persistence.
 - `docs/activity-calendar-v2.md` - scoped temporal history, day details и deterministic derived feed.
 - `docs/decks-v2.md` - scoped deck hierarchy, direct/subtree metrics, health/confidence и safe Browser actions.
+- `docs/ui-polish-global-controls.md` - persistent theme utility и presentation-only Activity/Decks polish.
 
 ## Что не является source of truth
 

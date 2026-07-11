@@ -512,3 +512,36 @@ path filters, CI consumer и release automation отложены.
 
 `.github/workflows/ci-e2e.yml`, `scripts/prepare_ci_e2e_artifacts.py`,
 `docs/ci-cd.md`, `docs/docker-e2e.md`.
+
+## ADR-019: Global theme control живёт в persistent App Shell utility dock
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Theme storage и ранняя initialization существовали, но после упрощения
+navigation у пользователя не осталось постоянного control. Activity и Decks
+также накопили presentation density issues, не требующие новых данных.
+
+### Решение
+
+Монтировать один `GlobalUtilityDock` в `AppLayout` вне route content и
+переиспользовать существующий `anki-study-report-theme` contract. Future
+language control является extension point, но не рендерится. Activity и Decks
+polish меняет только presentation/state и сохраняет Stage 4/5 data semantics.
+
+### Последствия
+
+Theme toggle доступен на каждом route, переживает reload/navigation и не
+требует backend. App Shell резервирует safe inset; modal/popover/toast остаются
+выше dock. Visual E2E проверяет light/dark и 125% scale, а payload/API/cache
+schemas не меняются.
+
+### Где смотреть
+
+`docs/ui-polish-global-controls.md`,
+`web-dashboard/src/layout/GlobalUtilityDock.tsx`,
+`web-dashboard/src/pages/CalendarPage.tsx`,
+`web-dashboard/src/pages/DecksPage.tsx`.
