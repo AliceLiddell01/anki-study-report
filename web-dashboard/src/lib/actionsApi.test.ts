@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { dashboardTokenFromSearch, runServerAction } from "./actionsApi";
+import { dashboardTokenFromSearch, runReportAction, runServerAction } from "./actionsApi";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -36,5 +36,21 @@ describe("actionsApi", () => {
       method: "POST",
       cache: "no-store",
     });
+  });
+
+  it("posts only the typed deck Browser request shape", async () => {
+    vi.stubGlobal("window", { location: { search: "?token=deck-token" } });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, action: "open-deck-browser", message: "Opened deck." }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await runReportAction("open-deck-browser", { deckId: 42, mode: "direct" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/actions/open-deck-browser?token=deck-token", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ deckId: 42, mode: "direct" }),
+    }));
   });
 });

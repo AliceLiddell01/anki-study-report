@@ -75,6 +75,73 @@ export interface DeckPerformance {
   explanation: string;
 }
 
+export type DeckHealthConfidence = "sufficient" | "preliminary" | "insufficient";
+
+export interface DeckHubMetrics {
+  reviews: number;
+  newCards: number;
+  passCount: number;
+  failCount: number;
+  hardCount: number;
+  easyCount: number;
+  passRate: number | null;
+  failRate: number | null;
+  averageAnswerSeconds: number | null;
+  studySeconds: number;
+  activeDays: number | null;
+  directCardCount: number;
+}
+
+export interface DeckHubIssue {
+  deckId: number;
+  fullName: string;
+  shortName: string;
+  status: Status;
+  reason: string;
+}
+
+export interface DeckHubNode {
+  deckId: number;
+  fullName: string;
+  shortName: string;
+  parentId: number | null;
+  depth: number;
+  childIds: number[];
+  filtered: false;
+  structuralOnly: boolean;
+  directMetrics: DeckHubMetrics;
+  subtreeMetrics: DeckHubMetrics;
+  aggregateHealth: Status;
+  dataConfidence: DeckHealthConfidence;
+  descendantIssueCount: number;
+  descendantIssues: DeckHubIssue[];
+  reasons: string[];
+  recommendations: string[];
+  actions: {
+    includeDescendants: boolean;
+    directOnly: boolean;
+  };
+}
+
+export interface DeckHubModel {
+  schemaVersion: number;
+  scope: {
+    kind: "all" | "selected";
+    selectedDeckIds: number[];
+    includeChildDecks: boolean;
+  };
+  summary: {
+    totalDecks: number;
+    attentionDecks: number;
+    dangerDecks: number;
+    groupsWithDescendantIssues: number;
+    aggregatePassRate: number | null;
+    filteredDecksExcluded: number;
+  };
+  nodes: Record<string, DeckHubNode>;
+  rootIds: number[];
+}
+
 export type CardIssueType =
   | "leech"
   | "repeated_again"
@@ -463,6 +530,7 @@ export interface StudyReport {
   };
   comparison?: ProgressComparison;
   decks: DeckPerformance[];
+  deckHub?: DeckHubModel;
   attentionCards?: RawCardAttentionPayload[];
   attentionCardsStatus?: AttentionCardsStatus;
   noteTypeCatalog?: NoteTypeCatalogItem[];

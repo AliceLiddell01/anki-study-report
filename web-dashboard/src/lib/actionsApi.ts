@@ -3,6 +3,7 @@ export type ReportAction =
   | "save-markdown"
   | "open-browser"
   | "open-browser-search"
+  | "open-deck-browser"
   | "open-problematic"
   | "open-again"
   | "open-new"
@@ -21,7 +22,7 @@ export type ActionResponse = {
 
 export async function runReportAction(
   action: ReportAction,
-  body: { kind?: BrowserActionKind; query?: string } = {},
+  body: { kind?: BrowserActionKind; query?: string; deckId?: number; mode?: "subtree" | "direct" } = {},
 ): Promise<ActionResponse> {
   const token = dashboardToken();
   const response = await fetch(`/api/actions/${action}?token=${encodeURIComponent(token)}`, {

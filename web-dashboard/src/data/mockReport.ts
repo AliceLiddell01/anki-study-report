@@ -1,4 +1,4 @@
-import type { StudyReport } from "../types/report";
+import type { DeckHubMetrics, DeckHubModel, DeckHubNode, StudyReport } from "../types/report";
 
 const blue = "#3db4f2";
 const purple = "#7c5cff";
@@ -88,6 +88,27 @@ const mockActivityFeedDays = mockActivityHubDays.filter((day) => day.availabilit
       ? [{ id: `${day.date}:return:2`, type: "return_after_break" as const, inactiveDays: 2 }]
       : [],
 })).reverse();
+
+const mockDeckMetrics = (reviews: number, passed: number, failed: number, cards: number, average: number | null): DeckHubMetrics => ({
+  reviews, newCards: Math.round(reviews * 0.12), passCount: passed, failCount: failed, hardCount: Math.round(reviews * 0.08), easyCount: Math.round(reviews * 0.16), passRate: reviews ? passed / reviews : null, failRate: reviews ? failed / reviews : null, averageAnswerSeconds: average, studySeconds: average === null ? 0 : Math.round(average * reviews), activeDays: reviews ? Math.min(45, Math.max(1, Math.round(reviews / 20))) : 0, directCardCount: cards,
+});
+const mockDeckNode = (deckId: number, fullName: string, parentId: number | null, childIds: number[], direct: DeckHubMetrics, subtree: DeckHubMetrics, health: DeckHubNode["aggregateHealth"], confidence: DeckHubNode["dataConfidence"], issueCount = 0): DeckHubNode => ({
+  deckId, fullName, shortName: fullName.split("::").slice(-1)[0]!, parentId, depth: fullName.split("::").length - 1, childIds, filtered: false, structuralOnly: false, directMetrics: direct, subtreeMetrics: subtree, aggregateHealth: health, dataConfidence: confidence, descendantIssueCount: issueCount, descendantIssues: [], reasons: confidence !== "sufficient" ? ["Данных мало, вывод предварительный."] : health === "danger" ? ["Успешность ниже рабочего диапазона.", "Fail составляют значительную долю ответов."] : health === "warning" ? ["Колода требует внимания по текущим данным."] : ["По текущим данным явных проблем не видно."], recommendations: health === "danger" ? ["Временно не добавлять новые карточки.", "Разобрать ошибки в Anki Browser."] : health === "warning" ? ["Разобрать ошибки перед добавлением новых."] : ["Продолжать в обычном режиме."], actions: { includeDescendants: true, directOnly: childIds.length > 0 },
+});
+const wordsDirect = mockDeckMetrics(40, 36, 4, 12, 8);
+const wordsSubtree = mockDeckMetrics(260, 218, 42, 64, 10.4);
+const mockDeckNodes = [
+  mockDeckNode(101, "Words", null, [102, 103], wordsDirect, wordsSubtree, "neutral", "sufficient", 1),
+  mockDeckNode(102, "Words::N3", 101, [104], mockDeckMetrics(140, 126, 14, 28, 8.4), mockDeckMetrics(160, 139, 21, 34, 9.1), "neutral", "sufficient", 1),
+  mockDeckNode(103, "Words::N2", 101, [], mockDeckMetrics(60, 43, 17, 18, 13.8), mockDeckMetrics(60, 43, 17, 18, 13.8), "warning", "sufficient"),
+  mockDeckNode(104, "Words::N3::Урок с очень длинным названием", 102, [], mockDeckMetrics(20, 13, 7, 6, 14.1), mockDeckMetrics(20, 13, 7, 6, 14.1), "danger", "sufficient"),
+  mockDeckNode(201, "Grammar", null, [202], mockDeckMetrics(0, 0, 0, 0, null), mockDeckMetrics(55, 51, 4, 20, 7.2), "good", "sufficient"),
+  mockDeckNode(202, "Grammar::N2", 201, [], mockDeckMetrics(55, 51, 4, 20, 7.2), mockDeckMetrics(55, 51, 4, 20, 7.2), "good", "sufficient"),
+  mockDeckNode(301, "予備::初級", null, [], mockDeckMetrics(3, 3, 0, 4, 6), mockDeckMetrics(3, 3, 0, 4, 6), "neutral", "preliminary"),
+];
+mockDeckNodes[0].descendantIssues = [{ deckId: 104, fullName: mockDeckNodes[3].fullName, shortName: mockDeckNodes[3].shortName, status: "danger", reason: mockDeckNodes[3].reasons[0] }];
+mockDeckNodes[1].descendantIssues = [...mockDeckNodes[0].descendantIssues];
+const mockDeckHub: DeckHubModel = { schemaVersion: 1, scope: { kind: "all", selectedDeckIds: [], includeChildDecks: true }, summary: { totalDecks: mockDeckNodes.length, attentionDecks: 2, dangerDecks: 1, groupsWithDescendantIssues: 2, aggregatePassRate: 0.86, filteredDecksExcluded: 1 }, nodes: Object.fromEntries(mockDeckNodes.map((node) => [String(node.deckId), node])), rootIds: [201, 101, 301] };
 
 export const mockReport: StudyReport = {
   metadata: {
@@ -471,6 +492,7 @@ export const mockReport: StudyReport = {
       },
     ],
   },
+  deckHub: mockDeckHub,
   decks: [
     {
       id: 1,
