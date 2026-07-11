@@ -1,6 +1,6 @@
 # Правила для Codex/AI-агента
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-11.
 
 Этот файл можно дать новому агенту как prompt-like инструкцию для работы в
 репозитории.
@@ -32,6 +32,8 @@ git ls-files --others --exclude-standard
 - Config: `config.json`, `manifest.json`, `config_service.py`.
 - Legacy cleanup: `docs/legacy-cleanup-inventory.md`.
 - Card payload aliases: `docs/card-alias-audit.md`.
+- Fast CI: `.github/workflows/ci-fast.yml`, `scripts/run_full_check.ps1`,
+  `docs/ci-cd.md`.
 
 ## Что нельзя делать
 
@@ -89,6 +91,16 @@ node scripts/run_python.mjs scripts/package_addon.py --check
 ```powershell
 .\build_ankiaddon.ps1
 ```
+
+Для изменений Fast CI запускать общую cloud/local команду:
+
+```powershell
+.\scripts\run_full_check.ps1 -SkipDocker
+```
+
+Не дублировать test pipeline в workflow YAML. Cloud failure не считается
+успешным из-за локального PASS; distinction и fallback policy описаны в
+`docs/ci-cd.md`.
 
 ## Git workflow
 

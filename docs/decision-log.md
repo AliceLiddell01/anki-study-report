@@ -1,6 +1,6 @@
 # Decision log
 
-Снимок документации: 2026-07-10.
+Снимок документации: 2026-07-11.
 
 Формат легковесный ADR. Статус всех решений ниже: Accepted.
 
@@ -383,3 +383,37 @@ expansion локально. Payload растёт линейно по числу 
 
 `docs/decks-v2.md`, `anki_study_report/deck_hub.py`,
 `web-dashboard/src/lib/deckTree.ts`, `web-dashboard/src/pages/DecksPage.tsx`.
+
+## ADR-015: Cloud-primary Fast CI с ручным local fallback
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Локальные pytest/Vitest/build/package проверки существовали, но старый
+workflow повторял их отдельными YAML steps, не использовал Windows contract и
+не оставлял компактный machine-readable результат. Полный Docker/Anki E2E пока
+слишком тяжёл для первого приватного hosted-runner контура.
+
+### Решение
+
+Использовать один read-only GitHub-hosted Windows job как primary независимую
+Fast CI проверку опубликованного commit. И cloud workflow, и ручной fallback
+вызывают `.\scripts\run_full_check.ps1 -SkipDocker`; YAML отвечает только за
+окружение, exact runtime versions, diagnostics summary и upload artifacts.
+Docker/Anki E2E оставить отдельным будущим этапом.
+
+### Последствия
+
+Cloud и local результаты воспроизводимы через одну project test logic.
+`LOCAL FALLBACK PASS != GitHub CI PASS`: локальный успех допустим как
+диагностика или fallback при инфраструктурной недоступности, но не перекрывает
+test/build/package failure GitHub Actions. CI artifacts являются ignored
+runtime outputs и non-release builds.
+
+### Где смотреть
+
+`docs/ci-cd.md`, `.github/workflows/ci-fast.yml`,
+`scripts/run_full_check.ps1`, `scripts/write_ci_fast_summary.ps1`.

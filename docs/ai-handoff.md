@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-10.
+Снимок документации: 2026-07-11.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -32,6 +32,7 @@ dashboard через token-protected HTTP server.
 7. Если задача про диагностику - `docs/troubleshooting.md`.
 8. Если нужно выбрать проверки - `docs/test-matrix.md`.
 9. Если агенту нужны правила поведения - `docs/codex-agent-rules.md`.
+10. Если задача про GitHub Actions/Fast CI - `docs/ci-cd.md`.
 
 Дополнительные справочники:
 
@@ -118,9 +119,13 @@ node scripts/run_python.mjs -m pytest
 Для полной локальной проверки:
 
 ```powershell
-cd web-dashboard
-pnpm run test:all
+.\scripts\run_full_check.ps1 -SkipDocker
 ```
+
+Эта же команда используется cloud-primary workflow
+`.github/workflows/ci-fast.yml`. `cd web-dashboard; pnpm run test:all` остаётся
+frontend-oriented aggregate, но не отдельным CI pipeline. Local fallback
+ручной, и его PASS не заменяет GitHub CI PASS.
 
 Для release artifact:
 

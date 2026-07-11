@@ -1,6 +1,6 @@
 # Разработка и проверки
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-11.
 
 ## Требования
 
@@ -8,6 +8,17 @@
 - Python нужен для pytest, py_compile и package validation.
 - Node.js + pnpm нужны для dashboard.
 - Docker нужен только для тяжелого E2E через реальный Anki Desktop.
+
+Зафиксированный fast/CI runtime contract:
+
+```text
+Python 3.11
+Node.js 20
+pnpm 9.15.9
+```
+
+Версии находятся в `.python-version`, `.node-version` и `packageManager` в
+`web-dashboard/package.json`.
 
 В этой среде есть helper `scripts/run_python.mjs`, который подбирает рабочий
 Python: `PYTHON`, bundled Codex Python, `python`, `python3`, `py -3`.
@@ -47,7 +58,7 @@ cd web-dashboard
 pnpm run build:addon
 ```
 
-## Одна команда для локального пайплайна
+## Frontend-oriented aggregate
 
 Из `web-dashboard/`:
 
@@ -55,7 +66,7 @@ pnpm run build:addon
 pnpm run test:all
 ```
 
-Эта команда делает:
+Эта команда делает fast-проверки из frontend package scripts:
 
 1. TypeScript typecheck.
 2. Vitest frontend tests.
@@ -64,13 +75,18 @@ pnpm run test:all
 5. Python pytest.
 6. Package build + validation.
 
-## Полная проверка через PowerShell wrapper
+## Каноническая fast-команда
 
 Без Docker:
 
 ```powershell
 .\scripts\run_full_check.ps1 -SkipDocker
 ```
+
+Это общая canonical точка входа для локального fallback и GitHub Actions Fast
+CI. Она дополнительно проверяет `git diff --check`, отсутствие запрещённых
+tracked runtime/generated файлов и существующий архив через `--check-only`.
+Cloud workflow описан в `docs/ci-cd.md`.
 
 С Docker E2E:
 

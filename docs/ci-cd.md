@@ -1,0 +1,160 @@
+# CI Foundation
+
+Снимок документации: 2026-07-11.
+
+Файл называется `ci-cd.md` как точка роста, но сейчас в проекте реализован
+только первый облачный CI-контур. CD, release automation и публикация на
+AnkiWeb отсутствуют.
+
+## Роль Fast CI
+
+GitHub Actions workflow `.github/workflows/ci-fast.yml` — основной независимый
+исполнитель быстрых проверок опубликованного commit. Локальные команды остаются
+контуром разработки, воспроизведения падений и ручным fallback при
+инфраструктурной недоступности GitHub Actions.
+
+Тестовая логика не продублирована в YAML. И локальный fallback, и GitHub Actions
+вызывают из корня репозитория одну canonical команду:
+
+```powershell
+.\scripts\run_full_check.ps1 -SkipDocker
+```
+
+Она выполняет repository hygiene, pytest, TypeScript typecheck, Vitest,
+production build с копированием assets в add-on, сборку `.ankiaddon` и две
+проверки архива. `web-dashboard/package.json` сохраняет более узкий
+`pnpm run test:all` для frontend-oriented локальной работы, но не является
+отдельным облачным pipeline.
+
+Перед canonical command GitHub Actions устанавливает зависимости по
+`requirements-dev.txt` и frozen `web-dashboard/pnpm-lock.yaml`. Это подготовка
+окружения, а не вторая реализация тестов.
+
+## Trigger matrix
+
+| Событие | Scope |
+| --- | --- |
+| `push` | `master` и `codex/**` |
+| `pull_request` | PR с base `master` |
+| `workflow_dispatch` | ручной запуск |
+
+`pull_request_target`, schedule, tag/release и deployment triggers не
+используются.
+
+## Runner и runtimes
+
+Workflow использует один GitHub-hosted `windows-2025` job, PowerShell 7, без
+matrix, Docker и Anki Desktop. GitHub перечисляет `windows-2025` как stable
+standard runner label для private repositories:
+[Choosing the runner for a job](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+
+Project runtime contract:
+
+```text
+Python 3.11       .python-version
+Node.js 20        .node-version
+pnpm 9.15.9       web-dashboard/package.json packageManager
+```
+
+Node 20 является CI baseline; `engines` также разрешает локальные Node 21-24,
+а pnpm остаётся на major 9. Actions pinned к полным
+commit SHA официальных upstream releases; рядом с SHA указан проверенный tag.
+Dependency cache привязан только к requirements/lockfile. Dashboard build,
+`.ankiaddon`, runtime data и E2E outputs не кэшируются.
+
+## Permissions и защита ресурсов
+
+Workflow задаёт только:
+
+```yaml
+permissions:
+  contents: read
+```
+
+Checkout использует `persist-credentials: false`. Secrets, write permissions,
+OIDC, environments и self-hosted runners не нужны. Для одной ветки новый run
+отменяет устаревший через `ci-fast-${{ github.ref }}`. Job имеет timeout 20
+минут: fast pipeline обычно заметно короче, а зависший install/build не должен
+расходовать приватную Actions quota бесконечно.
+
+## Artifact contract
+
+Каждый run пытается загрузить artifact с именем:
+
+```text
+ci-fast-<run-id>-<run-attempt>
+```
+
+Структура:
+
+```text
+ci-fast/
+├─ ci-summary.md
+├─ ci-summary.json
+├─ environment.txt
+├─ logs/
+│  └─ fast-check.log
+└─ package/
+   └─ anki_study_report-ci.ankiaddon
+```
+
+Package — краткоживущий non-release CI build, а не release. Artifact хранится
+14 дней и не коммитится. Upload выполняется через `if: always()` и требует
+наличия artifact directory; падение canonical command остаётся падением job.
+
+`ci-summary.json` использует `schemaVersion: 1` и содержит repository, exact
+commit SHA/ref/event, workflow/run metadata, runner и runtime versions,
+canonical command, result/timestamps, `checks[]`, `artifactFiles[]` и
+`failureCategory`. `ci-summary.md` также добавляется в GitHub Step Summary.
+Summary и environment не содержат tokens, token-bearing URLs, пользовательские
+Anki paths или profile data.
+
+## Failure policy и локальный fallback
+
+Test/build/package failure GitHub Actions означает ошибку проекта или
+несовместимость среды. Её нужно диагностировать по failed step, summary и
+artifact, затем воспроизвести той же canonical командой локально. Локальный
+PASS не отменяет красный cloud run.
+
+Infrastructure failure — невозможность получить run, runner provisioning
+failure, GitHub outage либо run, который остался queued/stale/timed_out или был
+отменён по инфраструктурной причине. В таком случае допустим ручной local
+fallback:
+
+```powershell
+.\scripts\run_full_check.ps1 -SkipDocker
+```
+
+Ключевое правило:
+
+```text
+LOCAL FALLBACK PASS != GitHub CI PASS
+```
+
+Автоматического переключения на локальный компьютер нет.
+
+## Ручной запуск и наблюдение
+
+```powershell
+gh workflow run ci-fast.yml --ref <branch>
+gh run list --workflow ci-fast.yml --commit <exact-sha>
+gh run watch <run-id> --exit-status
+gh run view <run-id> --log-failed
+gh run download <run-id> --dir .\ci-fast-download
+```
+
+Run всегда сопоставляется с exact commit SHA, а не с «последним запуском».
+Скачанный `ci-summary.json` должен содержать тот же SHA.
+
+## Не входит в CI Foundation
+
+- Docker/реальный Anki Desktop E2E;
+- strict APKG browser smoke и Perf100;
+- Codex CI consumer;
+- автоматическая local fallback orchestration;
+- tag/release/AnkiWeb CD;
+- deployment, self-hosted runners, OIDC и secrets.
+
+Будущие этапы могут добавить Full Docker/Anki E2E, отдельного consumer
+машиночитаемого результата, управляемый local fallback и release CD, но они не
+должны ослаблять или дублировать текущую canonical test logic.

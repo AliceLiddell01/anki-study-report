@@ -1,6 +1,6 @@
 # Security and safety model
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-11.
 
 Этот проект локальный, но он все равно обрабатывает HTML/CSS/media из карточек
 и открывает HTTP server. Поэтому security model является частью контракта.
@@ -191,3 +191,16 @@ node scripts/run_python.mjs scripts/package_addon.py --check
 ```
 
 Для native render/media/startup финально нужен live Anki или Docker E2E.
+
+## GitHub Actions Fast CI
+
+`.github/workflows/ci-fast.yml` использует только `permissions: contents: read`,
+отключает сохранение checkout credentials и не получает repository secrets,
+write token или OIDC. Используемые Actions закреплены полными upstream commit
+SHA. Fast CI не запускает пользовательский Anki profile, Docker или внешний
+deployment.
+
+`ci-fast/` и загружаемый `.ankiaddon` являются краткоживущими runtime outputs:
+они не коммитятся и не считаются release. Summary содержит commit/run/runtime
+metadata, но не tokens, token-bearing URLs, абсолютные приватные пути или Anki
+profile data. Полный artifact/fallback contract: `docs/ci-cd.md`.

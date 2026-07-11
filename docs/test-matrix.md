@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-10.
+Снимок документации: 2026-07-11.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -20,7 +20,7 @@
 | Docker E2E/runtime behavior | Targeted local checks перед запуском | `.\scripts\run_full_check.ps1 -CleanDocker` | Да | Проверяет реальный Anki Desktop/import/readiness/browser |
 | E2E artifact paths/screenshots | `node scripts/run_python.mjs -m pytest tests/test_docker_smoke_helpers.py` | `.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture` | Да | Проверяет readers/writers, manifest и synthetic/APKG screenshot hierarchy |
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
-| `.github/workflows/test.yml` или CI commands | Локально запустить измененные команды | `cd web-dashboard; pnpm run test:all` | Нет, если CI-only | CI должен повторять реальные local commands |
+| `.github/workflows/ci-fast.yml` или Fast CI scripts | `git diff --check` | `.\scripts\run_full_check.ps1 -SkipDocker` | Нет | Cloud CI и local fallback вызывают одну canonical project command |
 | `config.json` / Settings Hub API | `node scripts/run_python.mjs -m pytest tests/test_config_service.py tests/test_dashboard_server.py` | Frontend settings tests + package check | Нет обычно | Defaults, allowlist, partial update и token contract должны совпадать |
 | Profile payload/persistence/UI | `pytest tests/test_profile_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | `pnpm run build:addon` + `run_full_check.ps1 -CleanDocker` | Да для final Stage 3 | Проверяет all-collection scope, per-profile atomic storage, dialog/save/reload и light/dark surface |
 | Activity/calendar/feed | `pytest tests/test_activity_feed.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 4 | Scope, date bounds, availability, keyboard, derived events/weeks и real screenshots |

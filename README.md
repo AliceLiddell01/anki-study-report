@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация этого репозитория описывает текущую версию проекта на 2026-07-10.
+Документация этого репозитория описывает текущую версию проекта на 2026-07-11.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
 почему часть решений устроена именно так.
@@ -45,12 +45,15 @@ KPI, активностью, обзором колод и per-profile настр
 
 ## Самые важные команды
 
-Полная локальная frontend/Python/package проверка без Docker:
+Каноническая локальная frontend/Python/package проверка без Docker:
 
 ```powershell
-cd web-dashboard
-pnpm run test:all
+.\scripts\run_full_check.ps1 -SkipDocker
 ```
+
+GitHub Actions вызывает эту же команду как cloud-primary Fast CI. Более узкий
+frontend-oriented aggregate остаётся доступен через
+`cd web-dashboard; pnpm run test:all`.
 
 Релизная сборка add-on с проверками:
 
@@ -90,6 +93,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Разработка и проверки](docs/development.md)
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
 - [Матрица проверок](docs/test-matrix.md)
+- [CI Foundation и будущий CD](docs/ci-cd.md)
 - [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)
 - [Navigation / Information Architecture](docs/navigation-ia.md)
