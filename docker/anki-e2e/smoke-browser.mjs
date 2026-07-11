@@ -26,6 +26,11 @@ const responsiveViewports = [
 const dashboardPageCases = [
   { route: "/home", pageName: "today", heading: "Сегодня", primaryHref: "#/home" },
   { route: "/calendar", pageName: "calendar", heading: "Активность", primaryHref: "#/calendar" },
+  { route: "/stats", pageName: "stats-overview", heading: "Обзор", primaryHref: "#/stats" },
+  { route: "/stats/quality", pageName: "stats-quality", heading: "Качество", primaryHref: "#/stats" },
+  { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка", primaryHref: "#/stats" },
+  { route: "/stats/progress", pageName: "stats-progress", heading: "Прогресс", primaryHref: "#/stats" },
+  { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды", primaryHref: "#/stats" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
   { route: "/profile", pageName: "profile", heading: "E2E" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
@@ -157,6 +162,7 @@ try {
   const themeDetails = await assertGlobalThemeDock(page);
   const activityDetails = await assertActivityHub(page);
   const deckDetails = await assertDeckHub(page);
+  const statisticsDetails = await assertStatisticsHub(page);
   const polishStateScreenshots = await capturePolishStates(page);
   const zoomDetails = await captureZoomProof();
   const pageScreenshots = await captureDashboardPages(page);
@@ -180,6 +186,7 @@ try {
     theme: themeDetails,
     activity: activityDetails,
     decks: deckDetails,
+    statistics: statisticsDetails,
     polishStateScreenshots,
     zoom125: zoomDetails,
     pageScreenshots,
@@ -414,6 +421,72 @@ async function assertActivityHub(page) {
   return { selectedDate, inactiveDate, initialDaily, expandedDaily, collapsedDeckRows, expandedDeckRows, monthGroups: monthKeysAfter };
 }
 
+async function assertStatisticsHub(page) {
+  await prepareDashboardRoute(page, "/stats", "light", "Обзор");
+  await page.getByTestId("statistics-page").waitFor({ state: "visible", timeout: 15000 });
+  const navLabels = await page.locator('nav[aria-label="Основная навигация"] a').allTextContents();
+  assertBrowser(
+    JSON.stringify(navLabels.map((value) => value.trim())) === JSON.stringify(["Сегодня", "Активность", "Статистика", "Колоды", "Карточки"]),
+    `Statistics primary navigation order is correct: ${JSON.stringify(navLabels)}`,
+  );
+  const sectionLinks = page.locator('nav[aria-label="Разделы статистики"] a');
+  assertBrowser(await sectionLinks.count() === 5, "Statistics exposes exactly five real sections.");
+  assertBrowser(await page.getByTestId("global-utility-dock").count() === 1, "Statistics keeps the global theme dock.");
+  assertBrowser(await page.getByLabel("Период").inputValue() === "90d", "Statistics defaults to 90 days.");
+  for (const label of ["Повторения", "Время учёбы", "Успешность", "Новые карточки", "Активные дни", "Средний ответ"]) {
+    await page.getByText(label, { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  for (const routeCase of [
+    ["/stats/quality", "Качество", "True Retention"],
+    ["/stats/load", "Нагрузка", "Будущая нагрузка"],
+    ["/stats/progress", "Прогресс", "Текущее состояние коллекции"],
+    ["/stats/decks", "Колоды", "Сравнение колод"],
+  ]) {
+    await prepareDashboardRoute(page, routeCase[0], "light", routeCase[1]);
+    await page.getByText(routeCase[2], { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
+    const primary = await inspectActiveNavigation(page);
+    assertBrowser(primary.primaryHref === "#/stats", `${routeCase[0]} keeps Statistics active in primary navigation.`);
+  }
+
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Колоды", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(new URL(page.url()).hash === "#/stats/decks", "Statistics nested direct route survives reload.");
+
+  await prepareDashboardRoute(page, "/stats", "light", "Обзор");
+  const queryResponse = page.waitForResponse((response) => response.url().includes("/api/statistics/query") && response.request().method() === "POST");
+  await page.getByLabel("Период").selectOption("30d");
+  const response = await queryResponse;
+  assertBrowser(response.status() === 200, `Statistics typed query succeeds: ${response.status()}`);
+  await page.getByLabel("Период").selectOption("all");
+  assertBrowser(await page.getByLabel("Сравнить с предыдущим периодом").isDisabled(), "All-time disables previous-period comparison.");
+  await page.getByLabel("Период").selectOption("90d");
+  await page.getByLabel("Область").selectOption("single_deck");
+  await page.getByLabel("Только напрямую").check();
+  await page.getByText("Только напрямую", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  const nativeResult = await page.evaluate(async () => {
+    const token = new URLSearchParams(window.location.search).get("token") || "";
+    const response = await fetch(`/api/actions/open-native-stats?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return { status: response.status, body: await response.json() };
+  });
+  assertBrowser(nativeResult.status === 200 && nativeResult.body?.ok === true, "Native Anki Stats action callback succeeds.");
+  const bodyText = await page.locator("body").innerText();
+  assertBrowser(!bodyText.includes(ready.token), "Statistics DOM does not expose the dashboard token.");
+  return {
+    routesChecked: 5,
+    defaultPeriod: "90d",
+    typedQueryStatus: response.status(),
+    allTimeComparisonDisabled: true,
+    singleDeckDirectChecked: true,
+    nativeActionOk: true,
+  };
+}
+
 async function assertDeckHub(page) {
   await prepareDashboardRoute(page, "/decks", "light", "Колоды");
   const header = page.locator("header").filter({ has: page.getByRole("heading", { name: "Колоды", exact: true }) });
@@ -573,6 +646,8 @@ async function captureZoomProof() {
   try {
     for (const routeCase of [
       { route: "/calendar", pageName: "calendar", heading: "Активность" },
+      { route: "/stats", pageName: "stats-overview", heading: "Обзор" },
+      { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды" },
       { route: "/decks", pageName: "decks", heading: "Колоды" },
       { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
     ]) {

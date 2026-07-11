@@ -527,16 +527,23 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
         now_ms = int(time.time() * 1000)
         day_counters: dict[int, int] = {}
 
-        def add_reviews(card_id: int, reviews: list[tuple[int, int]], *, days_ago: int = 0) -> None:
+        def add_reviews(
+            card_id: int,
+            reviews: list[tuple[int, int]],
+            *,
+            days_ago: int = 0,
+            last_interval: int = 10,
+            review_type: int = 1,
+        ) -> None:
             for ease, answer_ms in reviews:
                 day_counters[days_ago] = day_counters.get(days_ago, 0) + 1
                 review_id = now_ms - days_ago * 86_400_000 - 600_000 + day_counters[days_ago] * 1000
                 conn.execute(
                     """
                     insert into revlog (id, cid, usn, ease, ivl, lastIvl, factor, time, type)
-                    values (?, ?, -1, ?, 1, 0, 2500, ?, 1)
+                    values (?, ?, -1, ?, 1, ?, 2500, ?, ?)
                     """,
-                    (review_id, card_id, ease, answer_ms),
+                    (review_id, card_id, ease, last_interval, answer_ms, review_type),
                 )
 
         for card_id in grouped["japanese"]:
@@ -594,6 +601,53 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
                 card_id = history_cards[(plan_index + review_index) % len(history_cards)]
                 ease = 1 if review_index % 5 == 0 else 3 if review_index % 3 else 4
                 add_reviews(card_id, [(ease, 4_000 + review_index * 350)], days_ago=days_ago)
+
+        # Statistics v1: bounded multi-month/all-time history with both current
+        # and previous periods, active gaps, ratings 1-4, young/mature first
+        # reviews and real introduced-card events. The first two calls repeat
+        # the same card/day so True Retention must count only the first one.
+        statistics_day_plans = {
+            45: (1, 10),
+            60: (2, 21),
+            75: (3, 10),
+            95: (4, 21),
+            125: (3, 10),
+            180: (1, 21),
+            240: (2, 10),
+            330: (3, 21),
+            400: (4, 21),
+        }
+        for index, (days_ago, (ease, last_interval)) in enumerate(statistics_day_plans.items()):
+            card_id = history_cards[index % len(history_cards)]
+            add_reviews(card_id, [(ease, 5_000 + index * 250)], days_ago=days_ago, last_interval=last_interval)
+            if days_ago == 45:
+                add_reviews(card_id, [(3, 3_500)], days_ago=days_ago, last_interval=last_interval)
+            if index % 3 == 0:
+                introduced = history_cards[(index + 1) % len(history_cards)]
+                add_reviews(introduced, [(3, 4_500)], days_ago=days_ago, last_interval=0, review_type=0)
+
+        # Manual/reschedule entry: ease=0/factor=0 must be excluded from all
+        # answered-review and retention aggregates.
+        manual_id = now_ms - 50 * 86_400_000 - 300_000
+        conn.execute(
+            "insert into revlog (id, cid, usn, ease, ivl, lastIvl, factor, time, type) values (?, ?, -1, 0, 30, 30, 0, 1000, 4)",
+            (manual_id, history_cards[0]),
+        )
+
+        # Current schedule snapshot for overdue and bounded 7/30/90 day due
+        # categories. Review due values use scheduler-day numbers; learning
+        # queues use Unix seconds.
+        collection_created = int(conn.execute("select crt from col limit 1").fetchone()[0])
+        scheduler_day = max(0, int(time.time() // 86_400 - collection_created // 86_400))
+        schedule_cards = history_cards[:7]
+        if len(schedule_cards) >= 7:
+            conn.execute("update cards set type=2, queue=2, ivl=30, due=? where id=?", (scheduler_day - 3, schedule_cards[0]))
+            conn.execute("update cards set type=2, queue=2, ivl=14, due=? where id=?", (scheduler_day + 7, schedule_cards[1]))
+            conn.execute("update cards set type=2, queue=2, ivl=45, due=? where id=?", (scheduler_day + 30, schedule_cards[2]))
+            conn.execute("update cards set type=1, queue=1, ivl=0, due=? where id=?", (int(time.time()) + 2 * 86_400, schedule_cards[3]))
+            conn.execute("update cards set type=3, queue=3, ivl=5, due=? where id=?", (int(time.time()) + 14 * 86_400, schedule_cards[4]))
+            conn.execute("update cards set queue=-1 where id=?", (schedule_cards[5],))
+            conn.execute("update cards set queue=-2 where id=?", (schedule_cards[6],))
 
         conn.commit()
         return grouped

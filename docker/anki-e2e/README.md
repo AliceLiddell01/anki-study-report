@@ -389,7 +389,7 @@ e2e-artifacts/
 ```
 
 Each page and Cards leaf contains deterministic `light.png` and `dark.png`
-files. A strict APKG run produces 20 page screenshots, 2 navigation screenshots,
+files. A strict APKG run produces 30 page screenshots, 2 navigation screenshots,
 6 synthetic Cards screenshots and 6 APKG Cards screenshots. Browser failures
 write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
 machine-readable summaries under `reports/`, and console logs under
@@ -412,7 +412,13 @@ theme toggle across product and Settings routes, explicit light/dark storage,
 reload/navigation persistence, dynamic labels, keyboard focus, and profile-menu
 overlap. Additional state screenshots live under `screenshots/states/`.
 
-Targeted 125% proof for Activity, Decks, and Settings lives under
+Stage 6 browser smoke covers `#/stats` plus quality/load/progress/decks,
+typed period/scope/direct queries, all-time comparison disablement, the native
+Anki Stats callback, light/dark page screenshots and 125% overview/decks proof.
+The synthetic revlog spans more than one year and includes first-review
+retention, manual exclusion, introduced events and bounded due categories.
+
+Targeted 125% proof for Activity, Decks, Statistics overview/decks, and Settings lives under
 `screenshots/zoom-125/`. It uses an isolated Playwright browser context with a
 1152x800 CSS viewport, `deviceScaleFactor=1.25`, and a 1440x1000 physical
 target. The smoke records the method and rejects horizontal overflow or
