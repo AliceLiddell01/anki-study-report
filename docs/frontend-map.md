@@ -38,7 +38,7 @@ Primary navigation содержит только `Сегодня`, `Активн
 | --- | --- | --- | --- | --- |
 | `#/home` | `HomePage` («Сегодня») | `StudyReport.today` + historical forecast/fsrs | `HomePage.test.tsx`, `router.test.tsx` | Today slice должен оставаться current-day; top-level report сохраняется для других pages |
 | `#/profile` | `ProfilePage` | `StudyReport.profile`, POST `/api/profile` | `ProfilePage.test.tsx`, `profileApi.test.ts`, `TopNav.test.tsx` | All-collection lifetime view; preferences per Anki profile, не dashboard scope |
-| `#/decks` | `DecksPage` | `report.decks`, `deckHealth` helpers | `deckHealth` indirectly | Статус/сортировка колод зависят от числовой нормализации |
+| `#/decks` | `DecksPage` | `report.deckHub`, legacy `report.decks` fallback, typed Browser action | `DecksPage.test.tsx`, `deckTree.test.ts` | Не смешивать direct/subtree, не flatten hierarchy при filter/sort |
 | `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
 | `#/calendar` | `CalendarPage` («Активность») | `StudyReport.activityHub`, `activityHub` helpers | `ActivityPage.test.tsx`, `calendarStats.test.ts` | Scope/date availability, keyboard и derived weekly/feed contracts |
 | `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
@@ -63,6 +63,7 @@ web-dashboard/src/lib/cardAttention.ts    card-level payload normalization
 web-dashboard/src/lib/calendarStats.ts    calendar/heatmap model
 web-dashboard/src/lib/activityHub.ts      bounded Activity period/metric/feed selectors
 web-dashboard/src/lib/deckHealth.ts       deck status model
+web-dashboard/src/lib/deckTree.ts         Decks v2 search/filter/sibling sort/visible rows
 web-dashboard/src/lib/dateUtils.ts        date formatting
 web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
 web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
@@ -127,6 +128,7 @@ answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
 | `activityHub` | Activity calendar, selected-day details, derived daily/weekly feed |
 | `comparison` | Home |
 | `decks` | Home, Decks, Cards filters/actions |
+| `deckHub` | Decks v2 scoped hierarchy and detail; additive, normalized |
 | `attentionCards` | Cards; canonical card-level payload key |
 | `attentionCardsStatus` | Cards, Settings |
 | `noteTypeCatalog` | Cards diagnostics |

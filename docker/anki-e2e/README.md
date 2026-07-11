@@ -393,6 +393,13 @@ The `calendar` page leaf is the Stage 4 Activity surface at canonical
 selection, inactive details, five-plus deck expansion, derived daily/weekly
 feed and explicit load-more before the light/dark page capture.
 
+The `decks` page leaf is the Stage 5 Decks v2 surface. Synthetic seeding creates
+multiple roots, a parent with direct cards, danger/attention/preliminary
+children, duplicate `N3` names, a six-level Unicode hierarchy and one filtered
+deck. Browser smoke verifies hierarchy/search/filter/sibling sort, direct versus
+subtree detail, both typed Browser actions and the existing light/dark page
+screenshots indexed by the artifact manifest.
+
 The manifest stores only existing relative paths and route/theme/mode/fixture
 metadata. Validation rejects missing required files, absolute paths, traversal
 and duplicates; missing optional files are omitted. The canonical add-on log is

@@ -84,7 +84,7 @@ forecast
 | Runtime data dir | `<profile>/addon_data/<addon_id>/` | `__init__.py` | Нет | Не хранить в repo |
 | Fallback data dir | `anki_study_report/user_files/` | no profile fallback | Нет | Runtime fallback, ignored by git |
 | Cache file | `study_report_cache.sqlite3` | `stats_cache.py` | Нет | Удаление сбросит cache |
-| Cache schema | `CACHE_SCHEMA_VERSION = 1` | `stats_cache.py` | Нет | Изменение требует migration/rebuild |
+| Cache schema | `CACHE_SCHEMA_VERSION = 2` | `stats_cache.py` | Нет | v2 относит filtered cards к current home deck; старый cache требует rebuild |
 | Report cache TTL | `5` seconds | `__init__.py` `_REPORT_CACHE` | Нет | Слишком большой TTL даст stale runtime report |
 | Logs dir | `<runtime>/logs` | `extension_logging.py` | Да, через Logs page | Логи могут содержать runtime diagnostics |
 | Profile preferences | `<runtime>/profile.json` | `profile_service.py` | Да, через Profile | Per-profile, atomic; не включать в package/git |

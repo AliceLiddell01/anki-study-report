@@ -83,6 +83,11 @@ dashboard deck scope. Он публикует bounded one-year `activityHub`, da
 details и derived daily/weekly events; старый `activity` contract остаётся для
 Home/backward compatibility.
 
+`deck_hub.py` объединяет current Anki deck catalog с теми же scoped direct
+deck rows. Он исключает filtered decks, сохраняет structural ancestors,
+агрегирует subtree bottom-up и публикует normalized `deckHub`. Cache schema v2
+использует current home deck (`odid`) для карт во filtered deck.
+
 ## Dashboard payload
 
 `dashboard_payload.py` - чистый слой трансформации метрик в JSON. Его ключевые
@@ -114,6 +119,7 @@ cache
 today (optional Home-only slice)
 profile (all-collection lifetime slice)
 activityHub (scoped bounded Activity slice)
+deckHub (scoped normalized Decks v2 hierarchy)
 ```
 
 ## Dashboard server

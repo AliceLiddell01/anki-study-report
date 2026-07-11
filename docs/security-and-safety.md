@@ -95,6 +95,7 @@ copy-markdown
 save-markdown
 open-browser
 open-browser-search
+open-deck-browser
 open-problematic
 open-again
 open-new
@@ -112,6 +113,13 @@ copy-url
 
 Это не произвольный RPC. Новые actions должны проходить allowlist, validation и
 tests.
+
+`open-deck-browser` принимает только deck ID и enum `subtree|direct`. Backend
+проверяет current normal deck, отклоняет filtered/deleted/unknown ID и сам
+экранирует canonical name. Frontend не передаёт raw Browser query для Decks v2.
+
+`deckHub` содержит только aggregate metrics и current deck identity; token,
+paths, card/note content и raw revlog отсутствуют.
 
 ## `/api/media`
 

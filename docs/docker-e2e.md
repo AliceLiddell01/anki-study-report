@@ -181,6 +181,11 @@ Cards preview smoke mode-specific:
   Activity smoke сохраняет canonical `#/calendar`, проверяет heading/nav
   «Активность», default 90 days, metric/day selection, inactive detail,
   five-plus deck expansion, daily/weekly derived feed и explicit load-more.
+  Decks smoke проверяет normalized payload, filtered exclusion, collapsed
+  hierarchy, disclosure `aria-expanded`, nested search, status/sibling sort,
+  direct/subtree detail, descendant issues и обе typed Anki Browser actions.
+  `screenshots/pages/decks/light.png` и `dark.png` входят в manifest как обычная
+  light/dark page pair.
 
 `artifact-manifest.json` индексирует только существующие relative paths, status,
 Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log

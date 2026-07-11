@@ -352,3 +352,34 @@ weekly comparison требует complete coverage и thresholds. Старые p
 `docs/activity-calendar-v2.md`, `anki_study_report/activity_service.py`,
 `web-dashboard/src/lib/activityHub.ts`,
 `web-dashboard/src/pages/CalendarPage.tsx`.
+
+## ADR-014: Decks v2 использует subtree metrics с отдельными direct metrics и descendant issues
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Плоский `decks` не различал parent/child, direct/subtree и aggregate health от
+локальной проблемы descendant. Filtered decks могли загрязнять current-deck
+cache association.
+
+### Решение
+
+Добавить normalized scoped `deckHub` из current normal-deck catalog и
+direct-only rows. Считать subtree bottom-up, health по subtree, confidence и
+descendant issue count отдельно. Сохранить legacy `decks`. Использовать home
+deck при `odid > 0`, исключить filtered decks и открывать Browser только typed
+action по deck ID/mode с backend query builder.
+
+### Последствия
+
+Cache schema повышена до v2 и старый cache автоматически перестраивается.
+Parent не наследует worst-child status, UI сортирует только siblings и хранит
+expansion локально. Payload растёт линейно по числу колод без recursive copies.
+
+### Где смотреть
+
+`docs/decks-v2.md`, `anki_study_report/deck_hub.py`,
+`web-dashboard/src/lib/deckTree.ts`, `web-dashboard/src/pages/DecksPage.tsx`.

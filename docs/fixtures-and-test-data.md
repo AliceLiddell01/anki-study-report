@@ -37,6 +37,11 @@ unavailable early range, seven daily decks, milestone/return/record и two
 completed weeks. Docker synthetic collection распределяет revlog по нескольким
 дням/неделям и добавляет safe Activity fixture decks; APKG fixture не меняется.
 
+Stage 5 mock добавляет normalized `deckHub`: multiple roots, direct parent,
+danger descendant под stable aggregate, attention/preliminary, duplicate short
+names, long/Unicode names и filtered excluded count. Pure tests отдельно строят
+161-node и malformed/cyclic fixtures.
+
 ## Existing Docker synthetic data
 
 Docker E2E создает synthetic collection через:
@@ -59,6 +64,11 @@ Synthetic media allowlist:
 望.gif
 要望.mp3
 ```
+
+Decks v2 synthetic data также создаёт `E2E Decks`, `E2E Grammar`, шестой
+уровень `E2E Deep`, duplicate `N3` и пустую filtered deck
+`E2E Filtered Health Excluded`. Review patterns детерминированно дают healthy,
+attention, danger и preliminary states.
 
 ## APKG fixtures
 

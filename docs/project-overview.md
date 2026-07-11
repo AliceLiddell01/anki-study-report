@@ -87,6 +87,7 @@ docker/anki-e2e/README.md                  подробности Docker E2E с�
 - `docs/settings-hub.md` - canonical settings routes, public model и save/runtime boundaries.
 - `docs/profile-mvp.md` - per-Anki-profile identity, lifetime all-collection contract и persistence.
 - `docs/activity-calendar-v2.md` - scoped temporal history, day details и deterministic derived feed.
+- `docs/decks-v2.md` - scoped deck hierarchy, direct/subtree metrics, health/confidence и safe Browser actions.
 
 ## Что не является source of truth
 

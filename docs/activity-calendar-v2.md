@@ -195,3 +195,7 @@ Docker fixture содержит multiple active days, known gap/return, streak,
 completed comparable weeks и больше пяти active decks. Browser smoke проверяет
 metric/day interaction, deck expand, 14+ load-more, derived events, light/dark
 screenshots и отсутствие console/actionable request errors.
+
+Stage 5 не меняет Activity contract: day deck rows остаются direct scoped
+historical rows. Иерархия и subtree health публикуются отдельно в `deckHub` и
+не пересчитываются frontend-side внутри `#/calendar`.

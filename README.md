@@ -96,6 +96,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Settings Hub](docs/settings-hub.md)
 - [Profile MVP](docs/profile-mvp.md)
 - [Activity / Calendar v2](docs/activity-calendar-v2.md)
+- [Decks v2](docs/decks-v2.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)

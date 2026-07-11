@@ -131,6 +131,7 @@ performance?
 today?
 profile?
 activityHub?
+deckHub?
 ```
 
 Backend сейчас строит основной contract через:
@@ -186,6 +187,19 @@ one-year `days`, exact period bounds, availability, day-deck details и derived
 daily/weekly feed. Runtime публикует slice всегда; optional TS field сохраняет
 совместимость со старыми fixtures. Contract не содержит raw revlog/card data и
 не добавляет endpoint. См. `docs/activity-calendar-v2.md`.
+
+## Deck Hub slice
+
+Optional `deckHub` — canonical Stage 5 source для `#/decks`. Runtime публикует
+его из current normal-deck catalog и scoped direct rows. Shape normalized:
+`scope`, compact `summary`, `nodes` map и `rootIds`; каждый node разделяет
+`directMetrics`/`subtreeMetrics`, `aggregateHealth`, `dataConfidence` и
+`descendantIssues`. Filtered decks отсутствуют в nodes. Legacy `decks`
+сохранён для Home/Cards/compatibility. См. `docs/decks-v2.md`.
+
+Deck Browser использует token-protected `POST /api/actions/open-deck-browser`
+с body `{deckId, mode: subtree|direct}`. Backend разрешает current canonical
+name и не принимает arbitrary query через этот action.
 
 ## Card-level contract
 

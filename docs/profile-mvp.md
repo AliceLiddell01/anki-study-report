@@ -184,3 +184,7 @@ screenshots; DOM assertion запрещает raw dashboard token.
 Stage 4 не переносит Feed в Profile: visible Recent Activity здесь остаётся
 компактным all-collection блоком из `StudyReport.profile`, а полный scoped Feed
 живёт только на `#/calendar`.
+
+Stage 5 также не переносит hierarchy/health в Profile: Profile deck overview
+остаётся all-collection direct canonical rows, а scoped direct/subtree model
+живёт только в `StudyReport.deckHub` на `#/decks`.

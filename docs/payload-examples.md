@@ -230,7 +230,7 @@ tests/test_dashboard_payload.py
     "status": "ready",
     "dataSource": "mixed",
     "usedFor": ["activity", "comparison"],
-    "version": 1,
+    "version": 2,
     "updatedAt": 1783260000,
     "lastRevlogId": 987654321,
     "cachedDays": 120,
