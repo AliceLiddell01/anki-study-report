@@ -201,6 +201,83 @@ select {
     inset 0 1px 0 rgb(var(--color-text-primary) / 0.04);
 }
 
+.global-utility-dock {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 30;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.utility-control-with-tooltip {
+  position: relative;
+}
+
+.utility-icon-button {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid rgb(var(--color-border-strong) / 0.72);
+  border-radius: 0.8rem;
+  background: rgb(var(--color-surface-1) / 0.94);
+  color: rgb(var(--color-text-secondary));
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.utility-icon-button:hover {
+  border-color: rgb(var(--color-accent) / 0.72);
+  background: rgb(var(--color-surface-2) / 0.98);
+  color: rgb(var(--color-accent));
+  transform: translateY(-1px);
+}
+
+.utility-icon-button:focus-visible {
+  outline: none;
+  border-color: rgb(var(--color-accent));
+  box-shadow: 0 0 0 3px rgb(var(--color-accent) / 0.24), var(--shadow-card);
+}
+
+.utility-tooltip {
+  position: absolute;
+  right: calc(100% + 0.65rem);
+  bottom: 50%;
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 5.5rem));
+  transform: translateY(50%) translateX(0.25rem);
+  border: 1px solid rgb(var(--color-border-strong) / 0.72);
+  border-radius: 0.55rem;
+  background: rgb(var(--color-surface-1));
+  color: rgb(var(--color-text-primary));
+  box-shadow: var(--shadow-popover);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+
+.utility-control-with-tooltip:hover .utility-tooltip,
+.utility-icon-button:focus-visible + .utility-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(50%) translateX(0);
+}
+
+.app-content-safe-inset {
+  padding-bottom: 5.25rem;
+}
+
 .dark-checkbox {
   @apply grid h-5 w-5 shrink-0 appearance-none place-content-center rounded-md border border-ink-700 bg-ink-800/80 transition;
   margin: 0;
@@ -296,6 +373,69 @@ select {
 
 .activity-legend-active {
   background-color: rgb(var(--color-accent) / 0.72);
+}
+
+.activity-calendar-cell {
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  gap: 0.05rem;
+  padding: 0.18rem 0.1rem;
+  line-height: 1.05;
+}
+
+.activity-calendar-date {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.activity-calendar-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.6rem;
+  font-weight: 550;
+  color: rgb(var(--color-text-secondary));
+  white-space: nowrap;
+}
+
+.activity-month-heading {
+  border-bottom: 1px solid rgb(var(--color-border-subtle) / 0.72);
+  padding-bottom: 0.4rem;
+  color: rgb(var(--color-text-primary));
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.deck-disclosure-button {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border-radius: 0.5rem;
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.deck-disclosure-button:hover {
+  background: rgb(var(--color-surface-2) / 0.78);
+}
+
+.deck-disclosure-button svg {
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.deck-detail-section {
+  margin-top: 1.35rem;
+  border-top: 1px solid rgb(var(--color-border-subtle) / 0.68);
+  padding-top: 1.15rem;
+}
+
+.deck-detail-heading {
+  color: rgb(var(--color-text-primary));
+  font-size: 0.9rem;
+  font-weight: 650;
 }
 
 .status-good {
@@ -576,7 +716,8 @@ select {
   .kpi-card:hover,
   .deck-card:hover,
   .toolbar-button:not(:disabled):hover,
-  .action-button:not(:disabled):hover {
+  .action-button:not(:disabled):hover,
+  .utility-icon-button:hover {
     animation: none !important;
     transform: none !important;
   }
