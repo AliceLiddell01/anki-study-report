@@ -2,9 +2,8 @@
 
 Снимок документации: 2026-07-11.
 
-Файл называется `ci-cd.md` как точка роста, но сейчас в проекте реализован
-только первый облачный CI-контур. CD, release automation и публикация на
-AnkiWeb отсутствуют.
+В проекте реализованы быстрый автоматический Fast CI и отдельный ручной Full
+Docker / Anki E2E. CD, release automation и публикация на AnkiWeb отсутствуют.
 
 ## Роль Fast CI
 
@@ -161,6 +160,62 @@ Run всегда сопоставляется с exact commit SHA, а не с «
 - tag/release/AnkiWeb CD;
 - deployment, self-hosted runners, OIDC и secrets.
 
-Будущие этапы могут добавить Full Docker/Anki E2E, отдельного consumer
-машиночитаемого результата, управляемый local fallback и release CD, но они не
-должны ослаблять или дублировать текущую canonical test logic.
+Будущие этапы могут добавить отдельного consumer машиночитаемого результата,
+управляемый local fallback и release CD, но они не должны ослаблять или
+дублировать текущую canonical test logic.
+
+## Full Docker / Anki E2E
+
+`.github/workflows/ci-e2e.yml` — второй независимый CI-контур. Он использует
+standard x64 runner `ubuntu-24.04`, PowerShell 7 и установленный Docker Engine /
+Docker Compose. Workflow остаётся manual-only после bootstrap и имеет один
+typed choice input:
+
+| Mode | Project command |
+| --- | --- |
+| `standard` | `run_full_check.ps1 -DockerOnly` |
+| `strict-apkg` | `run_full_check.ps1 -DockerOnly -RequireApkgFixture` |
+| `perf100` | `run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100` |
+
+Workflow не повторяет `run-e2e.sh`, APKG import или browser smoke. Он выбирает
+только заранее заданный режим и вызывает существующую project orchestration.
+Fast CI при этом не запускается повторно.
+
+Runner contract проверен по official GitHub runner-images inventory:
+`ubuntu-24.04` является stable standard x64 label и включает Docker Engine,
+Docker Compose и PowerShell 7. Workflow имеет `permissions: contents: read`,
+`persist-credentials: false`, timeout 90 минут и concurrency по ref/mode.
+
+Cloud build требует официальный Anki release asset:
+
+```text
+version: 26.05
+asset: anki-26.05-linux-x86_64.tar.zst
+sha256: 6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274
+source: GitHub Releases API asset digest, ankitects/anki release 26.05
+```
+
+`ANKI_REQUIRE_SHA256=1` делает отсутствие или несовпадение digest ошибкой
+container build. Источник: [Anki 26.05 release](https://github.com/ankitects/anki/releases/tag/26.05).
+
+### Public E2E artifact
+
+Raw `e2e-artifacts/runtime/dashboard-ready.json` содержит token и никогда не
+загружается. `scripts/prepare_ci_e2e_artifacts.py` создаёт отдельный `ci-e2e/`:
+
+- удаляет token query parameters и известный runtime token;
+- создаёт `dashboard-ready.redacted.json` без поля `token`;
+- проверяет manifest paths на absolute/traversal/duplicates/missing files;
+- отклоняет secret-like text и private home paths;
+- сохраняет безопасные reports/screenshots/package и sanitized diagnostics;
+- пишет stable `ci-e2e-summary.json` schema v1 и Markdown Step Summary.
+
+Artifact загружается через `if: always()` и хранится 7 дней. Canonical E2E exit
+code сохраняется отдельно и восстанавливается после export/upload/cleanup:
+диагностика не может превратить project failure в PASS.
+
+`workflow_dispatch` доступен только когда workflow уже находится в default
+branch. Поэтому первый branch cloud proof использует временный exact-branch
+`push` trigger; перед merge он удаляется. Final exact-master proof выполняется
+manual dispatch для `strict-apkg`, затем `perf100`. `LOCAL PASS != GITHUB CI
+PASS`; infrastructure failure также нужно отличать от project failure.

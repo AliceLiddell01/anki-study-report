@@ -102,6 +102,12 @@ node scripts/run_python.mjs scripts/package_addon.py --check
 успешным из-за локального PASS; distinction и fallback policy описаны в
 `docs/ci-cd.md`.
 
+Для Full Docker E2E использовать только typed modes workflow и существующие
+`run_full_check.ps1 -DockerOnly ...` команды. Не переносить шаги `run-e2e.sh`
+в YAML, не загружать raw `e2e-artifacts/` и не обходить failure exporter'а.
+Перед handoff проверить exporter tests, локальные strict APKG/Perf100 и exact-SHA
+cloud artifacts/screenshots. Bootstrap push trigger должен быть удалён до merge.
+
 ## Git workflow
 
 Можно автономно:

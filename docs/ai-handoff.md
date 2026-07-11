@@ -275,6 +275,20 @@ E2E и CI artifacts. Read-only inspection не нашёл противореча
 publication finding закрыт. Fixture-specific permission не задаёт лицензию для
 остального репозитория.
 
+## Cloud Full Docker E2E
+
+Fast CI и real-Anki E2E разделены. `.github/workflows/ci-e2e.yml` после
+bootstrap запускается вручную на `master` с mode `standard`, `strict-apkg` или
+`perf100`; основной proof — последние два режима. Workflow использует
+`ubuntu-24.04`, read-only permissions, официальный digest Anki 26.05 и ту же
+локальную `run_full_check.ps1 -DockerOnly` orchestration.
+
+Public artifact — только `ci-e2e/`: raw readiness token исключён,
+`dashboard-ready.redacted.json` безопасен, manifest paths и text exports
+проверяются. `ci-e2e-summary.json` schema v1 содержит exact SHA/mode/runtime/
+result без token/PII. LOCAL PASS не заменяет exact-SHA GitHub PASS; Perf100
+timings не являются release thresholds.
+
 ## Перед финальным ответом по задачам
 
 Полезный минимум:

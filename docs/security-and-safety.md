@@ -221,3 +221,18 @@ notes/cards/templates/CSS и 13 созданных им media как части 
 Docker E2E и CI artifacts. Это fixture-specific permission не распространяется
 на исходный код или другие материалы репозитория и не заменяет отсутствующий
 LICENSE.
+
+## Public Full Docker E2E artifacts
+
+Cloud workflow не загружает raw `e2e-artifacts/`. Token-bearing
+`runtime/dashboard-ready.json` заменяется redacted JSON без token; token query
+parameters удаляются из text evidence. Exporter разрешает только ожидаемые
+artifact categories, проверяет manifest paths, отклоняет secret signatures и
+private home paths и не копирует environment dumps, Docker credentials,
+local-input, caches или layers.
+
+Artifact preparation и upload выполняются после success/failure, но исходный
+canonical exit code восстанавливается после diagnostics и cleanup. Ошибка
+redaction также завершает job ошибкой. Workflow использует только
+`permissions: contents: read`, не получает secrets/OIDC и хранит public-safe
+artifact 7 дней.

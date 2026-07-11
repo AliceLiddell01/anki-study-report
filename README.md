@@ -132,6 +132,14 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
    front-only через `AnkiCardShadowPreview` / Shadow DOM host, а `ankiPreview`
    использует тот же isolated preview host в answer-only режиме из
    `renderedPreview.backHtml` без iframe и без отдельного дублирования front.
-7. Планируемая публичная видимость не задаёт режим открытой лицензии: LICENSE
-   пока не выбран и не добавляется. До смены видимости обязателен отдельный
-   аудит reachable history, fixtures/media и CI outputs.
+7. Репозиторий публичный, но общая LICENSE не выбрана и не добавляется.
+   Публичные history, Actions logs/artifacts и fixtures не должны содержать
+   secrets, PII или материалы без разрешения на распространение.
+
+## Облачные проверки
+
+Fast CI автоматически проверяет push в `master`/`codex/**` и pull requests.
+Отдельный workflow `Full Docker / Anki E2E` запускается вручную и проверяет
+реальный Anki Desktop в Docker на GitHub-hosted Ubuntu. Доступные режимы:
+`standard`, `strict-apkg` и diagnostic `perf100`. Полный контракт и команды — в
+`docs/ci-cd.md` и `docs/docker-e2e.md`.

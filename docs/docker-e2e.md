@@ -229,3 +229,25 @@ desktop/laptop dashboard layout и отсутствие clipping/raw HTML/consol
 
 `e2e-artifacts/`, screenshots, DOM dumps, logs, local APKG input и token-bearing
 outputs нужны для диагностики, но должны оставаться вне git.
+
+## GitHub-hosted Ubuntu compatibility
+
+Cloud E2E использует ту же цепочку `run_full_check.ps1` →
+`run_anki_e2e_docker.ps1` → Compose → `run-e2e.sh`. PowerShell wrapper вызывает
+вложенный `.ps1` через текущий PowerShell host, поэтому не зависит от Windows
+`powershell.exe`; executable lookup и paths остаются cross-platform.
+
+Artifacts mount нормализуется до абсолютного host path. Compose сохраняет
+read-only `/workspace`, writable `/e2e/workspace-build`, named profile volume и
+`shm_size: 2gb`; nested VM не требуется. Xvfb и software Qt/OpenGL работают
+внутри обычного Linux container. Local real-media mount включается только через
+явные локальные env vars и не активируется в cloud workflow.
+
+Root `.dockerignore` исключает Git metadata, caches, node_modules, generated
+dashboard/package/runtime и CI downloads, но сохраняет source и tracked
+owner-authorized APKG fixture. Cloud build требует официальный SHA-256 Anki
+26.05; Perf100 остаётся diagnostic smoke без performance threshold.
+
+Public Actions artifact создаётся отдельно в `ci-e2e/`. Raw readiness JSON с
+token остаётся локальным; exporter публикует только redacted readiness и
+проверенные manifest-relative evidence files.
