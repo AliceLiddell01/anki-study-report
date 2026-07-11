@@ -55,6 +55,26 @@ def test_empty_stats_cache_is_safe(tmp_path):
     assert snapshot["deckDaily"] == []
 
 
+def test_deck_daily_rows_attribute_filtered_cards_to_home_deck():
+    stats_cache = import_addon_module("stats_cache")
+    seen = {}
+
+    class Db:
+        def all(self, query, *params):
+            seen["query"] = query
+            return [("2026-07-01", 10, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 5000)]
+
+    class Decks:
+        def all_names_and_ids(self):
+            return [type("Deck", (), {"id": 10, "name": "Home"})()]
+
+    col = type("Col", (), {"db": Db(), "decks": Decks()})()
+    rows = stats_cache._deck_daily_rows(col, 4, None)
+    assert "case when c.odid > 0 then c.odid else c.did end" in seen["query"]
+    assert rows[0]["deck_id"] == 10
+    assert rows[0]["deck_name"] == "Home"
+
+
 def test_fake_rebuild_initializes_schema_and_cached_report_shape(tmp_path, monkeypatch):
     stats_cache = import_addon_module("stats_cache")
     report_from_cache = import_addon_module("report_from_cache")
@@ -104,7 +124,7 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     report_from_cache = import_addon_module("report_from_cache")
     manager = StaticCacheManager({
         "status": "empty",
-        "version": 1,
+        "version": 2,
         "updatedAt": 0,
         "cachedDays": 0,
         "cachedDeckDays": 0,
@@ -122,7 +142,7 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     assert parts["dataSource"] == "legacy"
     assert parts["cache"]["dataSource"] == "legacy"
     assert parts["cache"]["usedFor"] == []
-    assert parts["cache"]["version"] == 1
+    assert parts["cache"]["version"] == 2
     assert parts["cache"]["isBuilding"] is False
     assert parts["cache"]["error"] is None
     assert parts["cache"]["lastError"] is None
@@ -176,7 +196,7 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     report_from_cache = import_addon_module("report_from_cache")
     status = {
         "status": "ready",
-        "version": 1,
+        "version": 2,
         "updatedAt": 1_782_925_200,
         "cachedDays": 2,
         "cachedDeckDays": 2,
@@ -215,7 +235,7 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     assert parts["dataSource"] == "mixed"
     assert parts["cache"]["dataSource"] == "mixed"
     assert parts["cache"]["usedFor"] == ["activity.days", "activity.summary", "comparison"]
-    assert parts["cache"]["version"] == 1
+    assert parts["cache"]["version"] == 2
     assert parts["cache"]["isBuilding"] is False
     assert parts["cache"]["error"] is None
     assert parts["cache"]["lastError"] is None

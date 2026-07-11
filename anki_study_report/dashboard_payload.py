@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 import re
 
+from .deck_hub import build_deck_hub
 from .note_intelligence import media_ref_for_name, sanitize_card_css, sanitize_media_filename, sanitize_rendered_html
 from .report_from_cache import comparison_from_cache_snapshot
 from .session_tracker import unavailable_tracked_time
@@ -63,7 +64,7 @@ def build_dashboard_report_payload(
     main_action = _dashboard_main_action(problem_decks)
     new_cards_advice = _dashboard_new_cards_advice(pass_rate, risk_status)
 
-    return {
+    payload = {
         "metadata": {
             "title": "Anki Study Report",
             "period": str(metadata.get("period") or "Не указан"),
@@ -127,6 +128,16 @@ def build_dashboard_report_payload(
         },
         "cache": cache_summary if isinstance(cache_summary, dict) else _dashboard_empty_cache_summary(),
     }
+    deck_hub = build_deck_hub(
+        metrics.get("deck_catalog"),
+        metrics.get("deck_breakdown"),
+        selected_deck_ids=metrics.get("deck_scope_ids"),
+        include_child_decks=bool(metadata.get("include_child_decks")),
+        active_dates_available=bool(metrics.get("deck_active_dates_available")),
+    )
+    if deck_hub is not None:
+        payload["deckHub"] = deck_hub
+    return payload
 
 
 def build_default_dashboard_metadata(
@@ -225,6 +236,8 @@ def metrics_from_cache_snapshot(snapshot: dict, today_key: str, display_settings
             "fail_count": fail_count,
         },
         "deck_breakdown": _deck_breakdown_from_cache_rows(deck_rows),
+        "deck_scope_ids": list(display.get("selected_deck_ids") or []) or None,
+        "deck_active_dates_available": True,
         "heatmap": _heatmap_from_cache_rows(daily_rows, today_key, display["period"]),
         "forecast": _cache_default_forecast(),
         "fsrs": _cache_default_fsrs(),
@@ -450,6 +463,7 @@ def _daily_rows_from_deck_rows(rows: list[dict]) -> list[dict]:
                 "fail_count": 0,
                 "study_seconds": 0,
                 "total_answer_seconds": 0.0,
+                "_active_dates": set(),
             },
         )
         day["reviews"] += dashboard_int(row.get("reviews"))
@@ -510,6 +524,7 @@ def _deck_breakdown_from_cache_rows(rows: list[dict]) -> list[dict]:
                 "fail_count": 0,
                 "total_seconds": 0,
                 "total_answer_seconds": 0.0,
+                "_active_dates": set(),
             },
         )
         deck["total_reviews"] += dashboard_int(row.get("reviews"))
@@ -522,6 +537,9 @@ def _deck_breakdown_from_cache_rows(rows: list[dict]) -> list[dict]:
         deck["fail_count"] += dashboard_int(row.get("fail_count"))
         deck["total_seconds"] += dashboard_int(row.get("study_seconds"))
         deck["total_answer_seconds"] += dashboard_float(row.get("total_answer_seconds"))
+        row_date = str(row.get("date") or "")
+        if row_date:
+            deck["_active_dates"].add(row_date)
 
     result = []
     for deck in decks.values():
@@ -532,6 +550,7 @@ def _deck_breakdown_from_cache_rows(rows: list[dict]) -> list[dict]:
         deck["pass_rate"] = round(dashboard_int(deck.get("pass_count")) / total, 4) if total else 0
         deck["fail_rate"] = round(fail_count / total, 4) if total else 0
         deck["average_answer_seconds"] = round(dashboard_float(deck.get("total_answer_seconds")) / total, 2) if total else 0
+        deck["_active_dates"] = sorted(deck["_active_dates"])
         result.append(deck)
     return sorted(result, key=lambda deck: dashboard_int(deck.get("total_reviews")), reverse=True)
 

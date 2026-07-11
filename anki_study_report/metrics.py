@@ -9,6 +9,7 @@ import re
 import time
 from typing import Any
 
+from .deck_hub import collect_deck_catalog
 from .note_intelligence import (
     analyze_note_type,
     build_note_preview,
@@ -122,6 +123,9 @@ def collect_metrics(
         "pass_fail": pass_fail,
         "answer_distribution": answer_distribution,
         "deck_breakdown": deck_breakdown,
+        "deck_catalog": collect_deck_catalog(col),
+        "deck_scope_ids": list(expanded_deck_ids) if expanded_deck_ids is not None else None,
+        "deck_active_dates_available": False,
         "attention_cards": attention_cards,
         "attention_cards_status": attention_cards_status,
         "note_type_catalog": attention_cards_status.get("noteTypeCatalog", []),
@@ -487,7 +491,8 @@ def _review_summary(
     end_ms: int,
     deck_ids: Sequence[int] | None,
 ) -> tuple[int, int, int]:
-    deck_sql, deck_params = _deck_filter_sql(deck_ids)
+    home_deck_sql = "case when c.odid > 0 then c.odid else c.did end"
+    deck_sql, deck_params = _deck_filter_sql(deck_ids, column=home_deck_sql)
     row = col.db.first(
         f"""
         select
@@ -1491,7 +1496,7 @@ def _deck_breakdown(
     rows = col.db.all(
         f"""
         select
-            c.did,
+            {home_deck_sql} as home_did,
             count(*) as total_reviews,
             coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0) as again_count,
             coalesce(sum(case when r.ease = 2 then 1 else 0 end), 0) as hard_count,
@@ -1522,8 +1527,8 @@ def _deck_breakdown(
           and r.id < ?
           {REVLOG_REVIEW_FILTER_SQL}
           {deck_sql}
-        group by c.did
-        order by total_reviews desc, c.did asc
+        group by home_did
+        order by total_reviews desc, home_did asc
         """,
         ANSWER_TIME_CAP_MS,
         ANSWER_TIME_CAP_MS,
@@ -2358,6 +2363,7 @@ def _deck_names_by_id(col: Any) -> dict[int, str]:
 def _deck_filter_sql(
     deck_ids: Sequence[int] | None,
     table_alias: str | None = "c",
+    column: str | None = None,
 ) -> tuple[str, list[int]]:
     if deck_ids is None:
         return "", []
@@ -2366,7 +2372,7 @@ def _deck_filter_sql(
     if not normalized:
         return "and 0", []
 
-    column = "did" if table_alias is None else f"{table_alias}.did"
+    column = column or ("did" if table_alias is None else f"{table_alias}.did")
     placeholders = ", ".join("?" for _ in normalized)
     return f"and {column} in ({placeholders})", normalized
 

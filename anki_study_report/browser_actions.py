@@ -12,6 +12,7 @@ from .metrics import collect_action_card_ids
 
 BROWSER_ACTION_CARD_LIMIT = 500
 BROWSER_SEARCH_DIRECT_MAX_LENGTH = 1800
+DECK_BROWSER_MODES = {"subtree", "direct"}
 
 
 class BrowserSearchQueryError(ValueError):
@@ -64,8 +65,10 @@ def balanced_or_search_query(terms: list[str]) -> str:
     return f"({left} OR {right})"
 
 
-def open_browser_search(search_query: str) -> None:
-    search_query = sanitize_browser_search_query(search_query)
+def open_browser_search(search_query: str, *, prevalidated: bool = False) -> None:
+    search_query = str(search_query or "").strip() if prevalidated else sanitize_browser_search_query(search_query)
+    if not search_query:
+        raise BrowserSearchQueryError("Search query is empty.")
     if mw is None:
         raise RuntimeError("Главное окно Anki недоступно.")
 
@@ -87,6 +90,52 @@ def open_browser_search(search_query: str) -> None:
         browser.search()
     elif hasattr(browser, "onSearch"):
         browser.onSearch()
+
+
+def build_deck_browser_query(col, deck_id: object, mode: object) -> str:
+    """Resolve a current normal deck by ID and build a safe Anki query."""
+
+    safe_mode = str(mode or "").strip()
+    if safe_mode not in DECK_BROWSER_MODES:
+        raise BrowserSearchQueryError("Unknown deck Browser mode.")
+    try:
+        safe_deck_id = int(deck_id)
+    except (TypeError, ValueError):
+        raise BrowserSearchQueryError("Deck ID is invalid.") from None
+    if safe_deck_id <= 0:
+        raise BrowserSearchQueryError("Deck ID is invalid.")
+
+    try:
+        deck = col.decks.get(safe_deck_id, default=False)
+    except TypeError:
+        deck = col.decks.get(safe_deck_id)
+    except Exception:
+        deck = None
+    if not isinstance(deck, dict) or int(deck.get("id") or 0) != safe_deck_id:
+        raise BrowserSearchQueryError("Deck is unavailable or was deleted.")
+    if bool(deck.get("dyn")):
+        raise BrowserSearchQueryError("Filtered decks are not available in Decks health.")
+    name = str(deck.get("name") or "").strip()
+    if not name:
+        raise BrowserSearchQueryError("Deck name is unavailable.")
+    if re.search(r"[\r\n\t]", name):
+        raise BrowserSearchQueryError("Deck name contains unsupported control characters.")
+
+    escaped = _escape_deck_search_value(name)
+    query = f'deck:"{escaped}"'
+    if safe_mode == "direct":
+        query += f' -deck:"{escaped}::*"'
+    if len(query) > BROWSER_SEARCH_DIRECT_MAX_LENGTH:
+        raise BrowserSearchQueryError("Deck search query is too long.")
+    return query
+
+
+def _escape_deck_search_value(value: str) -> str:
+    escaped = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    escaped = escaped.replace("\\", "\\\\")
+    for character in ('"', "*", "_"):
+        escaped = escaped.replace(character, "\\" + character)
+    return escaped
 
 
 def sanitize_browser_search_query(search_query: object, *, max_length: int = BROWSER_SEARCH_DIRECT_MAX_LENGTH) -> str:

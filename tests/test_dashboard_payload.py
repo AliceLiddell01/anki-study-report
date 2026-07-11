@@ -82,6 +82,40 @@ def test_dashboard_payload_normal_day_key_values():
     assert payload["decks"][0]["name"] == "Japanese::Core"
 
 
+def test_dashboard_payload_adds_normalized_deck_hub_without_changing_legacy_decks():
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    fixture = load_dashboard_fixture("normal_day")
+    metrics = {
+        **fixture["metrics"],
+        "deck_catalog": [
+            {"deck_id": 10, "deck_name": "Japanese", "filtered": False, "direct_card_count": 0},
+            {"deck_id": 11, "deck_name": "Japanese::Core", "filtered": False, "direct_card_count": 12},
+            {"deck_id": 99, "deck_name": "Filtered", "filtered": True, "direct_card_count": 0},
+        ],
+        "deck_scope_ids": None,
+        "deck_active_dates_available": False,
+    }
+    metrics["deck_breakdown"] = [
+        {"deck_id": 11, "deck_name": "Japanese::Core", "total_reviews": 100, "pass_count": 90, "fail_count": 10},
+    ]
+
+    payload = dashboard_payload.build_dashboard_report_payload(metrics, fixture["metadata"])
+
+    assert payload["decks"] == dashboard_payload._dashboard_decks(metrics["deck_breakdown"])
+    assert payload["deckHub"]["rootIds"] == [10]
+    assert payload["deckHub"]["nodes"]["10"]["subtreeMetrics"]["reviews"] == 100
+    assert payload["deckHub"]["nodes"]["10"]["directMetrics"]["reviews"] == 0
+    assert payload["deckHub"]["summary"] == {
+        "totalDecks": 2,
+        "attentionDecks": 0,
+        "dangerDecks": 0,
+        "groupsWithDescendantIssues": 0,
+        "aggregatePassRate": 0.9,
+        "filteredDecksExcluded": 1,
+    }
+    assert "deckHub" not in dashboard_payload.build_dashboard_report_payload(fixture["metrics"], fixture["metadata"])
+
+
 def test_dashboard_payload_cache_snapshot_fixture():
     dashboard_payload = fresh_import_addon_module("dashboard_payload")
     fixture = load_dashboard_fixture("cache_snapshot")

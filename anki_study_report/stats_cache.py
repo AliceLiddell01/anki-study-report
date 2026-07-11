@@ -17,12 +17,12 @@ from typing import Any
 from .metrics import ANSWER_TIME_CAP_MS, REVLOG_REVIEW_FILTER_SQL
 
 
-CACHE_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 2
 CACHE_STATUSES = {"ready", "scheduled", "building", "stale", "empty", "error"}
 DEFAULT_CACHE_FILE = Path(__file__).resolve().parent / "user_files" / "study_report_cache.sqlite3"
 DECK_HISTORY_NOTE = (
-    "Deck daily aggregates use the card's current deck, not necessarily the "
-    "historical deck at review time."
+    "Deck daily aggregates use the card's current home deck; historical deck "
+    "moves and renames are not reconstructed."
 )
 DATE_KEY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -553,7 +553,7 @@ def _deck_daily_rows(
         f"""
         select
             strftime('%Y-%m-%d', r.id / 1000 - ?, 'unixepoch', 'localtime') as day,
-            coalesce(c.did, 0) as deck_id,
+            coalesce(case when c.odid > 0 then c.odid else c.did end, 0) as deck_id,
             count(*) as reviews,
             count(distinct case
                 when r.type = 0

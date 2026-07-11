@@ -98,3 +98,65 @@ def test_sanitize_browser_search_query_rejects_huge_or_and_unsafe_text():
             pass
         else:
             raise AssertionError(f"Expected unsafe query to fail: {query[:40]}")
+
+
+def test_deck_browser_query_includes_descendants_and_direct_only_excludes_them():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    class Decks:
+        def get(self, deck_id, default=False):
+            return {"id": deck_id, "name": "Words and Grammar::N3", "dyn": 0}
+
+    col = type("Col", (), {"decks": Decks()})()
+    assert browser_actions.build_deck_browser_query(col, 42, "subtree") == 'deck:"Words and Grammar::N3"'
+    assert browser_actions.build_deck_browser_query(col, 42, "direct") == (
+        'deck:"Words and Grammar::N3" -deck:"Words and Grammar::N3::*"'
+    )
+
+
+def test_deck_browser_query_escapes_quotes_backslashes_wildcards_and_non_latin():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    class Decks:
+        def get(self, deck_id, default=False):
+            return {"id": deck_id, "name": '日本語 "OR" \\ *_ <x>', "dyn": 0}
+
+    col = type("Col", (), {"decks": Decks()})()
+    query = browser_actions.build_deck_browser_query(col, 7, "subtree")
+    assert query == 'deck:"日本語 \\"OR\\" \\\\ \\*\\_ &lt;x&gt;"'
+    assert " token=" not in query
+
+
+def test_deck_browser_query_rejects_unknown_filtered_and_invalid_mode():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    class Decks:
+        def get(self, deck_id, default=False):
+            if deck_id == 1:
+                return {"id": 1, "name": "Filtered", "dyn": 1}
+            return None
+
+    col = type("Col", (), {"decks": Decks()})()
+    for deck_id, mode in [(1, "subtree"), (999, "subtree"), (1, "raw-query")]:
+        try:
+            browser_actions.build_deck_browser_query(col, deck_id, mode)
+        except browser_actions.BrowserSearchQueryError:
+            pass
+        else:
+            raise AssertionError("Expected invalid deck Browser request to fail")
+
+
+def test_deck_browser_query_rejects_query_breaking_control_characters():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    class Decks:
+        def get(self, deck_id, default=False):
+            return {"id": deck_id, "name": 'Safe"\nis:suspended', "dyn": 0}
+
+    col = type("Col", (), {"decks": Decks()})()
+    try:
+        browser_actions.build_deck_browser_query(col, 7, "subtree")
+    except browser_actions.BrowserSearchQueryError as error:
+        assert "control characters" in str(error)
+    else:
+        raise AssertionError("Expected control-character deck name to fail")

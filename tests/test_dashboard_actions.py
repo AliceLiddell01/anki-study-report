@@ -51,3 +51,44 @@ def test_dashboard_action_rejects_unsafe_row_search_query(monkeypatch):
     assert result["ok"] is False
     assert result["action"] == "open-browser-search"
     assert opened == []
+
+
+def test_dashboard_action_opens_deck_by_id_and_mode_without_accepting_raw_query(monkeypatch):
+    dashboard_actions = fresh_import_addon_module("dashboard_actions")
+    opened = []
+
+    class Decks:
+        def get(self, deck_id, default=False):
+            return {"id": deck_id, "name": "Words::N3", "dyn": 0}
+
+    monkeypatch.setattr(dashboard_actions, "mw", SimpleNamespace(col=SimpleNamespace(decks=Decks())))
+    monkeypatch.setattr(
+        dashboard_actions,
+        "open_browser_search",
+        lambda query, **kwargs: opened.append((query, kwargs)),
+    )
+    actions = make_actions(dashboard_actions, opened)
+    result = actions.request_dashboard_action(
+        "open-deck-browser",
+        {"deckId": 42, "mode": "direct", "query": "is:suspended"},
+    )
+    assert result["ok"] is True
+    assert result["action"] == "open-deck-browser"
+    assert opened == [('deck:"Words::N3" -deck:"Words::N3::*"', {"prevalidated": True})]
+
+
+def test_dashboard_action_rejects_invalid_deck_browser_mode(monkeypatch):
+    dashboard_actions = fresh_import_addon_module("dashboard_actions")
+    monkeypatch.setattr(dashboard_actions, "mw", SimpleNamespace(col=SimpleNamespace()))
+    monkeypatch.setattr(
+        dashboard_actions,
+        "build_deck_browser_query",
+        lambda col, deck_id, mode: (_ for _ in ()).throw(dashboard_actions.BrowserSearchQueryError("Unknown deck Browser mode.")),
+    )
+    actions = make_actions(dashboard_actions, [])
+    result = actions.request_dashboard_action("open-deck-browser", {"deckId": 42, "mode": "query"})
+    assert result == {
+        "ok": False,
+        "action": "open-deck-browser",
+        "error": "Unknown deck Browser mode.",
+    }

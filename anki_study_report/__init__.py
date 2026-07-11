@@ -173,6 +173,7 @@ from .profile_service import (
     build_profile_payload,
 )
 from .activity_service import build_activity_hub_payload
+from .deck_hub import collect_deck_catalog
 
 
 ADDON_NAME = "Anki Study Report"
@@ -2378,6 +2379,7 @@ def _prepare_default_dashboard_report() -> dict:
     )
     metrics = metrics_from_cache_snapshot(snapshot, today_key, display_settings)
     metrics = _apply_default_dashboard_attention_cards(metrics, metadata, display_settings)
+    metrics = _apply_default_dashboard_deck_catalog(metrics, display_settings)
     report = _dashboard_report_payload(metrics, metadata)
     report["today"] = build_today_dashboard_payload(
         snapshot,
@@ -2490,6 +2492,18 @@ def _apply_default_dashboard_attention_cards(
             "collectionAvailable": col is not None and getattr(col, "db", None) is not None,
             "source": "fresh",
         }
+    return updated
+
+
+def _apply_default_dashboard_deck_catalog(metrics: dict, display_settings: dict) -> dict:
+    """Attach the current normal/filtered deck catalog to cache aggregates."""
+
+    updated = dict(metrics if isinstance(metrics, dict) else {})
+    col = getattr(mw, "col", None) if mw is not None else None
+    updated["deck_catalog"] = collect_deck_catalog(col) if col is not None else []
+    selected = display_settings.get("selected_deck_ids") if isinstance(display_settings, dict) else None
+    updated["deck_scope_ids"] = list(selected) if isinstance(selected, list) and selected else None
+    updated["deck_active_dates_available"] = True
     return updated
 
 
