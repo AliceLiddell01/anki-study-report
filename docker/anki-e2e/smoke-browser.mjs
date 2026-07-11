@@ -581,7 +581,7 @@ async function captureZoomProof(page) {
       await prepareDashboardRoute(page, routeCase.route, "light", routeCase.heading);
       const layout = await inspectZoomLayout(page);
       assertBrowser(!layout.horizontalOverflow, `${routeCase.route} has no horizontal clipping at emulated 125% scale.`);
-      assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale.`);
+      assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale: ${JSON.stringify(layout)}`);
       const filePath = artifactPaths.zoomScreenshot(routeCase.pageName);
       await ensureArtifactParent(filePath);
       await page.screenshot({ path: filePath, fullPage: true });
