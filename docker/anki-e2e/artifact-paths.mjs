@@ -25,6 +25,12 @@ export function resolveArtifactPaths(root = process.env.ANKI_STUDY_REPORT_E2E_AR
     navigationScreenshot(theme) {
       return path.join(screenshots, "navigation", `avatar-menu-${theme}.png`);
     },
+    stateScreenshot(pageName, stateName, theme = "light") {
+      return path.join(screenshots, "states", pageName, stateName, `${theme}.png`);
+    },
+    zoomScreenshot(pageName) {
+      return path.join(screenshots, "zoom-125", `${pageName}.png`);
+    },
     cardsScreenshot(fixture, mode, theme) {
       return path.join(screenshots, "cards", fixture, modeDirectory(mode), `${theme}.png`);
     },
@@ -45,4 +51,3 @@ export function relativeArtifactPath(paths, filePath) {
 function modeDirectory(mode) {
   return mode === "ankiPreview" ? "anki-preview" : mode;
 }
-

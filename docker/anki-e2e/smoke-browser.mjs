@@ -154,8 +154,11 @@ try {
 
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
   const profileDetails = await assertProfileMvp(page);
+  const themeDetails = await assertGlobalThemeDock(page);
   const activityDetails = await assertActivityHub(page);
   const deckDetails = await assertDeckHub(page);
+  const polishStateScreenshots = await capturePolishStates(page);
+  const zoomDetails = await captureZoomProof(page);
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
@@ -174,8 +177,11 @@ try {
     cssDiagnostics,
     apkg: apkgDetails,
     profile: profileDetails,
+    theme: themeDetails,
     activity: activityDetails,
     decks: deckDetails,
+    polishStateScreenshots,
+    zoom125: zoomDetails,
     pageScreenshots,
     navigationScreenshots,
   });
@@ -298,6 +304,60 @@ async function assertProfileMvp(page) {
   };
 }
 
+async function assertGlobalThemeDock(page) {
+  await prepareDashboardRoute(page, "/home", "light", "Сегодня");
+  const dock = page.getByTestId("global-utility-dock");
+  const toggle = page.getByTestId("theme-toggle");
+  await dock.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await dock.count() === 1, "Global utility dock renders exactly once.");
+  assertBrowser(await toggle.getAttribute("aria-label") === "Включить тёмную тему", "Light theme exposes the dark-theme action.");
+  assertBrowser(await page.getByRole("tooltip", { name: "Включить тёмную тему", exact: true }).count() === 1, "Theme tooltip matches the available action.");
+  await toggle.focus();
+  assertBrowser(await toggle.evaluate((element) => document.activeElement === element), "Theme toggle accepts keyboard focus.");
+  await toggle.press("Enter");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  assertBrowser(await toggle.getAttribute("aria-label") === "Включить светлую тему", "Dark theme exposes the light-theme action.");
+  assertBrowser(await page.evaluate(() => localStorage.getItem("anki-study-report-theme")) === "dark", "Explicit dark preference is stored.");
+
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/calendar`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Активность", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("data-theme") === "dark", "SPA navigation preserves the selected theme.");
+  assertBrowser(await page.getByTestId("global-utility-dock").count() === 1, "Navigation does not duplicate the utility dock.");
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("data-theme") === "dark", "Reload restores the stored dark theme.");
+
+  for (const routeCase of [
+    ["/decks", "Колоды"],
+    ["/cards", "Карточки"],
+    ["/profile", "E2E"],
+    ["/actions", "Инструменты"],
+    ["/settings", "Отчёт"],
+  ]) {
+    await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#${routeCase[0]}`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.getByRole("heading", { name: routeCase[1], exact: true }).waitFor({ timeout: 60000 });
+    assertBrowser(await page.getByTestId("theme-toggle").count() === 1, `Theme toggle is present on ${routeCase[0]}.`);
+  }
+
+  await prepareDashboardRoute(page, "/home", "dark", "Сегодня");
+  const profileTrigger = page.getByRole("button", { name: "Открыть меню профиля", exact: true });
+  await profileTrigger.click();
+  const overlap = await page.evaluate(() => {
+    const dockRect = document.querySelector('[data-testid="global-utility-dock"]')?.getBoundingClientRect();
+    const menuRect = document.querySelector('[role="menu"]')?.getBoundingClientRect();
+    if (!dockRect || !menuRect) return true;
+    return !(dockRect.right <= menuRect.left || dockRect.left >= menuRect.right || dockRect.bottom <= menuRect.top || dockRect.top >= menuRect.bottom);
+  });
+  assertBrowser(!overlap, "Global utility dock does not overlap the profile menu.");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("theme-toggle").press("Enter");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+  assertBrowser(await page.evaluate(() => localStorage.getItem("anki-study-report-theme")) === "light", "Theme toggle returns to and stores light mode.");
+  const bodyText = await page.locator("body").innerText();
+  assertBrowser(!bodyText.includes(ready.token), "Theme control does not expose the dashboard token.");
+  assertBrowser(!/\b(?:RU|EN)\b|выбрать язык/i.test(await dock.innerText()), "No language placeholder is rendered.");
+  return { routesChecked: 7, persistedAfterReload: true, navigationPreserved: true, duplicateCount: 0, profileMenuOverlap: false };
+}
+
 async function assertActivityHub(page) {
   await prepareDashboardRoute(page, "/calendar", "light", "Активность");
   const period = page.locator("#activity-period");
@@ -333,6 +393,10 @@ async function assertActivityHub(page) {
   const feed = page.getByTestId("activity-feed");
   const initialDaily = await feed.locator('[data-feed-type="daily_summary"]').count();
   assertBrowser(initialDaily === 14, `Activity feed starts with 14 active days: ${initialDaily}`);
+  assertBrowser(await feed.locator('[data-feed-type="daily_summary"] .status-pill').count() === 0, "Ordinary Activity entries do not repeat the daily-summary badge.");
+  const monthKeysBefore = await feed.locator("[data-activity-month]").evaluateAll((items) => items.map((item) => item.getAttribute("data-activity-month")));
+  assertBrowser(new Set(monthKeysBefore).size === monthKeysBefore.length, "Activity month headings are unique before load-more.");
+  assertBrowser(await page.locator(".activity-calendar-date").count() > 0 && await page.locator(".activity-calendar-value").count() > 0, "Activity cells expose primary dates and secondary metric values.");
   await page.getByText(/Возвращение после 2 дней без занятий/).first().waitFor({ state: "visible", timeout: 15000 });
   await page.getByText(/Серия достигла 3/).first().waitFor({ state: "visible", timeout: 15000 });
   await page.getByText(/Новый максимум:/).first().waitFor({ state: "visible", timeout: 15000 });
@@ -342,9 +406,11 @@ async function assertActivityHub(page) {
   await loadMore.click();
   const expandedDaily = await feed.locator('[data-feed-type="daily_summary"]').count();
   assertBrowser(expandedDaily > initialDaily, `Activity feed loads earlier active days: ${initialDaily} -> ${expandedDaily}`);
+  const monthKeysAfter = await feed.locator("[data-activity-month]").evaluateAll((items) => items.map((item) => item.getAttribute("data-activity-month")));
+  assertBrowser(new Set(monthKeysAfter).size === monthKeysAfter.length, "Activity load-more merges entries into unique month groups.");
   const bodyText = await page.locator("body").innerText();
   assertBrowser(!bodyText.includes(ready.token), "Activity DOM does not expose the dashboard token.");
-  return { selectedDate, inactiveDate, initialDaily, expandedDaily, collapsedDeckRows, expandedDeckRows };
+  return { selectedDate, inactiveDate, initialDaily, expandedDaily, collapsedDeckRows, expandedDeckRows, monthGroups: monthKeysAfter };
 }
 
 async function assertDeckHub(page) {
@@ -359,6 +425,15 @@ async function assertDeckHub(page) {
   assertBrowser(Array.isArray(hub?.rootIds) && hub.rootIds.length >= 2, "Decks v2 has multiple roots.");
   assertBrowser(!Object.values(hub?.nodes || {}).some((node) => node.fullName === "E2E Filtered Health Excluded"), "Filtered fixture deck is absent from health nodes.");
   assertBrowser(Number(hub?.summary?.filteredDecksExcluded || 0) >= 1, "Filtered fixture deck is counted as excluded.");
+  assertBrowser(await page.getByTestId("filtered-decks-info").count() === 1, "Filtered-deck exclusion is shown as one compact information line.");
+  const groupsToggle = page.getByTestId("deck-groups-toggle");
+  assertBrowser(await groupsToggle.innerText() === "Развернуть группы", "Deck groups control offers an effective expand action initially.");
+  await groupsToggle.click();
+  assertBrowser(await groupsToggle.innerText() === "Свернуть все", "Deck groups control switches to collapse after root expansion.");
+  assertBrowser(await page.locator('button[title="E2E Decks::Danger"]').count() === 1, "Global expand opens root groups.");
+  assertBrowser(await page.locator('button[title*="Уровень 6"]').count() === 0, "Global expand does not recursively open deep descendants.");
+  await groupsToggle.click();
+  assertBrowser(await groupsToggle.innerText() === "Развернуть группы", "Deck groups collapse returns to the initial action.");
 
   const parentRow = page.locator('button[title="E2E Decks"]');
   await parentRow.waitFor({ state: "visible", timeout: 15000 });
@@ -371,10 +446,13 @@ async function assertDeckHub(page) {
 
   const search = page.getByPlaceholder("Найти колоду…", { exact: true });
   await search.fill("Danger");
+  assertBrowser(await groupsToggle.isDisabled(), "Deck groups control is disabled honestly during search auto-expansion.");
+  assertBrowser(await groupsToggle.innerText() === "Группы раскрыты фильтром", "Deck groups control explains search auto-expansion.");
   await page.locator('button[title="E2E Decks"]').waitFor({ state: "visible", timeout: 15000 });
   await page.locator('button[title="E2E Decks::Danger"]').waitFor({ state: "visible", timeout: 15000 });
   assertBrowser(await page.locator('button[title="E2E Grammar::N3"]').count() === 0, "Deck search removes unrelated branches.");
   await search.fill("");
+  assertBrowser(!(await groupsToggle.isDisabled()), "Deck groups control is restored after search.");
   assertBrowser(await page.locator('button[title="E2E Decks::Danger"]').count() === 1, "Clearing search restores manual expansion.");
 
   const selects = page.locator("select");
@@ -390,6 +468,12 @@ async function assertDeckHub(page) {
   await page.getByText(/С дочерними:/).waitFor({ state: "visible", timeout: 15000 });
   await page.getByText(/В самой колоде:/).waitFor({ state: "visible", timeout: 15000 });
   await page.getByRole("heading", { name: "Проблемы внутри", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  for (const section of ["identity", "reasons", "metrics", "direct-subtree", "issues", "recommendations", "actions"]) {
+    assertBrowser(await page.locator(`[data-detail-section="${section}"]`).count() === 1, `Deck detail section ${section} is present when applicable.`);
+  }
+  const treePanelHeight = await page.getByTestId("deck-tree-panel").evaluate((element) => element.getBoundingClientRect().height);
+  const detailPanelHeight = await page.getByTestId("deck-detail-panel").evaluate((element) => element.getBoundingClientRect().height);
+  assertBrowser(treePanelHeight < detailPanelHeight || Math.abs(treePanelHeight - detailPanelHeight) < 80, "Short deck tree keeps its natural height instead of stretching to the detail panel.");
 
   await page.getByRole("button", { name: "Открыть с дочерними", exact: true }).click();
   await page.getByText("Opened deck in Anki Browser.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
@@ -446,6 +530,95 @@ async function captureAvatarMenu(page) {
     });
   }
   return screenshots;
+}
+
+async function capturePolishStates(page) {
+  const screenshots = [];
+  await prepareDashboardRoute(page, "/calendar", "light", "Активность");
+  const loadMore = page.getByRole("button", { name: "Показать более раннюю активность", exact: true });
+  if (await loadMore.count()) await loadMore.click();
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "calendar", "history-expanded"));
+
+  await prepareDashboardRoute(page, "/decks", "light", "Колоды");
+  await page.getByTestId("deck-groups-toggle").click();
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "decks", "root-groups-expanded"));
+  await page.locator('button[title="E2E Decks"]').click();
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "decks", "selected-parent"));
+  await page.locator('button[title="E2E Decks::Danger"]').click();
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "decks", "selected-leaf"));
+  return screenshots;
+}
+
+async function saveStateScreenshot(page, pageName, stateName) {
+  const filePath = artifactPaths.stateScreenshot(pageName, stateName, "light");
+  await ensureArtifactParent(filePath);
+  await page.screenshot({ path: filePath, fullPage: true });
+  return { page: pageName, state: stateName, theme: "light", screenshot: relativeArtifactPath(artifactPaths, filePath) };
+}
+
+async function captureZoomProof(page) {
+  const session = await page.context().newCDPSession(page);
+  const results = [];
+  try {
+    await session.send("Emulation.setDeviceMetricsOverride", {
+      width: 1152,
+      height: 800,
+      deviceScaleFactor: 1.25,
+      mobile: false,
+      screenWidth: 1440,
+      screenHeight: 1000,
+    });
+    for (const routeCase of [
+      { route: "/calendar", pageName: "calendar", heading: "Активность" },
+      { route: "/decks", pageName: "decks", heading: "Колоды" },
+      { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
+    ]) {
+      await prepareDashboardRoute(page, routeCase.route, "light", routeCase.heading);
+      const layout = await inspectZoomLayout(page);
+      assertBrowser(!layout.horizontalOverflow, `${routeCase.route} has no horizontal clipping at emulated 125% scale.`);
+      assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale.`);
+      const filePath = artifactPaths.zoomScreenshot(routeCase.pageName);
+      await ensureArtifactParent(filePath);
+      await page.screenshot({ path: filePath, fullPage: true });
+      results.push({ ...routeCase, screenshot: relativeArtifactPath(artifactPaths, filePath), layout });
+    }
+  } finally {
+    await session.send("Emulation.clearDeviceMetricsOverride");
+    await session.detach();
+    await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+  }
+  return {
+    method: "Chrome DevTools Emulation.setDeviceMetricsOverride with 1152x800 CSS viewport and deviceScaleFactor 1.25 (1440x1000 physical target)",
+    pages: results,
+  };
+}
+
+async function inspectZoomLayout(page) {
+  return page.evaluate(() => {
+    const dock = document.querySelector('[data-testid="global-utility-dock"]');
+    const dockRect = dock?.getBoundingClientRect();
+    const actionable = [...document.querySelectorAll("main button, main a, main input, main select")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+      });
+    const overlaps = dockRect ? actionable.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return !(dockRect.right <= rect.left || dockRect.left >= rect.right || dockRect.bottom <= rect.top || dockRect.top >= rect.bottom);
+    }) : [];
+    return {
+      cssViewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
+      devicePixelRatio: window.devicePixelRatio,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      dockVisible: Boolean(dockRect && dockRect.width > 0 && dockRect.height > 0),
+      dockOverlapCount: overlaps.length,
+    };
+  });
 }
 
 async function inspectActiveNavigation(page) {

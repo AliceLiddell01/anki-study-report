@@ -108,6 +108,24 @@ def describe_screenshot(relative_path: str) -> dict[str, Any]:
                 "theme": match.group(1) if match else None,
             }
         )
+    elif len(parts) >= 5 and parts[:2] == ("screenshots", "states"):
+        result.update(
+            {
+                "kind": "state",
+                "route": PAGE_ROUTES.get(parts[2]),
+                "state": parts[3],
+                "theme": Path(parts[-1]).stem,
+            }
+        )
+    elif len(parts) >= 3 and parts[:2] == ("screenshots", "zoom-125"):
+        page_name = "/".join((*parts[2:-1], Path(parts[-1]).stem))
+        result.update(
+            {
+                "kind": "zoom",
+                "route": PAGE_ROUTES.get(page_name),
+                "scale": 1.25,
+            }
+        )
     elif len(parts) >= 5 and parts[:2] == ("screenshots", "cards"):
         result.update(
             {

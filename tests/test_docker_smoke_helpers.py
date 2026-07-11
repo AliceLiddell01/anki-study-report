@@ -107,6 +107,8 @@ def test_artifact_manifest_uses_relative_redacted_paths(tmp_path: Path):
         paths.screenshots / "navigation" / "avatar-menu-light.png",
         paths.screenshots / "pages" / "today" / "light.png",
         paths.screenshots / "pages" / "settings" / "logs" / "dark.png",
+        paths.screenshots / "states" / "decks" / "selected-parent" / "light.png",
+        paths.screenshots / "zoom-125" / "settings" / "report.png",
         paths.screenshots / "cards" / "synthetic" / "table" / "light.png",
         paths.screenshots / "cards" / "apkg" / "anki-preview" / "dark.png",
     ]
@@ -125,6 +127,8 @@ def test_artifact_manifest_uses_relative_redacted_paths(tmp_path: Path):
     assert all(not Path(entry["path"]).is_absolute() for entry in manifest["screenshots"])
     assert {entry.get("route") for entry in manifest["screenshots"]} >= {"#/home", "#/settings/logs", "#/cards"}
     assert {entry.get("fixture") for entry in manifest["screenshots"] if entry["kind"] == "cards"} == {"synthetic", "apkg"}
+    assert any(entry.get("kind") == "state" and entry.get("state") == "selected-parent" for entry in manifest["screenshots"])
+    assert any(entry.get("kind") == "zoom" and entry.get("route") == "#/settings" and entry.get("scale") == 1.25 for entry in manifest["screenshots"])
     assert str(tmp_path) not in serialized
     assert "secret-dashboard-token" not in serialized
     manifest_module.assert_manifest_is_redacted(serialized)
@@ -233,6 +237,8 @@ def test_browser_artifact_resolver_builds_deterministic_nested_paths(tmp_path: P
       console.log(JSON.stringify([
         relativeArtifactPath(paths, paths.pageScreenshot('settings/server', 'dark')),
         relativeArtifactPath(paths, paths.navigationScreenshot('light')),
+        relativeArtifactPath(paths, paths.stateScreenshot('decks', 'selected-parent', 'light')),
+        relativeArtifactPath(paths, paths.zoomScreenshot('settings/report')),
         relativeArtifactPath(paths, paths.cardsScreenshot('apkg', 'ankiPreview', 'dark')),
       ]));
     """
@@ -246,5 +252,7 @@ def test_browser_artifact_resolver_builds_deterministic_nested_paths(tmp_path: P
     assert json.loads(result.stdout) == [
         "screenshots/pages/settings/server/dark.png",
         "screenshots/navigation/avatar-menu-light.png",
+        "screenshots/states/decks/selected-parent/light.png",
+        "screenshots/zoom-125/settings/report.png",
         "screenshots/cards/apkg/anki-preview/dark.png",
     ]
