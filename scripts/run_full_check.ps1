@@ -137,17 +137,17 @@ Set-Location $Root
 Add-BundledNodeToPath
 Assert-RepositoryHygiene
 
-$node = Find-CommandPath @("node.exe", "node")
-if (-not $node) {
-    throw "Could not find node. Install Node.js or use the bundled Codex runtime."
-}
-
-$pnpm = Find-CommandPath @("pnpm.cmd", "pnpm")
-if (-not $pnpm) {
-    throw "Could not find pnpm. Install pnpm or enable Corepack, then rerun this script."
-}
-
 if (-not $DockerOnly) {
+    $node = Find-CommandPath @("node.exe", "node")
+    if (-not $node) {
+        throw "Could not find node. Install Node.js or use the bundled Codex runtime."
+    }
+
+    $pnpm = Find-CommandPath @("pnpm.cmd", "pnpm")
+    if (-not $pnpm) {
+        throw "Could not find pnpm. Install pnpm or enable Corepack, then rerun this script."
+    }
+
     Invoke-CheckedCommand `
         -Name "Frontend tests" `
         -FilePath $pnpm `
