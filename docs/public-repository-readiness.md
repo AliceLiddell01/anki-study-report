@@ -29,17 +29,24 @@ API metadata и read-only inspection APKG/ZIP containers. Внешний secret 
 Не обнаружены. Сильные сигнатуры PAT/API keys/private keys в reachable history
 не найдены. Полные значения потенциальных credentials в отчёт не выводились.
 
-### Needs owner review — publication blocker
+### Resolved — owner-authored and owner-authorized APKG fixture
 
 `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg` содержит 10 реальных
-учебных notes/cards и 13 bundled media entries. Репозиторий не содержит
-достаточного provenance или разрешения на публичное распространение этих media.
-Заявление документации о synthetic/sanitized fixture не подтверждено.
+учебных notes/cards, 4 note types и 13 bundled media entries. Владелец создал,
+курировал и многократно переработал cards, fields, templates и deck structure с
+AI assistance. Все media нарисованы, записаны либо сгенерированы владельцем под
+его управлением; сторонних скачанных assets с неясными правами нет.
 
-Безопасные варианты разблокировки: заменить APKG полностью synthetic fixture с
-собственными generated media либо документировать происхождение и право
-публичного распространения каждого bundled media file. Автоматическое удаление
-или переписывание history не выполнялось.
+Владелец разрешил публичное размещение и распространение этой конкретной
+fixture, включая notes/cards/templates/CSS/media, как части repository, tests,
+Docker E2E и CI artifacts. Это узкое разрешение не задаёт лицензию для остального
+репозитория.
+
+Read-only inspection подтвердил целостность APKG и ожидаемые counts. Сигнатуры
+credentials/private keys, абсолютные локальные пути, embedded attribution или
+copyright notice, противоречащие owner attestation, не обнаружены. Fixture не
+является экспортом чужой приватной collection и не содержит конфиденциальных
+данных. Synthetic replacement и history rewrite не требуются и не выполнялись.
 
 ### Low / acceptable development metadata
 
@@ -67,8 +74,8 @@ Artifact contract ограничен `ci-summary.md`, `ci-summary.json`,
 `environment.txt`, `logs/fast-check.log` и non-release CI `.ankiaddon`.
 Summary/environment формируются из repository/run/runtime metadata и не должны
 включать secrets, PII, Anki profile или приватные файлы вне checkout. Package
-содержит собираемый код проекта, но его будущая публичность допустима только
-после устранения APKG/media blocker в публикуемой repository history.
+содержит собираемый код проекта. Tracked APKG не входит в release package;
+владелец отдельно разрешил её использование в repository tests и CI artifacts.
 
 ## License decision
 
@@ -78,7 +85,7 @@ Summary/environment формируются из repository/run/runtime metadata 
 
 ## Gate decision
 
-`BLOCKED_FOR_OWNER_REVIEW`.
+`GO FOR PUBLIC`.
 
-Visibility остаётся `PRIVATE`. CI branch не отправляется, пока владелец не
-разрешит fixture/media finding одним из безопасных вариантов выше.
+Owner review завершён, единственный fixture/media finding закрыт. Unresolved
+critical/high findings и существенные owner-review items отсутствуют.

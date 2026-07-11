@@ -139,18 +139,25 @@ imports the tracked APKG fixture when it is present in the checkout. If no APKG
 fixture is present, the runner keeps using the synthetic collection and writes
 `apkg-import-summary.json` with `enabled: false`.
 
-APKG mode imports a sanitized test deck into the isolated E2E collection after
+APKG mode imports an owner-authored, sanitized and owner-authorized regression
+deck into the isolated E2E collection after
 the synthetic fixture is seeded and before Anki starts. The APKG is fixture-only
 regression data for card rendering and dashboard previews; do not use a real
 personal collection or full Anki profile here. Imported cards are made
 problematic programmatically with deterministic E2E-only `revlog` and card
 stats, so they appear in Cards page / `attentionCards`.
 
-Tracked fixture path, only for small sanitized test decks:
+Tracked fixture path:
 
 ```text
 docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
 ```
+
+The owner created and curates the cards, templates, deck structure and all 13
+bundled media files, and authorizes public distribution of this fixture as part
+of this repository, its tests, Docker E2E and CI artifacts. This fixture-specific
+permission does not establish a license for the rest of the repository. See
+`fixtures/README.md` for the provenance record.
 
 Local-only fixture mode is preferred while iterating. The PowerShell wrapper
 copies the host file into ignored staging:

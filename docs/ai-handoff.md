@@ -268,10 +268,12 @@ virtualization. Timings являются diagnostic output, а не release thre
 .\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
 ```
 
-Важно для публикации: audit 2026-07-11 установил, что APKG содержит реальные
-учебные карточки, а права на bundled media не документированы. Не называть этот
-fixture synthetic/sanitized или public-safe. Пока владелец не заменит его либо
-не подтвердит права, смена repository visibility на public заблокирована.
+APKG является owner-authored, sanitized и owner-authorized regression fixture,
+а не generated synthetic collection. Владелец создал/курировал карточки и все
+13 media и разрешил публичное использование fixture в repository, tests, Docker
+E2E и CI artifacts. Read-only inspection не нашёл противоречащих данных;
+publication finding закрыт. Fixture-specific permission не задаёт лицензию для
+остального репозитория.
 
 ## Перед финальным ответом по задачам
 

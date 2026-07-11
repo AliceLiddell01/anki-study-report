@@ -440,11 +440,42 @@ LICENSE, SPDX identifier и декларацию открытой лицензи
 
 ### Последствия
 
-Audit 2026-07-11 остановил публикацию из-за недокументированного происхождения
-media в tracked APKG fixture. Репозиторий остаётся private до owner review,
-замены fixture на synthetic либо подтверждения прав.
+Первичный audit 2026-07-11 остановил публикацию до owner review. Владелец затем
+подтвердил, что лично создал и курировал cards/templates/deck structure и все 13
+media, и разрешил публичное распространение конкретной fixture в repository,
+tests и CI artifacts. Read-only inspection не нашёл противоречащих данных;
+finding закрыт без synthetic replacement и history rewrite.
 
 ### Где смотреть
 
 `docs/public-repository-readiness.md`, `docs/fixtures-and-test-data.md`,
 `docs/security-and-safety.md`, `docs/ci-cd.md`.
+
+## ADR-017: Owner-authored APKG сохраняется как regression fixture
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Tracked APKG содержит реальные полезные rendering/media regression cases,
+созданные и многократно переработанные владельцем с AI assistance. Generated
+Docker collection и tracked APKG имеют разное происхождение.
+
+### Решение
+
+Сохранить APKG и её 13 owner-created media на основании прямого owner
+provenance и разрешения на публичное использование в repository, tests, Docker
+E2E и CI artifacts. Документация должна называть её owner-authored regression
+fixture, а данные `seed-collection.py` — generated synthetic collection.
+
+### Последствия
+
+Synthetic replacement и history rewrite не нужны. Узкое разрешение для fixture
+не является общей лицензией репозитория; LICENSE по-прежнему отсутствует.
+
+### Где смотреть
+
+`docker/anki-e2e/fixtures/README.md`, `docs/fixtures-and-test-data.md`,
+`docs/public-repository-readiness.md`.

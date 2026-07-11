@@ -78,19 +78,24 @@ Tracked APKG fixture:
 docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
 ```
 
-Это regression deck для Cards rendering preview. В fixture сейчас:
+Это owner-authored, sanitized и owner-authorized regression deck для Cards
+rendering preview. В fixture сейчас:
 
 - 10 cards;
 - 10 notes;
 - 4 note types;
 - 13 media entries.
 
-Public-readiness audit 2026-07-11 подтвердил, что fixture собран из реальных
-учебных карточек, а происхождение и разрешение на публичное распространение
-13 media entries в репозитории не зафиксированы. Поэтому fixture нельзя считать
-synthetic или public-safe без отдельного решения владельца. До замены на
-полностью synthetic deck либо документирования прав это blocker для смены
-видимости репозитория на public.
+Cards, fields, templates и deck structure созданы и многократно переработаны
+владельцем с AI assistance. Все 13 media entries созданы владельцем: нарисованы,
+записаны либо сгенерированы под его управлением. Владелец разрешает публичное
+распространение этой fixture как части repository, tests, Docker E2E и CI
+artifacts. Это разрешение относится только к fixture и не задаёт лицензию для
+остального репозитория. Provenance рядом с файлом зафиксирован в
+`docker/anki-e2e/fixtures/README.md`.
+
+Не путать эту owner-authored APKG с generated synthetic Docker collection из
+`docker/anki-e2e/seed-collection.py`.
 
 Default Docker E2E сначала создает synthetic collection, затем importer
 автоматически добавляет tracked APKG fixture, если файл есть в checkout. Strict
@@ -129,7 +134,7 @@ $env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
 | dangerous HTML/CSS | Есть unsafe sanitizer fixture/tests | `seed-collection.py`, `test_note_intelligence.py` |
 | large fields | Рекомендуется держать в synthetic/unit coverage | Добавлять как sanitized fixture |
 | non-Japanese/general note types | Есть generic basic | `seed-collection.py`, `test_note_intelligence.py` |
-| several card templates | Есть tracked APKG с unresolved public-readiness status + synthetic coverage | `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg`, `seed-collection.py` |
+| several card templates | Есть owner-authorized tracked APKG + synthetic coverage | `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg`, `seed-collection.py` |
 
 ## Что можно коммитить
 

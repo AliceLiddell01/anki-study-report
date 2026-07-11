@@ -214,3 +214,10 @@ history, refs, существующих Actions outputs и будущего arti
 Публичная видимость сама по себе не задаёт лицензию. На текущем этапе LICENSE,
 SPDX identifier и заявление режима открытой лицензии отсутствуют и не
 добавляются без отдельного решения владельца.
+
+Tracked `asr-e2e-render-fixtures.apkg` является owner-authored, sanitized и
+owner-authorized test fixture. Владелец разрешил публичное распространение её
+notes/cards/templates/CSS и 13 созданных им media как части repository, tests,
+Docker E2E и CI artifacts. Это fixture-specific permission не распространяется
+на исходный код или другие материалы репозитория и не заменяет отсутствующий
+LICENSE.
