@@ -155,6 +155,7 @@ try {
   const apkgDetails = await assertApkgBrowserIfEnabled(page);
   const profileDetails = await assertProfileMvp(page);
   const activityDetails = await assertActivityHub(page);
+  const deckDetails = await assertDeckHub(page);
   const pageScreenshots = await captureDashboardPages(page);
   const navigationScreenshots = await captureAvatarMenu(page);
   const cssDiagnostics = await assertCssDiagnostics(page);
@@ -174,6 +175,7 @@ try {
     apkg: apkgDetails,
     profile: profileDetails,
     activity: activityDetails,
+    decks: deckDetails,
     pageScreenshots,
     navigationScreenshots,
   });
@@ -343,6 +345,66 @@ async function assertActivityHub(page) {
   const bodyText = await page.locator("body").innerText();
   assertBrowser(!bodyText.includes(ready.token), "Activity DOM does not expose the dashboard token.");
   return { selectedDate, inactiveDate, initialDaily, expandedDaily, collapsedDeckRows, expandedDeckRows };
+}
+
+async function assertDeckHub(page) {
+  await prepareDashboardRoute(page, "/decks", "light", "Колоды");
+  const header = page.locator("header").filter({ has: page.getByRole("heading", { name: "Колоды", exact: true }) });
+  for (const label of ["Всего колод", "Требуют внимания", "Опасные", "Средняя успешность"]) {
+    await header.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  }
+  const report = await fetchReport();
+  const hub = report.deckHub;
+  assertBrowser(hub?.schemaVersion === 1, "Decks v2 payload is available.");
+  assertBrowser(Array.isArray(hub?.rootIds) && hub.rootIds.length >= 2, "Decks v2 has multiple roots.");
+  assertBrowser(!Object.values(hub?.nodes || {}).some((node) => node.fullName === "E2E Filtered Health Excluded"), "Filtered fixture deck is absent from health nodes.");
+  assertBrowser(Number(hub?.summary?.filteredDecksExcluded || 0) >= 1, "Filtered fixture deck is counted as excluded.");
+
+  const parentRow = page.locator('button[title="E2E Decks"]');
+  await parentRow.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await page.locator('button[title="E2E Decks::Danger"]').count() === 0, "Deck children are collapsed initially.");
+  const disclosure = page.getByRole("button", { name: "Развернуть E2E Decks", exact: true });
+  assertBrowser(await disclosure.getAttribute("aria-expanded") === "false", "Deck disclosure starts collapsed.");
+  await disclosure.click();
+  await page.locator('button[title="E2E Decks::Danger"]').waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await page.getByRole("button", { name: "Свернуть E2E Decks", exact: true }).getAttribute("aria-expanded") === "true", "Deck disclosure expands with aria-expanded.");
+
+  const search = page.getByPlaceholder("Найти колоду…", { exact: true });
+  await search.fill("Danger");
+  await page.locator('button[title="E2E Decks"]').waitFor({ state: "visible", timeout: 15000 });
+  await page.locator('button[title="E2E Decks::Danger"]').waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await page.locator('button[title="E2E Grammar::N3"]').count() === 0, "Deck search removes unrelated branches.");
+  await search.fill("");
+  assertBrowser(await page.locator('button[title="E2E Decks::Danger"]').count() === 1, "Clearing search restores manual expansion.");
+
+  const selects = page.locator("select");
+  await selects.nth(0).selectOption("danger");
+  await search.fill("E2E Decks::Danger");
+  await page.getByRole("heading", { name: "Danger", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await selects.nth(1).selectOption("reviews");
+  assertBrowser(await page.locator('button[title="E2E Decks::Danger"]').count() === 1, "Deck sort preserves hierarchy under filter.");
+  await search.fill("");
+  await selects.nth(0).selectOption("all");
+  await parentRow.click();
+  await page.getByText("Прямые и иерархические данные", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText(/С дочерними:/).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText(/В самой колоде:/).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("heading", { name: "Проблемы внутри", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  await page.getByRole("button", { name: "Открыть с дочерними", exact: true }).click();
+  await page.getByText("Opened deck in Anki Browser.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("button", { name: "Только эта колода", exact: true }).click();
+  await page.getByText("Opened deck in Anki Browser.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  const bodyText = await page.locator("body").innerText();
+  assertBrowser(!bodyText.includes(ready.token), "Decks DOM does not expose the dashboard token.");
+  return {
+    roots: hub.rootIds.length,
+    nodes: Object.keys(hub.nodes || {}).length,
+    filteredExcluded: hub.summary.filteredDecksExcluded,
+    parent: hub.nodes?.[String(Object.values(hub.nodes || {}).find((node) => node.fullName === "E2E Decks")?.deckId || "")],
+    actions: ["subtree", "direct"],
+  };
 }
 
 async function captureAvatarMenu(page) {

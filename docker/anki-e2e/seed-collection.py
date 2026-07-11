@@ -335,6 +335,25 @@ def create_collection(collection_path: Path) -> None:
                 activity_deck_id,
                 tags=["e2e", "activity-fixture"],
             )
+        deck_hub_fixtures = [
+            ("E2E Decks", "DeckHub Parent Direct", "Parent deck has direct cards."),
+            ("E2E Decks::Healthy", "DeckHub Healthy", "High-volume healthy child."),
+            ("E2E Decks::Danger", "DeckHub Danger", "Danger child under a healthy aggregate."),
+            ("E2E Decks::Attention", "DeckHub Attention", "Attention child."),
+            ("E2E Decks::Preliminary", "DeckHub Preliminary", "Low-sample child."),
+            ("E2E Decks::N3", "DeckHub Duplicate A", "Duplicate short name under first root."),
+            ("E2E Grammar::N3", "DeckHub Duplicate B", "Duplicate short name under second root."),
+            ("E2E Deep::Level 2::Уровень 3::Level 4::Level 5::Level 6", "DeckHub Deep", "Six-level non-Latin hierarchy."),
+        ]
+        for deck_name, front, back in deck_hub_fixtures:
+            add_note(
+                col,
+                generic_model,
+                {"Front": front, "Back": back},
+                get_deck_id(col, deck_name),
+                tags=["e2e", "deck-hub"],
+            )
+        get_filtered_deck_id(col, "E2E Filtered Health Excluded")
         save_collection(col)
     finally:
         close_collection(col)
@@ -366,6 +385,13 @@ def get_deck_id(col: Any, name: str) -> int:
         except TypeError:
             return int(method(name, create=True))
     raise RuntimeError("Could not create fixture deck")
+
+
+def get_filtered_deck_id(col: Any, name: str) -> int:
+    method = getattr(col.decks, "id", None)
+    if not callable(method):
+        raise RuntimeError("Could not create filtered fixture deck")
+    return int(method(name, create=True, type=1))
 
 
 def add_note(col: Any, model: Any, values: dict[str, str], deck_id: int, tags: list[str]) -> None:
@@ -462,10 +488,33 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
             order by c.id
             """
         ).fetchall()
-        grouped: dict[str, list[int]] = {"japanese": [], "generic": [], "customCss": [], "unsafe": []}
+        grouped: dict[str, list[int]] = {
+            "japanese": [],
+            "generic": [],
+            "customCss": [],
+            "unsafe": [],
+            "deckHubParent": [],
+            "deckHubHealthy": [],
+            "deckHubDanger": [],
+            "deckHubAttention": [],
+            "deckHubPreliminary": [],
+            "deckHubOther": [],
+        }
         for card_id, fields in cards:
             text = str(fields or "")
-            if "要望" in text:
+            if "DeckHub Parent Direct" in text:
+                grouped["deckHubParent"].append(int(card_id))
+            elif "DeckHub Healthy" in text:
+                grouped["deckHubHealthy"].append(int(card_id))
+            elif "DeckHub Danger" in text:
+                grouped["deckHubDanger"].append(int(card_id))
+            elif "DeckHub Attention" in text:
+                grouped["deckHubAttention"].append(int(card_id))
+            elif "DeckHub Preliminary" in text:
+                grouped["deckHubPreliminary"].append(int(card_id))
+            elif "DeckHub " in text:
+                grouped["deckHubOther"].append(int(card_id))
+            elif "要望" in text:
                 grouped["japanese"].append(int(card_id))
             elif "Styled prompt" in text:
                 grouped["customCss"].append(int(card_id))
@@ -503,7 +552,24 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
             conn.execute("update cards set reps = 3, lapses = 2, type = 2, queue = 2 where id = ?", (card_id,))
             add_reviews(card_id, [(1, 13_000), (1, 12_000), (1, 15_000)])
 
-        history_cards = [card_id for group in grouped.values() for card_id in group]
+        for card_id in grouped["deckHubParent"]:
+            add_reviews(card_id, [(3, 5_000)] * 10)
+        for card_id in grouped["deckHubHealthy"]:
+            add_reviews(card_id, [(3, 5_000)] * 80)
+        for card_id in grouped["deckHubDanger"]:
+            add_reviews(card_id, [(3, 8_000)] * 3 + [(1, 12_000)] * 7)
+        for card_id in grouped["deckHubAttention"]:
+            add_reviews(card_id, [(3, 8_000)] * 7 + [(1, 11_000)] * 3)
+        for card_id in grouped["deckHubPreliminary"]:
+            add_reviews(card_id, [(3, 6_000)] * 3)
+        for card_id in grouped["deckHubOther"]:
+            add_reviews(card_id, [(3, 5_000)] * 10)
+
+        history_cards = [
+            card_id
+            for key in ("japanese", "generic", "customCss", "unsafe")
+            for card_id in grouped[key]
+        ]
         active_day_plans = {
             1: 4,
             2: 5,
