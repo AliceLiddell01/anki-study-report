@@ -268,6 +268,11 @@ virtualization. Timings являются diagnostic output, а не release thre
 .\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
 ```
 
+Важно для публикации: audit 2026-07-11 установил, что APKG содержит реальные
+учебные карточки, а права на bundled media не документированы. Не называть этот
+fixture synthetic/sanitized или public-safe. Пока владелец не заменит его либо
+не подтвердит права, смена repository visibility на public заблокирована.
+
 ## Перед финальным ответом по задачам
 
 Полезный минимум:

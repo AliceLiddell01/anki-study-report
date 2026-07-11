@@ -45,7 +45,7 @@ production build с копированием assets в add-on, сборку `.an
 
 Workflow использует один GitHub-hosted `windows-2025` job, PowerShell 7, без
 matrix, Docker и Anki Desktop. GitHub перечисляет `windows-2025` как stable
-standard runner label для private repositories:
+standard runner label для GitHub-hosted workflows:
 [Choosing the runner for a job](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 
 Project runtime contract:
@@ -108,6 +108,12 @@ canonical command, result/timestamps, `checks[]`, `artifactFiles[]` и
 `failureCategory`. `ci-summary.md` также добавляется в GitHub Step Summary.
 Summary и environment не содержат tokens, token-bearing URLs, пользовательские
 Anki paths или profile data.
+
+Для public repository logs и artifacts потенциально доступны внешним читателям,
+поэтому этот запрет распространяется и на stdout canonical pipeline. Нельзя
+выводить secrets, PII, содержимое пользовательской collection или приватные
+локальные пути. Первый public run разрешён только после pre-public audit из
+`docs/public-repository-readiness.md`.
 
 ## Failure policy и локальный fallback
 

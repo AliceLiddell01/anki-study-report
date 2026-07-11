@@ -417,3 +417,34 @@ runtime outputs и non-release builds.
 
 `docs/ci-cd.md`, `.github/workflows/ci-fast.yml`,
 `scripts/run_full_check.ps1`, `scripts/write_ci_fast_summary.ps1`.
+
+## ADR-016: Public visibility проходит отдельный readiness gate без лицензии
+
+### Статус
+
+Accepted
+
+### Контекст
+
+Владелец выбрал будущую публичную видимость репозитория, но не выбирал
+лицензию для свободного распространения. Git history, Actions outputs и tracked
+fixtures после публикации становятся доступны внешним читателям.
+
+### Решение
+
+До смены visibility проверять все reachable refs/history, secrets/PII,
+fixtures/media, существующие Actions runs и будущий CI artifact contract.
+Unresolved secret, personal-data или media finding блокирует публикацию.
+LICENSE, SPDX identifier и декларацию открытой лицензии не добавлять без
+отдельного решения владельца.
+
+### Последствия
+
+Audit 2026-07-11 остановил публикацию из-за недокументированного происхождения
+media в tracked APKG fixture. Репозиторий остаётся private до owner review,
+замены fixture на synthetic либо подтверждения прав.
+
+### Где смотреть
+
+`docs/public-repository-readiness.md`, `docs/fixtures-and-test-data.md`,
+`docs/security-and-safety.md`, `docs/ci-cd.md`.

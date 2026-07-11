@@ -204,3 +204,13 @@ deployment.
 они не коммитятся и не считаются release. Summary содержит commit/run/runtime
 metadata, но не tokens, token-bearing URLs, абсолютные приватные пути или Anki
 profile data. Полный artifact/fallback contract: `docs/ci-cd.md`.
+
+После перехода репозитория в public Actions logs, summaries и artifacts нужно
+считать потенциально публичными. В них запрещены secrets, token-bearing URLs,
+PII, пользовательские профили/коллекции и чувствительные абсолютные пути.
+Перед первым переключением видимости обязателен аудит всей reachable Git
+history, refs, существующих Actions outputs и будущего artifact contract.
+
+Публичная видимость сама по себе не задаёт лицензию. На текущем этапе LICENSE,
+SPDX identifier и заявление режима открытой лицензии отсутствуют и не
+добавляются без отдельного решения владельца.

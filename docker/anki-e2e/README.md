@@ -119,7 +119,7 @@ For local visual checks against real Anki media, set a read-only media source
 before running `scripts/run_anki_e2e_docker.ps1`:
 
 ```powershell
-$env:ANKI_E2E_REAL_MEDIA_DIR="C:\Users\KykLa\AppData\Roaming\Anki2\1-й пользователь\collection.media"
+$env:ANKI_E2E_REAL_MEDIA_DIR="C:\Users\<user>\AppData\Roaming\Anki2\<profile>\collection.media"
 $env:ANKI_E2E_REQUIRE_REAL_MEDIA="1"
 .\scripts\run_anki_e2e_docker.ps1
 Remove-Item Env:\ANKI_E2E_REAL_MEDIA_DIR

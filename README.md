@@ -94,6 +94,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
 - [Матрица проверок](docs/test-matrix.md)
 - [CI Foundation и будущий CD](docs/ci-cd.md)
+- [Готовность репозитория к публикации](docs/public-repository-readiness.md)
 - [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)
 - [Navigation / Information Architecture](docs/navigation-ia.md)
@@ -131,3 +132,6 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
    front-only через `AnkiCardShadowPreview` / Shadow DOM host, а `ankiPreview`
    использует тот же isolated preview host в answer-only режиме из
    `renderedPreview.backHtml` без iframe и без отдельного дублирования front.
+7. Планируемая публичная видимость не задаёт режим открытой лицензии: LICENSE
+   пока не выбран и не добавляется. До смены видимости обязателен отдельный
+   аудит reachable history, fixtures/media и CI outputs.
