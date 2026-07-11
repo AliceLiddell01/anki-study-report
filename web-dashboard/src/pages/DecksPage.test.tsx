@@ -38,7 +38,9 @@ describe("Decks v2", () => {
     expect(markup).toContain("Найти колоду…");
     expect(markup).toContain("Все статусы");
     expect(markup).toContain("По имени");
-    expect(markup).toContain("Свернуть все");
+    expect(markup).toContain("Развернуть группы");
+    expect(markup).toContain("1 фильтрованная колода не участвует в оценке");
+    expect(markup).not.toContain("Фильтрованные колоды не входят в оценку состояния");
     expect(markup).not.toContain("Хорошие колоды");
     expect(markup).not.toContain("Средний ответ</p><p class=\"mt-1 text-xl");
   });
@@ -59,8 +61,11 @@ describe("Decks v2", () => {
 
   it("search reveals ancestor context and clearing restores manual expansion", async () => {
     await renderPage();
+    await act(async () => button("Развернуть группы").click());
+    expect(button("Свернуть все")).not.toBeNull();
     const search = container.querySelector('input[placeholder="Найти колоду…"]') as HTMLInputElement;
     await input(search, "Урок с очень длинным названием");
+    expect(button("Группы раскрыты фильтром").disabled).toBe(true);
     expect(text()).toContain("Words");
     expect(text()).toContain("N3");
     expect(text()).toContain("Урок с очень длинным названием");
@@ -68,7 +73,21 @@ describe("Decks v2", () => {
     expect(button("Урок с очень длинным названием", true).getAttribute("aria-pressed")).toBe("true");
     expect(button("Урок с очень длинным названием", true).getAttribute("aria-pressed")).toBe("true");
     await input(search, "");
+    expect(container.querySelector('button[title="Words::N3"]')).not.toBeNull();
     expect(container.querySelector('button[title="Words::N3::Урок с очень длинным названием"]')).toBeNull();
+  });
+
+  it("expands only root groups, collapses manual branches, and keeps selection valid", async () => {
+    await renderPage();
+    await act(async () => button("Развернуть группы").click());
+    expect(container.querySelector('button[title="Grammar::N2"]')).not.toBeNull();
+    expect(container.querySelector('button[title="Words::N3"]')).not.toBeNull();
+    expect(text()).not.toContain("Урок с очень длинным названием");
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="Words::N3"]')!.click());
+    await act(async () => button("Свернуть все").click());
+    expect(text()).not.toContain("Words::N3");
+    expect(container.querySelector('button[aria-pressed="true"]')).not.toBeNull();
+    expect(button("Развернуть группы")).not.toBeNull();
   });
 
   it("filters attention/danger/insufficient while retaining ancestors and falls selection back", async () => {
@@ -91,6 +110,13 @@ describe("Decks v2", () => {
     expect(text()).toContain("С дочерними:");
     expect(text()).toContain("В самой колоде:");
     expect(text()).toContain("Проблемы внутри");
+    expect(container.querySelector('[data-detail-section="identity"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="reasons"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="metrics"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="direct-subtree"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="issues"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="recommendations"]')).not.toBeNull();
+    expect(container.querySelector('[data-detail-section="actions"]')).not.toBeNull();
     await act(async () => button("Урок с очень длинным названием", true).click());
     expect(container.querySelector("h2")?.textContent).toContain("Урок с очень длинным названием");
 
@@ -124,6 +150,14 @@ describe("Decks v2", () => {
     const markup = renderToStaticMarkup(<DecksPage report={legacy} loadState="ready" />);
     expect(markup).toContain("Words::N1::Lesson 18");
     expect(markup).not.toContain('role="treegrid"');
+    expect(markup).not.toMatch(/min-h-\[[^\]]+\]/);
+  });
+
+  it("hides filtered information when no filtered decks were excluded", () => {
+    const report = structuredClone(mockReport) as StudyReport;
+    report.deckHub!.summary.filteredDecksExcluded = 0;
+    const markup = renderToStaticMarkup(<DecksPage report={report} loadState="ready" />);
+    expect(markup).not.toContain('data-testid="filtered-decks-info"');
   });
 
   async function renderPage(report: StudyReport = mockReport) {

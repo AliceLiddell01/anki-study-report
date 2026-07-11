@@ -41,6 +41,7 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
   const visibleIds = useMemo(() => new Set(rows.map((row) => row.node.deckId)), [rows]);
   const selectedNode = selectedId === null ? null : hub.nodes[String(selectedId)] ?? null;
   const transformActive = Boolean(query.trim()) || filter !== "all";
+  const hasManualExpansion = expandedIds.size > 0;
 
   useEffect(() => {
     if (!hub.rootIds.length) {
@@ -105,13 +106,13 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
         {hub.summary.groupsWithDescendantIssues > 0 && (
           <p className="mt-3 text-xs text-report-muted">{formatInteger(hub.summary.groupsWithDescendantIssues)} групп содержат проблемы внутри.</p>
         )}
+        {hub.summary.filteredDecksExcluded > 0 && (
+          <p className="mt-3 flex items-center gap-2 text-sm text-report-muted" data-testid="filtered-decks-info">
+            <span className="text-report-blue" aria-hidden="true">ⓘ</span>
+            {formatInteger(hub.summary.filteredDecksExcluded)} {filteredDeckNoun(hub.summary.filteredDecksExcluded)} не участвует в оценке
+          </p>
+        )}
       </header>
-
-      {hub.summary.filteredDecksExcluded > 0 && (
-        <p className="rounded-lg border border-ink-700 bg-ink-850 px-4 py-3 text-sm text-report-muted">
-          Фильтрованные колоды не входят в оценку состояния ({formatInteger(hub.summary.filteredDecksExcluded)}).
-        </p>
-      )}
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-4 shadow-panel sm:p-5">
         <div className="grid gap-3 xl:grid-cols-[minmax(240px,1fr)_220px_220px_auto]">
@@ -138,15 +139,24 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
               <option value="success">По успешности</option>
             </select>
           </label>
-          <button type="button" className="min-h-10 rounded-lg border border-ink-700 px-4 py-2 text-sm font-medium text-report-text hover:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-report-blue/55" onClick={() => setExpandedIds(new Set())}>Свернуть все</button>
+          <button
+            type="button"
+            className="min-h-10 rounded-lg border border-ink-700 px-4 py-2 text-sm font-medium text-report-text hover:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-report-blue/55 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="deck-groups-toggle"
+            disabled={transformActive}
+            title={transformActive ? "Во время поиска и фильтра совпавшие ветки раскрываются автоматически" : undefined}
+            onClick={() => setExpandedIds(hasManualExpansion ? new Set() : expandedRootGroups(hub))}
+          >
+            {transformActive ? "Группы раскрыты фильтром" : hasManualExpansion ? "Свернуть все" : "Развернуть группы"}
+          </button>
         </div>
       </section>
 
       {hub.summary.totalDecks === 0 ? (
         <EmptyDecksState title="Колоды пока не найдены" text="Пустая Default и фильтрованные колоды не получают фиктивную оценку состояния." />
       ) : (
-        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-          <section className="min-w-0 overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-panel" aria-label="Иерархия колод">
+        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
+          <section className="min-w-0 self-start overflow-hidden rounded-xl border border-ink-700 bg-ink-850 shadow-panel" aria-label="Иерархия колод" data-testid="deck-tree-panel">
             <div className="grid grid-cols-[minmax(260px,1fr)_110px_110px_120px] border-b border-ink-700 bg-ink-800 px-3 py-3 text-xs font-semibold uppercase tracking-[0.04em] text-report-muted">
               <span>Колода</span><span className="text-right">Повторения</span><span className="text-right">Успешность</span><span className="pl-4">Статус</span>
             </div>
@@ -160,7 +170,7 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
                     <div key={node.deckId} className={`grid grid-cols-[minmax(260px,1fr)_110px_110px_120px] items-center px-3 py-2.5 ${selected ? "bg-report-blue/12 ring-1 ring-inset ring-report-blue/55" : "hover:bg-ink-800/45"}`}>
                       <div className="flex min-w-0 items-start gap-1" style={{ paddingLeft: `${Math.min(level - 1, 5) * 18}px` }}>
                         {hasChildren ? (
-                          <button type="button" aria-label={`${expanded ? "Свернуть" : "Развернуть"} ${node.fullName}`} aria-expanded={expanded} onClick={() => setExpandedIds((current) => toggleSet(current, node.deckId))} className="mt-0.5 rounded p-1 text-report-muted hover:text-report-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-report-blue">
+                          <button type="button" aria-label={`${expanded ? "Свернуть" : "Развернуть"} ${node.fullName}`} aria-expanded={expanded} onClick={() => setExpandedIds((current) => toggleSet(current, node.deckId))} className="deck-disclosure-button mt-0.5 text-report-muted hover:text-report-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-report-blue">
                             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                           </button>
                         ) : <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-ink-500" aria-hidden="true" />}
@@ -197,19 +207,19 @@ function DeckDetail({ node, showAllIssues, onToggleIssues, onSelectIssue, onOpen
   const metrics = node.subtreeMetrics;
   const visibleIssues = showAllIssues ? node.descendantIssues : node.descendantIssues.slice(0, 5);
   return (
-    <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel" aria-live="polite">
-      <p className="truncate text-xs text-report-muted" title={node.fullName}>{node.fullName.split("::").join(" › ")}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold text-report-text">{node.shortName}</h2><StatusPill status={node.aggregateHealth}>{node.structuralOnly ? "Контекст" : statusLabels[node.aggregateHealth]}</StatusPill></div>
-      <p className="mt-2 text-sm text-report-muted">{confidenceLabels[node.dataConfidence]}</p>
+    <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel" aria-live="polite" data-testid="deck-detail-panel">
+      <div data-detail-section="identity">
+        <p className="truncate text-xs text-report-muted" title={node.fullName}>{node.fullName.split("::").join(" › ")}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold text-report-text">{node.shortName}</h2><StatusPill status={node.aggregateHealth}>{node.structuralOnly ? "Контекст" : statusLabels[node.aggregateHealth]}</StatusPill></div>
+        <p className="mt-2 text-sm text-report-muted">{confidenceLabels[node.dataConfidence]}</p>
+      </div>
 
-      <h3 className="mt-5 text-sm font-semibold text-report-text">Почему такой статус</h3>
-      <ul className="mt-2 space-y-1 text-sm leading-6 text-report-muted">{node.reasons.slice(0, 3).map((reason) => <li key={reason}>• {reason}</li>)}</ul>
+      <div className="deck-detail-section" data-detail-section="reasons"><h3 className="deck-detail-heading">Почему такой статус</h3><ul className="mt-2 space-y-1 text-sm leading-6 text-report-muted">{node.reasons.slice(0, 3).map((reason) => <li key={reason}>• {reason}</li>)}</ul></div>
 
-      <h3 className="mt-5 text-sm font-semibold text-report-text">Основные метрики</h3>
-      <MetricsGrid metrics={metrics} />
+      <div className="deck-detail-section" data-detail-section="metrics"><h3 className="deck-detail-heading">Основные показатели</h3><MetricsGrid metrics={metrics} /></div>
 
       {node.childIds.length > 0 && (
-        <div className="mt-5 rounded-lg border border-ink-700 bg-ink-900/35 p-3">
+        <div className="deck-detail-section" data-detail-section="direct-subtree">
           <p className="text-sm font-semibold text-report-text">Прямые и иерархические данные</p>
           <p className="mt-2 text-sm text-report-muted">С дочерними: {formatInteger(metrics.reviews)} повторений · {formatPercent(metrics.passRate)}</p>
           {node.directMetrics.directCardCount > 0 || node.directMetrics.reviews > 0 ? (
@@ -219,12 +229,12 @@ function DeckDetail({ node, showAllIssues, onToggleIssues, onSelectIssue, onOpen
       )}
 
       {visibleIssues.length > 0 && (
-        <div className="mt-5"><h3 className="text-sm font-semibold text-report-text">Проблемы внутри</h3><div className="mt-2 space-y-2">{visibleIssues.map((issue) => <button key={issue.deckId} type="button" onClick={() => onSelectIssue(issue.deckId)} className="block w-full rounded-lg border border-ink-700 bg-ink-900/35 p-3 text-left hover:border-report-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-report-blue"><span className="font-medium text-report-text">{issue.fullName.split("::").join(" › ")}</span><span className="mt-1 block text-xs text-report-muted">{statusLabels[issue.status]} · {issue.reason}</span></button>)}</div>{node.descendantIssues.length > 5 && <button type="button" className="mt-2 text-sm text-report-blue hover:underline" aria-expanded={showAllIssues} onClick={onToggleIssues}>{showAllIssues ? "Свернуть" : `Показать ещё ${node.descendantIssues.length - 5}`}</button>}</div>
+        <div className="deck-detail-section" data-detail-section="issues"><h3 className="deck-detail-heading">Проблемы внутри</h3><div className="mt-2 space-y-2">{visibleIssues.map((issue) => <button key={issue.deckId} type="button" onClick={() => onSelectIssue(issue.deckId)} className="block w-full rounded-lg border border-ink-700 bg-ink-900/35 p-3 text-left hover:border-report-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-report-blue"><span className="font-medium text-report-text">{issue.fullName.split("::").join(" › ")}</span><span className="mt-1 block text-xs text-report-muted">{statusLabels[issue.status]} · {issue.reason}</span></button>)}</div>{node.descendantIssues.length > 5 && <button type="button" className="mt-2 text-sm text-report-blue hover:underline" aria-expanded={showAllIssues} onClick={onToggleIssues}>{showAllIssues ? "Свернуть" : `Показать ещё ${node.descendantIssues.length - 5}`}</button>}</div>
       )}
 
-      {node.recommendations.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-report-text">Что делать</h3><ul className="mt-2 space-y-1 text-sm leading-6 text-report-muted">{node.recommendations.map((item) => <li key={item}>• {item}</li>)}</ul></div>}
+      {node.recommendations.length > 0 && <div className="deck-detail-section" data-detail-section="recommendations"><h3 className="deck-detail-heading">Что делать</h3><ul className="mt-2 space-y-1 text-sm leading-6 text-report-muted">{node.recommendations.map((item) => <li key={item}>• {item}</li>)}</ul></div>}
 
-      {!node.structuralOnly && <div className="mt-5 flex flex-wrap gap-2"><button type="button" disabled={actionState.pending} className="rounded-lg border border-report-blue/55 bg-report-blue/20 px-4 py-2 text-sm font-semibold text-report-text hover:border-report-blue focus:outline-none focus:ring-2 focus:ring-report-blue/55 disabled:opacity-55" onClick={() => onOpen("subtree")}>{node.childIds.length ? "Открыть с дочерними" : "Открыть в Anki Browser"}</button>{node.actions.directOnly && <button type="button" disabled={actionState.pending} className="rounded-lg border border-ink-700 px-4 py-2 text-sm font-medium text-report-text hover:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-report-blue/55 disabled:opacity-55" onClick={() => onOpen("direct")}>Только эта колода</button>}</div>}
+      {!node.structuralOnly && <div className="deck-detail-section" data-detail-section="actions"><h3 className="deck-detail-heading">Действия</h3><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={actionState.pending} className="rounded-lg border border-report-blue/55 bg-report-blue/20 px-4 py-2 text-sm font-semibold text-report-text hover:border-report-blue focus:outline-none focus:ring-2 focus:ring-report-blue/55 disabled:opacity-55" onClick={() => onOpen("subtree")}>{node.childIds.length ? "Открыть с дочерними" : "Открыть в Anki Browser"}</button>{node.actions.directOnly && <button type="button" disabled={actionState.pending} className="rounded-lg border border-ink-700 px-4 py-2 text-sm font-medium text-report-text hover:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-report-blue/55 disabled:opacity-55" onClick={() => onOpen("direct")}>Только эта колода</button>}</div></div>}
       {actionState.message && <p className={`mt-3 text-sm ${actionState.error ? "text-report-danger" : "text-report-muted"}`}>{actionState.message}</p>}
     </section>
   );
@@ -246,6 +256,8 @@ function DecksLoadState({ state }: { state: LoadState }) {
 function EmptyDecksState({ title, text, compact = false }: { title: string; text: string; compact?: boolean }) { return <section className={`rounded-xl border border-dashed border-ink-700 bg-ink-850 text-center ${compact ? "m-4 p-4" : "p-5 shadow-panel"}`}><h2 className="text-lg font-semibold text-report-text">{title}</h2><p className="mt-2 text-sm leading-6 text-report-muted">{text}</p></section>; }
 
 function toggleSet(current: Set<number>, value: number) { const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next; }
+function expandedRootGroups(hub: DeckHubModel) { return new Set(hub.rootIds.filter((id) => (hub.nodes[String(id)]?.childIds.length ?? 0) > 0)); }
+function filteredDeckNoun(value: number) { const count = Math.abs(Math.round(value)) % 100; const last = count % 10; if (count >= 11 && count <= 14) return "фильтрованных колод"; if (last === 1) return "фильтрованная колода"; if (last >= 2 && last <= 4) return "фильтрованные колоды"; return "фильтрованных колод"; }
 function expandPath(hub: DeckHubModel, deckId: number, current: Set<number>) { const next = new Set(current); let parent = hub.nodes[String(deckId)]?.parentId ?? null; const seen = new Set<number>(); while (parent !== null && !seen.has(parent)) { next.add(parent); seen.add(parent); parent = hub.nodes[String(parent)]?.parentId ?? null; } return next; }
 
 function legacyDeckHub(decks: DeckPerformance[]): DeckHubModel {
