@@ -84,8 +84,44 @@ function Invoke-DockerCompose {
         -Arguments (@("compose", "-f", $ComposeFile) + $Arguments)
 }
 
+function Assert-RepositoryHygiene {
+    Write-Section "Repository hygiene"
+
+    $git = Find-CommandPath @("git.exe", "git")
+    if (-not $git) {
+        throw "Could not find git. Repository hygiene checks require Git."
+    }
+
+    & $git diff --check
+    if ($LASTEXITCODE -ne 0) {
+        throw "git diff --check failed with exit code $LASTEXITCODE"
+    }
+
+    $forbiddenPatterns = @(
+        '(^|/)(e2e-artifacts|ci-fast|ci-fast-download|node_modules|__pycache__|\.pytest_cache)(/|$)',
+        '^web-dashboard/(dist|screenshots)/',
+        '^anki_study_report/(web_dashboard|user_files)/',
+        '\.(ankiaddon|zip)$'
+    )
+    $trackedFiles = @(& $git ls-files)
+    if ($LASTEXITCODE -ne 0) {
+        throw "git ls-files failed with exit code $LASTEXITCODE"
+    }
+
+    $forbiddenTrackedFiles = @(
+        $trackedFiles | Where-Object {
+            $path = $_
+            $forbiddenPatterns | Where-Object { $path -match $_ }
+        }
+    )
+    if ($forbiddenTrackedFiles.Count -gt 0) {
+        throw "Forbidden generated/runtime files are tracked:`n$($forbiddenTrackedFiles -join "`n")"
+    }
+}
+
 Set-Location $Root
 Add-BundledNodeToPath
+Assert-RepositoryHygiene
 
 $node = Find-CommandPath @("node.exe", "node")
 if (-not $node) {

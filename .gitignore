@@ -13,6 +13,8 @@ web-dashboard/.vite-*.log
 web-dashboard/screenshots/
 e2e-artifacts/
 e2e-artifacts.zip
+ci-fast/
+ci-fast-download/
 docker/anki-e2e/local-input/
 
 anki_study_report/user_files/*.sqlite3
