@@ -580,7 +580,7 @@ async function captureZoomProof() {
       await zoomPage.waitForFunction(() => document.documentElement.clientWidth === 1152 && window.devicePixelRatio === 1.25);
       const layout = await inspectZoomLayout(zoomPage);
       assertBrowser(!layout.horizontalOverflow, `${routeCase.route} has no horizontal clipping at emulated 125% scale.`);
-      assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0, `${routeCase.route} utility dock stays visible without covering actions at emulated 125% scale: ${JSON.stringify(layout)}`);
+      assertBrowser(layout.dockVisible && layout.dockOverlapCount === 0 && layout.mainPaddingRight >= 80, `${routeCase.route} utility dock stays visible inside the App Shell safe inset at emulated 125% scale: ${JSON.stringify(layout)}`);
       const filePath = artifactPaths.zoomScreenshot(routeCase.pageName);
       await ensureArtifactParent(filePath);
       await zoomPage.screenshot({ path: filePath, fullPage: true });
@@ -615,6 +615,7 @@ async function inspectZoomLayout(page) {
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
       dockVisible: Boolean(dockRect && dockRect.width > 0 && dockRect.height > 0),
       dockOverlapCount: overlaps.length,
+      mainPaddingRight: Number.parseFloat(getComputedStyle(document.querySelector("main")).paddingRight) || 0,
     };
   });
 }

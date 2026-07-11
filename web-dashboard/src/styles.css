@@ -274,7 +274,7 @@ select {
   transform: translateY(50%) translateX(0);
 }
 
-.app-content-safe-inset {
+main.app-content-safe-inset {
   padding-right: 5.25rem;
   padding-bottom: 5.25rem;
 }
