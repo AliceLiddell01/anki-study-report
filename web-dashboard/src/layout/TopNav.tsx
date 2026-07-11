@@ -92,7 +92,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
 
         <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Основная навигация">
           {primaryNavItems.map((item) => {
-            const active = item.path === activeRoute;
+            const active = item.path === activeRoute || (item.path === "/stats" && activeRoute.startsWith("/stats/"));
             return (
               <a
                 key={item.path}

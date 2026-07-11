@@ -7,7 +7,8 @@ export type ReportAction =
   | "open-problematic"
   | "open-again"
   | "open-new"
-  | "open-dashboard";
+  | "open-dashboard"
+  | "open-native-stats";
 
 export type BrowserActionKind = "problematic-decks" | "again" | "new";
 

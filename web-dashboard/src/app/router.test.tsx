@@ -12,6 +12,7 @@ describe("dashboard router", () => {
     expect(primaryNavItems).toEqual([
       { path: "/home", label: "Сегодня" },
       { path: "/calendar", label: "Активность" },
+      { path: "/stats", label: "Статистика" },
       { path: "/decks", label: "Колоды" },
       { path: "/cards", label: "Карточки" },
     ]);
@@ -26,7 +27,6 @@ describe("dashboard router", () => {
       "/settings/server",
       "/settings/sources",
       "/settings/logs",
-      "/stats",
       "/fsrs",
       "/browse",
     ]) {
@@ -41,6 +41,11 @@ describe("dashboard router", () => {
       "/decks",
       "/cards",
       "/calendar",
+      "/stats",
+      "/stats/quality",
+      "/stats/load",
+      "/stats/progress",
+      "/stats/decks",
       "/actions",
       "/settings",
       "/settings/data",
@@ -53,6 +58,11 @@ describe("dashboard router", () => {
       "/decks",
       "/cards",
       "/calendar",
+      "/stats",
+      "/stats/quality",
+      "/stats/load",
+      "/stats/progress",
+      "/stats/decks",
       "/actions",
       "/settings",
       "/settings/data",
@@ -65,7 +75,8 @@ describe("dashboard router", () => {
     expect(compatibilityRedirectForHash("#/integrations")).toBe("/settings/sources");
     expect(compatibilityRedirectForHash("#/logs")).toBe("/settings/logs");
     expect(compatibilityRedirectForHash("#/settings/logs")).toBeNull();
-    expect(getRouteFromHash("#/stats")).toBe("/home");
+    expect(getRouteFromHash("#/stats")).toBe("/stats");
+    expect(getRouteFromHash("#/stats/quality")).toBe("/stats/quality");
     expect(getRouteFromHash("#/fsrs")).toBe("/home");
     expect(getRouteFromHash("#/browse")).toBe("/home");
     expect(getRouteFromHash("#/unknown")).toBe("/home");

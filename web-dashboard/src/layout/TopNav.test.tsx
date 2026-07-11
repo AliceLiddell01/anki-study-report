@@ -42,11 +42,18 @@ describe("TopNav", () => {
     expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual([
       "Сегодня",
       "Активность",
+      "Статистика",
       "Колоды",
       "Карточки",
     ]);
     expect(nav.textContent).not.toMatch(/Профиль|Инструменты|Источники данных|Логи|Настройки|Сервер|Stats|FSRS|Browse/);
     expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe("Активность");
+  });
+
+  it("keeps Statistics active on nested routes", () => {
+    renderNav("/stats/decks");
+    const nav = container.querySelector<HTMLElement>('nav[aria-label="Основная навигация"]')!;
+    expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe("Статистика");
   });
 
   it("opens an accessible profile dropdown with current account and utility routes", () => {

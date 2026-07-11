@@ -565,6 +565,135 @@ export interface StudyReport {
   today?: TodayStudyReport;
   profile?: ProfileModel;
   activityHub?: ActivityHubModel;
+  statisticsHub?: StatisticsHubModel;
+}
+
+export type StatisticsPeriod = "7d" | "30d" | "90d" | "1y" | "all";
+export type StatisticsGranularity = "auto" | "day" | "week" | "month";
+export type StatisticsConfidence = "insufficient" | "preliminary" | "sufficient";
+export type StatisticsScope =
+  | { kind: "dashboard" }
+  | { kind: "all_collection" }
+  | { kind: "single_deck"; deckId: number; mode: "subtree" | "direct" };
+
+export interface StatisticsQuery {
+  scope: StatisticsScope;
+  period: StatisticsPeriod;
+  granularity: StatisticsGranularity;
+  comparison: boolean;
+  resolvedGranularity?: Exclude<StatisticsGranularity, "auto">;
+}
+
+export interface StatisticsRetention {
+  overall: number | null;
+  young: number | null;
+  mature: number | null;
+  youngPass: number;
+  youngFail: number;
+  maturePass: number;
+  matureFail: number;
+  sampleSize: number;
+}
+
+export interface StatisticsSeriesPoint {
+  key: string;
+  label: string;
+  reviews: number;
+  studySeconds?: number | null;
+  introducedCards?: number;
+  activeDays?: number;
+  successRate?: number | null;
+  averageAnswerSeconds?: number | null;
+  pass?: number;
+  fail?: number;
+  ratings?: { again: number; hard: number; good: number; easy: number };
+  trueRetention?: StatisticsRetention;
+}
+
+export interface StatisticsResult {
+  schemaVersion: number;
+  query: StatisticsQuery & { resolvedGranularity: Exclude<StatisticsGranularity, "auto"> };
+  scope: { kind: StatisticsScope["kind"]; deckIds: number[]; label: string; deckId?: number; mode?: "subtree" | "direct" };
+  coverage: {
+    dataFrom: string | null;
+    dataTo: string | null;
+    requestedFrom: string | null;
+    requestedTo: string;
+    coverage: "full" | "partial" | "unavailable";
+    sampleSize: number;
+    activeDays: number;
+    studyTimeSource: "revlog_estimate" | null;
+    limitations: string[];
+    calculationVersion: string;
+  };
+  confidencePolicy: { insufficientBelow: number; preliminaryBelow: number; deckRowMinimum: number; trendMinimumActiveDays: number };
+  overview: {
+    kpis: { reviews: number; studySeconds: number | null; successRate: number | null; introducedCards: number; activeDays: number; averageAnswerSeconds: number | null };
+    comparison: Record<string, unknown> & { status: "available" | "partial" | "unavailable"; reason?: string | null };
+    series: StatisticsSeriesPoint[];
+    insights: Array<{ type: string; direction: "increase" | "decrease" | "same"; value: number; unit: string }>;
+    confidence: StatisticsConfidence;
+  };
+  quality: {
+    series: StatisticsSeriesPoint[];
+    ratings: { again: number; hard: number; good: number; easy: number };
+    pass: number;
+    fail: number;
+    successRate: number | null;
+    trueRetention: StatisticsRetention;
+    confidence: StatisticsConfidence;
+  };
+  load: {
+    past: StatisticsSeriesPoint[];
+    averageActiveDayReviews: number | null;
+    dailyLoad: number;
+    overdue: number;
+    futureDue: Array<{ dayOffset: number; learning: number; review: number; relearning: number; total: number }>;
+    assumptionCode: string;
+  };
+  progress: {
+    currentStates: Record<"unseen" | "learning" | "young" | "mature" | "suspended" | "buried", number>;
+    totalCards: number;
+    totalNotes: number;
+    introducedSeries: StatisticsSeriesPoint[];
+    introducedCards: number;
+    historicalStateSeriesAvailable: false;
+  };
+  deckComparison: {
+    mode: "non_overlapping_roots";
+    limit: number;
+    rows: Array<{
+      deckId: number;
+      fullName: string;
+      mode: "subtree";
+      reviews: number;
+      successRate: number | null;
+      averageAnswerSeconds: number | null;
+      studySeconds: number;
+      introducedCards: number;
+      confidence: StatisticsConfidence;
+      periodDelta: {
+        reviews: { current: number; previous: number; delta: number | null; direction: string };
+        successRate: { current: number | null; previous: number | null; delta: number | null; direction: string };
+      } | null;
+    }>;
+  };
+  limitations: string[];
+  calculationVersion: string;
+  bounds: { current: { start: string | null; end: string }; previous: { start: string | null; end: string } | null };
+}
+
+export interface StatisticsHubModel {
+  schemaVersion: number;
+  generatedAt: string;
+  availability: "available" | "building" | "partial" | "unavailable";
+  coverage: StatisticsResult["coverage"];
+  capabilities: { core: "available"; fsrs: "future_not_exposed"; advanced: "future_not_exposed"; providers: []; nativeStatsAction: boolean };
+  metricDefinitionsVersion: string;
+  defaultQuery: StatisticsQuery;
+  initialResult: StatisticsResult;
+  scope: StatisticsResult["scope"];
+  deckOptions: Array<{ deckId: number; fullName: string; parentId: number | null }>;
 }
 
 export type ActivityAvailability = "active" | "inactive" | "unavailable";

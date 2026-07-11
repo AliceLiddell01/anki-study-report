@@ -11,6 +11,7 @@ import ProfilePage from "../pages/ProfilePage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
+import StatisticsPage from "../pages/StatisticsPage";
 import type { StudyReport } from "../types/report";
 
 export type RoutePath =
@@ -19,6 +20,11 @@ export type RoutePath =
   | "/decks"
   | "/cards"
   | "/calendar"
+  | "/stats"
+  | "/stats/quality"
+  | "/stats/load"
+  | "/stats/progress"
+  | "/stats/decks"
   | "/actions"
   | "/settings"
   | "/settings/data"
@@ -29,6 +35,7 @@ export type RoutePath =
 export const primaryNavItems: Array<{ path: RoutePath; label: string }> = [
   { path: "/home", label: "Сегодня" },
   { path: "/calendar", label: "Активность" },
+  { path: "/stats", label: "Статистика" },
   { path: "/decks", label: "Колоды" },
   { path: "/cards", label: "Карточки" },
 ];
@@ -39,6 +46,11 @@ const routePaths = new Set<RoutePath>([
   "/decks",
   "/cards",
   "/calendar",
+  "/stats",
+  "/stats/quality",
+  "/stats/load",
+  "/stats/progress",
+  "/stats/decks",
   "/actions",
   "/settings",
   "/settings/data",
@@ -79,6 +91,16 @@ export function renderRoute(
       return <CardsPage report={report} loadState={loadState} />;
     case "/calendar":
       return <CalendarPage report={report} loadState={loadState} />;
+    case "/stats":
+      return <StatisticsPage report={report} loadState={loadState} section="overview" />;
+    case "/stats/quality":
+      return <StatisticsPage report={report} loadState={loadState} section="quality" />;
+    case "/stats/load":
+      return <StatisticsPage report={report} loadState={loadState} section="load" />;
+    case "/stats/progress":
+      return <StatisticsPage report={report} loadState={loadState} section="progress" />;
+    case "/stats/decks":
+      return <StatisticsPage report={report} loadState={loadState} section="decks" />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
     case "/settings/sources":

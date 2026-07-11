@@ -1,4 +1,4 @@
-import type { DeckHubMetrics, DeckHubModel, DeckHubNode, StudyReport } from "../types/report";
+import type { DeckHubMetrics, DeckHubModel, DeckHubNode, StatisticsResult, StudyReport } from "../types/report";
 
 const blue = "#3db4f2";
 const purple = "#7c5cff";
@@ -109,6 +109,64 @@ const mockDeckNodes = [
 mockDeckNodes[0].descendantIssues = [{ deckId: 104, fullName: mockDeckNodes[3].fullName, shortName: mockDeckNodes[3].shortName, status: "danger", reason: mockDeckNodes[3].reasons[0] }];
 mockDeckNodes[1].descendantIssues = [...mockDeckNodes[0].descendantIssues];
 const mockDeckHub: DeckHubModel = { schemaVersion: 1, scope: { kind: "all", selectedDeckIds: [], includeChildDecks: true }, summary: { totalDecks: mockDeckNodes.length, attentionDecks: 2, dangerDecks: 1, groupsWithDescendantIssues: 2, aggregatePassRate: 0.86, filteredDecksExcluded: 1 }, nodes: Object.fromEntries(mockDeckNodes.map((node) => [String(node.deckId), node])), rootIds: [201, 101, 301] };
+
+const mockStatisticsSeries = [
+  { key: "2026-06-09", label: "Неделя 2026-06-09", reviews: 280, studySeconds: 2520, introducedCards: 34, activeDays: 6, successRate: 0.82, averageAnswerSeconds: 9, pass: 230, fail: 50, trueRetention: { overall: 0.84, young: 0.8, mature: 0.89, youngPass: 80, youngFail: 20, maturePass: 80, matureFail: 10, sampleSize: 190 } },
+  { key: "2026-06-16", label: "Неделя 2026-06-16", reviews: 340, studySeconds: 2880, introducedCards: 28, activeDays: 5, successRate: 0.86, averageAnswerSeconds: 8.5, pass: 292, fail: 48, trueRetention: { overall: 0.88, young: 0.84, mature: 0.92, youngPass: 84, youngFail: 16, maturePass: 92, matureFail: 8, sampleSize: 200 } },
+  { key: "2026-06-23", label: "Неделя 2026-06-23", reviews: 378, studySeconds: 3060, introducedCards: 25, activeDays: 6, successRate: 0.89, averageAnswerSeconds: 8.1, pass: 336, fail: 42, trueRetention: { overall: 0.9, young: 0.87, mature: 0.93, youngPass: 87, youngFail: 13, maturePass: 93, matureFail: 7, sampleSize: 200 } },
+];
+
+const mockStatisticsResult: StatisticsResult = {
+  schemaVersion: 1,
+  query: { scope: { kind: "dashboard" }, period: "90d", granularity: "auto", resolvedGranularity: "week", comparison: true },
+  scope: { kind: "dashboard", deckIds: [101, 102, 103, 201, 202, 301], label: "Текущая область dashboard" },
+  coverage: { dataFrom: "2026-04-01", dataTo: "2026-06-29", requestedFrom: "2026-04-01", requestedTo: "2026-06-29", coverage: "full", sampleSize: 2840, activeDays: 78, studyTimeSource: "revlog_estimate", limitations: ["historical_deck_moves_not_reconstructed"], calculationVersion: "statistics-v1.0" },
+  confidencePolicy: { insufficientBelow: 30, preliminaryBelow: 100, deckRowMinimum: 10, trendMinimumActiveDays: 3 },
+  overview: {
+    kpis: { reviews: 2840, studySeconds: 64800, successRate: 0.86, introducedCards: 240, activeDays: 78, averageAnswerSeconds: 8.7 },
+    comparison: { status: "available", reviews: { delta: 18, direction: "increase" } },
+    series: mockStatisticsSeries,
+    insights: [{ type: "reviews_changed", direction: "increase", value: 18, unit: "percent" }, { type: "success_rate_changed", direction: "increase", value: 2.4, unit: "percentage_points" }],
+    confidence: "sufficient",
+  },
+  quality: {
+    series: mockStatisticsSeries,
+    ratings: { again: 398, hard: 410, good: 1732, easy: 300 },
+    pass: 2442,
+    fail: 398,
+    successRate: 0.86,
+    trueRetention: { overall: 0.88, young: 0.84, mature: 0.92, youngPass: 840, youngFail: 160, maturePass: 920, matureFail: 80, sampleSize: 2000 },
+    confidence: "sufficient",
+  },
+  load: {
+    past: mockStatisticsSeries,
+    averageActiveDayReviews: 36.4,
+    dailyLoad: 42.3,
+    overdue: 18,
+    futureDue: [{ dayOffset: 1, learning: 4, review: 38, relearning: 2, total: 44 }, { dayOffset: 7, learning: 0, review: 32, relearning: 1, total: 33 }, { dayOffset: 30, learning: 0, review: 18, relearning: 0, total: 18 }],
+    assumptionCode: "current_schedule_no_future_new_or_failures",
+  },
+  progress: {
+    currentStates: { unseen: 420, learning: 36, young: 680, mature: 1320, suspended: 48, buried: 12 },
+    totalCards: 2516,
+    totalNotes: 2250,
+    introducedSeries: mockStatisticsSeries,
+    introducedCards: 240,
+    historicalStateSeriesAvailable: false,
+  },
+  deckComparison: {
+    mode: "non_overlapping_roots",
+    limit: 12,
+    rows: [
+      { deckId: 101, fullName: "Japanese", mode: "subtree", reviews: 1320, successRate: 0.88, averageAnswerSeconds: 8.2, studySeconds: 32400, introducedCards: 102, confidence: "sufficient", periodDelta: { reviews: { current: 1320, previous: 1100, delta: 20, direction: "increase" }, successRate: { current: .88, previous: .85, delta: 3, direction: "increase" } } },
+      { deckId: 201, fullName: "Science", mode: "subtree", reviews: 940, successRate: 0.83, averageAnswerSeconds: 10.1, studySeconds: 22800, introducedCards: 88, confidence: "sufficient", periodDelta: { reviews: { current: 940, previous: 1000, delta: -6, direction: "decrease" }, successRate: { current: .83, previous: .84, delta: -1, direction: "decrease" } } },
+      { deckId: 301, fullName: "Unicode::Очень длинная колода 日本語", mode: "subtree", reviews: 580, successRate: 0.87, averageAnswerSeconds: 7.5, studySeconds: 9600, introducedCards: 50, confidence: "sufficient", periodDelta: { reviews: { current: 580, previous: 500, delta: 16, direction: "increase" }, successRate: { current: .87, previous: .86, delta: 1, direction: "increase" } } },
+    ],
+  },
+  limitations: ["historical_deck_moves_not_reconstructed", "current_states_are_snapshot_only", "future_due_assumes_no_new_cards_or_future_failures", "study_time_is_capped_revlog_estimate"],
+  calculationVersion: "statistics-v1.0",
+  bounds: { current: { start: "2026-04-01", end: "2026-06-29" }, previous: { start: "2026-01-01", end: "2026-03-31" } },
+};
 
 export const mockReport: StudyReport = {
   metadata: {
@@ -911,6 +969,23 @@ export const mockReport: StudyReport = {
       customStudyStartedOn: null,
       deckOverviewSort: "name",
     },
+  },
+  statisticsHub: {
+    schemaVersion: 1,
+    generatedAt: "2026-06-29T12:00:00",
+    availability: "available",
+    coverage: mockStatisticsResult.coverage,
+    capabilities: { core: "available", fsrs: "future_not_exposed", advanced: "future_not_exposed", providers: [], nativeStatsAction: true },
+    metricDefinitionsVersion: "statistics-v1.0",
+    defaultQuery: { scope: { kind: "dashboard" }, period: "90d", granularity: "auto", comparison: true },
+    initialResult: mockStatisticsResult,
+    scope: mockStatisticsResult.scope,
+    deckOptions: [
+      { deckId: 101, fullName: "Japanese", parentId: null },
+      { deckId: 102, fullName: "Japanese::N3", parentId: 101 },
+      { deckId: 201, fullName: "Science", parentId: null },
+      { deckId: 301, fullName: "Unicode::Очень длинная колода 日本語", parentId: null },
+    ],
   },
   recommendations: {
     mainAction: "Сначала закрыть две проблемные колоды, затем сделать короткую повторную сессию.",
