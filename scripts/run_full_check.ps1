@@ -135,11 +135,6 @@ if (-not $pnpm) {
 
 if (-not $DockerOnly) {
     Invoke-CheckedCommand `
-        -Name "Python tests" `
-        -FilePath $node `
-        -Arguments @("scripts/run_python.mjs", "-m", "pytest")
-
-    Invoke-CheckedCommand `
         -Name "Frontend tests" `
         -FilePath $pnpm `
         -Arguments @("run", "test:frontend") `
@@ -151,6 +146,11 @@ if (-not $DockerOnly) {
         -FilePath $pnpm `
         -Arguments @("run", "build:addon") `
         -WorkingDirectory $DashboardDir
+
+    Invoke-CheckedCommand `
+        -Name "Python tests" `
+        -FilePath $node `
+        -Arguments @("scripts/run_python.mjs", "-m", "pytest")
 
     Invoke-CheckedCommand `
         -Name "Build and validate package archive" `
