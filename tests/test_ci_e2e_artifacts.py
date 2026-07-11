@@ -89,6 +89,8 @@ def test_export_redacts_readiness_token_and_preserves_safe_evidence(tmp_path: Pa
     assert (destination / "package/anki_study_report.ankiaddon").read_bytes() == b"zip"
     manifest = json.loads((destination / "artifact-manifest.json").read_text(encoding="utf-8"))
     assert manifest["runtime"]["dashboardReady"] == "runtime/dashboard-ready.redacted.json"
+    browser = json.loads((destination / "reports/browser-smoke-first.json").read_text(encoding="utf-8"))
+    assert browser["alreadyRedacted"] == "http://127.0.0.1/api?name=test"
 
 
 def test_export_supports_missing_manifest_and_empty_optional_directories(tmp_path: Path):

@@ -32,7 +32,10 @@ SECRET_PATTERNS = (
     re.compile(r"-----BEGIN (?:OPENSSH |RSA )?PRIVATE KEY-----"),
     re.compile(r"(?i)authorization:\s*bearer\s+\S+"),
 )
-TOKEN_QUERY = re.compile(r"(?:[?&]|&amp;)token=[^&\s\"']+", re.IGNORECASE)
+TOKEN_QUERY = re.compile(
+    r"(?:[?&]|&amp;)token=(?:<redacted-token>|\[REDACTED\]|[^&\s\"'<>]+)",
+    re.IGNORECASE,
+)
 WINDOWS_PRIVATE_PATH = re.compile(r"(?i)[A-Z]:[\\/]Users[\\/][^\\/\s\"'<>]+")
 LINUX_PRIVATE_PATH = re.compile(r"/home/(?!e2e(?:/|$))[^/\s\"'<>]+")
 
@@ -87,6 +90,19 @@ def redact_text(text: str, *, known_tokens: Iterable[str], private_roots: Iterab
     return redacted
 
 
+def redact_json(value, *, known_tokens: Iterable[str], private_roots: Iterable[str]):
+    if isinstance(value, str):
+        return redact_text(value, known_tokens=known_tokens, private_roots=private_roots)
+    if isinstance(value, list):
+        return [redact_json(item, known_tokens=known_tokens, private_roots=private_roots) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: redact_json(item, known_tokens=known_tokens, private_roots=private_roots)
+            for key, item in value.items()
+        }
+    return value
+
+
 def assert_safe_text(text: str, relative_path: str) -> None:
     for pattern in SECRET_PATTERNS:
         if pattern.search(text):
@@ -134,13 +150,16 @@ def copy_safe_artifacts(source: Path, destination: Path, private_roots: Iterable
             target.parent.mkdir(parents=True, exist_ok=True)
             if path.suffix.lower() in TEXT_SUFFIXES or path.name == "artifact-manifest.json":
                 text = path.read_text(encoding="utf-8")
-                if relative == "artifact-manifest.json":
+                if path.suffix.lower() == ".json" or relative == "artifact-manifest.json":
                     data = json.loads(text)
-                    runtime = data.get("runtime") or {}
-                    if runtime.get("dashboardReady"):
-                        runtime["dashboardReady"] = "runtime/dashboard-ready.redacted.json"
+                    if relative == "artifact-manifest.json":
+                        runtime = data.get("runtime") or {}
+                        if runtime.get("dashboardReady"):
+                            runtime["dashboardReady"] = "runtime/dashboard-ready.redacted.json"
+                    data = redact_json(data, known_tokens=known_tokens, private_roots=private_roots)
                     text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-                text = redact_text(text, known_tokens=known_tokens, private_roots=private_roots)
+                else:
+                    text = redact_text(text, known_tokens=known_tokens, private_roots=private_roots)
                 assert_safe_text(text, relative)
                 target.write_text(text, encoding="utf-8")
             else:
