@@ -263,3 +263,43 @@ def test_profile_endpoint_get_post_validation_and_auth():
         assert "customStudyStartedOn" in json.loads(body)["fieldErrors"]
     finally:
         manager.stop()
+
+
+def test_statistics_query_endpoint_is_post_only_typed_bounded_and_token_protected():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    received = []
+
+    def query_handler(payload):
+        received.append(payload)
+        if "period" not in payload:
+            return {"ok": False, "error": "invalid_statistics_query", "fieldErrors": {"period": "required"}}
+        return {"ok": True, "result": {"query": payload, "overview": {"reviews": 10}}}
+
+    manager.configure_statistics_handler(query_handler)
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    query = {"scope": {"kind": "dashboard"}, "period": "90d", "granularity": "auto", "comparison": True}
+    try:
+        assert fetch(f"{base_url}/api/statistics/query", method="POST", json_body=query)[0] == 403
+        status, _, body = fetch(f"{base_url}/api/statistics/query?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, _, body = fetch(f"{base_url}/api/statistics/query?token={token}", method="POST", json_body=query)
+        assert status == 200
+        assert received == [query]
+        response = json.loads(body)
+        assert response["result"]["query"] == query
+        assert token not in body.decode("utf-8")
+
+        status, _, body = fetch(f"{base_url}/api/statistics/query?token={token}", method="POST", json_body={"sql": "select * from revlog"})
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_statistics_query"
+
+        status, _, body = fetch(f"{base_url}/api/statistics/query?token={token}", method="POST", json_body={"period": "90d", "padding": "x" * 9000})
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_statistics_query"
+    finally:
+        manager.stop()

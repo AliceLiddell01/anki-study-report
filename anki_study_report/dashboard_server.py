@@ -88,6 +88,7 @@ class DashboardServerManager:
         self._display_settings_handler = None
         self._profile_provider = None
         self._profile_handler = None
+        self._statistics_query_handler = None
         self._media_file_provider = None
 
     def start(
@@ -251,6 +252,10 @@ class DashboardServerManager:
             self._profile_provider = profile_provider
             self._profile_handler = profile_handler
 
+    def configure_statistics_handler(self, query_handler=None) -> None:
+        with self._lock:
+            self._statistics_query_handler = query_handler
+
     def configure_media_handler(self, media_file_provider=None) -> None:
         with self._lock:
             self._media_file_provider = media_file_provider
@@ -399,6 +404,19 @@ class DashboardServerManager:
             log_exception("profile.update.error", "Profile update failed")
             return {"ok": False, "error": "Profile update failed."}
 
+    def query_statistics(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._statistics_query_handler
+        if handler is None:
+            return {"ok": False, "error": "statistics_unavailable", "message": "Statistics is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {"ok": False, "error": "statistics_unavailable"}
+        except Exception:
+            traceback.print_exc()
+            log_exception("statistics.query.error", "Statistics query failed")
+            return {"ok": False, "error": "statistics_query_failed", "message": "Statistics query failed."}
+
     def media_file(self, name: str) -> Path | None:
         with self._lock:
             provider = self._media_file_provider
@@ -494,6 +512,15 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/profile":
             self._send_profile(_query_token(parsed))
             return
+        if path == "/api/statistics/query":
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for statistics queries."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path == "/api/logs/status":
             self._send_logs_status(_query_token(parsed))
             return
@@ -543,6 +570,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/profile":
             self._send_profile_update(_query_token(parsed))
             return
+        if path == "/api/statistics/query":
+            self._send_statistics_query(_query_token(parsed))
+            return
         if path.startswith("/api/actions/"):
             action = path.removeprefix("/api/actions/").strip("/")
             self._send_dashboard_action(_query_token(parsed), action)
@@ -563,7 +593,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _send_forbidden(self) -> None:
-        log_event("security.token_failed", "Dashboard token validation failed", path=self.path)
+        log_event(
+            "security.token_failed",
+            "Dashboard token validation failed",
+            path=urlparse(self.path).path,
+        )
         payload = json.dumps(
             {
                 "error": "invalid_dashboard_token",
@@ -1108,6 +1142,28 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         result = self.manager.update_profile(payload)
         self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
+    def _send_statistics_query(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_statistics_query", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.query_statistics(payload)
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif result.get("error") == "invalid_statistics_query":
+            status = HTTPStatus.BAD_REQUEST
+        elif result.get("error") in {"statistics_unavailable", "statistics_query_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
 
     def _send_dashboard_action(self, token: str | None, action: str) -> None:
         if not self.manager.token_is_valid(token):

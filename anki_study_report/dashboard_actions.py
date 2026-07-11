@@ -39,6 +39,7 @@ class DashboardActions:
         restart_server: Callable[[], None],
         stop_server: Callable[[], None],
         log_event: Callable[..., None],
+        open_native_stats: Callable[[], None] | None = None,
     ) -> None:
         self._run_on_main = run_on_main
         self._copy_markdown = copy_markdown
@@ -49,6 +50,7 @@ class DashboardActions:
         self._restart_server = restart_server
         self._stop_server = stop_server
         self._log_event = log_event
+        self._open_native_stats = open_native_stats
         self._context: dict[str, object] = {}
 
     def clear_report_context(self) -> None:
@@ -105,7 +107,19 @@ class DashboardActions:
             return self._request_dashboard_save_markdown()
         if safe_action == "open-dashboard":
             return self._request_dashboard_open_dashboard()
+        if safe_action == "open-native-stats":
+            return self._request_native_stats(payload)
         return dashboard_action_error(safe_action or "unknown", "Unknown dashboard action.")
+
+    def _request_native_stats(self, payload: dict) -> dict:
+        if payload:
+            return dashboard_action_error("open-native-stats", "This action does not accept a body.")
+        if self._open_native_stats is None:
+            return dashboard_action_error("open-native-stats", "Native Anki statistics is unavailable.")
+        result = self._run_on_main(self._open_native_stats)
+        if not result["ok"]:
+            return dashboard_action_error("open-native-stats", result["error"])
+        return dashboard_action_ok("open-native-stats", "Opened Anki statistics.")
 
     def _request_server_open_route(self, route: str, event: str) -> dict:
         result = self._run_on_main(lambda: self._open_route(route, event))

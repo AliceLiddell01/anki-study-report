@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+import sqlite3
+
 from conftest import import_addon_module
 
 
@@ -30,6 +33,11 @@ def daily_row(date: str = "2026-07-01") -> dict[str, object]:
         "easy": 1,
         "pass_count": 9,
         "fail_count": 1,
+        "retention_young_pass": 4,
+        "retention_young_fail": 1,
+        "retention_mature_pass": 4,
+        "retention_mature_fail": 0,
+        "answer_time_count": 10,
         "study_seconds": 120,
         "total_answer_seconds": 120.0,
     }
@@ -62,7 +70,7 @@ def test_deck_daily_rows_attribute_filtered_cards_to_home_deck():
     class Db:
         def all(self, query, *params):
             seen["query"] = query
-            return [("2026-07-01", 10, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 5000)]
+            return [("2026-07-01", 10, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 5000)]
 
     class Decks:
         def all_names_and_ids(self):
@@ -73,6 +81,45 @@ def test_deck_daily_rows_attribute_filtered_cards_to_home_deck():
     assert "case when c.odid > 0 then c.odid else c.did end" in seen["query"]
     assert rows[0]["deck_id"] == 10
     assert rows[0]["deck_name"] == "Home"
+
+
+def test_true_retention_cache_counts_only_first_qualifying_review_per_card_local_day():
+    stats_cache = import_addon_module("stats_cache")
+    connection = sqlite3.connect(":memory:")
+    connection.executescript(
+        """
+        create table cards(id integer primary key, did integer, odid integer default 0);
+        create table revlog(id integer primary key, cid integer, ease integer, type integer, factor integer, time integer, lastIvl integer);
+        insert into cards(id, did, odid) values (1, 10, 0), (2, 10, 0), (3, 10, 0);
+        """
+    )
+    base = int(datetime(2026, 7, 1, 10, 0).timestamp() * 1000)
+    connection.executemany(
+        "insert into revlog values (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (base, 1, 1, 1, 2500, 5000, 10),
+            (base + 1000, 1, 3, 2, 2500, 4000, 10),
+            (base + 2000, 2, 3, 1, 2500, 3000, 21),
+            (base + 3000, 3, 0, 4, 0, 1000, 30),
+        ],
+    )
+
+    class Db:
+        def all(self, query, *params):
+            return connection.execute(query, params).fetchall()
+
+    rows = stats_cache._daily_rows(type("Col", (), {"db": Db()})(), 4, None)
+    assert len(rows) == 1
+    assert rows[0]["retention_young_pass"] == 0
+    assert rows[0]["retention_young_fail"] == 1
+    assert rows[0]["retention_mature_pass"] == 1
+    assert rows[0]["retention_mature_fail"] == 0
+    assert rows[0]["reviews"] == 3
+
+    incremental = stats_cache._daily_rows(type("Col", (), {"db": Db()})(), 4, base)
+    assert incremental[0]["retention_young_pass"] == 0
+    assert incremental[0]["retention_young_fail"] == 0
+    assert incremental[0]["retention_mature_pass"] == 1
 
 
 def test_fake_rebuild_initializes_schema_and_cached_report_shape(tmp_path, monkeypatch):
@@ -120,11 +167,37 @@ def test_fake_rebuild_initializes_schema_and_cached_report_shape(tmp_path, monke
     assert parts["cache"]["periodSummary"]["total_reviews"] == 10
 
 
+def test_rebuild_replaces_outdated_schema_before_writing_v3_aggregates(tmp_path, monkeypatch):
+    stats_cache = import_addon_module("stats_cache")
+    cache_path = tmp_path / "study_report_cache.sqlite3"
+    connection = sqlite3.connect(cache_path)
+    connection.executescript(
+        """
+        create table cache_meta(key text primary key, value text not null);
+        insert into cache_meta values ('version', '2'), ('status', '"ready"');
+        create table daily_aggregates(date text primary key, reviews integer not null default 0);
+        create table deck_daily_aggregates(date text not null, deck_id integer not null, primary key(date, deck_id));
+        """
+    )
+    connection.close()
+    manager = stats_cache.StatsCacheManager(cache_path)
+    monkeypatch.setattr(stats_cache, "_anki_rollover_hours", lambda col: 4)
+    monkeypatch.setattr(stats_cache, "_daily_rows", lambda col, rollover_hours, min_revlog_id: [daily_row()])
+    monkeypatch.setattr(stats_cache, "_deck_daily_rows", lambda col, rollover_hours, min_revlog_id: [deck_daily_row()])
+    monkeypatch.setattr(stats_cache, "_last_revlog_id", lambda col: 123)
+    monkeypatch.setattr(stats_cache, "_collection_scm", lambda col: 456)
+
+    result = manager.rebuild_all_time_cache(object(), profile_name="pytest")
+    assert result["ok"] is True
+    assert manager.status()["version"] == 3
+    assert manager.report_snapshot()["daily"][0]["retention_mature_pass"] == 4
+
+
 def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     report_from_cache = import_addon_module("report_from_cache")
     manager = StaticCacheManager({
         "status": "empty",
-        "version": 2,
+        "version": 3,
         "updatedAt": 0,
         "cachedDays": 0,
         "cachedDeckDays": 0,
@@ -142,7 +215,7 @@ def test_cached_report_parts_characterizes_unavailable_cache_fallback():
     assert parts["dataSource"] == "legacy"
     assert parts["cache"]["dataSource"] == "legacy"
     assert parts["cache"]["usedFor"] == []
-    assert parts["cache"]["version"] == 2
+    assert parts["cache"]["version"] == 3
     assert parts["cache"]["isBuilding"] is False
     assert parts["cache"]["error"] is None
     assert parts["cache"]["lastError"] is None
@@ -196,7 +269,7 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     report_from_cache = import_addon_module("report_from_cache")
     status = {
         "status": "ready",
-        "version": 2,
+        "version": 3,
         "updatedAt": 1_782_925_200,
         "cachedDays": 2,
         "cachedDeckDays": 2,
@@ -235,7 +308,7 @@ def test_cached_report_parts_characterizes_mixed_cache_shape_and_merge():
     assert parts["dataSource"] == "mixed"
     assert parts["cache"]["dataSource"] == "mixed"
     assert parts["cache"]["usedFor"] == ["activity.days", "activity.summary", "comparison"]
-    assert parts["cache"]["version"] == 2
+    assert parts["cache"]["version"] == 3
     assert parts["cache"]["isBuilding"] is False
     assert parts["cache"]["error"] is None
     assert parts["cache"]["lastError"] is None

@@ -174,6 +174,13 @@ from .profile_service import (
 )
 from .activity_service import build_activity_hub_payload
 from .deck_hub import collect_deck_catalog
+from .statistics_service import (
+    StatisticsValidationError,
+    build_statistics_hub,
+    build_statistics_result,
+    collect_statistics_current_snapshot,
+    normalize_statistics_query,
+)
 
 
 ADDON_NAME = "Anki Study Report"
@@ -281,6 +288,7 @@ _REPORT_CACHE: dict[str, object] = {
     "created_at": 0.0,
     "metrics": None,
 }
+_STATISTICS_QUERY_CACHE: dict[str, object] = {"key": None, "value": None}
 _DASHBOARD_ACTIONS: DashboardActions | None = None
 _STUDY_REPORT_DIALOG: StudyReportDialog | None = None
 _INTEGRATIONS_DIALOG: IntegrationDiagnosticsDialog | None = None
@@ -1913,6 +1921,7 @@ def _configure_dashboard_cache_handlers() -> None:
         profile_provider=_profile_response,
         profile_handler=_update_profile,
     )
+    _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
     _DASHBOARD_SERVER.configure_media_handler(_dashboard_media_file)
 
 
@@ -2072,6 +2081,65 @@ def _update_profile(payload: dict) -> dict:
     }
 
 
+def _statistics_query_response(payload: dict) -> dict:
+    result = _run_on_anki_main_sync(
+        lambda: _statistics_query_on_main(payload),
+        timeout_seconds=30.0,
+    )
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "error": "statistics_query_failed",
+            "message": str(result.get("error") or "Statistics query failed."),
+        }
+    value = result.get("value")
+    return value if isinstance(value, dict) else {
+        "ok": False,
+        "error": "statistics_query_failed",
+        "message": "Statistics query failed.",
+    }
+
+
+def _statistics_query_on_main(payload: dict) -> dict:
+    if mw is None or mw.col is None:
+        return {"ok": False, "error": "statistics_unavailable", "message": "Collection is unavailable."}
+    snapshot = _STATS_CACHE.report_snapshot()
+    today_key = _current_anki_today_date_key()
+    display_settings = _dashboard_display_settings_for_payload()
+    current = collect_statistics_current_snapshot(mw.col, today_key)
+    try:
+        query = normalize_statistics_query(
+            payload,
+            current.get("deckCatalog"),
+            display_settings=display_settings,
+        )
+    except StatisticsValidationError as error:
+        return {
+            "ok": False,
+            "error": "invalid_statistics_query",
+            "message": "Проверьте параметры запроса статистики.",
+            "fieldErrors": error.field_errors,
+        }
+    status = snapshot.get("status") if isinstance(snapshot.get("status"), dict) else {}
+    cache_key = json.dumps(
+        {"query": query, "cacheUpdatedAt": status.get("updatedAt"), "today": today_key},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    if _STATISTICS_QUERY_CACHE.get("key") == cache_key and isinstance(_STATISTICS_QUERY_CACHE.get("value"), dict):
+        return {"ok": True, "result": _STATISTICS_QUERY_CACHE["value"], "memoized": True}
+    built = build_statistics_result(
+        snapshot,
+        current,
+        today_key,
+        query,
+        display_settings=display_settings,
+    )
+    _STATISTICS_QUERY_CACHE.update({"key": cache_key, "value": built})
+    return {"ok": True, "result": built, "memoized": False}
+
+
 def _dashboard_display_settings_for_payload() -> dict:
     settings = dashboard_display_config()
     configured_ids = [
@@ -2170,6 +2238,7 @@ def _dashboard_actions() -> DashboardActions:
             restart_server=_restart_web_dashboard_server,
             stop_server=_stop_web_dashboard_server,
             log_event=log_event,
+            open_native_stats=_open_native_anki_stats,
         )
     return _DASHBOARD_ACTIONS
 
@@ -2203,6 +2272,12 @@ def _open_current_dashboard_from_action() -> None:
     QDesktopServices.openUrl(QUrl(state.url))
 
 
+def _open_native_anki_stats() -> None:
+    if mw is None or not hasattr(mw, "onStats"):
+        raise RuntimeError("Native Anki statistics is unavailable.")
+    mw.onStats()
+
+
 def _open_dashboard_route_from_action(route: str, event: str) -> None:
     url = _dashboard_url_for_route(route)
     QDesktopServices.openUrl(QUrl(url))
@@ -2219,6 +2294,7 @@ def _clear_report_cache() -> None:
     _REPORT_CACHE["key"] = None
     _REPORT_CACHE["created_at"] = 0.0
     _REPORT_CACHE["metrics"] = None
+    _STATISTICS_QUERY_CACHE.update({"key": None, "value": None})
     _dashboard_actions().clear_report_context()
     _DASHBOARD_SERVER.clear_report()
 
@@ -2815,11 +2891,25 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
         metadata,
         cache_summary=_dashboard_cache_summary(),
     )
-    report["profile"] = _profile_model()
+    snapshot = _STATS_CACHE.report_snapshot()
+    today_key = _current_anki_today_date_key()
+    display_settings = _dashboard_display_settings_for_payload()
+    report["profile"] = _profile_model(snapshot)
     report["activityHub"] = build_activity_hub_payload(
-        _STATS_CACHE.report_snapshot(),
-        _current_anki_today_date_key(),
-        display_settings=_dashboard_display_settings_for_payload(),
+        snapshot,
+        today_key,
+        display_settings=display_settings,
+    )
+    current_statistics = (
+        collect_statistics_current_snapshot(mw.col, today_key)
+        if mw is not None and mw.col is not None
+        else {"deckCatalog": metrics.get("deck_catalog", [])}
+    )
+    report["statisticsHub"] = build_statistics_hub(
+        snapshot,
+        current_statistics,
+        today_key,
+        display_settings=display_settings,
     )
     cache_config = {
         **_read_config(),
@@ -2842,6 +2932,7 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
     merged = merge_cached_report_parts(report, cache_parts)
     merged["profile"] = report["profile"]
     merged["activityHub"] = report["activityHub"]
+    merged["statisticsHub"] = report["statisticsHub"]
     return merged
 
 

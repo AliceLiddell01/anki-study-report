@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from conftest import fresh_import_addon_module
 
 
-def make_actions(module, opened):
+def make_actions(module, opened, open_native_stats=None):
     def run_on_main(callback, timeout_seconds=5.0):
         try:
             return {"ok": True, "value": callback()}
@@ -22,6 +22,7 @@ def make_actions(module, opened):
         restart_server=lambda: None,
         stop_server=lambda: None,
         log_event=lambda *args, **kwargs: None,
+        open_native_stats=open_native_stats,
     )
 
 
@@ -92,3 +93,18 @@ def test_dashboard_action_rejects_invalid_deck_browser_mode(monkeypatch):
         "action": "open-deck-browser",
         "error": "Unknown deck Browser mode.",
     }
+
+
+def test_dashboard_action_opens_native_stats_and_rejects_body():
+    dashboard_actions = fresh_import_addon_module("dashboard_actions")
+    opened = []
+    actions = make_actions(dashboard_actions, [], open_native_stats=lambda: opened.append("stats"))
+    assert actions.request_dashboard_action("open-native-stats", {}) == {
+        "ok": True,
+        "action": "open-native-stats",
+        "message": "Opened Anki statistics.",
+    }
+    assert opened == ["stats"]
+    rejected = actions.request_dashboard_action("open-native-stats", {"scope": "all"})
+    assert rejected["ok"] is False
+    assert opened == ["stats"]

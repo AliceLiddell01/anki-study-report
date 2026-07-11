@@ -17,7 +17,7 @@ from typing import Any
 from .metrics import ANSWER_TIME_CAP_MS, REVLOG_REVIEW_FILTER_SQL
 
 
-CACHE_SCHEMA_VERSION = 2
+CACHE_SCHEMA_VERSION = 3
 CACHE_STATUSES = {"ready", "scheduled", "building", "stale", "empty", "error"}
 DEFAULT_CACHE_FILE = Path(__file__).resolve().parent / "user_files" / "study_report_cache.sqlite3"
 DECK_HISTORY_NOTE = (
@@ -40,6 +40,11 @@ DAILY_COLUMNS = [
     "easy",
     "pass_count",
     "fail_count",
+    "retention_young_pass",
+    "retention_young_fail",
+    "retention_mature_pass",
+    "retention_mature_fail",
+    "answer_time_count",
     "study_seconds",
     "total_answer_seconds",
 ]
@@ -60,6 +65,11 @@ DECK_DAILY_COLUMNS = [
     "easy",
     "pass_count",
     "fail_count",
+    "retention_young_pass",
+    "retention_young_fail",
+    "retention_mature_pass",
+    "retention_mature_fail",
+    "answer_time_count",
     "study_seconds",
     "total_answer_seconds",
 ]
@@ -155,7 +165,7 @@ class StatsCacheManager:
             }
 
             with closing(self._connect()) as conn:
-                self._init_schema(conn)
+                self._init_schema(conn, reset_outdated=True)
                 with conn:
                     conn.execute("delete from daily_aggregates")
                     conn.execute("delete from deck_daily_aggregates")
@@ -311,7 +321,21 @@ class StatsCacheManager:
             conn.close()
             raise
 
-    def _init_schema(self, conn: sqlite3.Connection) -> None:
+    def _init_schema(self, conn: sqlite3.Connection, *, reset_outdated: bool = False) -> None:
+        conn.execute(
+            "create table if not exists cache_meta (key text primary key, value text not null)"
+        )
+        if reset_outdated:
+            raw_version = conn.execute(
+                "select value from cache_meta where key = 'version'"
+            ).fetchone()
+            try:
+                stored_version = _as_int(json.loads(raw_version[0])) if raw_version else 0
+            except Exception:
+                stored_version = 0
+            if stored_version not in {0, CACHE_SCHEMA_VERSION}:
+                conn.execute("drop table if exists daily_aggregates")
+                conn.execute("drop table if exists deck_daily_aggregates")
         conn.executescript(
             """
             create table if not exists cache_meta (
@@ -333,6 +357,11 @@ class StatsCacheManager:
               easy integer not null default 0,
               pass_count integer not null default 0,
               fail_count integer not null default 0,
+              retention_young_pass integer not null default 0,
+              retention_young_fail integer not null default 0,
+              retention_mature_pass integer not null default 0,
+              retention_mature_fail integer not null default 0,
+              answer_time_count integer not null default 0,
               study_seconds integer not null default 0,
               total_answer_seconds real not null default 0
             );
@@ -353,6 +382,11 @@ class StatsCacheManager:
               easy integer not null default 0,
               pass_count integer not null default 0,
               fail_count integer not null default 0,
+              retention_young_pass integer not null default 0,
+              retention_young_fail integer not null default 0,
+              retention_mature_pass integer not null default 0,
+              retention_mature_fail integer not null default 0,
+              answer_time_count integer not null default 0,
               study_seconds integer not null default 0,
               total_answer_seconds real not null default 0,
               primary key (date, deck_id)
@@ -488,6 +522,7 @@ def _daily_rows(
     min_revlog_id: int | None,
 ) -> list[dict[str, Any]]:
     where_incremental = ""
+    first_retention_review = _first_retention_review_sql(rollover_hours)
     params: list[Any] = [rollover_hours * 3600, ANSWER_TIME_CAP_MS, ANSWER_TIME_CAP_MS]
     if min_revlog_id is not None:
         where_incremental = "and r.id > ?"
@@ -519,6 +554,20 @@ def _daily_rows(
             coalesce(sum(case when r.ease = 4 then 1 else 0 end), 0) as easy,
             coalesce(sum(case when r.ease in (2, 3, 4) then 1 else 0 end), 0) as pass_count,
             coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0) as fail_count,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl > 0 and r.lastIvl < 21
+                and r.ease in (2, 3, 4) and {first_retention_review} then 1 else 0 end), 0)
+                as retention_young_pass,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl > 0 and r.lastIvl < 21
+                and r.ease = 1 and {first_retention_review} then 1 else 0 end), 0)
+                as retention_young_fail,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl >= 21
+                and r.ease in (2, 3, 4) and {first_retention_review} then 1 else 0 end), 0)
+                as retention_mature_pass,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl >= 21
+                and r.ease = 1 and {first_retention_review} then 1 else 0 end), 0)
+                as retention_mature_fail,
+            coalesce(sum(case when r.time is not null and r.time >= 0 then 1 else 0 end), 0)
+                as answer_time_count,
             coalesce(sum(
                 case
                     when r.time is null or r.time < 0 then 0
@@ -545,6 +594,7 @@ def _deck_daily_rows(
     min_revlog_id: int | None,
 ) -> list[dict[str, Any]]:
     where_incremental = ""
+    first_retention_review = _first_retention_review_sql(rollover_hours)
     params: list[Any] = [rollover_hours * 3600, ANSWER_TIME_CAP_MS, ANSWER_TIME_CAP_MS]
     if min_revlog_id is not None:
         where_incremental = "and r.id > ?"
@@ -577,6 +627,20 @@ def _deck_daily_rows(
             coalesce(sum(case when r.ease = 4 then 1 else 0 end), 0) as easy,
             coalesce(sum(case when r.ease in (2, 3, 4) then 1 else 0 end), 0) as pass_count,
             coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0) as fail_count,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl > 0 and r.lastIvl < 21
+                and r.ease in (2, 3, 4) and {first_retention_review} then 1 else 0 end), 0)
+                as retention_young_pass,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl > 0 and r.lastIvl < 21
+                and r.ease = 1 and {first_retention_review} then 1 else 0 end), 0)
+                as retention_young_fail,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl >= 21
+                and r.ease in (2, 3, 4) and {first_retention_review} then 1 else 0 end), 0)
+                as retention_mature_pass,
+            coalesce(sum(case when r.type in (1, 2) and r.lastIvl >= 21
+                and r.ease = 1 and {first_retention_review} then 1 else 0 end), 0)
+                as retention_mature_fail,
+            coalesce(sum(case when r.time is not null and r.time >= 0 then 1 else 0 end), 0)
+                as answer_time_count,
             coalesce(sum(
                 case
                     when r.time is null or r.time < 0 then 0
@@ -681,7 +745,7 @@ def _write_meta(conn: sqlite3.Connection, meta: dict[str, Any]) -> None:
 
 
 def _clean_daily_row(row: Any) -> dict[str, Any]:
-    total_ms = _as_int(row[13])
+    total_ms = _as_int(row[18])
     total_seconds = round(total_ms / 1000)
     return {
         "date": str(row[0]),
@@ -697,6 +761,11 @@ def _clean_daily_row(row: Any) -> dict[str, Any]:
         "easy": _as_int(row[10]),
         "pass_count": _as_int(row[11]),
         "fail_count": _as_int(row[12]),
+        "retention_young_pass": _as_int(row[13]),
+        "retention_young_fail": _as_int(row[14]),
+        "retention_mature_pass": _as_int(row[15]),
+        "retention_mature_fail": _as_int(row[16]),
+        "answer_time_count": _as_int(row[17]),
         "study_seconds": total_seconds,
         "total_answer_seconds": round(total_ms / 1000, 3),
     }
@@ -704,7 +773,7 @@ def _clean_daily_row(row: Any) -> dict[str, Any]:
 
 def _clean_deck_daily_row(row: Any, names: dict[int, str]) -> dict[str, Any]:
     deck_id = _as_int(row[1])
-    total_ms = _as_int(row[14])
+    total_ms = _as_int(row[19])
     total_seconds = round(total_ms / 1000)
     return {
         "date": str(row[0]),
@@ -722,6 +791,11 @@ def _clean_deck_daily_row(row: Any, names: dict[int, str]) -> dict[str, Any]:
         "easy": _as_int(row[11]),
         "pass_count": _as_int(row[12]),
         "fail_count": _as_int(row[13]),
+        "retention_young_pass": _as_int(row[14]),
+        "retention_young_fail": _as_int(row[15]),
+        "retention_mature_pass": _as_int(row[16]),
+        "retention_mature_fail": _as_int(row[17]),
+        "answer_time_count": _as_int(row[18]),
         "study_seconds": total_seconds,
         "total_answer_seconds": round(total_ms / 1000, 3),
     }
@@ -854,6 +928,28 @@ def _deck_name(deck_id: int, names: dict[int, str]) -> str:
 
 def _valid_date_key(value: Any) -> bool:
     return isinstance(value, str) and bool(DATE_KEY_RE.match(value))
+
+
+def _first_retention_review_sql(rollover_hours: int) -> str:
+    """SQL predicate for Anki-style first qualifying review per card/local day."""
+
+    rollover_seconds = max(0, min(23, _as_int(rollover_hours))) * 3600
+    earlier_filter = REVLOG_REVIEW_FILTER_SQL.replace("r.", "earlier.")
+    return f"""
+        not exists (
+            select 1 from revlog earlier
+            where earlier.cid = r.cid
+              and earlier.id < r.id
+              and earlier.type in (1, 2)
+              and earlier.lastIvl > 0
+              {earlier_filter}
+              and strftime('%Y-%m-%d', earlier.id / 1000 - {rollover_seconds},
+                    'unixepoch', 'localtime') =
+                  strftime('%Y-%m-%d', r.id / 1000 - {rollover_seconds},
+                    'unixepoch', 'localtime')
+            limit 1
+        )
+    """
 
 
 def _short_error(error: Any) -> str:
