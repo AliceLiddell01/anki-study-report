@@ -432,7 +432,10 @@ async function assertStatisticsHub(page) {
   const sectionLinks = page.locator('nav[aria-label="Разделы статистики"] a');
   assertBrowser(await sectionLinks.count() === 5, "Statistics exposes exactly five real sections.");
   assertBrowser(await page.getByTestId("global-utility-dock").count() === 1, "Statistics keeps the global theme dock.");
-  const periodSelect = page.getByLabel("Период", { exact: true });
+  const periodSelect = page
+    .locator('section[aria-label="Параметры статистики"] label')
+    .filter({ hasText: /^Период/ })
+    .locator("select");
   assertBrowser(await periodSelect.inputValue() === "90d", "Statistics defaults to 90 days.");
   for (const label of ["Повторения", "Время учёбы", "Успешность", "Новые карточки", "Активные дни", "Средний ответ"]) {
     await page.getByText(label, { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
