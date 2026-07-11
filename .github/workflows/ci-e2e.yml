@@ -86,15 +86,15 @@ jobs:
         id: canonical_e2e
         shell: pwsh
         run: |
-          $modeArgs = switch ($env:E2E_MODE) {
-            'standard' { @('-DockerOnly') }
-            'strict-apkg' { @('-DockerOnly', '-RequireApkgFixture') }
-            'perf100' { @('-DockerOnly', '-RequireApkgFixture', '-Perf100') }
+          $modeParameters = switch ($env:E2E_MODE) {
+            'standard' { @{ DockerOnly = $true } }
+            'strict-apkg' { @{ DockerOnly = $true; RequireApkgFixture = $true } }
+            'perf100' { @{ DockerOnly = $true; RequireApkgFixture = $true; Perf100 = $true } }
             default { throw "Unsupported E2E mode: $env:E2E_MODE" }
           }
           $exitCode = 0
           try {
-            & .\scripts\run_full_check.ps1 @modeArgs *>&1 |
+            & .\scripts\run_full_check.ps1 @modeParameters *>&1 |
               Tee-Object -FilePath ci-e2e-raw/e2e-run.log
             if ($LASTEXITCODE -ne 0) { throw "Canonical E2E exited with $LASTEXITCODE" }
           } catch {
