@@ -21,16 +21,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-e2e-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }}
+  group: ci-e2e-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'perf100' }}
   cancel-in-progress: true
 
 jobs:
   e2e:
-    name: Real Anki Desktop (${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }})
+    name: Real Anki Desktop (${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'perf100' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'strict-apkg' }}
+      E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'perf100' }}
       ANKI_VERSION: "26.05"
       # Official GitHub release asset digest for anki-26.05-linux-x86_64.tar.zst.
       ANKI_SHA256: 6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274
