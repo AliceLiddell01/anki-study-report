@@ -432,7 +432,8 @@ async function assertStatisticsHub(page) {
   const sectionLinks = page.locator('nav[aria-label="Разделы статистики"] a');
   assertBrowser(await sectionLinks.count() === 5, "Statistics exposes exactly five real sections.");
   assertBrowser(await page.getByTestId("global-utility-dock").count() === 1, "Statistics keeps the global theme dock.");
-  assertBrowser(await page.getByLabel("Период").inputValue() === "90d", "Statistics defaults to 90 days.");
+  const periodSelect = page.getByLabel("Период", { exact: true });
+  assertBrowser(await periodSelect.inputValue() === "90d", "Statistics defaults to 90 days.");
   for (const label of ["Повторения", "Время учёбы", "Успешность", "Новые карточки", "Активные дни", "Средний ответ"]) {
     await page.getByText(label, { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
   }
@@ -455,12 +456,12 @@ async function assertStatisticsHub(page) {
 
   await prepareDashboardRoute(page, "/stats", "light", "Обзор");
   const queryResponse = page.waitForResponse((response) => response.url().includes("/api/statistics/query") && response.request().method() === "POST");
-  await page.getByLabel("Период").selectOption("30d");
+  await periodSelect.selectOption("30d");
   const response = await queryResponse;
   assertBrowser(response.status() === 200, `Statistics typed query succeeds: ${response.status()}`);
-  await page.getByLabel("Период").selectOption("all");
+  await periodSelect.selectOption("all");
   assertBrowser(await page.getByLabel("Сравнить с предыдущим периодом").isDisabled(), "All-time disables previous-period comparison.");
-  await page.getByLabel("Период").selectOption("90d");
+  await periodSelect.selectOption("90d");
   await page.getByLabel("Область").selectOption("single_deck");
   await page.getByLabel("Только напрямую").check();
   await page.getByText("Только напрямую", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
