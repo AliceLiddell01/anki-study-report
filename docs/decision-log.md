@@ -1,6 +1,6 @@
 # Decision log
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-13.
 
 Формат легковесный ADR. Статус всех решений ниже: Accepted.
 
@@ -627,3 +627,44 @@ screenshots и default deck view.
 - `web-dashboard/src/pages/StatisticsPage.tsx`
 - `web-dashboard/src/components/statistics/`
 - `docker/anki-e2e/smoke-browser.mjs`
+
+## ADR-022: E2E mode и scope независимы, а read-only capture использует bounded pool
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Stage 6.5 full standard run `29208090406` на SHA `cd68c2c` дал canonical
+baseline 183 s. Повтор старого checkout не нужен. Основное время тратилось на
+повторную Docker/frontend работу и serial screenshot matrix, но final real-Anki
+coverage, restart, Cards и security contracts уменьшать нельзя.
+
+### Решение
+
+- `mode` и `scope` являются независимыми понятиями; targeted real-Anki — только
+  development contour, а `standard/full` — final gate.
+- Read-only page captures выполняются одним Chromium и bounded BrowserContext
+  pool; state mutation, Cards/APKG и lifecycle остаются serial.
+- Default 3 workers выбирается измерением `stats` 3 vs 4, а не предположением.
+- Buildx использует `type=gha`; Anki install отделён от volatile smoke scripts,
+  pnpm store строится из lockfile и runtime install выполняется offline.
+- Build cache никогда не содержит profile, collection, token или artifacts.
+- Phase/screenshot/resource telemetry и performance summary входят в artifact
+  contract; цели сначала report-only, без flaky hard cutoff.
+- Exact-SHA cloud gate не дублируется локально; один повтор full exact SHA
+  разрешён для warm-cache validation.
+
+### Последствия
+
+Targeted feedback становится дешевле, full screenshot/restart parity
+сохраняется. Worker errors, resource pressure, cache behavior и upload cost
+измеримы. Missing metrics представлены `null` с причиной. Sharding отложен до
+роста suite примерно до 5–10 минут.
+
+### Где смотреть
+
+`docs/e2e-performance.md`, `.github/workflows/ci-e2e.yml`,
+`docker/anki-e2e/e2e-contract.mjs`, `docker/anki-e2e/e2e-telemetry.py`,
+`docker/anki-e2e/smoke-browser.mjs`.

@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-13.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -22,6 +22,7 @@
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
 | `.github/workflows/ci-fast.yml` или Fast CI scripts | `git diff --check` | `.\scripts\run_full_check.ps1 -SkipDocker` | Нет | Cloud CI и local fallback вызывают одну canonical project command |
 | `.github/workflows/ci-e2e.yml`, Docker wrapper или public artifact exporter | exporter pytest + `git diff --check` | strict APKG + Perf100 локально и manual exact-SHA cloud runs | Да | Проверяет cross-platform orchestration, real Anki и отсутствие token в public artifact |
+| E2E scopes/parallel queue/telemetry/BuildKit layers | `pytest tests/test_e2e_performance.py tests/test_docker_smoke_helpers.py tests/test_ci_e2e_artifacts.py` + syntax/YAML checks | exact-SHA `stats` workers 3/4, затем first+warm `full standard` | Да для cloud benchmark | Проверяет deterministic tasks, bounded cleanup, p50/p90/p95, resource aggregation, cache structure и artifact v2 |
 | `config.json` / Settings Hub API | `node scripts/run_python.mjs -m pytest tests/test_config_service.py tests/test_dashboard_server.py` | Frontend settings tests + package check | Нет обычно | Defaults, allowlist, partial update и token contract должны совпадать |
 | Profile payload/persistence/UI | `pytest tests/test_profile_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | `pnpm run build:addon` + `run_full_check.ps1 -CleanDocker` | Да для final Stage 3 | Проверяет all-collection scope, per-profile atomic storage, dialog/save/reload и light/dark surface |
 | Activity/calendar/feed | `pytest tests/test_activity_feed.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 4 | Scope, date bounds, availability, keyboard, derived events/weeks и real screenshots |

@@ -1,6 +1,6 @@
 # Разработка и проверки
 
-Снимок документации: 2026-07-11.
+Снимок документации: 2026-07-13.
 
 ## Требования
 
@@ -161,6 +161,23 @@ anki_study_report/user_files/
 ```
 
 ## Как выбирать проверки
+
+### Быстрый real-Anki contour
+
+Для UI/runtime разработки вместо полного screenshot matrix можно выбрать
+targeted workflow scope. Например Statistics:
+
+```powershell
+gh workflow run ci-e2e.yml --ref <branch> `
+  -f mode=standard -f scope=stats -f screenshot_workers=3 `
+  -f resource_telemetry=true -f verify_restart=auto
+```
+
+Targeted run остаётся real-Anki/security gate, но не является release proof.
+Перед merge runtime/UI changes нужен `scope=full`; один повтор exact SHA
+разрешён только для warm-cache measurement. Локально достаточно syntax,
+targeted unit/structural tests и короткой диагностики. См.
+`docs/e2e-performance.md`.
 
 Подробная матрица находится в `docs/test-matrix.md`.
 

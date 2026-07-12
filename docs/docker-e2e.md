@@ -1,6 +1,6 @@
 # Docker E2E
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-13.
 
 Подробный технический README уже есть в `docker/anki-e2e/README.md`. Эта
 страница фиксирует, как Docker E2E вписывается в общий проект и какие решения
@@ -257,6 +257,33 @@ desktop/laptop dashboard layout и отсутствие clipping/raw HTML/consol
 
 `e2e-artifacts/`, screenshots, DOM dumps, logs, local APKG input и token-bearing
 outputs нужны для диагностики, но должны оставаться вне git.
+
+## Scopes, parallel capture и telemetry
+
+`mode` (`standard` / `strict-apkg` / `perf100`) задаёт fixture semantics, а
+независимый `scope` — продуктовую область: `full`, `global`, `stats`, `decks`,
+`activity`, `cards`, `settings`. Targeted scope сохраняет startup/readiness/API,
+token, browser-error, redaction и manifest core, но не заменяет final `full`.
+Restart при `auto` выполняется только для `full`.
+
+Manual workflow также принимает `screenshot_workers` (`auto` = 3, max 4),
+`resource_telemetry` и `verify_restart`. Read-only page captures выполняются
+одним Chromium через bounded BrowserContext pool; mutating/Profile/settings/
+Cards/APKG/restart операции остаются serial.
+
+Новые deterministic reports:
+
+```text
+reports/screenshot-performance.json|md
+reports/e2e-phase-timings.json|md
+reports/resource-samples.jsonl
+reports/resource-summary.json|md
+reports/e2e-performance-summary.json|md
+```
+
+Manifest schema v2 индексирует их и записывает mode/scope/workers. Resource
+files обязательны только при включённом sampler. Полный architecture,
+baseline и формулы описаны в `docs/e2e-performance.md`.
 
 ## GitHub-hosted Ubuntu compatibility
 

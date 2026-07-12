@@ -85,6 +85,23 @@ it into `/e2e/workspace-build` before installing dependencies or building
 dashboard assets, so the container writes only to its internal build directory
 and `/e2e/artifacts`.
 
+The Dockerfile isolates Anki installation from volatile smoke scripts and
+prefetches the pnpm store from the frozen lockfile. GitHub Actions builds with
+Buildx `type=gha`, loads the image once, then runs Compose without rebuilding.
+
+## Scopes and performance telemetry
+
+`mode` and `scope` are independent. Scopes are `full`, `global`, `stats`,
+`decks`, `activity`, `cards`, and `settings`. Targeted scopes preserve real
+Anki/readiness/API/token/browser/artifact core checks but are not release
+gates; `full` preserves all captures and restart. `auto` restart means full
+only. `strict-apkg` and `perf100` require full/cards.
+
+Read-only page screenshots use one Chromium and 1–4 isolated BrowserContexts
+(default 3). Cards/APKG and mutations remain serial. Phase, per-task screenshot,
+resource, artifact and combined performance reports live under `reports/` and
+are indexed by manifest schema v2. See `../../docs/e2e-performance.md`.
+
 ## Fixture Collection
 
 `create-profile.sh` resets `/e2e/anki-data` by default and recreates the
@@ -342,7 +359,7 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 `run-e2e.sh` performs:
 
 1. Copy `/workspace` to `/e2e/workspace-build`.
-2. Run `pnpm install --frozen-lockfile`.
+2. Run `pnpm install --offline --frozen-lockfile` from the image pnpm store.
 3. Run `pnpm run build:addon`.
 4. Build and validate `/e2e/artifacts/package/anki_study_report.ankiaddon`.
 5. Create the isolated `E2E` Anki profile.
@@ -352,13 +369,13 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 9. Start Anki in Xvfb with `-b /e2e/anki-data -p E2E`.
 10. Wait for `runtime/dashboard-ready.json` and `/api/health`.
 11. Run `smoke-api.py`.
-12. Run `smoke-browser.mjs`, verify Cards preview modes, all existing page
-    routes, avatar menu, and save deterministic light/dark screenshots.
+12. Run `smoke-browser.mjs`, execute scope-filtered serial checks and a bounded
+    read-only page capture queue, and save deterministic screenshots.
     `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
     `AnkiCardShadowPreview` host rendered from `backHtml`.
-13. Stop Anki.
-14. Start Anki again with the same profile.
-15. Wait for readiness and rerun API smoke.
+13. For `full` (or explicit restart), stop and start Anki with the same profile.
+14. Wait for restart readiness and rerun API smoke.
+15. Finalize phase/resource/performance reports and validate manifest v2.
 
 ## Artifacts
 

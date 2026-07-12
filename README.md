@@ -110,6 +110,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)
+- [Производительность Docker E2E](docs/e2e-performance.md)
 - [Упаковка и релиз](docs/packaging-release.md)
 - [Release checklist](docs/release-checklist.md)
 - [Fixtures and test data](docs/fixtures-and-test-data.md)

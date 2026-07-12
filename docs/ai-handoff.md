@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-13.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -33,6 +33,7 @@ dashboard через token-protected HTTP server.
 8. Если нужно выбрать проверки - `docs/test-matrix.md`.
 9. Если агенту нужны правила поведения - `docs/codex-agent-rules.md`.
 10. Если задача про GitHub Actions/Fast CI - `docs/ci-cd.md`.
+11. Если задача про E2E scopes/cache/telemetry - `docs/e2e-performance.md`.
 
 Дополнительные справочники:
 
@@ -298,17 +299,27 @@ publication finding закрыт. Fixture-specific permission не задаёт 
 
 ## Cloud Full Docker E2E
 
+Cloud E2E разделяет `mode` и `scope`. Targeted scopes поднимают настоящий Anki
+и сохраняют security/core checks, но final gate — `standard/full`. Page capture
+использует один Chromium и bounded pool из 3 BrowserContext по умолчанию.
+Buildx `type=gha` сохраняет только build layers; profile/token/runtime outputs
+не кэшируются. Artifact schema v2 содержит phase, screenshot, resource и
+performance reports. Baseline — готовый run `29208090406`, 183 s; старую
+реализацию повторно не запускать. Полный contract: `docs/e2e-performance.md`.
+
 Fast CI и real-Anki E2E разделены. `.github/workflows/ci-e2e.yml` после
-bootstrap запускается вручную на `master` с mode `standard`, `strict-apkg` или
-`perf100`; основной proof — последние два режима. Workflow использует
-`ubuntu-24.04`, read-only permissions, официальный digest Anki 26.05 и ту же
-локальную `run_full_check.ps1 -DockerOnly` orchestration.
+bootstrap запускается вручную с typed mode/scope/workers/telemetry/restart.
+Основной release proof — `standard/full`; strict APKG и Perf100 нужны только
+при изменении их paths. Workflow использует `ubuntu-24.04`, read-only
+permissions, официальный digest Anki 26.05 и ту же локальную
+`run_full_check.ps1 -DockerOnly` orchestration.
 
 Public artifact — только `ci-e2e/`: raw readiness token исключён,
 `dashboard-ready.redacted.json` безопасен, manifest paths и text exports
-проверяются. `ci-e2e-summary.json` schema v1 содержит exact SHA/mode/runtime/
-result без token/PII. LOCAL PASS не заменяет exact-SHA GitHub PASS; Perf100
-timings не являются release thresholds.
+проверяются. `ci-e2e-summary.json` schema v2 содержит exact SHA, mode/scope,
+cache/build/performance и runtime result без token/PII. LOCAL PASS не заменяет
+exact-SHA GitHub PASS; performance goals и Perf100 timings пока не являются
+release thresholds.
 
 ## Перед финальным ответом по задачам
 

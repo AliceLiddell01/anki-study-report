@@ -1,6 +1,6 @@
 # Правила для Codex/AI-агента
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-13.
 
 Этот файл можно дать новому агенту как prompt-like инструкцию для работы в
 репозитории.
@@ -36,6 +36,8 @@ git ls-files --others --exclude-standard
   `docs/ci-cd.md`.
 - Global theme/visual polish: `docs/ui-polish-global-controls.md`,
   `web-dashboard/src/layout/GlobalUtilityDock.tsx`, Docker browser smoke.
+- E2E performance/scopes: `docs/e2e-performance.md`,
+  `docker/anki-e2e/e2e-contract.mjs`, `e2e-telemetry.py`.
 
 ## Что нельзя делать
 
@@ -109,6 +111,12 @@ node scripts/run_python.mjs scripts/package_addon.py --check
 в YAML, не загружать raw `e2e-artifacts/` и не обходить failure exporter'а.
 Перед handoff проверить exporter tests, локальные strict APKG/Perf100 и exact-SHA
 cloud artifacts/screenshots. Bootstrap push trigger должен быть удалён до merge.
+
+Для performance changes не запускать старый checkout ради нового baseline.
+Targeted scope не называть release gate; `full` не урезать. Разрешён ровно один
+осознанный exact-SHA warm-cache repeat. Parallel pool содержит один Chromium и
+несколько contexts; state-mutating операции остаются serial. Runtime/profile/
+token данные не попадают в BuildKit cache или public telemetry.
 
 ## Git workflow
 
