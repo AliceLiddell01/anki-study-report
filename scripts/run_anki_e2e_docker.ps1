@@ -96,16 +96,20 @@ function Assert-E2EArtifactManifest {
     $navigationScreenshots = @($screenshots | Where-Object { $_.kind -eq "navigation" })
     $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "synthetic" })
     $apkgCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "apkg" })
-    if ($pageScreenshots.Count -ne 30) {
-        throw "Expected 30 page screenshots, found $($pageScreenshots.Count)."
+    $scope = if ($manifest.execution.scope) { [string]$manifest.execution.scope } else { "full" }
+    $expectedPages = @{ full = 30; global = 6; stats = 10; decks = 2; activity = 2; cards = 0; settings = 10 }[$scope]
+    if ($null -eq $expectedPages -or $pageScreenshots.Count -ne $expectedPages) {
+        throw "Expected $expectedPages page screenshots for scope=$scope, found $($pageScreenshots.Count)."
     }
-    if ($navigationScreenshots.Count -ne 2) {
-        throw "Expected 2 avatar menu screenshots, found $($navigationScreenshots.Count)."
+    $expectedNavigation = if ($scope -in @("full", "global")) { 2 } else { 0 }
+    if ($navigationScreenshots.Count -ne $expectedNavigation) {
+        throw "Expected $expectedNavigation avatar menu screenshots for scope=$scope, found $($navigationScreenshots.Count)."
     }
-    if ($syntheticCards.Count -ne 6) {
-        throw "Expected 6 synthetic Cards screenshots, found $($syntheticCards.Count)."
+    $expectedCards = if ($scope -in @("full", "cards")) { 6 } else { 0 }
+    if ($syntheticCards.Count -ne $expectedCards) {
+        throw "Expected $expectedCards synthetic Cards screenshots for scope=$scope, found $($syntheticCards.Count)."
     }
-    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $apkgCards.Count -ne 6) {
+    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $scope -in @("full", "cards") -and $apkgCards.Count -ne 6) {
         throw "Expected 6 APKG Cards screenshots, found $($apkgCards.Count)."
     }
 
@@ -114,6 +118,9 @@ function Assert-E2EArtifactManifest {
 
 Push-Location $Root
 try {
+    if ($env:ANKI_E2E_NO_BUILD -eq "1") {
+        $NoBuild = $true
+    }
     if (-not $NoBuild) {
         Invoke-DockerCompose @("build")
     }

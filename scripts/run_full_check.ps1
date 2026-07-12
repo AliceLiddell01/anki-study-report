@@ -4,7 +4,15 @@ param(
     [switch]$DockerOnly,
     [string]$ApkgFixture = "",
     [switch]$RequireApkgFixture,
-    [switch]$Perf100
+    [switch]$Perf100,
+    [ValidateSet("full", "global", "stats", "decks", "activity", "cards", "settings")]
+    [string]$E2EScope = "full",
+    [ValidateSet("auto", "1", "2", "3", "4")]
+    [string]$ScreenshotWorkers = "auto",
+    [ValidateSet("auto", "true", "false")]
+    [string]$VerifyRestart = "auto",
+    [switch]$DisableResourceTelemetry,
+    [switch]$NoDockerBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -192,6 +200,20 @@ if (-not $SkipDocker) {
     $previousApkgFixture = $env:ANKI_E2E_APKG_FIXTURE
     $previousRequireApkgFixture = $env:ANKI_E2E_REQUIRE_APKG_FIXTURE
     $previousPerf100 = $env:ANKI_E2E_PERF100
+    $previousScope = $env:ANKI_E2E_SCOPE
+    $previousWorkers = $env:ANKI_E2E_SCREENSHOT_WORKERS
+    $previousTelemetry = $env:ANKI_E2E_RESOURCE_TELEMETRY
+    $previousRestart = $env:ANKI_E2E_VERIFY_RESTART
+    $previousNoBuild = $env:ANKI_E2E_NO_BUILD
+    $previousMode = $env:E2E_MODE
+    if (-not $env:E2E_MODE) {
+        $env:E2E_MODE = if ($Perf100) { "perf100" } elseif ($RequireApkgFixture) { "strict-apkg" } else { "standard" }
+    }
+    $env:ANKI_E2E_SCOPE = $E2EScope
+    $env:ANKI_E2E_SCREENSHOT_WORKERS = if ($ScreenshotWorkers -eq "auto") { "3" } else { $ScreenshotWorkers }
+    $env:ANKI_E2E_RESOURCE_TELEMETRY = if ($DisableResourceTelemetry) { "0" } else { "1" }
+    $env:ANKI_E2E_VERIFY_RESTART = switch ($VerifyRestart) { "true" { "1" }; "false" { "0" }; default { "auto" } }
+    if ($NoDockerBuild) { $env:ANKI_E2E_NO_BUILD = "1" }
     if ($ApkgFixture) {
         $env:ANKI_E2E_APKG_FIXTURE = $ApkgFixture
     }
@@ -222,6 +244,17 @@ if (-not $SkipDocker) {
             Remove-Item Env:\ANKI_E2E_PERF100 -ErrorAction SilentlyContinue
         } else {
             $env:ANKI_E2E_PERF100 = $previousPerf100
+        }
+        foreach ($item in @(
+            @{ Name = "ANKI_E2E_SCOPE"; Value = $previousScope },
+            @{ Name = "ANKI_E2E_SCREENSHOT_WORKERS"; Value = $previousWorkers },
+            @{ Name = "ANKI_E2E_RESOURCE_TELEMETRY"; Value = $previousTelemetry },
+            @{ Name = "ANKI_E2E_VERIFY_RESTART"; Value = $previousRestart },
+            @{ Name = "ANKI_E2E_NO_BUILD"; Value = $previousNoBuild },
+            @{ Name = "E2E_MODE"; Value = $previousMode }
+        )) {
+            if ($null -eq $item.Value) { Remove-Item "Env:$($item.Name)" -ErrorAction SilentlyContinue }
+            else { Set-Item "Env:$($item.Name)" $item.Value }
         }
     }
 }

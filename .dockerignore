@@ -13,7 +13,9 @@ ci-fast-download
 ci-e2e
 ci-e2e-raw
 ci-e2e-download
+stage-6-6-baseline
 e2e-artifacts
+**/*.log
 web-dashboard/node_modules
 web-dashboard/dist
 web-dashboard/screenshots

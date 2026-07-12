@@ -11,8 +11,9 @@ import subprocess
 from typing import Iterable
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ALLOWED_MODES = {"standard", "strict-apkg", "perf100"}
+ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings"}
 ALLOWED_TOP_LEVEL = {
     "artifact-manifest.json",
     "runtime",
@@ -193,6 +194,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
     except ValueError:
         duration = 0
     success = args.e2e_exit_code == 0
+    direct_baseline_comparison = args.mode == "standard" and args.scope == "full"
     summary = {
         "schemaVersion": SCHEMA_VERSION,
         "repository": os.environ.get("GITHUB_REPOSITORY", "AliceLiddell01/anki-study-report"),
@@ -203,6 +205,11 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "runId": os.environ.get("GITHUB_RUN_ID", "local"),
         "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
         "mode": args.mode,
+        "scope": args.scope,
+        "screenshotWorkers": args.screenshot_workers,
+        "cacheState": args.cache_state,
+        "dockerBuildDurationMs": args.build_duration_ms,
+        "imageSizeBytes": args.image_size_bytes,
         "runnerOs": os.environ.get("RUNNER_OS", os.name),
         "runnerImage": os.environ.get("ImageOS", "local") + ":" + os.environ.get("ImageVersion", "unknown"),
         "powershellVersion": os.environ.get("CI_E2E_PWSH_VERSION", "unknown"),
@@ -220,7 +227,96 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "artifactManifestStatus": manifest_status,
         "artifactFiles": sorted(set(artifact_files + ["ci-e2e-summary.json", "ci-e2e-summary.md", "environment.txt"])),
     }
+    phase_path = output / "artifacts" / "reports" / "e2e-phase-timings.json"
+    phase_payload = read_json_file(phase_path)
+    if phase_payload:
+        phase_rows = phase_payload.setdefault("phases", [])
+        existing_names = {item.get("name") for item in phase_rows}
+        external = [
+            ("runner inspection", None, "duration unavailable before summary preparation"),
+            ("Buildx setup", None, "duration available from GitHub job metadata, not container telemetry"),
+            ("Docker cache restore/build/load", args.build_duration_ms, "measured around docker/build-push-action with load=true"),
+            ("artifact upload", None, "measured after upload and reported in GitHub Step Summary"),
+            ("total workflow", duration * 1000, "from runner preflight start through public artifact preparation"),
+        ]
+        for name, duration_ms, notes in external:
+            if name not in existing_names:
+                phase_rows.append({
+                    "name": name,
+                    "startedAt": None,
+                    "finishedAt": None,
+                    "durationMs": duration_ms,
+                    "status": "success" if success else "unknown",
+                    "scope": args.scope,
+                    "mode": args.mode,
+                    "cacheState": args.cache_state if "Docker" in name else None,
+                    "notes": notes,
+                })
+        phase_payload["slowest"] = sorted(
+            [item for item in phase_rows if isinstance(item.get("durationMs"), (int, float))],
+            key=lambda item: item["durationMs"], reverse=True,
+        )[:10]
+        write_json_file(phase_path, phase_payload)
+        (phase_path.with_suffix(".md")).write_text(
+            "# E2E phase timings\n\n| Phase | Duration ms | Status | Notes |\n| --- | ---: | --- | --- |\n" +
+            "".join(f"| {item['name']} | {item.get('durationMs') if item.get('durationMs') is not None else 'n/a'} | {item.get('status', 'unknown')} | {item.get('notes') or ''} |\n" for item in phase_rows),
+            encoding="utf-8",
+        )
+    performance_path = output / "artifacts" / "reports" / "e2e-performance-summary.json"
+    performance = read_json_file(performance_path)
+    if performance:
+        exported_root = output / "artifacts"
+        exported_files = [path for path in exported_root.rglob("*") if path.is_file()]
+        file_rows = [
+            {"path": path.relative_to(exported_root).as_posix(), "bytes": path.stat().st_size}
+            for path in exported_files
+        ]
+        composition = {
+            "fileCount": len(file_rows),
+            "totalBytes": sum(item["bytes"] for item in file_rows),
+            "pngBytes": sum(item["bytes"] for item in file_rows if item["path"].lower().endswith(".png")),
+            "jsonLogBytes": sum(item["bytes"] for item in file_rows if Path(item["path"]).suffix.lower() in {".json", ".jsonl", ".log", ".txt", ".md"}),
+            "largestFiles": sorted(file_rows, key=lambda item: item["bytes"], reverse=True)[:20],
+            "uploadDurationMs": None,
+            "uploadDurationReason": "reported after upload in GitHub Step Summary",
+        }
+        exported_manifest = read_json_file(exported_root / "artifact-manifest.json")
+        screenshot_count = len(exported_manifest.get("screenshots") or [])
+        current = performance.setdefault("current", {})
+        current.update({
+            "runId": summary["runId"],
+            "commitSha": summary["commitSha"],
+            "mode": args.mode,
+            "scope": args.scope,
+            "workerCount": args.screenshot_workers,
+            "canonicalDurationSeconds": duration,
+            "cacheState": args.cache_state,
+            "screenshotCount": screenshot_count,
+            "artifactFileCount": composition["fileCount"],
+            "artifactBytes": composition["totalBytes"],
+        })
+        cache = performance.setdefault("cache", {})
+        cache.update({"backend": "type=gha", "state": args.cache_state, "buildDurationMs": args.build_duration_ms, "imageSizeBytes": args.image_size_bytes})
+        baseline_seconds = int((performance.get("baseline") or {}).get("canonicalDurationSeconds") or 183)
+        improvement = performance.setdefault("improvement", {})
+        if direct_baseline_comparison:
+            improvement.update({
+                "canonicalSavedSeconds": baseline_seconds - duration,
+                "canonicalReductionPercent": (baseline_seconds - duration) * 100 / baseline_seconds,
+                "canonicalSpeedupFactor": baseline_seconds / duration if duration else None,
+                "comparisonReason": None,
+            })
+        else:
+            improvement.update({
+                "canonicalSavedSeconds": None,
+                "canonicalReductionPercent": None,
+                "canonicalSpeedupFactor": None,
+                "comparisonReason": "targeted or non-standard run is not an apples-to-apples comparison with the full standard baseline",
+            })
+        performance["artifacts"] = composition
+        write_json_file(performance_path, performance)
     (output / "ci-e2e-summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    saved_display = str(183 - summary["durationSeconds"]) + " seconds" if direct_baseline_comparison else "n/a (targeted/non-standard is not apples-to-apples)"
     markdown = f"""# Full Docker / Anki E2E summary
 
 | Field | Value |
@@ -230,10 +326,17 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Commit | `{summary['commitSha']}` |
 | Ref | `{summary['ref']}` |
 | Mode | {summary['mode']} |
+| Scope | {summary['scope']} |
+| Screenshot workers | {summary['screenshotWorkers']} |
+| Build cache | {summary['cacheState']} (`type=gha`) |
 | Runner | {summary['runnerOs']} / {summary['runnerImage']} |
 | Anki | {summary['ankiVersion']} |
 | Manifest | {summary['artifactManifestStatus']} |
 | Duration | {summary['durationSeconds']} seconds |
+| Baseline canonical | 183 seconds (run 29208090406) |
+| Saved vs baseline | {saved_display} |
+| Docker build/load | {summary['dockerBuildDurationMs']} ms |
+| Image size | {summary['imageSizeBytes']} bytes |
 
 Raw dashboard readiness data is not uploaded. The safe export contains
 `artifacts/runtime/dashboard-ready.redacted.json` when readiness was available.
@@ -249,7 +352,7 @@ Perf100 measurements are diagnostics, not release thresholds.
         key: summary[key]
         for key in (
             "repository", "commitSha", "ref", "event", "workflow", "runId", "runAttempt",
-            "mode", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
+            "mode", "scope", "screenshotWorkers", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
             "dockerServerVersion", "dockerComposeVersion", "ankiVersion",
         )
     }
@@ -273,11 +376,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=Path("ci-e2e"))
     parser.add_argument("--raw-logs", type=Path, default=Path("ci-e2e-raw"))
     parser.add_argument("--mode", choices=sorted(ALLOWED_MODES), required=True)
+    parser.add_argument("--scope", choices=sorted(ALLOWED_SCOPES), default="full")
+    parser.add_argument("--screenshot-workers", type=int, default=3)
+    parser.add_argument("--build-duration-ms", type=int, default=0)
+    parser.add_argument("--image-size-bytes", type=int, default=0)
+    parser.add_argument("--cache-state", default="unknown")
     parser.add_argument("--e2e-exit-code", type=int, required=True)
     parser.add_argument("--started-at", default="")
     parser.add_argument("--commit-sha", default="unknown")
     parser.add_argument("--ref", default="local")
     return parser.parse_args()
+
+
+def read_json_file(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def write_json_file(path: Path, value: dict) -> None:
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:

@@ -32,7 +32,19 @@ REQUIRED_SUCCESS_ARTIFACTS = (
     "reports/api-health-first.json",
     "reports/api-smoke-first.json",
     "reports/browser-smoke-first.json",
+    "reports/e2e-phase-timings.json",
+    "reports/e2e-phase-timings.md",
+    "reports/screenshot-performance.json",
+    "reports/screenshot-performance.md",
+    "reports/e2e-performance-summary.json",
+    "reports/e2e-performance-summary.md",
     "package/anki_study_report.ankiaddon",
+)
+
+RESOURCE_ARTIFACTS = (
+    "reports/resource-samples.jsonl",
+    "reports/resource-summary.json",
+    "reports/resource-summary.md",
 )
 
 
@@ -57,9 +69,15 @@ def build_manifest(paths: ArtifactPaths, *, status: str, anki_version: str) -> d
     report_paths = files_under(paths, paths.reports)
     screenshot_paths = files_under(paths, paths.screenshots)
     manifest = {
-        "artifactSchemaVersion": 1,
+        "artifactSchemaVersion": 2,
         "status": status,
         "ankiVersion": str(anki_version),
+        "execution": {
+            "mode": os.environ.get("E2E_MODE", "standard"),
+            "scope": os.environ.get("ANKI_E2E_SCOPE", "full"),
+            "screenshotWorkers": int(os.environ.get("ANKI_E2E_SCREENSHOT_WORKERS", "1")),
+            "resourceTelemetry": os.environ.get("ANKI_E2E_RESOURCE_TELEMETRY", "1") == "1",
+        },
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "runtime": {
             "dashboardReady": relative_if_exists(paths, paths.runtime / "dashboard-ready.json"),
@@ -167,7 +185,10 @@ def validate_manifest(paths: ArtifactPaths, manifest: dict[str, Any]) -> None:
             raise ValueError(f"Artifact manifest references a missing file: {relative_path}")
 
     if str(manifest.get("status") or "") == "success":
-        missing = [path for path in REQUIRED_SUCCESS_ARTIFACTS if path not in indexed]
+        required = list(REQUIRED_SUCCESS_ARTIFACTS)
+        if (manifest.get("execution") or {}).get("resourceTelemetry"):
+            required.extend(RESOURCE_ARTIFACTS)
+        missing = [path for path in required if path not in indexed]
         if missing:
             raise ValueError(f"Required E2E artifacts are missing: {', '.join(missing)}")
 

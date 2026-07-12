@@ -3,6 +3,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 import { ensureArtifactParent, relativeArtifactPath, resolveArtifactPaths } from "./artifact-paths.mjs";
+import {
+  buildPageCaptureTasks,
+  resolveScope,
+  resolveWorkerCount,
+  runBoundedTaskQueue,
+  shouldRunScope,
+  summarizeCapturePerformance,
+} from "./e2e-contract.mjs";
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 1) {
@@ -13,6 +21,8 @@ for (let index = 2; index < process.argv.length; index += 1) {
 }
 
 const label = args.get("label") || "run";
+const scope = resolveScope(process.env.ANKI_E2E_SCOPE || "full");
+const screenshotWorkers = resolveWorkerCount(process.env.ANKI_E2E_SCREENSHOT_WORKERS || "3");
 const artifacts = process.env.ANKI_STUDY_REPORT_E2E_ARTIFACTS || "/e2e/artifacts";
 const artifactPaths = resolveArtifactPaths(artifacts);
 const readyFile = process.env.ANKI_STUDY_REPORT_E2E_READY_FILE || path.join(artifactPaths.runtime, "dashboard-ready.json");
@@ -87,9 +97,12 @@ try {
 
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
+  let shadowDetails = null;
+  let apkgDetails = null;
+  if (shouldRunScope(scope, "cards")) {
   const tableLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "table", "light");
   await capture(page, "table", "light", tableLightScreenshot);
-  const shadowDetails = await inspectShadowPreview(page, "table");
+  shadowDetails = await inspectShadowPreview(page, "table");
   if (!shadowDetails.exists) {
     throw new Error("Shadow DOM preview host for fixture card was not found.");
   }
@@ -157,17 +170,19 @@ try {
   assertAnkiPreviewAnswerOnly(ankiPreviewDarkDetails, "dark");
   visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, previewDarkScreenshot), details: ankiPreviewDarkDetails });
 
-  const apkgDetails = await assertApkgBrowserIfEnabled(page);
-  const profileDetails = await assertProfileMvp(page);
+  apkgDetails = await assertApkgBrowserIfEnabled(page);
+  }
+  const profileDetails = shouldRunScope(scope, "global") ? await assertProfileMvp(page) : null;
   const themeDetails = await assertGlobalThemeDock(page);
-  const activityDetails = await assertActivityHub(page);
-  const deckDetails = await assertDeckHub(page);
-  const statisticsDetails = await assertStatisticsHub(page);
-  const polishStateScreenshots = await capturePolishStates(page);
-  const zoomDetails = await captureZoomProof();
-  const pageScreenshots = await captureDashboardPages(page);
-  const navigationScreenshots = await captureAvatarMenu(page);
-  const cssDiagnostics = await assertCssDiagnostics(page);
+  const activityDetails = shouldRunScope(scope, "activity") ? await assertActivityHub(page) : null;
+  const deckDetails = shouldRunScope(scope, "decks") ? await assertDeckHub(page) : null;
+  const statisticsDetails = shouldRunScope(scope, "stats") ? await assertStatisticsHub(page) : null;
+  const polishStateScreenshots = await capturePolishStates(page, scope);
+  const zoomDetails = await captureZoomProof(scope);
+  const pageCapture = await captureDashboardPages();
+  const pageScreenshots = pageCapture.screenshots;
+  const navigationScreenshots = shouldRunScope(scope, "global") ? await captureAvatarMenu(page) : [];
+  const cssDiagnostics = shouldRunScope(scope, "cards") ? await assertCssDiagnostics(page) : null;
   const requestFailures = actionableNetworkEvents();
   const consoleErrors = relevantConsoleEvents().filter((event) => event.type === "error");
 
@@ -191,6 +206,9 @@ try {
     zoom125: zoomDetails,
     pageScreenshots,
     navigationScreenshots,
+    scope,
+    screenshotWorkers,
+    screenshotPerformance: pageCapture.performance,
   });
 
   if (pageErrors.length > 0) {
@@ -232,34 +250,67 @@ async function capture(page, mode, theme, filePath) {
   await page.screenshot({ path: filePath, fullPage: true });
 }
 
-async function captureDashboardPages(page) {
-  const screenshots = [];
-  for (const theme of ["light", "dark"]) {
-    for (const pageCase of dashboardPageCases) {
-      await prepareDashboardRoute(page, pageCase.route, theme, pageCase.heading);
-      await waitForLayoutStabilization(page);
-      const activeState = await inspectActiveNavigation(page);
-      assertBrowser(
-        activeState.primaryHref === (pageCase.primaryHref || null),
-        `${pageCase.route} ${theme} primary active state is correct: ${activeState.primaryHref}`,
-      );
-      assertBrowser(
-        activeState.settingsHref === (pageCase.settingsHref || null),
-        `${pageCase.route} ${theme} settings active state is correct: ${activeState.settingsHref}`,
-      );
-      const filePath = artifactPaths.pageScreenshot(pageCase.pageName, theme);
-      await ensureArtifactParent(filePath);
-      await page.screenshot({ path: filePath, fullPage: true });
-      screenshots.push({
-        route: `#${pageCase.route}`,
-        page: pageCase.pageName,
-        theme,
-        screenshot: relativeArtifactPath(artifactPaths, filePath),
-        activeState,
-      });
-    }
+async function captureDashboardPages() {
+  const tasks = buildPageCaptureTasks(dashboardPageCases, scope);
+  if (!tasks.length) {
+    const empty = summarizeCapturePerformance({ startedAt: Date.now(), finishedAt: Date.now(), workerCount: screenshotWorkers, tasks: [] });
+    await writeScreenshotPerformance(empty);
+    return { screenshots: [], performance: empty };
   }
-  return screenshots;
+  let run;
+  try {
+    run = await runBoundedTaskQueue(
+      tasks,
+      screenshotWorkers,
+      async (workerId) => {
+        const context = await browser.newContext({ viewport: { width: baseViewport.width, height: baseViewport.height }, deviceScaleFactor: 1 });
+        const workerPage = await context.newPage();
+        attachPageEvents(workerPage, workerId);
+        return { page: workerPage, close: () => context.close() };
+      },
+      async (worker, task) => {
+        await prepareDashboardRoute(worker.page, task.route, task.theme, task.heading);
+        await waitForLayoutStabilization(worker.page);
+        const activeState = await inspectActiveNavigation(worker.page);
+        assertBrowser(activeState.primaryHref === task.primaryHref, `${task.id} primary active state is correct: ${activeState.primaryHref}`);
+        assertBrowser(activeState.settingsHref === task.settingsHref, `${task.id} settings active state is correct: ${activeState.settingsHref}`);
+        const filePath = artifactPaths.pageScreenshot(task.pageName, task.theme);
+        assertBrowser(relativeArtifactPath(artifactPaths, filePath) === task.artifactPath, `${task.id} artifact path matches its descriptor.`);
+        await ensureArtifactParent(filePath);
+        await worker.page.screenshot({ path: filePath, fullPage: true });
+        return { route: `#${task.route}`, page: task.pageName, theme: task.theme, screenshot: relativeArtifactPath(artifactPaths, filePath), activeState };
+      },
+    );
+  } catch (error) {
+    const failedRun = { startedAt: Date.now(), finishedAt: Date.now(), workerCount: screenshotWorkers, tasks: error.taskResults || [] };
+    await writeScreenshotPerformance(summarizeCapturePerformance(failedRun));
+    throw error;
+  }
+  const performance = summarizeCapturePerformance(run);
+  await writeScreenshotPerformance(performance);
+  return { screenshots: run.tasks.map((task) => task.value), performance };
+}
+
+function attachPageEvents(targetPage, workerId = null) {
+  targetPage.on("console", (message) => consoleEvents.push({ type: message.type(), text: message.text(), location: message.location(), workerId }));
+  targetPage.on("pageerror", (error) => pageErrors.push(String(error?.stack || error?.message || error)));
+  targetPage.on("requestfailed", (request) => networkEvents.push({ kind: "requestfailed", method: request.method(), url: request.url(), failure: request.failure()?.errorText || null, workerId }));
+  targetPage.on("response", (response) => {
+    if (response.status() >= 400) networkEvents.push({ kind: "response", status: response.status(), url: response.url(), workerId });
+  });
+}
+
+async function writeScreenshotPerformance(performance) {
+  await writeJson("screenshot-performance.json", performance);
+  const rows = performance.slowestTasks.map((task) => `| ${task.id} | ${task.workerId} | ${task.durationMs} | ${task.result} |`).join("\n");
+  const markdown = `# Screenshot performance\n\nScope: \`${scope}\`; workers: ${performance.workerCount}.\n\n` +
+    `Tasks: ${performance.successfulTasks}/${performance.totalTasks}; capture wall: ${performance.captureWallMs} ms; summed work: ${performance.summedTaskMs} ms; speedup: ${formatMetric(performance.parallelSpeedup)}; efficiency: ${formatMetric(performance.parallelEfficiency)}.\n\n` +
+    `| Task | Worker | Duration ms | Result |\n| --- | ---: | ---: | --- |\n${rows}\n`;
+  await fs.writeFile(artifactPaths.report("screenshot-performance.md"), markdown, "utf8");
+}
+
+function formatMetric(value) {
+  return Number.isFinite(value) ? value.toFixed(2) : "n/a";
 }
 
 async function assertProfileMvp(page) {
@@ -665,14 +716,17 @@ async function captureAvatarMenu(page) {
   return screenshots;
 }
 
-async function capturePolishStates(page) {
+async function capturePolishStates(page, selectedScope) {
   const screenshots = [];
+  if (shouldRunScope(selectedScope, "activity")) {
   await prepareDashboardRoute(page, "/calendar", "light", "Активность");
   const loadMore = page.getByRole("button", { name: "Показать более раннюю активность", exact: true });
   if (await loadMore.count()) await loadMore.click();
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "calendar", "history-expanded"));
+  }
 
+  if (shouldRunScope(selectedScope, "decks")) {
   await prepareDashboardRoute(page, "/decks", "light", "Колоды");
   await page.getByTestId("deck-groups-toggle").click();
   await waitForLayoutStabilization(page);
@@ -683,7 +737,9 @@ async function capturePolishStates(page) {
   await page.locator('button[title="E2E Decks::Danger"]').click();
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "decks", "selected-leaf"));
+  }
 
+  if (shouldRunScope(selectedScope, "stats")) {
   await prepareDashboardRoute(page, "/stats", "light", "Статистика");
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-overview", "sparse"));
@@ -726,6 +782,7 @@ async function capturePolishStates(page) {
   if (await availableDeck.count()) await availableDeck.check();
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-decks", "custom-selection"));
+  }
   return screenshots;
 }
 
@@ -738,7 +795,7 @@ async function saveStateScreenshot(page, pageName, stateName) {
   return { page: pageName, state: stateName, theme: "light", screenshot: relativeArtifactPath(artifactPaths, filePath) };
 }
 
-async function captureZoomProof() {
+async function captureZoomProof(selectedScope) {
   const zoomPage = await browser.newPage({ viewport: { width: 1152, height: 800 }, deviceScaleFactor: 1.25 });
   const results = [];
   zoomPage.on("console", (message) => consoleEvents.push({ type: message.type(), text: message.text(), location: message.location() }));
@@ -749,14 +806,14 @@ async function captureZoomProof() {
   });
   try {
     for (const routeCase of [
-      { route: "/calendar", pageName: "calendar", heading: "Активность" },
-      { route: "/stats", pageName: "stats-overview", heading: "Статистика" },
-      { route: "/stats/quality", pageName: "stats-quality", heading: "Качество" },
-      { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка" },
-      { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды" },
-      { route: "/decks", pageName: "decks", heading: "Колоды" },
-      { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
-    ]) {
+      { route: "/calendar", pageName: "calendar", heading: "Активность", scope: "activity" },
+      { route: "/stats", pageName: "stats-overview", heading: "Статистика", scope: "stats" },
+      { route: "/stats/quality", pageName: "stats-quality", heading: "Качество", scope: "stats" },
+      { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка", scope: "stats" },
+      { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды", scope: "stats" },
+      { route: "/decks", pageName: "decks", heading: "Колоды", scope: "decks" },
+      { route: "/settings", pageName: "settings/report", heading: "Отчёт", scope: "settings" },
+    ].filter((item) => shouldRunScope(selectedScope, item.scope))) {
       await prepareDashboardRoute(zoomPage, routeCase.route, "light", routeCase.heading);
       await zoomPage.waitForFunction(() => document.documentElement.clientWidth === 1152 && window.devicePixelRatio === 1.25);
       const layout = await inspectZoomLayout(zoomPage);

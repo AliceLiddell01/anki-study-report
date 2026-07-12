@@ -79,14 +79,26 @@ RUN if [ -n "$UBUNTU_MIRROR" ]; then \
 RUN mkdir -p /e2e/bin /e2e/artifacts /e2e/anki-data \
     && cd /e2e \
     && npm init -y >/dev/null 2>&1 \
-    && npm install pnpm@9.15.4 playwright@1.49.1 \
+    && npm install pnpm@9.15.9 playwright@1.49.1 \
     && python3 -m pip install --break-system-packages "${ANKI_PYTHON_PACKAGE}"
 
+COPY docker/anki-e2e/install-anki.sh /e2e/bin/install-anki.sh
+
+RUN sed -i 's/\r$//' /e2e/bin/install-anki.sh \
+    && chmod +x /e2e/bin/install-anki.sh \
+    && /e2e/bin/install-anki.sh
+
+COPY web-dashboard/package.json web-dashboard/pnpm-lock.yaml web-dashboard/pnpm-workspace.yaml /e2e/frontend-deps/
+
+RUN cd /e2e/frontend-deps \
+    && /e2e/node_modules/.bin/pnpm fetch --frozen-lockfile
+
+# Volatile orchestration and browser smoke files stay after the expensive Anki
+# and lockfile-driven dependency layers.
 COPY docker/anki-e2e/*.sh docker/anki-e2e/*.py docker/anki-e2e/*.mjs /e2e/bin/
 
 RUN sed -i 's/\r$//' /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
-    && chmod +x /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
-    && /e2e/bin/install-anki.sh
+    && chmod +x /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs
 
 WORKDIR /workspace
 

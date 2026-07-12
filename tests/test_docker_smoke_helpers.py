@@ -90,7 +90,7 @@ def test_artifact_paths_create_category_directories(tmp_path: Path):
 
 
 def create_required_success_artifacts(manifest_module, paths) -> None:
-    for relative_path in manifest_module.REQUIRED_SUCCESS_ARTIFACTS:
+    for relative_path in (*manifest_module.REQUIRED_SUCCESS_ARTIFACTS, *manifest_module.RESOURCE_ARTIFACTS):
         file_path = paths.root / relative_path
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text("test", encoding="utf-8")
@@ -156,6 +156,22 @@ def test_artifact_manifest_omits_missing_optional_paths(tmp_path: Path):
 
     assert manifest["runtime"] == {"dashboardReady": None, "events": None}
     assert manifest_module.manifest_indexed_paths(manifest) == []
+
+
+def test_resource_reports_are_optional_only_when_telemetry_is_disabled(tmp_path: Path, monkeypatch):
+    manifest_module = load_e2e_module("write-artifact-manifest.py", "anki_study_report_artifact_manifest_no_resources")
+    paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
+    paths.ensure()
+    for relative_path in manifest_module.REQUIRED_SUCCESS_ARTIFACTS:
+        file_path = paths.root / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text("test", encoding="utf-8")
+    monkeypatch.setenv("ANKI_E2E_RESOURCE_TELEMETRY", "0")
+
+    manifest = manifest_module.build_manifest(paths, status="success", anki_version="26.05")
+
+    assert manifest["execution"]["resourceTelemetry"] is False
+    assert not any(path in manifest_module.manifest_indexed_paths(manifest) for path in manifest_module.RESOURCE_ARTIFACTS)
 
 
 @pytest.mark.parametrize(

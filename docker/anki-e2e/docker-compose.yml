@@ -1,5 +1,6 @@
 services:
   anki-e2e:
+    image: ${ANKI_E2E_IMAGE:-anki-study-report-e2e:local}
     build:
       context: ../..
       dockerfile: docker/anki-e2e/Dockerfile
@@ -19,6 +20,15 @@ services:
       ANKI_E2E_REQUIRE_APKG_FIXTURE: ${ANKI_E2E_REQUIRE_APKG_FIXTURE:-}
       ANKI_E2E_PERF100: ${ANKI_E2E_PERF100:-}
       ANKI_E2E_PERF100_TARGET: ${ANKI_E2E_PERF100_TARGET:-}
+      E2E_MODE: ${E2E_MODE:-standard}
+      ANKI_E2E_SCOPE: ${ANKI_E2E_SCOPE:-full}
+      ANKI_E2E_SCREENSHOT_WORKERS: ${ANKI_E2E_SCREENSHOT_WORKERS:-3}
+      ANKI_E2E_RESOURCE_TELEMETRY: ${ANKI_E2E_RESOURCE_TELEMETRY:-1}
+      ANKI_E2E_VERIFY_RESTART: ${ANKI_E2E_VERIFY_RESTART:-auto}
+      ANKI_E2E_CACHE_BACKEND: ${ANKI_E2E_CACHE_BACKEND:-local}
+      ANKI_E2E_CACHE_STATE: ${ANKI_E2E_CACHE_STATE:-unknown}
+      GITHUB_RUN_ID: ${GITHUB_RUN_ID:-local}
+      GITHUB_SHA: ${GITHUB_SHA:-local}
       DISPLAY: ":99"
       HOME: /e2e/home
       WORKSPACE: /workspace

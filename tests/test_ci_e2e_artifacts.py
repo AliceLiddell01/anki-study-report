@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+from argparse import Namespace
 import json
 from pathlib import Path
 import sys
@@ -132,3 +133,36 @@ def test_export_rejects_unredacted_private_path(tmp_path: Path):
 
     with pytest.raises(ValueError, match="Private absolute path"):
         module.assert_safe_text("path=C:/Users/Alice/private.txt", "report.txt")
+
+
+def test_summary_v2_keeps_targeted_comparison_honest(tmp_path: Path, monkeypatch):
+    module = load_module()
+    output = tmp_path / "output"
+    reports = output / "artifacts" / "reports"
+    reports.mkdir(parents=True)
+    (output / "logs").mkdir()
+    performance = {"baseline": {"canonicalDurationSeconds": 183}, "current": {}, "improvement": {}}
+    (reports / "e2e-performance-summary.json").write_text(json.dumps(performance), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_RUN_ID", "42")
+    args = Namespace(
+        started_at="2026-07-13T00:00:00Z",
+        e2e_exit_code=0,
+        commit_sha="abc123",
+        ref="refs/heads/test",
+        mode="standard",
+        scope="stats",
+        screenshot_workers=3,
+        cache_state="gha-enabled",
+        build_duration_ms=1200,
+        image_size_bytes=456,
+    )
+
+    module.write_summary(output, args=args, manifest_status="success", artifact_files=[])
+
+    summary = json.loads((output / "ci-e2e-summary.json").read_text(encoding="utf-8"))
+    exported_performance = json.loads((reports / "e2e-performance-summary.json").read_text(encoding="utf-8"))
+    assert summary["schemaVersion"] == 2
+    assert summary["scope"] == "stats"
+    assert summary["screenshotWorkers"] == 3
+    assert exported_performance["improvement"]["canonicalSavedSeconds"] is None
+    assert "not an apples-to-apples" in exported_performance["improvement"]["comparisonReason"]
