@@ -697,7 +697,11 @@ async function capturePolishStates(page) {
 
   await prepareDashboardRoute(page, "/stats/quality", "light", "Качество");
   await page.getByLabel("Область").selectOption("single_deck");
-  await page.getByLabel("Колода").selectOption({ label: "E2E Grammar" });
+  const statisticsDeck = page
+    .locator('section[aria-label="Параметры статистики"] label')
+    .filter({ hasText: /^Колода/ })
+    .locator("select");
+  await statisticsDeck.selectOption({ label: "E2E Grammar" });
   await page.locator(".statistics-confidence-badge.is-insufficient").waitFor({ state: "visible", timeout: 15000 });
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-quality", "low-confidence"));
