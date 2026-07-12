@@ -11,6 +11,7 @@ ENV ANKI_SHA256=${ANKI_SHA256}
 ENV ANKI_REQUIRE_SHA256=${ANKI_REQUIRE_SHA256}
 ENV ANKI_PYTHON_PACKAGE=${ANKI_PYTHON_PACKAGE}
 ENV ANKI_BIN=/opt/anki/anki
+ENV PNPM_STORE_DIR=/e2e/pnpm-store
 ENV PATH="/e2e/node_modules/.bin:${PATH}"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV QTWEBENGINE_DISABLE_SANDBOX=1
@@ -91,7 +92,7 @@ RUN sed -i 's/\r$//' /e2e/bin/install-anki.sh \
 COPY web-dashboard/package.json web-dashboard/pnpm-lock.yaml web-dashboard/pnpm-workspace.yaml /e2e/frontend-deps/
 
 RUN cd /e2e/frontend-deps \
-    && /e2e/node_modules/.bin/pnpm fetch --frozen-lockfile
+    && /e2e/node_modules/.bin/pnpm --store-dir "$PNPM_STORE_DIR" fetch --frozen-lockfile
 
 # Volatile orchestration and browser smoke files stay after the expensive Anki
 # and lockfile-driven dependency layers.

@@ -18,6 +18,7 @@ fi
 : "${ANKI_STUDY_REPORT_E2E_PACKAGE_DIR:=${ANKI_STUDY_REPORT_E2E_ARTIFACTS}/package}"
 : "${ANKI_STUDY_REPORT_E2E_READY_FILE:=${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/dashboard-ready.json}"
 : "${PNPM_BIN:=/e2e/node_modules/.bin/pnpm}"
+: "${PNPM_STORE_DIR:=/e2e/pnpm-store}"
 : "${E2E_MODE:=standard}"
 : "${ANKI_E2E_SCOPE:=full}"
 : "${ANKI_E2E_SCREENSHOT_WORKERS:=3}"
@@ -164,7 +165,7 @@ if [ -f web-dashboard/pnpm-workspace.yaml ]; then
   fi
 fi
 phase_start
-"$PNPM_BIN" --dir "$FRONTEND_DIR" install --offline --frozen-lockfile
+"$PNPM_BIN" --store-dir "$PNPM_STORE_DIR" --dir "$FRONTEND_DIR" install --offline --frozen-lockfile
 phase_end "frontend dependency install" "success" "lockfile-driven offline install from the image pnpm store"
 phase_start
 "$PNPM_BIN" --dir "$FRONTEND_DIR" run build:addon

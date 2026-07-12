@@ -129,7 +129,9 @@ def test_docker_cache_and_layering_contract_is_structural():
     workflow = (ROOT / ".github" / "workflows" / "ci-e2e.yml").read_text(encoding="utf-8")
     assert dockerfile.index("COPY docker/anki-e2e/install-anki.sh") < dockerfile.index("docker/anki-e2e/*.mjs")
     assert dockerfile.index("web-dashboard/pnpm-lock.yaml") < dockerfile.index("docker/anki-e2e/*.mjs")
-    assert "pnpm fetch" in dockerfile
+    assert "fetch --frozen-lockfile" in dockerfile
+    assert "PNPM_STORE_DIR=/e2e/pnpm-store" in dockerfile
+    assert '--store-dir "$PNPM_STORE_DIR"' in dockerfile
     assert "install --offline --frozen-lockfile" in (ROOT / "docker" / "anki-e2e" / "run-e2e.sh").read_text(encoding="utf-8")
     assert "cache-from: type=gha" in workflow
     assert "cache-to: type=gha" in workflow
