@@ -691,7 +691,7 @@ async function capturePolishStates(page) {
     .locator('section[aria-label="Параметры статистики"] label')
     .filter({ hasText: /^Период/ })
     .locator("select");
-  await statisticsPeriod.selectOption("30d");
+  await statisticsPeriod.selectOption("7d");
   await page.locator('[data-comparison-style="outline-dashed"]').first().waitFor({ state: "visible", timeout: 15000 });
   screenshots.push(await saveStateScreenshot(page, "stats-overview", "comparison"));
 
