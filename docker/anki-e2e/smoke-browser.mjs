@@ -26,7 +26,7 @@ const responsiveViewports = [
 const dashboardPageCases = [
   { route: "/home", pageName: "today", heading: "Сегодня", primaryHref: "#/home" },
   { route: "/calendar", pageName: "calendar", heading: "Активность", primaryHref: "#/calendar" },
-  { route: "/stats", pageName: "stats-overview", heading: "Обзор", primaryHref: "#/stats" },
+  { route: "/stats", pageName: "stats-overview", heading: "Статистика", primaryHref: "#/stats" },
   { route: "/stats/quality", pageName: "stats-quality", heading: "Качество", primaryHref: "#/stats" },
   { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка", primaryHref: "#/stats" },
   { route: "/stats/progress", pageName: "stats-progress", heading: "Прогресс", primaryHref: "#/stats" },
@@ -422,7 +422,7 @@ async function assertActivityHub(page) {
 }
 
 async function assertStatisticsHub(page) {
-  await prepareDashboardRoute(page, "/stats", "light", "Обзор");
+  await prepareDashboardRoute(page, "/stats", "light", "Статистика");
   await page.getByTestId("statistics-page").waitFor({ state: "visible", timeout: 15000 });
   const navLabels = await page.locator('nav[aria-label="Основная навигация"] a').allTextContents();
   assertBrowser(
@@ -442,10 +442,10 @@ async function assertStatisticsHub(page) {
   }
 
   for (const routeCase of [
-    ["/stats/quality", "Качество", "True Retention"],
+    ["/stats/quality", "Качество", "Истинное удержание"],
     ["/stats/load", "Нагрузка", "Будущая нагрузка"],
     ["/stats/progress", "Прогресс", "Текущее состояние коллекции"],
-    ["/stats/decks", "Колоды", "Сравнение колод"],
+    ["/stats/decks", "Колоды", "Успешность по выбранным колодам"],
   ]) {
     await prepareDashboardRoute(page, routeCase[0], "light", routeCase[1]);
     await page.getByText(routeCase[2], { exact: true }).first().waitFor({ state: "visible", timeout: 15000 });
@@ -457,17 +457,39 @@ async function assertStatisticsHub(page) {
   await page.getByRole("heading", { name: "Колоды", exact: true }).waitFor({ timeout: 60000 });
   assertBrowser(new URL(page.url()).hash === "#/stats/decks", "Statistics nested direct route survives reload.");
 
-  await prepareDashboardRoute(page, "/stats", "light", "Обзор");
+  await prepareDashboardRoute(page, "/stats", "light", "Статистика");
   const queryResponse = page.waitForResponse((response) => response.url().includes("/api/statistics/query") && response.request().method() === "POST");
   await periodSelect.selectOption("30d");
   const response = await queryResponse;
   assertBrowser(response.status() === 200, `Statistics typed query succeeds: ${response.status()}`);
   await periodSelect.selectOption("all");
-  assertBrowser(await page.getByLabel("Сравнить с предыдущим периодом").isDisabled(), "All-time disables previous-period comparison.");
+  assertBrowser(await page.getByLabel("Сравнить периоды").isDisabled(), "All-time disables previous-period comparison.");
   await periodSelect.selectOption("90d");
   await page.getByLabel("Область").selectOption("single_deck");
   await page.getByLabel("Только напрямую").check();
   await page.getByText("Только напрямую", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  for (const routeCase of [
+    ["/stats", "Статистика"],
+    ["/stats/quality", "Качество"],
+    ["/stats/load", "Нагрузка"],
+    ["/stats/progress", "Прогресс"],
+    ["/stats/decks", "Колоды"],
+  ]) {
+    await prepareDashboardRoute(page, routeCase[0], "light", routeCase[1]);
+    const layout = await inspectStatisticsLayout(page);
+    assertBrowser(!layout.horizontalOverflow, `${routeCase[0]} has no horizontal overflow.`);
+    assertBrowser(layout.panelCount > 0 && layout.panelBordersVisible, `${routeCase[0]} analytical panels have visible boundaries.`);
+    assertBrowser(!layout.controlsChaotic && layout.sidebarUsable, `${routeCase[0]} controls and sidebar remain usable.`);
+    assertBrowser(layout.dockOverlapCount === 0, `${routeCase[0]} global dock does not overlap actionable Statistics content.`);
+    assertBrowser(layout.chartClippingCount === 0, `${routeCase[0]} chart labels stay inside their panels.`);
+  }
+
+  await prepareDashboardRoute(page, "/stats/decks", "light", "Колоды");
+  assertBrowser(await page.locator('.statistics-deck-table input[type="checkbox"]:checked').count() > 0, "Deck comparison has a useful default selection.");
+  assertBrowser(await page.getByTestId("stats-deck-comparison-chart").isVisible(), "Deck comparison chart is visible on initial load.");
+  const visibleStatisticsText = await page.locator('[data-testid="statistics-page"]').innerText();
+  assertBrowser(!/STATISTICS V1|True Retention|Daily load|\bMature\b|Σ 1 \/ max|максимум 12/i.test(visibleStatisticsText), "Statistics hides developer terminology and formulas from primary UI.");
 
   const nativeResult = await page.evaluate(async () => {
     const token = new URLSearchParams(window.location.search).get("token") || "";
@@ -488,7 +510,40 @@ async function assertStatisticsHub(page) {
     allTimeComparisonDisabled: true,
     singleDeckDirectChecked: true,
     nativeActionOk: true,
+    visualLayoutChecked: true,
+    defaultDeckSelection: true,
   };
+}
+
+async function inspectStatisticsLayout(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('[data-testid="statistics-page"]');
+    const dockRect = document.querySelector('[data-testid="global-utility-dock"]')?.getBoundingClientRect();
+    const controls = document.querySelector(".statistics-controls");
+    const sidebar = document.querySelector(".statistics-sidebar");
+    const panels = [...document.querySelectorAll(".statistics-panel")];
+    const actionable = [...document.querySelectorAll('[data-testid="statistics-page"] button, [data-testid="statistics-page"] a, [data-testid="statistics-page"] input, [data-testid="statistics-page"] select')]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+    const dockOverlapCount = dockRect ? actionable.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return !(dockRect.right <= rect.left || dockRect.left >= rect.right || dockRect.bottom <= rect.top || dockRect.top >= rect.bottom);
+    }).length : 0;
+    const chartClippingCount = [...document.querySelectorAll(".statistics-rechart")].filter((chart) => chart.scrollWidth > chart.clientWidth + 1).length;
+    const controlRows = controls ? new Set([...controls.children].map((element) => Math.round(element.getBoundingClientRect().top))).size : 0;
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      panelCount: panels.length,
+      panelBordersVisible: panels.every((panel) => Number.parseFloat(getComputedStyle(panel).borderTopWidth) >= 1),
+      controlsChaotic: controlRows > 2,
+      sidebarUsable: Boolean(sidebar && sidebar.getBoundingClientRect().width > 160 && sidebar.getBoundingClientRect().height > 100),
+      dockOverlapCount,
+      chartClippingCount,
+      rootVisible: Boolean(root && root.getBoundingClientRect().width > 0),
+    };
+  });
 }
 
 async function assertDeckHub(page) {
@@ -628,6 +683,36 @@ async function capturePolishStates(page) {
   await page.locator('button[title="E2E Decks::Danger"]').click();
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "decks", "selected-leaf"));
+
+  await prepareDashboardRoute(page, "/stats", "light", "Статистика");
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-overview", "sparse"));
+  screenshots.push(await saveStateScreenshot(page, "stats-overview", "comparison"));
+
+  await prepareDashboardRoute(page, "/stats/quality", "light", "Качество");
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-quality", "low-confidence"));
+
+  await prepareDashboardRoute(page, "/stats/load", "light", "Нагрузка");
+  await page.getByTestId("stats-load-future-due").waitFor({ state: "visible", timeout: 15000 });
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-load", "future-due"));
+
+  await prepareDashboardRoute(page, "/stats/progress", "light", "Прогресс");
+  await page.getByTestId("stats-progress-current-state").waitFor({ state: "visible", timeout: 15000 });
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-progress", "current-state"));
+
+  await prepareDashboardRoute(page, "/stats/decks", "light", "Колоды");
+  await page.getByTestId("stats-deck-comparison-chart").waitFor({ state: "visible", timeout: 15000 });
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-decks", "default-selection"));
+  const selectedDeck = page.locator('.statistics-deck-table input[type="checkbox"]:checked').first();
+  if (await selectedDeck.count()) await selectedDeck.uncheck();
+  const availableDeck = page.locator('.statistics-deck-table input[type="checkbox"]:not(:checked):not(:disabled)').last();
+  if (await availableDeck.count()) await availableDeck.check();
+  await waitForLayoutStabilization(page);
+  screenshots.push(await saveStateScreenshot(page, "stats-decks", "custom-selection"));
   return screenshots;
 }
 
@@ -650,7 +735,9 @@ async function captureZoomProof() {
   try {
     for (const routeCase of [
       { route: "/calendar", pageName: "calendar", heading: "Активность" },
-      { route: "/stats", pageName: "stats-overview", heading: "Обзор" },
+      { route: "/stats", pageName: "stats-overview", heading: "Статистика" },
+      { route: "/stats/quality", pageName: "stats-quality", heading: "Качество" },
+      { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка" },
       { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды" },
       { route: "/decks", pageName: "decks", heading: "Колоды" },
       { route: "/settings", pageName: "settings/report", heading: "Отчёт" },
