@@ -135,6 +135,7 @@ def test_docker_cache_and_layering_contract_is_structural():
     assert "install --offline --frozen-lockfile" in (ROOT / "docker" / "anki-e2e" / "run-e2e.sh").read_text(encoding="utf-8")
     assert "cache-from: type=gha" in workflow
     assert "cache-to: type=gha" in workflow
+    assert "compression=zstd" in workflow
     assert "containerd-snapshotter" in workflow
     assert "driver: docker" in workflow
     assert "compression-level: 0" in workflow

@@ -224,7 +224,7 @@ code сохраняется отдельно и восстанавливаетс
 
 Container image строится через pinned Buildx/build-push Actions, default
 `docker` driver с включённым containerd image store и persistent
-`type=gha,mode=max` cache. Image попадает в runner без отдельного
+`type=gha,mode=max` zstd cache. Image попадает в runner без отдельного
 docker-container export/import, а canonical
 PowerShell contour запускает Compose без повторной сборки. Browser smoke
 changes не инвалидируют Anki installation; pnpm lockfile-store также отдельный
