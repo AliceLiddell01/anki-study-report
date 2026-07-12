@@ -687,9 +687,18 @@ async function capturePolishStates(page) {
   await prepareDashboardRoute(page, "/stats", "light", "Статистика");
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-overview", "sparse"));
+  const statisticsPeriod = page
+    .locator('section[aria-label="Параметры статистики"] label')
+    .filter({ hasText: /^Период/ })
+    .locator("select");
+  await statisticsPeriod.selectOption("30d");
+  await page.locator('[data-comparison-style="outline-dashed"]').first().waitFor({ state: "visible", timeout: 15000 });
   screenshots.push(await saveStateScreenshot(page, "stats-overview", "comparison"));
 
   await prepareDashboardRoute(page, "/stats/quality", "light", "Качество");
+  await page.getByLabel("Область").selectOption("single_deck");
+  await page.getByLabel("Колода").selectOption({ label: "E2E Grammar" });
+  await page.locator(".statistics-confidence-badge.is-insufficient").waitFor({ state: "visible", timeout: 15000 });
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-quality", "low-confidence"));
 
@@ -717,6 +726,8 @@ async function capturePolishStates(page) {
 }
 
 async function saveStateScreenshot(page, pageName, stateName) {
+  await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+  await waitForLayoutStabilization(page);
   const filePath = artifactPaths.stateScreenshot(pageName, stateName, "light");
   await ensureArtifactParent(filePath);
   await page.screenshot({ path: filePath, fullPage: true });
