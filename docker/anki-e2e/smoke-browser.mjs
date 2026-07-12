@@ -702,7 +702,7 @@ async function capturePolishStates(page) {
     .filter({ hasText: /^Колода/ })
     .locator("select");
   await statisticsDeck.selectOption({ label: "E2E Grammar" });
-  await page.locator(".statistics-confidence-badge.is-insufficient").waitFor({ state: "visible", timeout: 15000 });
+  await page.locator(".statistics-confidence-badge.is-insufficient").first().waitFor({ state: "visible", timeout: 15000 });
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-quality", "low-confidence"));
 
