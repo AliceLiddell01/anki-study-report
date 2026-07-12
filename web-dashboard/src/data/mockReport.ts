@@ -124,7 +124,16 @@ const mockStatisticsResult: StatisticsResult = {
   confidencePolicy: { insufficientBelow: 30, preliminaryBelow: 100, deckRowMinimum: 10, trendMinimumActiveDays: 3 },
   overview: {
     kpis: { reviews: 2840, studySeconds: 64800, successRate: 0.86, introducedCards: 240, activeDays: 78, averageAnswerSeconds: 8.7 },
-    comparison: { status: "available", reviews: { delta: 18, direction: "increase" } },
+    comparison: {
+      status: "available",
+      reviews: { current: 2840, previous: 2407, delta: 18, direction: "increase" },
+      studySeconds: { current: 64800, previous: 62000, delta: 4.5, direction: "increase" },
+      successRate: { current: .86, previous: .836, delta: 2.4, direction: "increase" },
+      introducedCards: { current: 240, previous: 260, delta: -7.7, direction: "decrease" },
+      activeDays: { current: 78, previous: 74, delta: 5.4, direction: "increase" },
+      averageAnswerSeconds: { current: 8.7, previous: 9.2, delta: -.5, direction: "decrease" },
+      previousSampleSize: 2407,
+    },
     series: mockStatisticsSeries,
     insights: [{ type: "reviews_changed", direction: "increase", value: 18, unit: "percent" }, { type: "success_rate_changed", direction: "increase", value: 2.4, unit: "percentage_points" }],
     confidence: "sufficient",
