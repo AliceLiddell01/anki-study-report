@@ -142,8 +142,27 @@ jobs:
             Tee-Object -FilePath ci-e2e-raw/docker-compose-config.txt
           if ($LASTEXITCODE -ne 0) { throw "docker compose config failed." }
 
+      - name: Enable containerd image store
+        shell: pwsh
+        run: |
+          $configPath = '/etc/docker/daemon.json'
+          $config = if (Test-Path $configPath) {
+            Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
+          } else {
+            @{}
+          }
+          if (-not $config.ContainsKey('features')) { $config.features = @{} }
+          $config.features['containerd-snapshotter'] = $true
+          $config | ConvertTo-Json -Depth 10 | sudo tee $configPath | Out-Null
+          sudo systemctl restart docker
+          docker info *> $null
+          if ($LASTEXITCODE -ne 0) { throw 'Docker failed after enabling the containerd image store.' }
+          docker info --format '{{json .DriverStatus}}'
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver: docker
 
       - name: Start Docker build timing
         shell: pwsh

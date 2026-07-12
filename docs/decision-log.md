@@ -648,7 +648,9 @@ coverage, restart, Cards и security contracts уменьшать нельзя.
 - Read-only page captures выполняются одним Chromium и bounded BrowserContext
   pool; state mutation, Cards/APKG и lifecycle остаются serial.
 - Default 3 workers выбирается измерением `stats` 3 vs 4, а не предположением.
-- Buildx использует `type=gha`; Anki install отделён от volatile smoke scripts,
+- Buildx использует `docker` driver + containerd image store и `type=gha`,
+  чтобы не экспортировать/импортировать весь image через отдельный builder;
+  Anki install отделён от volatile smoke scripts,
   pnpm store строится из lockfile и runtime install выполняется offline.
 - Build cache никогда не содержит profile, collection, token или artifacts.
 - Phase/screenshot/resource telemetry и performance summary входят в artifact

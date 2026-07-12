@@ -222,8 +222,10 @@ Artifact загружается через `if: always()` и хранится 7 
 code сохраняется отдельно и восстанавливается после export/upload/cleanup:
 диагностика не может превратить project failure в PASS.
 
-Container image строится через pinned Buildx/build-push Actions с persistent
-`type=gha,mode=max` cache. Image загружается в runner один раз, а canonical
+Container image строится через pinned Buildx/build-push Actions, default
+`docker` driver с включённым containerd image store и persistent
+`type=gha,mode=max` cache. Image попадает в runner без отдельного
+docker-container export/import, а canonical
 PowerShell contour запускает Compose без повторной сборки. Browser smoke
 changes не инвалидируют Anki installation; pnpm lockfile-store также отдельный
 layer. Runtime profile/token/readiness/screenshots не входят в build cache.
