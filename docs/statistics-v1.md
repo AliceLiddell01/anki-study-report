@@ -1,6 +1,7 @@
 # Statistics v1
 
-Статус: implemented in Stage 6.
+Статус: data/API implemented in Stage 6; visual/chart contract refined in
+Stage 6.5. См. `docs/statistics-visual-design.md`.
 
 ## Product role
 
@@ -96,21 +97,24 @@ guard. Loading не стирает предыдущий result, ошибки ret
 ### Overview
 
 Шесть KPI: reviews, capped revlog study-time estimate, weighted success,
-introduced cards, active days, weighted average answer time. Три bounded series
-показывают workload, quality и introduced/review balance. До трёх factual
-insights приходят semantic codes/params; causal text backend не формирует.
+introduced cards, active days, weighted average answer time. Separate panels
+показывают reviews, time, success, answer time и introduced trend без общей
+mixed-unit scale. До трёх factual insights приходят semantic codes/params;
+causal text backend не формирует.
 
 ### Quality
 
 Показывает weighted Pass/Fail success, ratings 1–4, average answer time и
-отдельный True Retention. True Retention использует первый qualifying review
+отдельное Истинное удержание. Success rate line отделён от stacked answer
+volume, а buttons используют part-to-whole presentation. True Retention использует первый qualifying review
 карточки за rollover-local day и split young/mature по previous interval 21
 days. Single-day data не превращается в сильный вывод.
 
 ### Load
 
-Разделяет past workload, current overdue backlog и future due 0..90 days.
-Forecast разбит на learning/review/relearning и явно предполагает отсутствие
+Разделяет past reviews/time/new cards, current overdue backlog и future due
+0..90 days. Forecast показан stacked columns по
+learning/review/relearning и явно предполагает отсутствие
 будущих новых карточек и ошибок. Daily load — `Σ 1/max(intervalDays,1)`, а не
 число due сегодня.
 
@@ -122,7 +126,9 @@ Forecast разбит на learning/review/relearning и явно предпол
 
 ### Deck comparison
 
-Default rows — непересекающиеся normal root groups, top 12 по reviews. Metrics:
+Default rows — непересекающиеся normal root groups, top 12 по reviews. Frontend
+детерминированно выбирает до трёх достаточных/предварительных rows для
+initial ranked comparison chart. Metrics:
 reviews, success, answer time, study time, introduced cards, equal-period delta
 и sample confidence. Search и focus selection происходят в bounded rows.
 Health badges/verdicts отсутствуют. Single-deck common scope поддерживает
@@ -148,7 +154,10 @@ answers; trend требует минимум 3 active days. `0`, `null`, `partia
 
 - route sidebar uses `aria-current` and native links;
 - every control has an associated label;
-- charts have heading, summary, text legend and expandable data table;
+- charts have heading, visible summary, text legend/direct labels, tooltip and
+  expandable associated data table;
+- bar axes start at zero; missing points are not interpolated;
+- previous period and selected rows use non-color cues;
 - essential values do not depend on hover or color;
 - native buttons/selects/checkboxes remain keyboard-usable;
 - light/dark share existing theme tokens;

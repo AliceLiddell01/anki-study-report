@@ -588,3 +588,42 @@ Schema v2 перестраивается как disposable cache.
 `docs/statistics-reference-inventory.md`,
 `anki_study_report/statistics_service.py`,
 `web-dashboard/src/pages/StatisticsPage.tsx`.
+
+## ADR-021: Statistics использует purpose-driven visual и chart system
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Stage 6 подтвердил metric/API/security architecture, но flat composition и
+универсальные grouped bars смешивали count, seconds и percentages, а sparse
+fixture выглядел как незаполненный scaffold.
+
+### Решение
+
+- Statistics использует отдельную четырёхуровневую visual hierarchy вместо
+  flat page-level charts.
+- Chart type выбирается по аналитической задаче; mixed units никогда не
+  используют одну simple scale.
+- Light/dark semantic palette централизована, previous-period comparison имеет
+  dashed text cue, а missing/sparse values не интерполируются.
+- Каждый chart имеет textual summary и structured table alternative.
+- Developer terminology и формулы вынесены из primary UI.
+- Deck comparison получает deterministic useful default selection.
+- Stage 7 FSRS обязан переиспользовать этот panel/chart contract.
+
+### Последствия
+
+Backend metric formulas, query semantics, cache schema и payload size не
+изменились. Recharts переиспользован как existing dependency. Frontend tests и
+cloud standard E2E фиксируют semantics, accessibility, light/dark/state/125%
+screenshots и default deck view.
+
+### Где смотреть
+
+- `docs/statistics-visual-design.md`
+- `web-dashboard/src/pages/StatisticsPage.tsx`
+- `web-dashboard/src/components/statistics/`
+- `docker/anki-e2e/smoke-browser.mjs`

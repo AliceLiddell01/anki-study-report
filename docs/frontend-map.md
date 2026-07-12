@@ -151,11 +151,28 @@ web-dashboard/src/lib/cardAttention.test.ts
 web-dashboard/src/lib/dateUtils.test.ts
 web-dashboard/src/lib/formatters.test.ts
 web-dashboard/src/pages/CardsPage.test.tsx
+web-dashboard/src/pages/StatisticsPage.test.tsx
+web-dashboard/src/components/statistics/statisticsPresentation.test.ts
 web-dashboard/src/app/router.test.tsx
 web-dashboard/src/layout/TopNav.test.tsx
 ```
 
 ## Visual/runtime risks
+
+Statistics presentation layer:
+
+- `pages/StatisticsPage.tsx` — route composition, query state, KPI/insight and
+  route-specific panels;
+- `components/statistics/StatisticsCharts.tsx` — line/bar/stacked primitives,
+  tooltip, legend, summary and associated data table;
+- `components/statistics/statisticsPresentation.ts` — semantic palette mapping,
+  comparison display, sparse summaries and deterministic deck selection;
+- `styles.css` — centralized light/dark `--stats-color-*` tokens and panel
+  hierarchy.
+
+Statistics не должна возвращаться к shared grouped scale для count/seconds,
+percent/count или cards/percentage. Backend series не следует расширять ради
+presentation без доказанного semantic blocker.
 
 - Dev `mockReport` может скрыть real API failure.
 - Media URLs без token в raw payload должны получить token при рендере.

@@ -51,6 +51,23 @@ pnpm run test:all
 
 ## Когда не запускать Docker E2E
 
+### Statistics visual/chart changes
+
+Targeted frontend contour:
+
+```powershell
+cd web-dashboard
+pnpm exec vitest run src/pages/StatisticsPage.test.tsx src/components/statistics/statisticsPresentation.test.ts
+pnpm run build
+```
+
+Проверяются hierarchy, controls, insight/KPI, mixed-unit separation,
+zero-origin bars, missing/sparse states, percentage-point delta, semantic
+palette, Russian labels, part-to-whole views, deterministic deck selection и
+accessible tables. Финальный proof для layout/chart changes — exact-SHA cloud
+Fast CI и Full Docker / Anki E2E `standard` с ручным просмотром Statistics
+screenshots; успешный cloud full gate локально не дублируется.
+
 Не запускать Docker E2E для docs-only изменений и маленьких pure helper правок,
 если они не касаются startup/rendering/media/server/package layout. Docker E2E
 дорогой и нужен там, где unit tests не видят реальный Anki Desktop.

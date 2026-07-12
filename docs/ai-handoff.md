@@ -171,6 +171,12 @@ statistics_service.py
 
 ## Текущая Navigation / IA
 
+Statistics использует отдельный visual contract поверх неизменного Stage 6
+typed API: четыре уровня page identity → query/coverage → insight/KPI →
+analytical panels. Chart type выбирается по вопросу; несопоставимые units не
+делят simple scale. Shared primitives/palette и полный screenshot contract
+описаны в `docs/statistics-visual-design.md`.
+
 Primary navigation сейчас содержит пять продуктовых пунктов:
 
 ```text
