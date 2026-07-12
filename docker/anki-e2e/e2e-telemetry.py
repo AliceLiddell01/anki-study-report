@@ -76,8 +76,37 @@ def _memory() -> tuple[int | None, int | None]:
         limit_text = Path("/sys/fs/cgroup/memory.max").read_text(encoding="utf-8").strip()
     except OSError:
         pass
-    limit = int(limit_text) if limit_text.isdigit() else None
+    limit = int(limit_text) if limit_text.isdigit() else _meminfo().get("MemTotal")
     return current, limit
+
+
+def _meminfo() -> dict[str, int]:
+    result: dict[str, int] = {}
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, raw = line.split(":", 1)
+            value = raw.strip().split()[0]
+            result[key] = int(value) * 1024
+    except (OSError, ValueError, IndexError):
+        return {}
+    return result
+
+
+def _network_bytes() -> tuple[int | None, int | None]:
+    rx = tx = 0
+    found = False
+    try:
+        for line in Path("/proc/net/dev").read_text(encoding="utf-8").splitlines()[2:]:
+            interface, counters = line.split(":", 1)
+            if interface.strip() == "lo":
+                continue
+            values = counters.split()
+            rx += int(values[0])
+            tx += int(values[8])
+            found = True
+    except (OSError, ValueError, IndexError):
+        return None, None
+    return (rx, tx) if found else (None, None)
 
 
 def _cpu_usage_usec() -> int | None:
@@ -107,7 +136,7 @@ def _io_bytes() -> tuple[int | None, int | None]:
 def sample_resources(args: argparse.Namespace) -> None:
     output = args.root / "reports" / "resource-samples.jsonl"
     output.parent.mkdir(parents=True, exist_ok=True)
-    previous_cpu = _cpu_usage_usec()
+    previous_cpu = None
     previous_time = time.monotonic()
     with output.open("w", encoding="utf-8") as handle:
         while not args.stop_file.exists():
@@ -116,7 +145,9 @@ def sample_resources(args: argparse.Namespace) -> None:
             elapsed = now - previous_time
             cpu_percent = None if cpu is None or previous_cpu is None or elapsed <= 0 else (cpu - previous_cpu) / (elapsed * 10_000)
             memory, memory_limit = _memory()
+            meminfo = _meminfo()
             block_read, block_write = _io_bytes()
+            network_rx, network_tx = _network_bytes()
             disk = shutil.disk_usage(args.root)
             try:
                 load_average = os.getloadavg()
@@ -132,9 +163,12 @@ def sample_resources(args: argparse.Namespace) -> None:
                 "pids": _read_int("/sys/fs/cgroup/pids.current"),
                 "blockReadBytes": block_read,
                 "blockWriteBytes": block_write,
-                "networkRxBytes": None,
-                "networkTxBytes": None,
+                "networkRxBytes": network_rx,
+                "networkTxBytes": network_tx,
                 "hostLoadAverage": list(load_average),
+                "hostMemoryTotalBytes": meminfo.get("MemTotal"),
+                "hostMemoryAvailableBytes": meminfo.get("MemAvailable"),
+                "hostMemoryUsedBytes": None if not meminfo.get("MemTotal") or meminfo.get("MemAvailable") is None else meminfo["MemTotal"] - meminfo["MemAvailable"],
                 "diskFreeBytes": disk.free,
             }
             handle.write(json.dumps(sample, ensure_ascii=False) + "\n")
@@ -158,6 +192,9 @@ def summarize_resources(root: Path, interval: float) -> dict[str, Any]:
     disk = [int(item["diskFreeBytes"]) for item in samples if item.get("diskFreeBytes") is not None]
     block_read = [int(item["blockReadBytes"]) for item in samples if item.get("blockReadBytes") is not None]
     block_write = [int(item["blockWriteBytes"]) for item in samples if item.get("blockWriteBytes") is not None]
+    network_rx = [int(item["networkRxBytes"]) for item in samples if item.get("networkRxBytes") is not None]
+    network_tx = [int(item["networkTxBytes"]) for item in samples if item.get("networkTxBytes") is not None]
+    host_available = [int(item["hostMemoryAvailableBytes"]) for item in samples if item.get("hostMemoryAvailableBytes") is not None]
     limit = next((int(item["memoryLimitBytes"]) for item in reversed(samples) if item.get("memoryLimitBytes")), None)
     peak_memory = max(memory) if memory else None
     phases = read_json(root / "reports" / "e2e-phase-timings.json", {}).get("phases", [])
@@ -187,15 +224,15 @@ def summarize_resources(root: Path, interval: float) -> dict[str, Any]:
         "p95MemoryBytes": percentile(memory, 95),
         "peakMemoryBytes": peak_memory,
         "memoryLimitBytes": limit,
-        "memoryHeadroomBytes": None if limit is None or peak_memory is None else limit - peak_memory,
+        "memoryHeadroomBytes": min(host_available) if host_available else (None if limit is None or peak_memory is None else limit - peak_memory),
         "peakPids": max(pids) if pids else None,
         "diskUsedDeltaBytes": None if len(disk) < 2 else disk[0] - disk[-1],
         "blockReadDeltaBytes": None if len(block_read) < 2 else block_read[-1] - block_read[0],
         "blockWriteDeltaBytes": None if len(block_write) < 2 else block_write[-1] - block_write[0],
-        "networkRxBytes": None,
-        "networkRxReason": "network counters are unavailable in the lightweight cgroup sampler",
-        "networkTxBytes": None,
-        "networkTxReason": "network counters are unavailable in the lightweight cgroup sampler",
+        "networkRxBytes": None if len(network_rx) < 2 else network_rx[-1] - network_rx[0],
+        "networkRxReason": None if len(network_rx) >= 2 else "network counters are unavailable in the lightweight sampler",
+        "networkTxBytes": None if len(network_tx) < 2 else network_tx[-1] - network_tx[0],
+        "networkTxReason": None if len(network_tx) >= 2 else "network counters are unavailable in the lightweight sampler",
         "cpuSaturationSampleCount": sum(1 for value in cpus if value >= 390),
         "byPhase": by_phase,
         "cpuInterpretation": "Docker/container CPU may exceed 100%; 400% approximately saturates a 4-vCPU runner.",
