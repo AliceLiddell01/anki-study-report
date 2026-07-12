@@ -79,7 +79,15 @@ export function StatisticsChartPanel({
                 <BarChart data={points} margin={{ top: 12, right: 12, bottom: 8, left: 0 }}>
                   <CartesianGrid vertical={false} className="statistics-chart-grid" />
                   <XAxis dataKey="label" tickFormatter={shortLabel} minTickGap={20} tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, "auto"]} allowDataOverflow={false} tickFormatter={(value) => axisValue(value, metrics[0]?.format)} width={42} tickLine={false} axisLine={false} />
+                  <YAxis
+                    domain={[0, "auto"]}
+                    allowDataOverflow={false}
+                    allowDecimals={metrics.some((metric) => metric.format === "percent")}
+                    tickFormatter={(value) => axisValue(value, metrics[0]?.format)}
+                    width={42}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [formatValue(Number(value), metrics.find((metric) => metric.key === name)?.format), metrics.find((metric) => metric.key === name)?.label || name]} labelFormatter={(label) => String(label)} />
                   {metrics.map((metric) => <Bar key={String(metric.key)} dataKey={String(metric.key)} name={String(metric.key)} stackId={kind === "stacked" ? metric.stackId || "whole" : undefined} fill={`var(--${statisticsColorClass[metric.color]})`} radius={kind === "stacked" ? 0 : [4, 4, 0, 0]} isAnimationActive={false} />)}
                 </BarChart>

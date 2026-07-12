@@ -253,7 +253,7 @@
   .statistics-kpis.compact.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .statistics-analytical-grid:has(> :nth-child(3)), .statistics-analytical-grid.thirds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 1040px) {
+@media (max-width: 1180px) {
   .statistics-shell { grid-template-columns: minmax(0, 1fr); }
   .statistics-sidebar { position: static; }
   .statistics-sidebar nav { grid-template-columns: repeat(5, minmax(max-content, 1fr)); overflow-x: auto; }
