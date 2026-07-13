@@ -2500,10 +2500,11 @@ def _prepare_default_dashboard_report() -> dict:
     }
 
 
-def _dashboard_media_file(name: str) -> str | None:
+def _dashboard_media_file(name: str) -> tuple[bytes, str] | None:
     from .note_intelligence import sanitize_media_filename
+    from .path_safety import safe_leaf_name
 
-    safe_name = sanitize_media_filename(name)
+    safe_name = safe_leaf_name(sanitize_media_filename(name))
     if not safe_name or mw is None or getattr(mw, "col", None) is None:
         return None
     media = getattr(mw.col, "media", None)
@@ -2517,13 +2518,14 @@ def _dashboard_media_file(name: str) -> str | None:
         media_dir = None
     if not media_dir:
         return None
-    root = Path(media_dir).resolve()
-    target = (root / safe_name).resolve()
     try:
+        root = Path(media_dir).resolve()
+        target = (root / safe_name).resolve(strict=True)
         target.relative_to(root)
-    except ValueError:
+        payload = target.read_bytes()
+    except (OSError, RuntimeError, ValueError):
         return None
-    return str(target) if target.is_file() else None
+    return payload, target.suffix.lower()
 
 
 def _apply_default_dashboard_attention_cards(

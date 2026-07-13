@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html import escape, unescape
+from html.parser import HTMLParser
 import re
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
@@ -330,26 +331,189 @@ def build_rendered_preview(
     }
 
 
-def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
-    """Sanitize rendered card HTML and rewrite local media references."""
+class _RenderedHtmlSanitizer(HTMLParser):
+    _ALLOWED_TAGS = {
+        "a", "abbr", "b", "blockquote", "br", "button", "code", "div", "em",
+        "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img", "kbd",
+        "li", "ol", "p", "pre", "rp", "rt", "ruby", "s", "small", "span",
+        "strike", "strong", "sub", "sup", "table", "tbody", "td", "tfoot",
+        "th", "thead", "tr", "u", "ul", "audio",
+    }
+    _VOID_TAGS = {"br", "hr", "img"}
+    _DROP_CONTENT_TAGS = {
+        "script", "style", "iframe", "object", "embed", "svg", "math",
+        "template", "noscript", "form",
+    }
+    _DROP_VOID_TAGS = {"base", "link", "meta"}
+    _GLOBAL_ATTRS = {"class", "id", "title", "lang", "dir", "role"}
+    _TAG_ATTRS = {
+        "a": {"href"},
+        "audio": {"src", "preload"},
+        "button": {"type", "aria-label", "data-audio-name"},
+        "img": {"src", "alt", "width", "height"},
+        "ol": {"start"},
+        "td": {"colspan", "rowspan"},
+        "th": {"colspan", "rowspan"},
+        "span": {"aria-hidden"},
+    }
 
-    media_refs: list[dict[str, str]] = []
+    def __init__(
+        self,
+        media_refs: list[dict[str, str]],
+        sound_refs: list[dict[str, str]],
+    ) -> None:
+        super().__init__(convert_charrefs=True)
+        self._media_refs = media_refs
+        self._sound_refs = sound_refs
+        self._parts: list[str] = []
+        self._open_tags: list[str] = []
+        self._blocked_tags: list[str] = []
+        self._length = 0
+        self._limit = 6000
+
+    def _append(self, fragment: str) -> None:
+        if not fragment or self._length + len(fragment) > self._limit:
+            return
+        self._parts.append(fragment)
+        self._length += len(fragment)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag = tag.lower()
+        if self._blocked_tags:
+            if tag in self._DROP_CONTENT_TAGS:
+                self._blocked_tags.append(tag)
+            return
+        if tag in self._DROP_CONTENT_TAGS:
+            self._blocked_tags.append(tag)
+            return
+        if tag in self._DROP_VOID_TAGS or tag not in self._ALLOWED_TAGS:
+            return
+        serialized_attrs = self._sanitize_attributes(tag, attrs)
+        self._append(f"<{tag}{serialized_attrs}>")
+        if tag not in self._VOID_TAGS:
+            self._open_tags.append(tag)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag = tag.lower()
+        if self._blocked_tags or tag in self._DROP_CONTENT_TAGS or tag in self._DROP_VOID_TAGS:
+            return
+        if tag not in self._ALLOWED_TAGS:
+            return
+        serialized_attrs = self._sanitize_attributes(tag, attrs)
+        self._append(f"<{tag}{serialized_attrs}>")
+        if tag not in self._VOID_TAGS:
+            self._append(f"</{tag}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if self._blocked_tags:
+            if tag == self._blocked_tags[-1]:
+                self._blocked_tags.pop()
+            return
+        if tag not in self._ALLOWED_TAGS or tag in self._VOID_TAGS or tag not in self._open_tags:
+            return
+        while self._open_tags:
+            current = self._open_tags.pop()
+            self._append(f"</{current}>")
+            if current == tag:
+                break
+
+    def handle_data(self, data: str) -> None:
+        if self._blocked_tags:
+            return
+        cursor = 0
+        for match in re.finditer(r"\[sound:([^\]]+)\]", data, flags=re.IGNORECASE):
+            self._append(escape(_redact_rendered_text(data[cursor:match.start()]), quote=False))
+            name = sanitize_media_filename(match.group(1))
+            if name:
+                ref = media_ref_for_name(name)
+                self._sound_refs.append(ref)
+                self._append(_audio_control_html(ref))
+            else:
+                self._append('<span class="asr-card-media-missing">медиа недоступно</span>')
+            cursor = match.end()
+        self._append(escape(_redact_rendered_text(data[cursor:]), quote=False))
+
+    def handle_comment(self, data: str) -> None:
+        return
+
+    def handle_decl(self, decl: str) -> None:
+        return
+
+    def unknown_decl(self, data: str) -> None:
+        return
+
+    def _sanitize_attributes(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        safe: list[str] = []
+        allowed_for_tag = self._TAG_ATTRS.get(tag, set())
+        for raw_name, raw_value in attrs:
+            name = str(raw_name or "").lower()
+            value = str(raw_value or "")
+            if not name or name.startswith("on") or name == "srcset":
+                continue
+            if name == "style":
+                style = _sanitize_inline_style(value)
+                if style:
+                    safe.append(f' style="{escape(style, quote=True)}"')
+                continue
+            if name in {"src", "href"}:
+                if name not in allowed_for_tag:
+                    continue
+                media_name = _media_name_from_attribute_url(value)
+                if not media_name:
+                    continue
+                ref = media_ref_for_name(media_name)
+                self._media_refs.append(ref)
+                value = ref["url"]
+            elif name not in self._GLOBAL_ATTRS and name not in allowed_for_tag:
+                continue
+
+            if name == "type" and tag == "button":
+                value = "button"
+            elif name == "preload" and tag == "audio":
+                value = "none"
+            elif name == "data-audio-name":
+                value = sanitize_media_filename(value)
+                if not value:
+                    continue
+            elif name in {"width", "height", "colspan", "rowspan", "start"}:
+                if not value.isdigit():
+                    continue
+            elif name == "dir":
+                value = value.lower()
+                if value not in {"ltr", "rtl", "auto"}:
+                    continue
+
+            safe.append(f' {name}="{escape(_redact_rendered_text(value), quote=True)}"')
+        return "".join(safe)
+
+    def html(self) -> str:
+        while self._open_tags:
+            self._append(f"</{self._open_tags.pop()}>")
+        return "".join(self._parts)
+
+
+def _redact_rendered_text(value: Any) -> str:
     text = str(value or "")
-    text = re.sub(r"<script\b[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<style\b[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<(?:iframe|object|embed|meta|link)\b[^>]*>.*?</(?:iframe|object|embed)>", " ", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<(?:iframe|object|embed|meta|link)\b[^>]*>", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"\son\w+\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"\son\w+\s*=\s*[^\s>]+", "", text, flags=re.IGNORECASE)
-    text = _sanitize_style_attributes(text)
-    text = re.sub(r"\ssrcset\s*=\s*(['\"]).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"\ssrcset\s*=\s*[^\s>]+", "", text, flags=re.IGNORECASE)
-    text = _rewrite_media_attributes(text, media_refs)
-    text = _rewrite_sound_tags(text, media_refs)
     text = re.sub(r"\b[A-Za-z]:\\[^\s<>\"']+", " ", text)
     text = re.sub(r"file://[^\s<>\"']+", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"token=[^\s&<>\"']+", "token=[redacted]", text, flags=re.IGNORECASE)
-    return text[:6000], _unique_media_refs(media_refs)
+    return re.sub(r"token=[^\s&<>\"']+", "token=[redacted]", text, flags=re.IGNORECASE)
+
+
+def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
+    """Parse rendered card HTML through an explicit allowlist and rewrite media."""
+
+    media_refs: list[dict[str, str]] = []
+    sound_refs: list[dict[str, str]] = []
+    text = str(value or "")
+    sanitizer = _RenderedHtmlSanitizer(media_refs, sound_refs)
+    try:
+        sanitizer.feed(text)
+        sanitizer.close()
+        html = sanitizer.html()
+    except Exception:
+        html = escape(_redact_rendered_text(_plain_text(text)), quote=False)[:6000]
+    return html, _unique_media_refs(media_refs + sound_refs)
 
 
 def sanitize_card_css(value: Any) -> str:

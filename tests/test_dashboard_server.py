@@ -180,7 +180,7 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
     media_file.write_bytes(b"GIF89a")
 
     manager = dashboard_server.DashboardServerManager()
-    manager.configure_media_handler(lambda name: str(media_dir / name))
+    manager.configure_media_handler(lambda name: ((media_dir / name).read_bytes(), (media_dir / name).suffix))
     state = manager.start(port=0, idle_timeout_seconds=0)
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
