@@ -11,9 +11,9 @@ let finalCss = "";
 beforeAll(async () => {
   const nodeFsSpecifier = "node:fs";
   const { readFileSync } = await import(/* @vite-ignore */ nodeFsSpecifier) as {
-    readFileSync(path: URL, encoding: "utf8"): string;
+    readFileSync(path: string, encoding: "utf8"): string;
   };
-  finalCss = readFileSync(new URL("../styles.fsrs-final.css", import.meta.url), "utf8");
+  finalCss = readFileSync("src/styles.fsrs-final.css", "utf8");
 });
 
 describe("FSRS shared visual contract", () => {
