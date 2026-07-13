@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import subprocess
 
 
 path = Path(__file__).parents[1] / "scripts" / "plan_verification.py"
@@ -42,3 +43,8 @@ def test_multiple_product_scopes_escalate_to_full():
     plan = planner.plan_for_paths(["web-dashboard/src/pages/CardsPage.tsx", "anki_study_report/statistics_service.py"])
     assert plan["fullRequired"] is True
     assert plan["targetedScope"] == "full"
+
+
+def test_changed_paths_compares_real_refs():
+    head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    assert "tests/test_verification_planner.py" in planner.changed_paths("master", head)
