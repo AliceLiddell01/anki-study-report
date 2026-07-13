@@ -954,35 +954,36 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(renderSourceNativeCount >= importedCardCount, `APKG browser cards use native render source: ${renderSourceNativeCount}`);
 
   const deckName = (importSummary.deckNames || [])[0] || "asr-e2e-render-fixtures";
-  await captureApkg(page, "table", "light", artifactPaths.cardsScreenshot("apkg", "table", "light"), deckName);
+  const deckFilterExpectation = buildApkgDeckFilterExpectation(report, importSummary, deckName);
+  await captureApkg(page, "table", "light", artifactPaths.cardsScreenshot("apkg", "table", "light"), deckName, deckFilterExpectation);
   const tableLightDetails = await inspectApkgShadowPreviews(page, "table");
   const tableLightLayout = await inspectTableLayout(page);
   assertBrowser(tableLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light table previews found: ${tableLightDetails.hostCount}`);
   assertShadowSummary(tableLightDetails, "table light");
   assertTableLayoutSummary(tableLightLayout, "APKG light table");
 
-  await captureApkg(page, "table", "dark", artifactPaths.cardsScreenshot("apkg", "table", "dark"), deckName);
+  await captureApkg(page, "table", "dark", artifactPaths.cardsScreenshot("apkg", "table", "dark"), deckName, deckFilterExpectation);
   const tableDetails = await inspectApkgShadowPreviews(page, "table");
   const tableLayout = await inspectTableLayout(page);
   assertBrowser(tableDetails.hostCount >= Math.min(3, apkgCards.length), `APKG table previews found: ${tableDetails.hostCount}`);
   assertShadowSummary(tableDetails, "table");
   assertTableLayoutSummary(tableLayout, "APKG dark table");
 
-  await captureApkg(page, "tiles", "light", artifactPaths.cardsScreenshot("apkg", "tiles", "light"), deckName);
+  await captureApkg(page, "tiles", "light", artifactPaths.cardsScreenshot("apkg", "tiles", "light"), deckName, deckFilterExpectation);
   const tileLightDetails = await inspectApkgShadowPreviews(page, "tile");
   const tileLightLayout = await inspectTileLayout(page);
   assertBrowser(tileLightDetails.hostCount >= Math.min(3, apkgCards.length), `APKG light tile previews found: ${tileLightDetails.hostCount}`);
   assertShadowSummary(tileLightDetails, "tile light");
   assertTileLayoutSummary(tileLightLayout, "APKG light tiles");
 
-  await captureApkg(page, "tiles", "dark", artifactPaths.cardsScreenshot("apkg", "tiles", "dark"), deckName);
+  await captureApkg(page, "tiles", "dark", artifactPaths.cardsScreenshot("apkg", "tiles", "dark"), deckName, deckFilterExpectation);
   const tileDetails = await inspectApkgShadowPreviews(page, "tile");
   const tileLayout = await inspectTileLayout(page);
   assertBrowser(tileDetails.hostCount >= Math.min(3, apkgCards.length), `APKG tile previews found: ${tileDetails.hostCount}`);
   assertShadowSummary(tileDetails, "tile");
   assertTileLayoutSummary(tileLayout, "APKG dark tiles");
 
-  await captureApkg(page, "ankiPreview", "light", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "light"), deckName);
+  await captureApkg(page, "ankiPreview", "light", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "light"), deckName, deckFilterExpectation);
   const previewLightDetails = await inspectApkgAnkiPreview(page);
   assertBrowser(previewLightDetails.previewCount >= Math.min(3, apkgCards.length), `APKG light Anki answer previews found: ${previewLightDetails.previewCount}`);
   assertBrowser(previewLightDetails.frontHostCount === 0, "APKG light Anki preview has no separate front preview host.");
@@ -993,7 +994,7 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(!previewLightDetails.hasScriptTag, "APKG light Anki preview has no script tag.");
   assertBrowser(!previewLightDetails.hasExternalCdnLink, "APKG light Anki preview has no external CDN link.");
 
-  await captureApkg(page, "ankiPreview", "dark", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "dark"), deckName);
+  await captureApkg(page, "ankiPreview", "dark", artifactPaths.cardsScreenshot("apkg", "ankiPreview", "dark"), deckName, deckFilterExpectation);
   const previewDetails = await inspectApkgAnkiPreview(page);
   assertBrowser(previewDetails.previewCount >= Math.min(3, apkgCards.length), `APKG Anki answer previews found: ${previewDetails.previewCount}`);
   assertBrowser(previewDetails.frontHostCount === 0, "APKG Anki preview has no separate front preview host.");
@@ -1005,8 +1006,8 @@ async function assertApkgBrowserIfEnabled(page) {
   assertBrowser(!previewDetails.hasExternalCdnLink, "APKG Anki preview has no external CDN link.");
   const documentNoteCssLeak = await inspectDocumentNoteCssLeak(page);
   assertBrowser(documentNoteCssLeak.count === 0, "APKG note CSS did not leak into document-level style tags.");
-  const responsiveLayouts = await inspectApkgResponsiveLayouts(page, deckName);
-  const performance100 = await inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName);
+  const responsiveLayouts = await inspectApkgResponsiveLayouts(page, deckName, deckFilterExpectation);
+  const performance100 = await inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName, deckFilterExpectation);
 
   const summary = {
     enabled: true,
@@ -1256,9 +1257,9 @@ function colorLuminance(value) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
-async function captureApkg(page, mode, theme, filePath, deckName) {
+async function captureApkg(page, mode, theme, filePath, deckName, deckFilterExpectation) {
   await prepareCardsPage(page, mode, theme);
-  await applyDeckFilter(page, deckName);
+  await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
   if (mode === "table" || mode === "tiles") {
     await waitForApkgShadowPreviews(page, mode === "tiles" ? "tile" : "table");
   } else {
@@ -1297,6 +1298,20 @@ async function applyDeckFilter(page, deckName) {
     (wantedDeck) => document.body.innerText.includes(wantedDeck),
     deckName,
     { timeout: 15000 },
+  );
+}
+
+async function applyApkgDeckFilter(page, deckName, expectation) {
+  assertBrowser(expectation.deckCardCount > 0, expectation.deckDiagnostic);
+  assertBrowser(expectation.futureCards.length === 0, expectation.dateDiagnostic);
+  assertBrowser(expectation.filteredCardCount > 0, expectation.filteredDiagnostic);
+  await applyDeckFilter(page, deckName);
+  const filterSummary = page.locator("p").filter({ hasText: /^Показано\s/ }).first();
+  await filterSummary.waitFor({ state: "visible", timeout: 15000 });
+  const summaryText = (await filterSummary.innerText()).replace(/\s+/g, " ").trim();
+  assertBrowser(
+    summaryText.includes(`Показано ${expectation.filteredCardCount} карточек`),
+    `APKG deck filter count mismatch before preview wait: deck=${deckName}, expected=${expectation.filteredCardCount}, actual=${summaryText}`,
   );
 }
 
@@ -1711,27 +1726,27 @@ async function inspectTableLayout(page) {
   });
 }
 
-async function inspectApkgResponsiveLayouts(page, deckName) {
+async function inspectApkgResponsiveLayouts(page, deckName, deckFilterExpectation) {
   const result = [];
   for (const viewport of responsiveViewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await prepareCardsPage(page, "table", "dark");
-    await applyDeckFilter(page, deckName);
+    await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
     await waitForApkgShadowPreviews(page, "table");
     await waitForLayoutStabilization(page);
     const table = await inspectTableLayout(page);
     assertTableLayoutSummary(table, `APKG ${viewport.name} table`);
 
     await prepareCardsPage(page, "tiles", "dark");
-    await applyDeckFilter(page, deckName);
+    await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
     await waitForApkgShadowPreviews(page, "tile");
     await waitForLayoutStabilization(page);
     const tiles = await inspectTileLayout(page);
     assertTileLayoutSummary(tiles, `APKG ${viewport.name} tiles`);
 
     await prepareCardsPage(page, "ankiPreview", "dark");
-    await applyDeckFilter(page, deckName);
+    await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
     await waitForApkgAnkiPreview(page);
     await waitForLayoutStabilization(page);
     const ankiPreview = await inspectApkgAnkiPreview(page);
@@ -1743,7 +1758,7 @@ async function inspectApkgResponsiveLayouts(page, deckName) {
   return result;
 }
 
-async function inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName) {
+async function inspectCardsPerformance100IfEnabled(page, report, importSummary, problemSummary, deckName, deckFilterExpectation) {
   const scenario = problemSummary.performanceScenario || {};
   if (!scenario.enabled) {
     return {
@@ -1766,7 +1781,7 @@ async function inspectCardsPerformance100IfEnabled(page, report, importSummary, 
     for (const mode of ["table", "tiles", "ankiPreview"]) {
       const initialStart = Date.now();
       await prepareCardsPage(page, mode, "dark");
-      await applyDeckFilter(page, deckName);
+      await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
       if (mode === "table") {
         await waitForApkgShadowPreviews(page, "table");
       } else if (mode === "tiles") {
@@ -2393,6 +2408,36 @@ function findApkgCards(report, importSummary) {
       noteTypeNames.has(cardNoteType(card))
     );
   });
+}
+
+function buildApkgDeckFilterExpectation(report, importSummary, deckName) {
+  const todayDate = String(report?.metadata?.todayDate || "");
+  const deckCards = findApkgCards(report, importSummary).filter(
+    (card) => String(card?.deckName || card?.deck_name || "") === deckName,
+  );
+  const todayMs = Date.parse(`${todayDate}T00:00:00Z`);
+  const periodStartMs = todayMs - 6 * 24 * 60 * 60 * 1000;
+  const datedCards = deckCards.map((card) => ({
+    cardId: Number(card?.cardId || card?.card_id || 0),
+    lastReviewedAt: String(card?.lastReviewedAt || card?.last_reviewed_at || ""),
+  }));
+  const parsedCards = datedCards.map((card) => ({
+    ...card,
+    reviewedMs: Date.parse(`${card.lastReviewedAt}T00:00:00Z`),
+  }));
+  const futureCards = parsedCards.filter((card) => Number.isFinite(card.reviewedMs) && card.reviewedMs > todayMs);
+  const filteredCardCount = parsedCards.filter(
+    (card) => Number.isFinite(card.reviewedMs) && card.reviewedMs >= periodStartMs && card.reviewedMs <= todayMs,
+  ).length;
+  const dateDetails = datedCards.map((card) => `${card.cardId}:${card.lastReviewedAt || "missing"}`).join(", ");
+  return {
+    deckCardCount: deckCards.length,
+    filteredCardCount,
+    futureCards,
+    deckDiagnostic: `APKG selected deck has no report cards before preview wait: deck=${deckName}`,
+    dateDiagnostic: `APKG current-day fixture is after report metadata.todayDate before preview wait: deck=${deckName}, todayDate=${todayDate || "missing"}, cards=[${dateDetails}]`,
+    filteredDiagnostic: `APKG selected deck has zero cards in the 7-day UI period before preview wait: deck=${deckName}, todayDate=${todayDate || "missing"}, cards=[${dateDetails}]`,
+  };
 }
 
 function cardNoteType(card) {

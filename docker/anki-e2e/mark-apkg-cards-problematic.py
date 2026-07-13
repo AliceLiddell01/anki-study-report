@@ -21,6 +21,7 @@ def main() -> int:
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     import_summary_path = artifacts_dir / "apkg-import-summary.json"
     problem_summary_path = artifacts_dir / "apkg-problematic-summary.json"
+    fixture_summary_path = artifacts_dir / "fixture-summary.json"
 
     if not import_summary_path.is_file():
         raise RuntimeError(f"APKG import summary is missing: {import_summary_path}")
@@ -46,6 +47,8 @@ def main() -> int:
     if not collection_path.is_file():
         raise RuntimeError(f"E2E collection is missing: {collection_path}")
 
+    review_anchor_ms, scheduler_day_cutoff_ms = read_scheduler_day_window(fixture_summary_path)
+
     imported_card_ids = [int(value) for value in import_summary.get("cardIds", [])]
     if not imported_card_ids:
         imported_card_ids = find_imported_cards(collection_path, import_summary)
@@ -56,7 +59,12 @@ def main() -> int:
     if performance_scenario.get("enabled"):
         imported_card_ids = [int(value) for value in performance_scenario["cardIds"]]
 
-    result = mark_cards(collection_path, imported_card_ids)
+    result = mark_cards(
+        collection_path,
+        imported_card_ids,
+        review_anchor_ms=review_anchor_ms,
+        scheduler_day_cutoff_ms=scheduler_day_cutoff_ms,
+    )
     write_json(
         problem_summary_path,
         {
@@ -246,7 +254,31 @@ def clone_imported_cards(collection_path: Path, source_card_ids: list[int], targ
         conn.close()
 
 
-def mark_cards(collection_path: Path, card_ids: list[int]) -> dict[str, Any]:
+def read_scheduler_day_window(fixture_summary_path: Path) -> tuple[int, int]:
+    if not fixture_summary_path.is_file():
+        raise RuntimeError(f"E2E fixture summary is missing: {fixture_summary_path}")
+    fixture_summary = json.loads(fixture_summary_path.read_text(encoding="utf-8"))
+    try:
+        review_anchor_ms = int(fixture_summary["reviewAnchorMs"])
+        scheduler_day_cutoff_ms = int(fixture_summary["schedulerDayCutoffMs"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise RuntimeError("E2E fixture summary has no valid scheduler-day review window.") from error
+    scheduler_day_start_ms = scheduler_day_cutoff_ms - 86_400_000
+    if not scheduler_day_start_ms <= review_anchor_ms < scheduler_day_cutoff_ms:
+        raise RuntimeError(
+            "E2E review anchor is outside its scheduler day: "
+            f"start={scheduler_day_start_ms}, anchor={review_anchor_ms}, cutoff={scheduler_day_cutoff_ms}"
+        )
+    return review_anchor_ms, scheduler_day_cutoff_ms
+
+
+def mark_cards(
+    collection_path: Path,
+    card_ids: list[int],
+    *,
+    review_anchor_ms: int,
+    scheduler_day_cutoff_ms: int,
+) -> dict[str, Any]:
     model_names = model_names_by_path(collection_path)
     conn = sqlite3.connect(collection_path)
     try:
@@ -260,9 +292,20 @@ def mark_cards(collection_path: Path, card_ids: list[int]) -> dict[str, Any]:
             """,
             card_ids,
         ).fetchall()
-        now_ms = int(time.time() * 1000)
         existing_max = conn.execute("select coalesce(max(id), 0) from revlog").fetchone()[0] or 0
-        next_revlog_id = max(now_ms - 3_600_000, int(existing_max) + 1_000)
+        review_row_count = sum(len(review_plan(index)["reviews"]) for index in range(len(rows)))
+        next_revlog_id = max(review_anchor_ms - 3_600_000, int(existing_max))
+        first_revlog_id = next_revlog_id + 1_000
+        last_revlog_id = next_revlog_id + review_row_count * 1_000
+        scheduler_day_start_ms = scheduler_day_cutoff_ms - 86_400_000
+        if review_row_count and not (
+            scheduler_day_start_ms <= first_revlog_id <= last_revlog_id < scheduler_day_cutoff_ms
+        ):
+            raise RuntimeError(
+                "APKG revlog rows do not fit inside the current Anki scheduler day: "
+                f"start={scheduler_day_start_ms}, first={first_revlog_id}, "
+                f"last={last_revlog_id}, cutoff={scheduler_day_cutoff_ms}, existingMax={existing_max}"
+            )
         risk_plan: list[dict[str, Any]] = []
         revlog_rows_added = 0
 

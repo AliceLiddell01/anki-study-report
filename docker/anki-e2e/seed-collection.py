@@ -212,7 +212,7 @@ def main() -> int:
     collection_path = profile_dir / "collection.anki2"
     media_dir = profile_dir / "collection.media"
     reset_collection(collection_path, media_dir)
-    review_anchor_ms = create_collection(collection_path)
+    review_anchor_ms, scheduler_day_cutoff_ms = create_collection(collection_path)
     media_summary = write_media(media_dir)
     card_ids = seed_review_history(collection_path, review_anchor_ms)
 
@@ -220,6 +220,8 @@ def main() -> int:
         "collection": str(collection_path),
         "mediaDir": str(media_dir),
         "cardIds": card_ids,
+        "reviewAnchorMs": review_anchor_ms,
+        "schedulerDayCutoffMs": scheduler_day_cutoff_ms,
         "notes": [
             "Japanese vocabulary fixture with sound/gif/inline style/class CSS",
             "Generic front/back fixture",
@@ -250,7 +252,7 @@ def reset_collection(collection_path: Path, media_dir: Path) -> None:
     media_dir.mkdir(parents=True, exist_ok=True)
 
 
-def create_collection(collection_path: Path) -> int:
+def create_collection(collection_path: Path) -> tuple[int, int]:
     from anki.collection import Collection
 
     col = Collection(str(collection_path))
@@ -359,7 +361,8 @@ def create_collection(collection_path: Path) -> int:
         # Keep synthetic reviews inside Anki's current scheduler day. Before
         # the configured rollover, the wall-clock calendar date can already be
         # one day ahead and would make otherwise-current cards look future-dated.
-        return int((col.sched.day_cutoff - 12 * 60 * 60) * 1000)
+        scheduler_day_cutoff_ms = int(col.sched.day_cutoff * 1000)
+        return scheduler_day_cutoff_ms - 12 * 60 * 60 * 1000, scheduler_day_cutoff_ms
     finally:
         close_collection(col)
 
