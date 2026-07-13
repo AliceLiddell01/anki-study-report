@@ -665,6 +665,12 @@ Targeted feedback становится дешевле, full screenshot/restart p
 измеримы. Missing metrics представлены `null` с причиной. Sharding отложен до
 роста suite примерно до 5–10 минут.
 
+Stage 6.6 measurement выбрал 3 workers: четвёртый context дал только 0.7%
+capture-wall выигрыша при меньшей efficiency и большем p95 CPU. First/warm
+full сохранили screenshot/restart/Cards parity, но warm canonical 190 s не
+улучшил baseline 183 s из-за GHA image-transfer cost. Цель остаётся report-only;
+следующая оптимизация должна работать с transfer/image size, не с coverage.
+
 ### Где смотреть
 
 `docs/e2e-performance.md`, `.github/workflows/ci-e2e.yml`,
