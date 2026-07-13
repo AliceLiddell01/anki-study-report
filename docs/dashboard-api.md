@@ -1,5 +1,10 @@
 # Dashboard API и payload-контракт
 
+Stage 7 adds bounded `statisticsHub.fsrs` capability and lazy
+`POST /api/statistics/fsrs/query?token=...` operations
+`overview|memory|calibration|steps|simulate`. Search/SQL/raw params/protobuf and
+unknown fields are rejected; public responses contain aggregates only.
+
 Снимок документации: 2026-07-12.
 
 Dashboard - это локальное приложение, которое получает один опубликованный

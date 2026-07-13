@@ -222,6 +222,13 @@ contract: `docs/ui-polish-global-controls.md`.
 daily/deck-day aggregate; current states/due остаются bounded live snapshot.
 Полный contract: `docs/statistics-v1.md`.
 
+Stage 7 добавляет read-only FSRS center в Statistics: `#/stats/fsrs` и
+`memory|calibration|steps|simulator`. Lightweight capability находится в
+`statisticsHub.fsrs`, heavy операции — strict token-protected
+`POST /api/statistics/fsrs/query`; source of truth — native Anki 26.05.
+Проверки следуют `docs/verification-run-policy.md`: Fast CI → targeted scope →
+один final full gate.
+
 Не возвращать `#/fsrs`, `#/browse` и не добавлять Search,
 Notifications или другие placeholders до соответствующего продуктового этапа.
 Stage 1 Navigation / IA завершён. Полный контракт и причины:

@@ -1,5 +1,8 @@
 # Карта frontend dashboard
 
+`FsrsStatisticsPage.tsx` owns five nested FSRS views and `fsrsApi.ts` owns the
+typed lazy API/cache identity. Canonical routes start with `#/stats/fsrs`.
+
 Снимок документации: 2026-07-12.
 
 Source of truth:

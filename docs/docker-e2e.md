@@ -1,5 +1,8 @@
 # Docker E2E
 
+Stage 7 expands `stats` to 20 page screenshots (five legacy + five FSRS routes,
+light/dark) and full to 40. New FSRS states and 125% proofs remain risk-based.
+
 Снимок документации: 2026-07-13.
 
 Подробный технический README уже есть в `docker/anki-e2e/README.md`. Эта

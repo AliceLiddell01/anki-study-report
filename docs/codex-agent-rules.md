@@ -1,5 +1,9 @@
 # Правила для Codex/AI-агента
 
+For runtime work: Fast CI exact SHA before E2E, one targeted scope, one final
+full; no blind, warm-cache or successful same-SHA reruns. See
+`verification-run-policy.md`.
+
 Снимок документации: 2026-07-13.
 
 Этот файл можно дать новому агенту как prompt-like инструкцию для работы в

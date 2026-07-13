@@ -1,5 +1,9 @@
 # Statistics reference inventory
 
+Stage 7 implements aggregate D/S/R state, estimated remembered, calibration,
+Steps scenarios and native read-only simulation. Forgetting curves and time
+machine remain future FSRS Advanced/Analytics Pack.
+
 Дата аудита: 2026-07-12. Inventory описывает идеи, а не code reuse.
 
 References:

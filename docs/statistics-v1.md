@@ -214,7 +214,8 @@ not promise to synchronize dashboard scope with the native window.
 Synthetic collection contains >1 year of sparse history, current/previous
 periods, gaps, repeat reviews per card/day, ratings 1–4, young/mature retention,
 manual entry, introduced events, multiple roots, filtered exclusion, current
-states and due categories. Browser smoke checks five routes, 90d default,
+states and due categories. Stage 7 extends the sidebar to six sections and adds
+five FSRS routes without changing v1 metric semantics. Browser smoke checks the legacy routes, 90d default,
 period/all-time/deck/direct controls, typed query, native callback, light/dark
 screenshots and 125% overview/decks proof. Canonical report must have zero
 console errors, actionable request failures and token exposure.

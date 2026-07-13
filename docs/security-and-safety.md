@@ -1,5 +1,9 @@
 # Security and safety model
 
+FSRS API is read-only and strict: token required, no arbitrary search/SQL/raw
+protobuf/parameter vector, no raw revlog or card/note content, bounded output,
+revalidated normal-deck/config IDs and no generic RPC or Helper dependency.
+
 Снимок документации: 2026-07-12.
 
 Этот проект локальный, но он все равно обрабатывает HTML/CSS/media из карточек

@@ -1,5 +1,9 @@
 # CI Foundation
 
+Fast CI publishes the advisory output of `scripts/plan_verification.py`; it
+never auto-starts expensive E2E. Run order is defined in
+`verification-run-policy.md`.
+
 Снимок документации: 2026-07-13.
 
 В проекте реализованы быстрый автоматический Fast CI и отдельный ручной Full

@@ -1,5 +1,9 @@
 # Архитектура
 
+Stage 7 adds `fsrs_service.py` as an isolated read-only Anki adapter and pure
+aggregate layer. `statistics_service.py` publishes only lightweight capability;
+`dashboard_server.py` exposes a strict token-protected FSRS operation union.
+
 Снимок документации: 2026-07-12.
 
 ## Общий поток данных

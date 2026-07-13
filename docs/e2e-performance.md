@@ -1,5 +1,8 @@
 # Производительность Docker E2E
 
+Warm-cache repeats, worker comparisons and resource benchmarks now run only in
+explicit E2E performance work. Product work uses Fast CI → targeted → final full.
+
 Снимок документации: 2026-07-13.
 
 Этот документ задаёт измеряемый performance-контракт real-Anki E2E. Ускорение

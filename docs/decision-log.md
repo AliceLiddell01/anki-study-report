@@ -1,5 +1,21 @@
 # Decision log
 
+## 2026-07-13 — FSRS analytics and verification gates
+
+- FSRS lives only inside Statistics; `#/fsrs` remains invalid.
+- Stage 7 is read-only: no scheduler, parameter, target, steps or history writes;
+  native simulator has no Apply action.
+- Native Anki 26.05 memory/config/simulator is source of truth. FSRS Helper
+  26.06.12 is MIT reference, not dependency or vendored code.
+- Compatible groups include preset, parameter fingerprint and scheduler
+  settings; per-deck retention overrides remain distinct.
+- Calibration/simulation require one group. Deck-selected Steps expands to the
+  same preset. Current memory distributions are snapshots.
+- Helper mutations are deferred to native Anki or future Scheduling Pack / DLC.
+- Verification is Fast CI → targeted → one final full. Same-SHA success is not
+  repeated; warm-cache/worker benchmarks are performance-work only.
+- The deterministic planner is advisory and never auto-runs E2E.
+
 Снимок документации: 2026-07-13.
 
 Формат легковесный ADR. Статус всех решений ниже: Accepted.

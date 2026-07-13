@@ -1,5 +1,9 @@
 # Fixtures and test data
 
+Stage 7 E2E fixture enables native FSRS, creates two preset fingerprints, a
+deck target override and deterministic memory-state ranges. It remains
+synthetic and contains no real profile.
+
 Снимок документации: 2026-07-12.
 
 Этот документ разделяет существующие fixtures и рекомендованное покрытие.

@@ -204,11 +204,12 @@ visual redesign: JS `855 510` (+`30 630`), CSS `80 626` (+`12 163`) bytes.
 stacked columns, stacked strips и ranked bars. Query count и payload/API не
 изменены; каждый query по-прежнему обновляет один shared result.
 
-## Future FSRS compatibility
+## FSRS extension
 
-Stage 7 должен переиспользовать Statistics panel, palette, legend, summary,
-tooltip и table contracts. FSRS не должен создавать второй chart system,
-смешивать units или использовать color-only meaning.
+Stage 7 переиспользует Statistics panel, palette, summary and table contracts
+на пяти nested routes. Retrievability/difficulty use distributions, Stability
+uses log-friendly buckets, calibration shows observed bins, and simulator keeps
+reviews/minutes separate. Color is never the only cue.
 
 ## Non-goals
 

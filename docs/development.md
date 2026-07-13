@@ -1,5 +1,9 @@
 # Разработка и проверки
 
+Runtime/product verification follows `verification-run-policy.md`: Fast CI
+exact SHA first, one targeted scope, then one final full. Same-SHA cloud PASS is
+not duplicated locally.
+
 Снимок документации: 2026-07-13.
 
 ## Требования

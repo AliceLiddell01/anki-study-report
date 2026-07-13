@@ -1,5 +1,8 @@
 # Navigation / Information Architecture
 
+FSRS lives inside Statistics at `#/stats/fsrs` with nested `memory`,
+`calibration`, `steps`, and `simulator`; standalone `#/fsrs` remains invalid.
+
 Статус решения: **Accepted / Complete through Stage 6**. Базовая IA завершена
 2026-07-10, Statistics v1 добавлена 2026-07-12.
 
