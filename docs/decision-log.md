@@ -668,8 +668,10 @@ Targeted feedback становится дешевле, full screenshot/restart p
 Stage 6.6 measurement выбрал 3 workers: четвёртый context дал только 0.7%
 capture-wall выигрыша при меньшей efficiency и большем p95 CPU. First/warm
 full сохранили screenshot/restart/Cards parity, но warm canonical 190 s не
-улучшил baseline 183 s из-за GHA image-transfer cost. Цель остаётся report-only;
-следующая оптимизация должна работать с transfer/image size, не с coverage.
+улучшил baseline 183 s из-за GHA image-transfer variance. Финальный exact-SHA
+cache hit дал 162 s (−11.5%, 1.13×), сохранив 62 screenshots и нулевые browser
+errors. Цель остаётся report-only; следующая оптимизация может работать с
+transfer/image size, но не с coverage.
 
 ### Где смотреть
 
