@@ -1,10 +1,6 @@
 name: Full Docker / Anki E2E
 
 on:
-  # Bootstrap trigger for feature-branch verification. Remove before merge.
-  push:
-    branches:
-      - "codex/e2e-performance-and-parallel-captures"
   workflow_dispatch:
     inputs:
       mode:
