@@ -9,11 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-from html.parser import HTMLParser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import secrets
 import shutil
@@ -23,6 +22,8 @@ import time
 import traceback
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
+
+from .dashboard_asset_graph import extract_dashboard_html_refs, resolve_dashboard_asset_graph
 
 from .extension_logging import (
     clear_logs,
@@ -1276,8 +1277,22 @@ def _static_dir_is_available(candidate: Path) -> bool:
         index_html = index_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
+    manifest_path = candidate / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            graph = resolve_dashboard_asset_graph(index_html, manifest_path.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            return False
+        if graph["errors"] or graph["unsafe"]:
+            return False
+        relative_refs = graph["assets"]
+    else:
+        direct = extract_dashboard_html_refs(index_html)
+        if direct["unsafe"]:
+            return False
+        relative_refs = direct["assets"]
     root = candidate.resolve()
-    for relative_ref in _extract_static_asset_refs(index_html):
+    for relative_ref in relative_refs:
         target = (candidate / relative_ref).resolve()
         try:
             target.relative_to(root)
@@ -1289,39 +1304,6 @@ def _static_dir_is_available(candidate: Path) -> bool:
         except OSError:
             return False
     return True
-
-
-class _StaticAssetParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.refs: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        values = dict(attrs)
-        if tag == "script" and values.get("src"):
-            self.refs.append(values["src"] or "")
-        if tag == "link" and values.get("href"):
-            rel = str(values.get("rel") or "").lower()
-            if "stylesheet" in rel:
-                self.refs.append(values["href"] or "")
-
-
-def _extract_static_asset_refs(index_html: str) -> list[str]:
-    parser = _StaticAssetParser()
-    parser.feed(index_html)
-    refs: list[str] = []
-    for raw_ref in parser.refs:
-        ref = raw_ref.split("#", 1)[0].split("?", 1)[0].strip()
-        if not ref or re.match(r"^[a-z][a-z0-9+.-]*:", ref, flags=re.IGNORECASE):
-            continue
-        if ref.startswith("/"):
-            ref = ref.lstrip("/")
-        if ref.startswith("./"):
-            ref = ref[2:]
-        normalized = PurePosixPath(ref)
-        if normalized.parts and normalized.parts[0] == "assets":
-            refs.append(normalized.as_posix())
-    return sorted(set(refs))
 
 
 def _safe_static_target(static_dir: Path, path: str) -> Path | None:

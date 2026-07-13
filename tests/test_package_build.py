@@ -47,6 +47,17 @@ def write_minimal_archive(path: Path, *, include_js: bool = True, css_payload: s
             '<!doctype html><html><head><link rel="stylesheet" href="/assets/app.css"></head>'
             '<body><script type="module" src="/assets/app.js"></script></body></html>',
         )
+        archive.writestr(
+            "web_dashboard/manifest.json",
+            json.dumps({
+                "index.html": {
+                    "file": "assets/app.js",
+                    "src": "index.html",
+                    "isEntry": True,
+                    "css": ["assets/app.css"],
+                }
+            }),
+        )
         archive.writestr("web_dashboard/assets/app.css", css_payload)
         if include_js:
             archive.writestr("web_dashboard/assets/app.js", "console.log('ok');")
@@ -104,3 +115,118 @@ def test_package_validation_rejects_empty_linked_dashboard_asset(tmp_path):
     assert validation.ok is False
     assert validation.empty_linked_assets == ["web_dashboard/assets/app.css"]
     assert set(validation.css_markers_missing) == set(package_addon.DASHBOARD_CSS_MARKERS)
+
+
+def write_split_archive(
+    path: Path,
+    *,
+    omitted: set[str] | None = None,
+    empty: set[str] | None = None,
+    stale: set[str] | None = None,
+    unsafe_lazy_path: str | None = None,
+) -> None:
+    omitted = omitted or set()
+    empty = empty or set()
+    stale = stale or set()
+    css_payload = "\n".join([
+        "[data-theme=light]", ".topbar-surface", ".shadow-panel",
+        ".cards-risk-table", ".anki-card-shadow-preview",
+    ])
+    lazy_file = unsafe_lazy_path or "assets/fsrs-lazy.js"
+    manifest = {
+        "index.html": {
+            "file": "assets/app.js", "src": "index.html", "isEntry": True,
+            "dynamicImports": ["src/pages/FsrsStatisticsPage.tsx"],
+            "css": ["assets/app.css"],
+        },
+        "src/pages/FsrsStatisticsPage.tsx": {
+            "file": lazy_file, "src": "src/pages/FsrsStatisticsPage.tsx",
+            "isDynamicEntry": True, "css": ["assets/fsrs-lazy.css"],
+        },
+    }
+    files = {
+        "web_dashboard/assets/app.js": "import('./fsrs-lazy.js')",
+        "web_dashboard/assets/app.css": css_payload,
+        "web_dashboard/assets/fsrs-lazy.js": "export default {}",
+        "web_dashboard/assets/fsrs-lazy.css": ".fsrs-shell{display:grid}",
+    }
+    with ZipFile(path, "w") as archive:
+        archive.writestr("__init__.py", "")
+        archive.writestr("manifest.json", "{}")
+        archive.writestr("config.json", "{}")
+        archive.writestr("dashboard_server.py", "")
+        archive.writestr(
+            "web_dashboard/index.html",
+            '<!doctype html><link rel="stylesheet" href="/assets/app.css">'
+            '<script type="module" src="/assets/app.js"></script>',
+        )
+        archive.writestr("web_dashboard/manifest.json", json.dumps(manifest))
+        for name, payload in files.items():
+            if name not in omitted:
+                archive.writestr(name, "" if name in empty else payload)
+        for name in stale:
+            archive.writestr(name, "/* stale */")
+
+
+def test_package_validation_accepts_split_dashboard_graph(tmp_path):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "split-valid.ankiaddon"
+    write_split_archive(archive_path)
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is True
+    assert validation.asset_graph_errors == []
+    assert validation.unsafe_dashboard_asset_refs == []
+    assert "web_dashboard/assets/fsrs-lazy.js" in validation.linked_assets
+    assert "web_dashboard/assets/fsrs-lazy.css" in validation.linked_assets
+
+
+def test_package_validation_rejects_missing_or_empty_dynamic_js(tmp_path):
+    package_addon = load_package_script()
+    missing = tmp_path / "split-missing-js.ankiaddon"
+    empty = tmp_path / "split-empty-js.ankiaddon"
+    write_split_archive(missing, omitted={"web_dashboard/assets/fsrs-lazy.js"})
+    write_split_archive(empty, empty={"web_dashboard/assets/fsrs-lazy.js"})
+
+    missing_validation = package_addon.validate_archive(missing)
+    empty_validation = package_addon.validate_archive(empty)
+
+    assert missing_validation.ok is False
+    assert missing_validation.missing_linked_assets == ["web_dashboard/assets/fsrs-lazy.js"]
+    assert empty_validation.ok is False
+    assert empty_validation.empty_linked_assets == ["web_dashboard/assets/fsrs-lazy.js"]
+
+
+def test_package_validation_rejects_missing_async_css(tmp_path):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "split-missing-css.ankiaddon"
+    write_split_archive(archive_path, omitted={"web_dashboard/assets/fsrs-lazy.css"})
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is False
+    assert validation.missing_linked_assets == ["web_dashboard/assets/fsrs-lazy.css"]
+
+
+def test_package_validation_rejects_stale_unreachable_js_and_css(tmp_path):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "split-stale.ankiaddon"
+    stale = {"web_dashboard/assets/old-route.js", "web_dashboard/assets/old-route.css"}
+    write_split_archive(archive_path, stale=stale)
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is False
+    assert set(validation.unreferenced_dashboard_assets) == stale
+
+
+def test_package_validation_rejects_manifest_path_escape(tmp_path):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "split-unsafe.ankiaddon"
+    write_split_archive(archive_path, unsafe_lazy_path="../outside.js")
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is False
+    assert validation.unsafe_dashboard_asset_refs == ["../outside.js"]
