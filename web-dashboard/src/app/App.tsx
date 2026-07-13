@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import type { LoadState } from "../pages/HomePage";
 import type { StudyReport } from "../types/report";
 import { compatibilityRedirectForHash, getRouteFromHash, renderRoute } from "./router";
+import { RouteDeliveryBoundary, RouteLoading } from "./RouteDeliveryBoundary";
 
 function App() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
@@ -66,7 +67,15 @@ function App() {
     setLoadState("ready");
   };
 
-  return <AppLayout activeRoute={route}>{renderRoute(route, report, loadState, updateReport)}</AppLayout>;
+  return (
+    <AppLayout activeRoute={route}>
+      <RouteDeliveryBoundary key={route}>
+        <Suspense fallback={<RouteLoading />}>
+          {renderRoute(route, report, loadState, updateReport)}
+        </Suspense>
+      </RouteDeliveryBoundary>
+    </AppLayout>
+  );
 }
 
 export default App;

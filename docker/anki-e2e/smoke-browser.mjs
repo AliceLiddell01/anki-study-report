@@ -594,22 +594,31 @@ async function assertFsrsHub(page) {
   await page.getByRole("button", { name: /Рассчитать точность/ }).click();
   await page.getByTestId("fsrs-calibration").waitFor({ state: "visible", timeout: 30000 });
   await prepareDashboardRoute(page, "/stats/fsrs/simulator", "light", "Симулятор");
-  await page.getByRole("button", { name: /^Рассчитать$/ }).click();
+  await page.getByRole("button", { name: /^Рассчитать сценарий$/ }).click();
   await page.getByTestId("fsrs-simulator-result").waitFor({ state: "visible", timeout: 60000 });
+  const loadedChunks = await page.evaluate(() => performance.getEntriesByType("resource")
+    .map((entry) => entry.name)
+    .filter((name) => /StatisticsPage|FsrsStatisticsPage/.test(name))
+    .map((name) => new URL(name).pathname));
+  assertBrowser(loadedChunks.some((name) => name.includes("FsrsStatisticsPage")), "Cold FSRS navigation loads its lazy route chunk.");
+  await prepareDashboardRoute(page, "/decks", "light", "Колоды");
+  await page.getByTestId("deck-tree-panel").waitFor({ state: "visible", timeout: 30000 });
+  await prepareDashboardRoute(page, "/stats/fsrs/steps", "light", "Шаги обучения");
+  await page.getByTestId("fsrs-steps").waitFor({ state: "visible", timeout: 30000 });
   const text = await page.getByTestId("fsrs-page").innerText();
   assertBrowser(!/Применить|Перепланировать|Оптимизировать/.test(text), "FSRS exposes no mutating action.");
   assertBrowser(!text.includes(ready.token), "FSRS DOM does not expose the dashboard token.");
-  return { routes: 5, memory: true, calibration: true, simulator: true, mutatingActions: 0 };
+  return { routes: 5, memory: true, calibration: true, simulator: true, packagedLazyChunkPaths: loadedChunks, nonStatisticsAfterFsrs: true, coldFsrsAfterNonStatistics: true, mutatingActions: 0 };
 }
 
 async function inspectStatisticsLayout(page) {
   return page.evaluate(() => {
-    const root = document.querySelector('[data-testid="statistics-page"]');
+    const root = document.querySelector('[data-testid="statistics-page"], [data-testid="fsrs-page"]');
     const dockRect = document.querySelector('[data-testid="global-utility-dock"]')?.getBoundingClientRect();
     const controls = document.querySelector(".statistics-controls");
     const sidebar = document.querySelector(".statistics-sidebar");
     const panels = [...document.querySelectorAll(".statistics-panel")];
-    const actionable = [...document.querySelectorAll('[data-testid="statistics-page"] button, [data-testid="statistics-page"] a, [data-testid="statistics-page"] input, [data-testid="statistics-page"] select')]
+    const actionable = [...document.querySelectorAll('[data-testid="statistics-page"] button, [data-testid="statistics-page"] a, [data-testid="statistics-page"] input, [data-testid="statistics-page"] select, [data-testid="fsrs-page"] button, [data-testid="fsrs-page"] a, [data-testid="fsrs-page"] input, [data-testid="fsrs-page"] select')]
       .filter((element) => {
         const rect = element.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
@@ -826,23 +835,38 @@ async function capturePolishStates(page, selectedScope) {
   await page.getByTestId("fsrs-memory").waitFor({ state: "visible", timeout: 30000 });
   screenshots.push(await saveStateScreenshot(page, "fsrs-memory", "snapshot"));
   await prepareDashboardRoute(page, "/stats/fsrs/calibration", "light", "Точность модели");
-  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "sparse"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "idle", "light"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "idle", "dark"));
+  await page.getByRole("button", { name: /Рассчитать точность/ }).click();
+  await page.getByTestId("fsrs-calibration").waitFor({ state: "visible", timeout: 30000 });
+  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "ready-sparse", "light"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "ready-sparse", "dark"));
   await prepareDashboardRoute(page, "/stats/fsrs/steps", "light", "Шаги обучения");
   await page.getByTestId("fsrs-steps").waitFor({ state: "visible", timeout: 30000 });
   screenshots.push(await saveStateScreenshot(page, "fsrs-steps", "insufficient"));
   await prepareDashboardRoute(page, "/stats/fsrs/simulator", "light", "Симулятор");
-  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "ready"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "idle-form", "light"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "idle-form", "dark"));
+  await page.getByRole("button", { name: /^Рассчитать сценарий$/ }).click();
+  await page.getByTestId("fsrs-simulator-result").waitFor({ state: "visible", timeout: 60000 });
+  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "ready", "light"));
+  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "ready", "dark"));
   }
   return screenshots;
 }
 
-async function saveStateScreenshot(page, pageName, stateName) {
+async function saveStateScreenshot(page, pageName, stateName, theme = "light") {
+  await page.evaluate((selectedTheme) => {
+    window.localStorage.setItem("anki-study-report-theme", selectedTheme);
+    document.documentElement.dataset.theme = selectedTheme;
+    document.documentElement.style.colorScheme = selectedTheme;
+  }, theme);
   await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
   await waitForLayoutStabilization(page);
-  const filePath = artifactPaths.stateScreenshot(pageName, stateName, "light");
+  const filePath = artifactPaths.stateScreenshot(pageName, stateName, theme);
   await ensureArtifactParent(filePath);
   await page.screenshot({ path: filePath, fullPage: true });
-  return { page: pageName, state: stateName, theme: "light", screenshot: relativeArtifactPath(artifactPaths, filePath) };
+  return { page: pageName, state: stateName, theme, screenshot: relativeArtifactPath(artifactPaths, filePath) };
 }
 
 async function captureZoomProof(selectedScope) {

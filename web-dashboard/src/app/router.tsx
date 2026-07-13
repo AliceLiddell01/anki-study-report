@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, type ReactNode } from "react";
 import SettingsLayout from "../layout/SettingsLayout";
 import ActionsPage from "../pages/ActionsPage";
 import CalendarPage from "../pages/CalendarPage";
@@ -11,9 +11,10 @@ import ProfilePage from "../pages/ProfilePage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
-import StatisticsPage from "../pages/StatisticsPage";
-import FsrsStatisticsPage from "../pages/FsrsStatisticsPage";
 import type { StudyReport } from "../types/report";
+
+const StatisticsPage = lazy(() => import("../pages/StatisticsPage"));
+const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 
 export type RoutePath =
   | "/home"
