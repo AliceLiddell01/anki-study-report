@@ -1,6 +1,6 @@
 # FSRS final UX/visual pass
 
-Status: implementation complete; cloud acceptance pending.
+Status: COMPLETE
 
 ## Scope
 
@@ -11,6 +11,8 @@ modify the typed payload, alter cache identity, or weaken read-only semantics.
 The existing successful Stage 7.5 full run `29238747588` on functional SHA
 `2c2ee56` was used as the visual baseline. No duplicate baseline run was
 started.
+
+Functional acceptance SHA: `5103ad66ea59358b811b04e22bd976277f2ec57b`.
 
 ## Confirmed defects and root causes
 
@@ -43,23 +45,25 @@ Statistics pages, and no empty clipping layer remains.
 
 ## Routes and states reviewed
 
-The baseline artifacts and current implementation were checked for:
+The baseline and accepted artifacts cover:
 
-- FSRS Overview: normal, mixed configuration and sparse presentation;
-- Memory State: snapshot, distributions and table alternatives;
-- Model Accuracy: idle, loading and sparse ready presentation;
-- Learning Steps: insufficient sample and expanded preset wording;
+- FSRS Overview: default and mixed-configuration presentation;
+- Memory State: snapshot presentation;
+- Model Accuracy: idle and sparse-ready presentation;
+- Learning Steps: insufficient-sample presentation;
 - Simulator: idle form and ready comparison;
+- all five neighbouring Statistics routes;
 - light and dark themes;
-- the existing desktop and 125% capture contour.
+- desktop widths `989` and `1265`;
+- 100% and 125% E2E zoom profiles.
 
 No additional user-visible English/debug copy requiring a product-code change
 was found in the reviewed rendered states. Existing terminology, units and
-read-only wording were therefore preserved rather than cosmetically rewritten.
+read-only wording were preserved rather than cosmetically rewritten.
 
 ## Regression coverage
 
-`FsrsVisualContract.test.tsx` now verifies that:
+`FsrsVisualContract.test.tsx` verifies that:
 
 - every FSRS subroute renders the shared Statistics sidebar and header surface;
 - the sidebar correction uses an internal inset and explicit icon reset;
@@ -67,11 +71,27 @@ read-only wording were therefore preserved rather than cosmetically rewritten.
 - the FSRS-only pseudo-element is disabled;
 - no replacement radial/blob styling is introduced in the correction layer.
 
-The real-Anki E2E contour continues to capture all five FSRS routes, light/dark
-state screenshots, 125% screenshots, horizontal-overflow diagnostics and
-browser console/page/request failures. The final targeted and full runs must
-confirm the corrected pixels and preserve at least the existing 86-entry full
-screenshot manifest.
+The real-Anki `fsrs-visual-contract.mjs` browser gate checks 80 combinations:
+10 Statistics/FSRS routes, two themes, widths `989` and `1265`, and 100%/125%
+profiles. The accepted full artifact recorded:
+
+- `80/80` successful geometry checks;
+- `40/40` FSRS checks with `content: none`, `display: none`, and no pseudo-element
+  background image;
+- minimum icon-to-sidebar inset of `23.5 px`;
+- preserved rounded sidebar and shared header surface;
+- zero contract console, page, and request errors.
+
+The canonical browser smoke retained all existing routes and states and
+produced 86 unique screenshots:
+
+- 40 light/dark page captures;
+- 22 state captures;
+- 10 125% captures;
+- 12 Cards captures;
+- 2 navigation captures.
+
+No screenshot path was missing or duplicated.
 
 ## Intentionally unchanged
 
@@ -81,24 +101,41 @@ screenshot manifest.
 - configuration grouping and the rule against averaging incompatible presets;
 - lazy route boundaries and the 500 kB production chunk guard;
 - token/security model and Anki configuration;
-- screenshot routes, states and browser error aggregation.
+- established screenshot routes, states and browser error aggregation.
 
-## Verification
+The accepted packaged FSRS lazy chunk was `48,890` bytes, below the 500 kB
+guard.
 
-| Gate | Result |
-| --- | --- |
-| Existing Stage 7.5 baseline | PASS — run `29238747588`, 86 unique screenshots, no missing/duplicates |
-| Targeted frontend tests/build | pending Fast CI |
-| Fast CI exact SHA | pending |
-| `standard/stats` | pending manual dispatch after Fast CI |
-| `standard/full` | pending manual dispatch after targeted PASS |
+## Cloud verification
 
-No local Docker run is planned because the cloud real-Anki contour is the
-acceptance gate and duplicate Docker work is outside the verification budget.
+| Gate | SHA | Result |
+| --- | --- | --- |
+| Existing Stage 7.5 baseline | `2c2ee56` | PASS — run `29238747588`, 86 unique screenshots |
+| Fast CI after visual implementation | `438d68d3` | PASS — run `29255190266` |
+| Initial targeted `standard/stats` | `438d68d3` | PASS — run `29255538234`; artifact review identified the missing explicit browser geometry gate |
+| Fast CI with browser geometry gate | `5103ad66` | PASS — run `29256612779` |
+| Accepted targeted `standard/stats` | `5103ad66` | PASS — run `29256992831`, job `86840316129` |
+| Accepted final `standard/full` | `5103ad66` | PASS — run `29257634244`, job `86842098050` |
+
+The final full run used Anki `26.05`, scope `full`, three screenshot workers,
+resource telemetry, and restart verification. It completed successfully in
+262 seconds. The browser report contained zero console errors, page errors, or
+actionable request failures, and both initial and restart API smokes passed.
+
+Earlier Fast CI attempts failed while the new CSS contract test was being wired
+into the browser-only TypeScript project. Those failures were test-harness
+issues rather than product regressions. The accepted implementation keeps Node
+access local to the test and preserves frontend type checking without
+`skipLibCheck`, test exclusion, or global Node types in production code.
+
+No local Docker run was performed because the cloud real-Anki contour is the
+acceptance gate and duplicating a successful exact-SHA run would add no evidence.
 
 ## Remaining limitations
 
-Final screenshot evidence, browser error totals, run IDs and durations remain
-pending until the exact functional SHA passes Fast CI, targeted `standard/stats`
-and one final `standard/full` run. These results must be added without rerunning
-a successful exact-SHA gate.
+- The acceptance matrix is intentionally desktop-focused; mobile and very narrow
+  responsive layouts are outside this stage.
+- The 125% profile is the canonical E2E scaling contour, not an exhaustive sweep
+  of operating-system display scaling combinations.
+- The closure report is a docs-only commit after the accepted functional SHA;
+  it does not require another Docker E2E run.
