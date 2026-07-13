@@ -24,6 +24,7 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from .dashboard_asset_graph import extract_dashboard_html_refs, resolve_dashboard_asset_graph
+from .path_safety import trusted_file_from_inventory
 
 from .extension_logging import (
     clear_logs,
@@ -436,21 +437,23 @@ class DashboardServerManager:
             log_exception("statistics.fsrs.error", "FSRS query failed")
             return {"ok": False, "error": "fsrs_query_failed", "message": "FSRS query failed."}
 
-    def media_file(self, name: str) -> Path | None:
+    def media_file(self, name: str) -> tuple[bytes, str] | None:
         with self._lock:
             provider = self._media_file_provider
         if provider is None:
             return None
         try:
-            path = provider(name)
+            result = provider(name)
         except Exception:
             traceback.print_exc()
             log_exception("media.resolve.error", "Dashboard media lookup failed")
             return None
-        if not path:
+        if not isinstance(result, tuple) or len(result) != 2:
             return None
-        target = Path(path)
-        return target if target.is_file() else None
+        payload, suffix = result
+        if not isinstance(payload, (bytes, bytearray)):
+            return None
+        return bytes(payload), str(suffix or "").lower()
 
     def state(self) -> DashboardServerState:
         with self._lock:
@@ -1112,11 +1115,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if not name:
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid media name")
             return
-        target = self.manager.media_file(name)
-        if target is None:
+        media = self.manager.media_file(name)
+        if media is None:
             self.send_error(HTTPStatus.NOT_FOUND, "Media not found")
             return
-        self._send_file(target, content_type=_media_content_type(target), cache_control="no-store")
+        payload, suffix = media
+        self._send_bytes(payload, content_type=_media_content_type(suffix), cache_control="no-store")
 
     def _send_cache_status(self, token: str | None) -> None:
         if not self.manager.token_is_valid(token):
@@ -1248,9 +1252,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         except OSError:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
+        self._send_bytes(payload, content_type=content_type or _content_type(target), cache_control=cache_control)
 
+    def _send_bytes(self, payload: bytes, *, content_type: str, cache_control: str = "no-cache") -> None:
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", content_type or _content_type(target))
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", cache_control)
         self.end_headers()
@@ -1307,22 +1313,26 @@ def _static_dir_is_available(candidate: Path) -> bool:
 
 
 def _safe_static_target(static_dir: Path, path: str) -> Path | None:
-    relative = path.lstrip("/") or "index.html"
-    if relative.startswith("api/"):
+    decoded = unquote(str(path or ""))
+    if decoded.startswith("//") or decoded.startswith("\\"):
         return None
-    target = (static_dir / relative).resolve()
-    root = static_dir.resolve()
-    try:
-        target.relative_to(root)
-    except ValueError:
+    relative = decoded.lstrip("/") or "index.html"
+    parts = relative.split("/")
+    if (
+        relative == "api"
+        or relative.startswith("api/")
+        or "\x00" in relative
+        or "\\" in relative
+        or any(part in {"", ".", ".."} for part in parts)
+        or ":" in parts[0]
+    ):
         return None
-    if target.is_dir():
-        target = target / "index.html"
-    if target.is_file():
+    target = trusted_file_from_inventory(static_dir, relative)
+    if target is not None:
         return target
     if relative.startswith("assets/"):
         return None
-    return root / "index.html"
+    return trusted_file_from_inventory(static_dir, "index.html")
 
 
 def _content_type(path: Path) -> str:
@@ -1347,8 +1357,8 @@ def _content_type(path: Path) -> str:
     }.get(suffix, "application/octet-stream")
 
 
-def _media_content_type(path: Path) -> str:
-    suffix = path.suffix.lower()
+def _media_content_type(path: Path | str) -> str:
+    suffix = path.suffix.lower() if isinstance(path, Path) else str(path or "").lower()
     return {
         ".gif": "image/gif",
         ".jpg": "image/jpeg",
