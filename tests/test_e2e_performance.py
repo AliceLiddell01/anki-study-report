@@ -139,3 +139,5 @@ def test_docker_cache_and_layering_contract_is_structural():
     assert "containerd-snapshotter" in workflow
     assert "driver: docker" in workflow
     assert "compression-level: 0" in workflow
+    assert "docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0" in workflow
+    assert "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0" in workflow
