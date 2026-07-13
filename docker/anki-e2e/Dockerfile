@@ -98,7 +98,9 @@ RUN cd /e2e/frontend-deps \
 # and lockfile-driven dependency layers.
 COPY docker/anki-e2e/*.sh docker/anki-e2e/*.py docker/anki-e2e/*.mjs /e2e/bin/
 
-RUN sed -i 's/\r$//' /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
+RUN mv /e2e/bin/smoke-browser.mjs /e2e/bin/smoke-browser-core.mjs \
+    && mv /e2e/bin/smoke-browser-wrapper.mjs /e2e/bin/smoke-browser.mjs \
+    && sed -i 's/\r$//' /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs \
     && chmod +x /e2e/bin/*.sh /e2e/bin/*.py /e2e/bin/*.mjs
 
 WORKDIR /workspace
