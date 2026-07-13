@@ -45,13 +45,34 @@ def test_multiple_product_scopes_escalate_to_full():
     assert plan["targetedScope"] == "full"
 
 
-def test_changed_paths_compares_real_refs():
-    head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-    local_master = subprocess.run(
-        ["git", "rev-parse", "--verify", "refs/heads/master"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    base = "master" if local_master.returncode == 0 else "origin/master"
-    assert "tests/test_verification_planner.py" in planner.changed_paths(base, head)
+def test_changed_paths_compares_real_refs(tmp_path, monkeypatch):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "verification-planner@example.invalid")
+    git("config", "user.name", "Verification Planner Test")
+    (repository / "base.txt").write_text("base\n", encoding="utf-8")
+    git("add", "base.txt")
+    git("commit", "-m", "base")
+    base = git("rev-parse", "HEAD")
+
+    changed_file = repository / "tests" / "test_verification_planner.py"
+    changed_file.parent.mkdir()
+    changed_file.write_text("changed\n", encoding="utf-8")
+    git("add", changed_file.relative_to(repository).as_posix())
+    git("commit", "-m", "change")
+    head = git("rev-parse", "HEAD")
+
+    monkeypatch.chdir(repository)
+    assert planner.changed_paths(base, head) == ["tests/test_verification_planner.py"]
+    assert planner.changed_paths(head, head) == []
