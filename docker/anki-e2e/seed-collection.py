@@ -212,9 +212,9 @@ def main() -> int:
     collection_path = profile_dir / "collection.anki2"
     media_dir = profile_dir / "collection.media"
     reset_collection(collection_path, media_dir)
-    create_collection(collection_path)
+    review_anchor_ms = create_collection(collection_path)
     media_summary = write_media(media_dir)
-    card_ids = seed_review_history(collection_path)
+    card_ids = seed_review_history(collection_path, review_anchor_ms)
 
     fixture_summary = {
         "collection": str(collection_path),
@@ -250,7 +250,7 @@ def reset_collection(collection_path: Path, media_dir: Path) -> None:
     media_dir.mkdir(parents=True, exist_ok=True)
 
 
-def create_collection(collection_path: Path) -> None:
+def create_collection(collection_path: Path) -> int:
     from anki.collection import Collection
 
     col = Collection(str(collection_path))
@@ -356,6 +356,10 @@ def create_collection(collection_path: Path) -> None:
         get_filtered_deck_id(col, "E2E Filtered Health Excluded")
         configure_fsrs_fixture(col)
         save_collection(col)
+        # Keep synthetic reviews inside Anki's current scheduler day. Before
+        # the configured rollover, the wall-clock calendar date can already be
+        # one day ahead and would make otherwise-current cards look future-dated.
+        return int((col.sched.day_cutoff - 12 * 60 * 60) * 1000)
     finally:
         close_collection(col)
 
@@ -507,7 +511,7 @@ def write_media(media_dir: Path) -> dict[str, Any]:
     return summary
 
 
-def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
+def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[str, list[int]]:
     conn = sqlite3.connect(collection_path)
     try:
         cards = conn.execute(
@@ -554,7 +558,7 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
                 grouped["generic"].append(int(card_id))
 
         conn.execute("delete from revlog")
-        now_ms = int(time.time() * 1000)
+        now_ms = review_anchor_ms
         day_counters: dict[int, int] = {}
 
         def add_reviews(
