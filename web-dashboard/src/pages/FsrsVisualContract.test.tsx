@@ -1,17 +1,20 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { mockReport } from "../data/mockReport";
 import FsrsStatisticsPage, { type FsrsSection } from "./FsrsStatisticsPage";
 
-const finalCss = readFileSync(
-  fileURLToPath(new URL("../styles.fsrs-final.css", import.meta.url)),
-  "utf8",
-);
 const sections: FsrsSection[] = ["overview", "memory", "calibration", "steps", "simulator"];
+let finalCss = "";
+
+beforeAll(async () => {
+  const nodeFsSpecifier = "node:fs";
+  const { readFileSync } = await import(/* @vite-ignore */ nodeFsSpecifier) as {
+    readFileSync(path: URL, encoding: "utf8"): string;
+  };
+  finalCss = readFileSync(new URL("../styles.fsrs-final.css", import.meta.url), "utf8");
+});
 
 describe("FSRS shared visual contract", () => {
   it("uses the same Statistics sidebar and header surface on every FSRS route", () => {
