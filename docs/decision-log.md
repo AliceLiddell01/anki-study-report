@@ -694,3 +694,38 @@ transfer/image size, но не с coverage.
 `docs/e2e-performance.md`, `.github/workflows/ci-e2e.yml`,
 `docker/anki-e2e/e2e-contract.mjs`, `docker/anki-e2e/e2e-telemetry.py`,
 `docker/anki-e2e/smoke-browser.mjs`.
+
+## ADR-023: FSRS routes загружаются лениво и проверяются как полный asset graph
+
+### Статус
+
+Принято.
+
+### Контекст
+
+FSRS имел правильную backend semantics, но flat presentation и monolithic
+878 kB entry мешали пользовательскому чтению и delivery safety. Проверка только
+ссылок из `index.html` не видела lazy chunks и их CSS.
+
+### Решение
+
+- Пять FSRS routes используют purpose-driven read-only visual hierarchy без
+  изменения backend formulas и typed query contract.
+- Statistics и FSRS являются `React.lazy` boundaries с общим Suspense и
+  visible chunk-error recovery.
+- Deliberate vendor boundaries разделяют React, icons и chart graph; каждый JS
+  chunk ограничен 500,000 bytes автоматическим guard.
+- Vite manifest является graph source для packaging и runtime health; reachable
+  static/dynamic dependencies обязательны, stale и unsafe assets запрещены.
+
+### Последствия
+
+Entry уменьшился до 235 kB, warning исчез, а total JS немного вырос из-за
+chunk boundaries. Archive/runtime теперь отказываются принимать неполный lazy
+build. Heavy FSRS calculations и simulator остаются manual/read-only.
+
+### Где смотреть
+
+`docs/stage-7-5-fsrs-visual-delivery-report.md`,
+`web-dashboard/src/app/router.tsx`, `web-dashboard/vite.config.ts`,
+`anki_study_report/dashboard_asset_graph.py`, `scripts/package_addon.py`.

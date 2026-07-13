@@ -29,6 +29,7 @@
 | Decks hierarchy/health/actions | `pytest tests/test_deck_hierarchy.py tests/test_dashboard_payload.py tests/test_stats_cache.py tests/test_browser_actions.py tests/test_dashboard_actions.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 5 | Direct/subtree aggregation, filtered exclusion, keyboard disclosure, Browser modes и installed UI |
 | App Shell theme / Activity+Decks polish | Targeted AppLayout/Activity/Decks Vitest + `node --check docker/anki-e2e/smoke-browser.mjs` | exact-SHA Fast CI + manual cloud E2E `standard` | Да для final Stage 5.5 | Persistence, route-wide dock, light/dark states и 125% scale proof требуют browser runtime |
 | Statistics / FSRS (six sections, ten routes) | `pytest tests/test_statistics_service.py tests/test_fsrs_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | exact-SHA Fast CI, one `standard/stats`, one final `standard/full` | Да для final Stage 7 | Native configuration/memory/simulator, strict API and screenshots require both layers |
+| Lazy routes / split dashboard assets | `pnpm run build:addon` + `pytest tests/test_package_build.py tests/test_dashboard_server.py` | package `--check-only`, exact-SHA `standard/stats`, затем final `standard/full` | Да для packaged nested-route proof | Manifest graph должен включать dynamic JS/async CSS, а runtime не может принимать неполный split build |
 | Browser search/query actions | `node scripts/run_python.mjs -m pytest tests/test_browser_actions.py tests/test_dashboard_actions.py` | Cards/Actions frontend tests | Иногда | Search query sanitizer защищает Anki Browser actions |
 
 ## Команды-шпаргалка
@@ -68,6 +69,11 @@ palette, Russian labels, part-to-whole views, deterministic deck selection и
 accessible tables. Финальный proof для layout/chart changes — exact-SHA cloud
 Fast CI и Full Docker / Anki E2E `standard` с ручным просмотром Statistics
 screenshots; успешный cloud full gate локально не дублируется.
+
+Для FSRS visual delivery focused contour дополнительно включает
+`FsrsStatisticsPage.test.tsx`, `fsrsPresentation.test.ts` и
+`RouteDeliveryBoundary.test.tsx`. Bundle guard является частью `pnpm run build`
+и не допускает JS chunks больше 500,000 bytes.
 
 Не запускать Docker E2E для docs-only изменений и маленьких pure helper правок,
 если они не касаются startup/rendering/media/server/package layout. Docker E2E

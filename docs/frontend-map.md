@@ -1,7 +1,9 @@
 # Карта frontend dashboard
 
 `FsrsStatisticsPage.tsx` owns five nested FSRS views and `fsrsApi.ts` owns the
-typed lazy API/cache identity. Canonical routes start with `#/stats/fsrs`.
+typed lazy API/cache identity. `StatisticsPage` and `FsrsStatisticsPage` are
+real route-level dynamic imports; `RouteDeliveryBoundary` owns their loading
+and chunk-failure UI. Canonical routes start with `#/stats/fsrs`.
 
 Снимок документации: 2026-07-12.
 
@@ -74,6 +76,7 @@ web-dashboard/src/lib/dateUtils.ts        date formatting
 web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
 web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
 web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
+web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
 web-dashboard/src/lib/theme.ts            theme localStorage
 ```
 
@@ -176,6 +179,16 @@ Statistics presentation layer:
 Statistics не должна возвращаться к shared grouped scale для count/seconds,
 percent/count или cards/percentage. Backend series не следует расширять ради
 presentation без доказанного semantic blocker.
+
+FSRS presentation использует shared shell, но сохраняет разные задачи routes:
+overview conclusion, snapshot distributions, manual calibration, learning-step
+sufficiency и read-only workload simulation. Calibration/simulator запросы
+остаются manual. Chart output всегда имеет summary и table alternative.
+
+Production build создаёт Vite manifest и восемь JS chunks. Bundle guard
+проверяет, что Statistics и FSRS остаются dynamic entries, а каждый JS chunk
+меньше 500,000 bytes. Текущая архитектура границ описана в
+`docs/stage-7-5-fsrs-visual-delivery-report.md`.
 
 - Dev `mockReport` может скрыть real API failure.
 - Media URLs без token в raw payload должны получить token при рендере.
