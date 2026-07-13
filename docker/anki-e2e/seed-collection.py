@@ -354,6 +354,7 @@ def create_collection(collection_path: Path) -> None:
                 tags=["e2e", "deck-hub"],
             )
         get_filtered_deck_id(col, "E2E Filtered Health Excluded")
+        configure_fsrs_fixture(col)
         save_collection(col)
     finally:
         close_collection(col)
@@ -392,6 +393,35 @@ def get_filtered_deck_id(col: Any, name: str) -> int:
     if not callable(method):
         raise RuntimeError("Could not create filtered fixture deck")
     return int(method(name, create=True, type=1))
+
+
+def configure_fsrs_fixture(col: Any) -> None:
+    """Enable FSRS and create two deterministic compatible groups."""
+    col.set_config("fsrs", True)
+    fixture_deck_id = get_deck_id(col, "E2E Fixtures")
+    default = col.decks.get_config(1) or col.decks.config_dict_for_deck_id(fixture_deck_id)
+    native_defaults = col.decks.get_deck_configs_for_update(fixture_deck_id).defaults.config
+    default["fsrsParams6"] = list(native_defaults.fsrs_params_6)
+    default["desiredRetention"] = 0.90
+    default["new"]["delays"] = [1, 10]
+    default["lapse"]["delays"] = [10]
+    col.decks.update_config(default)
+    second = col.decks.add_config("E2E Science", clone_from=default)
+    second["desiredRetention"] = 0.88
+    weights = list(second.get("fsrsParams6") or second.get("fsrsWeights") or [])
+    if weights:
+        weights[0] = round(float(weights[0]) + 0.01, 7)
+        second["fsrsParams6" if second.get("fsrsParams6") else "fsrsWeights"] = weights
+    second["new"]["delays"] = []
+    second["lapse"]["delays"] = []
+    col.decks.update_config(second)
+    for deck in col.decks.all():
+        name = str(deck.get("name") or "")
+        if name.startswith("E2E Decks") or name.startswith("E2E Grammar"):
+            col.decks.set_config_id_for_deck_dict(deck, second["id"])
+        elif name == "E2E Fixtures":
+            deck["desiredRetention"] = 0.93
+            col.decks.save(deck)
 
 
 def add_note(col: Any, model: Any, values: dict[str, str], deck_id: int, tags: list[str]) -> None:
@@ -648,6 +678,10 @@ def seed_review_history(collection_path: Path) -> dict[str, list[int]]:
             conn.execute("update cards set type=3, queue=3, ivl=5, due=? where id=?", (int(time.time()) + 14 * 86_400, schedule_cards[4]))
             conn.execute("update cards set queue=-1 where id=?", (schedule_cards[5],))
             conn.execute("update cards set queue=-2 where id=?", (schedule_cards[6],))
+
+        for index, (card_id,) in enumerate(conn.execute("select id from cards order by id").fetchall()):
+            state = {"s": [0.8, 3.0, 14.0, 60.0, 180.0, 500.0][index % 6], "d": 1.0 + (index % 10), "decay": 0.5}
+            conn.execute("update cards set data=? where id=?", (json.dumps(state), card_id))
 
         conn.commit()
         return grouped

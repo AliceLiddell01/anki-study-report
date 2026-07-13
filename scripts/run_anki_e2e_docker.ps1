@@ -97,7 +97,7 @@ function Assert-E2EArtifactManifest {
     $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "synthetic" })
     $apkgCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "apkg" })
     $scope = if ($manifest.execution.scope) { [string]$manifest.execution.scope } else { "full" }
-    $expectedPages = @{ full = 30; global = 6; stats = 10; decks = 2; activity = 2; cards = 0; settings = 10 }[$scope]
+    $expectedPages = @{ full = 40; global = 6; stats = 20; decks = 2; activity = 2; cards = 0; settings = 10 }[$scope]
     if ($null -eq $expectedPages -or $pageScreenshots.Count -ne $expectedPages) {
         throw "Expected $expectedPages page screenshots for scope=$scope, found $($pageScreenshots.Count)."
     }

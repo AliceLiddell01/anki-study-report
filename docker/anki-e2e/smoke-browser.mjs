@@ -41,6 +41,11 @@ const dashboardPageCases = [
   { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка", primaryHref: "#/stats" },
   { route: "/stats/progress", pageName: "stats-progress", heading: "Прогресс", primaryHref: "#/stats" },
   { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды", primaryHref: "#/stats" },
+  { route: "/stats/fsrs", pageName: "fsrs-overview", heading: "FSRS", primaryHref: "#/stats" },
+  { route: "/stats/fsrs/memory", pageName: "fsrs-memory", heading: "Состояние памяти", primaryHref: "#/stats" },
+  { route: "/stats/fsrs/calibration", pageName: "fsrs-calibration", heading: "Точность модели", primaryHref: "#/stats" },
+  { route: "/stats/fsrs/steps", pageName: "fsrs-steps", heading: "Шаги обучения", primaryHref: "#/stats" },
+  { route: "/stats/fsrs/simulator", pageName: "fsrs-simulator", heading: "Симулятор", primaryHref: "#/stats" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
   { route: "/profile", pageName: "profile", heading: "E2E" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
@@ -481,7 +486,7 @@ async function assertStatisticsHub(page) {
     `Statistics primary navigation order is correct: ${JSON.stringify(navLabels)}`,
   );
   const sectionLinks = page.locator('nav[aria-label="Разделы статистики"] a');
-  assertBrowser(await sectionLinks.count() === 5, "Statistics exposes exactly five real sections.");
+  assertBrowser(await sectionLinks.count() === 6, "Statistics exposes six real sections including FSRS.");
   assertBrowser(await page.getByTestId("global-utility-dock").count() === 1, "Statistics keeps the global theme dock.");
   const periodSelect = page
     .locator('section[aria-label="Параметры статистики"] label')
@@ -554,8 +559,9 @@ async function assertStatisticsHub(page) {
   assertBrowser(nativeResult.status === 200 && nativeResult.body?.ok === true, "Native Anki Stats action callback succeeds.");
   const bodyText = await page.locator("body").innerText();
   assertBrowser(!bodyText.includes(ready.token), "Statistics DOM does not expose the dashboard token.");
+  const fsrs = await assertFsrsHub(page);
   return {
-    routesChecked: 5,
+    routesChecked: 10,
     defaultPeriod: "90d",
     typedQueryStatus: response.status(),
     allTimeComparisonDisabled: true,
@@ -563,7 +569,37 @@ async function assertStatisticsHub(page) {
     nativeActionOk: true,
     visualLayoutChecked: true,
     defaultDeckSelection: true,
+    fsrs,
   };
+}
+
+async function assertFsrsHub(page) {
+  for (const [route, heading] of [
+    ["/stats/fsrs", "FSRS"], ["/stats/fsrs/memory", "Состояние памяти"],
+    ["/stats/fsrs/calibration", "Точность модели"], ["/stats/fsrs/steps", "Шаги обучения"],
+    ["/stats/fsrs/simulator", "Симулятор"],
+  ]) {
+    await prepareDashboardRoute(page, route, "light", heading);
+    await page.getByTestId("fsrs-page").waitFor({ state: "visible", timeout: 15000 });
+    const primary = await inspectActiveNavigation(page);
+    assertBrowser(primary.primaryHref === "#/stats", `${route} keeps Statistics active.`);
+    assertBrowser(await page.locator('nav[aria-label="Разделы FSRS"] a[aria-current="page"]').count() === 1, `${route} has one active local FSRS item.`);
+  }
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  assertBrowser(new URL(page.url()).hash === "#/stats/fsrs/simulator", "FSRS nested direct route survives reload.");
+  await prepareDashboardRoute(page, "/stats/fsrs/memory", "light", "Состояние памяти");
+  await page.getByTestId("fsrs-memory").waitFor({ state: "visible", timeout: 30000 });
+  assertBrowser(await page.getByText("Оценка запомненного", { exact: true }).count() === 0, "Memory route uses expected-estimate wording instead of a guaranteed card list.");
+  await prepareDashboardRoute(page, "/stats/fsrs/calibration", "light", "Точность модели");
+  await page.getByRole("button", { name: /Рассчитать точность/ }).click();
+  await page.getByTestId("fsrs-calibration").waitFor({ state: "visible", timeout: 30000 });
+  await prepareDashboardRoute(page, "/stats/fsrs/simulator", "light", "Симулятор");
+  await page.getByRole("button", { name: /^Рассчитать$/ }).click();
+  await page.getByTestId("fsrs-simulator-result").waitFor({ state: "visible", timeout: 60000 });
+  const text = await page.getByTestId("fsrs-page").innerText();
+  assertBrowser(!/Применить|Перепланировать|Оптимизировать/.test(text), "FSRS exposes no mutating action.");
+  assertBrowser(!text.includes(ready.token), "FSRS DOM does not expose the dashboard token.");
+  return { routes: 5, memory: true, calibration: true, simulator: true, mutatingActions: 0 };
 }
 
 async function inspectStatisticsLayout(page) {
@@ -782,6 +818,20 @@ async function capturePolishStates(page, selectedScope) {
   if (await availableDeck.count()) await availableDeck.check();
   await waitForLayoutStabilization(page);
   screenshots.push(await saveStateScreenshot(page, "stats-decks", "custom-selection"));
+
+  await prepareDashboardRoute(page, "/stats/fsrs", "light", "FSRS");
+  await page.getByTestId("fsrs-overview").waitFor({ state: "visible", timeout: 30000 });
+  screenshots.push(await saveStateScreenshot(page, "fsrs-overview", "mixed-config"));
+  await prepareDashboardRoute(page, "/stats/fsrs/memory", "light", "Состояние памяти");
+  await page.getByTestId("fsrs-memory").waitFor({ state: "visible", timeout: 30000 });
+  screenshots.push(await saveStateScreenshot(page, "fsrs-memory", "snapshot"));
+  await prepareDashboardRoute(page, "/stats/fsrs/calibration", "light", "Точность модели");
+  screenshots.push(await saveStateScreenshot(page, "fsrs-calibration", "sparse"));
+  await prepareDashboardRoute(page, "/stats/fsrs/steps", "light", "Шаги обучения");
+  await page.getByTestId("fsrs-steps").waitFor({ state: "visible", timeout: 30000 });
+  screenshots.push(await saveStateScreenshot(page, "fsrs-steps", "insufficient"));
+  await prepareDashboardRoute(page, "/stats/fsrs/simulator", "light", "Симулятор");
+  screenshots.push(await saveStateScreenshot(page, "fsrs-simulator", "ready"));
   }
   return screenshots;
 }
@@ -811,6 +861,9 @@ async function captureZoomProof(selectedScope) {
       { route: "/stats/quality", pageName: "stats-quality", heading: "Качество", scope: "stats" },
       { route: "/stats/load", pageName: "stats-load", heading: "Нагрузка", scope: "stats" },
       { route: "/stats/decks", pageName: "stats-decks", heading: "Колоды", scope: "stats" },
+      { route: "/stats/fsrs", pageName: "fsrs-overview", heading: "FSRS", scope: "stats" },
+      { route: "/stats/fsrs/calibration", pageName: "fsrs-calibration", heading: "Точность модели", scope: "stats" },
+      { route: "/stats/fsrs/simulator", pageName: "fsrs-simulator", heading: "Симулятор", scope: "stats" },
       { route: "/decks", pageName: "decks", heading: "Колоды", scope: "decks" },
       { route: "/settings", pageName: "settings/report", heading: "Отчёт", scope: "settings" },
     ].filter((item) => shouldRunScope(selectedScope, item.scope))) {
