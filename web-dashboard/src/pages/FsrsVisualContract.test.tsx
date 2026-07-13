@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { mockReport } from "../data/mockReport";
-import finalCss from "../styles.fsrs-final.css?raw";
 import FsrsStatisticsPage, { type FsrsSection } from "./FsrsStatisticsPage";
 
+const finalCss = readFileSync(
+  fileURLToPath(new URL("../styles.fsrs-final.css", import.meta.url)),
+  "utf8",
+);
 const sections: FsrsSection[] = ["overview", "memory", "calibration", "steps", "simulator"];
 
 describe("FSRS shared visual contract", () => {
