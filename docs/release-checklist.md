@@ -27,6 +27,10 @@ pnpm run test:frontend
 pnpm run build:addon
 ```
 
+Проверить output bundle guard: Statistics/FSRS должны оставаться dynamic
+entries, ни один JS chunk не должен превышать 500,000 bytes, large-chunk warning
+не должен появляться.
+
 - Python tests:
 
 ```powershell
@@ -40,6 +44,10 @@ node scripts/run_python.mjs -m pytest
 node scripts/run_python.mjs scripts/package_addon.py --check
 node scripts/run_python.mjs scripts/package_addon.py --check-only
 ```
+
+В package output должны быть пустыми `Missing/Empty linked dashboard assets`,
+`Unreferenced dashboard JS/CSS assets`, `Dashboard asset graph errors` и
+`Unsafe dashboard asset references`.
 
 ## Preferred release build
 

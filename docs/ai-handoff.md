@@ -328,6 +328,19 @@ cache/build/performance и runtime result без token/PII. LOCAL PASS не за
 exact-SHA GitHub PASS; performance goals и Perf100 timings пока не являются
 release thresholds.
 
+## Stage 7.5 delivery truth
+
+Statistics и FSRS — route-level lazy chunks. Их загрузка проходит через
+`RouteDeliveryBoundary`; не возвращать их в eager entry ради обхода package
+ошибки. Production `web_dashboard/manifest.json` обязателен. Общий
+`dashboard_asset_graph.py` проверяет static/dynamic imports, async CSS, path
+safety и non-empty files и используется package validator/runtime health.
+
+FSRS остаётся read-only: calibration и simulator manual, presentation verdicts
+не меняют backend formulas, sparse samples не превращаются в уверенный вывод.
+Canonical closure и bundle baseline/after находятся в
+`docs/stage-7-5-fsrs-visual-delivery-report.md`.
+
 ## Перед финальным ответом по задачам
 
 Полезный минимум:

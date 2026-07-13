@@ -75,6 +75,7 @@ manifest.json
 config.json
 dashboard_server.py
 web_dashboard/index.html
+web_dashboard/manifest.json
 ```
 
 Также должны быть JS и CSS assets под:
@@ -84,6 +85,8 @@ web_dashboard/assets/
 ```
 
 `web_dashboard/index.html` должен ссылаться на реальные non-empty Vite assets.
+Manifest entry и все reachable `imports` / `dynamicImports`, включая chunk CSS
+и assets, также должны присутствовать и быть non-empty.
 
 ## Что запрещено в архиве
 
@@ -125,11 +128,13 @@ Package validator проверяет, что dashboard CSS содержит ва
 Это защита от ситуации, где архив собран со stale или неполными dashboard
 assets.
 
-Runtime server также не считает static dashboard доступным только по наличию
-`web_dashboard/index.html`: linked local JS/CSS assets из `index.html` должны
-существовать и быть non-empty. Если packaged и dev static directories неполные,
-dashboard server отдает built-in fallback page и `/api/status` показывает
-`static_available: false`.
+Package validator строит полный asset graph из `index.html` и Vite manifest,
+отклоняет missing/empty reachable files, stale unreachable JS/CSS и unsafe
+paths. Runtime server использует те же graph rules: missing lazy route chunk
+или async CSS не может считаться healthy static dashboard. Для старого
+single-entry каталога без manifest сохранён прямой HTML check. Если packaged и
+dev static directories неполные, server отдаёт built-in fallback page и
+`/api/status` показывает `static_available: false`.
 
 ## Manifest/config
 
