@@ -46,6 +46,11 @@ describe("dashboard router", () => {
       "/stats/load",
       "/stats/progress",
       "/stats/decks",
+      "/stats/fsrs",
+      "/stats/fsrs/memory",
+      "/stats/fsrs/calibration",
+      "/stats/fsrs/steps",
+      "/stats/fsrs/simulator",
       "/actions",
       "/settings",
       "/settings/data",
@@ -63,6 +68,11 @@ describe("dashboard router", () => {
       "/stats/load",
       "/stats/progress",
       "/stats/decks",
+      "/stats/fsrs",
+      "/stats/fsrs/memory",
+      "/stats/fsrs/calibration",
+      "/stats/fsrs/steps",
+      "/stats/fsrs/simulator",
       "/actions",
       "/settings",
       "/settings/data",
@@ -77,6 +87,8 @@ describe("dashboard router", () => {
     expect(compatibilityRedirectForHash("#/settings/logs")).toBeNull();
     expect(getRouteFromHash("#/stats")).toBe("/stats");
     expect(getRouteFromHash("#/stats/quality")).toBe("/stats/quality");
+    expect(getRouteFromHash("#/stats/fsrs/simulator")).toBe("/stats/fsrs/simulator");
+    expect(getRouteFromHash("#/stats/fsrs/unknown")).toBe("/home");
     expect(getRouteFromHash("#/fsrs")).toBe("/home");
     expect(getRouteFromHash("#/browse")).toBe("/home");
     expect(getRouteFromHash("#/unknown")).toBe("/home");

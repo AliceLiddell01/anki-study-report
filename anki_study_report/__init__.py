@@ -181,6 +181,7 @@ from .statistics_service import (
     collect_statistics_current_snapshot,
     normalize_statistics_query,
 )
+from .fsrs_service import FsrsValidationError, execute_fsrs_query
 
 
 ADDON_NAME = "Anki Study Report"
@@ -1922,6 +1923,7 @@ def _configure_dashboard_cache_handlers() -> None:
         profile_handler=_update_profile,
     )
     _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
+    _DASHBOARD_SERVER.configure_fsrs_handler(_fsrs_query_response)
     _DASHBOARD_SERVER.configure_media_handler(_dashboard_media_file)
 
 
@@ -2138,6 +2140,24 @@ def _statistics_query_on_main(payload: dict) -> dict:
     )
     _STATISTICS_QUERY_CACHE.update({"key": cache_key, "value": built})
     return {"ok": True, "result": built, "memoized": False}
+
+
+def _fsrs_query_response(payload: dict) -> dict:
+    result = _run_on_anki_main_sync(lambda: _fsrs_query_on_main(payload), timeout_seconds=45.0)
+    if not result.get("ok"):
+        return {"ok": False, "error": "fsrs_query_failed", "message": str(result.get("error") or "FSRS query failed.")}
+    value = result.get("value")
+    return value if isinstance(value, dict) else {"ok": False, "error": "fsrs_query_failed", "message": "FSRS query failed."}
+
+
+def _fsrs_query_on_main(payload: dict) -> dict:
+    if mw is None or mw.col is None:
+        return {"ok": False, "error": "fsrs_unavailable", "message": "Collection is unavailable."}
+    try:
+        response = execute_fsrs_query(mw.col, payload, dashboard_deck_ids=_dashboard_display_settings_for_payload().get("selected_deck_ids"))
+    except FsrsValidationError as error:
+        return {"ok": False, "error": "invalid_fsrs_query", "message": "Проверьте параметры FSRS-запроса.", "fieldErrors": error.field_errors}
+    return {"ok": True, "response": response}
 
 
 def _dashboard_display_settings_for_payload() -> dict:

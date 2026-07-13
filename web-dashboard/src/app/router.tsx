@@ -12,6 +12,7 @@ import ReportSettingsPage from "../pages/ReportSettingsPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import StatisticsPage from "../pages/StatisticsPage";
+import FsrsStatisticsPage from "../pages/FsrsStatisticsPage";
 import type { StudyReport } from "../types/report";
 
 export type RoutePath =
@@ -25,6 +26,11 @@ export type RoutePath =
   | "/stats/load"
   | "/stats/progress"
   | "/stats/decks"
+  | "/stats/fsrs"
+  | "/stats/fsrs/memory"
+  | "/stats/fsrs/calibration"
+  | "/stats/fsrs/steps"
+  | "/stats/fsrs/simulator"
   | "/actions"
   | "/settings"
   | "/settings/data"
@@ -51,6 +57,11 @@ const routePaths = new Set<RoutePath>([
   "/stats/load",
   "/stats/progress",
   "/stats/decks",
+  "/stats/fsrs",
+  "/stats/fsrs/memory",
+  "/stats/fsrs/calibration",
+  "/stats/fsrs/steps",
+  "/stats/fsrs/simulator",
   "/actions",
   "/settings",
   "/settings/data",
@@ -101,6 +112,16 @@ export function renderRoute(
       return <StatisticsPage report={report} loadState={loadState} section="progress" />;
     case "/stats/decks":
       return <StatisticsPage report={report} loadState={loadState} section="decks" />;
+    case "/stats/fsrs":
+      return <FsrsStatisticsPage report={report} loadState={loadState} section="overview" />;
+    case "/stats/fsrs/memory":
+      return <FsrsStatisticsPage report={report} loadState={loadState} section="memory" />;
+    case "/stats/fsrs/calibration":
+      return <FsrsStatisticsPage report={report} loadState={loadState} section="calibration" />;
+    case "/stats/fsrs/steps":
+      return <FsrsStatisticsPage report={report} loadState={loadState} section="steps" />;
+    case "/stats/fsrs/simulator":
+      return <FsrsStatisticsPage report={report} loadState={loadState} section="simulator" />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
     case "/settings/sources":

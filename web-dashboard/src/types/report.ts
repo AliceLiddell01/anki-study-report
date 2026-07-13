@@ -688,12 +688,69 @@ export interface StatisticsHubModel {
   generatedAt: string;
   availability: "available" | "building" | "partial" | "unavailable";
   coverage: StatisticsResult["coverage"];
-  capabilities: { core: "available"; fsrs: "future_not_exposed"; advanced: "future_not_exposed"; providers: []; nativeStatsAction: boolean };
+  capabilities: { core: "available"; fsrs: "available" | "unavailable"; advanced: "future_not_exposed"; providers: []; nativeStatsAction: boolean };
+  fsrs: FsrsCapability;
   metricDefinitionsVersion: string;
   defaultQuery: StatisticsQuery;
   initialResult: StatisticsResult;
   scope: StatisticsResult["scope"];
   deckOptions: Array<{ deckId: number; fullName: string; parentId: number | null }>;
+}
+
+export type FsrsAvailability = "enabled" | "disabled" | "insufficient_data" | "partial_coverage" | "mixed_configuration" | "unavailable" | "error";
+export type FsrsOperation = "overview" | "memory" | "calibration" | "steps" | "simulate";
+export type FsrsScope =
+  | { kind: "dashboard" | "all_collection" }
+  | { kind: "configuration"; configurationId: string }
+  | { kind: "deck"; deckId: number };
+
+export interface FsrsConfigurationGroup {
+  id: string;
+  presetId: number;
+  presetName: string;
+  parameterFingerprint: string;
+  parameterVersion: string;
+  defaultDesiredRetention: number | null;
+  deckDesiredRetentionOverrides: Array<{ deckId: number; desiredRetention: number }>;
+  learningStepsSeconds: number[];
+  relearningStepsSeconds: number[];
+  shortTermMode: "fsrs" | "configured_steps";
+  deckIds: number[];
+  deckNames: string[];
+  cardCount: number;
+  reviewedCardCount: number;
+  qualifyingReviewCount: number;
+  coverage: string;
+  dataSufficiency: "insufficient" | "preliminary" | "sufficient";
+}
+
+export interface FsrsCapability {
+  schemaVersion: number;
+  enabled: boolean;
+  availability: FsrsAvailability;
+  configurationCount: number;
+  reviewedCardCount: number;
+  qualifyingReviewCount: number;
+  mixedConfiguration: boolean;
+  defaultConfigurationId: string | null;
+  supportedFeatures: string[];
+  limitations: string[];
+  configurations: FsrsConfigurationGroup[];
+}
+
+export interface FsrsQuery {
+  operation: FsrsOperation;
+  scope: FsrsScope;
+  period?: "30d" | "90d" | "180d" | "1y";
+  simulation?: { desiredRetention: number; horizonDays: 90 | 180 | 365; additionalNewCards: number; newCardsPerDay: number; maximumReviewsPerDay: number };
+}
+
+export interface FsrsResponse<T = Record<string, unknown>> {
+  schemaVersion: number;
+  operation: FsrsOperation;
+  query: FsrsQuery;
+  result: T;
+  calculationVersion: string;
 }
 
 export type ActivityAvailability = "active" | "inactive" | "unavailable";

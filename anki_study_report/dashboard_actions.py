@@ -109,6 +109,8 @@ class DashboardActions:
             return self._request_dashboard_open_dashboard()
         if safe_action == "open-native-stats":
             return self._request_native_stats(payload)
+        if safe_action == "open-deck-options":
+            return self._request_deck_options(payload)
         return dashboard_action_error(safe_action or "unknown", "Unknown dashboard action.")
 
     def _request_native_stats(self, payload: dict) -> dict:
@@ -120,6 +122,26 @@ class DashboardActions:
         if not result["ok"]:
             return dashboard_action_error("open-native-stats", result["error"])
         return dashboard_action_ok("open-native-stats", "Opened Anki statistics.")
+
+    def _request_deck_options(self, payload: dict) -> dict:
+        if set(payload) != {"deckId"} or isinstance(payload.get("deckId"), bool):
+            return dashboard_action_error("open-deck-options", "A deck ID is required.")
+        try:
+            deck_id = int(payload["deckId"])
+        except (TypeError, ValueError):
+            return dashboard_action_error("open-deck-options", "A deck ID is required.")
+        def open_options() -> None:
+            if mw is None or mw.col is None:
+                raise RuntimeError("Anki collection is unavailable.")
+            deck = mw.col.decks.get(deck_id)
+            if not isinstance(deck, dict) or deck.get("dyn"):
+                raise RuntimeError("Normal deck was not found.")
+            from aqt.deckoptions import display_options_for_deck_id
+            display_options_for_deck_id(deck_id)
+        result = self._run_on_main(open_options)
+        if not result["ok"]:
+            return dashboard_action_error("open-deck-options", result["error"])
+        return dashboard_action_ok("open-deck-options", "Opened deck options.")
 
     def _request_server_open_route(self, route: str, event: str) -> dict:
         result = self._run_on_main(lambda: self._open_route(route, event))

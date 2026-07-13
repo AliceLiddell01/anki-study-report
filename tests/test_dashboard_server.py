@@ -303,3 +303,36 @@ def test_statistics_query_endpoint_is_post_only_typed_bounded_and_token_protecte
         assert json.loads(body)["error"] == "invalid_statistics_query"
     finally:
         manager.stop()
+
+
+def test_fsrs_query_endpoint_is_post_only_bounded_and_token_protected():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    received = []
+
+    def handler(payload):
+        received.append(payload)
+        if set(payload) - {"operation", "scope", "period", "simulation"}:
+            return {"ok": False, "error": "invalid_fsrs_query", "fieldErrors": {"query": "unexpected"}}
+        return {"ok": True, "response": {"operation": payload.get("operation"), "result": {"readOnly": True}}}
+
+    manager.configure_fsrs_handler(handler)
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    query = {"operation": "memory", "scope": {"kind": "all_collection"}, "period": "90d"}
+    try:
+        assert fetch(f"{base_url}/api/statistics/fsrs/query", method="POST", json_body=query)[0] == 403
+        assert fetch(f"{base_url}/api/statistics/fsrs/query?token={token}")[0] == 405
+        status, _, body = fetch(f"{base_url}/api/statistics/fsrs/query?token={token}", method="POST", json_body=query)
+        assert status == 200
+        assert received == [query]
+        assert json.loads(body)["response"]["result"]["readOnly"] is True
+        assert token not in body.decode("utf-8")
+        status, _, body = fetch(f"{base_url}/api/statistics/fsrs/query?token={token}", method="POST", json_body={"operation": "memory", "search": "rated:1"})
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_fsrs_query"
+        status, _, body = fetch(f"{base_url}/api/statistics/fsrs/query?token={token}", method="POST", json_body={"operation": "memory", "padding": "x" * 9000})
+        assert status == 400
+    finally:
+        manager.stop()

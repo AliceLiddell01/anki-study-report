@@ -39,10 +39,10 @@ describe("Statistics visual system", () => {
     container.remove();
   });
 
-  it("renders five route destinations with active state and the four-layer overview hierarchy", async () => {
+  it("renders six route destinations with active state and the four-layer overview hierarchy", async () => {
     await render("overview");
     expect(Array.from(container.querySelectorAll('nav[aria-label="Разделы статистики"] a'), (link) => [link.textContent, link.getAttribute("href")])).toEqual([
-      ["Обзор", "#/stats"], ["Качество", "#/stats/quality"], ["Нагрузка", "#/stats/load"], ["Прогресс", "#/stats/progress"], ["Колоды", "#/stats/decks"],
+      ["Обзор", "#/stats"], ["Качество", "#/stats/quality"], ["Нагрузка", "#/stats/load"], ["Прогресс", "#/stats/progress"], ["Колоды", "#/stats/decks"], ["FSRS", "#/stats/fsrs"],
     ]);
     expect(container.querySelector('nav[aria-label="Разделы статистики"] [aria-current="page"]')?.textContent).toBe("Обзор");
     expect(container.querySelector('[data-testid="statistics-header"] h1')?.textContent).toBe("Статистика");

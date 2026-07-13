@@ -151,6 +151,7 @@ function StatisticsSidebar({ section }: { section: StatisticsSection }) {
       </div>
       <nav aria-label="Разделы статистики">
         {sections.map((item) => <a key={item.id} href={`#${item.path}`} aria-current={item.id === section ? "page" : undefined}>{item.label}</a>)}
+        <a href="#/stats/fsrs">FSRS</a>
       </nav>
     </aside>
   );

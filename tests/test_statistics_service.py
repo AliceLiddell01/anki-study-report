@@ -206,6 +206,7 @@ def test_statistics_hub_publishes_initial_90d_result_and_capabilities():
         "capabilities",
         "initialResult",
         "scope",
+        "fsrs",
     }
     assert set(hub["initialResult"]) == {
         "schemaVersion",
@@ -226,9 +227,10 @@ def test_statistics_hub_publishes_initial_90d_result_and_capabilities():
     assert hub["initialResult"]["query"]["period"] == "90d"
     assert hub["capabilities"] == {
         "core": "available",
-        "fsrs": "future_not_exposed",
+        "fsrs": "unavailable",
         "advanced": "future_not_exposed",
         "providers": [],
         "nativeStatsAction": True,
     }
+    assert hub["fsrs"]["availability"] == "unavailable"
     assert stats.compact_json_size(hub) < 200_000

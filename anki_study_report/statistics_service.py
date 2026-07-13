@@ -13,6 +13,7 @@ import json
 from typing import Any, Iterable
 
 from .deck_hub import collect_deck_catalog
+from .fsrs_service import build_fsrs_capability
 
 
 STATISTICS_SCHEMA_VERSION = 1
@@ -149,10 +150,16 @@ def build_statistics_hub(
         "coverage": result["coverage"],
         "capabilities": {
             "core": "available",
-            "fsrs": "future_not_exposed",
+            "fsrs": "available" if current.get("fsrs", {}).get("enabled") else "unavailable",
             "advanced": "future_not_exposed",
             "providers": [],
             "nativeStatsAction": True,
+        },
+        "fsrs": current.get("fsrs") if isinstance(current.get("fsrs"), dict) else {
+            "schemaVersion": 1, "enabled": False, "availability": "unavailable",
+            "configurationCount": 0, "reviewedCardCount": 0, "qualifyingReviewCount": 0,
+            "mixedConfiguration": False, "defaultConfigurationId": None,
+            "supportedFeatures": [], "limitations": ["collection_unavailable"], "configurations": [],
         },
         "metricDefinitionsVersion": METRIC_DEFINITIONS_VERSION,
         "defaultQuery": default_statistics_query(),
@@ -344,6 +351,7 @@ def collect_statistics_current_snapshot(col: Any, today_key: str) -> dict[str, A
         "due": due,
         "dailyLoad": daily_load,
         "today": today.isoformat(),
+        "fsrs": build_fsrs_capability(col),
     }
 
 
