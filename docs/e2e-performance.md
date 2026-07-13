@@ -250,3 +250,17 @@ canonical 190 s был на 7 s медленнее baseline. Финальный 
 отчёт показывает все наблюдения. Targeted inner stats contour стабильно около
 52–53 s и даёт быстрый real-Anki development feedback; дальнейшая работа может
 уменьшать image-transfer cost, но не урезать full coverage.
+
+## Stage 7.5 observation
+
+Docker Actions обновлены до Node 24 releases: setup-buildx v4.1.0
+`d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5` и build-push v7.2.0
+`f9f3042f7e2789586610d6e8b85c8f03e5195baf`. Driver, GHA cache, load и
+telemetry contract сохранены; Node 20 annotations в jobs отсутствуют.
+
+На functional SHA `2c2ee56` targeted stats run `29238152612` занял 363 s при
+cold build/load 279.4 s и 78 s real-Anki contour. Последующий full run
+`29238747588` использовал cache: 230 s total, build/load 92.0 s, 132 s
+real-Anki. Full artifact содержит 86 screenshot entries без missing/duplicates,
+targeted/full browser reports имеют 0 console/page/request errors. Эти числа
+остаются observations, а не hard performance thresholds.
