@@ -29,7 +29,7 @@ PAYLOAD_WIDE = ("anki_study_report/dashboard_payload", "web-dashboard/src/types/
 
 
 def plan_for_paths(paths: list[str]) -> dict:
-    normalized = sorted({p.replace("\\", "/").lstrip("./").lower() for p in paths if p.strip()})
+    normalized = sorted({_normalize_path(p) for p in paths if p.strip()})
     if not normalized:
         return _plan(False, None, False, "standard", ["No changed paths were detected."], normalized)
     if all(path.startswith(DOC_PREFIXES) or path.endswith((".md", ".txt")) for path in normalized):
@@ -50,16 +50,24 @@ def plan_for_paths(paths: list[str]) -> dict:
             if path.startswith(prefixes):
                 scopes.add(scope)
                 reasons.append(f"{scope} product surface changed: {path}")
-    if len(scopes) > 1:
+    product_scopes = scopes - {"global"}
+    if len(product_scopes) > 1:
         full = True
         reasons.append("Multiple product scopes changed.")
-    target = next(iter(scopes)) if len(scopes) == 1 else ("global" if scopes == {"global"} else None)
+    target = next(iter(product_scopes)) if len(product_scopes) == 1 else ("global" if scopes == {"global"} else None)
     e2e = bool(target or full)
     if full and target is None:
         target = "full"
     if not reasons:
         reasons.append("Pure unit/build logic changed; Fast CI is sufficient by default.")
     return _plan(e2e, target, full, "standard", reasons, normalized)
+
+
+def _normalize_path(path: str) -> str:
+    value = path.replace("\\", "/").lower()
+    while value.startswith("./"):
+        value = value[2:]
+    return value
 
 
 def _plan(e2e: bool, scope: str | None, full: bool, mode: str, reasons: list[str], paths: list[str]) -> dict:

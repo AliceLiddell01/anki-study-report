@@ -31,6 +31,13 @@ def test_shared_server_and_payload_cannot_be_silently_downgraded():
     assert plan["fullRequired"] is True
 
 
+def test_stats_target_is_preserved_when_shared_shell_also_requires_final_full():
+    plan = planner.plan_for_paths(["anki_study_report/fsrs_service.py", "web-dashboard/src/app/router.tsx", ".github/workflows/ci-e2e.yml"])
+    assert plan["targetedScope"] == "stats"
+    assert plan["fullRequired"] is True
+    assert any("ci-e2e" in reason for reason in plan["reasons"])
+
+
 def test_multiple_product_scopes_escalate_to_full():
     plan = planner.plan_for_paths(["web-dashboard/src/pages/CardsPage.tsx", "anki_study_report/statistics_service.py"])
     assert plan["fullRequired"] is True
