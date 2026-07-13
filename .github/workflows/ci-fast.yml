@@ -78,6 +78,13 @@ jobs:
             throw
           }
 
+      - name: Publish verification plan
+        if: always()
+        shell: pwsh
+        run: |
+          $base = if ("${{ github.event.before }}" -and "${{ github.event.before }}" -notmatch '^0+$') { "${{ github.event.before }}" } else { "HEAD^" }
+          python scripts/plan_verification.py --base $base --head HEAD --output-dir ci-fast/verification-plan
+
       - name: Collect non-release package
         if: always()
         shell: pwsh
