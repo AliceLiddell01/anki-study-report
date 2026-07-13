@@ -61,3 +61,33 @@ native simulations. No route repeats a full raw revlog export.
 Stage 6.5 production baseline was JS 855,510 / CSS 80,626 bytes. Stage 7 build
 is JS 877,967 (+22,457) / CSS 82,311 (+1,685). No dependency or lazy chunk was
 added. Times are diagnostics, not hard gates.
+
+## Stage 7 completion verification
+
+Stage 7 runtime tip `d6f6ad5cab3f2411123c330e570f2ae75aa7f777`
+completed the required gates on 2026-07-13:
+
+- targeted `standard / stats` run `29217928659` passed on
+  `d34326e73df4bac07e4aac9d9c99dba3938f59f1`;
+- exact-tip Fast CI run `29233238112` passed;
+- the single post-fix `standard / full` run `29233368220` passed on the same
+  runtime tip, including restart verification.
+
+Failed full run `29218478836` exposed a deterministic fixture rollover defect.
+Report metadata used Anki study day `2026-07-12`, but the imported APKG marker
+created revlog IDs from wall-clock `time.time()`, so all ten APKG cards appeared
+as reviewed on `2026-07-13`. The correct 7-day Cards filter therefore hid the
+whole selected deck and the smoke timed out waiting for previews. The fix stores
+the scheduler-day review anchor and cutoff from `seed-collection.py`, reuses that
+window for imported APKG rows, preserves ordered unique IDs, and fails early if
+the rows cannot fit before the cutoff. Browser smoke now checks the selected
+deck count and rejects future-dated APKG rows before any Shadow DOM wait.
+
+The successful redacted artifact reports 10/10 APKG cards on `todayDate`, ten
+native previews in each of table, tiles and Anki Preview, all five FSRS routes,
+zero console errors, page errors and actionable request failures, and successful
+first/restart API smoke. Manifest status is `success`; all 121 indexed paths
+exist, including 80 screenshots, 25 reports, the HTML dump and packaged add-on.
+The dispatch requested resource telemetry off, but the manifest recorded it as
+enabled; no duplicate full run was made because the exact-SHA integration gate
+had passed and the verification policy forbids a success rerun.
