@@ -144,6 +144,34 @@ def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch
         manager.stop()
 
 
+def test_runtime_static_check_follows_dynamic_manifest_graph(tmp_path):
+    dashboard_server = import_addon_module("dashboard_server")
+    static_dir = tmp_path / "web_dashboard"
+    assets = static_dir / "assets"
+    assets.mkdir(parents=True)
+    (static_dir / "index.html").write_text(
+        '<link rel="stylesheet" href="/assets/app.css"><script type="module" src="/assets/app.js"></script>',
+        encoding="utf-8",
+    )
+    (static_dir / "manifest.json").write_text(json.dumps({
+        "index.html": {
+            "file": "assets/app.js", "isEntry": True,
+            "dynamicImports": ["src/pages/FsrsStatisticsPage.tsx"],
+            "css": ["assets/app.css"],
+        },
+        "src/pages/FsrsStatisticsPage.tsx": {
+            "file": "assets/fsrs.js", "isDynamicEntry": True,
+            "css": ["assets/fsrs.css"],
+        },
+    }), encoding="utf-8")
+    for name in ("app.js", "app.css", "fsrs.js", "fsrs.css"):
+        (assets / name).write_text("/* present */", encoding="utf-8")
+
+    assert dashboard_server._static_dir_is_available(static_dir) is True
+    (assets / "fsrs.js").unlink()
+    assert dashboard_server._static_dir_is_available(static_dir) is False
+
+
 def test_dashboard_server_serves_token_protected_media(tmp_path):
     dashboard_server = import_addon_module("dashboard_server")
     media_dir = tmp_path / "collection.media"
