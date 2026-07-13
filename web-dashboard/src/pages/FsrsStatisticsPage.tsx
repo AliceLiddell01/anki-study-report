@@ -51,14 +51,19 @@ function FsrsReady({ capability, section }: { capability: FsrsCapability; sectio
   const [simulation, setSimulation] = useState({ desiredRetention: 0.93, horizonDays: 180 as 90 | 180 | 365, additionalNewCards: 0, newCardsPerDay: 20, maximumReviewsPerDay: 500 });
   const cache = useRef(new Map<string, FsrsResponse>());
   const sequence = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
   const operation = section === "simulator" ? "simulate" : section;
   const explicit = section === "calibration" || section === "simulator";
   const query = useMemo<FsrsQuery>(() => ({ operation, scope, period, ...(section === "simulator" ? { simulation } : {}) }), [operation, scope, period, section, simulation]);
 
   useEffect(() => {
+    sequence.current += 1;
+    activeRequest.current?.abort();
+    activeRequest.current = null;
     setResponse(null); setError(""); setStatus(explicit ? "idle" : "loading");
     if (explicit) return;
     void load(query);
+    return () => activeRequest.current?.abort();
     // query identity is represented by the primitive dependencies above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section, scope, period]);
@@ -66,8 +71,10 @@ function FsrsReady({ capability, section }: { capability: FsrsCapability; sectio
   async function load(nextQuery: FsrsQuery) {
     const key = fsrsQueryKey(nextQuery);
     if (cache.current.has(key)) { setResponse(cache.current.get(key)!); setStatus("ready"); return; }
+    activeRequest.current?.abort();
     const current = ++sequence.current;
     const controller = new AbortController();
+    activeRequest.current = controller;
     setStatus("loading"); setError("");
     try {
       const next = await fetchFsrs(nextQuery, controller.signal);
@@ -76,6 +83,8 @@ function FsrsReady({ capability, section }: { capability: FsrsCapability; sectio
     } catch (caught) {
       if (current !== sequence.current || (caught as Error).name === "AbortError") return;
       setError((caught as Error).message); setStatus("error");
+    } finally {
+      if (current === sequence.current) activeRequest.current = null;
     }
   }
 
@@ -95,7 +104,7 @@ function FsrsReady({ capability, section }: { capability: FsrsCapability; sectio
         {section === "calibration" && status === "idle" ? <button className="primary-button fsrs-calculate" type="button" onClick={() => void load(query)}><Play size={16} /> Рассчитать точность</button> : null}
         {status === "loading" ? <div className="statistics-loading" role="status">Выполняем read-only расчёт…</div> : null}
         {status === "error" ? <div className="statistics-error" role="alert"><span>{error}</span><button onClick={() => void load(query)}><RefreshCw size={15} /> Повторить</button></div> : null}
-        {response ? <FsrsResult section={section} result={response.result} /> : null}
+        {response?.operation === operation ? <FsrsResult section={section} result={response.result} /> : null}
       </>}
     </div>
   </div>;

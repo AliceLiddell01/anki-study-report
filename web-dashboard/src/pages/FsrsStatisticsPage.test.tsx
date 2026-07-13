@@ -62,6 +62,18 @@ describe("FSRS Statistics", () => {
     expect(container.textContent).not.toMatch(/Применить|Перепланировать|Оптимизировать/);
   });
 
+  it("does not render a previous operation response during a route change", async () => {
+    fetchMock.mockResolvedValue({ schemaVersion: 1, operation: "memory", query: { operation: "memory", scope: { kind: "configuration", configurationId: "cfg-10-demo-a1" }, period: "90d" }, calculationVersion: "v1", result: {
+      availability: "available", studiedCards: 1, estimatedRemembered: .9, averageRetrievability: .9, medianRetrievability: .9, medianStabilityDays: 10, medianDifficulty: 5, cardsBelowOwnTarget: 0, overdueCards: 0,
+      retrievabilityDistribution: [], stabilityDistribution: [], difficultyDistribution: [], limitations: [],
+    } });
+    await render("memory");
+    expect(container.querySelector('[data-testid="fsrs-memory"]')).not.toBeNull();
+    await act(async () => { root.render(<FsrsStatisticsPage report={mockReport} loadState="ready" section="calibration" />); });
+    expect(container.querySelector('[data-testid="fsrs-memory"]')).toBeNull();
+    expect(container.textContent).toContain("Рассчитать точность");
+  });
+
   it("sends bounded typed simulator inputs after an explicit click", async () => {
     fetchMock.mockResolvedValue({ schemaVersion: 1, operation: "simulate", query: { operation: "simulate", scope: { kind: "configuration", configurationId: "cfg-10-demo-a1" } }, calculationVersion: "v1", result: {
       configuration: mockReport.statisticsHub!.fsrs.configurations[0], current: { desiredRetention: .9, averageReviewsPerDay: 80, averageMinutesPerDay: 20, peakReviews: 120, backlog: 0, daily: [{ day: 1, reviews: 80, minutes: 20 }] }, hypothetical: { desiredRetention: .93, averageReviewsPerDay: 110, averageMinutesPerDay: 28, peakReviews: 150, backlog: 4, daily: [{ day: 1, reviews: 110, minutes: 28 }] }, delta: { reviewsPerDay: 30, minutesPerDay: 8 }, native: true, readOnly: true,
