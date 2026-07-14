@@ -28,6 +28,7 @@ describe("entity actions API", () => {
         entityType: "notes",
         action: "add_tags",
         resultCode: "notes.tags_added",
+        args: { tagCount: 1 },
       },
     }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -48,6 +49,42 @@ describe("entity actions API", () => {
     }), { status: 200 })));
     await expect(runCardEntityAction({ action: "suspend", cardIds: ["1", "2"] })).rejects.toMatchObject({
       code: "invalid_entity_action_response",
+    });
+  });
+
+  it("rejects result codes, undo flags, and args that do not match the action", async () => {
+    window.history.replaceState(null, "", "/?token=x#/search");
+    const invalidResponses = [
+      { ...response, resultCode: "cards.moved" },
+      { ...response, undoable: false },
+      { ...response, action: "set_flag", resultCode: "cards.flag_set", args: {} },
+      { ...response, action: "move_to_deck", resultCode: "cards.moved", args: { deckId: 1.5 } },
+      { ...response, requestId: "bad request id" },
+    ];
+    for (const invalid of invalidResponses) {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, response: invalid }), { status: 200 })));
+      await expect(runCardEntityAction({ action: "suspend", cardIds: ["1", "2"] })).rejects.toMatchObject({
+        code: "invalid_entity_action_response",
+      });
+    }
+  });
+
+  it("accepts a no-op only when counts and undo metadata agree", async () => {
+    window.history.replaceState(null, "", "/?token=x#/search");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      response: {
+        ...response,
+        affectedCount: 0,
+        unchangedCount: 2,
+        undoable: false,
+        resultCode: "action.no_changes",
+      },
+    }), { status: 200 })));
+    await expect(runCardEntityAction({ action: "suspend", cardIds: ["1", "2"] })).resolves.toMatchObject({
+      affectedCount: 0,
+      undoable: false,
+      resultCode: "action.no_changes",
     });
   });
 
