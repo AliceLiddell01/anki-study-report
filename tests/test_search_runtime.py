@@ -54,10 +54,21 @@ def test_queryop_bridge_schedules_on_main_and_returns_success(monkeypatch):
     taskman = FakeTaskman()
     mw = SimpleNamespace(col=object(), taskman=taskman)
     monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
-    monkeypatch.setattr(runtime, "execute_search_query", lambda col, value: {"mode": value["mode"], "items": []})
+    monkeypatch.setattr(runtime, "execute_search_request", lambda col, value: {"mode": value["mode"], "items": []})
     FakeQueryOp.behavior = "success"
     result = runtime.run_search_query_sync(mw, payload())
     assert result == {"ok": True, "response": {"mode": "cards", "items": []}}
+    assert taskman.calls == 1
+
+
+def test_metadata_request_uses_the_same_read_only_queryop_bridge(monkeypatch):
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
+    monkeypatch.setattr(runtime, "execute_search_request", lambda col, value: {"kind": value["kind"], "decks": []})
+    FakeQueryOp.behavior = "success"
+    result = runtime.run_search_query_sync(mw, {"kind": "metadata", "requestId": "metadata-1"})
+    assert result == {"ok": True, "response": {"kind": "metadata", "decks": []}}
     assert taskman.calls == 1
 
 
