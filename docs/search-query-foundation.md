@@ -3,15 +3,18 @@
 Снимок документации: 2026-07-15.
 
 Этот слой — read-only основа реализованного Search v1. Он выполняет нативный
-запрос Anki для Cards и Notes и возвращает компактные данные выбранной
-Card/Note; route, таблица, inspector, selection и отдельный mutation boundary
-описаны в `docs/search-v1-and-safe-actions.md`.
+запрос Anki для Cards и Notes, возвращает compact metadata для all-collection
+filter controls и строит компактные данные выбранной Card/Note; route, таблица,
+inspector, selection и отдельный mutation boundary описаны в
+`docs/search-v1-and-safe-actions.md`.
 
 ## Границы модулей
 
-- `search_service.py` валидирует контракт, собирает структурные фильтры через
-  `SearchNode`/`build_search_string()`, вызывает `find_cards()`/`find_notes()` и
-  строит безопасные bounded-проекции.
+- `search_service.py` валидирует query/inspect контракт, собирает структурные
+  фильтры через `SearchNode`/`build_search_string()`, вызывает
+  `find_cards()`/`find_notes()` и строит безопасные bounded-проекции.
+- `search_metadata.py` владеет строгим metadata request variant и bounded
+  all-collection deck/note-type catalogs; он не выполняет native query.
 - `search_runtime.py` запускает collection read через сериализованный `QueryOp`,
   возвращает результат HTTP-потоку через finite wait и нормализует ошибки.
 - `dashboard_server.py` владеет token/HTTP/method/body/status contract.
@@ -65,6 +68,31 @@ response различает `cards`/`notes` и содержит `items`, `page`,
 отклоняется как `invalid_search_response`. Все Anki IDs сериализуются decimal
 strings, чтобы не терять точность в JavaScript.
 
+Metadata request использует тот же token-protected read endpoint, но имеет
+отдельную exact shape без native query:
+
+```json
+{"kind":"metadata","requestId":"search-metadata-1"}
+```
+
+Metadata response содержит:
+
+```text
+schemaVersion=1
+kind=metadata
+decks[]: deckId, deckName, filtered
+noteTypes[]: noteTypeId, noteTypeName
+decksTruncated
+noteTypesTruncated
+requestId?
+```
+
+Catalog bounds: не больше 5000 колод и 1000 типов записей. Они сортируются по
+имени с ID tie-breaker, deduplicate-ятся по ID и возвращаются тем же `QueryOp`
+read path. Filtered decks присутствуют в Search filter catalog, но frontend
+исключает их из move destination picker; backend всё равно повторно проверяет
+destination.
+
 Inspect request принимает ровно один mode-specific ID:
 
 ```json
@@ -111,29 +139,25 @@ plain text; row ограничен 240 символами. Note inspect огра
 Rich preview HTML, template JavaScript и media files этот API не возвращает и
 не исполняет.
 
-## Metadata не дублируется
-
-Отдельный metadata/catalog endpoint не добавлен. Текущие report/settings
-contracts уже публикуют deck choices и note type catalog для существующих
-экранов; states, flags и sort v1 — конечные enums в typed contract. Полный tag
-catalog пока не требуется shipping consumer. Search UI переиспользует
-`deckHub` и `noteTypeCatalog`, не создавая второй source of truth.
+Deck/note-type names в metadata остаются user data, ограничиваются 500
+символами и рендерятся React-ом как escaped text. Raw query, note fields, tags,
+token и full entity ID lists metadata contract не содержит.
 
 ## Проверки
 
 Локальный контур:
 
 ```powershell
-python -m pytest -q tests/test_search_service.py tests/test_search_runtime.py tests/test_dashboard_server.py
+python -m pytest -q tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_dashboard_server.py
 cd web-dashboard
-pnpm exec vitest run src/lib/searchApi.test.ts
+pnpm exec vitest run src/lib/searchApi.test.ts src/lib/searchMetadataApi.test.ts src/pages/SearchMetadataIntegration.test.tsx
 pnpm run typecheck
 ```
 
 Real-Anki contract расширяет существующий browser smoke для `global`/`full` и
 пишет redacted `reports/search-query-contract.json`: valid/invalid token,
-Cards/Notes native query, `pageCount`/`pageLimit`, оба полных inspect, Search UI,
-Browser bridge, safe action cycles и восстановление collection baseline.
-Seed/APKG scripts полагаются на автоматическое сохранение Collection
-в Anki 26.05; deprecated collection-level `save()` не вызывается, а отдельный
-`col.decks.save(deck)` сохраняется для изменённого deck-manager entity.
+Cards/Notes native query, live metadata catalogs, `pageCount`/`pageLimit`, оба
+полных inspect, Search UI, Browser bridge, safe action cycles и восстановление
+collection baseline. Seed/APKG scripts полагаются на автоматическое сохранение
+Collection в Anki 26.05; deprecated collection-level `save()` не вызывается, а
+отдельный `col.decks.save(deck)` сохраняется для изменённого deck-manager entity.
