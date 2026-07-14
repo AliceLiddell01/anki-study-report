@@ -39,12 +39,12 @@ export type RoutePath =
   | "/settings/sources"
   | "/settings/logs";
 
-export const primaryNavItems: Array<{ path: RoutePath; label: string }> = [
-  { path: "/home", label: "Сегодня" },
-  { path: "/calendar", label: "Активность" },
-  { path: "/stats", label: "Статистика" },
-  { path: "/decks", label: "Колоды" },
-  { path: "/cards", label: "Карточки" },
+export const primaryNavItems: Array<{ path: RoutePath; labelKey: string }> = [
+  { path: "/home", labelKey: "primary.today" },
+  { path: "/calendar", labelKey: "primary.activity" },
+  { path: "/stats", labelKey: "primary.statistics" },
+  { path: "/decks", labelKey: "primary.decks" },
+  { path: "/cards", labelKey: "primary.cards" },
 ];
 
 const routePaths = new Set<RoutePath>([

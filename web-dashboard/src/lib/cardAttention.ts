@@ -1,4 +1,5 @@
 import type { AttentionIssueCounts, AttentionThresholds, CardAttention, CardIssueType, CardPreview, RenderedCardPreview, StudyReport } from "../types/report";
+import i18n from "../i18n";
 import { finiteNullableNumber, finiteNumber, safeText } from "./formatters";
 
 export type CardsPeriodFilter = "today" | "7d" | "30d" | "all";
@@ -65,16 +66,19 @@ export interface CardAttentionEmptyExplanation {
 }
 
 export const cardIssueLabels: Record<CardIssueType, string> = {
-  leech: "частые провалы",
-  repeated_again: "повторные ошибки",
-  slow_answer: "долгий ответ",
-  low_pass_rate: "низкая успешность",
-  missing_audio: "нет аудио",
-  missing_example: "нет примера",
-  missing_image: "нет изображения",
-  missing_meaning: "нет значения",
-  missing_part_of_speech: "нет части речи",
+  leech: i18n.getFixedT("ru", "pages")("cards.issues.leech"),
+  repeated_again: i18n.getFixedT("ru", "pages")("cards.issues.repeatedAgain"),
+  slow_answer: i18n.getFixedT("ru", "pages")("cards.issues.slowAnswer"),
+  low_pass_rate: i18n.getFixedT("ru", "pages")("cards.issues.lowPassRate"),
+  missing_audio: i18n.getFixedT("ru", "pages")("cards.issues.missingAudio"),
+  missing_example: i18n.getFixedT("ru", "pages")("cards.issues.missingExample"),
+  missing_image: i18n.getFixedT("ru", "pages")("cards.issues.missingImage"),
+  missing_meaning: i18n.getFixedT("ru", "pages")("cards.issues.missingMeaning"),
+  missing_part_of_speech: i18n.getFixedT("ru", "pages")("cards.issues.missingPartOfSpeech"),
 };
+
+const cardIssueKey = (value: CardIssueType) => ({ repeated_again: "repeatedAgain", slow_answer: "slowAnswer", low_pass_rate: "lowPassRate", missing_audio: "missingAudio", missing_example: "missingExample", missing_image: "missingImage", missing_meaning: "missingMeaning", missing_part_of_speech: "missingPartOfSpeech" } as Record<string, string>)[value] || value;
+const cardCopy = (key: string, options?: Record<string, unknown>) => i18n.t(`cards.${key}`, { ns: "pages", ...options });
 
 export const missingCardIssueTypes = new Set<CardIssueType>([
   "missing_audio",
@@ -252,56 +256,56 @@ export function summarizeCardAttentionRows(rows: CardAttention[]) {
 export function explainCardAttentionEmptyState(state: CardAttentionState): CardAttentionEmptyExplanation {
   const sourceText =
     state.source === "fresh" && state.status === "available"
-      ? "Данные уровня карточек собраны из текущей коллекции Anki."
+      ? cardCopy("helper.fresh")
       : state.source === "cache"
-        ? "Данные уровня карточек не собраны fresh path."
-        : "Источник card-level данных не подтверждён.";
+        ? cardCopy("helper.cache")
+        : cardCopy("helper.unknownSource");
 
   if (state.status !== "available") {
     return {
-      title: "В текущем отчёте нет данных уровня карточек",
+      title: cardCopy("helper.noDataTitle"),
       text: state.reason || sourceText,
       sourceText,
     };
   }
   if ((state.revlogTotalRows ?? 0) > 0 && state.revlogRowsInPeriod === 0) {
     return {
-      title: "Нет проблемных карточек",
-      text: "Повторы в revlog есть, но выбранный период не совпал с timestamp range.",
+      title: cardCopy("helper.noProblems"),
+      text: cardCopy("helper.periodMismatch"),
       sourceText,
     };
   }
   if (state.deckFilterApplied && (state.revlogRowsAfterDeckFilter ?? 0) === 0 && (state.revlogRowsInPeriod ?? 0) > 0) {
     return {
-      title: "Нет проблемных карточек",
-      text: "Фильтр колоды отсеял все revlog-записи.",
+      title: cardCopy("helper.noProblems"),
+      text: cardCopy("helper.deckFiltered"),
       sourceText,
     };
   }
   if (state.revlogRows === 0) {
     return {
-      title: "Нет проблемных карточек",
-      text: "В выбранном периоде нет повторений для выбранной колоды.",
+      title: cardCopy("helper.noProblems"),
+      text: cardCopy("helper.noReviews"),
       sourceText,
     };
   }
   if (state.candidateCards === 0) {
     return {
-      title: "Нет проблемных карточек",
-      text: "В выбранном периоде не найдено карточек-кандидатов для анализа.",
+      title: cardCopy("helper.noProblems"),
+      text: cardCopy("helper.noCandidates"),
       sourceText,
     };
   }
   if ((state.scannedCards ?? 0) > 0 && state.returnedCards === 0) {
     return {
-      title: "Нет проблемных карточек",
-      text: "Карточки были просканированы, но leech, repeated Again, slow answer, low pass rate и missing-field issues не найдены.",
+      title: cardCopy("helper.noProblems"),
+      text: cardCopy("helper.noIssues"),
       sourceText,
     };
   }
   return {
-    title: "Нет проблемных карточек",
-    text: state.reason || "Сканирование выполнено, но карточки не попали под критерии риска.",
+    title: cardCopy("helper.noProblems"),
+    text: state.reason || cardCopy("helper.noCriteria"),
     sourceText,
   };
 }
@@ -327,7 +331,7 @@ export function filterCardAttentionRows(
       if (!normalizedQuery) {
         return true;
       }
-      return `${row.front} ${row.preview?.secondary ?? ""} ${row.preview?.tertiary ?? ""} ${row.deckName} ${row.issues.map((issue) => cardIssueLabels[issue]).join(" ")}`
+      return `${row.front} ${row.preview?.secondary ?? ""} ${row.preview?.tertiary ?? ""} ${row.deckName} ${row.issues.map((issue) => cardCopy(`issues.${cardIssueKey(issue)}`)).join(" ")}`
         .toLowerCase()
         .includes(normalizedQuery);
     })
@@ -466,10 +470,10 @@ function normalizeCardAttention(value: unknown, index: number): CardAttention | 
   const cardId = finiteOptionalInteger(record.cardId ?? record.cid ?? record.card_id);
   const noteId = finiteOptionalInteger(record.noteId ?? record.nid ?? record.note_id);
   const deckId = finiteOptionalInteger(record.deckId ?? record.did ?? record.deck_id);
-  const deckName = safeText(record.deckName ?? record.deck ?? record.deck_name, "Неизвестная колода");
+  const deckName = safeText(record.deckName ?? record.deck ?? record.deck_name, cardCopy("helper.unknownDeck"));
   const preview = normalizePreview(record.preview);
   const renderedPreview = normalizeRenderedPreview(record.renderedPreview ?? record.rendered_preview);
-  const front = safeText(preview?.frontText ?? record.front ?? record.frontPreview ?? record.front_preview ?? record.question, "Карточка без front preview");
+  const front = safeText(preview?.frontText ?? record.front ?? record.frontPreview ?? record.front_preview ?? record.question, cardCopy("helper.noFront"));
   const againCount = Math.max(0, finiteNumber(record.againCount ?? record.again_count ?? record.again, 0));
   const lapses = Math.max(0, finiteNumber(record.lapses ?? record.lapseCount ?? record.lapse_count, 0));
   const averageAnswerSeconds = finiteNullableNumber(record.averageAnswerSeconds ?? record.avgAnswerSeconds ?? record.average_answer_seconds);

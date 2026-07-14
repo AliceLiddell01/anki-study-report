@@ -82,7 +82,7 @@ describe("Activity / Calendar v2", () => {
     await renderPage();
     const detail = container.querySelector('[data-testid="activity-day-detail"]')!;
     expect(detail.querySelectorAll('[data-testid="activity-day-deck-row"]')).toHaveLength(5);
-    expect(detail.querySelector('[data-testid="activity-day-deck-row"]')?.textContent).toMatch(/повторений · (\d+%|Нет данных)/);
+    expect(detail.querySelector('[data-testid="activity-day-deck-row"]')?.textContent).toMatch(/повторений · (\d+(?:,\d+)?\s?%|Нет данных)/);
     expect(detail.textContent).not.toMatch(/Хорошо|Норма|Внимание|Опасно/);
     expect(button("Показать ещё 2").getAttribute("aria-expanded")).toBe("false");
     await act(async () => button("Показать ещё 2").click());

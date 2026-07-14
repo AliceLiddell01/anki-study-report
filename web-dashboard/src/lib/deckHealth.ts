@@ -1,4 +1,5 @@
 import type { DeckPerformance, Status } from "../types/report";
+import i18n from "../i18n";
 import { finiteNumber, finiteNullableNumber, formatPercent } from "./formatters";
 
 export type DeckHealthStatus = Status;
@@ -19,6 +20,7 @@ export interface DeckHealth {
 
 const MIN_REVIEWS_FOR_STRONG_STATUS = 10;
 const SLOW_ANSWER_SECONDS = 18;
+const deckCopy = (key: string, options?: Record<string, unknown>) => i18n.t(`decks.health.${key}`, { ns: "pages", ...options });
 
 export function buildDeckHealth(deck: DeckPerformance): DeckHealth {
   const totalReviews = Math.max(0, finiteNumber(deck.totalReviews));
@@ -34,8 +36,8 @@ export function buildDeckHealth(deck: DeckPerformance): DeckHealth {
     return {
       status: "neutral",
       statusLabel: "normal",
-      reason: "Сегодня по колоде нет повторений.",
-      action: "Нужно больше данных для оценки.",
+      reason: deckCopy("noReviews"),
+      action: deckCopy("needData"),
       hasEnoughData: false,
       passRate,
       failRate,
@@ -50,8 +52,8 @@ export function buildDeckHealth(deck: DeckPerformance): DeckHealth {
     return {
       status: "neutral",
       statusLabel: "normal",
-      reason: "Данных мало, вывод предварительный.",
-      action: "Нужно больше данных для оценки.",
+      reason: deckCopy("preliminary"),
+      action: deckCopy("needData"),
       hasEnoughData: false,
       passRate,
       failRate,
@@ -123,39 +125,39 @@ function resolveStatus(passRate: number | null, failRate: number | null, slowAns
 
 function buildReason(status: Status, passRate: number | null, failRate: number | null, slowAnswers: boolean): string {
   if (status === "good") {
-    return "Колода выглядит стабильной: высокая успешность и мало ошибок.";
+    return deckCopy("stable");
   }
   if (status === "danger") {
     if (passRate !== null && passRate < 0.7) {
-      return `Качество сильно ниже нормы: успешность ${formatPercent(passRate)}.`;
+      return deckCopy("dangerRate", { rate: formatPercent(passRate) });
     }
-    return "Много ошибок относительно количества повторений.";
+    return deckCopy("manyErrors");
   }
   if (status === "warning") {
     if (passRate !== null && passRate < 0.8) {
-      return `Качество ниже нормы: успешность ${formatPercent(passRate)}.`;
+      return deckCopy("warningRate", { rate: formatPercent(passRate) });
     }
     if (failRate !== null && failRate >= 0.2) {
-      return "Много ошибок относительно количества повторений.";
+      return deckCopy("manyErrors");
     }
     if (slowAnswers) {
-      return "Ответы идут медленно, колода может требовать ручного разбора.";
+      return deckCopy("slow");
     }
   }
-  return "Колода без явных проблем по текущим данным.";
+  return deckCopy("clear");
 }
 
 function buildAction(status: Status, slowAnswers: boolean): string {
   if (status === "good") {
-    return "Продолжать в обычном режиме.";
+    return deckCopy("continue");
   }
   if (status === "danger") {
-    return "Временно не добавлять новые карточки.";
+    return deckCopy("pauseNew");
   }
   if (status === "warning") {
-    return slowAnswers ? "Проверить сложные карточки вручную." : "Разобрать ошибки перед добавлением новых.";
+    return slowAnswers ? deckCopy("inspect") : deckCopy("reviewErrors");
   }
-  return "Продолжать в обычном режиме.";
+  return deckCopy("continue");
 }
 
 function boundedRate(value: unknown): number | null {

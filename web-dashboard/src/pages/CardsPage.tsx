@@ -11,12 +11,12 @@ import {
   Wand2,
 } from "lucide-react";
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import {
   buildCardAttentionRows,
   buildCardBrowserSearch,
   cardAttentionState,
-  cardIssueLabels,
   DEFAULT_CARD_FILTERS,
   explainCardAttentionEmptyState,
   filterCardAttentionRows,
@@ -33,6 +33,8 @@ import { AnkiCardShadowPreview } from "../components/AnkiCardShadowPreview";
 import { finiteNumber, formatCompactSeconds, formatInteger, formatPercent, safeText } from "../lib/formatters";
 import type { LoadState } from "./HomePage";
 import type { CardAttention, CardIssueType, NoteTypeCatalogItem, Status, StudyReport } from "../types/report";
+import i18n from "../i18n";
+import { localeForLanguage } from "../i18n/language";
 
 type CardsTab = "risk" | "gaps" | "patterns" | "check";
 type FloatingStatusState = "idle" | "applying" | "applied" | "saving" | "saved" | "rebuilding" | "rebuilt" | "error";
@@ -41,27 +43,14 @@ const CARDS_DISPLAY_MODE_STORAGE_KEY = "anki-study-report.cards.displayMode";
 const BULK_OPEN_LIMIT = 100;
 const BULK_OPEN_MAX_QUERY_LENGTH = 1800;
 
-const periodOptions: Array<{ value: CardsPeriodFilter; label: string }> = [
-  { value: "today", label: "Сегодня" },
-  { value: "7d", label: "7 дней" },
-  { value: "30d", label: "30 дней" },
-  { value: "all", label: "Всё время" },
-];
-
-const issueOptions: Array<{ value: CardsIssueFilter; label: string }> = [
-  { value: "all", label: "Все проблемы" },
-  ...Object.entries(cardIssueLabels).map(([value, label]) => ({ value: value as CardIssueType, label })),
-];
-
-const sortOptions: Array<{ value: CardsSortKey; label: string }> = [
-  { value: "risk", label: "Риск" },
-  { value: "again", label: "Частые Again" },
-  { value: "lapses", label: "Срывы" },
-  { value: "avgAnswer", label: "Долгий ответ" },
-  { value: "lastReviewed", label: "Последний повтор" },
-];
+const periodOptions: CardsPeriodFilter[] = ["today", "7d", "30d", "all"];
+const issueOptions: CardsIssueFilter[] = ["all", "leech", "repeated_again", "slow_answer", "low_pass_rate", "missing_audio", "missing_example", "missing_image", "missing_meaning", "missing_part_of_speech"];
+const sortOptions: CardsSortKey[] = ["risk", "again", "lapses", "avgAnswer", "lastReviewed"];
+const tc = (key: string, options?: Record<string, unknown>) => i18n.t(`cards.${key}`, { ns: "pages", ...options });
+const issueKey = (value: CardsIssueFilter) => ({ repeated_again: "repeatedAgain", slow_answer: "slowAnswer", low_pass_rate: "lowPassRate", missing_audio: "missingAudio", missing_example: "missingExample", missing_image: "missingImage", missing_meaning: "missingMeaning", missing_part_of_speech: "missingPartOfSpeech" } as Record<string, string>)[value] || value;
 
 function CardsPage({ report, loadState }: { report: StudyReport | null; loadState: LoadState }) {
+  useTranslation("pages");
   const [period, setPeriod] = useState<CardsPeriodFilter>("7d");
   const [deck, setDeck] = useState("all");
   const [issue, setIssue] = useState<CardsIssueFilter>("all");
@@ -87,7 +76,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     for (const item of report?.decks ?? []) {
       names.add(item.name);
     }
-    return [...names].sort((a, b) => a.localeCompare(b, "ru"));
+    return [...names].sort((a, b) => a.localeCompare(b, localeForLanguage(i18n.language)));
   }, [report?.decks, rows]);
   const filteredRows = useMemo(
     () => filterCardAttentionRows(rows, { period, deck, issue, query, sortKey }, { today }),
@@ -143,7 +132,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       setActionStatus({
         ok: false,
         action: "open-browser",
-        error: !tokenAvailable ? "Откройте дашборд из Anki Study Report, чтобы получить действующую ссылку." : "Отчёт ещё не построен.",
+        error: !tokenAvailable ? tc("action.openFromReport") : tc("action.reportMissing"),
       });
       return false;
     }
@@ -153,7 +142,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       setActionStatus(response);
       return response.ok;
     } catch {
-      setActionStatus({ ok: false, action: "open-browser", error: "Не удалось открыть Anki Browser." });
+      setActionStatus({ ok: false, action: "open-browser", error: tc("action.browserFailed") });
       return false;
     } finally {
       setIsOpening(false);
@@ -164,7 +153,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
     const search = buildCardBrowserSearch(row);
     try {
       await navigator.clipboard.writeText(search);
-      setRowStatus((current) => ({ ...current, [row.id]: "Запрос поиска скопирован." }));
+      setRowStatus((current) => ({ ...current, [row.id]: tc("action.copied") }));
     } catch {
       setRowStatus((current) => ({ ...current, [row.id]: search }));
     }
@@ -173,28 +162,28 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
   const openRow = useCallback(async (row: CardAttention) => {
     const search = buildCardBrowserSearch(row);
     if (!tokenAvailable) {
-      setRowStatus((current) => ({ ...current, [row.id]: "Нет действующей ссылки дашборда. Запрос поиска скопирован." }));
+      setRowStatus((current) => ({ ...current, [row.id]: tc("action.noLinkCopied") }));
       await copySearch(row);
       return;
     }
-    setRowStatus((current) => ({ ...current, [row.id]: `Открываю ${search}` }));
+    setRowStatus((current) => ({ ...current, [row.id]: tc("action.opening", { search }) }));
     const response = await runReportAction("open-browser-search", { query: search });
     setActionStatus(response);
     setRowStatus((current) => ({
       ...current,
-      [row.id]: response.ok ? `Открыто в Anki Browser: ${search}` : response.error || `Не удалось открыть: ${search}`,
+      [row.id]: response.ok ? tc("action.opened", { search }) : response.error || tc("action.openFailed", { search }),
     }));
   }, [copySearch, tokenAvailable]);
 
   const openFilteredRows = async () => {
     if (!tokenAvailable) {
-      setActionStatus({ ok: false, action: "open-browser-search", error: "Откройте дашборд из Anki Study Report, чтобы получить действующую ссылку." });
+      setActionStatus({ ok: false, action: "open-browser-search", error: tc("action.openFromReport") });
       return;
     }
     const queries = tabRows.slice(0, BULK_OPEN_LIMIT).map((row) => buildCardBrowserSearch(row)).filter(Boolean);
     const uniqueQueries = [...new Set(queries)];
     if (!uniqueQueries.length) {
-      setActionStatus({ ok: false, action: "open-browser-search", error: "Нет карточек для открытия после текущих фильтров." });
+      setActionStatus({ ok: false, action: "open-browser-search", error: tc("action.noCards") });
       return;
     }
     const bulkQuery = uniqueQueries.length === 1 ? uniqueQueries[0] : uniqueQueries.map((item) => `(${item})`).join(" OR ");
@@ -203,7 +192,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       setActionStatus({
         ok: false,
         action: "open-browser-search",
-        error: `Запрос для прямого открытия слишком длинный. Поиск для ${uniqueQueries.length} карточек скопирован.`,
+        error: tc("action.tooLong", { count: uniqueQueries.length }),
       });
       return;
     }
@@ -224,18 +213,18 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
       />
 
       <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
-        <SummaryCard label="Требуют внимания" value={cardKpiValue(summary.problemCards)} description="Все карточки, попавшие в список проверки." status={cardLevelSourceAvailable && summary.problemCards ? "danger" : "neutral"} />
-        <SummaryCard label="Leech" value={cardKpiValue(summary.leech)} description="Карточки с частыми срывами." status={cardLevelSourceAvailable && summary.leech ? "danger" : "neutral"} />
-        <SummaryCard label="Частые Again" value={cardKpiValue(summary.repeatedAgain)} description="Повторяющиеся ошибки в выбранном наборе." status={cardLevelSourceAvailable && summary.repeatedAgain ? "danger" : "neutral"} />
-        <SummaryCard label="Долго вспоминаются" value={cardKpiValue(summary.slowAnswer)} description="Ответ занимает заметно больше времени." status={cardLevelSourceAvailable && summary.slowAnswer ? "warning" : "neutral"} />
-        <SummaryCard label="Неполные карточки" value={cardKpiValue(summary.dataGaps)} description="Не хватает аудио, примера, изображения или смысла." status={cardLevelSourceAvailable && summary.dataGaps ? "warning" : "neutral"} />
+        <SummaryCard label={tc("summary.attention")} value={cardKpiValue(summary.problemCards)} description={tc("summary.attentionDescription")} status={cardLevelSourceAvailable && summary.problemCards ? "danger" : "neutral"} />
+        <SummaryCard label="Leech" value={cardKpiValue(summary.leech)} description={tc("summary.leechDescription")} status={cardLevelSourceAvailable && summary.leech ? "danger" : "neutral"} />
+        <SummaryCard label={tc("summary.again")} value={cardKpiValue(summary.repeatedAgain)} description={tc("summary.againDescription")} status={cardLevelSourceAvailable && summary.repeatedAgain ? "danger" : "neutral"} />
+        <SummaryCard label={tc("summary.slow")} value={cardKpiValue(summary.slowAnswer)} description={tc("summary.slowDescription")} status={cardLevelSourceAvailable && summary.slowAnswer ? "warning" : "neutral"} />
+        <SummaryCard label={tc("summary.gaps")} value={cardKpiValue(summary.dataGaps)} description={tc("summary.gapsDescription")} status={cardLevelSourceAvailable && summary.dataGaps ? "warning" : "neutral"} />
       </section>
 
       {cardLevelSourceAvailable ? <CardsPreviewSettingsNotice rows={rows} report={report} displayMode={displayMode} /> : null}
 
       {cardLevelError ? (
         <section className="rounded-xl border border-report-danger/45 bg-report-danger/10 p-4 text-sm leading-6 text-report-text shadow-panel">
-          Не удалось собрать данные по карточкам. Используется запасной режим по колодам.
+          {tc("summary.fallback")}
         </section>
       ) : null}
 
@@ -247,34 +236,34 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="form-control w-full py-2.5 pl-10 pr-3 text-sm"
-              placeholder="Поиск по тексту карточки"
+              placeholder={tc("filters.search")}
             />
           </label>
-          <SelectControl label="Период" value={period} onChange={(value) => setPeriod(value as CardsPeriodFilter)}>
+          <SelectControl label={tc("filters.period")} value={period} onChange={(value) => setPeriod(value as CardsPeriodFilter)}>
             {periodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {tc(`periods.${option}`)}
               </option>
             ))}
           </SelectControl>
-          <SelectControl label="Проблема" value={issue} onChange={(value) => setIssue(value as CardsIssueFilter)}>
+          <SelectControl label={tc("filters.issue")} value={issue} onChange={(value) => setIssue(value as CardsIssueFilter)}>
             {issueOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {tc(`issues.${issueKey(option)}`)}
               </option>
             ))}
           </SelectControl>
-          <SelectControl label="Сортировка" value={sortKey} onChange={(value) => setSortKey(value as CardsSortKey)}>
+          <SelectControl label={tc("filters.sort")} value={sortKey} onChange={(value) => setSortKey(value as CardsSortKey)}>
             {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {tc(`sort.${option}`)}
               </option>
             ))}
           </SelectControl>
         </div>
         <div className="mt-3">
-          <SelectControl label="Колода" value={deck} onChange={setDeck}>
-            <option value="all">Все колоды</option>
+          <SelectControl label={tc("filters.deck")} value={deck} onChange={setDeck}>
+            <option value="all">{tc("filters.allDecks")}</option>
             {deckOptions.map((name) => (
               <option key={name} value={name}>
                 {name}
@@ -284,14 +273,14 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
         </div>
         <div className="mt-3 flex flex-col gap-2 text-xs leading-5 text-report-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Показано {formatInteger(filteredRows.length)} карточек · период: {periodLabel(period)} · проблема: {issueLabel(issue)} · сортировка: {sortLabel(sortKey)}
+            {tc("filters.summary", { count: formatInteger(filteredRows.length), period: periodLabel(period), issue: issueLabel(issue), sort: sortLabel(sortKey) })}
           </p>
           <button type="button" className="toolbar-button w-fit px-3 py-1.5 text-xs" onClick={resetFilters}>
-            Сбросить фильтры
+            {tc("filters.reset")}
           </button>
         </div>
         <p className="mt-2 text-xs leading-5 text-report-muted">
-          Период применён к уже собранным данным по карточкам: строки фильтруются локально по последнему повтору, риск и Again за период не пересчитываются.
+          {tc("filters.periodNote")}
         </p>
       </section>
 
@@ -301,24 +290,24 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
           <div className="flex flex-wrap items-center gap-2">
             <DisplayModeSwitcher value={displayMode} onChange={setDisplayMode} />
             <button type="button" className="toolbar-button" onClick={openFilteredRows} disabled={!cardLevelSourceAvailable || tabRows.length === 0}>
-              Открыть все отфильтрованные
+              {tc("filters.openAll")}
             </button>
             <StatusPill status={cardLevelSourceAvailable ? "good" : "warning"}>
-              {cardLevelSourceAvailable ? `${formatInteger(filteredRows.length)} после фильтров` : "данные по карточкам недоступны"}
+              {cardLevelSourceAvailable ? tc("filters.afterFilters", { count: formatInteger(filteredRows.length) }) : tc("filters.unavailable")}
             </StatusPill>
           </div>
         </div>
         {cardLevelSourceAvailable && tabRows.length > 0 ? (
           <p className="mt-3 text-xs leading-5 text-report-muted">
-            Будет открыто до {formatInteger(Math.min(tabRows.length, BULK_OPEN_LIMIT))} карточек из текущего списка. Кнопка в строке открывает только одну карточку.
+            {tc("filters.bulkNote", { count: formatInteger(Math.min(tabRows.length, BULK_OPEN_LIMIT)) })}
           </p>
         ) : null}
 
         <div className="mt-4">
           {loadState !== "ready" || !report ? (
-            <CardsEmptyState title="Отчёт ещё не построен" text={loadStateText(loadState)} />
+            <CardsEmptyState title={tc("empty.report")} text={loadStateText(loadState)} />
           ) : tab === "check" && deck === "all" ? (
-            <CardsEmptyState title="Выберите колоду" text="Для проверки безопаснее сузить область до одной колоды: так список пропусков и паттернов не смешивается." />
+            <CardsEmptyState title={tc("empty.selectDeck")} text={tc("empty.selectDeckText")} />
           ) : !cardLevelSourceAvailable ? (
             <CardLevelPlannedState problemDecks={problemDecks.length} statusReason={attentionState.reason} />
           ) : rows.length === 0 ? (
@@ -338,11 +327,11 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
             <CardLevelEmptyState
               explanation={{
                 ...emptyExplanation,
-                title: period === "all" ? "Нет проблемных карточек" : "Нет данных за выбранный период",
+                title: period === "all" ? tc("empty.noProblems") : tc("empty.noPeriod"),
                 text:
                   period === "today"
-                    ? "За сегодня в опубликованных данных по карточкам нет строк. Риск и Again локально не пересчитываются."
-                    : "Фильтры скрыли все карточки. Сбросьте фильтры или выберите Всё время.",
+                    ? tc("empty.todayText")
+                    : tc("empty.filteredText"),
               }}
               attentionState={attentionState}
               report={report}
@@ -355,7 +344,7 @@ function CardsPage({ report, loadState }: { report: StudyReport | null; loadStat
               onOpenProblemDecks={openProblemDecks}
             />
           ) : tabRows.length === 0 ? (
-            <CardsEmptyState title={emptyTitleForTab(tab)} text="В этой вкладке нет карточек после текущих фильтров." />
+            <CardsEmptyState title={emptyTitleForTab(tab)} text={tc("empty.tabText")} />
           ) : displayMode === "table" ? (
             <RiskTable rows={tabRows} rowStatus={rowStatus} onCopySearch={copySearch} onOpenRow={openRow} />
           ) : displayMode === "tiles" ? (
@@ -402,19 +391,19 @@ function CardLevelEmptyState({
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         <button type="button" className="toolbar-button" onClick={onResetFilters}>
-          Сбросить фильтры
+          {tc("filters.reset")}
         </button>
         <button type="button" className="toolbar-button" onClick={onToggleDiagnostics}>
-          {showDiagnostics ? "Скрыть диагностику" : "Показать диагностику"}
+          {showDiagnostics ? tc("diagnostics.hide") : tc("diagnostics.show")}
         </button>
         <button type="button" className="toolbar-button" onClick={onOpenProblemDecks}>
           <FolderSearch size={16} aria-hidden="true" />
-          Открыть проблемные колоды
+          {tc("diagnostics.openDecks")}
         </button>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <DetailBlock label="Backend scope" value={backendScopeLabel(report)} />
-        <DetailBlock label="UI filter" value={`${periodLabel(period)} / ${deck === "all" ? "Все колоды" : deck} / ${issueLabel(issue)}`} />
+        <DetailBlock label={tc("diagnostics.backendScope")} value={backendScopeLabel(report)} />
+        <DetailBlock label={tc("diagnostics.uiFilter")} value={`${periodLabel(period)} / ${deck === "all" ? tc("filters.allDecks") : deck} / ${issueLabel(issue)}`} />
       </div>
       {showDiagnostics ? <CardLevelDiagnostics state={attentionState} report={report} period={period} /> : null}
     </section>
@@ -430,18 +419,18 @@ function CardsPreviewSettingsNotice({ rows, report, displayMode }: { rows: CardA
   return (
     <div className="grid gap-3">
       <section className="rounded-xl border border-ink-700 bg-ink-850/80 p-4 text-sm shadow-panel">
-        <h2 className="text-base font-semibold tracking-normal text-report-text">Настройки отображения</h2>
+        <h2 className="text-base font-semibold tracking-normal text-report-text">{tc("diagnostics.displayTitle")}</h2>
         <p className="mt-2 text-sm leading-6 text-report-muted">
-          Сейчас выбран режим «{displayModeLabel(displayMode)}». Переключатель ниже меняет только вид списка, не данные отчёта.
+          {tc("diagnostics.displayText", { mode: displayModeLabel(displayMode) })}
         </p>
       </section>
       <details className="rounded-xl border border-ink-700 bg-ink-850/80 p-4 text-sm shadow-panel">
-        <summary className="cursor-pointer font-semibold text-report-text">Диагностика шаблонов</summary>
+        <summary className="cursor-pointer font-semibold text-report-text">{tc("diagnostics.templateTitle")}</summary>
         <div className="mt-3 grid gap-3 text-sm leading-6 text-report-muted md:grid-cols-2">
-          <DetailBlock label="Режим отображения" value={displayModeLabel(displayMode)} compact />
-          <DetailBlock label="Превью шаблона" value="Используется безопасный рендер шаблона; при ошибке включается запасной режим" compact />
-          <DetailBlock label="Типов записей в коллекции" value={formatInteger(catalog.length || profiles.length)} compact />
-          <DetailBlock label="Типов записей в текущем списке" value={formatInteger(currentTypes)} compact />
+          <DetailBlock label={tc("diagnostics.displayMode")} value={displayModeLabel(displayMode)} compact />
+          <DetailBlock label={tc("diagnostics.templatePreview")} value={tc("diagnostics.safeRender")} compact />
+          <DetailBlock label={tc("diagnostics.collectionTypes")} value={formatInteger(catalog.length || profiles.length)} compact />
+          <DetailBlock label={tc("diagnostics.listTypes")} value={formatInteger(currentTypes)} compact />
         </div>
         <div className="mt-3 grid gap-2">
           {(catalog.length ? catalog : profilesToCatalog(profiles)).slice(0, 40).map((item) => (
@@ -457,17 +446,17 @@ function NoteTypeCatalogRow({ item }: { item: NoteTypeCatalogItem }) {
   return (
     <details className="rounded-lg border border-ink-700 bg-ink-950/45 px-3 py-2 text-sm">
       <summary className="cursor-pointer list-none">
-        <span className="font-medium text-report-text">{item.name || "Неизвестный тип записи"}</span>
+        <span className="font-medium text-report-text">{item.name || tc("diagnostics.unknownType")}</span>
         <span className="ml-2 text-report-muted">
-          {formatInteger(item.noteCount)} записей · {formatInteger(item.cardTemplateCount)} шаблонов
-          {item.usedInCurrentCards ? " · в текущем списке" : ""}
+          {tc("diagnostics.notesTemplates", { notes: formatInteger(item.noteCount), templates: formatInteger(item.cardTemplateCount) })}
+          {item.usedInCurrentCards ? tc("diagnostics.currentList") : ""}
         </span>
       </summary>
       <div className="mt-3 grid gap-3 text-report-muted md:grid-cols-2">
-        <DetailBlock label="Поля" value={item.fields.length ? item.fields.join(", ") : "Нет данных"} compact />
-        <DetailBlock label="Шаблоны" value={item.templates.length ? item.templates.map((template) => template.name).join(", ") : "Нет данных"} compact />
-        <DetailBlock label="Превью шаблона" value={item.templates.length ? "рендер шаблона доступен" : "рендер шаблона недоступен"} compact />
-        <DetailBlock label="CSS" value={item.cssAvailable ? "стили карточки доступны" : "стили карточки недоступны"} compact />
+        <DetailBlock label={tc("diagnostics.fields")} value={item.fields.length ? item.fields.join(", ") : tc("diagnostics.noData")} compact />
+        <DetailBlock label={tc("diagnostics.templates")} value={item.templates.length ? item.templates.map((template) => template.name).join(", ") : tc("diagnostics.noData")} compact />
+        <DetailBlock label={tc("diagnostics.templatePreview")} value={item.templates.length ? tc("diagnostics.renderAvailable") : tc("diagnostics.renderUnavailable")} compact />
+        <DetailBlock label="CSS" value={item.cssAvailable ? tc("diagnostics.cssAvailable") : tc("diagnostics.cssUnavailable")} compact />
       </div>
     </details>
   );
@@ -485,38 +474,38 @@ function CardLevelDiagnostics({
   return (
     <div className="mt-4 grid gap-4 text-left">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <DetailBlock label="Статус" value={availabilityLabel(state.status)} />
-        <DetailBlock label="Источник" value={sourceLabel(state.source)} />
-        <DetailBlock label="Сборщик запускался" value={booleanLabel(state.collectorRan)} />
-        <DetailBlock label="Коллекция доступна" value={booleanLabel(state.collectionAvailable)} />
-        <DetailBlock label="Период" value={`${report.metadata.period || periodLabel(period)} (${periodLabel(period)})`} />
-        <DetailBlock label="Режим периода" value="фильтр на странице" />
-        <DetailBlock label="Период в интерфейсе" value={periodLabel(period)} />
-        <DetailBlock label="Риск пересчитан" value="нет" />
-        <DetailBlock label="Выбранные колоды" value={backendScopeLabel(report)} />
-        <DetailBlock label="Просканировано карточек" value={nullableInteger(state.scannedCards)} />
-        <DetailBlock label="Карточек-кандидатов" value={nullableInteger(state.candidateCards)} />
-        <DetailBlock label="Строк revlog" value={nullableInteger(state.revlogRows)} />
-        <DetailBlock label="Вернулось карточек" value={nullableInteger(state.returnedCards)} />
-        <DetailBlock label="Всего строк revlog" value={nullableInteger(state.revlogTotalRows)} />
-        <DetailBlock label="Минимальный revlog id" value={nullableInteger(state.revlogMinId)} />
-        <DetailBlock label="Максимальный revlog id" value={nullableInteger(state.revlogMaxId)} />
-        <DetailBlock label="Строк revlog в периоде" value={nullableInteger(state.revlogRowsInPeriod)} />
-        <DetailBlock label="Строк после фильтра колоды" value={nullableInteger(state.revlogRowsAfterDeckFilter)} />
-        <DetailBlock label="Начало периода, исходное" value={nullableInteger(state.periodStartRaw)} />
-        <DetailBlock label="Конец периода, исходное" value={nullableInteger(state.periodEndRaw)} />
-        <DetailBlock label="Начало периода, мс" value={nullableInteger(state.periodStartMs)} />
-        <DetailBlock label="Конец периода, мс" value={nullableInteger(state.periodEndMs)} />
-        <DetailBlock label="Единицы времени нормализованы" value={state.timeUnitNormalized ? "да" : "нет"} />
-        <DetailBlock label="Выбранных id колод" value={nullableInteger(state.selectedDeckIdsCount)} />
-        <DetailBlock label="Фильтр колоды применён" value={state.deckFilterApplied ? "да" : "нет"} />
-        <DetailBlock label="Всего карточек" value={nullableInteger(state.cardsTotal)} />
-        <DetailBlock label="Загружено записей" value={nullableInteger(state.notesLoaded)} />
-        <DetailBlock label="Профилей типов записей" value={nullableInteger(state.noteTypeProfilesCount)} />
-        <DetailBlock label="Неопознанных типов" value={nullableInteger(state.unknownNoteTypesCount)} />
-        <DetailBlock label="Стратегия превью" value={state.previewStrategy || "Нет данных"} />
-        <DetailBlock label="Источник проверки полей" value={state.missingFieldRoleSource || "Нет данных"} />
-        <DetailBlock label="Опознанные типы" value={detectedKindsLabel(state.detectedKinds)} />
+        <DetailBlock label={tc("diagnostics.status")} value={availabilityLabel(state.status)} />
+        <DetailBlock label={tc("diagnostics.source")} value={sourceLabel(state.source)} />
+        <DetailBlock label={tc("diagnostics.collectorRan")} value={booleanLabel(state.collectorRan)} />
+        <DetailBlock label={tc("diagnostics.collectionAvailable")} value={booleanLabel(state.collectionAvailable)} />
+        <DetailBlock label={tc("diagnostics.period")} value={`${report.metadata.period || periodLabel(period)} (${periodLabel(period)})`} />
+        <DetailBlock label={tc("diagnostics.periodMode")} value={tc("diagnostics.pageFilter")} />
+        <DetailBlock label={tc("diagnostics.uiPeriod")} value={periodLabel(period)} />
+        <DetailBlock label={tc("diagnostics.riskRecalculated")} value={tc("diagnostics.no")} />
+        <DetailBlock label={tc("diagnostics.selectedDecks")} value={backendScopeLabel(report)} />
+        <DetailBlock label={tc("diagnosticFields.scannedCards")} value={nullableInteger(state.scannedCards)} />
+        <DetailBlock label={tc("diagnosticFields.candidateCards")} value={nullableInteger(state.candidateCards)} />
+        <DetailBlock label={tc("diagnosticFields.revlogRows")} value={nullableInteger(state.revlogRows)} />
+        <DetailBlock label={tc("diagnosticFields.returnedCards")} value={nullableInteger(state.returnedCards)} />
+        <DetailBlock label={tc("diagnosticFields.revlogTotalRows")} value={nullableInteger(state.revlogTotalRows)} />
+        <DetailBlock label={tc("diagnosticFields.revlogMinId")} value={nullableInteger(state.revlogMinId)} />
+        <DetailBlock label={tc("diagnosticFields.revlogMaxId")} value={nullableInteger(state.revlogMaxId)} />
+        <DetailBlock label={tc("diagnosticFields.revlogRowsInPeriod")} value={nullableInteger(state.revlogRowsInPeriod)} />
+        <DetailBlock label={tc("diagnosticFields.revlogRowsAfterDeckFilter")} value={nullableInteger(state.revlogRowsAfterDeckFilter)} />
+        <DetailBlock label={tc("diagnosticFields.periodStartRaw")} value={nullableInteger(state.periodStartRaw)} />
+        <DetailBlock label={tc("diagnosticFields.periodEndRaw")} value={nullableInteger(state.periodEndRaw)} />
+        <DetailBlock label={tc("diagnosticFields.periodStartMs")} value={nullableInteger(state.periodStartMs)} />
+        <DetailBlock label={tc("diagnosticFields.periodEndMs")} value={nullableInteger(state.periodEndMs)} />
+        <DetailBlock label={tc("diagnosticFields.timeUnitNormalized")} value={state.timeUnitNormalized ? tc("diagnostics.yes") : tc("diagnostics.no")} />
+        <DetailBlock label={tc("diagnosticFields.selectedDeckIdsCount")} value={nullableInteger(state.selectedDeckIdsCount)} />
+        <DetailBlock label={tc("diagnosticFields.deckFilterApplied")} value={state.deckFilterApplied ? tc("diagnostics.yes") : tc("diagnostics.no")} />
+        <DetailBlock label={tc("diagnosticFields.cardsTotal")} value={nullableInteger(state.cardsTotal)} />
+        <DetailBlock label={tc("diagnosticFields.notesLoaded")} value={nullableInteger(state.notesLoaded)} />
+        <DetailBlock label={tc("diagnosticFields.noteTypeProfilesCount")} value={nullableInteger(state.noteTypeProfilesCount)} />
+        <DetailBlock label={tc("diagnosticFields.unknownNoteTypesCount")} value={nullableInteger(state.unknownNoteTypesCount)} />
+        <DetailBlock label={tc("diagnosticFields.previewStrategy")} value={state.previewStrategy || tc("diagnostics.noData")} />
+        <DetailBlock label={tc("diagnosticFields.missingFieldRoleSource")} value={state.missingFieldRoleSource || tc("diagnostics.noData")} />
+        <DetailBlock label={tc("diagnosticFields.detectedKinds")} value={detectedKindsLabel(state.detectedKinds)} />
       </div>
       {state.diagnosticWarning ? (
         <p className="rounded-lg border border-report-warning/35 bg-report-warning/10 px-3 py-2 text-sm leading-6 text-report-warning">
@@ -529,23 +518,23 @@ function CardLevelDiagnostics({
         </p>
       ) : null}
       <div className="grid gap-3 lg:grid-cols-2">
-        <DiagnosticPanel title="Количество проблем">
+        <DiagnosticPanel title={tc("diagnostics.issueCount")}>
           <DetailBlock label="Leech" value={formatInteger(state.issueCounts.leech)} compact />
-          <DetailBlock label="Частые Again" value={formatInteger(state.issueCounts.repeatedAgain)} compact />
-          <DetailBlock label="Долгий ответ" value={formatInteger(state.issueCounts.slowAnswer)} compact />
-          <DetailBlock label="Низкая успешность" value={formatInteger(state.issueCounts.lowPassRate)} compact />
-          <DetailBlock label="Нет аудио" value={formatInteger(state.issueCounts.missingAudio)} compact />
-          <DetailBlock label="Нет примера" value={formatInteger(state.issueCounts.missingExample)} compact />
-          <DetailBlock label="Нет изображения" value={formatInteger(state.issueCounts.missingImage)} compact />
-          <DetailBlock label="Нет значения" value={formatInteger(state.issueCounts.missingMeaning)} compact />
-          <DetailBlock label="Нет части речи" value={formatInteger(state.issueCounts.missingPartOfSpeech)} compact />
+          <DetailBlock label={tc("issues.repeatedAgain")} value={formatInteger(state.issueCounts.repeatedAgain)} compact />
+          <DetailBlock label={tc("issues.slowAnswer")} value={formatInteger(state.issueCounts.slowAnswer)} compact />
+          <DetailBlock label={tc("issues.lowPassRate")} value={formatInteger(state.issueCounts.lowPassRate)} compact />
+          <DetailBlock label={tc("issues.missingAudio")} value={formatInteger(state.issueCounts.missingAudio)} compact />
+          <DetailBlock label={tc("issues.missingExample")} value={formatInteger(state.issueCounts.missingExample)} compact />
+          <DetailBlock label={tc("issues.missingImage")} value={formatInteger(state.issueCounts.missingImage)} compact />
+          <DetailBlock label={tc("issues.missingMeaning")} value={formatInteger(state.issueCounts.missingMeaning)} compact />
+          <DetailBlock label={tc("issues.missingPartOfSpeech")} value={formatInteger(state.issueCounts.missingPartOfSpeech)} compact />
         </DiagnosticPanel>
-        <DiagnosticPanel title="Пороги отбора">
-          <DetailBlock label="Порог частых Again" value={formatInteger(state.thresholds.repeatedAgainThreshold)} compact />
-          <DetailBlock label="Долгий ответ, сек" value={String(state.thresholds.slowAnswerSeconds)} compact />
-          <DetailBlock label="Низкая успешность" value={formatPercent(state.thresholds.lowPassRateThreshold)} compact />
-          <DetailBlock label="Порог leech по срывам" value={formatInteger(state.thresholds.leechLapsesFallback)} compact />
-          <DetailBlock label="Лимит результатов" value={formatInteger(state.thresholds.maxResults)} compact />
+        <DiagnosticPanel title={tc("diagnostics.thresholds")}>
+          <DetailBlock label={tc("thresholds.again")} value={formatInteger(state.thresholds.repeatedAgainThreshold)} compact />
+          <DetailBlock label={tc("thresholds.slow")} value={String(state.thresholds.slowAnswerSeconds)} compact />
+          <DetailBlock label={tc("thresholds.lowPass")} value={formatPercent(state.thresholds.lowPassRateThreshold)} compact />
+          <DetailBlock label={tc("thresholds.leech")} value={formatInteger(state.thresholds.leechLapsesFallback)} compact />
+          <DetailBlock label={tc("thresholds.limit")} value={formatInteger(state.thresholds.maxResults)} compact />
         </DiagnosticPanel>
       </div>
     </div>
@@ -574,46 +563,46 @@ function CardsHero({
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
         <div className="min-w-0">
           <span className={`status-pill ${cardLevelAvailable ? "status-good" : reportReady ? "status-warning" : "status-neutral"}`}>
-            {cardLevelAvailable ? "данные по карточкам доступны" : reportReady ? cardLevelStatus === "error" ? "нет данных по карточкам" : "ожидаю данные по карточкам" : "нужен отчёт"}
+            {cardLevelAvailable ? tc("header.available") : reportReady ? cardLevelStatus === "error" ? tc("header.error") : tc("header.waiting") : tc("header.reportNeeded")}
           </span>
-          <h1 className="mt-3 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Карточки</h1>
+          <h1 className="mt-3 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">{tc("header.title")}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-report-muted">
-            Здесь собраны карточки, которые требуют внимания: частые ошибки, leech, долгие ответы, низкая успешность и неполные данные.
+            {tc("header.description")}
           </p>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-report-muted">
-            Только чтение: здесь можно найти проблему и открыть карточку в Anki, но не редактировать её.
+            {tc("header.readOnlyText")}
           </p>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button type="button" className="toolbar-button justify-center" onClick={onOpenProblemDecks} disabled={!reportReady || isOpening}>
               <FolderSearch size={16} aria-hidden="true" />
-              {isOpening ? "Открываю..." : "Открыть проблемные в Anki"}
+              {isOpening ? tc("header.opening") : tc("header.openProblems")}
             </button>
             <button
               type="button"
               className="toolbar-button justify-center"
-              aria-label="Перейти в Инструменты"
+              aria-label={tc("header.toolsAria")}
               data-href="#/actions"
               onClick={() => {
                 window.location.hash = "#/actions";
               }}
             >
               <Wand2 size={16} aria-hidden="true" />
-              Перейти в Инструменты
+              {tc("header.tools")}
             </button>
             <a className="toolbar-button justify-center opacity-80" href="#/home">
               <Home size={16} aria-hidden="true" />
-              На страницу «Сегодня»
+              {tc("header.today")}
             </a>
           </div>
           {actionStatus ? (
             <p className={`mt-3 text-sm leading-6 ${actionStatus.ok ? "text-report-success" : "text-report-danger"}`}>
-              {actionStatus.ok ? actionStatus.message || "Anki Browser открыт." : actionStatus.error || "Действие не выполнено."}
+              {actionStatus.ok ? actionStatus.message || tc("action.openedDefault") : actionStatus.error || tc("action.notDone")}
             </p>
           ) : null}
         </div>
         <aside className="flex flex-wrap gap-2 xl:max-w-[360px] xl:justify-end">
-          <StatusPill status={problemDeckCount ? "warning" : "good"}>{formatInteger(problemDeckCount)} проблемных колод</StatusPill>
-          <StatusPill status="good">только чтение</StatusPill>
+          <StatusPill status={problemDeckCount ? "warning" : "good"}>{tc("header.problemDecks", { count: formatInteger(problemDeckCount) })}</StatusPill>
+          <StatusPill status="good">{tc("header.readOnly")}</StatusPill>
         </aside>
       </div>
     </header>
@@ -636,15 +625,15 @@ const RiskTable = memo(function RiskTable({
       <table className="cards-risk-table table-readable w-full min-w-[1320px] border-collapse" data-testid="cards-risk-table">
         <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
           <tr>
-            <th className="text-left">Риск</th>
-            <th className="text-left">Карточка</th>
-            <th className="text-left">Колода</th>
-            <th className="text-left">Проблемы</th>
+            <th className="text-left">{tc("table.risk")}</th>
+            <th className="text-left">{tc("table.card")}</th>
+            <th className="text-left">{tc("table.deck")}</th>
+            <th className="text-left">{tc("table.issues")}</th>
             <th className="text-right">Again</th>
-            <th className="text-right">Провалы</th>
-            <th className="text-right">Средний ответ</th>
-            <th className="text-left">Последний повтор</th>
-            <th className="text-left">Действия</th>
+            <th className="text-right">{tc("table.failures")}</th>
+            <th className="text-right">{tc("table.average")}</th>
+            <th className="text-left">{tc("table.last")}</th>
+            <th className="text-left">{tc("table.actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -667,7 +656,7 @@ const RiskTable = memo(function RiskTable({
               <td className="w-[72px] text-right tabular-nums">{formatInteger(row.againCount)}</td>
               <td className="w-[78px] text-right tabular-nums">{formatInteger(row.lapses)}</td>
               <td className="w-[112px] text-right tabular-nums">{formatCompactSeconds(row.averageAnswerSeconds)}</td>
-              <td className="w-[150px] text-report-muted">{safeText(row.lastReviewed, "Нет данных")}</td>
+              <td className="w-[150px] text-report-muted">{safeText(row.lastReviewed, tc("table.noData"))}</td>
               <td className="w-[150px]" data-testid="cards-table-actions">
                 <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} compact />
               </td>
@@ -704,7 +693,7 @@ function InsightGrid({
             </div>
             <div className="text-left text-sm text-report-muted sm:text-right">
               <p>Again {formatInteger(row.againCount)}</p>
-              <p>срывы {formatInteger(row.lapses)}</p>
+              <p>{tc("table.lapses")} {formatInteger(row.lapses)}</p>
               <p>{formatPercent(row.passRate)}</p>
             </div>
           </div>
@@ -713,10 +702,10 @@ function InsightGrid({
           </div>
           <p className="mt-3 text-sm leading-6 text-report-muted">
             {tab === "patterns"
-              ? row.answerPattern || "Паттерн ответа пока выводится из Again, срывов, успешности и среднего времени."
+              ? row.answerPattern || tc("table.patternFallback")
               : tab === "gaps"
-                ? "Проверьте учебные поля в Anki: дашборд только показывает подозрение и готовый запрос поиска."
-                : "Проверочный список для выбранной колоды без редактирования из дашборда."}
+                ? tc("table.gapsHint")
+                : tc("table.checklistHint")}
           </p>
           <div className="mt-4">
             <RowActions row={row} status={rowStatus[row.id]} onCopySearch={onCopySearch} onOpenRow={onOpenRow} />
@@ -750,7 +739,7 @@ const CardTiles = memo(function CardTiles({
           data-card-id={row.id}
         >
           <div className="cards-tile-header flex flex-wrap items-center justify-between gap-2" data-testid="cards-tile-header">
-            <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
+            <StatusPill status={riskStatus(row.riskScore)}>{tc("table.riskValue", { value: formatInteger(row.riskScore) })}</StatusPill>
             <span className="text-xs text-report-muted">{tabLabel(tab)}</span>
           </div>
           <div className="cards-tile-preview-slot" data-testid="cards-tile-preview-slot">
@@ -761,8 +750,8 @@ const CardTiles = memo(function CardTiles({
           </p>
           <div className="cards-tile-metrics grid grid-cols-3 gap-2 text-xs text-report-muted" data-testid="cards-tile-metrics">
             <DetailMini label="Again" value={formatInteger(row.againCount)} />
-            <DetailMini label="срывы" value={formatInteger(row.lapses)} />
-            <DetailMini label="успех" value={formatPercent(row.passRate)} />
+            <DetailMini label={tc("table.lapses")} value={formatInteger(row.lapses)} />
+            <DetailMini label={tc("table.success")} value={formatPercent(row.passRate)} />
           </div>
           <div className="cards-tile-issues" data-testid="cards-tile-issues">
             <IssueChips issues={row.issues} />
@@ -793,8 +782,8 @@ const AnkiPreviewGrid = memo(function AnkiPreviewGrid({
         {rows.map((row) => (
           <article key={row.id} className={`cards-anki-preview-card rounded-xl border bg-ink-800/55 p-4 status-border-${riskStatus(row.riskScore)}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <StatusPill status={riskStatus(row.riskScore)}>риск {formatInteger(row.riskScore)}</StatusPill>
-              <span className="text-xs text-report-muted">{row.preview?.noteTypeName || row.preview?.detectedKind || "авто-превью"}</span>
+              <StatusPill status={riskStatus(row.riskScore)}>{tc("table.riskValue", { value: formatInteger(row.riskScore) })}</StatusPill>
+              <span className="text-xs text-report-muted">{row.preview?.noteTypeName || row.preview?.detectedKind || tc("table.autoPreview")}</span>
             </div>
             <AnkiPreviewBox row={row} />
             <div className="cards-anki-preview-issues mt-3">
@@ -819,7 +808,7 @@ const AnkiPreviewBox = memo(function AnkiPreviewBox({ row }: { row: CardAttentio
     const previewHtml = canRenderBack ? rendered?.backHtml || "" : rendered?.frontHtml || "";
     return (
       <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3">
-        <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
+        <PreviewSection title={tc("preview.answer")} testId="anki-preview-answer" side="answer">
           <AnkiCardShadowPreview
             mode="preview"
             side="answer"
@@ -832,7 +821,7 @@ const AnkiPreviewBox = memo(function AnkiPreviewBox({ row }: { row: CardAttentio
           />
           {usesAnswerFallback ? (
             <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">
-              Ответ недоступен, показана лицевая сторона{rendered?.reason || rendered?.fallbackReason ? `: ${rendered.reason || rendered.fallbackReason}` : "."}
+              {tc("preview.unavailableReason", { reason: rendered?.reason || rendered?.fallbackReason ? `: ${rendered.reason || rendered.fallbackReason}` : "." })}
             </p>
           ) : null}
         </PreviewSection>
@@ -841,10 +830,10 @@ const AnkiPreviewBox = memo(function AnkiPreviewBox({ row }: { row: CardAttentio
   }
   return (
     <div className="asr-card-rendered asr-front-preview asr-anki-preview-panel mt-3 grid gap-3 rounded-lg border border-ink-700 bg-ink-950 p-4">
-      <p className="w-fit rounded-md border border-ink-700 bg-ink-900/70 px-2 py-0.5 text-xs text-report-muted">Упрощённое превью</p>
-      <PreviewSection title="Вид после ответа" testId="anki-preview-answer" side="answer">
+      <p className="w-fit rounded-md border border-ink-700 bg-ink-900/70 px-2 py-0.5 text-xs text-report-muted">{tc("preview.simplified")}</p>
+      <PreviewSection title={tc("preview.answer")} testId="anki-preview-answer" side="answer">
         <PlainPreviewText text={cardFrontText(row)} />
-        <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">Ответ недоступен, показана лицевая сторона.</p>
+        <p className="asr-preview-fallback-note mt-2 text-xs leading-5 text-report-muted">{tc("preview.unavailable")}</p>
       </PreviewSection>
       {rendered?.reason ? <p className="text-xs leading-5 text-report-muted">{rendered.reason}</p> : null}
     </div>
@@ -866,7 +855,7 @@ function PreviewSection({ title, children, testId, side }: { title: string; chil
 }
 
 function PlainPreviewText({ text, muted = false }: { text: string; muted?: boolean }) {
-  return <p className={`whitespace-pre-wrap text-sm leading-6 ${muted ? "text-report-muted" : "text-report-text"}`}>{text || "Нет данных"}</p>;
+  return <p className={`whitespace-pre-wrap text-sm leading-6 ${muted ? "text-report-muted" : "text-report-text"}`}>{text || tc("preview.noData")}</p>;
 }
 
 function DetailMini({ label, value }: { label: string; value: string }) {
@@ -879,23 +868,19 @@ function DetailMini({ label, value }: { label: string; value: string }) {
 }
 
 function DisplayModeSwitcher({ value, onChange }: { value: CardsDisplayMode; onChange: (mode: CardsDisplayMode) => void }) {
-  const options: Array<{ value: CardsDisplayMode; label: string }> = [
-    { value: "table", label: "Таблица" },
-    { value: "tiles", label: "Плитки" },
-    { value: "ankiPreview", label: "Превью Anki" },
-  ];
+  const options: CardsDisplayMode[] = ["table", "tiles", "ankiPreview"];
   return (
-    <div className="flex flex-wrap gap-1 rounded-lg border border-ink-700 bg-ink-900/45 p-1" aria-label="Режим отображения карточек">
+    <div className="flex flex-wrap gap-1 rounded-lg border border-ink-700 bg-ink-900/45 p-1" aria-label={tc("display.aria")}>
       {options.map((option) => (
         <button
-          key={option.value}
+          key={option}
           type="button"
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-            value === option.value ? "bg-report-blue/25 text-report-text" : "text-report-muted hover:bg-ink-800 hover:text-report-text"
+            value === option ? "bg-report-blue/25 text-report-text" : "text-report-muted hover:bg-ink-800 hover:text-report-text"
           }`}
-          onClick={() => onChange(option.value)}
+          onClick={() => onChange(option)}
         >
-          {option.label}
+          {tc(`display.${option}`)}
         </button>
       ))}
     </div>
@@ -973,18 +958,18 @@ function FloatingStatusIndicator({
   const isError = status.state === "error";
   const text =
     status.state === "applying"
-      ? "Применение фильтров..."
+      ? tc("floating.applying")
       : status.state === "applied"
-        ? "Фильтры применены"
+        ? tc("floating.applied")
         : status.state === "saving"
-          ? "Сохранение настроек..."
+          ? tc("floating.saving")
           : status.state === "saved"
-            ? "Настройки сохранены"
+            ? tc("floating.saved")
             : status.state === "rebuilding"
-              ? "Обновление отчёта..."
+              ? tc("floating.rebuilding")
               : status.state === "rebuilt"
-                ? "Отчёт обновлён"
-                : `Не удалось сохранить/обновить${status.reason ? `: ${status.reason}` : ""}`;
+                ? tc("floating.rebuilt")
+                : tc("floating.failed", { reason: status.reason ? `: ${status.reason}` : "" });
   const content = (
     <div
       className={`pointer-events-none fixed left-5 top-[84px] z-50 flex max-w-[min(360px,calc(100vw-40px))] items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-panel ${
@@ -1003,7 +988,7 @@ function FloatingStatusIndicator({
       {isError ? (
         <button type="button" className="toolbar-button pointer-events-auto ml-1 px-2 py-1 text-xs" onClick={onRetry}>
           <RotateCcw size={14} aria-hidden="true" />
-          Повторить
+          {tc("floating.retry")}
         </button>
       ) : null}
     </div>
@@ -1029,11 +1014,11 @@ function RowActions({
       <div className="cards-row-actions">
         <button type="button" className="cards-row-open" onClick={() => onOpenRow(row)}>
           <ExternalLink size={14} aria-hidden="true" />
-          Открыть в Anki
+          {tc("rowAction.open")}
         </button>
-        <button type="button" className="cards-row-copy" onClick={() => onCopySearch(row)} title="Скопировать запрос поиска" aria-label="Скопировать запрос поиска">
+        <button type="button" className="cards-row-copy" onClick={() => onCopySearch(row)} title={tc("rowAction.copyTitle")} aria-label={tc("rowAction.copyTitle")}>
           <Clipboard size={14} aria-hidden="true" />
-          Запрос
+          {tc("rowAction.query")}
         </button>
         {status ? <p className="cards-row-status">{status}</p> : null}
       </div>
@@ -1043,11 +1028,11 @@ function RowActions({
     <div className="grid gap-2">
       <button type="button" className="toolbar-button justify-center" onClick={() => onOpenRow(row)}>
         <ExternalLink size={15} aria-hidden="true" />
-        Открыть в Anki Browser
+        {tc("rowAction.openBrowser")}
       </button>
       <button type="button" className="toolbar-button justify-center" onClick={() => onCopySearch(row)}>
         <Clipboard size={15} aria-hidden="true" />
-        Скопировать запрос поиска
+        {tc("rowAction.copy")}
       </button>
       {status ? <p className="text-xs leading-5 text-report-muted">{status}</p> : null}
     </div>
@@ -1068,14 +1053,14 @@ function CardLevelPlannedState({ problemDecks, statusReason }: { problemDecks: n
   return (
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
       <CardsEmptyState
-        title="В текущем отчёте нет данных уровня карточек"
-        text="Отчёт уже показывает проблемные колоды и умеет открыть их в Anki Browser, но в текущих данных нет детализации по конкретным карточкам, превью, срывам и пропущенным полям."
+        title={tc("empty.noCardData")}
+        text={tc("empty.noCardDataText")}
       />
       <article className="rounded-xl border border-ink-700 bg-ink-800/55 p-4">
-        <h3 className="text-base font-semibold tracking-normal text-report-text">Доступен запасной режим по колодам</h3>
-        <p className="mt-2 text-2xl font-semibold leading-8 text-report-text">{formatInteger(problemDecks)} проблемных колод</p>
+        <h3 className="text-base font-semibold tracking-normal text-report-text">{tc("empty.fallbackTitle")}</h3>
+        <p className="mt-2 text-2xl font-semibold leading-8 text-report-text">{tc("empty.problemDecks", { count: formatInteger(problemDecks) })}</p>
         <p className="mt-2 text-sm leading-6 text-report-muted">
-          Можно открыть проблемные колоды в Anki Browser. Детализация по конкретным карточкам появится, когда отчёт передаст данные уровня карточек.
+          {tc("empty.fallbackText")}
         </p>
         {statusReason ? <p className="mt-2 text-xs leading-5 text-report-muted">{statusReason}</p> : null}
       </article>
@@ -1106,26 +1091,21 @@ function SelectControl({
 }
 
 function Tabs({ active, onChange, counts }: { active: CardsTab; onChange: (tab: CardsTab) => void; counts: Record<CardsTab, number> }) {
-  const tabs: Array<{ value: CardsTab; label: string }> = [
-    { value: "risk", label: "Рискованные" },
-    { value: "gaps", label: "Пробелы" },
-    { value: "patterns", label: "Паттерны" },
-    { value: "check", label: "Проверка" },
-  ];
+  const tabs: CardsTab[] = ["risk", "gaps", "patterns", "check"];
   return (
     <div className="flex flex-wrap gap-2">
       {tabs.map((item) => (
         <button
-          key={item.value}
+          key={item}
           type="button"
           className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-            active === item.value
+            active === item
               ? "border-report-blue/65 bg-report-blue/20 text-report-text"
               : "border-ink-700 bg-ink-800/55 text-report-muted hover:border-report-blue/45 hover:text-report-text"
           }`}
-          onClick={() => onChange(item.value)}
+          onClick={() => onChange(item)}
         >
-          {item.label} {formatInteger(counts[item.value])}
+          {tc(`tabs.${item}`)} {formatInteger(counts[item])}
         </button>
       ))}
     </div>
@@ -1174,7 +1154,7 @@ function IssueChips({ issues }: { issues: CardIssueType[] }) {
     <div className="flex flex-wrap gap-1.5">
       {issues.map((issue) => (
         <span key={issue} className={`status-pill ${missingCardIssueTypes.has(issue) ? "status-warning" : issue === "leech" || issue === "repeated_again" ? "status-danger" : "status-neutral"}`}>
-          {cardIssueLabels[issue]}
+          {tc(`issues.${issueKey(issue)}`)}
         </span>
       ))}
     </div>
@@ -1221,122 +1201,119 @@ function riskStatus(score: number): Status {
 function riskLevelLabel(score: number) {
   const normalized = finiteNumber(score);
   if (normalized >= 75) {
-    return "Высокий";
+    return tc("risk.high");
   }
   if (normalized >= 45) {
-    return "Средний";
+    return tc("risk.medium");
   }
-  return "Низкий";
+  return tc("risk.low");
 }
 
 function loadStateText(state: LoadState) {
   if (state === "loading") {
-    return "Проверяю локальный API дашборда.";
+    return tc("load.loading");
   }
   if (state === "forbidden") {
-    return "Откройте дашборд из Anki Study Report, чтобы получить действующую ссылку.";
+    return tc("load.forbidden");
   }
   if (state === "error") {
-    return "Локальный API дашборда не вернул отчёт.";
+    return tc("load.error");
   }
-  return "Откройте основное окно Anki Study Report и опубликуйте отчёт в дашборде.";
+  return tc("load.empty");
 }
 
 function backendScopeLabel(report: StudyReport) {
   const decks = report.metadata.selectedDecks.filter((item) => item.trim().length > 0);
-  if (!decks.length || decks.some((item) => /^все колоды$/i.test(item))) {
-    return "Все колоды";
+  const allDeckLabels = [i18n.getFixedT("ru", "pages")("cards.filters.allDecks"), i18n.getFixedT("en", "pages")("cards.filters.allDecks")];
+  if (!decks.length || decks.some((item) => allDeckLabels.some((label) => label.toLowerCase() === item.toLowerCase()))) {
+    return tc("filters.allDecks");
   }
   return decks.join(", ");
 }
 
-function periodLabel(period: CardsPeriodFilter) {
-  return periodOptions.find((option) => option.value === period)?.label || period;
-}
+function periodLabel(period: CardsPeriodFilter) { return tc(`periods.${period}`); }
 
 function issueLabel(issue: CardsIssueFilter) {
   if (issue === "all") {
-    return "Все проблемы";
+    return tc("issues.all");
   }
-  return cardIssueLabels[issue];
+  return tc(`issues.${issueKey(issue)}`);
 }
 
-function sortLabel(sortKey: CardsSortKey) {
-  return sortOptions.find((option) => option.value === sortKey)?.label || sortKey;
-}
+function sortLabel(sortKey: CardsSortKey) { return tc(`sort.${sortKey}`); }
 
 function availabilityLabel(value: CardAttentionAvailability) {
   if (value === "available") {
-    return "доступно";
+    return tc("availability.available");
   }
   if (value === "skipped") {
-    return "пропущено";
+    return tc("availability.skipped");
   }
   if (value === "error") {
-    return "ошибка";
+    return tc("availability.error");
   }
   if (value === "absent") {
-    return "нет данных";
+    return tc("availability.absent");
   }
-  return "недоступно";
+  return tc("availability.unavailable");
 }
 
 function sourceLabel(value: ReturnType<typeof cardAttentionState>["source"]) {
   if (value === "fresh") {
-    return "текущий отчёт";
+    return tc("availability.fresh");
   }
   if (value === "cache") {
-    return "кэш";
+    return tc("availability.cache");
   }
   if (value === "mock") {
-    return "пример";
+    return tc("availability.mock");
   }
-  return "неизвестно";
+  return tc("availability.unknown");
 }
 
 function nullableInteger(value: number | null) {
-  return value === null ? "Нет данных" : formatInteger(value);
+  return value === null ? tc("diagnostics.noData") : formatInteger(value);
 }
 
 function booleanLabel(value: boolean | null) {
   if (value === null) {
-    return "Нет данных";
+    return tc("diagnostics.noData");
   }
-  return value ? "да" : "нет";
+  return value ? tc("diagnostics.yes") : tc("diagnostics.no");
 }
 
 function detectedKindsLabel(value: Record<string, number>) {
   const entries = Object.entries(value);
   if (!entries.length) {
-    return "Нет данных";
+    return tc("diagnostics.noData");
   }
   return entries.map(([kind, count]) => `${kind}: ${formatInteger(count)}`).join(", ");
 }
 
 function emptyTitleForTab(tab: CardsTab) {
   if (tab === "gaps") {
-    return "Пробелов не найдено";
+    return tc("empty.gaps");
   }
   if (tab === "patterns") {
-    return "Подозрительных паттернов нет";
+    return tc("empty.patterns");
   }
   if (tab === "check") {
-    return "Проверка пуста";
+    return tc("empty.check");
   }
-  return "Нет проблемных карточек";
+  return tc("empty.noProblems");
 }
 
 function tabLabel(tab: CardsTab) {
   if (tab === "gaps") {
-    return "пробел";
+    return tc("tabs.gapsShort");
   }
   if (tab === "patterns") {
-    return "паттерн";
+    return tc("tabs.patternsShort");
   }
   if (tab === "check") {
-    return "проверка";
+    return tc("tabs.checkShort");
   }
-  return "риск";
+  return tc("tabs.riskShort");
 }
 
 function readDisplayMode(): CardsDisplayMode {
@@ -1350,18 +1327,18 @@ function readDisplayMode(): CardsDisplayMode {
 
 function displayModeLabel(mode: CardsDisplayMode) {
   if (mode === "tiles") {
-    return "Плитки";
+    return tc("display.tiles");
   }
   if (mode === "ankiPreview") {
-    return "Превью Anki";
+    return tc("display.ankiPreview");
   }
-  return "Таблица";
+  return tc("display.table");
 }
 
 function cardFrontText(row: CardAttention) {
   return safeText(
     row.renderedPreview?.frontPlainText || row.preview?.frontText || row.preview?.frontOnly || row.preview?.primary || row.front,
-    "Карточка без превью",
+    tc("preview.noPreview"),
   );
 }
 

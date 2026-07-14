@@ -459,6 +459,57 @@ select {
     transform var(--motion-fast) var(--ease-standard);
 }
 
+.utility-language-button {
+  grid-template-columns: auto auto;
+  gap: .25rem;
+  width: auto;
+  min-width: 2.75rem;
+  padding-inline: .65rem;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.utility-language-menu {
+  position: absolute;
+  right: calc(100% + .65rem);
+  bottom: 0;
+  width: 10.5rem;
+  padding: .35rem;
+  border: 1px solid rgb(var(--color-border-strong) / .72);
+  border-radius: .75rem;
+  background: rgb(var(--color-surface-1));
+  box-shadow: var(--shadow-popover);
+}
+
+.utility-language-menu button {
+  width: 100%;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .5rem .65rem;
+  border: 1px solid transparent;
+  border-radius: .55rem;
+  color: rgb(var(--color-text-secondary));
+  font-size: .8rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.utility-language-menu button:hover,
+.utility-language-menu button:focus-visible {
+  border-color: rgb(var(--color-accent) / .58);
+  background: rgb(var(--color-surface-2) / .9);
+  color: rgb(var(--color-text-primary));
+  outline: none;
+}
+
+.utility-language-menu button[aria-checked="true"] {
+  color: rgb(var(--color-accent));
+}
+
 .utility-icon-button:hover {
   border-color: rgb(var(--color-accent) / 0.72);
   background: rgb(var(--color-surface-2) / 0.98);

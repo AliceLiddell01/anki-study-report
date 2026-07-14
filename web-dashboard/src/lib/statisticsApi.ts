@@ -1,4 +1,5 @@
 import type { StatisticsQuery, StatisticsResult } from "../types/report";
+import i18n from "../i18n";
 
 export class StatisticsApiError extends Error {
   fieldErrors?: Record<string, string>;
@@ -40,7 +41,7 @@ export async function fetchStatistics(query: StatisticsQuery, signal?: AbortSign
       ? body.fieldErrors as Record<string, string>
       : undefined;
     throw new StatisticsApiError(
-      typeof body.message === "string" ? body.message : response.status === 403 ? "Недействительная ссылка dashboard." : "Не удалось обновить статистику.",
+      typeof body.message === "string" ? body.message : response.status === 403 ? i18n.t("unavailable.forbidden", { ns: "statistics" }) : i18n.t("shell.refreshFailed", { ns: "statistics" }),
       fieldErrors,
     );
   }

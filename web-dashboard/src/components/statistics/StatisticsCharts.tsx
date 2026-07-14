@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Bar,
   BarChart,
@@ -11,6 +12,8 @@ import {
   YAxis,
 } from "recharts";
 import type { StatisticsSeriesPoint } from "../../types/report";
+import i18n from "../../i18n";
+import { localeForLanguage } from "../../i18n/language";
 import { describeSeries, statisticsColorClass, type StatisticsSemanticColor } from "./statisticsPresentation";
 
 export interface StatisticsChartMetric {
@@ -44,6 +47,7 @@ export function StatisticsChartPanel({
   aside,
   testId,
 }: StatisticsChartPanelProps) {
+  const { t } = useTranslation("statistics");
   const id = useId().replace(/:/g, "");
   const titleId = `statistics-chart-title-${id}`;
   const summaryId = `statistics-chart-summary-${id}`;
@@ -94,15 +98,15 @@ export function StatisticsChartPanel({
               )}
             </ResponsiveContainer>
           </div>
-          {sparse ? <figcaption className="statistics-sparse-note">Мало точек: график показывает только доступные значения без интерполяции.</figcaption> : null}
+          {sparse ? <figcaption className="statistics-sparse-note">{t("chart.sparse")}</figcaption> : null}
         </figure>
-      ) : allZero ? <p className="statistics-zero-state">За выбранный период значение равно нулю. Это покрытый период, а не пропуск данных.</p> : <StatisticsEmptyState text="Для выбранного периода данных нет. Пропуски не заменены нулями." />}
+      ) : allZero ? <p className="statistics-zero-state">{t("chart.zero")}</p> : <StatisticsEmptyState text={t("chart.empty")} />}
       <StatisticsLegend metrics={metrics} />
       <details className="statistics-data-disclosure">
-        <summary aria-controls={tableId}>Таблица данных</summary>
+        <summary aria-controls={tableId}>{t("chart.dataTable")}</summary>
         <div className="statistics-table-wrap" id={tableId}>
           <table className="statistics-table" aria-labelledby={titleId}>
-            <thead><tr><th>Интервал</th>{metrics.map((metric) => <th key={String(metric.key)}>{metric.label}</th>)}</tr></thead>
+            <thead><tr><th>{t("chart.interval")}</th>{metrics.map((metric) => <th key={String(metric.key)}>{metric.label}</th>)}</tr></thead>
             <tbody>{points.map((point, index) => {
               const record = point as Record<string, unknown>;
               return <tr key={String(record.key ?? index)}><th>{String(record.label ?? "—")}</th>{metrics.map((metric) => <td key={String(metric.key)}>{formatUnknown(record[String(metric.key)], metric.format)}</td>)}</tr>;
@@ -115,7 +119,8 @@ export function StatisticsChartPanel({
 }
 
 export function StatisticsLegend({ metrics }: { metrics: StatisticsChartMetric[] }) {
-  return <div className="statistics-legend" aria-label="Обозначения графика">{metrics.map((metric) => <span key={String(metric.key)}><i className={statisticsColorClass[metric.color]} aria-hidden="true" />{metric.label}</span>)}</div>;
+  const { t } = useTranslation("statistics");
+  return <div className="statistics-legend" aria-label={t("chart.legend")}>{metrics.map((metric) => <span key={String(metric.key)}><i className={statisticsColorClass[metric.color]} aria-hidden="true" />{metric.label}</span>)}</div>;
 }
 
 export function StatisticsEmptyState({ text }: { text: string }) {
@@ -125,12 +130,12 @@ export function StatisticsEmptyState({ text }: { text: string }) {
 export function seriesSummary(points: StatisticsSeriesPoint[], key: keyof StatisticsSeriesPoint, label: string) {
   const values = points.map((point) => typeof point[key] === "number" ? point[key] as number : null);
   const available = values.filter((value): value is number => value != null && Number.isFinite(value));
-  if (!available.length) return `${label}: данных для выбранного периода нет.`;
+  if (!available.length) return i18n.t("series.noData", { ns: "statistics", label });
   if (key === "successRate") {
-    return `${label}: от ${formatValue(Math.min(...available), "percent")} до ${formatValue(Math.max(...available), "percent")} по ${available.length} интервалам.`;
+    return i18n.t("series.range", { ns: "statistics", label, min: formatValue(Math.min(...available), "percent"), max: formatValue(Math.max(...available), "percent"), count: available.length });
   }
   if (key === "averageAnswerSeconds") {
-    return `${label}: от ${formatValue(Math.min(...available), "seconds")} до ${formatValue(Math.max(...available), "seconds")} по ${available.length} интервалам.`;
+    return i18n.t("series.range", { ns: "statistics", label, min: formatValue(Math.min(...available), "seconds"), max: formatValue(Math.max(...available), "seconds"), count: available.length });
   }
   return describeSeries(values, label);
 }
@@ -145,21 +150,23 @@ function axisDomain(metrics: StatisticsChartMetric[]): [number | "auto", number 
 
 function axisValue(value: number, format?: StatisticsChartMetric["format"]): string {
   if (format === "percent") return `${Math.round(value * 100)}%`;
-  if (format === "seconds") return `${value} с`;
-  if (format === "duration") return `${Math.round(value / 60)} мин`;
-  return new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  if (format === "seconds") return i18n.t("units.secondsShort", { ns: "common", value });
+  if (format === "duration") return i18n.t("units.minutesShort", { ns: "common", value: Math.round(value / 60) });
+  return new Intl.NumberFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function formatValue(value: number, format?: StatisticsChartMetric["format"]): string {
-  if (!Number.isFinite(value)) return "Нет данных";
-  if (format === "percent") return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value * 100)}%`;
-  if (format === "seconds") return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value)} с`;
-  if (format === "duration") return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value / 60)} мин`;
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value);
+  if (!Number.isFinite(value)) return i18n.t("state.noData", { ns: "common" });
+  const locale = localeForLanguage(i18n.resolvedLanguage || i18n.language);
+  if (format === "percent") return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 }).format(value);
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(format === "duration" ? value / 60 : value);
+  if (format === "seconds") return i18n.t("units.secondsShort", { ns: "common", value: formatted });
+  if (format === "duration") return i18n.t("units.minutesShort", { ns: "common", value: formatted });
+  return formatted;
 }
 
 function formatUnknown(value: unknown, format?: StatisticsChartMetric["format"]): string {
-  return typeof value === "number" && Number.isFinite(value) ? formatValue(value, format) : "Нет данных";
+  return typeof value === "number" && Number.isFinite(value) ? formatValue(value, format) : i18n.t("state.noData", { ns: "common" });
 }
 
 function shortLabel(value: unknown): string {

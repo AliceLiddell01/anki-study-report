@@ -179,6 +179,7 @@ try {
   }
   const profileDetails = shouldRunScope(scope, "global") ? await assertProfileMvp(page) : null;
   const themeDetails = await assertGlobalThemeDock(page);
+  const localizationDetails = await assertLocalizationDock(page);
   const activityDetails = shouldRunScope(scope, "activity") ? await assertActivityHub(page) : null;
   const deckDetails = shouldRunScope(scope, "decks") ? await assertDeckHub(page) : null;
   const statisticsDetails = shouldRunScope(scope, "stats") ? await assertStatisticsHub(page) : null;
@@ -204,6 +205,7 @@ try {
     apkg: apkgDetails,
     profile: profileDetails,
     theme: themeDetails,
+    localization: localizationDetails,
     activity: activityDetails,
     decks: deckDetails,
     statistics: statisticsDetails,
@@ -418,8 +420,68 @@ async function assertGlobalThemeDock(page) {
   assertBrowser(await page.evaluate(() => localStorage.getItem("anki-study-report-theme")) === "light", "Theme toggle returns to and stores light mode.");
   const bodyText = await page.locator("body").innerText();
   assertBrowser(!bodyText.includes(ready.token), "Theme control does not expose the dashboard token.");
-  assertBrowser(!/\b(?:RU|EN)\b|выбрать язык/i.test(await dock.innerText()), "No language placeholder is rendered.");
   return { routesChecked: 7, persistedAfterReload: true, navigationPreserved: true, duplicateCount: 0, profileMenuOverlap: false };
+}
+
+async function assertLocalizationDock(page) {
+  const screenshots = [];
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/home`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.evaluate(() => {
+    localStorage.removeItem("anki-study-report-language");
+    localStorage.setItem("anki-study-report-theme", "light");
+  });
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Сегодня", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("lang") === "ru", "Dashboard defaults to html lang=ru.");
+  assertBrowser(await page.getByTestId("language-selector").count() === 1, "Language selector renders exactly once.");
+  screenshots.push(await captureLocalizationScreenshot(page, "today", "ru", "light"));
+
+  const initialHash = new URL(page.url()).hash;
+  await page.getByTestId("language-selector").click();
+  await page.getByRole("menuitemradio", { name: "English", exact: true }).click();
+  await page.waitForFunction(() => document.documentElement.lang === "en");
+  assertBrowser(new URL(page.url()).hash === initialHash, "Language switch preserves the active route.");
+  assertBrowser(await page.evaluate(() => localStorage.getItem("anki-study-report-language")) === "en", "English preference is stored.");
+  await page.getByRole("heading", { name: "Today", exact: true }).waitFor({ timeout: 15000 });
+  screenshots.push(await captureLocalizationScreenshot(page, "today", "en", "light"));
+
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/stats`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Statistics", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("lang") === "en", "SPA navigation preserves English on Statistics.");
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Statistics", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("lang") === "en", "Reload restores English preference.");
+
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/stats/fsrs`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "FSRS", exact: true }).waitFor({ timeout: 60000 });
+  await page.getByTestId("theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  assertBrowser(await page.locator("html").getAttribute("lang") === "en", "Theme switch does not reset English.");
+  screenshots.push(await captureLocalizationScreenshot(page, "fsrs-overview", "en", "dark"));
+
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/settings`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Report", exact: true }).waitFor({ timeout: 60000 });
+  assertBrowser(await page.locator("html").getAttribute("lang") === "en", "Settings renders in English.");
+
+  const settingsHash = new URL(page.url()).hash;
+  await page.getByTestId("language-selector").click();
+  await page.getByRole("menuitemradio", { name: "Русский", exact: true }).click();
+  await page.waitForFunction(() => document.documentElement.lang === "ru");
+  await page.getByRole("heading", { name: "Отчёт", exact: true }).waitFor({ timeout: 15000 });
+  assertBrowser(new URL(page.url()).hash === settingsHash, "Switching back to Russian preserves Settings route.");
+  assertBrowser(await page.locator("html").getAttribute("data-theme") === "dark", "Switching language preserves dark theme.");
+  screenshots.push(await captureLocalizationScreenshot(page, "settings-report", "ru", "dark"));
+
+  await page.getByTestId("theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+  return { routesChecked: 4, persistedAfterReload: true, themeIndependent: true, screenshots, screenshotCount: screenshots.length };
+}
+
+async function captureLocalizationScreenshot(page, pageName, language, theme) {
+  const filePath = artifactPaths.stateScreenshot("localization", `${pageName}-${language}`, theme);
+  await ensureArtifactParent(filePath);
+  await page.screenshot({ path: filePath, fullPage: true });
+  return { page: pageName, language, theme, screenshot: relativeArtifactPath(artifactPaths, filePath) };
 }
 
 async function assertActivityHub(page) {

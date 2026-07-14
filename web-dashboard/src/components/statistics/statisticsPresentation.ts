@@ -1,4 +1,6 @@
 import type { StatisticsResult } from "../../types/report";
+import i18n from "../../i18n";
+import { localeForLanguage } from "../../i18n/language";
 
 export type StatisticsSemanticColor =
   | "reviews"
@@ -61,18 +63,18 @@ export function deltaModel(
   kind: "relative" | "percentage-points" | "seconds" = "relative",
 ): StatisticsDeltaModel {
   if (comparison.status !== "available") {
-    return { text: "Нет сопоставимых данных", direction: "unavailable", comparisonStyle: "unavailable" };
+    return { text: i18n.t("comparison.unavailable", { ns: "statistics" }), direction: "unavailable", comparisonStyle: "unavailable" };
   }
   const value = comparisonValue(comparison, key);
   if (!value || value.delta == null || !Number.isFinite(value.delta)) {
-    return { text: "Нет сопоставимых данных", direction: "unavailable", comparisonStyle: "unavailable" };
+    return { text: i18n.t("comparison.unavailable", { ns: "statistics" }), direction: "unavailable", comparisonStyle: "unavailable" };
   }
   const delta = value.delta;
   const sign = delta > 0 ? "+" : delta < 0 ? "−" : "";
-  const amount = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(Math.abs(delta));
-  const suffix = kind === "percentage-points" ? " п.п." : kind === "seconds" ? " с" : "%";
+  const amount = new Intl.NumberFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { maximumFractionDigits: 1 }).format(Math.abs(delta));
+  const suffix = kind === "percentage-points" ? i18n.t("comparison.percentagePoints", { ns: "statistics" }) : kind === "seconds" ? i18n.t("comparison.seconds", { ns: "statistics" }) : "%";
   return {
-    text: delta === 0 ? `Без изменений к прошлому периоду` : `${sign}${amount}${suffix} к прошлому периоду`,
+    text: delta === 0 ? i18n.t("comparison.unchanged", { ns: "statistics" }) : i18n.t("comparison.delta", { ns: "statistics", value: `${sign}${amount}${suffix}` }),
     direction: delta > 0 ? "increase" : delta < 0 ? "decrease" : "same",
     comparisonStyle: "outline-dashed",
   };
@@ -92,13 +94,13 @@ export function futureDueTotal(result: StatisticsResult["load"], days: number): 
 
 export function describeSeries(values: Array<number | null | undefined>, label: string): string {
   const available = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  if (!available.length) return `${label}: данных для выбранного периода нет.`;
-  if (available.length === 1) return `${label}: доступно одно значение — ${formatCompactNumber(available[0])}.`;
+  if (!available.length) return i18n.t("series.noData", { ns: "statistics", label });
+  if (available.length === 1) return i18n.t("series.single", { ns: "statistics", label, value: formatCompactNumber(available[0]) });
   const peak = Math.max(...available);
   const total = available.reduce((sum, value) => sum + value, 0);
-  return `${label}: ${available.length} интервалов, максимум ${formatCompactNumber(peak)}, сумма ${formatCompactNumber(total)}.`;
+  return i18n.t("series.summary", { ns: "statistics", label, count: available.length, peak: formatCompactNumber(peak), total: formatCompactNumber(total) });
 }
 
 export function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { maximumFractionDigits: 1 }).format(value);
 }

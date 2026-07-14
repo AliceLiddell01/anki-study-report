@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import { dashboardToken } from "./actionsApi";
 import type {
   AnswerMode,
@@ -130,6 +132,7 @@ export function usePublicSettingsForm(
   sections: SettingsSectionName[],
   onSaved?: (response: SettingsResponse) => void,
 ) {
+  const { t } = useTranslation("pages");
   const sectionKey = sections.join(",");
   const [saved, setSaved] = useState<PublicSettings>(defaultPublicSettings);
   const [draft, setDraft] = useState<PublicSettings>(defaultPublicSettings);
@@ -178,7 +181,7 @@ export function usePublicSettingsForm(
     };
     const interceptRoute = (event: MouseEvent) => {
       const anchor = (event.target as Element | null)?.closest?.('a[href^="#/"]') as HTMLAnchorElement | null;
-      if (anchor && !window.confirm("Есть несохранённые изменения. Покинуть страницу?")) {
+      if (anchor && !window.confirm(t("settingsCommon.leaveConfirm"))) {
         event.preventDefault();
       }
     };
@@ -188,7 +191,7 @@ export function usePublicSettingsForm(
       window.removeEventListener("beforeunload", beforeUnload);
       document.removeEventListener("click", interceptRoute, true);
     };
-  }, [dirty]);
+  }, [dirty, t]);
 
   const save = async () => {
     setSaving(true);
@@ -201,12 +204,12 @@ export function usePublicSettingsForm(
       setDraft(response.settings);
       setDeckOptions(response.deckOptions);
       setRestartRequired(Boolean(response.restartRequired));
-      setMessage(response.reportRefreshError ? "Настройки сохранены, но dashboard не обновился." : response.message || "Настройки сохранены.");
+      setMessage(response.reportRefreshError ? t("settingsCommon.savedRefreshFailed") : response.message || t("settingsCommon.savedSuccess"));
       onSaved?.(response);
     } catch (error) {
       const settingsError = error as SettingsApiError;
       setFieldErrors(settingsError.fieldErrors || {});
-      setMessage(settingsError.message || "Не удалось сохранить настройки.");
+      setMessage(settingsError.message || t("settingsCommon.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -215,7 +218,7 @@ export function usePublicSettingsForm(
   const cancel = () => {
     setDraft(saved);
     setFieldErrors({});
-    setMessage("Изменения отменены.");
+    setMessage(t("settingsCommon.cancelled"));
   };
 
   return {
@@ -244,8 +247,8 @@ async function parseSettingsResponse(response: Response): Promise<SettingsRespon
   if (!response.ok || data.ok === false) {
     const error = new SettingsApiError(
       response.status === 403
-        ? "Недействительный dashboard token. Откройте dashboard из Anki Study Report."
-        : stringValue(data.message) || "Не удалось сохранить настройки.",
+        ? i18n.t("settingsCommon.invalidToken", { ns: "pages" })
+        : stringValue(data.message) || i18n.t("settingsCommon.saveFailed", { ns: "pages" }),
     );
     const rawErrors = objectValue(data.fieldErrors);
     error.fieldErrors = Object.fromEntries(

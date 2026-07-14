@@ -1,4 +1,5 @@
 import type { FsrsQuery, FsrsResponse } from "../types/report";
+import i18n from "../i18n";
 
 export class FsrsApiError extends Error {
   fieldErrors?: Record<string, string>;
@@ -22,7 +23,7 @@ export async function fetchFsrs<T = Record<string, unknown>>(query: FsrsQuery, s
   try { payload = await response.json(); } catch { payload = null; }
   const body = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
   if (!response.ok || body.ok !== true || !body.response) {
-    throw new FsrsApiError(typeof body.message === "string" ? body.message : response.status === 403 ? "Недействительная ссылка dashboard." : "Не удалось получить FSRS-аналитику.", body.fieldErrors as Record<string, string> | undefined);
+    throw new FsrsApiError(typeof body.message === "string" ? body.message : response.status === 403 ? i18n.t("invalidLink", { ns: "fsrs" }) : i18n.t("apiFailed", { ns: "fsrs" }), body.fieldErrors as Record<string, string> | undefined);
   }
   return body.response as FsrsResponse<T>;
 }

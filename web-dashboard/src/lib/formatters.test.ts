@@ -19,9 +19,9 @@ describe("formatters", () => {
 
   it("formats report numbers consistently", () => {
     expect(formatInteger(1234.4)).toBe("1 234");
-    expect(formatPercent(0.9)).toBe("90%");
+    expect(formatPercent(0.9)).toBe("90 %");
     expect(formatPercent(null)).toBe("Нет данных");
-    expect(formatCompactSeconds(2.5)).toBe("2.5s");
+    expect(formatCompactSeconds(2.5)).toBe("2,5 с");
     expect(formatDurationSeconds(3661)).toBe("1 ч 1 мин");
   });
 

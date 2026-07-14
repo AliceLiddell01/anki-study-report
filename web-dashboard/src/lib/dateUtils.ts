@@ -1,5 +1,7 @@
+import i18n from "../i18n";
+import { localeForLanguage } from "../i18n/language";
+
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const shortMonths = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
 
 export function isDateKey(value: unknown): value is string {
   if (typeof value !== "string" || !datePattern.test(value)) {
@@ -51,10 +53,9 @@ export function compareDateKeys(a: string, b: string): number {
 
 export function formatShortDate(dateKey: string): string {
   if (!isDateKey(dateKey)) {
-    return "Нет данных";
+    return i18n.t("state.noData", { ns: "common" });
   }
-  const [, month, day] = dateKey.split("-").map((part) => Number.parseInt(part, 10));
-  return `${day} ${shortMonths[month - 1] ?? ""}`.trim();
+  return new Intl.DateTimeFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { day: "numeric", month: "short" }).format(dateFromKey(dateKey));
 }
 
 export function monthKey(dateKey: string): string {

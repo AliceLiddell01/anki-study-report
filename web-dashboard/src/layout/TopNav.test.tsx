@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RoutePath } from "../app/router";
+import i18n from "../i18n";
 import TopNav from "./TopNav";
 
 let container: HTMLDivElement;
@@ -35,6 +36,16 @@ function openProfileMenu() {
 }
 
 describe("TopNav", () => {
+  it("localizes primary navigation and the profile menu in English", async () => {
+    await act(async () => i18n.changeLanguage("en"));
+    renderNav();
+    const nav = container.querySelector<HTMLElement>('nav[aria-label="Primary navigation"]')!;
+    expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual(["Today", "Activity", "Statistics", "Decks", "Cards"]);
+    const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Open profile menu"]')!;
+    act(() => trigger.click());
+    expect(Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]'), (item) => item.textContent?.trim())).toEqual(["Profile", "Settings", "Tools", "Support the project"]);
+  });
+
   it("shows only the agreed primary navigation in the product order", () => {
     renderNav("/calendar");
 
