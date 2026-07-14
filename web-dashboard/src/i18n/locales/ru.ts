@@ -611,7 +611,7 @@ const ru = {
   },
   statistics: {
     shell: {
-      overview: "Обзор", quality: "Качество", load: "Нагрузка", progress: "Прогресс", decks: "Колоды",
+      overview: "Обзор", quality: "Качество", load: "Нагрузка", progress: "Прогресс", decks: "Колоды", fsrs: "FSRS",
       overviewDescription: "Что изменилось за выбранный период",
       qualityDescription: "Насколько стабильно проходят ответы",
       loadDescription: "Сколько работы было и ожидается",

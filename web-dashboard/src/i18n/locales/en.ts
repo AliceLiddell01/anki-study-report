@@ -615,7 +615,7 @@ const en = {
   },
   statistics: {
     shell: {
-      overview: "Overview", quality: "Quality", load: "Load", progress: "Progress", decks: "Decks",
+      overview: "Overview", quality: "Quality", load: "Load", progress: "Progress", decks: "Decks", fsrs: "FSRS",
       overviewDescription: "What changed during the selected period",
       qualityDescription: "How consistently answers succeed",
       loadDescription: "How much work was done and what is due next",
