@@ -92,8 +92,8 @@ jobs:
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
             $base = "origin/$baseBranch"
           } elseif ($refName -ne $defaultBranch) {
-            # Manually dispatched feature-branch runs must describe the complete
-            # branch risk, not only the last synchronize/force-push delta.
+            # Manually dispatched feature-branch runs must describe the complete branch risk,
+            # not only the last synchronize/force-push delta.
             $base = "origin/$defaultBranch"
           } else {
             $base = $null
