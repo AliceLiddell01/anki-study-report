@@ -143,7 +143,7 @@ def test_release_validation_checks_artifact_name_and_writes_no_secrets(tmp_path:
     artifact = tmp_path / "anki_study_report.ankiaddon"
     artifact.write_bytes(b"release-bytes")
 
-    report = release.validate_release("1.0.0", "stable", artifact=artifact, check_remote_tag=False)
+    report = release.validate_release("1.0.0", "stable", artifact=artifact, check_remote_tag=False, allow_existing_tag=True)
 
     assert report["artifactName"] == artifact.name
     assert report["artifactSha256"] == release.sha256_file(artifact)
@@ -151,19 +151,24 @@ def test_release_validation_checks_artifact_name_and_writes_no_secrets(tmp_path:
     wrong = tmp_path / "other.ankiaddon"
     wrong.write_bytes(b"release-bytes")
     with pytest.raises(release.ReleaseError, match="Release artifact"):
-        release.validate_release("1.0.0", "stable", artifact=wrong, check_remote_tag=False)
+        release.validate_release("1.0.0", "stable", artifact=wrong, check_remote_tag=False, allow_existing_tag=True)
 
 
-def test_prepared_release_check_is_read_only():
-    before = subprocess.run(["git", "status", "--short"], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+def test_prepared_release_check_is_read_only(tmp_path: Path):
+    checkout = tmp_path / "checkout"
+    remote = tmp_path / "remote.git"
+    subprocess.run(["git", "clone", "--quiet", "--no-tags", str(ROOT), str(checkout)], check=True)
+    subprocess.run(["git", "init", "--quiet", "--bare", str(remote)], check=True)
+    subprocess.run(["git", "remote", "set-url", "origin", str(remote)], cwd=checkout, check=True)
+    before = subprocess.run(["git", "status", "--short"], cwd=checkout, check=True, capture_output=True, text=True).stdout
     result = subprocess.run(
         ["node", "scripts/run_python.mjs", "scripts/prepare_release.py", "--version", "1.0.0", "--check"],
-        cwd=ROOT,
+        cwd=checkout,
         check=True,
         capture_output=True,
         text=True,
     )
-    after = subprocess.run(["git", "status", "--short"], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    after = subprocess.run(["git", "status", "--short"], cwd=checkout, check=True, capture_output=True, text=True).stdout
 
     assert "prepared and untagged" in result.stdout
     assert after == before
