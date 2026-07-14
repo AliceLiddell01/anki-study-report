@@ -547,7 +547,7 @@ async function assertStatisticsHub(page) {
   await page.getByTestId("statistics-page").waitFor({ state: "visible", timeout: 15000 });
   const navLabels = await page.locator('nav[aria-label="Основная навигация"] a').allTextContents();
   assertBrowser(
-    JSON.stringify(navLabels.map((value) => value.trim())) === JSON.stringify(["Сегодня", "Активность", "Статистика", "Колоды", "Карточки"]),
+    JSON.stringify(navLabels.map((value) => value.trim())) === JSON.stringify(["Сегодня", "Активность", "Статистика", "Колоды", "Поиск", "Карточки"]),
     `Statistics primary navigation order is correct: ${JSON.stringify(navLabels)}`,
   );
   const sectionLinks = page.locator('nav[aria-label="Разделы статистики"] a');
