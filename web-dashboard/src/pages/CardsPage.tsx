@@ -629,7 +629,7 @@ const RiskTable = memo(function RiskTable({
             <th className="text-left">{tc("table.card")}</th>
             <th className="text-left">{tc("table.deck")}</th>
             <th className="text-left">{tc("table.issues")}</th>
-            <th className="text-right">Again</th>
+            <th className="text-right">{i18n.t("answers.again", { ns: "common" })}</th>
             <th className="text-right">{tc("table.failures")}</th>
             <th className="text-right">{tc("table.average")}</th>
             <th className="text-left">{tc("table.last")}</th>
@@ -692,7 +692,7 @@ function InsightGrid({
               <p className="mt-1 text-sm leading-6 text-report-muted">{row.deckName}</p>
             </div>
             <div className="text-left text-sm text-report-muted sm:text-right">
-              <p>Again {formatInteger(row.againCount)}</p>
+              <p>{i18n.t("answers.again", { ns: "common" })} {formatInteger(row.againCount)}</p>
               <p>{tc("table.lapses")} {formatInteger(row.lapses)}</p>
               <p>{formatPercent(row.passRate)}</p>
             </div>
@@ -749,7 +749,7 @@ const CardTiles = memo(function CardTiles({
             {row.deckName}
           </p>
           <div className="cards-tile-metrics grid grid-cols-3 gap-2 text-xs text-report-muted" data-testid="cards-tile-metrics">
-            <DetailMini label="Again" value={formatInteger(row.againCount)} />
+            <DetailMini label={i18n.t("answers.again", { ns: "common" })} value={formatInteger(row.againCount)} />
             <DetailMini label={tc("table.lapses")} value={formatInteger(row.lapses)} />
             <DetailMini label={tc("table.success")} value={formatPercent(row.passRate)} />
           </div>

@@ -166,3 +166,41 @@ def test_summary_v2_keeps_targeted_comparison_honest(tmp_path: Path, monkeypatch
     assert summary["screenshotWorkers"] == 3
     assert exported_performance["improvement"]["canonicalSavedSeconds"] is None
     assert "not an apples-to-apples" in exported_performance["improvement"]["comparisonReason"]
+
+
+def test_summary_compares_canonical_duration_with_canonical_baseline(tmp_path: Path, monkeypatch):
+    module = load_module()
+    output = tmp_path / "output"
+    reports = output / "artifacts" / "reports"
+    reports.mkdir(parents=True)
+    (output / "logs").mkdir()
+    performance = {
+        "baseline": {"canonicalDurationSeconds": 183},
+        "current": {"canonicalDurationSeconds": 150},
+        "improvement": {},
+    }
+    (reports / "e2e-performance-summary.json").write_text(json.dumps(performance), encoding="utf-8")
+    monkeypatch.setattr(module, "utc_now", lambda: "2026-07-13T00:03:30Z")
+    args = Namespace(
+        started_at="2026-07-13T00:00:00Z",
+        e2e_exit_code=0,
+        commit_sha="abc123",
+        ref="refs/heads/test",
+        mode="standard",
+        scope="full",
+        screenshot_workers=3,
+        cache_state="gha-enabled",
+        build_duration_ms=1200,
+        image_size_bytes=456,
+    )
+
+    module.write_summary(output, args=args, manifest_status="success", artifact_files=[])
+
+    summary = json.loads((output / "ci-e2e-summary.json").read_text(encoding="utf-8"))
+    exported_performance = json.loads((reports / "e2e-performance-summary.json").read_text(encoding="utf-8"))
+    markdown = (output / "ci-e2e-summary.md").read_text(encoding="utf-8")
+    assert summary["workflowDurationSeconds"] == 210
+    assert summary["canonicalDurationSeconds"] == 150
+    assert exported_performance["improvement"]["canonicalSavedSeconds"] == 33
+    assert "Saved vs canonical baseline | 33 seconds" in markdown
+    assert "Workflow duration | 210 seconds" in markdown

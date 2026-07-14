@@ -236,7 +236,7 @@ function DeckDetail({ node, showAllIssues, onToggleIssues, onSelectIssue, onOpen
 
 function MetricsGrid({ metrics }: { metrics: DeckHubMetrics }) {
   const { t } = useTranslation(["pages", "common"]);
-  const values = [[t("decks.reviews"), formatInteger(metrics.reviews)], [t("decks.newCards"), formatInteger(metrics.newCards)], ["Pass", formatInteger(metrics.passCount)], ["Fail", formatInteger(metrics.failCount)], [t("decks.successRate"), formatPercent(metrics.passRate)], [t("decks.averageAnswer"), formatSeconds(metrics.averageAnswerSeconds)], [t("decks.activeDays"), metrics.activeDays === null ? t("state.noData", { ns: "common" }) : formatInteger(metrics.activeDays)]];
+  const values = [[t("decks.reviews"), formatInteger(metrics.reviews)], [t("decks.newCards"), formatInteger(metrics.newCards)], [t("answers.pass", { ns: "common" }), formatInteger(metrics.passCount)], [t("answers.fail", { ns: "common" }), formatInteger(metrics.failCount)], [t("decks.successRate"), formatPercent(metrics.passRate)], [t("decks.averageAnswer"), formatSeconds(metrics.averageAnswerSeconds)], [t("decks.activeDays"), metrics.activeDays === null ? t("state.noData", { ns: "common" }) : formatInteger(metrics.activeDays)]];
   return <div className="mt-2 grid grid-cols-2 gap-2">{values.map(([label, value]) => <div key={label} className="rounded-lg border border-ink-700 bg-ink-900/35 p-2.5"><p className="text-[11px] uppercase tracking-[0.04em] text-report-muted">{label}</p><p className="mt-1 text-sm font-semibold text-report-text">{value}</p></div>)}</div>;
 }
 
