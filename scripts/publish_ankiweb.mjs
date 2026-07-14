@@ -15,6 +15,18 @@ const EXPECTED_KEYS = new Set([
   "download_client_version", "repository_url", "releases_url", "donation_url",
 ]);
 const CHALLENGE_TEXT = /captcha|verify you are human|two-factor|2fa|multi-factor|mfa|passkey|security key/i;
+const PUBLIC_DESCRIPTION_SELECTOR = "main .shared-item-description";
+const PUBLIC_POLL_INTERVALS_MS = [0, 250, 500, 1_000, 2_000, 3_000];
+const ARTIFACT_POLL_INTERVALS_MS = [0, 500, 1_000, 2_000];
+
+
+class PublisherVerificationError extends Error {
+  constructor(phase, code, diagnostics = {}) {
+    super(code);
+    this.phase = phase;
+    this.diagnostics = diagnostics;
+  }
+}
 
 
 export function normalizeMarkdown(value) {
@@ -100,6 +112,82 @@ export function sanitizeFailure(error, secrets = []) {
 }
 
 
+export async function pollBounded(probe, options = {}) {
+  const intervals = options.intervals ?? PUBLIC_POLL_INTERVALS_MS;
+  const sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const now = options.now ?? (() => Date.now());
+  const startedAt = now();
+  let lastValue;
+  for (let index = 0; index < intervals.length; index += 1) {
+    if (intervals[index] > 0) await sleep(intervals[index]);
+    lastValue = await probe(index + 1);
+    if (lastValue?.done) {
+      return { matched: true, value: lastValue, attempts: index + 1, elapsedMs: now() - startedAt };
+    }
+  }
+  return { matched: false, value: lastValue, attempts: intervals.length, elapsedMs: now() - startedAt };
+}
+
+
+export async function pollPublicDescription(container, version, options = {}) {
+  const marker = `What's new in ${version}`;
+  let containerFound = false;
+  let versionMarkerFound = false;
+  const result = await pollBounded(async () => {
+    const count = await container.count();
+    if (count > 1) {
+      throw new PublisherVerificationError("public-description", `public-description-container:count=${count}`, {
+        publicDescriptionContainerFound: true,
+        versionMarkerFound: false,
+      });
+    }
+    const containerPresent = count === 1;
+    containerFound ||= containerPresent;
+    if (!containerPresent) return { done: false };
+    const text = await container.innerText().catch(() => "");
+    versionMarkerFound = text.includes(marker);
+    return { done: versionMarkerFound };
+  }, options);
+  const diagnostics = {
+    publicDescriptionContainerFound: containerFound,
+    versionMarkerFound,
+    publicDescriptionAttempts: result.attempts,
+    publicDescriptionElapsedMs: result.elapsedMs,
+  };
+  if (!containerFound) {
+    throw new PublisherVerificationError("public-description", "public-description-container-timeout", diagnostics);
+  }
+  if (!versionMarkerFound) {
+    throw new PublisherVerificationError("public-description", "public-description-version-marker-absent", diagnostics);
+  }
+  return diagnostics;
+}
+
+
+export async function executePublishPlan({ initialState, saveOnce, verifySource, verifyPublic, verifyArtifact }) {
+  let mutationCount = 0;
+  if (!initialState.metadataMatch || !initialState.descriptionMatch) {
+    mutationCount = 1;
+    await saveOnce();
+  }
+  const source = await verifySource();
+  if (!source.metadataMatch || !source.descriptionMatch) {
+    throw new PublisherVerificationError("authenticated-form", "stored-form-verification-failed", {
+      observedDescriptionSha256: source.descriptionSha256 ?? null,
+    });
+  }
+  const publicDescription = await verifyPublic();
+  const artifact = await verifyArtifact();
+  return {
+    mutationCount,
+    idempotent: mutationCount === 0,
+    source,
+    publicDescription,
+    artifact,
+  };
+}
+
+
 function parseArgs(argv) {
   const args = { mode: null, output: path.join(ROOT, "release-artifacts", "ankiweb-publish-report.json") };
   for (let index = 0; index < argv.length; index += 1) {
@@ -155,13 +243,7 @@ async function login(page, email, password) {
 
 
 async function openUpdateForm(page, metadata) {
-  await page.goto(`${ANKIWEB_ORIGIN}/shared/info/${metadata.addon_id}`, { waitUntil: "domcontentloaded" });
-  await assertNoChallenge(page);
-  const publicTitle = await unique(page.getByRole("heading", { name: metadata.title, exact: true }).first(), "public-title");
-  if (!(await publicTitle.isVisible())) throw new Error("public-title-hidden");
   const updateHref = `/shared/upload?id=${metadata.addon_id}`;
-  const updateLink = await unique(page.locator(`a[href="${updateHref}"]`), "owner-update-link");
-  if ((await updateLink.innerText()).trim() !== "Update") throw new Error("owner-update-link-label");
   await page.goto(`${ANKIWEB_ORIGIN}${updateHref}`, { waitUntil: "domcontentloaded" });
   await assertNoChallenge(page);
   await unique(page.getByRole("heading", { name: "Update", exact: true }), "update-heading");
@@ -228,19 +310,75 @@ async function downloadPublishedArtifact(context, metadata, destination) {
 }
 
 
-async function verifyAfterSave(page, context, metadata, version, expectedDescriptionHash, expectedArtifactHash, tempDir) {
-  await page.goto(`${ANKIWEB_ORIGIN}/shared/info/${metadata.addon_id}`, { waitUntil: "domcontentloaded" });
-  await unique(page.getByRole("heading", { name: metadata.title, exact: true }).first(), "post-save-public-title");
-  await unique(page.getByRole("heading", { name: `What's new in ${version}`, exact: true }), "post-save-version-heading");
-  const updateHref = `/shared/upload?id=${metadata.addon_id}`;
-  await unique(page.locator(`a[href="${updateHref}"]`), "post-save-update-link");
-  await page.goto(`${ANKIWEB_ORIGIN}${updateHref}`, { waitUntil: "domcontentloaded" });
-  const form = await inspectUpdateForm(page, metadata);
-  const state = await observedState(form, metadata, expectedDescriptionHash);
-  if (!state.metadataMatch || !state.descriptionMatch) throw new Error("post-save-form-verification-failed");
-  const downloadedHash = await downloadPublishedArtifact(context, metadata, path.join(tempDir, APPROVED_ARTIFACT_NAME));
-  if (downloadedHash !== expectedArtifactHash) throw new Error("post-save-artifact-hash-mismatch");
-  return { descriptionSha256: state.descriptionSha256, artifactSha256: downloadedHash };
+async function verifyAuthenticatedForm(page, metadata, expectedDescriptionHash) {
+  try {
+    const form = await openUpdateForm(page, metadata);
+    const state = await observedState(form, metadata, expectedDescriptionHash);
+    if (!state.metadataMatch || !state.descriptionMatch) {
+      throw new PublisherVerificationError("authenticated-form", "stored-form-verification-failed", {
+        observedDescriptionSha256: state.descriptionSha256,
+      });
+    }
+    return state;
+  } catch (error) {
+    if (error instanceof PublisherVerificationError) throw error;
+    throw new PublisherVerificationError("authenticated-form", error instanceof Error ? error.message : String(error));
+  }
+}
+
+
+async function verifyPublicRendering(page, metadata, version) {
+  try {
+    await page.goto(`${ANKIWEB_ORIGIN}/shared/info/${metadata.addon_id}`, { waitUntil: "domcontentloaded" });
+    await assertNoChallenge(page);
+    const publicTitles = page.getByRole("heading", { name: metadata.title, exact: true });
+    await publicTitles.first().waitFor({ state: "visible", timeout: 10_000 });
+    await unique(publicTitles, "post-save-public-title");
+    const updateHref = `/shared/upload?id=${metadata.addon_id}`;
+    const updateLink = page.locator(`a[href="${updateHref}"]`);
+    await updateLink.waitFor({ state: "visible", timeout: 10_000 });
+    await unique(updateLink, "post-save-update-link");
+    if ((await updateLink.innerText()).trim() !== "Update") {
+      throw new Error("post-save-update-link-label");
+    }
+    return await pollPublicDescription(page.locator(PUBLIC_DESCRIPTION_SELECTOR), version);
+  } catch (error) {
+    if (error instanceof PublisherVerificationError) throw error;
+    throw new PublisherVerificationError("public-description", error instanceof Error ? error.message : String(error));
+  }
+}
+
+
+async function verifyPublicArtifact(context, metadata, expectedArtifactHash, tempDir) {
+  let observedArtifactSha256 = null;
+  let lastDownloadError = null;
+  const result = await pollBounded(async (attempt) => {
+    const destination = path.join(tempDir, `public-${attempt}-${APPROVED_ARTIFACT_NAME}`);
+    try {
+      observedArtifactSha256 = await downloadPublishedArtifact(context, metadata, destination);
+      lastDownloadError = null;
+      return { done: observedArtifactSha256 === expectedArtifactHash };
+    } catch (error) {
+      lastDownloadError = error;
+      return { done: false };
+    }
+  }, { intervals: ARTIFACT_POLL_INTERVALS_MS });
+  const diagnostics = {
+    observedArtifactSha256,
+    artifactAttempts: result.attempts,
+    artifactElapsedMs: result.elapsedMs,
+  };
+  if (!observedArtifactSha256) {
+    throw new PublisherVerificationError(
+      "public-download",
+      lastDownloadError instanceof Error ? lastDownloadError.message : "published-artifact-download-failed",
+      diagnostics,
+    );
+  }
+  if (observedArtifactSha256 !== expectedArtifactHash) {
+    throw new PublisherVerificationError("artifact-hash", "published-artifact-hash-mismatch", diagnostics);
+  }
+  return diagnostics;
 }
 
 
@@ -263,7 +401,7 @@ async function run() {
   const password = process.env.ANKIWEB_PASSWORD || "";
   const secretValues = [email, password];
   const baseReport = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     mode: args.mode,
     version: args.version,
     addonId: 373100400,
@@ -271,19 +409,33 @@ async function run() {
     startedAt,
     finishedAt: null,
     status: "failure",
+    phase: null,
     mutationCount: 0,
     descriptionSha256: null,
     artifactSha256: null,
+    expectedDescriptionSha256: null,
+    observedDescriptionSha256: null,
+    expectedArtifactSha256: null,
+    observedArtifactSha256: null,
+    publicDescriptionContainerFound: false,
+    versionMarkerFound: false,
+    publicDescriptionAttempts: 0,
+    publicDescriptionElapsedMs: 0,
+    artifactAttempts: 0,
+    artifactElapsedMs: 0,
+    finalPathname: null,
     idempotent: false,
   };
   let browser;
   let tempDir;
+  let page;
   try {
     if (!email || !password) throw new Error("missing-ankiweb-credentials");
     const metadataText = await fs.readFile(path.resolve(args.metadata), "utf8");
     const metadata = validateMetadata(parseSimpleYaml(metadataText));
     const description = normalizeMarkdown(await fs.readFile(path.resolve(args.description), "utf8"));
     const descriptionHash = sha256Text(description);
+    baseReport.expectedDescriptionSha256 = descriptionHash;
     if (args.descriptionSha256) {
       const supplied = (await fs.readFile(path.resolve(args.descriptionSha256), "utf8")).trim();
       if (supplied !== descriptionHash) throw new Error("description-hash-input-mismatch");
@@ -294,16 +446,19 @@ async function run() {
       artifactPath = path.resolve(args.artifact);
       if (path.basename(artifactPath) !== APPROVED_ARTIFACT_NAME) throw new Error("unexpected-artifact-name");
       artifactHash = await sha256File(artifactPath);
+      baseReport.expectedArtifactSha256 = artifactHash;
     }
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "asr-ankiweb-"));
+    const publisherTempRoot = process.env.RUNNER_TEMP || os.tmpdir();
+    tempDir = await fs.mkdtemp(path.join(publisherTempRoot, "asr-ankiweb-"));
     const require = createRequire(path.join(ROOT, "web-dashboard", "package.json"));
     const { chromium } = require("playwright");
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ acceptDownloads: true });
-    const page = await context.newPage();
+    page = await context.newPage();
     await login(page, email, password);
     const form = await openUpdateForm(page, metadata);
     const before = await observedState(form, metadata, descriptionHash);
+    baseReport.observedDescriptionSha256 = before.descriptionSha256;
     if (args.mode === "dry-run") {
       await writeReport(args.output, {
         ...baseReport,
@@ -317,53 +472,81 @@ async function run() {
       return 0;
     }
     if (!artifactPath || !artifactHash) throw new Error("publish-artifact-missing");
-    if (before.metadataMatch && before.descriptionMatch) {
-      const currentHash = await downloadPublishedArtifact(context, metadata, path.join(tempDir, `current-${APPROVED_ARTIFACT_NAME}`));
-      if (currentHash === artifactHash) {
-        const verified = await verifyAfterSave(page, context, metadata, args.version, descriptionHash, artifactHash, tempDir);
-        await writeReport(args.output, {
-          ...baseReport,
-          status: "success",
-          finishedAt: new Date().toISOString(),
-          descriptionSha256: verified.descriptionSha256,
-          artifactSha256: verified.artifactSha256,
-          formContractValid: true,
-          postSaveVerified: true,
-          idempotent: true,
-        });
-        return 0;
-      }
-    }
-    await form.title.fill(metadata.title);
-    await form.tags.fill(metadata.tags.join(" "));
-    await form.support.fill(metadata.support_url);
-    await form.branchMin.fill(metadata.minimum_anki_version);
-    await form.branchMax.fill(metadata.maximum_anki_version);
-    await form.branchSelect.selectOption({ label: metadata.expected_branch_label });
-    await form.file.setInputFiles(artifactPath);
-    await form.description.fill(description);
-    const ready = await observedState(form, metadata, descriptionHash);
-    if (!ready.metadataMatch || !ready.descriptionMatch) throw new Error("pre-save-form-verification-failed");
-    await Promise.all([
-      page.waitForURL((url) => !url.pathname.startsWith("/shared/upload"), { timeout: 30_000 }),
-      form.save.click(),
-    ]);
-    baseReport.mutationCount = 1;
-    await assertNoChallenge(page);
-    const verified = await verifyAfterSave(page, context, metadata, args.version, descriptionHash, artifactHash, tempDir);
+    baseReport.idempotent = before.metadataMatch && before.descriptionMatch;
+    const verified = await executePublishPlan({
+      initialState: before,
+      saveOnce: async () => {
+        baseReport.mutationCount = 1;
+        baseReport.idempotent = false;
+        try {
+          await form.title.fill(metadata.title);
+          await form.tags.fill(metadata.tags.join(" "));
+          await form.support.fill(metadata.support_url);
+          await form.branchMin.fill(metadata.minimum_anki_version);
+          await form.branchMax.fill(metadata.maximum_anki_version);
+          await form.branchSelect.selectOption({ label: metadata.expected_branch_label });
+          await form.file.setInputFiles(artifactPath);
+          await form.description.fill(description);
+          const ready = await observedState(form, metadata, descriptionHash);
+          if (!ready.metadataMatch || !ready.descriptionMatch) throw new Error("pre-save-form-verification-failed");
+          await Promise.all([
+            page.waitForURL((url) => !url.pathname.startsWith("/shared/upload"), { timeout: 30_000 }),
+            form.save.click(),
+          ]);
+          await assertNoChallenge(page);
+        } catch (error) {
+          throw new PublisherVerificationError("authenticated-form", error instanceof Error ? error.message : String(error));
+        }
+      },
+      verifySource: async () => {
+        const state = await verifyAuthenticatedForm(page, metadata, descriptionHash);
+        baseReport.observedDescriptionSha256 = state.descriptionSha256;
+        return state;
+      },
+      verifyPublic: async () => {
+        const diagnostics = await verifyPublicRendering(page, metadata, args.version);
+        Object.assign(baseReport, diagnostics);
+        return diagnostics;
+      },
+      verifyArtifact: async () => {
+        const diagnostics = await verifyPublicArtifact(context, metadata, artifactHash, tempDir);
+        Object.assign(baseReport, diagnostics);
+        return diagnostics;
+      },
+    });
+    baseReport.mutationCount = verified.mutationCount;
     await writeReport(args.output, {
       ...baseReport,
       status: "success",
       finishedAt: new Date().toISOString(),
-      descriptionSha256: verified.descriptionSha256,
-      artifactSha256: verified.artifactSha256,
+      phase: null,
+      descriptionSha256: verified.source.descriptionSha256,
+      artifactSha256: verified.artifact.observedArtifactSha256,
+      observedDescriptionSha256: verified.source.descriptionSha256,
+      observedArtifactSha256: verified.artifact.observedArtifactSha256,
+      ...verified.publicDescription,
+      artifactAttempts: verified.artifact.artifactAttempts,
+      artifactElapsedMs: verified.artifact.artifactElapsedMs,
       formContractValid: true,
       postSaveVerified: true,
+      idempotent: verified.idempotent,
+      finalPathname: new URL(page.url()).pathname,
     });
     return 0;
   } catch (error) {
     const safeMessage = sanitizeFailure(error, secretValues);
-    await writeReport(args.output, { ...baseReport, finishedAt: new Date().toISOString(), error: safeMessage });
+    const diagnostics = error instanceof PublisherVerificationError ? error.diagnostics : {};
+    const finalPathname = page ? (() => {
+      try { return new URL(page.url()).pathname; } catch { return null; }
+    })() : null;
+    await writeReport(args.output, {
+      ...baseReport,
+      ...diagnostics,
+      phase: error instanceof PublisherVerificationError ? error.phase : baseReport.phase,
+      finishedAt: new Date().toISOString(),
+      finalPathname,
+      error: safeMessage,
+    });
     process.stderr.write(`AnkiWeb publisher failed: ${safeMessage}\n`);
     return 1;
   } finally {
