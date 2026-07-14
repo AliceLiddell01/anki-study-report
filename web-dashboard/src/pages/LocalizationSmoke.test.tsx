@@ -45,5 +45,6 @@ describe("representative localized pages", () => {
     expect(actions).toContain("Tools");
     expect(fsrs).toContain("How is FSRS working for me right now?");
     expect(fsrs).toContain("Open deck options");
+    expect(fsrs).not.toContain("shell.fsrs");
   });
 });
