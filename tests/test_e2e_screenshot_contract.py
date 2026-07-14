@@ -70,5 +70,6 @@ def test_statistics_smoke_navigation_follows_the_router_and_russian_locale() -> 
     labels = _ru_primary_nav_labels()
 
     assert keys
+    assert "search" in keys
     assert all(key in labels for key in keys)
     assert _statistics_smoke_nav_labels() == [labels[key] for key in keys]
