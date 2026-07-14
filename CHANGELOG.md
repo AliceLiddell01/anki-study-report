@@ -4,6 +4,27 @@ All notable user-facing changes to Anki Study Report are documented here.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-15
+
+### Added
+
+- Added a dedicated Search workspace for cards and notes using native Anki query syntax.
+- Added structured deck, note type, tag, state, and flag filters with sorting, bounded pagination, compact inspection, explicit selection, and handoff to Anki Browser.
+- Added safe undoable actions for suspending and unsuspending cards, setting or clearing flags, adding or removing note tags, burying or unburying cards, and moving ordinary cards to normal decks.
+
+### Changed
+
+- Added Search to the primary navigation between Decks and Cards.
+- Kept Search query state session-local without placing raw queries in the URL, page title, normal logs, or public diagnostic artifacts.
+- Refreshes Search results, selection, pagination, and the active inspector after a confirmed action.
+- Reduced duplicate Fast CI runs for pull requests and strengthened real-Anki verification around Search, actions, restart behavior, telemetry, and screenshot contracts.
+
+### Safety
+
+- All modifying operations use explicit card or note allowlists, validate the full batch before changing the collection, and create at most one native Anki undo step.
+- Filtered-deck destinations and moves from filtered-deck source cards are rejected instead of silently altering scheduling or FSRS state.
+- Search does not provide deletion, rescheduling, field editing, template execution, note type changes, review history changes, or FSRS parameter changes.
+
 ## [1.0.0] - 2026-07-14
 
 ### Added
