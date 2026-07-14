@@ -24,6 +24,7 @@ fi
 : "${ANKI_E2E_SCREENSHOT_WORKERS:=3}"
 : "${ANKI_E2E_RESOURCE_TELEMETRY:=1}"
 : "${ANKI_E2E_VERIFY_RESTART:=auto}"
+: "${ANKI_E2E_PREBUILT_ADDON_PATH:=}"
 
 export ANKI_BASE ANKI_PROFILE ANKI_PROFILE_DIR ANKI_STUDY_REPORT_E2E_ARTIFACTS
 export ANKI_STUDY_REPORT_E2E_RUNTIME_DIR ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR ANKI_STUDY_REPORT_E2E_REPORTS_DIR
@@ -143,7 +144,6 @@ rsync -a --delete \
   "$WORKSPACE/" "$E2E_BUILD_DIR/"
 phase_end "workspace copy"
 
-section "Build frontend dashboard"
 FRONTEND_DIR="$E2E_BUILD_DIR/web-dashboard"
 echo "Workspace build dir: $E2E_BUILD_DIR"
 cd "$E2E_BUILD_DIR"
@@ -151,31 +151,47 @@ echo "pwd: $(pwd)"
 ls -la
 ls -la web-dashboard || true
 test -f web-dashboard/package.json
-"$PNPM_BIN" --version
-if [ -f pnpm-workspace.yaml ]; then
-  echo "root pnpm-workspace.yaml:"
-  sed -n '1,40p' pnpm-workspace.yaml
-fi
-if [ -f web-dashboard/pnpm-workspace.yaml ]; then
-  echo "web-dashboard pnpm-workspace.yaml:"
-  sed -n '1,40p' web-dashboard/pnpm-workspace.yaml
-  if ! grep -Eq '^[[:space:]]*packages:' web-dashboard/pnpm-workspace.yaml; then
-    echo "web-dashboard/pnpm-workspace.yaml must declare packages; expected packages: [\".\"]" >&2
-    exit 1
+ADDON_INSTALL_SOURCE="$E2E_BUILD_DIR/anki_study_report"
+if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then
+  section "Validate exact prebuilt release artifact"
+  test -f "$ANKI_E2E_PREBUILT_ADDON_PATH"
+  phase_start
+  python3 scripts/package_addon.py --output "$ANKI_E2E_PREBUILT_ADDON_PATH" --check-only
+  cp "$ANKI_E2E_PREBUILT_ADDON_PATH" "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon"
+  RELEASE_ADDON_DIR="$E2E_BUILD_DIR/release-addon"
+  rm -rf "$RELEASE_ADDON_DIR"
+  mkdir -p "$RELEASE_ADDON_DIR"
+  python3 -m zipfile -e "$ANKI_E2E_PREBUILT_ADDON_PATH" "$RELEASE_ADDON_DIR"
+  ADDON_INSTALL_SOURCE="$RELEASE_ADDON_DIR"
+  phase_end "exact release add-on validation and extraction"
+else
+  section "Build frontend dashboard"
+  "$PNPM_BIN" --version
+  if [ -f pnpm-workspace.yaml ]; then
+    echo "root pnpm-workspace.yaml:"
+    sed -n '1,40p' pnpm-workspace.yaml
   fi
-fi
-phase_start
-"$PNPM_BIN" --store-dir "$PNPM_STORE_DIR" --dir "$FRONTEND_DIR" install --offline --frozen-lockfile
-phase_end "frontend dependency install" "success" "lockfile-driven offline install from the image pnpm store"
-phase_start
-"$PNPM_BIN" --dir "$FRONTEND_DIR" run build:addon
-phase_end "frontend build"
+  if [ -f web-dashboard/pnpm-workspace.yaml ]; then
+    echo "web-dashboard/pnpm-workspace.yaml:"
+    sed -n '1,40p' web-dashboard/pnpm-workspace.yaml
+    if ! grep -Eq '^[[:space:]]*packages:' web-dashboard/pnpm-workspace.yaml; then
+      echo "web-dashboard/pnpm-workspace.yaml must declare packages; expected packages: [\".\"]" >&2
+      exit 1
+    fi
+  fi
+  phase_start
+  "$PNPM_BIN" --store-dir "$PNPM_STORE_DIR" --dir "$FRONTEND_DIR" install --offline --frozen-lockfile
+  phase_end "frontend dependency install" "success" "lockfile-driven offline install from the image pnpm store"
+  phase_start
+  "$PNPM_BIN" --dir "$FRONTEND_DIR" run build:addon
+  phase_end "frontend build"
 
-section "Build and validate add-on archive"
-phase_start
-cd "$E2E_BUILD_DIR"
-python3 scripts/package_addon.py --output "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon" --check
-phase_end "add-on package"
+  section "Build and validate add-on archive"
+  phase_start
+  cd "$E2E_BUILD_DIR"
+  python3 scripts/package_addon.py --output "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon" --check
+  phase_end "add-on package"
+fi
 
 section "Create isolated Anki profile and fixture collection"
 phase_start
@@ -203,7 +219,7 @@ fi
 /e2e/bin/mark-apkg-cards-problematic.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-/e2e/bin/install-addon.sh "$E2E_BUILD_DIR/anki_study_report"
+/e2e/bin/install-addon.sh "$ADDON_INSTALL_SOURCE"
 phase_end "fixture and profile preparation"
 
 section "First Anki start"

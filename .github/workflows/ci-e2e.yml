@@ -1,6 +1,36 @@
 name: Full Docker / Anki E2E
 
 on:
+  workflow_call:
+    inputs:
+      mode:
+        required: false
+        default: standard
+        type: string
+      scope:
+        required: false
+        default: full
+        type: string
+      screenshot_workers:
+        required: false
+        default: auto
+        type: string
+      resource_telemetry:
+        required: false
+        default: true
+        type: boolean
+      verify_restart:
+        required: false
+        default: auto
+        type: string
+      release_artifact_name:
+        required: false
+        default: ""
+        type: string
+      release_artifact_sha256:
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       mode:
@@ -58,7 +88,7 @@ jobs:
       E2E_MODE: ${{ inputs.mode || 'standard' }}
       E2E_SCOPE: ${{ inputs.scope || 'stats' }}
       SCREENSHOT_WORKERS_INPUT: ${{ inputs.screenshot_workers || '3' }}
-      RESOURCE_TELEMETRY_INPUT: ${{ github.event_name == 'push' && 'true' || (inputs.resource_telemetry && 'true' || 'false') }}
+      RESOURCE_TELEMETRY_INPUT: ${{ inputs.resource_telemetry && 'true' || 'false' }}
       VERIFY_RESTART_INPUT: ${{ inputs.verify_restart || 'auto' }}
       ANKI_E2E_IMAGE: anki-study-report-e2e:ci
       ANKI_VERSION: "26.05"
@@ -71,6 +101,34 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+
+      - name: Download exact release artifact
+        if: inputs.release_artifact_name != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.release_artifact_name }}
+          path: release-e2e-input
+
+      - name: Stage and verify exact release artifact
+        if: inputs.release_artifact_name != ''
+        shell: pwsh
+        env:
+          EXPECTED_SHA256: ${{ inputs.release_artifact_sha256 }}
+        run: |
+          if (-not $env:EXPECTED_SHA256 -or $env:EXPECTED_SHA256 -notmatch '^[0-9a-f]{64}$') {
+            throw 'A valid release_artifact_sha256 is required with release_artifact_name.'
+          }
+          $source = 'release-e2e-input/anki_study_report.ankiaddon'
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw 'The internal release artifact does not contain anki_study_report.ankiaddon.'
+          }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_SHA256) {
+            throw "Exact release artifact SHA-256 mismatch: $actual"
+          }
+          New-Item -ItemType Directory -Force docker/anki-e2e/local-input | Out-Null
+          Copy-Item -LiteralPath $source -Destination docker/anki-e2e/local-input/anki_study_report.ankiaddon -Force
+          'ANKI_E2E_PREBUILT_ADDON_PATH=/e2e/local-input/anki_study_report.ankiaddon' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Capture runner and Docker preflight
         shell: pwsh
@@ -211,6 +269,21 @@ jobs:
             $exitCode = 1
           }
           "CI_E2E_EXIT_CODE=$exitCode" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify tested release artifact hash
+        if: inputs.release_artifact_name != ''
+        shell: pwsh
+        env:
+          EXPECTED_SHA256: ${{ inputs.release_artifact_sha256 }}
+        run: |
+          $tested = 'e2e-artifacts/package/anki_study_report.ankiaddon'
+          if (-not (Test-Path -LiteralPath $tested -PathType Leaf)) {
+            throw 'The E2E package evidence is missing.'
+          }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tested).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_SHA256) {
+            throw "The package tested by real Anki is not the exact release artifact: $actual"
+          }
 
       - name: Capture final Docker state
         if: always()

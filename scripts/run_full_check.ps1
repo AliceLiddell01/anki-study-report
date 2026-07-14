@@ -120,7 +120,7 @@ function Assert-RepositoryHygiene {
     }
 
     $forbiddenPatterns = @(
-        '(^|/)(e2e-artifacts|ci-fast|ci-fast-download|node_modules|__pycache__|\.pytest_cache)(/|$)',
+        '(^|/)(e2e-artifacts|release-artifacts|\.playwright-auth|ci-fast|ci-fast-download|node_modules|__pycache__|\.pytest_cache)(/|$)',
         '^web-dashboard/(dist|screenshots)/',
         '^anki_study_report/(web_dashboard|user_files)/',
         '\.(ankiaddon|zip)$'

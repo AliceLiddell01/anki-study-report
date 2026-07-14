@@ -20,6 +20,9 @@ DOC_PREFIXES = ("docs/", "readme.md")
 FULL_PREFIXES = (
     ".github/workflows/ci-e2e", "docker/anki-e2e/", "scripts/run_anki_e2e", "scripts/run_full_check",
     "anki_study_report/dashboard_server", "scripts/package_addon", "build_ankiaddon",
+    ".github/workflows/release", "release/", "scripts/prepare_release", "scripts/validate_release",
+    "scripts/create_release_bundle", "scripts/manage_github_release", "scripts/publish_ankiweb",
+    "anki_study_report/version", "changelog.md",
 )
 GLOBAL_PREFIXES = (
     "web-dashboard/src/app/", "web-dashboard/src/layout/", "web-dashboard/src/styles.css",
