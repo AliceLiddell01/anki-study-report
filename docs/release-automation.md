@@ -95,5 +95,54 @@ trace, screenshots или HTML авторизованной страницы.
   bytes требует новой версии.
 - Никогда не объявляйте local PASS заменой упавшему cloud release run.
 
+### Draft discovery и безопасный rerun
+
+GitHub REST endpoint `/releases/tags/{tag}` является lookup опубликованного
+release и не используется для draft discovery. Его `404` не доказывает
+отсутствие draft. Workflow
+ищет draft через authenticated paginated `List releases`, выбирает ровно одно
+совпадение по `tag_name`, а после discovery использует integer release ID как
+стабильную identity.
+
+При повторе после частичного draft step workflow:
+
+1. отклоняет published release, duplicate tag matches, unexpected assets и
+   assets не в состоянии `uploaded`;
+2. переиспользует существующий draft вместо создания второго;
+3. обновляет title, notes, channel и `target_commitish` до exact нового
+   `master` SHA;
+4. controlled `--clobber` заменяет только три разрешённых asset;
+5. перечитывает release по ID, скачивает каждый asset по asset ID с
+   `Accept: application/octet-stream` и сравнивает size, optional GitHub digest
+   и фактический SHA-256 с release bundle;
+6. сохраняет sanitized `github-draft-report-*` даже при failure.
+
+Finalization сначала находит и полностью проверяет draft тем же draft-aware
+путём. Только после publish используется published-by-tag endpoint; затем
+проверяются прежний release ID, tag commit, channel, target и неизменные asset
+bytes. Уже опубликованные assets draft operation никогда не перезаписывает.
+
+Для текущего незавершённого `v1.0.0` draft удаление не требуется. Перед
+возобновлением можно read-only проверить его так:
+
+```powershell
+gh api --method GET --paginate --slurp `
+  "repos/AliceLiddell01/anki-study-report/releases?per_page=100" `
+  --jq '.[][] | select(.tag_name == "v1.0.0") | {id,tag_name,draft,prerelease,target_commitish,assets}'
+git ls-remote --tags origin refs/tags/v1.0.0
+```
+
+После merge исправления оператор запускает новый production run на точном
+текущем `master`:
+
+```powershell
+gh workflow run release.yml --ref master -f version=1.0.0 -f channel=stable
+```
+
+Новый run сам retarget-ит surviving draft на новый SHA и проверит новые exact
+assets. `ankiweb-production` следует одобрять только после зелёного
+`github-draft` job и проверки его sanitized report. Ручное удаление draft,
+создание tag или upload другого архива не нужны.
+
 Текущий этап добавляет только delivery infrastructure. Search UI, route и
 navigation entry не входят в release automation.
