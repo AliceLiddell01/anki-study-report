@@ -35,6 +35,7 @@ def test_rendered_description_uses_product_first_layout_without_duplicate_h1() -
 
     assert re.search(r"(?m)^#\s+", rendered) is None
     assert rendered.count(f"## What's new in {version}") == 1
+    assert rendered.count("## New: Search your Anki collection") == 1
     assert rendered.count("https://boosty.to/ankistudyreport") == 1
     assert 'src="https://upload.wikimedia.org/wikipedia/commons/9/92/Boosty_logo.svg"' in rendered
     assert 'alt="Support the author on Boosty"' in rendered
