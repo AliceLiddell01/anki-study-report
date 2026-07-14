@@ -15,9 +15,21 @@ title, normal logs или публичные E2E-артефакты.
 interval, reviews, lapses и flag. Режим `Notes` показывает primary text, note
 type, tags, card count и decks. Card-only state/flag filters очищаются при
 переходе в Notes. Структурные deck/note type/tag filters объединяются с native
-query backend-ом через Anki search nodes, а не строковой конкатенацией. Deck
-filter и move picker получают all-collection `deckOptions` через token-protected
-Settings API; scoped report catalogs используются только как fallback.
+query backend-ом через Anki search nodes, а не строковой конкатенацией.
+
+Deck и note type controls лениво запрашивают all-collection metadata через
+строгий variant `POST /api/search/query`:
+
+```json
+{"kind":"metadata","requestId":"search-metadata-1"}
+```
+
+Ответ содержит bounded каталоги `decks` (`deckId`, `deckName`, `filtered`) и
+`noteTypes` (`noteTypeId`, `noteTypeName`), а также truncation markers. Пока
+metadata не запрошена или временно недоступна, scoped report catalogs остаются
+только UI fallback. Move picker использует live catalog и исключает filtered
+колоды; backend всё равно повторно разрешает destination по ID непосредственно
+перед native operation.
 
 Pagination использует `pageCount`, page sizes `25|50|100`, hard cap 2000 и
 не загружает все details заранее. Inspector выполняет отдельный bounded inspect
@@ -68,6 +80,8 @@ Stable result codes: `cards.suspended`, `cards.unsuspended`, `cards.flag_set`,
 `cards.flag_cleared`, `cards.buried`, `cards.unburied`, `cards.moved`,
 `notes.tags_added`, `notes.tags_removed`, `action.no_changes`. Frontend
 локализует codes; backend English message остаётся вторичной диагностикой.
+Frontend runtime validator также сверяет action с result code, args, counts и
+undoable marker, поэтому противоречивый success envelope не принимается.
 
 Полный request валидируется до mutation: только JSON object, unknown fields
 запрещены, ID — уникальные positive decimal strings, batch `1..200`, body не
@@ -101,9 +115,11 @@ operations, arbitrary tag/deck commands и действия над неявно 
 
 ## Проверки
 
-Focused contracts: `tests/test_entity_actions.py`,
-`tests/test_entity_action_runtime.py`, `tests/test_dashboard_server.py`,
-`web-dashboard/src/lib/entityActionsApi.test.ts` и `SearchPage.test.tsx`.
-Targeted real-Anki proof входит в `standard/global` и пишет redacted
-`search-query-contract.json`: только codes/counts/state summaries, Browser
-errors и `collectionStable`, без token/raw query/tag content/ID lists.
+Focused contracts: `tests/test_search_metadata.py`,
+`tests/test_entity_actions.py`, `tests/test_entity_action_runtime.py`,
+`tests/test_dashboard_server.py`, `web-dashboard/src/lib/searchMetadataApi.test.ts`,
+`web-dashboard/src/lib/entityActionsApi.test.ts`, `SearchPage.test.tsx` и
+`SearchMetadataIntegration.test.tsx`. Targeted real-Anki proof входит в
+`standard/global` и пишет redacted `search-query-contract.json`: только
+codes/counts/state summaries, Browser errors и `collectionStable`, без
+token/raw query/tag content/ID lists.
