@@ -65,7 +65,7 @@ describe("Search live metadata", () => {
     await settle();
     expect(deckFilter.textContent).toContain("Outside Scope");
     expect(deckFilter.textContent).toContain("Filtered Search Deck");
-    const noteTypeFilter = filterSelects.find((select) => select.textContent?.includes("Все типы записей"))!;
+    const noteTypeFilter = filterSelects.find((select) => select.textContent?.includes("Все типы"))!;
     expect(noteTypeFilter.textContent).toContain("Outside Type");
 
     await act(async () => Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Найти")!.click());
