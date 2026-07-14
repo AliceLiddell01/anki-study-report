@@ -14,6 +14,7 @@ const PAGE_SCOPE = Object.freeze({
   "fsrs-steps": "stats",
   "fsrs-simulator": "stats",
   decks: "decks",
+  search: "global",
   profile: "global",
   tools: "global",
   "settings/report": "settings",

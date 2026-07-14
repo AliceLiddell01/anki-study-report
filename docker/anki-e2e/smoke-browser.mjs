@@ -47,6 +47,7 @@ const dashboardPageCases = [
   { route: "/stats/fsrs/steps", pageName: "fsrs-steps", heading: "Шаги обучения", primaryHref: "#/stats" },
   { route: "/stats/fsrs/simulator", pageName: "fsrs-simulator", heading: "Симулятор", primaryHref: "#/stats" },
   { route: "/decks", pageName: "decks", heading: "Колоды", primaryHref: "#/decks" },
+  { route: "/search", pageName: "search", heading: "Поиск", primaryHref: "#/search" },
   { route: "/profile", pageName: "profile", heading: "E2E" },
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
   { route: "/settings", pageName: "settings/report", heading: "Отчёт", settingsHref: "#/settings" },
@@ -2533,6 +2534,31 @@ async function assertSearchQueryContract() {
   assertCompleteCardDetails(cardInspect.body?.response?.details);
   assertCompleteNoteDetails(noteInspect.body?.response?.details);
 
+  const structured = await postSearchContract("/api/search/query", {
+    ...cardRequest,
+    query: "",
+    filters: [
+      { type: "deck", deckId: String(cardInspect.body.response.details.deckId) },
+      { type: "tag", tag: "e2e" },
+    ],
+    requestId: "e2e-structured",
+  });
+  assertBrowser(structured.status === 200 && structured.body?.response?.items?.length > 0, "Structured deck and tag filters return fixture cards.");
+
+  const cardBrowser = await postSearchContract("/api/actions/open-search-selection", { mode: "cards", entityIds: [cardId] });
+  const noteBrowser = await postSearchContract("/api/actions/open-search-selection", { mode: "notes", entityIds: [noteId] });
+  assertBrowser(cardBrowser.status === 200 && cardBrowser.body?.resultCode === "search.browser_opened", "Selected card IDs open native Browser.");
+  assertBrowser(noteBrowser.status === 200 && noteBrowser.body?.resultCode === "search.browser_opened", "Selected note IDs open native Browser.");
+
+  const actionEvidence = await assertSafeEntityActions({
+    cardId,
+    noteId,
+    cardBefore: cardInspect.body.response.details,
+    noteBefore: noteInspect.body.response.details,
+  });
+
+  await assertSearchWorkspaceUi(nativeQuery);
+
   const emptyPage = await postSearchContract("/api/search/query", { ...cardRequest, page: 2, requestId: "e2e-empty-page" });
   assertBrowser(emptyPage.status === 200, "A page within pageLimit but beyond pageCount remains valid.");
   assertBrowser(emptyPage.body?.response?.items?.length === 0, "A page beyond pageCount is explicitly empty.");
@@ -2551,7 +2577,10 @@ async function assertSearchQueryContract() {
     notes: summarizeSearchResult(noteResult, noteId),
     inspect: { cardStatus: cardInspect.status, noteStatus: noteInspect.status },
     collectionStable: stableCards && stableNotes,
-    mutationEndpointsUsed: false,
+    browserIntegration: { cards: cardBrowser.status === 200, notes: noteBrowser.status === 200 },
+    structuredFilters: structured.status === 200,
+    actions: actionEvidence,
+    mutationEndpointsUsed: true,
     rawQueryExported: false,
     tokenExported: false,
   };
@@ -2559,6 +2588,100 @@ async function assertSearchQueryContract() {
   assertBrowser(!serialized.includes(nativeQuery) && !serialized.includes(ready.token), "Search contract artifact excludes the raw query and dashboard token.");
   await writeJson("search-query-contract.json", artifact);
   return artifact;
+}
+
+async function assertSafeEntityActions({ cardId, noteId, cardBefore, noteBefore }) {
+  const fixture = JSON.parse(await fs.readFile(artifactPaths.report("fixture-summary.json"), "utf8"));
+  const targetDeckId = Number(fixture.actionDeckIds?.target || 0);
+  const filteredDeckId = Number(fixture.actionDeckIds?.filtered || 0);
+  const sourceDeckId = Number(cardBefore.deckId || 0);
+  assertBrowser(targetDeckId > 0 && filteredDeckId > 0 && sourceDeckId > 0 && targetDeckId !== sourceDeckId, "Action fixture decks are deterministic and distinct.");
+
+  const invalidToken = await postSearchContract("/api/entities/cards/actions", {
+    action: "suspend", cardIds: [cardId], requestId: "e2e-action-invalid-token",
+  }, "invalid-token");
+  assertBrowser(invalidToken.status === 403, "Mutation endpoint rejects an invalid token.");
+
+  const action = async (entityType, payload, expectedCode) => {
+    const result = await postSearchContract(`/api/entities/${entityType}/actions`, payload);
+    assertBrowser(result.status === 200 && result.body?.ok === true, `${expectedCode} succeeds.`);
+    assertBrowser(result.body?.response?.resultCode === expectedCode, `${expectedCode} returns its stable result code.`);
+    assertBrowser(result.body?.response?.undoable === true, `${expectedCode} reports native undo support.`);
+    return result.body.response;
+  };
+  const inspectCard = async (requestId) => (await postSearchContract("/api/search/inspect", { mode: "cards", cardId, requestId })).body?.response?.details;
+  const inspectNote = async (requestId) => (await postSearchContract("/api/search/inspect", { mode: "notes", noteId, requestId })).body?.response?.details;
+
+  const suspend = await action("cards", { action: "suspend", cardIds: [cardId], requestId: "e2e-suspend" }, "cards.suspended");
+  assertBrowser((await inspectCard("e2e-suspended"))?.queue === -1, "Suspend refresh exposes the suspended queue.");
+  await action("cards", { action: "unsuspend", cardIds: [cardId], requestId: "e2e-unsuspend" }, "cards.unsuspended");
+  assertBrowser((await inspectCard("e2e-unsuspended"))?.queue === cardBefore.queue, "Unsuspend restores the fixture queue.");
+
+  await action("cards", { action: "set_flag", cardIds: [cardId], flag: 3, requestId: "e2e-flag" }, "cards.flag_set");
+  assertBrowser((await inspectCard("e2e-flagged"))?.flag === 3, "Set flag refresh exposes the native flag.");
+  await action("cards", { action: "clear_flag", cardIds: [cardId], requestId: "e2e-clear-flag" }, "cards.flag_cleared");
+  assertBrowser((await inspectCard("e2e-flag-cleared"))?.flag === cardBefore.flag, "Clear flag restores the fixture flag.");
+
+  const actionTag = "asr-e2e-safe-action";
+  await action("notes", { action: "add_tags", noteIds: [noteId], tags: [actionTag], requestId: "e2e-add-tag" }, "notes.tags_added");
+  assertBrowser((await inspectNote("e2e-tag-added"))?.tags?.includes(actionTag), "Add tags refresh exposes the native note tag.");
+  await action("notes", { action: "remove_tags", noteIds: [noteId], tags: [actionTag], requestId: "e2e-remove-tag" }, "notes.tags_removed");
+  assertBrowser(!(await inspectNote("e2e-tag-removed"))?.tags?.includes(actionTag), "Remove tags restores the fixture tags.");
+
+  await action("cards", { action: "bury", cardIds: [cardId], requestId: "e2e-bury" }, "cards.buried");
+  assertBrowser([-2, -3].includes((await inspectCard("e2e-buried"))?.queue), "Bury refresh exposes a temporary buried queue.");
+  await action("cards", { action: "unbury", cardIds: [cardId], requestId: "e2e-unbury" }, "cards.unburied");
+  assertBrowser((await inspectCard("e2e-unburied"))?.queue === cardBefore.queue, "Unbury restores the fixture queue.");
+
+  const filtered = await postSearchContract("/api/entities/cards/actions", {
+    action: "move_to_deck", cardIds: [cardId], deckId: String(filteredDeckId), requestId: "e2e-filtered-destination",
+  });
+  assertBrowser(filtered.status === 400 && filtered.body?.error === "cards.destination_filtered", "Filtered destination is rejected with a typed error.");
+  await action("cards", { action: "move_to_deck", cardIds: [cardId], deckId: String(targetDeckId), requestId: "e2e-move" }, "cards.moved");
+  assertBrowser(Number((await inspectCard("e2e-moved"))?.deckId) === targetDeckId, "Move refresh exposes the destination deck.");
+  const movedQuery = await postSearchContract("/api/search/query", {
+    mode: "cards", query: "", filters: [{ type: "deck", deckId: String(targetDeckId) }],
+    sort: { key: "entity_id", direction: "asc" }, page: 1, pageSize: 25, requestId: "e2e-moved-query",
+  });
+  assertBrowser(movedQuery.body?.response?.items?.some((item) => String(item.cardId) === cardId), "Deck-filtered query refresh finds the moved card.");
+  await action("cards", { action: "move_to_deck", cardIds: [cardId], deckId: String(sourceDeckId), requestId: "e2e-move-restore" }, "cards.moved");
+
+  const cardAfter = await inspectCard("e2e-card-restored");
+  const noteAfter = await inspectNote("e2e-note-restored");
+  const cardStable = cardAfter?.queue === cardBefore.queue && cardAfter?.flag === cardBefore.flag && Number(cardAfter?.deckId) === sourceDeckId;
+  const noteStable = JSON.stringify(noteAfter?.tags || []) === JSON.stringify(noteBefore.tags || []);
+  assertBrowser(cardStable && noteStable, "Safe action cycles restore the deterministic collection baseline.");
+  return {
+    invalidTokenStatus: invalidToken.status,
+    changedBatches: 10,
+    requestedPerBatch: suspend.requestedCount,
+    filteredDestinationRejected: filtered.body?.error === "cards.destination_filtered",
+    undoableEvidence: true,
+    queryRefresh: true,
+    inspectRefresh: true,
+    collectionStable: cardStable && noteStable,
+  };
+}
+
+async function assertSearchWorkspaceUi(nativeQuery) {
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/search`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByRole("heading", { name: "Поиск", exact: true }).waitFor({ state: "visible", timeout: 30000 });
+  const primaryHrefs = await page.locator('nav[aria-label] a').evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  assertBrowser(JSON.stringify(primaryHrefs.slice(0, 6)) === JSON.stringify(["#/home", "#/calendar", "#/stats", "#/decks", "#/search", "#/cards"]), "Primary navigation keeps Search between Decks and Cards.");
+  const queryInput = page.locator(".search-query-field input");
+  await queryInput.fill(nativeQuery);
+  await page.getByRole("button", { name: "Найти", exact: true }).click();
+  await page.locator(".search-table tbody tr").first().waitFor({ state: "visible", timeout: 30000 });
+  const cardRows = await page.locator(".search-table tbody tr").count();
+  assertBrowser(cardRows > 0, "Search workspace renders bounded Card rows.");
+  await page.locator(".search-row-button").first().click();
+  await page.locator(".search-inspector-content").waitFor({ state: "visible", timeout: 30000 });
+  await page.locator('input[name="search-mode"][value="notes"]').check();
+  await page.getByRole("button", { name: "Найти", exact: true }).click();
+  await page.locator(".search-table tbody tr").first().waitFor({ state: "visible", timeout: 30000 });
+  assertBrowser(await page.locator(".search-table thead").getByText("Карточки", { exact: true }).count() === 1, "Notes mode renders distinct columns.");
+  assertBrowser(!page.url().includes(encodeURIComponent(nativeQuery)) && !page.url().includes(nativeQuery), "Raw native query stays out of the URL.");
+  assertBrowser(!String(await page.title()).includes(nativeQuery), "Raw native query stays out of the page title.");
 }
 
 async function postSearchContract(endpoint, payload, token = ready.token) {
