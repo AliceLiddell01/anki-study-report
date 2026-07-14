@@ -776,9 +776,9 @@ Dashboard имел русский product UI и пустой extension slot дл
 
 ### Контекст
 
-Будущему Search v1 нужны Cards/Notes query и compact inspect, но прямой доступ
-frontend к collection, универсальный RPC/SQL, rich preview и преждевременный
-Search UI расширили бы security и product scope. `find_cards()`/`find_notes()`
+Search v1 нужны Cards/Notes query и compact inspect, но прямой доступ frontend
+к collection, универсальный RPC/SQL и rich preview расширили бы security scope.
+`find_cards()`/`find_notes()`
 возвращают весь список matching IDs, а не paged cursor.
 
 ### Решение
@@ -791,12 +791,12 @@ Search UI расширили бы security и product scope. `find_cards()`/`fin
   загружаются только для страницы, IDs отдаются decimal strings.
 - Card/Note row/details разделены и содержат bounded safe plain text без
   template rendering, media или mutation.
-- TypeScript client/types добавлены как foundation; `#/search`, navigation,
-  page/table/inspector/selection и mutation API отложены.
+- TypeScript client/types являются foundation для отдельного `#/search`;
+  page/table/inspector/selection не меняют read API contract.
 
 ### Последствия
 
-Следующий UI-этап может строиться на стабильном typed contract. Offset pages не
+Shipping UI строится на стабильном typed contract. Offset pages не
 являются collection snapshot, а широкий native search всё ещё вычисляет все
 matching IDs перед cap; эти ограничения задокументированы и проверяются на
 real Anki в `standard/global` и final `standard/full`.
@@ -805,6 +805,45 @@ real Anki в `standard/global` и final `standard/full`.
 
 `docs/search-query-foundation.md`, `anki_study_report/search_service.py`,
 `anki_study_report/search_runtime.py`, `web-dashboard/src/lib/searchApi.ts`,
+`docker/anki-e2e/smoke-browser.mjs`.
+
+## ADR-027: Safe Actions используют explicit desired state и native batch undo
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Search selection требует ограниченных изменений Cards/Notes, но generic RPC,
+toggle semantics, per-ID operations и partial stale batches сделали бы
+поведение непредсказуемым. `set_card_deck()` в Anki 26.05 извлекает card из
+filtered deck и очищает FSRS data, поэтому filtered source нельзя трактовать
+как обычный move без явной product semantics.
+
+### Решение
+
+- Card и note endpoints разделены и принимают только hard-coded action union.
+- Полный bounded request валидируется и все entities разрешаются до mutation.
+- Изменяющая пачка запускает один official Anki operation wrapper и один native
+  undo step; no-op возвращает отдельный code без ложного undo.
+- Bury/unbury не расширяются до siblings/notes. Move проверяет normal
+  destination server-side и отклоняет filtered destination и `odid > 0` source.
+- Frontend локализует stable result codes, сериализует mutation и после успеха
+  повторяет query/inspect с page correction и selection reconciliation.
+
+### Последствия
+
+Surface остаётся ограниченным suspend/flag/tags/bury/move workflow. Delete,
+reschedule, fields, note type и arbitrary deck/tag operations отложены.
+`standard/global` доказывает cycles и fixture restore, а public evidence не
+содержит token, raw query, tag content или ID lists.
+
+### Где смотреть
+
+`docs/search-v1-and-safe-actions.md`, `anki_study_report/entity_actions.py`,
+`anki_study_report/entity_action_runtime.py`,
+`web-dashboard/src/hooks/useSearchWorkspace.ts`,
 `docker/anki-e2e/smoke-browser.mjs`.
 
 ## ADR-026: Release delivery использует exact-artifact gates и AnkiWeb UI adapter

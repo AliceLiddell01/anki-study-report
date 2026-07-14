@@ -4,7 +4,7 @@ Stage 7 adds `fsrs_service.py` as an isolated read-only Anki adapter and pure
 aggregate layer. `statistics_service.py` publishes only lightweight capability;
 `dashboard_server.py` exposes a strict token-protected FSRS operation union.
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-15.
 
 ## Общий поток данных
 
@@ -19,6 +19,9 @@ flowchart TD
     E --> F["dashboard_server.py"]
     F --> G["web-dashboard React app"]
     S --> F
+    A --> Q["search_service.py / QueryOp"]
+    Q --> F
+    F --> M["entity_actions.py / CollectionOp"]
     B --> H["report_builder.py"]
     H --> I["Markdown/HTML report dialog"]
 ```
@@ -144,6 +147,9 @@ statisticsHub (bounded initial 90d Statistics result)
   collection work выполняется сериализованным `QueryOp` через
   `search_runtime.py`, а validation/projection изолированы в
   `search_service.py`.
+- обслуживает отдельные card/note mutation endpoints; strict validation и
+  preflight находятся в `entity_actions.py`, а official Anki wrapper bridge —
+  в `entity_action_runtime.py`;
 
 Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
 через API server и контролируются Python side.
@@ -171,6 +177,7 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/profile
 #/decks
 #/cards
+#/search
 #/calendar
 #/stats
 #/stats/quality
@@ -207,7 +214,8 @@ default/fallback, а `anki-study-report-language` хранит browser-local в�
 
 Подробная карта frontend routes/pages/helpers: `docs/frontend-map.md`.
 Продуктовое решение по навигации: `docs/navigation-ia.md`.
-Search API foundation без route/UI: `docs/search-query-foundation.md`.
+Search foundation и mutation architecture: `docs/search-query-foundation.md`,
+`docs/search-v1-and-safe-actions.md`.
 
 ## Runtime data
 

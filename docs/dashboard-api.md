@@ -1,11 +1,10 @@
 # Dashboard API и payload-контракт
 
-Stage 7 adds bounded `statisticsHub.fsrs` capability and lazy
-`POST /api/statistics/fsrs/query?token=...` operations
-`overview|memory|calibration|steps|simulate`. Search/SQL/raw params/protobuf and
-unknown fields are rejected; public responses contain aggregates only.
+Search v1 добавляет product route поверх bounded query/inspect foundation и
+отдельные strict card/note mutation endpoints. FSRS API остаётся read-only;
+generic search/SQL/method invocation и unknown fields отклоняются.
 
-Снимок документации: 2026-07-12.
+Снимок документации: 2026-07-15.
 
 Dashboard - это локальное приложение, которое получает один опубликованный
 report payload и несколько служебных API. Оно не читает Anki collection
@@ -58,6 +57,8 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/statistics/query
 /api/search/query
 /api/search/inspect
+/api/entities/cards/actions
+/api/entities/notes/actions
 /api/actions/<action>
 ```
 
@@ -67,7 +68,7 @@ Server actions и dashboard actions должны оставаться небол
 ## Search query и inspect API
 
 `POST /api/search/query` и `POST /api/search/inspect` — отдельный read-only
-foundation будущего Search v1. Оба требуют token, ограничены 8 KiB JSON body,
+foundation Search v1. Оба требуют token, ограничены 8 KiB JSON body,
 отклоняют unknown fields и не принимают SQL/arbitrary order. Query использует
 native Anki grammar, bounded structured filters, page sizes `25|50|100` и hard
 cap 2000. Response различает фактический `pageCount` и cap-derived `pageLimit`;
@@ -79,6 +80,23 @@ declared row/details contract и всю response metadata до возврата 
 `invalid_search_request`, `search_entity_not_found`, `search_unavailable`,
 `search_failed`, `search_timeout`. Полный request/response и bounding contract:
 `docs/search-query-foundation.md`.
+
+## Entity actions API
+
+`POST /api/entities/cards/actions` и `/api/entities/notes/actions` требуют
+token, POST и JSON body до 8 KiB. Card allowlist: suspend/unsuspend, set/clear
+flag, bury/unbury, move_to_deck. Note allowlist: add_tags/remove_tags. Полная
+пачка из `1..200` decimal string IDs разрешается до mutation; stale ID не
+приводит к частичному изменению. Tags ограничены 20 нативными тегами и 1000
+символами. Success envelope содержит stable result code, requested/affected/
+unchanged counts и `undoable`; frontend не зависит от English message.
+
+Изменяющая пачка использует один official Anki operation wrapper и один undo
+step. Move повторно проверяет normal destination server-side, отклоняет
+filtered destination и source cards с `odid > 0`. Typed statuses: validation и
+filtered destination — `400`, stale entity/deleted destination/filtered source
+— `409`, unavailable/failure — `503`, timeout — `504`. Полный контракт:
+`docs/search-v1-and-safe-actions.md`.
 
 ## Settings API
 

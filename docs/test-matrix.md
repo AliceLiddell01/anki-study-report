@@ -32,7 +32,7 @@
 | Statistics / FSRS (six sections, ten routes) | `pytest tests/test_statistics_service.py tests/test_fsrs_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | exact-SHA Fast CI, one `standard/stats`, one final `standard/full` | Да для final Stage 7 | Native configuration/memory/simulator, strict API and screenshots require both layers |
 | Lazy routes / split dashboard assets | `pnpm run build:addon` + `pytest tests/test_package_build.py tests/test_dashboard_server.py` | package `--check-only`, exact-SHA `standard/stats`, затем final `standard/full` | Да для packaged nested-route proof | Manifest graph должен включать dynamic JS/async CSS, а runtime не может принимать неполный split build |
 | Browser search/query actions | `node scripts/run_python.mjs -m pytest tests/test_browser_actions.py tests/test_dashboard_actions.py` | Cards/Actions frontend tests | Иногда | Search query sanitizer защищает Anki Browser actions |
-| Search Query Foundation (read-only Cards/Notes) | `pytest tests/test_search_service.py tests/test_search_runtime.py tests/test_dashboard_server.py` + `pnpm exec vitest run src/lib/searchApi.test.ts` + typecheck | exact-SHA Fast CI и targeted `standard/global`; final `standard/full` только при эскалации planner/matrix | Да для runtime API | QueryOp serialization, native parser, query/inspect token contract и отсутствие mutation требуют real Anki proof |
+| Search v1 + Safe Actions | `pytest tests/test_search_service.py tests/test_search_runtime.py tests/test_entity_actions.py tests/test_entity_action_runtime.py tests/test_dashboard_server.py tests/test_dashboard_actions.py` + Search/API Vitest + typecheck/build | exact-SHA Fast CI, targeted `standard/global`; final `standard/full` из-за shared server/E2E/package diff | Да | QueryOp latest-wins reads, strict action endpoints, one native undoable batch, filtered-deck restrictions, Browser bridge и deterministic restore |
 
 ## Команды-шпаргалка
 
@@ -90,7 +90,7 @@ preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
 
-Обычный strict APKG browser smoke также фиксирует 40 page screenshots, 2 avatar
+Обычный strict APKG browser smoke также фиксирует 42 page screenshots, 2 avatar
 menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
 `e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
 relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.

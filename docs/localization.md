@@ -41,12 +41,17 @@ fsrs
 используется через `t()`. Не следует собирать предложения из нескольких
 переводимых фрагментов, если порядок слов зависит от языка.
 
+Search v1 использует `pages.search.*`: query/filter/selection/inspector copy,
+action labels, temporary bury explanation и mappings stable backend result
+codes. Коды `cards.suspended`, `notes.tags_added` и другие не являются готовым
+UI-текстом и всегда преобразуются в RU/EN key.
+
 ## UI-copy и данные
 
 Переводятся product-owned headings, labels, buttons, hints, empty/error states,
 accessibility names и frontend-generated recommendations. Не переводятся
 пользовательские и технические значения из payload: имена профилей и колод,
-содержимое карточек, search queries, IDs, имена полей/шаблонов и backend error
+содержимое карточек, search queries, IDs, deck/tag names, имена полей/шаблонов и backend error
 details. Известный системный label локального профиля локализуется, но
 произвольный пользовательский label сохраняется дословно.
 

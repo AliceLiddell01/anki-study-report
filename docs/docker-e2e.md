@@ -265,7 +265,9 @@ outputs нужны для диагностики, но должны остава
 
 `mode` (`standard` / `strict-apkg` / `perf100`) задаёт fixture semantics, а
 независимый `scope` — продуктовую область: `full`, `global`, `stats`, `decks`,
-`activity`, `cards`, `settings`. Targeted scope сохраняет startup/readiness/API,
+`activity`, `cards`, `settings`. `global` включает Search UI/query/inspect,
+Browser bridge и reversible Safe Actions с deterministic fixture restore.
+Targeted scope сохраняет startup/readiness/API,
 token, browser-error, redaction и manifest core, но не заменяет final `full`.
 Restart при `auto` выполняется только для `full`.
 

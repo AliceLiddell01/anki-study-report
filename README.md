@@ -1,14 +1,14 @@
 # Anki Study Report
 
-Документация этого репозитория описывает текущую версию проекта на 2026-07-14.
+Документация этого репозитория описывает текущую версию проекта на 2026-07-15.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
 почему часть решений устроена именно так.
 
 Anki Study Report - это add-on для Anki 26.05+, который собирает статистику
 обучения, строит Markdown/HTML-отчет и публикует локальный веб-dashboard с
-детализацией по прогрессу, колодам, карточкам, FSRS, календарю, логам и
-обслуживающим действиям.
+детализацией по прогрессу, колодам, карточкам, FSRS, календарю, нативному
+поиску Cards/Notes, логам и явным undoable действиям.
 Web dashboard полностью поддерживает русский и английский интерфейс; язык
 переключается глобально и сохраняется локально в браузере.
 
@@ -35,7 +35,7 @@ anki_study_report.ankiaddon
 `anki_study_report/`.
 
 Текущая primary navigation dashboard:
-`Сегодня → Активность → Статистика → Колоды → Карточки`.
+`Сегодня → Активность → Статистика → Колоды → Поиск → Карточки`.
 Профиль, Инструменты, Настройки и безопасная внешняя ссылка «Поддержать проект»
 доступны через profile menu; Сервер, Источники данных и Логи собраны в settings
 navigation. Полное решение и правила эволюции routes описаны в
@@ -106,6 +106,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Разработка и проверки](docs/development.md)
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
 - [Search Query Foundation](docs/search-query-foundation.md)
+- [Search v1 и Safe Actions](docs/search-v1-and-safe-actions.md)
 - [Матрица проверок](docs/test-matrix.md)
 - [CI и gated release delivery](docs/ci-cd.md)
 - [Release automation](docs/release-automation.md)
