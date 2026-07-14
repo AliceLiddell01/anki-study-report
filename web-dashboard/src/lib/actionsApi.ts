@@ -35,41 +35,57 @@ export async function runReportAction(
     entityIds?: string[];
   } = {},
 ): Promise<ActionResponse> {
-  const token = dashboardToken();
-  const response = await fetch(`/api/actions/${action}?token=${encodeURIComponent(token)}`, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await safeJson(response);
-  if (!response.ok && !data) {
+  try {
+    const token = dashboardToken();
+    const response = await fetch(`/api/actions/${action}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await safeJson(response);
+    if (!response.ok && !data) {
+      return {
+        ok: false,
+        action,
+        error: response.status === 403 ? "Invalid dashboard token." : "Dashboard action failed.",
+      };
+    }
+    return normalizeActionResponse(data, action);
+  } catch {
     return {
       ok: false,
       action,
-      error: response.status === 403 ? "Invalid dashboard token." : "Dashboard action failed.",
+      error: "Dashboard action failed.",
     };
   }
-  return normalizeActionResponse(data, action);
 }
 
 export async function runServerAction(action: ServerAction): Promise<ActionResponse> {
-  const token = dashboardToken();
-  const response = await fetch(`/api/server/${action}?token=${encodeURIComponent(token)}`, {
-    method: "POST",
-    cache: "no-store",
-  });
-  const data = await safeJson(response);
-  if (!response.ok && !data) {
+  try {
+    const token = dashboardToken();
+    const response = await fetch(`/api/server/${action}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      cache: "no-store",
+    });
+    const data = await safeJson(response);
+    if (!response.ok && !data) {
+      return {
+        ok: false,
+        action,
+        error: response.status === 403 ? "Invalid dashboard token." : "Server action failed.",
+      };
+    }
+    return normalizeActionResponse(data, action);
+  } catch {
     return {
       ok: false,
       action,
-      error: response.status === 403 ? "Invalid dashboard token." : "Server action failed.",
+      error: "Server action failed.",
     };
   }
-  return normalizeActionResponse(data, action);
 }
 
 export function dashboardToken(): string {
