@@ -125,6 +125,15 @@ Do not run heavy Docker E2E for docs-only changes.
   SHA-256 для каждого asset.
 - Approve `ankiweb-production` only after the exact-artifact `standard/full`
   gate and draft GitHub Release are green.
+- После изменения workflow/publisher запускать новый dispatch с текущего
+  `master`; не использовать `Re-run failed jobs` старого run.
+- Для восстановления `v1.0.0` запустить `release.yml` с `branch=master`,
+  `version=1.0.0`, `channel=stable`, проверить draft report и только затем
+  одобрить `ankiweb-production`.
+- В publisher report authoritative evidence — exact owner-form metadata и
+  normalized description SHA-256; публичный description container является
+  bounded eventual smoke. Уже актуальное состояние должно завершиться с
+  `mutationCount: 0` и `idempotent: true`.
 - Confirm final run evidence: commit SHA, artifact SHA-256, E2E-tested package
   SHA, GitHub assets, description hash, public AnkiWeb download hash.
 - Do not manually create another AnkiWeb branch or upload a different archive.

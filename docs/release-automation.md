@@ -46,7 +46,8 @@ Workflow выполняет цепочку:
 validate → build exact .ankiaddon → standard/full real-Anki E2E
 → provenance attestation + verified draft GitHub Release
 → approved AnkiWeb Environment + one Save on existing Branch 1
-→ public byte/hash verification → finalize GitHub Release
+→ stored form hash → eventual public rendering → public byte/hash
+→ finalize GitHub Release
 ```
 
 Между job передаётся один `anki_study_report.ankiaddon`; его SHA-256 проверяется
@@ -90,7 +91,14 @@ trace, screenshots или HTML авторизованной страницы.
 - Challenge/2FA, изменение DOM, лишняя branch или hash mismatch останавливают
   workflow до Save либо до финализации GitHub Release.
 - После успешного AnkiWeb Save, но до финализации, повторный запуск идемпотентно
-  сверяет metadata, description и публичный artifact hash и не делает второй Save.
+  сначала сверяет metadata и SHA-256 нормализованного Markdown в owner update
+  form, затем ожидает version marker внутри публичного description container и
+  проверяет публичный artifact hash. При полном совпадении отчёт фиксирует
+  `mutationCount: 0`, `idempotent: true` и второй Save не выполняется.
+- Публичный HTML является eventual user-facing smoke, а не источником Markdown:
+  отсутствие конкретного heading role не отменяет проверку owner form. Ожидание
+  description container и version marker ограничено; binary mismatch также
+  перепроверяется только в коротком ограниченном окне и затем fail-closed.
 - Опубликованный SemVer release и его assets не перезаписываются. Любое изменение
   bytes требует новой версии.
 - Никогда не объявляйте local PASS заменой упавшему cloud release run.
@@ -139,10 +147,20 @@ git ls-remote --tags origin refs/tags/v1.0.0
 gh workflow run release.yml --ref master -f version=1.0.0 -f channel=stable
 ```
 
-Новый run сам retarget-ит surviving draft на новый SHA и проверит новые exact
-assets. `ankiweb-production` следует одобрять только после зелёного
-`github-draft` job и проверки его sanitized report. Ручное удаление draft,
-создание tag или upload другого архива не нужны.
+Не используйте **Re-run failed jobs** для старого run: он исполняет старый
+workflow/publisher из прежнего commit. Новый run сам retarget-ит surviving draft
+на новый SHA и проверит ровно три exact assets. Затем:
+
+1. дождаться зелёных validate/build/standard-full E2E и `github-draft`;
+2. проверить sanitized `github-draft-report-*` и SHA-256;
+3. одобрить `ankiweb-production`;
+4. убедиться в `ankiweb-publish-report-*`, что stored description, public marker
+   и public artifact совпали, а для уже актуального AnkiWeb указаны
+   `mutationCount: 0` и `idempotent: true`;
+5. дождаться `github-finalize` и проверить опубликованный tag/release/assets.
+
+Ручное удаление draft, создание tag, изменение AnkiWeb branch или upload другого
+архива не нужны.
 
 Текущий этап добавляет только delivery infrastructure. Search UI, route и
 navigation entry не входят в release automation.
