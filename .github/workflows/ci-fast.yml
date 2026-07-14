@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - "codex/**"
   pull_request:
     branches:
       - master
@@ -14,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-fast-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -93,8 +92,8 @@ jobs:
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
             $base = "origin/$baseBranch"
           } elseif ($refName -ne $defaultBranch) {
-            # Feature-branch pushes must describe the complete branch risk, not
-            # only the last synchronize/force-push delta.
+            # Manually dispatched feature-branch runs must describe the complete
+            # branch risk, not only the last synchronize/force-push delta.
             $base = "origin/$defaultBranch"
           } else {
             $base = $null
