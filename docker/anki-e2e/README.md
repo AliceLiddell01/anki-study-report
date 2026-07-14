@@ -458,8 +458,9 @@ required manifest entries.
 - API response samples are sanitized and checked for token leakage.
 - `standard/global` и `standard/full` также пишут
   `reports/search-query-contract.json`: real collection Cards/Notes native
-  query, bounded metadata, Card/Note inspect, invalid token/query и повторный
-  read-only результат без raw query/token или mutation endpoint.
+  query, Search UI/navigation, bounded metadata, Card/Note inspect, Browser
+  bridge, safe action/restore cycles и filtered destination rejection. Артефакт
+  не содержит raw query/token/tag content/ID lists.
 - Docker E2E is a heavy command and requires Docker Desktop/WSL2 on Windows.
 
 ## Security Notes

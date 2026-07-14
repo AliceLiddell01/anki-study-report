@@ -96,14 +96,22 @@ unknown fields, arbitrary search и SQL-like payload. Frontend получает 
 daily/deck aggregates и grouped current state/due snapshot: raw revlog,
 individual card/note IDs/text, token и paths не публикуются.
 
-Search foundation — отдельное осознанное исключение для будущего Search v1:
+Search foundation — отдельное осознанное исключение для Search v1:
 token-protected `POST /api/search/query` и `/api/search/inspect` возвращают
 только выбранные bounded plain-text Card/Note projections. Native query
 валидируется Anki, structured filters собираются без ручной конкатенации,
-arbitrary SQL/sort и mutation endpoints отсутствуют. Query/body/result/field
+arbitrary SQL/sort отсутствуют. Query/body/result/field
 limits, string IDs, safe text и generic runtime errors описаны в
 `docs/search-query-foundation.md`. Raw query и token не попадают в normal logs
 или E2E public artifact.
+
+Mutation surface отделён от generic dashboard actions:
+`POST /api/entities/cards/actions` и `/api/entities/notes/actions`. Оба
+token-protected, POST-only, ограничены 8 KiB и принимают только hard-coded
+action union. Batch cap — 200, tag cap — 20/1000 chars. Backend разрешает всю
+пачку до mutation, не логирует IDs/tags/deck names и запускает один official
+Anki wrapper. Move принимает только deck ID, повторно проверяет normal deck и
+отклоняет filtered destination/source. См. `docs/search-v1-and-safe-actions.md`.
 
 ## Dashboard actions allowlist
 
@@ -116,6 +124,7 @@ save-markdown
 open-browser
 open-browser-search
 open-deck-browser
+open-search-selection
 open-problematic
 open-again
 open-new
