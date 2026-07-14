@@ -196,6 +196,8 @@ describe("Search workspace", () => {
     await click(container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!);
     expect(button("Приостановить")).toBeTruthy();
     expect(button("Добавить теги")).toBeFalsy();
+    expect(button("Отложить")).toBeTruthy();
+    expect(container.textContent).toContain("возвращаются на следующий день");
     await act(async () => {
       button("Приостановить").click();
       button("Приостановить").click();
@@ -224,6 +226,7 @@ describe("Search workspace", () => {
     await settle();
     await click(container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!);
     expect(button("Приостановить")).toBeFalsy();
+    expect(button("Отложить")).toBeFalsy();
     const addButton = button("Добавить теги");
     expect(addButton.disabled).toBe(true);
     const input = container.querySelector<HTMLInputElement>(".search-tag-action input")!;
@@ -264,6 +267,60 @@ describe("Search workspace", () => {
     await settleMany();
     expect(pages).toEqual([1, 2, 2, 1]);
     expect(container.textContent).toContain("Страница 1 из 1");
+  });
+
+  it("moves cards with the report deck catalog and preserves a deck-filtered query", async () => {
+    const queryBodies: Array<Record<string, unknown>> = [];
+    let actionBody: Record<string, unknown> | null = null;
+    const sourceCard = { ...card, deckId: "201", deckName: "Japanese" };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/entities/cards/actions")) {
+        actionBody = JSON.parse(String(init?.body));
+        return entitySuccess({ action: "move_to_deck", resultCode: "cards.moved", args: { deckId: 101 } });
+      }
+      queryBodies.push(JSON.parse(String(init?.body)));
+      return success(queryResponse("cards", [sourceCard]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await renderPage();
+    const deckFilter = Array.from(container.querySelectorAll<HTMLSelectElement>(".search-controls-row select"))
+      .find((select) => Array.from(select.options).some((option) => option.value === "201"))!;
+    await change(deckFilter, "201");
+    await click(button("Найти"));
+    await settle();
+    await click(container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!);
+    const destination = Array.from(container.querySelectorAll<HTMLSelectElement>(".search-action-bar select"))
+      .find((select) => Array.from(select.options).some((option) => option.value === "201"))!;
+    await change(destination, "201");
+    expect(button("Переместить").disabled).toBe(true);
+    await change(destination, "101");
+    expect(button("Переместить").disabled).toBe(false);
+    await click(button("Переместить"));
+    await settleMany();
+    expect(actionBody).toMatchObject({ action: "move_to_deck", cardIds: ["1001"], deckId: "101" });
+    expect(queryBodies).toHaveLength(2);
+    expect(queryBodies[1]?.filters).toEqual(queryBodies[0]?.filters);
+    expect(container.textContent).toContain("Перемещено карточек: 1");
+  });
+
+  it("localizes a filtered-source move rejection", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/entities/cards/actions")) return new Response(JSON.stringify({
+        ok: false, error: "cards.filtered_source_unsupported", message: "safe",
+      }), { status: 409 });
+      return success(queryResponse("cards", [card]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await renderPage();
+    await click(button("Найти"));
+    await settle();
+    await click(container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!);
+    const destination = Array.from(container.querySelectorAll<HTMLSelectElement>(".search-action-bar select"))
+      .find((select) => Array.from(select.options).some((option) => option.value === "101"))!;
+    await change(destination, "101");
+    await click(button("Переместить"));
+    await settleMany();
+    expect(container.textContent).toContain("Сначала верните её в домашнюю колоду через Anki");
   });
 
   it("refreshes active inspect details when the entity remains", async () => {

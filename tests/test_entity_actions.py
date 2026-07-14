@@ -27,14 +27,21 @@ class FakeTags:
 class FakeCollection:
     def __init__(self) -> None:
         self.cards = {
-            1: SimpleNamespace(id=1, queue=2, flags=0),
-            2: SimpleNamespace(id=2, queue=-1, flags=3),
+            1: SimpleNamespace(id=1, queue=2, flags=0, did=20, odid=0),
+            2: SimpleNamespace(id=2, queue=-1, flags=3, did=30, odid=0),
+            3: SimpleNamespace(id=3, queue=-2, flags=0, did=20, odid=0),
+            4: SimpleNamespace(id=4, queue=2, flags=0, did=99, odid=20),
         }
         self.notes = {
             10: SimpleNamespace(id=10, tags=["Japanese::Grammar"]),
             11: SimpleNamespace(id=11, tags=["important"]),
         }
         self.tags = FakeTags()
+        self.decks = SimpleNamespace(get=lambda deck_id: {
+            20: {"id": 20, "name": "Source", "dyn": 0},
+            30: {"id": 30, "name": "Target", "dyn": 0},
+            99: {"id": 99, "name": "Filtered", "dyn": 1},
+        }.get(deck_id))
 
     def get_card(self, card_id: int):
         return self.cards[card_id]
@@ -154,3 +161,54 @@ def test_noop_result_is_typed_and_not_claimed_undoable() -> None:
         "args": {},
         "requestId": "noop",
     }
+
+
+@pytest.mark.parametrize(
+    ("action", "affected", "code"),
+    [("bury", 1, "cards.buried"), ("unbury", 1, "cards.unburied")],
+)
+def test_bury_actions_are_explicit_and_do_not_expand_note_siblings(action, affected, code) -> None:
+    plan = prepare_card_action(
+        FakeCollection(),
+        normalize_card_action_request(
+            {"action": action, "cardIds": ["1", "3"], "requestId": "bury-1"}
+        ),
+    )
+    assert plan.entity_ids == (1, 3)
+    assert plan.affected_count == affected
+    assert action_result(plan, undoable=True)["resultCode"] == code
+
+
+def test_move_resolves_normal_destination_and_reports_noop() -> None:
+    col = FakeCollection()
+    move = normalize_card_action_request(
+        {"action": "move_to_deck", "cardIds": ["1", "2"], "deckId": "30", "requestId": "move-1"}
+    )
+    plan = prepare_card_action(col, move)
+    assert (plan.affected_count, plan.unchanged_count) == (1, 1)
+    assert plan.native_args == {"deckId": 30}
+    assert action_result(plan, undoable=True)["resultCode"] == "cards.moved"
+    noop = prepare_card_action(
+        col,
+        normalize_card_action_request(
+            {"action": "move_to_deck", "cardIds": ["2"], "deckId": "30", "requestId": "move-noop"}
+        ),
+    )
+    assert action_result(noop, undoable=False)["resultCode"] == "action.no_changes"
+
+
+@pytest.mark.parametrize(
+    ("card_ids", "deck_id", "code"),
+    [
+        (["1"], "99", "cards.destination_filtered"),
+        (["1"], "404", "cards.destination_not_found"),
+        (["4"], "30", "cards.filtered_source_unsupported"),
+    ],
+)
+def test_move_rejects_filtered_or_stale_destination_and_filtered_source(card_ids, deck_id, code) -> None:
+    request = normalize_card_action_request(
+        {"action": "move_to_deck", "cardIds": card_ids, "deckId": deck_id, "requestId": "move-bad"}
+    )
+    with pytest.raises(entity_actions.EntityActionDomainError) as raised:
+        prepare_card_action(FakeCollection(), request)
+    assert raised.value.code == code

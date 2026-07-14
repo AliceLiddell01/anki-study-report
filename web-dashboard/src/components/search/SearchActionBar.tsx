@@ -2,13 +2,24 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SearchWorkspaceState } from "../../hooks/useSearchWorkspace";
 import type { EntityActionResultCode } from "../../types/entityActions";
+import type { StudyReport } from "../../types/report";
+import type { SearchCardRow } from "../../types/search";
 
-export default function SearchActionBar({ workspace }: { workspace: SearchWorkspaceState }) {
+export default function SearchActionBar({ workspace, report }: { workspace: SearchWorkspaceState; report: StudyReport | null }) {
   const { t } = useTranslation("pages", { keyPrefix: "search.actions" });
   const [flag, setFlag] = useState(1);
   const [tagText, setTagText] = useState("");
+  const [deckId, setDeckId] = useState("");
   const tags = tagText.trim() ? [tagText.trim()] : [];
   const hasSelection = workspace.selectedIds.size > 0;
+  const cardRows = workspace.response?.mode === "cards" ? workspace.response.items as SearchCardRow[] : [];
+  const selectedRows = cardRows.filter((row) => workspace.selectedIds.has(row.cardId));
+  const currentDecks = [...new Set(selectedRows.map((row) => row.deckName))];
+  const allSelectedVisible = selectedRows.length === workspace.selectedIds.size;
+  const sameDestination = Boolean(deckId) && allSelectedVisible && selectedRows.every((row) => row.deckId === deckId);
+  const deckOptions = report?.deckHub
+    ? Object.values(report.deckHub.nodes).filter((node) => !node.filtered).sort((a, b) => a.fullName.localeCompare(b.fullName))
+    : [];
   if (!hasSelection && !workspace.actionResponse && !workspace.actionError) return null;
 
   return <section className="search-action-surface" aria-label={t("label")}>
@@ -20,6 +31,13 @@ export default function SearchActionBar({ workspace }: { workspace: SearchWorksp
         <label><span>{t("flag")}</span><select value={flag} disabled={workspace.actionPending} onChange={(event) => setFlag(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{t(`flagNames.${value}`)}</option>)}</select></label>
         <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("set_flag", { flag })}>{t("setFlag")}</button>
         <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("clear_flag")}>{t("clearFlag")}</button>
+        <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("bury")}>{t("bury")}</button>
+        <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("unbury")}>{t("unbury")}</button>
+        <span className="search-action-help">{t("buryHelp")}</span>
+        <label><span>{t("currentDeck")}</span><span className="search-current-deck">{currentDecks.length === 1 ? currentDecks[0] : currentDecks.length > 1 ? t("multipleDecks") : t("deckUnknown")}</span></label>
+        <label><span>{t("destination")}</span><select value={deckId} disabled={workspace.actionPending || deckOptions.length === 0} onChange={(event) => setDeckId(event.target.value)}><option value="">{t("chooseDeck")}</option>{deckOptions.map((deck) => <option key={deck.deckId} value={String(deck.deckId)}>{deck.fullName}</option>)}</select></label>
+        <button type="button" disabled={workspace.actionPending || !deckId || sameDestination} onClick={() => workspace.runEntityAction("move_to_deck", { deckId })}>{t("move")}</button>
+        {sameDestination ? <span className="search-action-help">{t("sameDeck")}</span> : null}
       </> : <>
         <label className="search-tag-action"><span>{t("tags")}</span><input value={tagText} disabled={workspace.actionPending} maxLength={1000} onChange={(event) => setTagText(event.target.value)} placeholder={t("tagsPlaceholder")} /></label>
         <button type="button" disabled={workspace.actionPending || tags.length === 0} onClick={() => workspace.runEntityAction("add_tags", { tags })}>{t("addTags")}</button>
@@ -44,6 +62,9 @@ function resultKey(code: EntityActionResultCode): string {
 }
 
 function errorKey(code: string): string {
+  if (code === "cards.filtered_source_unsupported") return "errors.filteredSource";
+  if (code === "cards.destination_filtered") return "errors.filteredDestination";
+  if (code === "cards.destination_not_found") return "errors.destinationMissing";
   if (code === "entity_action_stale") return "errors.stale";
   if (code === "invalid_entity_action") return "errors.invalid";
   if (code === "entity_action_timeout") return "errors.timeout";

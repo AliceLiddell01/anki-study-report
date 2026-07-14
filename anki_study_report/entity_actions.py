@@ -11,7 +11,7 @@ ENTITY_ACTION_SCHEMA_VERSION = 1
 ENTITY_ACTION_BATCH_LIMIT = 200
 ENTITY_ACTION_TAG_LIMIT = 20
 ENTITY_ACTION_TAG_TOTAL_LIMIT = 1000
-CARD_ACTIONS = {"suspend", "unsuspend", "set_flag", "clear_flag"}
+CARD_ACTIONS = {"suspend", "unsuspend", "set_flag", "clear_flag", "bury", "unbury", "move_to_deck"}
 NOTE_ACTIONS = {"add_tags", "remove_tags"}
 _REQUEST_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _DECIMAL_ID = re.compile(r"[1-9]\d{0,18}")
@@ -25,6 +25,12 @@ class EntityActionValidationError(ValueError):
 
 class EntityActionStaleError(LookupError):
     pass
+
+
+class EntityActionDomainError(ValueError):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -48,6 +54,8 @@ def normalize_card_action_request(payload: object) -> dict[str, Any]:
     expected = {"action", "cardIds"}
     if action == "set_flag":
         expected.add("flag")
+    if action == "move_to_deck":
+        expected.add("deckId")
     _exact_fields(data, expected, optional={"requestId"})
     ids = _entity_ids(data.get("cardIds"), "cardIds")
     request_id = _request_id(data.get("requestId"))
@@ -61,6 +69,8 @@ def normalize_card_action_request(payload: object) -> dict[str, Any]:
         if isinstance(flag, bool) or not isinstance(flag, int) or flag not in range(1, 8):
             raise _invalid("flag", "Choose a flag from 1 to 7.")
         normalized["flag"] = flag
+    if action == "move_to_deck":
+        normalized["deckId"] = _single_id(data.get("deckId"), "deckId")
     return normalized
 
 
@@ -90,9 +100,33 @@ def prepare_card_action(col: Any, request: dict[str, Any]) -> EntityActionPlan:
         affected = sum(int(getattr(card, "queue", 0)) == -1 for card in cards)
     elif action == "set_flag":
         affected = sum((int(getattr(card, "flags", 0)) & 7) != flag for card in cards)
-    else:
+    elif action == "clear_flag":
         affected = sum((int(getattr(card, "flags", 0)) & 7) != 0 for card in cards)
+    elif action == "bury":
+        affected = sum(int(getattr(card, "queue", 0)) not in {-2, -3} for card in cards)
+    elif action == "unbury":
+        affected = sum(int(getattr(card, "queue", 0)) in {-2, -3} for card in cards)
+    else:
+        if any(int(getattr(card, "odid", 0) or 0) > 0 for card in cards):
+            raise EntityActionDomainError(
+                "cards.filtered_source_unsupported",
+                "Move cards out of their filtered deck in Anki before changing the home deck.",
+            )
+        deck_id = request["deckId"]
+        try:
+            destination = col.decks.get(deck_id)
+        except Exception as error:
+            raise EntityActionDomainError(
+                "cards.destination_not_found", "The destination deck is unavailable."
+            ) from error
+        if not isinstance(destination, dict) or int(destination.get("id", 0) or 0) != deck_id:
+            raise EntityActionDomainError("cards.destination_not_found", "The destination deck is unavailable.")
+        if bool(destination.get("dyn")):
+            raise EntityActionDomainError("cards.destination_filtered", "Choose a normal destination deck.")
+        affected = sum(int(getattr(card, "did", 0) or 0) != deck_id for card in cards)
     args = {"flag": flag} if action == "set_flag" else {}
+    if action == "move_to_deck":
+        args = {"deckId": request["deckId"]}
     return _plan("cards", request, "cardIds", affected, args, args)
 
 
@@ -119,6 +153,9 @@ def action_result(plan: EntityActionPlan, *, undoable: bool) -> dict[str, Any]:
         "unsuspend": "cards.unsuspended",
         "set_flag": "cards.flag_set",
         "clear_flag": "cards.flag_cleared",
+        "bury": "cards.buried",
+        "unbury": "cards.unburied",
+        "move_to_deck": "cards.moved",
         "add_tags": "notes.tags_added",
         "remove_tags": "notes.tags_removed",
     }[plan.action]
@@ -205,6 +242,15 @@ def _entity_ids(value: object, field: str) -> list[int]:
             raise _invalid(field, "Entity IDs must be unique signed 64-bit values.")
         seen.add(entity_id)
         parsed.append(entity_id)
+    return parsed
+
+
+def _single_id(value: object, field: str) -> int:
+    if not isinstance(value, str) or not _DECIMAL_ID.fullmatch(value):
+        raise _invalid(field, "Use a positive decimal deck ID.")
+    parsed = int(value)
+    if parsed > 9_223_372_036_854_775_807:
+        raise _invalid(field, "Use a signed 64-bit deck ID.")
     return parsed
 
 

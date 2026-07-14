@@ -51,6 +51,21 @@ describe("entity actions API", () => {
     });
   });
 
+  it("posts an explicit deck ID and accepts expanded card result codes", async () => {
+    window.history.replaceState(null, "", "/?token=move-token#/search");
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
+      ok: true,
+      response: { ...response, action: "move_to_deck", resultCode: "cards.moved", args: { deckId: 30 } },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(runCardEntityAction({ action: "move_to_deck", cardIds: ["1"], deckId: "30", requestId: "move-1" })).resolves.toMatchObject({
+      action: "move_to_deck", resultCode: "cards.moved", args: { deckId: 30 },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      action: "move_to_deck", cardIds: ["1"], deckId: "30", requestId: "move-1",
+    });
+  });
+
   it("preserves typed backend errors without leaking an invalid payload", async () => {
     window.history.replaceState(null, "", "/?token=x#/search");
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({

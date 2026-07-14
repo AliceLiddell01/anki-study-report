@@ -55,11 +55,11 @@ function normalizeResponse(value: unknown, expectedType: "cards" | "notes"): Ent
   const exactShape = requiredKeys.every((key) => keys.includes(key)) &&
     keys.every((key) => requiredKeys.includes(key) || key === "requestId");
   const allowedCodes: EntityActionResultCode[] = [
-    "cards.suspended", "cards.unsuspended", "cards.flag_set", "cards.flag_cleared",
+    "cards.suspended", "cards.unsuspended", "cards.flag_set", "cards.flag_cleared", "cards.buried", "cards.unburied", "cards.moved",
     "notes.tags_added", "notes.tags_removed", "action.no_changes",
   ];
   const allowedActions = expectedType === "cards"
-    ? ["suspend", "unsuspend", "set_flag", "clear_flag"]
+    ? ["suspend", "unsuspend", "set_flag", "clear_flag", "bury", "unbury", "move_to_deck"]
     : ["add_tags", "remove_tags"];
   const requestedCount = count(data.requestedCount);
   const affectedCount = count(data.affectedCount);

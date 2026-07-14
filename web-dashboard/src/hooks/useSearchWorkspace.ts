@@ -276,7 +276,7 @@ export function useSearchWorkspace() {
 
   const runEntityAction = useCallback(async (
     entityAction: CardEntityAction | NoteEntityAction,
-    options: { flag?: number; tags?: string[] } = {},
+    options: { flag?: number; tags?: string[]; deckId?: string } = {},
   ) => {
     if (actionInFlight.current || selectedIds.size === 0 || !submittedRequest) return;
     actionInFlight.current = true;
@@ -296,6 +296,7 @@ export function useSearchWorkspace() {
             action: entityAction as CardEntityAction,
             cardIds: ids,
             ...(entityAction === "set_flag" ? { flag: options.flag } : {}),
+            ...(entityAction === "move_to_deck" ? { deckId: options.deckId } : {}),
             requestId,
           }, controller.signal)
         : await runNoteEntityAction({
