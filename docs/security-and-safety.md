@@ -259,3 +259,18 @@ canonical exit code восстанавливается после diagnostics и
 redaction также завершает job ошибкой. Workflow использует только
 `permissions: contents: read`, не получает secrets/OIDC и хранит public-safe
 artifact 7 дней.
+
+## Release credentials и publisher
+
+`ANKIWEB_EMAIL` и `ANKIWEB_PASSWORD` являются только environment secrets
+`ankiweb-production`. PR/Fast CI/E2E и GitHub Release jobs их не получают.
+Publisher принимает их только из process environment: значения запрещено
+передавать аргументами, писать в fixtures/reports/docs или сохранять в browser
+profile. Playwright context временный; storage state, cookies, trace,
+screenshots и authenticated HTML не сохраняются.
+
+Publisher fail-closed останавливается при challenge/2FA, изменившемся DOM,
+неоднозначных controls, лишней branch, несовпадении metadata/description/hash.
+Разрешён ровно один Save существующей `Branch 1`; `Add New Branch` только
+проверяется как элемент контракта. Отчёт содержит status, timestamps, публичные
+IDs и SHA-256, но не credentials или private paths.

@@ -806,3 +806,42 @@ real Anki в `standard/global` и final `standard/full`.
 `docs/search-query-foundation.md`, `anki_study_report/search_service.py`,
 `anki_study_report/search_runtime.py`, `web-dashboard/src/lib/searchApi.ts`,
 `docker/anki-e2e/smoke-browser.mjs`.
+
+## ADR-026: Release delivery использует exact-artifact gates и AnkiWeb UI adapter
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Package checks и real-Anki E2E существовали, но версия, GitHub Release и
+обновление owner-only AnkiWeb form не были связаны единым проверяемым artifact.
+Прямая API-интеграция AnkiWeb недоступна, а автоматическая публикация после
+merge дала бы production secrets PR-коду или убрала явное решение владельца.
+
+### Решение
+
+- Версия, changelog, manifest release date и public metadata валидируются до build.
+- Production запускается только manual dispatch с exact current `master` и
+  защищается одной concurrency group.
+- Один archive и SHA-256 проходят reusable standard/full Anki E2E, GitHub draft,
+  AnkiWeb publish и public download verification.
+- GitHub write jobs отделены от Playwright job; credentials доступны только
+  через reviewed Environment `ankiweb-production`.
+- UI adapter fail-closed проверяет owner page и единственную `Branch 1`, делает
+  максимум один Save, не создаёт branch и не сохраняет auth/browser evidence.
+- Published SemVer assets неизменяемы; rerun до публикации идемпотентен.
+
+### Последствия
+
+PR может доказать release build без secrets и mutations. Stable GitHub Release
+финализируется только после AnkiWeb byte verification; prerelease AnkiWeb не
+обновляет. DOM change или auth challenge требует адаптации/ручного решения и не
+приводит к частичной скрытой публикации. Search UI остаётся вне этого решения.
+
+### Где смотреть
+
+`docs/release-automation.md`, `.github/workflows/release.yml`,
+`scripts/release_common.py`, `scripts/manage_github_release.py`,
+`scripts/publish_ankiweb.mjs`.

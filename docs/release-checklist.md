@@ -1,6 +1,6 @@
 # Release checklist
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-14.
 
 Чеклист перед публикацией или передачей `anki_study_report.ankiaddon`.
 
@@ -107,17 +107,21 @@ Do not run heavy Docker E2E for docs-only changes.
 - Check one media preview if rendering/media changed.
 - Check Actions page only with non-destructive actions unless explicitly needed.
 
-## AnkiWeb/manual publication
+## Version and gated publication
 
-There is no project automation for AnkiWeb publication in this checkout.
-Before publishing manually:
+- `anki_study_report/version.py`, changelog section and `manifest.json.mod`
+  describe the same release.
+- `prepare_release.py --version <version> --check` passes.
+- Release PR workflows pass without production secrets or mutations.
+- After merge, dispatch `release.yml` from exact current `master` with explicit
+  version/channel.
+- Approve `ankiweb-production` only after the exact-artifact `standard/full`
+  gate and draft GitHub Release are green.
+- Confirm final run evidence: commit SHA, artifact SHA-256, E2E-tested package
+  SHA, GitHub assets, description hash, public AnkiWeb download hash.
+- Do not manually create another AnkiWeb branch or upload a different archive.
 
-- Check description.
-- Check tags.
-- Check changelog.
-- Check compatibility with `min_point_version`.
-- Keep final artifact path and size in release notes.
-- Create release commit/tag if that workflow is being used.
+Commands and recovery are in `docs/release-automation.md`.
 
 ## Do not publish
 

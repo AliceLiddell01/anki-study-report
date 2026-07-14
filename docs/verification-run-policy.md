@@ -51,3 +51,12 @@ Stage 7 expected plan: Fast CI required; targeted `stats` once; final `full`
 once; telemetry off; no warm-cache/local duplicate. Поскольку actual Stage 7
 также меняет dashboard server и E2E fixture/contract, planner корректно
 эскалирует final integration requirement, но не создаёт лишний ранний full run.
+
+## Release policy
+
+Release infrastructure, package version source, changelog, release workflow и
+AnkiWeb adapter всегда классифицируются как `full`. Production workflow
+переиспользует `ci-e2e.yml` и устанавливает exact final archive через
+`ANKI_E2E_PREBUILT_ADDON_PATH`; E2E evidence обязано иметь тот же SHA-256.
+PR запускает только validation/build. Manual dispatch с `master` — отдельное
+явное решение владельца и не является автоматическим продолжением merge.

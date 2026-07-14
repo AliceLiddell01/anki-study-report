@@ -366,3 +366,17 @@ git diff --check
 
 Если были кодовые изменения, добавить релевантные test/build команды из
 `docs/test-matrix.md`. Если проверку нельзя запустить, явно написать почему.
+
+## Release delivery truth
+
+Каноническая версия находится в `anki_study_report/version.py`, release notes —
+в versioned section `CHANGELOG.md`, публичная стабильная AnkiWeb часть — в
+`release/ankiweb-description.md`. `release.yml` на PR только валидирует и
+строит; production запускается вручную с current `master`.
+
+Exact `.ankiaddon` проходит SHA handoff через standard/full real-Anki E2E,
+draft GitHub Release, approved `ankiweb-production`, один Save существующей
+AnkiWeb `Branch 1` и публичный download verification. Stable финализирует
+GitHub Release после AnkiWeb; prerelease AnkiWeb не трогает. Credentials не
+должны появляться в контексте/аргументах/файлах. Подробности и recovery:
+`docs/release-automation.md`.

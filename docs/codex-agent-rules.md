@@ -176,3 +176,17 @@ Commit(s):
 
 Если commit не делался, явно написать это и показать смысл текущего
 `git status --short --branch`.
+
+## Release automation
+
+- Не dispatch-ить production release только для проверки реализации.
+- Release разрешён лишь с current `master`, явной version/channel и approval
+  `ankiweb-production`.
+- Не переносить credentials из environment в CLI args, files, reports, commits
+  или PR text и не сохранять browser auth state.
+- Не подменять exact release archive Fast CI package или повторной сборкой.
+- Не автоматизировать `Add New Branch`; существующая `Branch 1` обновляется
+  максимум одним Save после всех pre-save checks.
+- Не перезаписывать published SemVer assets: changed bytes требуют новой версии.
+- В handoff фиксировать exact commit, artifact SHA, каждый gate и отдельно факт
+  live dry-run/production publication.
