@@ -46,6 +46,40 @@ def test_balanced_or_search_query_builds_valid_or_expression():
         assert term in query
 
 
+def test_search_selection_builds_mode_specific_query_and_validates_entities():
+    browser_actions = fresh_import_addon_module("browser_actions")
+
+    class Entity:
+        def __init__(self, entity_id):
+            self.id = entity_id
+
+    class Collection:
+        def get_card(self, entity_id):
+            if entity_id == 999:
+                raise KeyError(entity_id)
+            return Entity(entity_id)
+
+        def get_note(self, entity_id):
+            return Entity(entity_id)
+
+    col = Collection()
+    assert browser_actions.build_entity_browser_query(col, "cards", ["1", "2"])[0] == "(cid:1 OR cid:2)"
+    assert browser_actions.build_entity_browser_query(col, "notes", ["3"])[0] == "nid:3"
+    for mode, ids in [
+        ("cards", ["1", "1"]),
+        ("cards", [1]),
+        ("notes", []),
+        ("mixed", ["1"]),
+        ("cards", ["999"]),
+    ]:
+        try:
+            browser_actions.build_entity_browser_query(col, mode, ids)
+        except browser_actions.BrowserSearchQueryError:
+            pass
+        else:
+            raise AssertionError("Expected invalid explicit selection to fail")
+
+
 def test_collect_browser_action_card_ids_uses_limit_and_reports_truncation(monkeypatch):
     browser_actions = fresh_import_addon_module("browser_actions")
     seen = {}

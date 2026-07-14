@@ -9,6 +9,7 @@ import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
+import SearchPage from "../pages/SearchPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import type { StudyReport } from "../types/report";
@@ -21,6 +22,7 @@ export type RoutePath =
   | "/profile"
   | "/decks"
   | "/cards"
+  | "/search"
   | "/calendar"
   | "/stats"
   | "/stats/quality"
@@ -44,6 +46,7 @@ export const primaryNavItems: Array<{ path: RoutePath; labelKey: string }> = [
   { path: "/calendar", labelKey: "primary.activity" },
   { path: "/stats", labelKey: "primary.statistics" },
   { path: "/decks", labelKey: "primary.decks" },
+  { path: "/search", labelKey: "primary.search" },
   { path: "/cards", labelKey: "primary.cards" },
 ];
 
@@ -52,6 +55,7 @@ const routePaths = new Set<RoutePath>([
   "/profile",
   "/decks",
   "/cards",
+  "/search",
   "/calendar",
   "/stats",
   "/stats/quality",
@@ -101,6 +105,8 @@ export function renderRoute(
       return <DecksPage report={report} loadState={loadState} />;
     case "/cards":
       return <CardsPage report={report} loadState={loadState} />;
+    case "/search":
+      return <SearchPage report={report} loadState={loadState} />;
     case "/calendar":
       return <CalendarPage report={report} loadState={loadState} />;
     case "/stats":

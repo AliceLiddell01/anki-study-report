@@ -237,6 +237,37 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
         manager.stop()
 
 
+def test_search_selection_browser_action_remains_token_protected_and_post_only():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    received = []
+    manager.configure_action_handler(
+        lambda action, payload: received.append((action, payload)) or {
+            "ok": True,
+            "action": action,
+            "resultCode": "search.browser_opened",
+            "requestedCount": len(payload["entityIds"]),
+        }
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    body = {"mode": "cards", "entityIds": ["123"]}
+    try:
+        assert fetch(f"{base_url}/api/actions/open-search-selection", method="POST", json_body=body)[0] == 403
+        assert fetch(f"{base_url}/api/actions/open-search-selection?token={token}")[0] == 404
+        status, _, response = fetch(
+            f"{base_url}/api/actions/open-search-selection?token={token}",
+            method="POST",
+            json_body=body,
+        )
+        assert status == 200
+        assert json.loads(response)["resultCode"] == "search.browser_opened"
+        assert received == [("open-search-selection", body)]
+    finally:
+        manager.stop()
+
+
 def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch):
     dashboard_server = import_addon_module("dashboard_server")
     monkeypatch.setattr(dashboard_server, "_find_static_dir", lambda: None)

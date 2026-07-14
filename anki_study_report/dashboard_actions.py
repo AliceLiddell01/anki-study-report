@@ -16,6 +16,7 @@ from .browser_actions import (
     BROWSER_ACTION_CARD_LIMIT,
     BrowserSearchQueryError,
     build_deck_browser_query,
+    build_entity_browser_query,
     card_ids_search_query,
     collect_browser_action_card_ids,
     open_browser_search,
@@ -95,6 +96,8 @@ class DashboardActions:
             return self._request_dashboard_browser_search(payload.get("query"))
         if safe_action == "open-deck-browser":
             return self._request_deck_browser(payload.get("deckId"), payload.get("mode"))
+        if safe_action == "open-search-selection":
+            return self._request_search_selection(payload)
         if safe_action == "open-problematic":
             return self._request_dashboard_browser_action("problematic-decks")
         if safe_action == "open-again":
@@ -275,6 +278,33 @@ class DashboardActions:
             return dashboard_action_error("open-deck-browser", result["error"])
         return dashboard_action_ok("open-deck-browser", "Opened deck in Anki Browser.")
 
+    def _request_search_selection(self, payload: dict) -> dict:
+        if set(payload) != {"mode", "entityIds"}:
+            return dashboard_action_error(
+                "open-search-selection", "Search selection request is invalid."
+            )
+        if mw is None or getattr(mw, "col", None) is None:
+            return dashboard_action_error(
+                "open-search-selection", "Anki collection is unavailable."
+            )
+        def validate_and_open() -> int:
+            query, requested_count = build_entity_browser_query(
+                mw.col, payload.get("mode"), payload.get("entityIds")
+            )
+            open_browser_search(query, prevalidated=True)
+            return requested_count
+
+        result = self._run_on_main(validate_and_open)
+        if not result["ok"]:
+            return dashboard_action_error("open-search-selection", result["error"])
+        requested_count = int(result.get("value") or 0)
+        return dashboard_action_ok(
+            "open-search-selection",
+            "Opened selected results in Anki Browser.",
+            resultCode="search.browser_opened",
+            requestedCount=requested_count,
+        )
+
     def _collect_browser_action_on_background(
         self,
         start_ts: int,
@@ -325,11 +355,12 @@ def dashboard_no_report_error(action: str) -> dict:
     return dashboard_action_error(action, "No report is available yet. Build or open a report first.")
 
 
-def dashboard_action_ok(action: str, message: str) -> dict:
+def dashboard_action_ok(action: str, message: str, **extra) -> dict:
     return {
         "ok": True,
         "action": action,
         "message": message,
+        **extra,
     }
 
 
