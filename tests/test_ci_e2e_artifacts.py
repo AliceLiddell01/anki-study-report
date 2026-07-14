@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib.util
 from argparse import Namespace
 import json
@@ -17,6 +18,33 @@ def load_module():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def test_e2e_fixture_sources_forbid_collection_save_but_allow_manager_save():
+    root = Path(__file__).resolve().parents[1] / "docker" / "anki-e2e"
+    seed = (root / "seed-collection.py").read_text(encoding="utf-8")
+    fixture_import = (root / "import-apkg-fixture.py").read_text(encoding="utf-8")
+    trees = [ast.parse(seed), ast.parse(fixture_import)]
+    direct_collection_saves = []
+    dynamic_collection_saves = []
+    manager_saves = []
+    for tree in trees:
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "save":
+                target = node.func.value
+                if isinstance(target, ast.Name) and target.id == "col":
+                    direct_collection_saves.append(node)
+                if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "col":
+                    manager_saves.append(node)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "getattr":
+                if len(node.args) >= 2 and isinstance(node.args[0], ast.Name) and node.args[0].id == "col":
+                    if isinstance(node.args[1], ast.Constant) and node.args[1].value == "save":
+                        dynamic_collection_saves.append(node)
+
+    assert direct_collection_saves == []
+    assert dynamic_collection_saves == []
+    assert len(manager_saves) == 1
+    assert "col.decks.save(deck)" in seed
 
 
 def create_source(root: Path) -> str:

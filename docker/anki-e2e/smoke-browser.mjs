@@ -2530,6 +2530,12 @@ async function assertSearchQueryContract() {
   });
   assertBrowser(cardInspect.status === 200 && cardInspect.body?.response?.details?.cardId === cardId, "Card inspect returns the selected fixture card.");
   assertBrowser(noteInspect.status === 200 && noteInspect.body?.response?.details?.noteId === noteId, "Note inspect returns the selected fixture note.");
+  assertCompleteCardDetails(cardInspect.body?.response?.details);
+  assertCompleteNoteDetails(noteInspect.body?.response?.details);
+
+  const emptyPage = await postSearchContract("/api/search/query", { ...cardRequest, page: 2, requestId: "e2e-empty-page" });
+  assertBrowser(emptyPage.status === 200, "A page within pageLimit but beyond pageCount remains valid.");
+  assertBrowser(emptyPage.body?.response?.items?.length === 0, "A page beyond pageCount is explicitly empty.");
 
   const cardsAfter = await postSearchContract("/api/search/query", cardRequest);
   const notesAfter = await postSearchContract("/api/search/query", noteRequest);
@@ -2577,7 +2583,22 @@ function assertBoundedSearchResult(result, mode) {
   assertBrowser(result.page === 1 && result.pageSize === 25, `${mode} search response preserves paging.`);
   assertBrowser(result.items.length <= result.pageSize, `${mode} search page is bounded.`);
   assertBrowser(result.boundedTotal <= 2000, `${mode} search total respects the hard cap.`);
+  assertBrowser(result.pageCount === Math.ceil(result.boundedTotal / result.pageSize), `${mode} search pageCount reflects bounded results.`);
+  assertBrowser(result.pageLimit === Math.ceil(2000 / result.pageSize), `${mode} search pageLimit reflects the hard cap.`);
+  assertBrowser(!Object.hasOwn(result, "maxPage"), `${mode} search omits the retired maxPage field.`);
   assertBrowser(typeof result.hasNext === "boolean" && typeof result.truncated === "boolean", `${mode} search exposes bounded result metadata.`);
+}
+
+function assertCompleteCardDetails(details) {
+  const required = ["cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName", "templateOrdinal", "templateName", "primaryText", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary", "deck", "noteType", "template", "queue", "tags"];
+  assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Card inspect returns every declared detail field.");
+  assertBrowser(details?.deck?.deckId === details?.deckId && details?.noteType?.noteTypeId === details?.noteTypeId, "Card inspect nested identities match the row projection.");
+}
+
+function assertCompleteNoteDetails(details) {
+  const required = ["noteId", "noteTypeId", "noteTypeName", "primaryText", "tagSummary", "cardCount", "deckSummary", "noteType", "fields", "tags", "cardReferences", "cardsTruncated", "fieldsTruncated", "deckSummaries"];
+  assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Note inspect returns every declared detail field.");
+  assertBrowser(Array.isArray(details?.fields) && Array.isArray(details?.cardReferences) && Array.isArray(details?.deckSummaries), "Note inspect nested collections are complete.");
 }
 
 function summarizeSearchResult(result, selectedId) {
@@ -2585,6 +2606,8 @@ function summarizeSearchResult(result, selectedId) {
     mode: result.mode,
     page: result.page,
     pageSize: result.pageSize,
+    pageCount: result.pageCount,
+    pageLimit: result.pageLimit,
     returnedCount: result.returnedCount,
     boundedTotal: result.boundedTotal,
     hasNext: result.hasNext,

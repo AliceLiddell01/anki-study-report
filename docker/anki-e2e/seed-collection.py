@@ -357,7 +357,6 @@ def create_collection(collection_path: Path) -> tuple[int, int]:
             )
         get_filtered_deck_id(col, "E2E Filtered Health Excluded")
         configure_fsrs_fixture(col)
-        save_collection(col)
         # Keep synthetic reviews inside Anki's current scheduler day. Before
         # the configured rollover, the wall-clock calendar date can already be
         # one day ahead and would make otherwise-current cards look future-dated.
@@ -458,12 +457,6 @@ def call(target: Any, names: tuple[str, ...], *args: Any) -> Any:
         if callable(method):
             return method(*args)
     raise AttributeError(f"Missing method on {target!r}: {names}")
-
-
-def save_collection(col: Any) -> None:
-    method = getattr(col, "save", None)
-    if callable(method):
-        method()
 
 
 def close_collection(col: Any) -> None:
