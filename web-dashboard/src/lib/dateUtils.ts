@@ -58,6 +58,22 @@ export function formatShortDate(dateKey: string): string {
   return new Intl.DateTimeFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { day: "numeric", month: "short" }).format(dateFromKey(dateKey));
 }
 
+export function formatLongDate(dateKey: string): string {
+  if (!isDateKey(dateKey)) {
+    return i18n.t("state.noData", { ns: "common" });
+  }
+  return new Intl.DateTimeFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(dateFromKey(dateKey));
+}
+
+export function localizedWeekdayLabels(language = i18n.resolvedLanguage || i18n.language): string[] {
+  const formatter = new Intl.DateTimeFormat(localeForLanguage(language), { weekday: "short" });
+  return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2024, 0, index + 1)));
+}
+
 export function monthKey(dateKey: string): string {
   return dateKey.slice(0, 7);
 }

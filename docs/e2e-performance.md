@@ -161,6 +161,11 @@ performance reports; resource reports обязательны только при
 telemetry. Все paths relative/unique/sorted, traversal и missing required
 отклоняются. Token и полный dashboard URL не попадают в public export.
 
+Сводка сравнивает canonical inner E2E duration только с canonical baseline.
+Полная workflow duration публикуется отдельным полем и не используется для
+расчёта `canonicalSavedSeconds`; workflow saving допустим только при наличии
+отдельного workflow-total baseline.
+
 Public upload сохраняет `if: always()`, redaction, retention 7 days и
 `compression-level: 0` для PNG/`.ankiaddon`. File count, total/PNG/JSON-log
 bytes и largest files считаются до upload. Duration, artifact ID и digest

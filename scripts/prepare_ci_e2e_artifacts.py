@@ -289,7 +289,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "mode": args.mode,
             "scope": args.scope,
             "workerCount": args.screenshot_workers,
-            "canonicalDurationSeconds": duration,
+            "workflowDurationSeconds": duration,
             "cacheState": args.cache_state,
             "screenshotCount": screenshot_count,
             "artifactFileCount": composition["fileCount"],
@@ -298,12 +298,13 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         cache = performance.setdefault("cache", {})
         cache.update({"backend": "type=gha", "state": args.cache_state, "buildDurationMs": args.build_duration_ms, "imageSizeBytes": args.image_size_bytes})
         baseline_seconds = int((performance.get("baseline") or {}).get("canonicalDurationSeconds") or 183)
+        canonical_seconds = current.get("canonicalDurationSeconds")
         improvement = performance.setdefault("improvement", {})
-        if direct_baseline_comparison:
+        if direct_baseline_comparison and isinstance(canonical_seconds, (int, float)):
             improvement.update({
-                "canonicalSavedSeconds": baseline_seconds - duration,
-                "canonicalReductionPercent": (baseline_seconds - duration) * 100 / baseline_seconds,
-                "canonicalSpeedupFactor": baseline_seconds / duration if duration else None,
+                "canonicalSavedSeconds": baseline_seconds - canonical_seconds,
+                "canonicalReductionPercent": (baseline_seconds - canonical_seconds) * 100 / baseline_seconds,
+                "canonicalSpeedupFactor": baseline_seconds / canonical_seconds if canonical_seconds else None,
                 "comparisonReason": None,
             })
         else:
@@ -311,12 +312,23 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
                 "canonicalSavedSeconds": None,
                 "canonicalReductionPercent": None,
                 "canonicalSpeedupFactor": None,
-                "comparisonReason": "targeted or non-standard run is not an apples-to-apples comparison with the full standard baseline",
+                "comparisonReason": (
+                    "canonical duration is unavailable"
+                    if direct_baseline_comparison
+                    else "targeted or non-standard run is not an apples-to-apples comparison with the full standard baseline"
+                ),
             })
+        summary["canonicalDurationSeconds"] = canonical_seconds
+        summary["workflowDurationSeconds"] = duration
         performance["artifacts"] = composition
         write_json_file(performance_path, performance)
     (output / "ci-e2e-summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    saved_display = str(183 - summary["durationSeconds"]) + " seconds" if direct_baseline_comparison else "n/a (targeted/non-standard is not apples-to-apples)"
+    canonical_duration = summary.get("canonicalDurationSeconds")
+    saved_display = (
+        f"{183 - canonical_duration:g} seconds"
+        if direct_baseline_comparison and isinstance(canonical_duration, (int, float))
+        else "n/a"
+    )
     markdown = f"""# Full Docker / Anki E2E summary
 
 | Field | Value |
@@ -332,9 +344,10 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Runner | {summary['runnerOs']} / {summary['runnerImage']} |
 | Anki | {summary['ankiVersion']} |
 | Manifest | {summary['artifactManifestStatus']} |
-| Duration | {summary['durationSeconds']} seconds |
+| Workflow duration | {summary['workflowDurationSeconds']} seconds |
+| Canonical E2E duration | {canonical_duration if canonical_duration is not None else 'n/a'} seconds |
 | Baseline canonical | 183 seconds (run 29208090406) |
-| Saved vs baseline | {saved_display} |
+| Saved vs canonical baseline | {saved_display} |
 | Docker build/load | {summary['dockerBuildDurationMs']} ms |
 | Image size | {summary['imageSizeBytes']} bytes |
 

@@ -11,7 +11,7 @@ import {
   activityOverview,
   visibleActivityFeed,
 } from "../lib/activityHub";
-import { addDays, formatShortDate } from "../lib/dateUtils";
+import { addDays, formatShortDate, localizedWeekdayLabels } from "../lib/dateUtils";
 import { formatDurationSeconds, formatInteger, formatPercent } from "../lib/formatters";
 import type {
   ActivityFeedDay,
@@ -217,8 +217,8 @@ function DayDetail({ day, hub, expanded, onToggle }: { day: ActivityHubDay | nul
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Detail label={t("activity.reviews")} value={formatInteger(day.reviews)} />
         <Detail label={t("activity.newCards")} value={formatInteger(day.newCards)} />
-        <Detail label="Pass" value={formatInteger(day.pass)} />
-        <Detail label="Fail" value={formatInteger(day.fail)} />
+        <Detail label={t("answers.pass", { ns: "common" })} value={formatInteger(day.pass)} />
+        <Detail label={t("answers.fail", { ns: "common" })} value={formatInteger(day.fail)} />
         <Detail label={t("activity.successRate")} value={formatPercent(day.successRate)} />
         <Detail label={t("activity.studyTime")} value={formatDurationSeconds(day.studySeconds)} caption={studyTimeCaption(hub)} />
       </div>
@@ -273,7 +273,7 @@ function buildObservations(days: ActivityFeedDay[], weeks: ActivityWeekSummary[]
 type ActivityTimelineItem = { kind: "day"; date: string; entry: ActivityFeedDay } | { kind: "week"; date: string; entry: ActivityWeekSummary };
 function groupActivityTimelineByMonth(items: ActivityTimelineItem[]) { const groups: Array<{ key: string; label: string; items: ActivityTimelineItem[] }> = []; for (const item of items) { const key = item.date.slice(0, 7); let group = groups[groups.length - 1]; if (!group || group.key !== key) { group = { key, label: new Date(`${key}-01T12:00:00`).toLocaleDateString(localeForLanguage(i18n.resolvedLanguage || i18n.language), { month: "long", year: "numeric" }), items: [] }; groups.push(group); } group.items.push(item); } return groups; }
 
-function weekdayLabels(language: string): string[] { const formatter = new Intl.DateTimeFormat(localeForLanguage(language), { weekday: "short" }); return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2024, 0, index + 1))); }
+const weekdayLabels = localizedWeekdayLabels;
 
 const activeControlClass = "min-h-10 rounded-lg bg-report-blue/20 px-3 py-2 text-sm text-report-text shadow-glow focus:outline-none focus:ring-2 focus:ring-report-blue/55";
 const idleControlClass = "min-h-10 rounded-lg px-3 py-2 text-sm text-report-secondary hover:bg-ink-800 hover:text-report-text focus:outline-none focus:ring-2 focus:ring-report-blue/55";

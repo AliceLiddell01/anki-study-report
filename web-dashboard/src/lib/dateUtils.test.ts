@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, daysBetween, enumerateDateKeys, formatShortDate, isDateKey, monthKey } from "./dateUtils";
+import i18n from "../i18n";
+import { addDays, daysBetween, enumerateDateKeys, formatLongDate, formatShortDate, isDateKey, localizedWeekdayLabels, monthKey } from "./dateUtils";
 
 describe("dateUtils", () => {
   it("validates calendar date keys strictly", () => {
@@ -24,5 +25,14 @@ describe("dateUtils", () => {
     expect(formatShortDate("2026-07-01")).toBe("1 июл.");
     expect(formatShortDate("bad")).toBe("Нет данных");
     expect(monthKey("2026-07-01")).toBe("2026-07");
+  });
+
+  it("formats dates and weekdays for the active locale", async () => {
+    await i18n.changeLanguage("ru");
+    expect(formatLongDate("2026-07-01")).toBe("1 июля 2026 г.");
+    expect(localizedWeekdayLabels()[0]).toMatch(/^пн/i);
+    await i18n.changeLanguage("en");
+    expect(formatLongDate("2026-07-01")).toBe("July 1, 2026");
+    expect(localizedWeekdayLabels()[0]).toMatch(/^Mon/i);
   });
 });

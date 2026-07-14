@@ -123,7 +123,7 @@ function ReportSettingsPage({ onReportUpdated }: { onReportUpdated?: (report: St
           <select id="report-answer-mode" className="form-control w-full px-3 py-2.5 text-sm" value={report.answerMode} onChange={(event) => updateReport({ answerMode: event.target.value as typeof report.answerMode })}>
             <option value="auto">{t("reportSettings.auto")}</option>
             <option value="standard">{t("reportSettings.standard")}</option>
-            <option value="pass_fail">Pass/Fail</option>
+            <option value="pass_fail">{t("reportSettings.passFail")}</option>
           </select>
         </SettingRow>
       </SettingsSection>

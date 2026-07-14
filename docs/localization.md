@@ -84,6 +84,12 @@ RU/light → EN/light → EN/dark → RU/dark, проверяет сохране
 language после reload, снимает четыре localization screenshots и требует ноль
 console/page errors. Финальный runtime proof выполняется exact-SHA cloud E2E.
 
+Stage 7.7.1 закрыл остаточные frontend-owned подписи `Pass`/`Fail`/`Hard`/
+`Easy`/`Again`, FSRS state labels и технические labels. Today больше не
+показывает raw ISO date, а общие date/weekday/number/unit helpers всегда
+выбирают `ru-RU` или `en-US` через активный язык. Значения payload, имена
+пользовательских сущностей и backend narratives по-прежнему не переводятся.
+
 ## Ограничения первой версии
 
 - только `ru` и `en`, оба LTR;

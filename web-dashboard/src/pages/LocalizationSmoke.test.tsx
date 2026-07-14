@@ -14,6 +14,24 @@ import ProfilePage from "./ProfilePage";
 import StatisticsPage from "./StatisticsPage";
 
 describe("representative localized pages", () => {
+  it("renders Russian product labels without known English residue", async () => {
+    await i18n.changeLanguage("ru");
+    const today = renderToStaticMarkup(<HomePage report={mockReport} loadState="ready" />);
+    const activity = renderToStaticMarkup(<CalendarPage report={mockReport} loadState="ready" />);
+    const decks = renderToStaticMarkup(<DecksPage report={mockReport} loadState="ready" />);
+
+    expect(today).toContain("Успешно/Ошибка");
+    expect(today).toContain("Перепланирование:");
+    expect(today).toContain("Автораспределение:");
+    expect(today).not.toContain(">Pass<");
+    expect(today).not.toContain(">Fail<");
+    expect(today).not.toContain("reschedule ");
+    expect(today).not.toContain("auto disperse");
+    expect(activity).toContain("Успешно");
+    expect(activity).toContain("Ошибка");
+    expect(decks).toContain("Успешно");
+  });
+
   it("renders English shell copy on Today, Statistics, and Cards", async () => {
     await i18n.changeLanguage("en");
     const today = renderToStaticMarkup(<HomePage report={mockReport} loadState="ready" />);

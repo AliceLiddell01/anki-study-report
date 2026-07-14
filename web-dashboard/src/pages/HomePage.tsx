@@ -49,6 +49,7 @@ import type {
 } from "../types/report";
 import i18n from "../i18n";
 import { localeForLanguage } from "../i18n/language";
+import { formatLongDate, localizedWeekdayLabels } from "../lib/dateUtils";
 
 const chartColors = {
   blue: "#3db4f2",
@@ -176,7 +177,7 @@ function Header() {
             <StatusPill status="warning">{th("header.badge")}</StatusPill>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-            {th("header.localDay", { date: metadata.todayDate ? ` · ${metadata.todayDate}` : "" })}
+            {th("header.localDay", { date: metadata.todayDate ? ` · ${formatLongDate(metadata.todayDate)}` : "" })}
           </p>
         </div>
         {filtered ? (
@@ -198,7 +199,7 @@ function HeroSummary() {
       <div className="hero-surface rounded-xl border border-ink-700 p-5 shadow-glow">
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill status={summary.riskLevel}>{th("hero.risk", { status: statusText(summary.riskLevel) })}</StatusPill>
-          <StatusPill status="neutral">Pass/Fail</StatusPill>
+          <StatusPill status="neutral">{i18n.t("answers.passFail", { ns: "common" })}</StatusPill>
         </div>
         <p className="mt-5 max-w-5xl text-2xl font-semibold leading-snug tracking-normal text-report-text lg:text-3xl">
           {summary.verdict}
@@ -407,6 +408,11 @@ function ActivitySection() {
     [activity.days, selectedYear],
   );
   const heatmapMax = Math.max(...visibleDays.map((day) => day.reviews), 1);
+  const weekdayLabels = localizedWeekdayLabels();
+  const weekdayAverage = activity.weekdayAverage.map((item, index) => ({
+    ...item,
+    day: weekdayLabels[index] ?? item.day,
+  }));
 
   useEffect(() => {
     setSelectedYear(defaultActivityYear(activity.days));
@@ -459,7 +465,7 @@ function ActivitySection() {
           </div>
           <div className="h-56">
             <ResponsiveContainer>
-              <BarChart data={activity.weekdayAverage}>
+              <BarChart data={weekdayAverage}>
                 <CartesianGrid stroke="rgb(var(--color-border-subtle))" vertical={false} />
                 <XAxis dataKey="day" stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} />
                 <YAxis stroke="rgb(var(--color-text-muted))" tickLine={false} axisLine={false} width={34} />
@@ -534,9 +540,9 @@ function DeckCard({ deck }: { deck: DeckPerformance }) {
         <StatusPill status={deck.status}>{statusText(deck.status)}</StatusPill>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-        <MiniStat label="Pass" value={formatPercent(deck.passRate)} />
-        <MiniStat label="Fail" value={deck.failCount.toString()} />
-        <MiniStat label="Avg" value={i18n.t("units.secondsShort", { ns: "common", value: deck.averageAnswerSeconds })} />
+        <MiniStat label={i18n.t("answers.pass", { ns: "common" })} value={formatPercent(deck.passRate)} />
+        <MiniStat label={i18n.t("answers.fail", { ns: "common" })} value={deck.failCount.toString()} />
+        <MiniStat label={i18n.t("answers.average", { ns: "common" })} value={i18n.t("units.secondsShort", { ns: "common", value: deck.averageAnswerSeconds })} />
       </div>
       <p className="mt-4 text-sm leading-6 text-report-muted">{deck.explanation}.</p>
     </article>
@@ -742,8 +748,8 @@ function FsrsSection() {
           <div className="flex flex-wrap gap-2">
             <StatusPill status={fsrs.settings.helperDetected ? "good" : "neutral"}>{th("fsrs.helper")}</StatusPill>
             <StatusPill status={fsrs.settings.helperConfigAvailable ? "good" : "neutral"}>{th("fsrs.config")}</StatusPill>
-            <StatusPill status="neutral">reschedule {fsrs.settings.rescheduleEnabled ? "on" : "off"}</StatusPill>
-            <StatusPill status={fsrs.settings.autoDisperse ? "good" : "neutral"}>auto disperse</StatusPill>
+            <StatusPill status="neutral">{th("fsrs.reschedule", { state: i18n.t(`state.${fsrs.settings.rescheduleEnabled ? "on" : "off"}`, { ns: "common" }) })}</StatusPill>
+            <StatusPill status={fsrs.settings.autoDisperse ? "good" : "neutral"}>{th("fsrs.autoDisperse", { state: i18n.t(`state.${fsrs.settings.autoDisperse ? "on" : "off"}`, { ns: "common" }) })}</StatusPill>
           </div>
         </div>
       ) : (
@@ -784,14 +790,14 @@ function TechnicalDetails() {
   const { metadata } = useReport();
   const deckScope = deckScopeSummary(metadata);
   const rows: Array<{ label: string; value: string; detail?: string }> = [
-    { label: "period", value: metadata.period },
-    { label: "selected decks", value: deckScope.summary, detail: deckScope.fullList },
-    { label: "include children", value: metadata.includeChildren ? "yes" : "no" },
-    { label: "created at", value: metadata.createdAt },
-    { label: "detail mode", value: metadata.detailMode },
-    { label: "answer mode", value: metadata.answerMode === "pass_fail" ? "Pass/Fail" : "4-button" },
-    { label: "deleted card reviews", value: metadata.deletedCardReviews.toString() },
-    { label: "unavailable tracker notes", value: metadata.unavailableTrackerNotes.join(" ") },
+    { label: th("technical.period"), value: metadata.period },
+    { label: th("technical.selectedDecks"), value: deckScope.summary, detail: deckScope.fullList },
+    { label: th("technical.includeChildren"), value: i18n.t(`state.${metadata.includeChildren ? "yes" : "no"}`, { ns: "common" }) },
+    { label: th("technical.createdAt"), value: metadata.createdAt },
+    { label: th("technical.detailMode"), value: metadata.detailMode },
+    { label: th("technical.answerMode"), value: i18n.t(`answers.${metadata.answerMode === "pass_fail" ? "passFail" : "fourButton"}`, { ns: "common" }) },
+    { label: th("technical.deletedCardReviews"), value: metadata.deletedCardReviews.toString() },
+    { label: th("technical.unavailableTrackerNotes"), value: metadata.unavailableTrackerNotes.join(" ") },
   ];
 
   return (
@@ -971,10 +977,10 @@ function kpiValue(metric: KpiMetric) {
 
 function answerLabel(label: string) {
   return {
-    Pass: "Pass",
-    Fail: "Fail",
-    Hard: "Hard",
-    Easy: "Easy",
+    Pass: i18n.t("answers.pass", { ns: "common" }),
+    Fail: i18n.t("answers.fail", { ns: "common" }),
+    Hard: i18n.t("answers.hard", { ns: "common" }),
+    Easy: i18n.t("answers.easy", { ns: "common" }),
   }[label] ?? label;
 }
 
@@ -1209,7 +1215,7 @@ function formatSignedValue(value: number | null, suffix: string) {
   if (rounded === 0) {
     return `→ 0${suffix}`;
   }
-  return `${rounded > 0 ? "↑ +" : "↓ -"}${Math.abs(rounded).toLocaleString("ru-RU")}${suffix}`;
+  return `${rounded > 0 ? "↑ +" : "↓ -"}${Math.abs(rounded).toLocaleString(localeForLanguage(i18n.resolvedLanguage || i18n.language))}${suffix}`;
 }
 
 function heatmapColor(reviews: number, max: number) {
