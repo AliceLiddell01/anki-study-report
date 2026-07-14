@@ -70,7 +70,11 @@ Server actions и dashboard actions должны оставаться небол
 foundation будущего Search v1. Оба требуют token, ограничены 8 KiB JSON body,
 отклоняют unknown fields и не принимают SQL/arbitrary order. Query использует
 native Anki grammar, bounded structured filters, page sizes `25|50|100` и hard
-cap 2000; inspect принимает ровно один decimal string `cardId` или `noteId`.
+cap 2000. Response различает фактический `pageCount` и cap-derived `pageLimit`;
+для пустого результата допустимы `page=1`, `pageCount=0`, а страница в пределах
+`pageLimit` за текущим `pageCount` возвращает пустой `items`. Inspect принимает
+ровно один decimal string `cardId` или `noteId`. Frontend проверяет полный
+declared row/details contract и всю response metadata до возврата typed data.
 Успех возвращает `{"ok":true,"response":...}`; ошибки типизированы как
 `invalid_search_request`, `search_entity_not_found`, `search_unavailable`,
 `search_failed`, `search_timeout`. Полный request/response и bounding contract:

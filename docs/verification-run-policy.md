@@ -10,15 +10,24 @@
 → commit + push
 → Fast CI exact SHA PASS
 → один targeted real-Anki scope
-→ один final standard/full на готовом SHA
-→ merge того же SHA без повторного E2E
+→ final standard/full только при эскалации planner/matrix
+→ rebase merge проверенного patch/tree
+→ Fast CI на итоговом master
 ```
 
 Fast CI обязателен на `codex/**`, PR и `master`. До его PASS E2E не запускается.
 Targeted gate выбирается по product scope. Для Stage 7 это `standard/stats`,
-workers `3`, resource telemetry `false`. Final release integration gate — один
-`standard/full`. `strict-apkg` нужен только Cards/APKG change; `perf100` только
-явной performance-задаче.
+workers `3`, resource telemetry `false`. Final `standard/full` выполняется,
+когда его требует actual diff по planner/matrix, а не автоматически после
+каждого targeted gate. `strict-apkg` нужен только Cards/APKG change; `perf100`
+только явной performance-задаче.
+
+Готовый PR-head SHA должен иметь Fast CI PASS и требуемый real-Anki gate именно
+на этом SHA. Разрешённый repository rebase merge создаёт новые commit SHA даже
+при неизменном patch/tree. После merge сравниваются production tree/patch с
+проверенным PR-head: повтор real-Anki gate нужен только если rebase/conflict
+resolution изменил production tree. Fast CI на итоговом `master` обязателен в
+любом случае; новый SHA сам по себе не является причиной повторять успешный E2E.
 
 После failure сначала изучаются artifact/log/root cause. Разрешён максимум один
 повтор соответствующего targeted/full после исправления. Второй одинаковый
@@ -26,7 +35,7 @@ failure останавливает blind reruns. Успешный exact-SHA run 
 
 Запрещены warm-cache repeat, workers benchmark, resource telemetry benchmark,
 локальный full Docker после cloud PASS, full после каждого исправления и full
-после fast-forward merge того же SHA. Docs-only после gate требует только
+после rebase-equivalent merge с неизменным production tree. Docs-only после gate требует только
 docs/Fast CI; unit fixture без runtime impact — Fast CI; local FSRS UI/API —
 `stats`; shared shell/server/package/E2E infrastructure — `full`.
 

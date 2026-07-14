@@ -58,9 +58,12 @@ mode также `state` и `flag`. Deck/note type принимают decimal ID 
 
 Успешный HTTP envelope имеет вид `{"ok":true,"response":{...}}`. Query
 response различает `cards`/`notes` и содержит `items`, `page`, `pageSize`,
-`returnedCount`, `boundedTotal`, `hasNext`, `truncated`, `sort` и переданный
-`requestId`. Все Anki IDs сериализуются decimal strings, чтобы не терять
-точность в JavaScript.
+`pageCount`, `pageLimit`, `returnedCount`, `boundedTotal`, `hasNext`,
+`truncated`, `sort` и переданный `requestId`. Frontend runtime validator
+проверяет каждый обязательный row/detail field, вложенные summary/reference
+объекты и согласованность всей pagination metadata; неполный success payload
+отклоняется как `invalid_search_response`. Все Anki IDs сериализуются decimal
+strings, чтобы не терять точность в JavaScript.
 
 Inspect request принимает ровно один mode-specific ID:
 
@@ -82,7 +85,12 @@ collection path и token в product response не попадают.
 первыми 2000 и загружает Card/Note objects только для запрошенной страницы.
 
 - hard result cap: 2000;
-- maximum page: 80 для 25, 40 для 50, 20 для 100;
+- `pageCount = ceil(boundedTotal / pageSize)` — число фактических bounded pages;
+- `pageLimit = ceil(2000 / pageSize)` — предел допустимого номера запроса: 80
+  для 25, 40 для 50, 20 для 100;
+- пустой набор возвращает `page=1`, `pageCount=0` и пустой `items`;
+- допустимая по `pageLimit` страница за текущим `pageCount` возвращается пустой;
+- запрос страницы за `pageLimit` отклоняется validation layer;
 - `truncated=true`: native match содержал больше 2000 IDs;
 - `boundedTotal`: размер capped набора, а не обещание полного collection count;
 - offset/page не является snapshot cursor: если collection изменилась между
@@ -124,5 +132,8 @@ pnpm run typecheck
 
 Real-Anki contract расширяет существующий browser smoke для `global`/`full` и
 пишет redacted `reports/search-query-contract.json`: valid/invalid token,
-Cards/Notes native query, bounded metadata, оба inspect, invalid native query и
-повторный read-only результат без mutation endpoints.
+Cards/Notes native query, `pageCount`/`pageLimit`, оба полных inspect, invalid
+native query, пустую bounded page и повторный read-only результат без mutation
+endpoints. Seed/APKG scripts полагаются на автоматическое сохранение Collection
+в Anki 26.05; deprecated collection-level `save()` не вызывается, а отдельный
+`col.decks.save(deck)` сохраняется для изменённого deck-manager entity.
