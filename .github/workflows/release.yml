@@ -296,10 +296,10 @@ jobs:
 
       - name: Audit publisher workspace for persisted auth state
         if: always()
-        shell: pwsh
-        run: |
-          $forbidden = Get-ChildItem -Recurse -Force -File | Where-Object { $_.Name -match 'storageState|auth\.json|cookies|trace\.zip' }
-          if ($forbidden) { throw "Publisher left forbidden auth artifacts: $($forbidden.FullName -join ', ')" }
+        run: >-
+          node scripts/run_python.mjs scripts/audit_publisher_auth_artifacts.py
+          --workspace "$GITHUB_WORKSPACE"
+          --runner-temp "$RUNNER_TEMP"
 
       - name: Upload sanitized publisher report
         if: always()

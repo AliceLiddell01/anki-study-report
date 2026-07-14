@@ -77,6 +77,17 @@ def test_publisher_never_automates_new_branch_control() -> None:
     assert "mutationCount = 1" in publisher
 
 
+def test_publisher_audit_is_scoped_and_report_survives_failures() -> None:
+    publisher = job(workflow_text(), "ankiweb-publish", "github-finalize")
+    assert "node scripts/run_python.mjs scripts/audit_publisher_auth_artifacts.py" in publisher
+    assert '--workspace "$GITHUB_WORKSPACE"' in publisher
+    assert '--runner-temp "$RUNNER_TEMP"' in publisher
+    assert "Get-ChildItem -Recurse" not in publisher
+    assert "storageState|auth\\.json|cookies|trace\\.zip" not in publisher
+    assert publisher.count("if: always()") >= 2
+    assert "release-artifacts/ankiweb-publish-report.json" in publisher
+
+
 def test_real_anki_runner_accepts_and_evidences_prebuilt_package() -> None:
     shell = (ROOT / "docker" / "anki-e2e" / "run-e2e.sh").read_text(encoding="utf-8")
     workflow = (ROOT / ".github" / "workflows" / "ci-e2e.yml").read_text(encoding="utf-8")
