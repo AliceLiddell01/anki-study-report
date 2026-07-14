@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from release_common import ReleaseError, render_ankiweb_description, sha256_text
+from ankiweb_description import render_ankiweb_description
+from release_common import ReleaseError, sha256_text
 
 
 def main() -> int:
