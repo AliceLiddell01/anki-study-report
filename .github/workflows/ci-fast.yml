@@ -85,7 +85,14 @@ jobs:
         run: |
           $before = "${{ github.event.before }}"
           $defaultBranch = "${{ github.event.repository.default_branch }}"
-          $base = if ($before -and $before -notmatch '^0+$') { $before } elseif ("${{ github.ref_name }}" -ne $defaultBranch) { "origin/$defaultBranch" } else { "HEAD^" }
+          $base = $null
+          if ($before -and $before -notmatch '^0+$') {
+            git cat-file -e "${before}^{commit}" 2>$null
+            if ($LASTEXITCODE -eq 0) { $base = $before }
+          }
+          if (-not $base) {
+            $base = if ("${{ github.ref_name }}" -ne $defaultBranch) { "origin/$defaultBranch" } else { "HEAD^" }
+          }
           python scripts/plan_verification.py --base $base --head HEAD --output-dir ci-fast/verification-plan
 
       - name: Collect non-release package
