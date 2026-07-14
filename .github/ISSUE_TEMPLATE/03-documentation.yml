@@ -1,0 +1,60 @@
+name: Documentation issue
+description: Report documentation that is missing, outdated, incorrect, or unclear
+title: "[Docs]: "
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Document or location
+      description: Link the file, heading, command, UI text, or page that needs attention.
+      placeholder: "Example: docs/development.md — Verification section"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: problem-type
+    attributes:
+      label: Problem type
+      options:
+        - Incorrect information
+        - Outdated information
+        - Missing information
+        - Unclear explanation
+        - Broken link or command
+        - Typo or formatting
+        - Translation or terminology
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or unclear?
+      description: Quote only the smallest relevant excerpt and explain the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested correction
+      description: Describe the expected information or wording. A complete rewrite is optional.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include the version, branch, screenshots, or references needed to verify the report. Remove private data and tokens.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the current default branch rather than relying only on an old copy or screenshot.
+          required: true
+        - label: I searched existing issues and pull requests for the same documentation problem.
+          required: true
+        - label: I agree to follow the project's Code of Conduct.
+          required: true

@@ -1,0 +1,79 @@
+name: Feature request
+description: Propose a user-facing improvement or new capability
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem before proposing a specific UI or implementation. New routes, placeholders, compatibility layers, and integrations require a concrete workflow and product justification.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What is difficult, missing, confusing, or inefficient today? Who experiences it and in what workflow?
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Explain what a successful result should let the user accomplish.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area
+      options:
+        - Today
+        - Activity
+        - Statistics or FSRS
+        - Decks
+        - Cards or card preview
+        - Profile
+        - Settings, server, sources, or logs
+        - Add-on runtime or launcher
+        - Packaging, release, CI, or E2E
+        - Documentation
+        - New area requiring product design
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Describe your preferred behavior or implementation without treating it as the only possible solution.
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: Explain how the task is handled today, if at all.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include simpler options, existing Anki functionality, or reasons the feature should live in this add-on.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add mockups, references, examples, or constraints. Do not include tokens, profile/collection data, credentials, or private paths.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests for a similar request.
+          required: true
+        - label: I described the underlying user problem, not only a requested button or route.
+          required: true
+        - label: I agree to follow the project's Code of Conduct.
+          required: true

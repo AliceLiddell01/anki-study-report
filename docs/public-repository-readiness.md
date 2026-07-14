@@ -2,6 +2,11 @@
 
 Дата аудита: 2026-07-11.
 
+Обновление статуса: 2026-07-14 — владелец выбрал `GPL-3.0-only`, добавил
+корневой `LICENSE` и community health files. Разделы ниже сохраняют фактические
+результаты исходного pre-public аудита; прежнее решение публиковать репозиторий
+без лицензии больше не является текущей политикой.
+
 ## Scope
 
 Проверены `origin/master`, локальные `master` и
@@ -39,8 +44,9 @@ AI assistance. Все media нарисованы, записаны либо сг
 
 Владелец разрешил публичное размещение и распространение этой конкретной
 fixture, включая notes/cards/templates/CSS/media, как части repository, tests,
-Docker E2E и CI artifacts. Это узкое разрешение не задаёт лицензию для остального
-репозитория.
+Docker E2E и CI artifacts. После принятия `GPL-3.0-only` эта owner-authored
+fixture входит в лицензируемые материалы проекта, если отдельный notice явно не
+устанавливает иные совместимые условия.
 
 Read-only inspection подтвердил целостность APKG и ожидаемые counts. Сигнатуры
 credentials/private keys, абсолютные локальные пути, embedded attribution или
@@ -79,9 +85,13 @@ Summary/environment формируются из repository/run/runtime metadata 
 
 ## License decision
 
-Планируется public repository без `LICENSE`. Открытая лицензия не объявлена;
-`LICENSE`, `COPYING`, `NOTICE`, SPDX identifier, license badge и декларация
-открытой лицензии не добавлялись.
+Текущее решение владельца: распространять проект по GNU General Public License
+version 3 only (`GPL-3.0-only`). Корневой `LICENSE` задаёт условия проекта;
+сторонние компоненты и материалы сохраняют свои собственные notices и лицензии.
+
+Предыдущее состояние, зафиксированное исходным аудитом 2026-07-11, не содержало
+`LICENSE`, `COPYING`, SPDX identifier, license badge или декларации открытой
+лицензии. Это историческое состояние заменено решением от 2026-07-14.
 
 ## Gate decision
 
