@@ -22,7 +22,7 @@ docker/anki-e2e/
 | --- | --- | --- | --- | --- |
 | `package` | `anki_study_report` | Anki add-on identity | Нет | Смена ломает путь add-on/config/data |
 | `name` | `Anki Study Report` | UI/Anki metadata | Да | Только косметика, но влияет на распознавание |
-| `mod` | `1782864000` | Anki metadata | Нет | Нужен осознанный bump при релизе |
+| `mod` | `1783987200` | Anki metadata | Нет | Нужен осознанный bump при релизе |
 | `min_point_version` | `260500` | Anki compatibility | Да | Снижение требует реальной проверки старых Anki |
 | `max_point_version` | `0` | Anki compatibility | Да | Ограничение может блокировать новые версии |
 

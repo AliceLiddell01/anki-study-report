@@ -64,6 +64,16 @@ frontend-oriented aggregate остаётся доступен через
 .\build_ankiaddon.ps1
 ```
 
+Подготовка канонической версии и ручной gated release после merge:
+
+```powershell
+node scripts/run_python.mjs scripts/prepare_release.py --version 1.0.0 --check
+gh workflow run release.yml --ref master -f version=1.0.0 -f channel=stable
+```
+
+Workflow публикует только после exact-artifact real-Anki gate и approval
+Environment `ankiweb-production`; merge или push автоматически релиз не создают.
+
 Полный прогон с Docker E2E:
 
 ```powershell
@@ -97,7 +107,8 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
 - [Search Query Foundation](docs/search-query-foundation.md)
 - [Матрица проверок](docs/test-matrix.md)
-- [CI Foundation и будущий CD](docs/ci-cd.md)
+- [CI и gated release delivery](docs/ci-cd.md)
+- [Release automation](docs/release-automation.md)
 - [Готовность репозитория к публикации](docs/public-repository-readiness.md)
 - [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)

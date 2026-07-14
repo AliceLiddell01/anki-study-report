@@ -94,3 +94,17 @@ timings сохраняются только как diagnostics.
 menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
 `e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
 relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.
+
+## Release delivery
+
+Release/version/package/publisher/workflow изменения требуют focused tests
+`test_release_automation.py`, `test_ankiweb_publisher.py`,
+`test_release_workflow.py`, `test_package_build.py` и Node test
+`tests/publish_ankiweb.test.mjs`, затем canonical `run_full_check.ps1
+-SkipDocker`. Финальный production gate всегда `standard/full` на exact
+release artifact SHA. `strict-apkg` и `perf100` не добавляются, если их
+Cards/APKG/performance contracts не менялись.
+
+PR release workflow проверяет build без secrets/mutations. Live AnkiWeb
+`--dry-run` допустим только с env credentials и проверяет форму без выбора файла
+и Save. Publish proof требует совпадения build/E2E/GitHub/AnkiWeb SHA-256.

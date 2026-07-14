@@ -1,6 +1,6 @@
 # Упаковка и релиз
 
-Снимок документации: 2026-07-06.
+Снимок документации: 2026-07-14.
 
 Практический чеклист перед публикацией: `docs/release-checklist.md`.
 
@@ -71,6 +71,7 @@ node scripts/run_python.mjs scripts/package_addon.py --output C:\path\anki_study
 
 ```text
 __init__.py
+version.py
 manifest.json
 config.json
 dashboard_server.py
@@ -149,6 +150,22 @@ max_point_version: 0
 
 `mod` меняется только при осознанном release/versioning шаге. Для docs-only
 handoff cleanup его не нужно bump-ать.
+
+## Каноническая версия и automated delivery
+
+Единственный version source — `anki_study_report/version.py`. Package validator
+читает literal `__version__` из архива и требует корректный SemVer. Подготовка
+версии и release bundle:
+
+```powershell
+node scripts/run_python.mjs scripts/prepare_release.py --version 1.0.0 --check
+node scripts/run_python.mjs scripts/validate_release.py --version 1.0.0 --channel stable
+```
+
+В production archive строится один раз в release workflow. `SHA256SUMS.txt` и
+`release-manifest.json` фиксируют exact commit, inventory и SHA-256. Именно эти
+bytes проверяются в real Anki, прикладываются к GitHub Release и загружаются в
+AnkiWeb. Полный flow и recovery: `docs/release-automation.md`.
 
 Текущий default dashboard port в `config.json`:
 

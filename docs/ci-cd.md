@@ -4,10 +4,11 @@ Fast CI publishes the advisory output of `scripts/plan_verification.py`; it
 never auto-starts expensive E2E. Run order is defined in
 `verification-run-policy.md`.
 
-Снимок документации: 2026-07-13.
+Снимок документации: 2026-07-14.
 
-В проекте реализованы быстрый автоматический Fast CI и отдельный ручной Full
-Docker / Anki E2E. CD, release automation и публикация на AnkiWeb отсутствуют.
+В проекте реализованы Fast CI, переиспользуемый Full Docker / Anki E2E и
+ручной gated release delivery для GitHub Releases и существующей AnkiWeb page.
+Полный контракт публикации описан в `docs/release-automation.md`.
 
 ## Роль Fast CI
 
@@ -155,18 +156,30 @@ gh run download <run-id> --dir .\ci-fast-download
 Run всегда сопоставляется с exact commit SHA, а не с «последним запуском».
 Скачанный `ci-summary.json` должен содержать тот же SHA.
 
-## Не входит в CI Foundation
+## Границы Fast CI
 
 - Docker/реальный Anki Desktop E2E;
 - strict APKG browser smoke и Perf100;
 - Codex CI consumer;
 - автоматическая local fallback orchestration;
-- tag/release/AnkiWeb CD;
 - deployment, self-hosted runners, OIDC и secrets.
 
-Будущие этапы могут добавить отдельного consumer машиночитаемого результата,
-управляемый local fallback и release CD, но они не должны ослаблять или
-дублировать текущую canonical test logic.
+Release workflow остаётся отдельным manual-dispatch контуром и не ослабляет или
+не дублирует canonical test logic Fast CI.
+
+## Gated Release Delivery
+
+`.github/workflows/release.yml` на PR выполняет только validation/build без
+secrets и mutations. Production dispatch разрешён только с текущего `master` и
+сериализован concurrency group. Exact release archive проходит
+`standard/full` через reusable `.github/workflows/ci-e2e.yml`, затем создаётся
+проверенный draft GitHub Release. Stable channel продолжает в защищённом
+`ankiweb-production`; только этот job получает environment secrets. GitHub
+Release становится публичным после успешной проверки публичного AnkiWeb файла.
+
+Write permissions разделены: draft/finalize jobs имеют только GitHub contents
+write, publisher — только contents read и Environment secrets. PR, forks и
+Fast CI production credentials не получают.
 
 ## Full Docker / Anki E2E
 
