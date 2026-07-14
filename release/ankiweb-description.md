@@ -1,5 +1,17 @@
 Anki Study Report turns your Anki review data into a practical local study dashboard. It helps you understand daily progress, answer quality, deck health, difficult cards, upcoming workload, and FSRS-related signals without exposing your collection to a remote service.
 
+## Support the author
+
+If you find Anki Study Report useful, you can support the continued development of my free Anki decks and the Anki Study Report add-on on Boosty.
+
+Your support helps fund new cards, corrections, deck maintenance, testing, documentation, and further development of free Anki tools.
+
+All decks and the core features of Anki Study Report will remain free.
+
+<a href="https://boosty.to/ankistudyreport">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/92/Boosty_logo.svg" alt="Support the author on Boosty" width="220">
+</a>
+
 ## Main features
 
 - Opens from the Anki Tools menu and includes both a report window and a bundled local dashboard.
@@ -25,10 +37,7 @@ Anki Study Report is a read-only analysis tool. It does not edit cards, notes, d
 - Heavily scripted card templates can look different because preview JavaScript is intentionally disabled.
 - The dashboard is optimized for ordinary desktop and laptop window sizes.
 
-## Support
+## Links and contact
 
 - [Source code and documentation](https://github.com/AliceLiddell01/anki-study-report)
 - [Contact the author](https://t.me/Alice_ha_doko?direct)
-- [Support development on Boosty](https://boosty.to/ankistudyreport)
-
-All core features remain free.
