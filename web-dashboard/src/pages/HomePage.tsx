@@ -248,13 +248,13 @@ function KpiGrid({ metrics }: { metrics: KpiMetric[] }) {
                 <p className="truncate text-xs font-medium uppercase tracking-[0.04em] text-report-muted">
                   {kpiLabel(metric)}
                 </p>
-                <p className="mt-2 text-2xl font-semibold text-report-text">{metric.value}</p>
+                <p className="mt-2 text-2xl font-semibold text-report-text">{kpiValue(metric)}</p>
               </div>
               <div className="kpi-icon">
                 <Icon size={18} />
               </div>
             </div>
-            <p className="mt-2 text-sm text-report-muted">{metric.caption}</p>
+            <p className="mt-2 text-sm text-report-muted">{th(`kpiCaption.${metric.id}`)}</p>
           </article>
         );
       })}
@@ -961,6 +961,14 @@ function kpiLabel(metric: KpiMetric) {
   return homeKpiIds.has(metric.id) ? th(`kpi.${metric.id}`) : metric.label;
 }
 
+function kpiValue(metric: KpiMetric) {
+  const numericValue = Number.parseFloat(metric.value.replace(",", "."));
+  if (!Number.isFinite(numericValue)) return th("fallback.noData");
+  if (metric.id === "pass_rate" || metric.id === "fail_rate") return formatPercent(numericValue / 100);
+  if (metric.id === "study_time") return th("kpiMinutes", { count: numericValue });
+  return Math.round(numericValue).toLocaleString(localeForLanguage(i18n.language));
+}
+
 function answerLabel(label: string) {
   return {
     Pass: "Pass",
@@ -1136,7 +1144,7 @@ function formatNullablePercent(value: number | null) {
 }
 
 function formatCount(value: number) {
-  return Number.isFinite(value) ? Math.round(value).toLocaleString("ru-RU") : "0";
+  return Number.isFinite(value) ? Math.round(value).toLocaleString(localeForLanguage(i18n.language)) : "0";
 }
 
 function formatCountDelta(value: number | null) {

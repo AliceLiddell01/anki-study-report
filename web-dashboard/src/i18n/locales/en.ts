@@ -585,6 +585,8 @@ const en = {
       recommendations: { next: "What to do next", avoid: "Avoid for now: {{value}}" },
       technical: { title: "Diagnostics and technical details", noData: "No data", showList: "Show list" },
       kpi: { pass_rate: "Success rate", fail_rate: "Failures", new_cards: "New", study_time: "Study time", active_decks: "Active decks", tomorrow_due: "Tomorrow's queue" },
+      kpiCaption: { pass_rate: "answer quality", fail_rate: "failures in the period", new_cards: "new cards", study_time: "estimated from revlog", active_decks: "active decks", tomorrow_due: "tomorrow's queue" },
+      kpiMinutes: "{{count}} min",
       fallback: { noData: "No data", today: "Today", yesterday: "Yesterday", last7: "Last 7 days", last30: "Last 30 days", weekday: "Same weekday last week", currentWeek: "This week", previousWeek: "Last week", currentMonth: "This month", previousMonth: "Last month" },
     },
     cards: {
@@ -671,6 +673,8 @@ const en = {
       steps: { label: "Learning steps", short: "Short-term memory", question: "Do learning steps match observed short-term memory?" },
       simulator: { label: "Simulator", short: "Workload scenario", question: "How might workload change at another target retention?" },
     },
+    overviewInsightSufficient: "Actual retention is calculated from the last 30 days; compare it with your own target range.",
+    overviewInsightInsufficient: "There are not enough answers for a stable comparison yet.",
     mixed: { title: "Multiple incompatible configurations.", detail: "They are analyzed separately and are not averaged." },
     query: { label: "FSRS parameters", context: "Analysis context", scope: "Scope", scopeAria: "FSRS scope", dashboard: "Current dashboard scope", collection: "Whole collection", configuration: "Configuration: {{name}}", deck: "Deck: {{name}}", period: "Period", periodAria: "FSRS period", days: "{{count}} days", year: "1 year" },
     action: { marker: "Manual read-only calculation", loadingTitle: "Matching predictions with answers", title: "Calculate model accuracy", description: "Compare FSRS recall probability with actual answers by interval. The calculation runs manually because it reads history for the selected period.", scope: "Scope", period: "Period", safety: "Safety", readOnly: "Does not change anything in Anki", selectOne: "Select one compatible configuration or deck.", calculating: "Calculating…", run: "Calculate accuracy" },

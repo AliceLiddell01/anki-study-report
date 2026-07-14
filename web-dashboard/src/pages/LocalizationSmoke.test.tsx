@@ -22,6 +22,7 @@ describe("representative localized pages", () => {
 
     expect(today).toContain("Today");
     expect(today).toContain("Answer quality");
+    expect(today).toContain("estimated from revlog");
     expect(statistics).toContain("Personal analytics center");
     expect(statistics).toContain("Key metrics");
     expect(cards).toContain("Cards");

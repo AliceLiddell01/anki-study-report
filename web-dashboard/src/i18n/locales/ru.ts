@@ -581,6 +581,8 @@ const ru = {
       recommendations: { next: "Что делать дальше", avoid: "Пока не делать: {{value}}" },
       technical: { title: "Диагностика и технические детали", noData: "Нет данных", showList: "Показать список" },
       kpi: { pass_rate: "Успешность", fail_rate: "Ошибки", new_cards: "Новые", study_time: "Время учёбы", active_decks: "Активные колоды", tomorrow_due: "Очередь на завтра" },
+      kpiCaption: { pass_rate: "качество ответов", fail_rate: "ошибки за период", new_cards: "новые карточки", study_time: "оценка по revlog", active_decks: "активные колоды", tomorrow_due: "очередь на завтра" },
+      kpiMinutes: "{{count}} мин",
       fallback: { noData: "Нет данных", today: "Сегодня", yesterday: "Вчера", last7: "Последние 7 дней", last30: "Последние 30 дней", weekday: "Этот день прошлой недели", currentWeek: "Эта неделя", previousWeek: "Прошлая неделя", currentMonth: "Этот месяц", previousMonth: "Прошлый месяц" },
     },
     cards: {
@@ -690,6 +692,8 @@ const ru = {
       steps: { label: "Шаги обучения", short: "Краткосрочная память", question: "Соответствуют ли шаги обучения наблюдаемой краткосрочной памяти?" },
       simulator: { label: "Симулятор", short: "Сценарий нагрузки", question: "Как может измениться нагрузка при другой целевой вероятности?" },
     },
+    overviewInsightSufficient: "Фактическое удержание рассчитано по последним 30 дням; сравнивайте его с диапазоном собственных целей.",
+    overviewInsightInsufficient: "Пока недостаточно ответов для устойчивого сравнения.",
     mixed: { title: "Несколько несовместимых наборов.", detail: "Они анализируются отдельно и не усредняются." },
     query: { label: "Параметры FSRS", context: "Контекст анализа", scope: "Область", scopeAria: "Область FSRS", dashboard: "Текущая область dashboard", collection: "Вся коллекция", configuration: "Набор: {{name}}", deck: "Колода: {{name}}", period: "Период", periodAria: "Период FSRS", days: "{{count}} дней", year: "1 год" },
     action: { marker: "Ручной read-only расчёт", loadingTitle: "Сопоставляем прогнозы и ответы", title: "Рассчитать точность модели", description: "Сравним вероятность воспоминания FSRS с фактическими ответами по интервалам. Расчёт запускается вручную, потому что читает историю выбранного периода.", scope: "Область", period: "Период", safety: "Безопасность", readOnly: "Ничего не меняет в Anki", selectOne: "Выберите один совместимый набор настроек или колоду.", calculating: "Рассчитываем…", run: "Рассчитать точность" },
