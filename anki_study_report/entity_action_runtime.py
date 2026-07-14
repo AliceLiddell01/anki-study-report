@@ -9,6 +9,7 @@ from typing import Any
 
 from .entity_actions import (
     EntityActionPlan,
+    EntityActionDomainError,
     EntityActionStaleError,
     EntityActionValidationError,
     action_result,
@@ -74,6 +75,8 @@ def _run_action_sync(
             finish(_error("invalid_entity_action", "Check the action request parameters.", request_id, fieldErrors=error.field_errors))
         elif isinstance(error, EntityActionStaleError):
             finish(_error("entity_action_stale", str(error), request_id))
+        elif isinstance(error, EntityActionDomainError):
+            finish(_error(error.code, str(error), request_id))
         else:
             _log_safe_failure(error, entity_type=entity_type, action=request["action"], count=len(request[f"{entity_type[:-1]}Ids"]))
             finish(_error("entity_action_failed", "The Anki action failed.", request_id))
@@ -109,6 +112,12 @@ def _native_operation(mw: Any, plan: EntityActionPlan) -> Any:
     if plan.action == "unsuspend":
         from aqt.operations.scheduling import unsuspend_cards
         return unsuspend_cards(parent=mw, card_ids=ids)
+    if plan.action == "bury":
+        from aqt.operations.scheduling import bury_cards
+        return bury_cards(parent=mw, card_ids=ids)
+    if plan.action == "unbury":
+        from aqt.operations.scheduling import unbury_cards
+        return unbury_cards(parent=mw, card_ids=ids)
     if plan.action in {"set_flag", "clear_flag"}:
         from aqt.operations.card import set_card_flag
         return set_card_flag(parent=mw, card_ids=ids, flag=int(plan.native_args.get("flag", 0)))
@@ -118,6 +127,9 @@ def _native_operation(mw: Any, plan: EntityActionPlan) -> Any:
     if plan.action == "remove_tags":
         from aqt.operations.tag import remove_tags_from_notes
         return remove_tags_from_notes(parent=mw, note_ids=ids, space_separated_tags=str(plan.native_args["tags"]))
+    if plan.action == "move_to_deck":
+        from aqt.operations.card import set_card_deck
+        return set_card_deck(parent=mw, card_ids=ids, deck_id=int(plan.native_args["deckId"]))
     raise EntityActionValidationError("Unsupported entity action.")
 
 

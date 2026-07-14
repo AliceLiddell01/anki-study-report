@@ -34,8 +34,13 @@ class FakeCollection:
     tags = SimpleNamespace(split=lambda value: value.split())
 
     def __init__(self) -> None:
-        self.cards = {1: SimpleNamespace(id=1, queue=2, flags=0), 2: SimpleNamespace(id=2, queue=-1, flags=3)}
+        self.cards = {
+            1: SimpleNamespace(id=1, queue=2, flags=0, did=20, odid=0),
+            2: SimpleNamespace(id=2, queue=-1, flags=3, did=30, odid=0),
+            3: SimpleNamespace(id=3, queue=2, flags=0, did=99, odid=20),
+        }
         self.notes = {10: SimpleNamespace(id=10, tags=[]), 11: SimpleNamespace(id=11, tags=["keep"])}
+        self.decks = SimpleNamespace(get=lambda deck_id: {20: {"id": 20, "dyn": 0}, 30: {"id": 30, "dyn": 0}}.get(deck_id))
 
     def get_card(self, entity_id):
         return self.cards[entity_id]
@@ -139,6 +144,19 @@ def test_invalid_request_and_unavailable_collection_are_typed() -> None:
     assert unavailable["error"] == "entity_action_unavailable"
 
 
+def test_filtered_source_move_is_rejected_before_native_operation() -> None:
+    original = runtime._native_operation
+    runtime._native_operation = lambda *_args: (_ for _ in ()).throw(AssertionError("must not run"))
+    try:
+        result = runtime.run_card_action_sync(
+            fake_mw(),
+            {"action": "move_to_deck", "cardIds": ["3"], "deckId": "30", "requestId": "filtered"},
+        )
+    finally:
+        runtime._native_operation = original
+    assert result["error"] == "cards.filtered_source_unsupported"
+
+
 def test_runtime_failure_log_contains_only_safe_action_metadata() -> None:
     logged = []
     original_operation = runtime._native_operation
@@ -166,8 +184,11 @@ def test_native_bridge_uses_anki_2605_wrapper_signatures(monkeypatch) -> None:
     scheduling = types.ModuleType("aqt.operations.scheduling")
     scheduling.suspend_cards = lambda *, parent, card_ids: calls.append(("suspend", parent, card_ids)) or "suspend-op"
     scheduling.unsuspend_cards = lambda *, parent, card_ids: calls.append(("unsuspend", parent, card_ids)) or "unsuspend-op"
+    scheduling.bury_cards = lambda *, parent, card_ids: calls.append(("bury", parent, card_ids)) or "bury-op"
+    scheduling.unbury_cards = lambda *, parent, card_ids: calls.append(("unbury", parent, card_ids)) or "unbury-op"
     card = types.ModuleType("aqt.operations.card")
     card.set_card_flag = lambda *, parent, card_ids, flag: calls.append(("flag", parent, card_ids, flag)) or "flag-op"
+    card.set_card_deck = lambda *, parent, card_ids, deck_id: calls.append(("deck", parent, card_ids, deck_id)) or "deck-op"
     tag = types.ModuleType("aqt.operations.tag")
     tag.add_tags_to_notes = lambda *, parent, note_ids, space_separated_tags: calls.append(("add", parent, note_ids, space_separated_tags)) or "add-op"
     tag.remove_tags_from_notes = lambda *, parent, note_ids, space_separated_tags: calls.append(("remove", parent, note_ids, space_separated_tags)) or "remove-op"
@@ -186,13 +207,19 @@ def test_native_bridge_uses_anki_2605_wrapper_signatures(monkeypatch) -> None:
     assert runtime._native_operation(parent, plan("unsuspend")) == "unsuspend-op"
     assert runtime._native_operation(parent, plan("set_flag", native_args={"flag": 3})) == "flag-op"
     assert runtime._native_operation(parent, plan("clear_flag")) == "flag-op"
+    assert runtime._native_operation(parent, plan("bury")) == "bury-op"
+    assert runtime._native_operation(parent, plan("unbury")) == "unbury-op"
     assert runtime._native_operation(parent, plan("add_tags", "notes", {"tags": "a b"})) == "add-op"
     assert runtime._native_operation(parent, plan("remove_tags", "notes", {"tags": "a b"})) == "remove-op"
+    assert runtime._native_operation(parent, plan("move_to_deck", native_args={"deckId": 30})) == "deck-op"
     assert calls == [
         ("suspend", parent, [1, 2]),
         ("unsuspend", parent, [1, 2]),
         ("flag", parent, [1, 2], 3),
         ("flag", parent, [1, 2], 0),
+        ("bury", parent, [1, 2]),
+        ("unbury", parent, [1, 2]),
         ("add", parent, [1, 2], "a b"),
         ("remove", parent, [1, 2], "a b"),
+        ("deck", parent, [1, 2], 30),
     ]

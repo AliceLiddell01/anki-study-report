@@ -1369,6 +1369,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.BAD_REQUEST
         elif error == "entity_action_stale":
             status = HTTPStatus.CONFLICT
+        elif error in {"cards.destination_not_found", "cards.filtered_source_unsupported"}:
+            status = HTTPStatus.CONFLICT
+        elif error == "cards.destination_filtered":
+            status = HTTPStatus.BAD_REQUEST
         elif error == "entity_action_timeout":
             status = HTTPStatus.GATEWAY_TIMEOUT
         elif error in {"entity_action_unavailable", "entity_action_failed"}:

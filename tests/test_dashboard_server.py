@@ -323,6 +323,9 @@ def test_entity_action_endpoint_maps_invalid_timeout_unavailable_and_body_limit(
             ("invalid_entity_action", 400),
             ("entity_action_timeout", 504),
             ("entity_action_failed", 503),
+            ("cards.destination_filtered", 400),
+            ("cards.destination_not_found", 409),
+            ("cards.filtered_source_unsupported", 409),
         ]:
             manager.configure_entity_action_handlers(
                 card_handler=lambda _payload, code=code: {"ok": False, "error": code, "message": "safe"}
