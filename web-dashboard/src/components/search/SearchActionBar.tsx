@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { SearchMetadataState } from "../../hooks/useSearchMetadata";
 import type { SearchWorkspaceState } from "../../hooks/useSearchWorkspace";
 import type { EntityActionResultCode } from "../../types/entityActions";
 import type { SearchCardRow } from "../../types/search";
 import type { DeckOption } from "../../types/settings";
 
-export default function SearchActionBar({ workspace, deckOptions }: { workspace: SearchWorkspaceState; deckOptions: DeckOption[] }) {
+export default function SearchActionBar({
+  workspace,
+  metadata,
+  fallbackDeckOptions,
+}: {
+  workspace: SearchWorkspaceState;
+  metadata: SearchMetadataState;
+  fallbackDeckOptions: DeckOption[];
+}) {
   const { t } = useTranslation("pages", { keyPrefix: "search.actions" });
   const [flag, setFlag] = useState(1);
   const [tagText, setTagText] = useState("");
@@ -24,6 +33,11 @@ export default function SearchActionBar({ workspace, deckOptions }: { workspace:
         ? t("multipleDecks")
         : t("deckUnknown");
   const sameDestination = Boolean(deckId) && allSelectedVisible && selectedRows.every((row) => row.deckId === deckId);
+  const deckOptions = metadata.response
+    ? metadata.response.decks
+      .filter((deck) => !deck.filtered)
+      .map((deck) => ({ id: Number(deck.deckId), name: deck.deckName }))
+    : fallbackDeckOptions;
   if (!hasSelection && !workspace.actionResponse && !workspace.actionError) return null;
 
   return <section className="search-action-surface" aria-label={t("label")}>
@@ -39,7 +53,7 @@ export default function SearchActionBar({ workspace, deckOptions }: { workspace:
         <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("unbury")}>{t("unbury")}</button>
         <span className="search-action-help">{t("buryHelp")}</span>
         <label><span>{t("currentDeck")}</span><span className="search-current-deck">{currentDeckLabel}</span></label>
-        <label><span>{t("destination")}</span><select value={deckId} disabled={workspace.actionPending || deckOptions.length === 0} onChange={(event) => setDeckId(event.target.value)}><option value="">{t("chooseDeck")}</option>{deckOptions.map((deck) => <option key={deck.id} value={String(deck.id)}>{deck.name}</option>)}</select></label>
+        <label><span>{t("destination")}</span><select value={deckId} onFocus={() => void metadata.load()} disabled={workspace.actionPending || deckOptions.length === 0} onChange={(event) => setDeckId(event.target.value)}><option value="">{t("chooseDeck")}</option>{deckOptions.map((deck) => <option key={deck.id} value={String(deck.id)}>{deck.name}</option>)}</select></label>
         <button type="button" disabled={workspace.actionPending || !deckId || sameDestination} onClick={() => workspace.runEntityAction("move_to_deck", { deckId })}>{t("move")}</button>
         {sameDestination ? <span className="search-action-help">{t("sameDeck")}</span> : null}
       </> : <>
