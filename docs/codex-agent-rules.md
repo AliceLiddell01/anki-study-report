@@ -40,6 +40,8 @@ git ls-files --others --exclude-standard
   `docs/ci-cd.md`.
 - Global theme/visual polish: `docs/ui-polish-global-controls.md`,
   `web-dashboard/src/layout/GlobalUtilityDock.tsx`, Docker browser smoke.
+- Localization: `docs/localization.md`, `web-dashboard/src/i18n/`, locale
+  parity tests и Docker browser smoke.
 - E2E performance/scopes: `docs/e2e-performance.md`,
   `docker/anki-e2e/e2e-contract.mjs`, `e2e-telemetry.py`.
 
@@ -59,6 +61,10 @@ git ls-files --others --exclude-standard
 - Не превращать Cards preview в iframe/JS execution surface. `table`/`tiles`
   проверять как front-only Shadow DOM, `ankiPreview` - как answer-only
   `AnkiCardShadowPreview` / Shadow DOM host из `renderedPreview.backHtml`.
+- Не добавлять новый пользовательский UI-текст напрямую в React components или
+  helpers вне locale resources. Сначала добавить semantic key с parity во все
+  поддерживаемые локали, затем использовать `t()`; payload/user/technical data
+  переводить нельзя.
 
 Generated/runtime outputs:
 

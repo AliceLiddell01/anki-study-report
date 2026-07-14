@@ -213,8 +213,11 @@ decks исключены; legacy `decks` сохранён. Полный contract
 
 Stage 5.5 монтирует persistent `GlobalUtilityDock` в `AppLayout`: theme toggle
 использует существующий `anki-study-report-theme`, а Activity/Decks меняют
-только presentation/state. Language control пока не рендерится. Полный
-contract: `docs/ui-polish-global-controls.md`.
+только presentation/state. Dock также содержит независимый RU/EN selector с
+browser-local `anki-study-report-language`. Все product-owned строки живут в
+bundled typed resources; русский — default/fallback, пользовательские и
+технические payload values не переводятся. Полный contract:
+`docs/localization.md` и `docs/ui-polish-global-controls.md`.
 
 `#/stats` и четыре nested routes используют additive
 `StudyReport.statisticsHub`, cache schema v3 и token-protected

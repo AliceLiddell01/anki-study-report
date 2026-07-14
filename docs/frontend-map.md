@@ -33,8 +33,10 @@ web-dashboard/src/types/settings.ts
 Это удобно для UI-разработки, но не является проверкой реального API.
 
 `AppLayout` монтирует один `GlobalUtilityDock` для всех routes. Theme toggle
-переиспользует `lib/theme.ts` и storage key `anki-study-report-theme`; будущий
-language item предусмотрен как extension slot, но сейчас не отображается.
+переиспользует `lib/theme.ts` и storage key `anki-study-report-theme`.
+Language selector рядом с ним использует `i18n/language.ts`, storage key
+`anki-study-report-language` и переключает bundled RU/EN resources без reload.
+Оба preference независимы; подробнее — `docs/localization.md`.
 
 ## Routes/pages
 
@@ -78,6 +80,9 @@ web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
 web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
 web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
 web-dashboard/src/lib/theme.ts            theme localStorage
+web-dashboard/src/i18n/index.ts           i18next initialization and bundled resources
+web-dashboard/src/i18n/language.ts        language normalization/storage/document sync
+web-dashboard/src/i18n/locales/           RU/EN namespace resources
 ```
 
 ## Cards preview modes
@@ -161,6 +166,11 @@ web-dashboard/src/pages/StatisticsPage.test.tsx
 web-dashboard/src/components/statistics/statisticsPresentation.test.ts
 web-dashboard/src/app/router.test.tsx
 web-dashboard/src/layout/TopNav.test.tsx
+web-dashboard/src/layout/GlobalUtilityDock.test.tsx
+web-dashboard/src/i18n/language.test.ts
+web-dashboard/src/i18n/resources.test.ts
+web-dashboard/src/pages/LocalizationSmoke.test.tsx
+web-dashboard/src/lib/formatters.localization.test.ts
 ```
 
 ## Visual/runtime risks
