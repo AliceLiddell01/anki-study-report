@@ -514,7 +514,7 @@ describe("cardAttention", () => {
   it("exposes the Russian localized issue-label contract", () => {
     expect(cardIssueLabels).toMatchObject({
       leech: "Leech",
-      repeated_again: "Частые Again",
+      repeated_again: "Частые ответы «Снова»",
       slow_answer: "Долгий ответ",
       low_pass_rate: "Низкая успешность",
       missing_audio: "Нет аудио",

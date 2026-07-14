@@ -110,7 +110,7 @@ describe("dashboard router", () => {
     expect(integrations).toContain("Диагностика");
     expect(actions).toContain("Инструменты");
     expect(actions).toContain("Открыть проблемные колоды");
-    expect(actions).toContain("Открыть Again за период");
+    expect(actions).toContain("Открыть ответы «Снова» за период");
     expect(actions).toContain("Открыть New за период");
   });
 });
