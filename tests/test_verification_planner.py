@@ -76,3 +76,28 @@ def test_changed_paths_compares_real_refs(tmp_path, monkeypatch):
     monkeypatch.chdir(repository)
     assert planner.changed_paths(base, head) == ["tests/test_verification_planner.py"]
     assert planner.changed_paths(head, head) == []
+
+
+def test_fast_ci_avoids_duplicate_feature_branch_runs():
+    workflow = (
+        Path(__file__).parents[1] / ".github" / "workflows" / "ci-fast.yml"
+    ).read_text(encoding="utf-8")
+    trigger = workflow[: workflow.index("permissions:")]
+    push_block = trigger[trigger.index("  push:") : trigger.index("  pull_request:")]
+
+    assert "      - master" in push_block
+    assert '"codex/**"' not in push_block
+    assert "  pull_request:" in trigger
+    assert "  workflow_dispatch:" in trigger
+
+
+def test_fast_ci_concurrency_groups_pr_updates_together():
+    workflow = (
+        Path(__file__).parents[1] / ".github" / "workflows" / "ci-fast.yml"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        "group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}"
+        in workflow
+    )
+    assert "cancel-in-progress: true" in workflow
