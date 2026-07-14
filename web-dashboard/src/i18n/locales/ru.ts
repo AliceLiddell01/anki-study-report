@@ -135,6 +135,28 @@ const ru = {
         fields: "Поля записи", cardReferences: "Ссылок на карточки: {{count}}",
       },
       browser: { open: "Открыть в Anki Browser", opening: "Открываем…", opened: "В Anki Browser открыто: {{count}}", failed: "Не удалось открыть выбранные элементы." },
+      actions: {
+        label: "Действия с выбранными элементами", selected: "Выбрано: {{count}}", suspend: "Приостановить", unsuspend: "Возобновить",
+        flag: "Флаг", setFlag: "Установить флаг", clearFlag: "Снять флаг", tags: "Теги", tagsPlaceholder: "important Japanese::Grammar",
+        addTags: "Добавить теги", removeTags: "Удалить теги", tagsHelp: "Anki разделяет теги пробелами; для иерархии используйте ::.",
+        running: "Применяем в Anki…", undoable: "Это пакетное действие можно отменить в Anki.",
+        flagNames: { "1": "Красный", "2": "Оранжевый", "3": "Зелёный", "4": "Синий", "5": "Розовый", "6": "Бирюзовый", "7": "Фиолетовый" },
+        results: {
+          cards_suspended: "Приостановлено карточек: {{count}}. Без изменений: {{unchanged}}.",
+          cards_unsuspended: "Возобновлено карточек: {{count}}. Без изменений: {{unchanged}}.",
+          cards_flag_set: "Флаг {{flag}} установлен у карточек: {{count}}. Без изменений: {{unchanged}}.",
+          cards_flag_cleared: "Флаг снят у карточек: {{count}}. Без изменений: {{unchanged}}.",
+          notes_tags_added: "Теги добавлены записям: {{count}}. Без изменений: {{unchanged}}.",
+          notes_tags_removed: "Теги удалены у записей: {{count}}. Без изменений: {{unchanged}}.",
+          action_no_changes: "Выбранные элементы уже находятся в запрошенном состоянии.",
+        },
+        errors: {
+          stale: "Выбранный элемент удалён или изменён. Обновите результаты и повторите действие.",
+          invalid: "Параметры действия некорректны.", timeout: "Действие Anki выполнялось слишком долго.",
+          malformed: "Dashboard получил некорректный ответ действия.", unavailable: "Коллекция Anki недоступна.",
+          failed: "Действие Anki не выполнено.",
+        },
+      },
       statesLabel: "Состояния карточек",
       states: {
         initialTitle: "Введите запрос", initialDetail: "Поиск не запускается при наборе. Настройте режим и фильтры, затем отправьте запрос.",

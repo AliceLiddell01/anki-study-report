@@ -139,6 +139,28 @@ const en = {
         fields: "Note fields", cardReferences: "Card references: {{count}}",
       },
       browser: { open: "Open in Anki Browser", opening: "Opening…", opened: "Opened in Anki Browser: {{count}}", failed: "The selected items could not be opened." },
+      actions: {
+        label: "Actions for selected entities", selected: "Selected: {{count}}", suspend: "Suspend", unsuspend: "Unsuspend",
+        flag: "Flag", setFlag: "Set flag", clearFlag: "Clear flag", tags: "Tags", tagsPlaceholder: "important Japanese::Grammar",
+        addTags: "Add tags", removeTags: "Remove tags", tagsHelp: "Anki separates tags with spaces; use :: for hierarchy.",
+        running: "Applying in Anki…", undoable: "You can undo this batch in Anki.",
+        flagNames: { "1": "Red", "2": "Orange", "3": "Green", "4": "Blue", "5": "Pink", "6": "Turquoise", "7": "Purple" },
+        results: {
+          cards_suspended: "Suspended cards: {{count}}. Unchanged: {{unchanged}}.",
+          cards_unsuspended: "Unsuspended cards: {{count}}. Unchanged: {{unchanged}}.",
+          cards_flag_set: "Set flag {{flag}} on cards: {{count}}. Unchanged: {{unchanged}}.",
+          cards_flag_cleared: "Cleared flags: {{count}}. Unchanged: {{unchanged}}.",
+          notes_tags_added: "Added tags to notes: {{count}}. Unchanged: {{unchanged}}.",
+          notes_tags_removed: "Removed tags from notes: {{count}}. Unchanged: {{unchanged}}.",
+          action_no_changes: "The selected entities already have the requested state.",
+        },
+        errors: {
+          stale: "A selected entity was deleted or changed. Refresh the results and try again.",
+          invalid: "The action parameters are invalid.", timeout: "The Anki action took too long.",
+          malformed: "Dashboard received an invalid action response.", unavailable: "The Anki collection is unavailable.",
+          failed: "The Anki action failed.",
+        },
+      },
       states: {
         initialTitle: "Enter a query", initialDetail: "Search does not run while typing. Set the mode and filters, then submit the query.",
         loadingTitle: "Searching the collection", loadingDetail: "Only the latest request may replace the current result.",

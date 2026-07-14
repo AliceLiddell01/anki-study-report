@@ -94,6 +94,8 @@ class DashboardServerManager:
         self._fsrs_query_handler = None
         self._search_query_handler = None
         self._search_inspect_handler = None
+        self._card_action_handler = None
+        self._note_action_handler = None
         self._media_file_provider = None
 
     def start(
@@ -269,6 +271,11 @@ class DashboardServerManager:
         with self._lock:
             self._search_query_handler = query_handler
             self._search_inspect_handler = inspect_handler
+
+    def configure_entity_action_handlers(self, card_handler=None, note_handler=None) -> None:
+        with self._lock:
+            self._card_action_handler = card_handler
+            self._note_action_handler = note_handler
 
     def configure_media_handler(self, media_file_provider=None) -> None:
         with self._lock:
@@ -472,6 +479,30 @@ class DashboardServerManager:
             )
             return {"ok": False, "error": "search_failed", "message": "The search request failed."}
 
+    def request_entity_action(self, entity_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+        attribute = "_card_action_handler" if entity_type == "cards" else "_note_action_handler"
+        with self._lock:
+            handler = getattr(self, attribute)
+        if handler is None:
+            return {"ok": False, "error": "entity_action_unavailable", "message": "Entity actions are not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "entity_action_failed",
+                "message": "The entity action failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "entity.action.request.error",
+                "Entity action request handler failed",
+                entity_type=entity_type,
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "entity_action_failed", "message": "The entity action failed."}
+
     def media_file(self, name: str) -> tuple[bytes, str] | None:
         with self._lock:
             provider = self._media_file_provider
@@ -593,6 +624,15 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.METHOD_NOT_ALLOWED,
                 )
             return
+        if path in {"/api/entities/cards/actions", "/api/entities/notes/actions"}:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for entity actions."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path == "/api/logs/status":
             self._send_logs_status(_query_token(parsed))
             return
@@ -653,6 +693,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/search/inspect":
             self._send_search_request(_query_token(parsed), inspect=True)
+            return
+        if path == "/api/entities/cards/actions":
+            self._send_entity_action(_query_token(parsed), "cards")
+            return
+        if path == "/api/entities/notes/actions":
+            self._send_entity_action(_query_token(parsed), "notes")
             return
         if path.startswith("/api/actions/"):
             action = path.removeprefix("/api/actions/").strip("/")
@@ -1303,6 +1349,33 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         result = self.manager.request_action(action, payload)
         self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
+    def _send_entity_action(self, token: str | None, entity_type: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_entity_action", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.request_entity_action(entity_type, payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_entity_action":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "entity_action_stale":
+            status = HTTPStatus.CONFLICT
+        elif error == "entity_action_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"entity_action_unavailable", "entity_action_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
 
     def _read_json_body(self) -> dict[str, Any] | None:
         length_header = self.headers.get("Content-Length")
