@@ -212,7 +212,7 @@ def main() -> int:
     collection_path = profile_dir / "collection.anki2"
     media_dir = profile_dir / "collection.media"
     reset_collection(collection_path, media_dir)
-    review_anchor_ms, scheduler_day_cutoff_ms = create_collection(collection_path)
+    review_anchor_ms, scheduler_day_cutoff_ms, action_decks = create_collection(collection_path)
     media_summary = write_media(media_dir)
     card_ids = seed_review_history(collection_path, review_anchor_ms)
 
@@ -222,6 +222,7 @@ def main() -> int:
         "cardIds": card_ids,
         "reviewAnchorMs": review_anchor_ms,
         "schedulerDayCutoffMs": scheduler_day_cutoff_ms,
+        "actionDeckIds": action_decks,
         "notes": [
             "Japanese vocabulary fixture with sound/gif/inline style/class CSS",
             "Generic front/back fixture",
@@ -252,7 +253,7 @@ def reset_collection(collection_path: Path, media_dir: Path) -> None:
     media_dir.mkdir(parents=True, exist_ok=True)
 
 
-def create_collection(collection_path: Path) -> tuple[int, int]:
+def create_collection(collection_path: Path) -> tuple[int, int, dict[str, int]]:
     from anki.collection import Collection
 
     col = Collection(str(collection_path))
@@ -355,13 +356,18 @@ def create_collection(collection_path: Path) -> tuple[int, int]:
                 get_deck_id(col, deck_name),
                 tags=["e2e", "deck-hub"],
             )
-        get_filtered_deck_id(col, "E2E Filtered Health Excluded")
+        target_deck_id = get_deck_id(col, "E2E Action Target")
+        filtered_deck_id = get_filtered_deck_id(col, "E2E Filtered Health Excluded")
         configure_fsrs_fixture(col)
         # Keep synthetic reviews inside Anki's current scheduler day. Before
         # the configured rollover, the wall-clock calendar date can already be
         # one day ahead and would make otherwise-current cards look future-dated.
         scheduler_day_cutoff_ms = int(col.sched.day_cutoff * 1000)
-        return scheduler_day_cutoff_ms - 12 * 60 * 60 * 1000, scheduler_day_cutoff_ms
+        return (
+            scheduler_day_cutoff_ms - 12 * 60 * 60 * 1000,
+            scheduler_day_cutoff_ms,
+            {"source": int(deck_id), "target": int(target_deck_id), "filtered": int(filtered_deck_id)},
+        )
     finally:
         close_collection(col)
 
