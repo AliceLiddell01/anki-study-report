@@ -159,7 +159,6 @@ def import_with_supported_anki_api(collection_path: Path, apkg_path: Path) -> st
 
             importer = AnkiPackageImporter(col, str(apkg_path))
             call_importer_method(importer)
-            save_collection(col)
             return "anki.importing.apkg.AnkiPackageImporter"
         except Exception as error:
             errors.append(f"anki.importing.apkg.AnkiPackageImporter: {error}")
@@ -178,7 +177,6 @@ def import_with_supported_anki_api(collection_path: Path, apkg_path: Path) -> st
                     with_deck_configs=True,
                 )
                 method(package_path=str(apkg_path), options=options)
-                save_collection(col)
                 return "Collection._backend.import_anki_package"
             errors.append("Collection._backend.import_anki_package: method missing")
         except Exception as error:
@@ -219,12 +217,6 @@ def call_with_supported_args(method: Any, *preferred_args: Any) -> Any:
     if len(args) < len(required):
         args.extend(None for _ in range(len(required) - len(args)))
     return method(*args)
-
-
-def save_collection(col: Any) -> None:
-    method = getattr(col, "save", None)
-    if callable(method):
-        method()
 
 
 def close_collection(col: Any) -> None:

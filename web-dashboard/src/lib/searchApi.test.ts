@@ -40,13 +40,44 @@ const queryResponse = {
   items: [card],
   page: 1,
   pageSize: 25,
-  maxPage: 80,
+  pageCount: 1,
+  pageLimit: 80,
   returnedCount: 1,
   boundedTotal: 1,
   hasNext: false,
   truncated: false,
   sort: { key: "entity_id", direction: "asc" },
   requestId: "client-1",
+};
+
+const cardDetails = {
+  ...card,
+  deck: { deckId: "3", deckName: "Languages::Japanese" },
+  noteType: { noteTypeId: "7", noteTypeName: "Basic" },
+  template: { ordinal: 0, name: "Card 1" },
+  queue: 2,
+  tags: ["jp"],
+};
+
+const note = {
+  noteId: "2001",
+  noteTypeId: "7",
+  noteTypeName: "Basic",
+  primaryText: "日本語",
+  tagSummary: ["jp"],
+  cardCount: 1,
+  deckSummary: [{ deckId: "3", deckName: "Languages::Japanese" }],
+};
+
+const noteDetails = {
+  ...note,
+  noteType: { noteTypeId: "7", noteTypeName: "Basic" },
+  fields: [{ name: "Front", value: "日本語" }],
+  tags: ["jp"],
+  cardReferences: [{ cardId: "1001", deckId: "3", templateOrdinal: 0 }],
+  cardsTruncated: false,
+  fieldsTruncated: false,
+  deckSummaries: [{ deckId: "3", deckName: "Languages::Japanese" }],
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -111,15 +142,7 @@ describe("search API foundation", () => {
     const noteResponse = {
       ...queryResponse,
       mode: "notes",
-      items: [{
-        noteId: "2001",
-        noteTypeId: "7",
-        noteTypeName: "Basic",
-        primaryText: "日本語",
-        tagSummary: ["jp"],
-        cardCount: 1,
-        deckSummary: [{ deckId: "3", deckName: "Languages::Japanese" }],
-      }],
+      items: [note],
     };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, response: noteResponse }), { status: 200 })));
     const result = await fetchSearchQuery({ ...query, mode: "notes" });
@@ -142,10 +165,75 @@ describe("search API foundation", () => {
   });
 
   it("uses the separate inspect endpoint and validates mode-specific details", async () => {
-    const response = { schemaVersion: 1, mode: "cards", details: { ...card, tags: ["jp"] } };
+    const response = { schemaVersion: 1, mode: "cards", details: cardDetails, requestId: "inspect-1" };
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ ok: true, response }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     await expect(fetchSearchInspect({ mode: "cards", cardId: "1001" })).resolves.toEqual(response);
     expect(fetchMock.mock.calls[0]![0]).toContain("/api/search/inspect?token=");
   });
+
+  it.each([
+    ["missing template name", { ...card, templateName: undefined }],
+    ["invalid state", { ...card, state: "graduated" }],
+    ["fractional due", { ...card, due: 1.5 }],
+    ["fractional interval", { ...card, interval: 2.5 }],
+    ["flag outside range", { ...card, flag: 8 }],
+    ["numeric ID", { ...card, cardId: 1001 }],
+    ["ID outside the public range", { ...card, cardId: "9223372036854775808" }],
+  ])("rejects malformed card rows: %s", async (_label, malformedCard) => {
+    const response = { ...queryResponse, items: [malformedCard] };
+    vi.stubGlobal("fetch", successResponse(response));
+    await expect(fetchSearchQuery(query)).rejects.toMatchObject({ code: "invalid_search_response" });
+  });
+
+  it.each([
+    ["malformed deck summary", { ...note, deckSummary: [{ deckId: "3" }] }],
+    ["fractional card count", { ...note, cardCount: 1.5 }],
+  ])("rejects malformed note rows: %s", async (_label, malformedNote) => {
+    const response = { ...queryResponse, mode: "notes", items: [malformedNote] };
+    vi.stubGlobal("fetch", successResponse(response));
+    await expect(fetchSearchQuery({ ...query, mode: "notes" })).rejects.toMatchObject({ code: "invalid_search_response" });
+  });
+
+  it.each([
+    ["missing nested deck", { ...cardDetails, deck: undefined }],
+    ["malformed nested template", { ...cardDetails, template: { ordinal: 0 } }],
+    ["fractional queue", { ...cardDetails, queue: 2.5 }],
+    ["malformed tags", { ...cardDetails, tags: [1] }],
+  ])("rejects malformed card details: %s", async (_label, details) => {
+    vi.stubGlobal("fetch", successResponse({ schemaVersion: 1, mode: "cards", details }));
+    await expect(fetchSearchInspect({ mode: "cards", cardId: "1001" })).rejects.toMatchObject({ code: "invalid_search_response" });
+  });
+
+  it.each([
+    ["malformed field", { ...noteDetails, fields: [{ name: "Front" }] }],
+    ["malformed card reference", { ...noteDetails, cardReferences: [{ cardId: "1001", deckId: "3", templateOrdinal: 0.5 }] }],
+    ["non-boolean truncation marker", { ...noteDetails, cardsTruncated: 0 }],
+    ["malformed deck summary", { ...noteDetails, deckSummaries: [{ deckId: "3" }] }],
+  ])("rejects malformed note details: %s", async (_label, details) => {
+    vi.stubGlobal("fetch", successResponse({ schemaVersion: 1, mode: "notes", details }));
+    await expect(fetchSearchInspect({ mode: "notes", noteId: "2001" })).rejects.toMatchObject({ code: "invalid_search_response" });
+  });
+
+  it.each([
+    ["missing sort", { ...queryResponse, sort: undefined }],
+    ["malformed sort", { ...queryResponse, sort: { key: "due", direction: "asc" } }],
+    ["wrong page count", { ...queryResponse, pageCount: 2 }],
+    ["wrong page limit", { ...queryResponse, pageLimit: 79 }],
+    ["inconsistent returned count", { ...queryResponse, returnedCount: 0 }],
+    ["malformed request ID", { ...queryResponse, requestId: "secret value" }],
+  ])("rejects malformed response metadata: %s", async (_label, response) => {
+    vi.stubGlobal("fetch", successResponse(response));
+    await expect(fetchSearchQuery(query)).rejects.toMatchObject({ code: "invalid_search_response" });
+  });
+
+  it("accepts complete note inspect details", async () => {
+    const response = { schemaVersion: 1, mode: "notes", details: noteDetails, requestId: "inspect-note" };
+    vi.stubGlobal("fetch", successResponse(response));
+    await expect(fetchSearchInspect({ mode: "notes", noteId: "2001" })).resolves.toEqual(response);
+  });
 });
+
+function successResponse(response: unknown) {
+  return vi.fn(async () => new Response(JSON.stringify({ ok: true, response }), { status: 200 }));
+}

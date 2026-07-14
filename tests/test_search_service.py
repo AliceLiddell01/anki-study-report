@@ -207,6 +207,9 @@ def test_query_caps_results_paginates_and_loads_only_the_requested_page():
     col = FakeCollection(range(1, 2052))
     result = search.execute_search_query(col, query(page=2, pageSize=25))
     assert result["boundedTotal"] == search.RESULT_CAP
+    assert result["pageCount"] == 80
+    assert result["pageLimit"] == 80
+    assert "maxPage" not in result
     assert result["truncated"] is True
     assert result["returnedCount"] == 25
     assert result["hasNext"] is True
@@ -224,12 +227,34 @@ def test_sort_is_deterministic_deduplicated_and_supports_descending():
 
 
 @pytest.mark.parametrize("page_size", search.ALLOWED_PAGE_SIZES)
-def test_allowed_page_sizes_and_maximum_page_are_explicit(page_size):
+def test_allowed_page_sizes_and_page_limit_are_explicit(page_size):
     normalized = search.normalize_search_query_request(query(pageSize=page_size, page=search.RESULT_CAP // page_size))
     assert normalized["pageSize"] == page_size
     with pytest.raises(search.SearchValidationError) as error:
         search.normalize_search_query_request(query(pageSize=page_size, page=search.RESULT_CAP // page_size + 1))
     assert "page" in error.value.field_errors
+
+
+def test_page_count_reflects_results_and_valid_pages_beyond_it_are_empty():
+    col = FakeCollection(range(1, 5))
+    first = search.execute_search_query(col, query(page=1, pageSize=25))
+    beyond = search.execute_search_query(col, query(page=2, pageSize=25))
+    assert first["pageCount"] == 1
+    assert first["pageLimit"] == 80
+    assert beyond["page"] == 2
+    assert beyond["items"] == []
+    assert beyond["returnedCount"] == 0
+    assert beyond["pageCount"] == 1
+    assert beyond["hasNext"] is False
+
+
+def test_empty_result_uses_page_one_with_zero_page_count():
+    result = search.execute_search_query(FakeCollection([]), query(page=1, pageSize=50))
+    assert result["page"] == 1
+    assert result["pageCount"] == 0
+    assert result["pageLimit"] == 40
+    assert result["boundedTotal"] == 0
+    assert result["items"] == []
 
 
 def test_notes_mode_has_a_distinct_bounded_projection():

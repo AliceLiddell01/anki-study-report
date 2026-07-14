@@ -66,7 +66,8 @@ export interface SearchQueryResponse<M extends SearchMode = SearchMode> {
   items: M extends "cards" ? SearchCardRow[] : SearchNoteRow[];
   page: number;
   pageSize: 25 | 50 | 100;
-  maxPage: number;
+  pageCount: number;
+  pageLimit: number;
   returnedCount: number;
   boundedTotal: number;
   hasNext: boolean;

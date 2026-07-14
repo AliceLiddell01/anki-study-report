@@ -78,41 +78,115 @@ async function postSearch(path: string, request: object, signal?: AbortSignal): 
 
 function isSearchQueryResponse(value: unknown, mode: SearchMode): value is SearchQueryResponse {
   if (!isRecord(value) || value.schemaVersion !== 1 || value.mode !== mode || !Array.isArray(value.items)) return false;
-  if (!positiveInteger(value.page) || ![25, 50, 100].includes(Number(value.pageSize))) return false;
+  if (!positiveInteger(value.page) || !isPageSize(value.pageSize)) return false;
+  if (!nonNegativeInteger(value.pageCount) || !positiveInteger(value.pageLimit)) return false;
   if (!nonNegativeInteger(value.returnedCount) || !nonNegativeInteger(value.boundedTotal)) return false;
+  if (value.boundedTotal > 2000 || value.pageCount !== Math.ceil(value.boundedTotal / value.pageSize)) return false;
+  if (value.pageLimit !== Math.ceil(2000 / value.pageSize) || value.page > value.pageLimit) return false;
   if (value.returnedCount !== value.items.length || value.items.length > Number(value.pageSize)) return false;
-  if (typeof value.hasNext !== "boolean" || typeof value.truncated !== "boolean") return false;
-  return value.items.every((item) => mode === "cards" ? isCardRow(item) : isNoteRow(item));
+  if (value.page > value.pageCount && value.items.length !== 0) return false;
+  if (typeof value.hasNext !== "boolean" || value.hasNext !== (value.page < value.pageCount) || typeof value.truncated !== "boolean") return false;
+  if (!isSearchSort(value.sort) || !optionalRequestId(value.requestId)) return false;
+  return value.items.every((item) => mode === "cards" ? isSearchCardRow(item) : isSearchNoteRow(item));
 }
 
 function isSearchInspectResponse(value: unknown, mode: SearchMode): value is SearchInspectResponse {
   if (!isRecord(value) || value.schemaVersion !== 1 || value.mode !== mode || !isRecord(value.details)) return false;
-  return mode === "cards" ? isCardRow(value.details) : isNoteRow(value.details);
+  if (!optionalRequestId(value.requestId)) return false;
+  return mode === "cards" ? isSearchCardDetails(value.details) : isSearchNoteDetails(value.details);
 }
 
-function isCardRow(value: unknown): value is SearchCardRow {
+function isSearchCardRow(value: unknown): value is SearchCardRow {
   return isRecord(value)
     && decimalId(value.cardId)
     && decimalId(value.noteId)
     && decimalId(value.deckId)
     && decimalId(value.noteTypeId)
-    && typeof value.primaryText === "string"
     && typeof value.deckName === "string"
     && typeof value.noteTypeName === "string"
-    && Array.isArray(value.tagSummary)
-    && value.tagSummary.every((tag) => typeof tag === "string");
+    && integer(value.templateOrdinal)
+    && typeof value.templateName === "string"
+    && typeof value.primaryText === "string"
+    && isCardState(value.state)
+    && integer(value.due)
+    && integer(value.interval)
+    && integer(value.repetitions)
+    && integer(value.lapses)
+    && integer(value.flag)
+    && value.flag >= 0
+    && value.flag <= 7
+    && stringArray(value.tagSummary);
 }
 
-function isNoteRow(value: unknown): value is SearchNoteRow {
+function isSearchNoteRow(value: unknown): value is SearchNoteRow {
   return isRecord(value)
     && decimalId(value.noteId)
     && decimalId(value.noteTypeId)
     && typeof value.primaryText === "string"
     && typeof value.noteTypeName === "string"
     && nonNegativeInteger(value.cardCount)
-    && Array.isArray(value.tagSummary)
-    && value.tagSummary.every((tag) => typeof tag === "string")
-    && Array.isArray(value.deckSummary);
+    && stringArray(value.tagSummary)
+    && Array.isArray(value.deckSummary)
+    && value.deckSummary.every(isSearchDeckSummary);
+}
+
+function isSearchCardDetails(value: unknown): boolean {
+  return isSearchCardRow(value)
+    && isRecord(value)
+    && isSearchDeckSummary(value.deck)
+    && isNoteTypeSummary(value.noteType)
+    && isRecord(value.template)
+    && integer(value.template.ordinal)
+    && typeof value.template.name === "string"
+    && integer(value.queue)
+    && stringArray(value.tags);
+}
+
+function isSearchNoteDetails(value: unknown): boolean {
+  return isSearchNoteRow(value)
+    && isRecord(value)
+    && isNoteTypeSummary(value.noteType)
+    && Array.isArray(value.fields)
+    && value.fields.every((field) => isRecord(field) && typeof field.name === "string" && typeof field.value === "string")
+    && stringArray(value.tags)
+    && Array.isArray(value.cardReferences)
+    && value.cardReferences.every(isCardReference)
+    && typeof value.cardsTruncated === "boolean"
+    && typeof value.fieldsTruncated === "boolean"
+    && Array.isArray(value.deckSummaries)
+    && value.deckSummaries.every(isSearchDeckSummary);
+}
+
+function isSearchDeckSummary(value: unknown): boolean {
+  return isRecord(value) && decimalId(value.deckId) && typeof value.deckName === "string";
+}
+
+function isNoteTypeSummary(value: unknown): boolean {
+  return isRecord(value) && decimalId(value.noteTypeId) && typeof value.noteTypeName === "string";
+}
+
+function isCardReference(value: unknown): boolean {
+  return isRecord(value) && decimalId(value.cardId) && decimalId(value.deckId) && integer(value.templateOrdinal);
+}
+
+function isSearchSort(value: unknown): boolean {
+  return isRecord(value) && value.key === "entity_id" && (value.direction === "asc" || value.direction === "desc");
+}
+
+function isCardState(value: unknown): boolean {
+  return ["new", "learning", "review", "due", "suspended", "buried"].includes(String(value));
+}
+
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function optionalRequestId(value: unknown): boolean {
+  return value === undefined || (typeof value === "string" && /^[A-Za-z0-9._:-]{1,128}$/.test(value));
+}
+
+function isPageSize(value: unknown): value is 25 | 50 | 100 {
+  return value === 25 || value === 50 || value === 100;
 }
 
 function malformedResponseError(): SearchApiError {
@@ -129,13 +203,19 @@ function stringRecord(value: unknown): Record<string, string> | undefined {
 }
 
 function decimalId(value: unknown): value is string {
-  return typeof value === "string" && /^[1-9]\d{0,18}$/.test(value);
+  return typeof value === "string"
+    && /^[1-9]\d{0,18}$/.test(value)
+    && (value.length < 19 || value <= "9223372036854775807");
 }
 
-function positiveInteger(value: unknown): boolean {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
+function positiveInteger(value: unknown): value is number {
+  return integer(value) && value > 0;
 }
 
-function nonNegativeInteger(value: unknown): boolean {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+function nonNegativeInteger(value: unknown): value is number {
+  return integer(value) && value >= 0;
+}
+
+function integer(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value);
 }

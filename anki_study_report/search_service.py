@@ -79,9 +79,9 @@ def normalize_search_query_request(raw: object) -> dict[str, Any]:
     if page_size not in ALLOWED_PAGE_SIZES:
         errors["pageSize"] = f"Expected one of {list(ALLOWED_PAGE_SIZES)}."
         page_size = DEFAULT_PAGE_SIZE
-    max_page = math.ceil(RESULT_CAP / page_size)
-    if page > max_page:
-        errors["page"] = f"Page exceeds the maximum {max_page} for this page size."
+    page_limit = math.ceil(RESULT_CAP / page_size)
+    if page > page_limit:
+        errors["page"] = f"Page exceeds the maximum {page_limit} for this page size."
 
     request_id = raw.get("requestId")
     if request_id is not None and (not isinstance(request_id, str) or not REQUEST_ID_PATTERN.fullmatch(request_id)):
@@ -135,6 +135,7 @@ def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
     ids = sorted({_coerce_entity_id(value) for value in found}, reverse=request["sort"]["direction"] == "desc")
     truncated = len(ids) > RESULT_CAP
     bounded_ids = ids[:RESULT_CAP]
+    bounded_total = len(bounded_ids)
     page = request["page"]
     page_size = request["pageSize"]
     offset = (page - 1) * page_size
@@ -149,10 +150,11 @@ def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
         "items": items,
         "page": page,
         "pageSize": page_size,
-        "maxPage": math.ceil(RESULT_CAP / page_size),
+        "pageCount": math.ceil(bounded_total / page_size),
+        "pageLimit": math.ceil(RESULT_CAP / page_size),
         "returnedCount": len(items),
-        "boundedTotal": len(bounded_ids),
-        "hasNext": offset + len(items) < len(bounded_ids),
+        "boundedTotal": bounded_total,
+        "hasNext": offset + len(items) < bounded_total,
         "truncated": truncated,
         "sort": dict(request["sort"]),
     }
