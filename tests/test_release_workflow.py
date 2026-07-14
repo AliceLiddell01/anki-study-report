@@ -84,3 +84,25 @@ def test_real_anki_runner_accepts_and_evidences_prebuilt_package() -> None:
     assert "package_addon.py" in shell
     assert "e2e-artifacts/package/anki_study_report.ankiaddon" in workflow
     assert "not the exact release artifact" in workflow
+
+
+def test_draft_and_finalize_reports_survive_failures_without_secret_scope() -> None:
+    text = workflow_text()
+    draft = job(text, "github-draft", "ankiweb-publish")
+    finalize = job(text, "github-finalize")
+    assert "github-draft-report-${{ github.run_id }}-${{ github.run_attempt }}" in draft
+    assert "github-finalize-report-${{ github.run_id }}-${{ github.run_attempt }}" in finalize
+    assert draft.count("if: always()") == 1
+    assert finalize.count("if: always()") >= 1
+    assert "secrets." not in draft
+    assert "secrets." not in finalize
+
+
+def test_finalization_rechecks_exact_bundle_and_commit() -> None:
+    text = workflow_text()
+    finalize = job(text, "github-finalize")
+    assert "- build" in finalize
+    assert "actions/download-artifact@" in finalize
+    assert "needs.build.outputs.artifact_sha256" in finalize
+    assert "--bundle release-artifacts" in finalize
+    assert "--commit-sha '${{ github.sha }}'" in finalize
