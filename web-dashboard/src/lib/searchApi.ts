@@ -2,6 +2,8 @@ import type {
   SearchCardRow,
   SearchInspectRequest,
   SearchInspectResponse,
+  SearchMetadataRequest,
+  SearchMetadataResponse,
   SearchMode,
   SearchNoteRow,
   SearchQueryRequest,
@@ -33,6 +35,17 @@ export async function fetchSearchQuery<M extends SearchMode>(
     throw malformedResponseError();
   }
   return value as SearchQueryResponse<M>;
+}
+
+export async function fetchSearchMetadata(
+  request: SearchMetadataRequest,
+  signal?: AbortSignal,
+): Promise<SearchMetadataResponse> {
+  const value = await postSearch("/api/search/query", request, signal);
+  if (!isSearchMetadataResponse(value)) {
+    throw malformedResponseError();
+  }
+  return value;
 }
 
 export async function fetchSearchInspect<M extends SearchMode>(
@@ -90,10 +103,34 @@ function isSearchQueryResponse(value: unknown, mode: SearchMode): value is Searc
   return value.items.every((item) => mode === "cards" ? isSearchCardRow(item) : isSearchNoteRow(item));
 }
 
+function isSearchMetadataResponse(value: unknown): value is SearchMetadataResponse {
+  if (!isRecord(value) || value.schemaVersion !== 1 || value.kind !== "metadata") return false;
+  if (!Array.isArray(value.decks) || !value.decks.every(isSearchMetadataDeck)) return false;
+  if (!Array.isArray(value.noteTypes) || !value.noteTypes.every(isSearchMetadataNoteType)) return false;
+  if (value.decks.length > 5000 || value.noteTypes.length > 1000) return false;
+  if (typeof value.decksTruncated !== "boolean" || typeof value.noteTypesTruncated !== "boolean") return false;
+  return optionalRequestId(value.requestId);
+}
+
 function isSearchInspectResponse(value: unknown, mode: SearchMode): value is SearchInspectResponse {
   if (!isRecord(value) || value.schemaVersion !== 1 || value.mode !== mode || !isRecord(value.details)) return false;
   if (!optionalRequestId(value.requestId)) return false;
   return mode === "cards" ? isSearchCardDetails(value.details) : isSearchNoteDetails(value.details);
+}
+
+function isSearchMetadataDeck(value: unknown): boolean {
+  return isRecord(value)
+    && decimalId(value.deckId)
+    && typeof value.deckName === "string"
+    && value.deckName.length <= 500
+    && typeof value.filtered === "boolean";
+}
+
+function isSearchMetadataNoteType(value: unknown): boolean {
+  return isRecord(value)
+    && decimalId(value.noteTypeId)
+    && typeof value.noteTypeName === "string"
+    && value.noteTypeName.length <= 500;
 }
 
 function isSearchCardRow(value: unknown): value is SearchCardRow {
