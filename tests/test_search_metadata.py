@@ -66,8 +66,17 @@ def test_metadata_returns_sorted_bounded_all_collection_catalogs():
     }
 
 
-def test_normal_query_requests_delegate_to_the_existing_contract(monkeypatch):
-    normalized = {"mode": "cards", "query": "", "filters": [], "sort": {"key": "entity_id", "direction": "asc"}, "page": 1, "pageSize": 25}
-    monkeypatch.setattr(metadata, "normalize_search_query_request", lambda raw: normalized)
+def test_normal_query_requests_delegate_raw_contract_without_double_normalization(monkeypatch):
+    raw = {
+        "mode": "cards",
+        "query": "",
+        "filters": [
+            {"type": "deck", "deckId": "10"},
+            {"type": "note_type", "noteTypeId": "7"},
+        ],
+        "sort": {"key": "entity_id", "direction": "asc"},
+        "page": 1,
+        "pageSize": 25,
+    }
     monkeypatch.setattr(metadata, "execute_search_query", lambda col, request: {"delegated": request})
-    assert metadata.execute_search_request(object(), {"mode": "cards"}) == {"delegated": normalized}
+    assert metadata.execute_search_request(object(), raw) == {"delegated": raw}
