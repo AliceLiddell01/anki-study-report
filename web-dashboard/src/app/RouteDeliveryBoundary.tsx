@@ -1,5 +1,6 @@
 import { AlertTriangle, LoaderCircle, RefreshCw } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 interface RouteDeliveryBoundaryProps {
   children: ReactNode;
@@ -32,28 +33,30 @@ export class RouteDeliveryBoundary extends Component<RouteDeliveryBoundaryProps,
 }
 
 export function RouteLoading() {
+  const { t } = useTranslation("pages");
   return (
     <section className="route-delivery-state panel-surface" role="status" data-testid="route-loading">
       <span className="route-delivery-icon is-loading" aria-hidden="true"><LoaderCircle size={24} /></span>
       <div>
         <span className="statistics-section-marker">Anki Study Report</span>
-        <h1>Открываем раздел</h1>
-        <p>Загружаем только необходимые для этой страницы компоненты.</p>
+        <h1>{t("delivery.loadingTitle")}</h1>
+        <p>{t("delivery.loadingDescription")}</p>
       </div>
     </section>
   );
 }
 
 export function RouteLoadError() {
+  const { t } = useTranslation(["pages", "common"]);
   return (
     <section className="route-delivery-state is-error panel-surface" role="alert" data-testid="route-load-error">
       <span className="route-delivery-icon" aria-hidden="true"><AlertTriangle size={24} /></span>
       <div>
-        <span className="statistics-section-marker">Раздел не загружен</span>
-        <h1>Не удалось открыть страницу</h1>
-        <p>Один из файлов dashboard недоступен. Перезагрузите страницу, чтобы запросить его снова.</p>
+        <span className="statistics-section-marker">{t("delivery.errorMarker")}</span>
+        <h1>{t("delivery.errorTitle")}</h1>
+        <p>{t("delivery.errorDescription")}</p>
         <button className="primary-button" type="button" onClick={() => window.location.reload()}>
-          <RefreshCw size={16} /> Перезагрузить dashboard
+          <RefreshCw size={16} /> {t("actions.reload", { ns: "common" })}
         </button>
       </div>
     </section>

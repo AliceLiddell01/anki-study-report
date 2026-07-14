@@ -1,10 +1,13 @@
 import type { CalendarDayStats, CalendarInsight, StreakInfo, StudyReport } from "../types/report";
+import i18n from "../i18n";
+import { localeForLanguage } from "../i18n/language";
 import { addDays, compareDateKeys, enumerateDateKeys, formatShortDate, isDateKey, monthKey, todayDateKey } from "./dateUtils";
 import { finiteNullableNumber, finiteNumber } from "./formatters";
 
 export type CalendarMetric = "reviews" | "study_time" | "new_cards" | "pass_rate" | "forecast";
 export type CalendarPeriod = "30" | "90" | "year";
 export type CalendarHealthStatus = "stable" | "inconsistent" | "overload_risk" | "insufficient_data";
+const activityCopy = (key: string, options?: Record<string, unknown>) => i18n.t(`activity.insights.${key}`, { ns: "pages", ...options });
 
 export interface CalendarSummary {
   currentStreak: number | null;
@@ -325,8 +328,8 @@ function buildInsights(
     return [
       {
         tone: "neutral",
-        title: "Данных пока мало",
-        text: "Календарь станет полезнее после нескольких дней учёбы.",
+        title: activityCopy("littleTitle"),
+        text: activityCopy("littleText"),
       },
     ];
   }
@@ -336,16 +339,16 @@ function buildInsights(
   const insights: CalendarInsight[] = [
     {
       tone: activeLast7 >= 5 ? "positive" : "warning",
-      title: activeLast7 >= 5 ? "Регулярная неделя" : "Есть пропуски",
-      text: `Вы учились ${activeLast7} дней из последних ${last7.length}.`,
+      title: activeLast7 >= 5 ? activityCopy("regular") : activityCopy("gaps"),
+      text: activityCopy("days", { active: activeLast7, total: last7.length }),
     },
   ];
 
   if (summary.mostProductiveDay) {
     insights.push({
       tone: "positive",
-      title: "Самый продуктивный день месяца",
-      text: `${formatShortDate(summary.mostProductiveDay.date)} - ${summary.mostProductiveDay.reviews.toLocaleString("ru-RU")} повторений.`,
+      title: activityCopy("productive"),
+      text: activityCopy("productiveText", { date: formatShortDate(summary.mostProductiveDay.date), count: summary.mostProductiveDay.reviews.toLocaleString(localeForLanguage(i18n.language)) }),
     });
   }
 
@@ -353,28 +356,28 @@ function buildInsights(
   if (weekDelta !== null && weekDelta !== undefined && Number.isFinite(weekDelta)) {
     insights.push({
       tone: weekDelta >= 10 ? "positive" : weekDelta <= -20 ? "warning" : "neutral",
-      title: weekDelta >= 10 ? "Неделя активнее прошлой" : weekDelta <= -20 ? "Неделя тише прошлой" : "Неделя около нормы",
+      title: weekDelta >= 10 ? activityCopy("weekActive") : weekDelta <= -20 ? activityCopy("weekQuiet") : activityCopy("weekNormal"),
       text:
         weekDelta >= 10
-          ? "На этой неделе активность выше прошлой."
+          ? activityCopy("activeText")
           : weekDelta <= -20
-            ? "На этой неделе повторений заметно меньше, чем на прошлой."
-            : "Текущая неделя близка к прошлой по объёму.",
+            ? activityCopy("quietText")
+            : activityCopy("normalText"),
     });
   }
 
   if (status === "overload_risk") {
     insights.push({
       tone: "warning",
-      title: "Риск перегруза",
-      text: "В ближайшие дни forecast заметно выше обычной активности.",
+      title: activityCopy("overload"),
+      text: activityCopy("overloadText"),
     });
   } else if (futureDays.length) {
     const nextDue = futureDays.slice(0, 7).reduce((sum, day) => sum + normalizeCount(day.dueForecast), 0);
     insights.push({
       tone: "neutral",
-      title: "Forecast на неделю",
-      text: `В ближайшие 7 дней ожидается около ${nextDue.toLocaleString("ru-RU")} due cards.`,
+      title: activityCopy("forecast"),
+      text: activityCopy("forecastText", { count: nextDue.toLocaleString(localeForLanguage(i18n.language)) }),
     });
   }
 
@@ -413,8 +416,8 @@ function emptyCalendarModel(today: string, period: CalendarPeriod): CalendarMode
     insights: [
       {
         tone: "neutral",
-        title: "Недостаточно истории для календаря",
-        text: "Данные появятся после накопления дневной статистики.",
+        title: activityCopy("emptyTitle"),
+        text: activityCopy("emptyText"),
       },
     ],
     metricAvailability: {
@@ -444,10 +447,10 @@ function resolveTodayKey(report: StudyReport | null, todayOverride?: string): st
 
 function calendarStatusText(status: CalendarHealthStatus): string {
   return {
-    stable: "Стабильная неделя: вы учились большую часть последних дней.",
-    inconsistent: "Есть пропуски: регулярность пока нестабильная.",
-    overload_risk: "Возможен перегруз: ближайшая очередь выше обычной.",
-    insufficient_data: "Пока мало данных для оценки регулярности.",
+    stable: activityCopy("stableStatus"),
+    inconsistent: activityCopy("inconsistentStatus"),
+    overload_risk: activityCopy("overloadStatus"),
+    insufficient_data: activityCopy("insufficientStatus"),
   }[status];
 }
 

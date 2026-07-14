@@ -19,8 +19,8 @@ export function calibrationVerdict(
   if (sufficiency === "insufficient") {
     return {
       tone: "neutral",
-      title: "Пока рано оценивать точность модели",
-      detail: "Достаточных интервалов мало, поэтому расхождение не превращается в сильный вывод.",
+      title: tf("calibration.earlyTitle"),
+      detail: tf("calibration.earlyDetail"),
       weightedGap: null,
     };
   }
@@ -34,8 +34,8 @@ export function calibrationVerdict(
   if (!sampleSize) {
     return {
       tone: "neutral",
-      title: "Вывод по калибровке недоступен",
-      detail: "В ответе нет интервалов с достаточной выборкой и парой прогноз/факт.",
+      title: tf("calibration.unavailableTitle"),
+      detail: tf("calibration.unavailableDetail"),
       weightedGap: null,
     };
   }
@@ -46,23 +46,23 @@ export function calibrationVerdict(
   if (Math.abs(weightedGap) <= 0.02) {
     return {
       tone: "positive",
-      title: "Прогноз близок к фактическому удержанию",
-      detail: "Среднее взвешенное расхождение достаточных интервалов не превышает 2 процентных пунктов.",
+      title: tf("calibration.closeTitle"),
+      detail: tf("calibration.closeDetail"),
       weightedGap,
     };
   }
   if (weightedGap < 0) {
     return {
       tone: "warning",
-      title: "Модель выглядит оптимистичной",
-      detail: "В достаточных интервалах фактическое удержание в среднем ниже прогноза FSRS.",
+      title: tf("calibration.optimisticTitle"),
+      detail: tf("calibration.optimisticDetail"),
       weightedGap,
     };
   }
   return {
     tone: "neutral",
-    title: "Модель выглядит консервативной",
-    detail: "В достаточных интервалах фактическое удержание в среднем выше прогноза FSRS.",
+    title: tf("calibration.conservativeTitle"),
+    detail: tf("calibration.conservativeDetail"),
     weightedGap,
   };
 }
@@ -77,11 +77,11 @@ export interface SimulatorValues {
 
 export function simulatorFieldErrors(values: SimulatorValues): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (!bounded(values.desiredRetention, 0.75, 0.99)) errors.desiredRetention = "От 75% до 99%.";
-  if (![90, 180, 365].includes(values.horizonDays)) errors.horizonDays = "Выберите 90, 180 или 365 дней.";
-  if (!whole(values.additionalNewCards, 0, 100_000)) errors.additionalNewCards = "От 0 до 100 000 карточек.";
-  if (!whole(values.newCardsPerDay, 0, 1_000)) errors.newCardsPerDay = "От 0 до 1 000 карточек в день.";
-  if (!whole(values.maximumReviewsPerDay, 1, 10_000)) errors.maximumReviewsPerDay = "От 1 до 10 000 повторений.";
+  if (!bounded(values.desiredRetention, 0.75, 0.99)) errors.desiredRetention = tf("validation.desiredRetention");
+  if (![90, 180, 365].includes(values.horizonDays)) errors.horizonDays = tf("validation.horizonDays");
+  if (!whole(values.additionalNewCards, 0, 100_000)) errors.additionalNewCards = tf("validation.additionalNewCards");
+  if (!whole(values.newCardsPerDay, 0, 1_000)) errors.newCardsPerDay = tf("validation.newCardsPerDay");
+  if (!whole(values.maximumReviewsPerDay, 1, 10_000)) errors.maximumReviewsPerDay = tf("validation.maximumReviewsPerDay");
   return errors;
 }
 
@@ -99,3 +99,6 @@ function bounded(value: number, min: number, max: number): boolean {
 function whole(value: number, min: number, max: number): boolean {
   return bounded(value, min, max) && Number.isInteger(value);
 }
+import i18n from "../i18n";
+
+const tf = (key: string) => i18n.t(key, { ns: "fsrs" });

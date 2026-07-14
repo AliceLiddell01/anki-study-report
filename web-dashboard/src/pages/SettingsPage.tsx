@@ -1,5 +1,8 @@
 import { Database, RefreshCw, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
+import { localeForLanguage } from "../i18n/language";
 import { CheckboxControl, SettingRow, SettingsFormActions, SettingsSection } from "../components/SettingsControls";
 import { cardAttentionState } from "../lib/cardAttention";
 import { formatInteger, safeText } from "../lib/formatters";
@@ -7,6 +10,7 @@ import { usePublicSettingsForm } from "../lib/settingsApi";
 import type { StudyReport, StatsCacheSummary, StatsCacheStatus } from "../types/report";
 
 function SettingsPage({ report }: { report: StudyReport | null }) {
+  const { t } = useTranslation(["pages", "common"]);
   const [cache, setCache] = useState<StatsCacheSummary | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [actionState, setActionState] = useState<"idle" | "refreshing" | "rebuilding">("idle");
@@ -31,9 +35,9 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       })
       .catch((error: Error) => {
         setLoadState("error");
-        setMessage(error.message === "forbidden" ? "Недействительный dashboard token." : "Не удалось загрузить статус.");
+        setMessage(error.message === "forbidden" ? t("dataSettings.invalidToken") : t("dataSettings.statusLoadFailed"));
       });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +58,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
   const runAction = (action: "refresh" | "rebuild") => {
     if (action === "rebuild" && !confirmRebuild) {
       setConfirmRebuild(true);
-      setMessage("Подтвердите перестроение кэша: операция пересчитает всю историю.");
+      setMessage(t("dataSettings.rebuildConfirmMessage"));
       return;
     }
     setConfirmRebuild(false);
@@ -83,14 +87,14 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
         if (result.error) {
           setMessage(result.error);
         } else if (result.alreadyBuilding) {
-          setMessage(result.message || "Операция с кэшем уже выполняется.");
+          setMessage(result.message || t("dataSettings.alreadyRunning"));
         } else {
           setMessage(result.message || actionMessage(result.status, result.addedRows));
         }
         return loadCacheStatus();
       })
       .catch((error: Error) => {
-        setMessage(error.message === "forbidden" ? "Недействительный dashboard token." : "Не удалось выполнить действие.");
+        setMessage(error.message === "forbidden" ? t("dataSettings.invalidToken") : t("dataSettings.actionFailed"));
       })
       .finally(() => setActionState("idle"));
   };
@@ -104,8 +108,8 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       : [];
   const reportCache = report?.cache;
   const reportSource = sourceLabel(report?.dataSource ?? reportCache?.dataSource ?? "legacy");
-  const reportUsedFor = reportCache?.usedFor?.length ? reportCache.usedFor.join(", ") : "нет";
-  const reportFallback = reportCache?.fallbackReason || "нет";
+  const reportUsedFor = reportCache?.usedFor?.length ? reportCache.usedFor.join(", ") : t("dataSettings.none");
+  const reportFallback = reportCache?.fallbackReason || t("dataSettings.none");
   const reportFlag = cache?.useStatsCacheForReport ?? reportCache?.useStatsCacheForReport ?? false;
   const parityMismatches = report?.cacheDebug?.mismatches?.length ?? 0;
   const cardLevel = cardAttentionState(report);
@@ -116,9 +120,9 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill status-${statusTone(status)}`}>{cacheStatusLabel(status)}</span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Данные</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">{t("dataSettings.title")}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-              Сбор данных, источник времени и локальный кэш статистики.
+              {t("dataSettings.description")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -127,46 +131,46 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
               className="inline-flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-800 px-3 py-2 text-sm font-medium text-report-text transition hover:border-report-blue/55 disabled:cursor-not-allowed disabled:opacity-55"
               disabled={isBusy}
               onClick={() => runAction("refresh")}
-              title="Обновить инкрементально"
+              title={t("dataSettings.refreshIncremental")}
             >
               <RefreshCw size={16} aria-hidden="true" />
-              Обновить инкрементально
+              {t("dataSettings.refreshIncremental")}
             </button>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg border border-report-warning/35 bg-report-warning/10 px-3 py-2 text-sm font-medium text-report-warning transition hover:border-report-warning/70 disabled:cursor-not-allowed disabled:opacity-55"
               disabled={isBusy}
               onClick={() => runAction("rebuild")}
-              title="Пересобрать кэш за всё время"
+              title={t("dataSettings.rebuildAll")}
             >
               <RotateCcw size={16} aria-hidden="true" />
-              {confirmRebuild ? "Подтвердить перестроение" : "Перестроить кэш"}
+              {confirmRebuild ? t("dataSettings.confirmRebuild") : t("dataSettings.rebuild")}
             </button>
           </div>
         </div>
         {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
       </section>
 
-      <SettingsSection title="Сбор и использование данных" description="Параметры локального учёта времени и использования stats cache.">
-        <SettingRow id="track-sessions" label="Отслеживать review-сессии" description="Сохранять локальные интервалы активности между ответами в Anki.">
+      <SettingsSection title={t("dataSettings.collectionTitle")} description={t("dataSettings.collectionDescription")}>
+        <SettingRow id="track-sessions" label={t("dataSettings.trackSessions")} description={t("dataSettings.trackSessionsDescription")}>
           <CheckboxControl id="track-sessions" checked={dataSettings.trackReviewerSessions} onChange={(trackReviewerSessions) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, trackReviewerSessions } }))} />
         </SettingRow>
-        <SettingRow id="session-idle" label="Тайм-аут сессии" description="После этого простоя начинается новая сессия. Допустимо 60–86400 секунд." error={settingsForm.fieldErrors["data.sessionIdleTimeoutSeconds"]}>
+        <SettingRow id="session-idle" label={t("dataSettings.sessionTimeout")} description={t("dataSettings.sessionTimeoutDescription")} error={settingsForm.fieldErrors["data.sessionIdleTimeoutSeconds"]}>
           <div className="flex items-center gap-2">
             <input id="session-idle" type="number" min={60} max={86400} className="form-control w-full px-3 py-2.5 text-sm" value={dataSettings.sessionIdleTimeoutSeconds} disabled={!dataSettings.trackReviewerSessions} onChange={(event) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, sessionIdleTimeoutSeconds: Number(event.target.value) } }))} />
-            <span className="text-sm text-report-muted">сек</span>
+            <span className="text-sm text-report-muted">{t("units.secondsShort", { ns: "common", value: "" }).trim()}</span>
           </div>
         </SettingRow>
-        <SettingRow id="session-gap" label="Лимит интервала" description="Максимальная длительность одного учтённого промежутка. Не больше тайм-аута сессии." error={settingsForm.fieldErrors["data.sessionGapCapSeconds"]}>
+        <SettingRow id="session-gap" label={t("dataSettings.intervalLimit")} description={t("dataSettings.intervalLimitDescription")} error={settingsForm.fieldErrors["data.sessionGapCapSeconds"]}>
           <div className="flex items-center gap-2">
             <input id="session-gap" type="number" min={1} max={3600} className="form-control w-full px-3 py-2.5 text-sm" value={dataSettings.sessionGapCapSeconds} disabled={!dataSettings.trackReviewerSessions} onChange={(event) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, sessionGapCapSeconds: Number(event.target.value) } }))} />
-            <span className="text-sm text-report-muted">сек</span>
+            <span className="text-sm text-report-muted">{t("units.secondsShort", { ns: "common", value: "" }).trim()}</span>
           </div>
         </SettingRow>
-        <SettingRow id="study-time" label="Использовать Study Time Stats" description="Если встроенный tracker недоступен, использовать обнаруженный локальный источник времени.">
+        <SettingRow id="study-time" label={t("dataSettings.useStudyTime")} description={t("dataSettings.useStudyTimeDescription")}>
           <CheckboxControl id="study-time" checked={dataSettings.useStudyTimeStats} onChange={(useStudyTimeStats) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, useStudyTimeStats } }))} />
         </SettingRow>
-        <SettingRow id="cache-report" label="Использовать кэш для отчёта" description="Исторические activity/comparison читаются из локального cache; card-level данные остаются live.">
+        <SettingRow id="cache-report" label={t("dataSettings.useCache")} description={t("dataSettings.useCacheDescription")}>
           <CheckboxControl id="cache-report" checked={dataSettings.useStatsCacheForReport} onChange={(useStatsCacheForReport) => settingsForm.setDraft((current) => ({ ...current, data: { ...current.data, useStatsCacheForReport } }))} />
         </SettingRow>
       </SettingsSection>
@@ -174,39 +178,39 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
       <SettingsFormActions dirty={settingsForm.dirty} saving={settingsForm.saving} message={settingsForm.message} onSave={() => void settingsForm.save()} onCancel={settingsForm.cancel} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <CacheMetric label="Статус" value={cacheStatusLabel(cache?.status ?? loadState)} tone={statusTone(status)} />
-        <CacheMetric label="Дней в кэше" value={formatInteger(cache?.cachedDays ?? 0)} />
-        <CacheMetric label="Колода-дней" value={formatInteger(cache?.cachedDeckDays ?? 0)} />
-        <CacheMetric label="Последний revlog id" value={formatInteger(cache?.lastRevlogId ?? 0)} />
-        <CacheMetric label="Сборка" value={formatMilliseconds(cache?.lastBuildDurationMs)} />
-        <CacheMetric label="Обновление" value={formatMilliseconds(cache?.lastRefreshDurationMs)} />
-        <CacheMetric label="Новые строки" value={formatInteger(cache?.lastRefreshAddedRows ?? 0)} />
-        <CacheMetric label="Операция" value={status === "scheduled" || status === "building" ? "Выполняется..." : "Ожидание"} tone={statusTone(status)} />
+        <CacheMetric label={t("dataSettings.status")} value={cacheStatusLabel(cache?.status ?? loadState)} tone={statusTone(status)} />
+        <CacheMetric label={t("dataSettings.cachedDays")} value={formatInteger(cache?.cachedDays ?? 0)} />
+        <CacheMetric label={t("dataSettings.cachedDeckDays")} value={formatInteger(cache?.cachedDeckDays ?? 0)} />
+        <CacheMetric label={t("dataSettings.lastRevlog")} value={formatInteger(cache?.lastRevlogId ?? 0)} />
+        <CacheMetric label={t("dataSettings.build")} value={formatMilliseconds(cache?.lastBuildDurationMs)} />
+        <CacheMetric label={t("dataSettings.refresh")} value={formatMilliseconds(cache?.lastRefreshDurationMs)} />
+        <CacheMetric label={t("dataSettings.newRows")} value={formatInteger(cache?.lastRefreshAddedRows ?? 0)} />
+        <CacheMetric label={t("dataSettings.operation")} value={status === "scheduled" || status === "building" ? t("dataSettings.inProgress") : t("dataSettings.waiting")} tone={statusTone(status)} />
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
-        <h2 className="text-lg font-semibold tracking-normal text-report-text">Источник отчёта</h2>
+        <h2 className="text-lg font-semibold tracking-normal text-report-text">{t("dataSettings.reportSource")}</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <CacheDetail label="Режим" value={reportFlag ? "Кэш для исторических данных" : "Только legacy"} />
-          <CacheDetail label="Источник данных" value={reportSource} />
-          <CacheDetail label="Кэш используется для" value={reportUsedFor} />
+          <CacheDetail label={t("dataSettings.mode")} value={reportFlag ? t("dataSettings.cacheHistory") : t("dataSettings.legacyOnly")} />
+          <CacheDetail label={t("dataSettings.dataSource")} value={reportSource} />
+          <CacheDetail label={t("dataSettings.cacheUsedFor")} value={reportUsedFor} />
           <CacheDetail label="Fallback" value={reportFallback} />
-          <CacheDetail label="Parity check" value={report?.cacheDebug?.parityChecked ? `${formatInteger(parityMismatches)} расхождений` : "Не проверялось"} />
-          <CacheDetail label="Чтение кэша" value={formatMilliseconds(report?.performance?.cacheReadMs)} />
+          <CacheDetail label={t("dataSettings.parityCheck")} value={report?.cacheDebug?.parityChecked ? t("dataSettings.mismatch", { count: parityMismatches }) : t("dataSettings.notChecked")} />
+          <CacheDetail label={t("dataSettings.cacheRead")} value={formatMilliseconds(report?.performance?.cacheReadMs)} />
         </div>
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
-        <h2 className="text-lg font-semibold tracking-normal text-report-text">Card-level collector</h2>
+        <h2 className="text-lg font-semibold tracking-normal text-report-text">{t("dataSettings.cardCollector")}</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <CacheDetail label="Status" value={cardLevel.status} />
-          <CacheDetail label="Source" value={cardLevel.source} />
-          <CacheDetail label="Collector ran" value={formatBoolean(cardLevel.collectorRan)} />
-          <CacheDetail label="Collection available" value={formatBoolean(cardLevel.collectionAvailable)} />
-          <CacheDetail label="Scanned cards" value={formatNullableInteger(cardLevel.scannedCards)} />
-          <CacheDetail label="Candidate cards" value={formatNullableInteger(cardLevel.candidateCards)} />
-          <CacheDetail label="Revlog rows" value={formatNullableInteger(cardLevel.revlogRows)} />
-          <CacheDetail label="Returned cards" value={formatNullableInteger(cardLevel.returnedCards)} />
+          <CacheDetail label={t("dataSettings.status")} value={cardLevel.status} />
+          <CacheDetail label={t("dataSettings.source")} value={cardLevel.source} />
+          <CacheDetail label={t("dataSettings.collectorRan")} value={formatBoolean(cardLevel.collectorRan)} />
+          <CacheDetail label={t("dataSettings.collectionAvailable")} value={formatBoolean(cardLevel.collectionAvailable)} />
+          <CacheDetail label={t("dataSettings.scannedCards")} value={formatNullableInteger(cardLevel.scannedCards)} />
+          <CacheDetail label={t("dataSettings.candidateCards")} value={formatNullableInteger(cardLevel.candidateCards)} />
+          <CacheDetail label={t("dataSettings.revlogRows")} value={formatNullableInteger(cardLevel.revlogRows)} />
+          <CacheDetail label={t("dataSettings.returnedCards")} value={formatNullableInteger(cardLevel.returnedCards)} />
         </div>
         {cardLevel.reason ? (
           <p className="mt-4 rounded-lg border border-ink-700 bg-ink-900/45 px-3 py-2 text-sm leading-6 text-report-muted">
@@ -217,14 +221,14 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <div className="grid gap-3 md:grid-cols-2">
-          <CacheDetail label="Последнее обновление" value={formatUnixSeconds(cache?.updatedAt)} />
-          <CacheDetail label="Создан" value={formatUnixSeconds(cache?.createdAt)} />
-          <CacheDetail label="Версия" value={formatInteger(cache?.version ?? 0)} />
-          <CacheDetail label="Файл кэша" value={safeText(cache?.cachePath)} />
+          <CacheDetail label={t("dataSettings.lastUpdated")} value={formatUnixSeconds(cache?.updatedAt)} />
+          <CacheDetail label={t("dataSettings.created")} value={formatUnixSeconds(cache?.createdAt)} />
+          <CacheDetail label={t("dataSettings.version")} value={formatInteger(cache?.version ?? 0)} />
+          <CacheDetail label={t("dataSettings.cacheFile")} value={safeText(cache?.cachePath)} />
         </div>
         {status === "stale" ? (
           <div className="mt-4 rounded-lg border border-report-warning/35 bg-report-warning/10 p-3 text-sm leading-6 text-report-warning">
-            Схема кэша устарела или кэш не готов. Нужна пересборка.
+            {t("dataSettings.staleWarning")}
           </div>
         ) : null}
         {limitations.length > 0 ? (
@@ -246,7 +250,7 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
         ) : null}
         {cache?.lastError && cache.lastError !== cache.error ? (
           <div className="mt-4 rounded-lg border border-report-danger/25 bg-report-danger/5 p-3 text-sm leading-6 text-report-muted">
-            Последняя ошибка: {cache.lastError}
+            {t("dataSettings.lastError", { detail: cache.lastError })}
           </div>
         ) : null}
       </section>
@@ -331,21 +335,21 @@ function validReportDataSource(value: unknown): value is "legacy" | "cache" | "m
 
 function cacheStatusLabel(value: string): string {
   return {
-    ready: "готово",
-    scheduled: "запланировано",
-    building: "собирается",
-    stale: "устарел",
-    empty: "пусто",
-    error: "ошибка",
-    loading: "загрузка",
+    ready: i18n.t("dataSettings.statusReady", { ns: "pages" }),
+    scheduled: i18n.t("dataSettings.statusScheduled", { ns: "pages" }),
+    building: i18n.t("dataSettings.statusBuilding", { ns: "pages" }),
+    stale: i18n.t("dataSettings.statusStale", { ns: "pages" }),
+    empty: i18n.t("dataSettings.statusEmpty", { ns: "pages" }),
+    error: i18n.t("dataSettings.statusError", { ns: "pages" }),
+    loading: i18n.t("dataSettings.statusLoading", { ns: "pages" }),
   }[value] ?? value;
 }
 
 function sourceLabel(value: "legacy" | "cache" | "mixed" | string): string {
   return {
     legacy: "legacy",
-    cache: "кэш",
-    mixed: "смешанный",
+    cache: i18n.t("dataSettings.sourceCache", { ns: "pages" }),
+    mixed: i18n.t("dataSettings.sourceMixed", { ns: "pages" }),
   }[value] ?? value;
 }
 
@@ -367,12 +371,12 @@ function finiteNumberOrZero(value: unknown): number {
 }
 
 function formatNullableInteger(value: number | null): string {
-  return value === null ? "Нет данных" : formatInteger(value);
+  return value === null ? i18n.t("state.noData", { ns: "common" }) : formatInteger(value);
 }
 
 function formatBoolean(value: boolean | null): string {
   if (value === null) {
-    return "Нет данных";
+    return i18n.t("state.noData", { ns: "common" });
   }
   return value ? "true" : "false";
 }
@@ -380,38 +384,38 @@ function formatBoolean(value: boolean | null): string {
 function formatUnixSeconds(value: unknown): string {
   const seconds = finiteNumberOrZero(value);
   if (seconds <= 0) {
-    return "Нет данных";
+    return i18n.t("state.noData", { ns: "common" });
   }
   const date = new Date(seconds * 1000);
   if (Number.isNaN(date.getTime())) {
-    return "Нет данных";
+    return i18n.t("state.noData", { ns: "common" });
   }
-  return date.toLocaleString("ru-RU");
+  return date.toLocaleString(localeForLanguage(i18n.resolvedLanguage || i18n.language));
 }
 
 function formatMilliseconds(value: unknown): string {
   const milliseconds = finiteNumberOrZero(value);
   if (milliseconds <= 0) {
-    return "Нет данных";
+    return i18n.t("state.noData", { ns: "common" });
   }
   if (milliseconds < 1000) {
-    return `${milliseconds} мс`;
+    return i18n.t("units.millisecondsShort", { ns: "common", value: formatInteger(milliseconds) });
   }
-  return `${(milliseconds / 1000).toFixed(milliseconds < 10_000 ? 1 : 0)} сек`;
+  return i18n.t("units.secondsShort", { ns: "common", value: new Intl.NumberFormat(localeForLanguage(i18n.resolvedLanguage || i18n.language), { maximumFractionDigits: milliseconds < 10_000 ? 1 : 0 }).format(milliseconds / 1000) });
 }
 
 function actionMessage(status: StatsCacheStatus | undefined, addedRows: unknown): string {
   if (status === "scheduled") {
-    return "Операция с кэшем запланирована.";
+    return i18n.t("dataSettings.cacheScheduled", { ns: "pages" });
   }
   if (status === "building") {
-    return "Операция с кэшем выполняется.";
+    return i18n.t("dataSettings.cacheBuilding", { ns: "pages" });
   }
   if (status === "ready") {
     const rows = finiteNumberOrZero(addedRows);
-    return rows > 0 ? `Кэш обновлён: ${formatInteger(rows)} новых строк.` : "Статус кэша обновлён.";
+    return rows > 0 ? i18n.t("dataSettings.cacheUpdatedRows", { ns: "pages", count: formatInteger(rows) }) : i18n.t("dataSettings.cacheStatusUpdated", { ns: "pages" });
   }
-  return "Статус кэша обновлён.";
+  return i18n.t("dataSettings.cacheStatusUpdated", { ns: "pages" });
 }
 
 export default SettingsPage;

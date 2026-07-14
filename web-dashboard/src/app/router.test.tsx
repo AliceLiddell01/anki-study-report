@@ -10,11 +10,11 @@ afterEach(() => {
 describe("dashboard router", () => {
   it("advertises only supported product destinations", () => {
     expect(primaryNavItems).toEqual([
-      { path: "/home", label: "Сегодня" },
-      { path: "/calendar", label: "Активность" },
-      { path: "/stats", label: "Статистика" },
-      { path: "/decks", label: "Колоды" },
-      { path: "/cards", label: "Карточки" },
+      { path: "/home", labelKey: "primary.today" },
+      { path: "/calendar", labelKey: "primary.activity" },
+      { path: "/stats", labelKey: "primary.statistics" },
+      { path: "/decks", labelKey: "primary.decks" },
+      { path: "/cards", labelKey: "primary.cards" },
     ]);
     const primaryPaths: string[] = primaryNavItems.map((item) => item.path);
     for (const hiddenPath of [

@@ -21,6 +21,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Area,
   AreaChart,
@@ -46,6 +47,8 @@ import type {
   Status,
   StudyReport,
 } from "../types/report";
+import i18n from "../i18n";
+import { localeForLanguage } from "../i18n/language";
 
 const chartColors = {
   blue: "#3db4f2",
@@ -79,24 +82,10 @@ type SortDirection = "asc" | "desc";
 type DeckFilter = "all" | Status;
 export type LoadState = "loading" | "ready" | "empty" | "forbidden" | "error";
 
-const statusLabel: Record<Status, string> = {
-  good: "хорошо",
-  neutral: "инфо",
-  warning: "внимание",
-  danger: "опасно",
-};
-const comparisonStatusLabel: Record<"good" | "neutral" | "warning" | "danger", string> = {
-  good: "лучше нормы",
-  neutral: "норма",
-  warning: "внимание",
-  danger: "перегруз",
-};
-const comparisonPeriods: Array<{ key: ComparisonPeriod; label: string }> = [
-  { key: "yesterday", label: "Вчера" },
-  { key: "avg7", label: "7 дней" },
-  { key: "avg30", label: "30 дней" },
-  { key: "week", label: "Неделя" },
-];
+const comparisonPeriods: ComparisonPeriod[] = ["yesterday", "avg7", "avg30", "week"];
+const th = (key: string, options?: Record<string, unknown>) => i18n.t(`home.${key}`, { ns: "pages", ...options });
+const statusText = (status: Status) => th(`status.${status}`);
+const comparisonStatusText = (status: Status) => th(`status.${status === "good" ? "better" : status === "neutral" ? "normal" : status === "danger" ? "overload" : "warning"}`);
 
 const ReportContext = createContext<StudyReport | null>(null);
 
@@ -109,6 +98,7 @@ function useReport() {
 }
 
 function HomePage({ report, loadState }: { report: StudyReport | null; loadState: LoadState }) {
+  useTranslation("pages");
   if (loadState !== "ready" || !report) {
     return <EmptyDashboard state={loadState} />;
   }
@@ -148,19 +138,19 @@ function HomePage({ report, loadState }: { report: StudyReport | null; loadState
 function EmptyDashboard({ state }: { state: LoadState }) {
   const isLoading = state === "loading";
   const title = isLoading
-    ? "Загрузка отчёта"
+    ? th("empty.loadingTitle")
     : state === "empty"
-      ? "Отчёт ещё не опубликован"
+      ? th("empty.emptyTitle")
       : state === "forbidden"
-        ? "Недействительная ссылка дашборда"
-      : "Не удалось загрузить отчёт";
+        ? th("empty.forbiddenTitle")
+      : th("empty.errorTitle");
   const text = isLoading
-    ? "Проверяю локальный API дашборда."
+    ? th("empty.loadingText")
     : state === "empty"
-      ? "Откройте основное окно Anki Study Report и нажмите “Открыть этот отчёт в дашборде”."
+      ? th("empty.emptyText")
       : state === "forbidden"
-        ? "Недействительная ссылка дашборда. Откройте дашборд из Anki Study Report."
-      : "Локальный API дашборда не вернул отчёт. Попробуйте опубликовать отчёт ещё раз.";
+        ? th("empty.forbiddenText")
+      : th("empty.errorText");
 
   return (
     <section className="mx-auto max-w-2xl rounded-xl border border-dashed border-ink-700 bg-ink-850 p-6 text-center shadow-panel">
@@ -173,7 +163,7 @@ function EmptyDashboard({ state }: { state: LoadState }) {
 function Header() {
   const { metadata } = useReport();
   const deckScope = deckScopeSummary(metadata);
-  const filtered = deckScope.summary !== "Все колоды";
+  const filtered = deckScope.summary !== th("header.allDecks");
 
   return (
     <header className="rounded-xl border border-ink-700/90 bg-ink-850/95 px-4 py-4 shadow-panel sm:px-5">
@@ -181,12 +171,12 @@ function Header() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold tracking-normal text-report-text sm:text-2xl">
-              Сегодня
+              {th("header.title")}
             </h1>
-            <StatusPill status="warning">личная статистика</StatusPill>
+            <StatusPill status="warning">{th("header.badge")}</StatusPill>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-            Текущий локальный день{metadata.todayDate ? ` · ${metadata.todayDate}` : ""}.
+            {th("header.localDay", { date: metadata.todayDate ? ` · ${metadata.todayDate}` : "" })}
           </p>
         </div>
         {filtered ? (
@@ -207,23 +197,23 @@ function HeroSummary() {
     <section className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
       <div className="hero-surface rounded-xl border border-ink-700 p-5 shadow-glow">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill status={summary.riskLevel}>риск: {statusLabel[summary.riskLevel]}</StatusPill>
+          <StatusPill status={summary.riskLevel}>{th("hero.risk", { status: statusText(summary.riskLevel) })}</StatusPill>
           <StatusPill status="neutral">Pass/Fail</StatusPill>
         </div>
         <p className="mt-5 max-w-5xl text-2xl font-semibold leading-snug tracking-normal text-report-text lg:text-3xl">
           {summary.verdict}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <HeroNote title="Главное действие" text={summary.mainAction} status="good" />
-          <HeroNote title="Что тревожит" text={humanizeUiText(summary.warning)} status="danger" />
-          <HeroNote title="Новые карточки" text={summary.newCardsAdvice} status="warning" />
+          <HeroNote title={th("hero.mainAction")} text={summary.mainAction} status="good" />
+          <HeroNote title={th("hero.warning")} text={humanizeUiText(summary.warning)} status="danger" />
+          <HeroNote title={th("hero.newCards")} text={summary.newCardsAdvice} status="warning" />
         </div>
       </div>
       <div className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-report-muted">Что делать дальше</p>
-            <h2 className="mt-1 text-lg font-semibold">Стабилизировать качество</h2>
+            <p className="text-sm text-report-muted">{th("hero.next")}</p>
+            <h2 className="mt-1 text-lg font-semibold">{th("hero.stabilize")}</h2>
           </div>
           <div className="rounded-lg bg-report-blue/15 p-3 text-report-blue">
             <Brain size={24} />
@@ -279,7 +269,7 @@ function AnswerDistribution() {
   const fail = data.find((item) => item.label === "Fail")?.value ?? 0;
 
   return (
-    <Panel title="Качество ответов" action={<StatusPill status="neutral">ответы</StatusPill>}>
+    <Panel title={th("answers.title")} action={<StatusPill status="neutral">{th("answers.badge")}</StatusPill>}>
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(240px,1fr)] lg:items-center">
         <div className="h-[min(340px,58vw)] min-h-[260px] max-h-[340px] min-w-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -306,7 +296,7 @@ function AnswerDistribution() {
             </div>
           ))}
           <p className="rounded-lg border border-report-warning/35 bg-report-warning/10 p-3 text-sm leading-6 text-report-text">
-            Pass {formatPercent(pass / total)}, Fail {formatPercent(fail / total)}. Главная проблема не в объеме, а в качестве ответов на нескольких колодах.
+            {th("answers.summary", { pass: formatPercent(pass / total), fail: formatPercent(fail / total) })}
           </p>
         </div>
       </div>
@@ -321,10 +311,10 @@ function ProgressComparisonSection() {
   const baseline = period === "week" ? comparison.baselines.previousWeek : comparison.baselines[period];
   const delta = period === "week" ? comparison.comparisons.week : comparison.comparisons[period];
   const status = comparisonStatus(current, baseline, delta, comparison.available);
-  const title = period === "week" ? "Эта неделя против прошлой" : `Сегодня против ${baseline.label || "нормы"}`;
+  const title = period === "week" ? th("comparison.weekTitle") : th("comparison.todayTitle", { baseline: baseline.label || th("comparison.baseline") });
 
   return (
-    <Panel title="Почему так" action={<StatusPill status={status}>{comparisonStatusLabel[status]}</StatusPill>}>
+    <Panel title={th("comparison.title")} action={<StatusPill status={status}>{comparisonStatusText(status)}</StatusPill>}>
       {comparison.available ? (
         <div className="grid gap-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -337,44 +327,44 @@ function ProgressComparisonSection() {
             <div className="nested-surface grid grid-cols-4 gap-1 rounded-lg border border-ink-700 p-1">
               {comparisonPeriods.map((item) => (
                 <button
-                  key={item.key}
+                  key={item}
                   type="button"
-                  onClick={() => setPeriod(item.key)}
+                  onClick={() => setPeriod(item)}
                   className={`rounded-md px-3 py-2 text-sm transition ${
-                    period === item.key
+                    period === item
                       ? "bg-report-blue/20 text-report-blue"
                       : "text-report-muted hover:bg-ink-800 hover:text-report-text"
                   }`}
                 >
-                  {item.label}
+                  {th(`periods.${item}`)}
                 </button>
               ))}
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <ComparisonMiniStat
-              label="Повторения"
+              label={th("comparison.reviews")}
               value={formatCount(current.reviews)}
               delta={formatCountDelta(delta.reviews.delta)}
               detail={formatPercentDelta(delta.reviews.percentDelta)}
               tone={deltaTone(delta.reviews.delta, "moreIsGood")}
             />
             <ComparisonMiniStat
-              label="Учёба"
+              label={th("comparison.study")}
               value={formatMinutes(current.studyMinutes)}
               delta={formatMinuteDelta(delta.studyMinutes.delta)}
               detail={formatPercentDelta(delta.studyMinutes.percentDelta)}
               tone="neutral"
             />
             <ComparisonMiniStat
-              label="Успешность"
+              label={th("comparison.success")}
               value={formatNullablePercent(current.passRate)}
               delta={formatPointDelta(delta.passRate.deltaPp)}
-              detail="процентные пункты"
+              detail={th("comparison.percentagePoints")}
               tone={deltaTone(delta.passRate.deltaPp, "moreIsGood")}
             />
             <ComparisonMiniStat
-              label="Новые"
+              label={th("comparison.new")}
               value={formatCount(current.newCards)}
               delta={formatCountDelta(delta.newCards.delta)}
               detail={formatPercentDelta(delta.newCards.percentDelta)}
@@ -394,15 +384,15 @@ function ProgressComparisonSection() {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <MiniStat label="Ошибки" value={formatNullablePercent(current.failRate)} tone={deltaTone(delta.failRate.deltaPp, "lessIsGood")} />
-              <MiniStat label="Средний ответ" value={formatSeconds(current.avgAnswerSeconds)} />
-              <MiniStat label="Активные колоды" value={formatCount(current.activeDecks)} />
-              <MiniStat label="Норма" value={baseline.reviews > 0 ? formatCount(baseline.reviews) : "Нет данных"} />
+              <MiniStat label={th("comparison.failures")} value={formatNullablePercent(current.failRate)} tone={deltaTone(delta.failRate.deltaPp, "lessIsGood")} />
+              <MiniStat label={th("comparison.averageAnswer")} value={formatSeconds(current.avgAnswerSeconds)} />
+              <MiniStat label={th("comparison.activeDecks")} value={formatCount(current.activeDecks)} />
+              <MiniStat label={th("comparison.norm")} value={baseline.reviews > 0 ? formatCount(baseline.reviews) : th("comparison.noData")} />
             </div>
           </div>
         </div>
       ) : (
-        <EmptyState title="История ещё короткая" text={comparison.message || "Недостаточно истории для сравнения. Данные начнут появляться после нескольких дней учёбы."} />
+        <EmptyState title={th("comparison.shortTitle")} text={comparison.message || th("comparison.shortText")} />
       )}
     </Panel>
   );
@@ -424,15 +414,15 @@ function ActivitySection() {
 
   return (
     <Panel
-      title="Активность"
+      title={th("activity.title")}
       action={
         <div className="flex items-center gap-2">
           <button
             type="button"
             className="form-control inline-flex h-9 w-9 items-center justify-center text-report-muted hover:text-report-text"
             onClick={() => setSelectedYear((year) => year - 1)}
-            title="Предыдущий год"
-            aria-label="Предыдущий год heatmap"
+            title={th("activity.previous")}
+            aria-label={th("activity.previousAria")}
           >
             <ChevronLeft size={16} aria-hidden="true" />
           </button>
@@ -440,7 +430,7 @@ function ActivitySection() {
             value={selectedYear}
             onChange={(event) => setSelectedYear(Number(event.target.value))}
             className="form-control h-9 px-3 text-sm"
-            aria-label="Год heatmap"
+            aria-label={th("activity.yearAria")}
           >
             {years.map((year) => (
               <option key={year} value={year}>{year}</option>
@@ -450,8 +440,8 @@ function ActivitySection() {
             type="button"
             className="form-control inline-flex h-9 w-9 items-center justify-center text-report-muted hover:text-report-text"
             onClick={() => setSelectedYear((year) => year + 1)}
-            title="Следующий год"
-            aria-label="Следующий год heatmap"
+            title={th("activity.next")}
+            aria-label={th("activity.nextAria")}
           >
             <ChevronRight size={16} aria-hidden="true" />
           </button>
@@ -461,11 +451,11 @@ function ActivitySection() {
       {activity.available ? (
         <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <MiniStat label="Активные дни" value={activity.activeDays.toString()} />
-            <MiniStat label="Пропуски" value={activity.missedDays.toString()} />
-            <MiniStat label="Текущая серия" value={`${activity.currentStreak} дней`} />
-            <MiniStat label="Лучшая серия" value={`${activity.bestStreak} дней`} />
-            <MiniStat label="Лучший день" value={activity.bestDay} />
+            <MiniStat label={th("activity.activeDays")} value={activity.activeDays.toString()} />
+            <MiniStat label={th("activity.missed")} value={activity.missedDays.toString()} />
+            <MiniStat label={th("activity.currentStreak")} value={th("activity.days", { count: activity.currentStreak })} />
+            <MiniStat label={th("activity.bestStreak")} value={th("activity.days", { count: activity.bestStreak })} />
+            <MiniStat label={th("activity.bestDay")} value={activity.bestDay} />
           </div>
           <div className="h-56">
             <ResponsiveContainer>
@@ -490,11 +480,11 @@ function ActivitySection() {
               ))}
             </div>
           ) : (
-            <EmptyState title="Нет данных за выбранный год" text={`В ${selectedYear} году в данных дашборда нет дней активности.`} />
+            <EmptyState title={th("activity.noYear")} text={th("activity.noYearText", { year: selectedYear })} />
           )}
         </div>
       ) : (
-        <EmptyState title="Нет данных активности" text="Revlog за выбранный период пустой, поэтому heatmap пока нечего показать." />
+        <EmptyState title={th("activity.noData")} text={th("activity.noDataText")} />
       )}
     </Panel>
   );
@@ -510,14 +500,14 @@ function DeckPerformanceSection({
   return (
     <section className="grid min-w-0 gap-5">
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <Panel title="Проблемные колоды" action={<StatusPill status="danger">{problemDecks.length} требуют внимания</StatusPill>}>
+        <Panel title={th("decks.problems")} action={<StatusPill status="danger">{th("decks.attention", { count: problemDecks.length })}</StatusPill>}>
           <div className="grid gap-3 lg:grid-cols-3">
             {problemDecks.map((deck) => (
               <DeckCard key={deck.id} deck={deck} />
             ))}
           </div>
         </Panel>
-        <Panel title="Стабильные колоды" action={<StatusPill status="good">стабильные</StatusPill>}>
+        <Panel title={th("decks.stable")} action={<StatusPill status="good">{th("decks.stableBadge")}</StatusPill>}>
           <div className="grid min-w-0 gap-3">
             {bestDecks.map((deck) => (
               <div key={deck.id} className="nested-surface flex min-w-0 max-w-full items-center justify-between gap-4 rounded-lg border border-ink-700 p-3">
@@ -541,12 +531,12 @@ function DeckCard({ deck }: { deck: DeckPerformance }) {
     <article className={`deck-card status-${deck.status}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 text-sm font-semibold leading-6">{deck.name}</h3>
-        <StatusPill status={deck.status}>{statusLabel[deck.status]}</StatusPill>
+        <StatusPill status={deck.status}>{statusText(deck.status)}</StatusPill>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
         <MiniStat label="Pass" value={formatPercent(deck.passRate)} />
         <MiniStat label="Fail" value={deck.failCount.toString()} />
-        <MiniStat label="Avg" value={`${deck.averageAnswerSeconds}s`} />
+        <MiniStat label="Avg" value={i18n.t("units.secondsShort", { ns: "common", value: deck.averageAnswerSeconds })} />
       </div>
       <p className="mt-4 text-sm leading-6 text-report-muted">{deck.explanation}.</p>
     </article>
@@ -595,7 +585,7 @@ function DeckTable() {
   };
 
   return (
-    <Panel title="Сводка по колодам" action={<StatusPill status="neutral">{rows.length} колод</StatusPill>}>
+    <Panel title={th("decks.summary")} action={<StatusPill status="neutral">{th("decks.count", { count: rows.length })}</StatusPill>}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <label className="relative block md:w-96">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-report-muted" size={17} />
@@ -603,7 +593,7 @@ function DeckTable() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="form-control w-full py-2.5 pl-10 pr-3 text-sm"
-            placeholder="Найти колоду"
+            placeholder={th("decks.search")}
           />
         </label>
         <label className="relative block md:w-56">
@@ -612,11 +602,11 @@ function DeckTable() {
             onChange={(event) => setFilter(event.target.value as DeckFilter)}
             className="form-control w-full appearance-none px-3 py-2.5 pr-9 text-sm"
           >
-            <option value="all">Все статусы</option>
-            <option value="good">Хорошо</option>
-            <option value="neutral">Инфо</option>
-            <option value="warning">Внимание</option>
-            <option value="danger">Опасно</option>
+            <option value="all">{th("decks.allStatuses")}</option>
+            <option value="good">{th("decks.good")}</option>
+            <option value="neutral">{th("decks.neutral")}</option>
+            <option value="warning">{th("decks.warning")}</option>
+            <option value="danger">{th("decks.danger")}</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-report-muted" size={17} />
         </label>
@@ -625,13 +615,13 @@ function DeckTable() {
         <table className="table-readable min-w-[920px] w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-ink-800 text-xs uppercase tracking-[0.04em] text-report-muted">
             <tr>
-              <SortableTh label="Колода" sortKey="name" activeKey={sortKey} direction={direction} onSort={requestSort} />
-              <SortableTh label="Повторения" sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <th className="px-3 py-3 text-right">Новые</th>
-              <SortableTh label="Успешность" sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <SortableTh label="Ошибки" sortKey="failCount" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <SortableTh label="Средний ответ" sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
-              <th className="px-3 py-3 text-left">Статус</th>
+              <SortableTh label={th("decks.deck")} sortKey="name" activeKey={sortKey} direction={direction} onSort={requestSort} />
+              <SortableTh label={th("decks.reviews")} sortKey="totalReviews" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <th className="px-3 py-3 text-right">{th("decks.new")}</th>
+              <SortableTh label={th("decks.success")} sortKey="passRate" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <SortableTh label={th("decks.failures")} sortKey="failCount" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <SortableTh label={th("decks.answer")} sortKey="averageAnswerSeconds" activeKey={sortKey} direction={direction} onSort={requestSort} align="right" />
+              <th className="px-3 py-3 text-left">{th("decks.status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -647,9 +637,9 @@ function DeckTable() {
                 <td className="px-3 py-3.5 text-right tabular-nums">{deck.newCards}</td>
                 <td className="px-3 py-3.5 text-right tabular-nums">{formatPercent(deck.passRate)}</td>
                 <td className="px-3 py-3.5 text-right tabular-nums">{deck.failCount}</td>
-                <td className="px-3 py-3.5 text-right tabular-nums">{deck.averageAnswerSeconds}s</td>
+                <td className="px-3 py-3.5 text-right tabular-nums">{i18n.t("units.secondsShort", { ns: "common", value: deck.averageAnswerSeconds })}</td>
                 <td className="px-3 py-3.5">
-                  <StatusPill status={deck.status}>{statusLabel[deck.status]}</StatusPill>
+                  <StatusPill status={deck.status}>{statusText(deck.status)}</StatusPill>
                 </td>
               </tr>
             ))}
@@ -660,15 +650,15 @@ function DeckTable() {
         <div className="nested-surface mt-3 flex flex-col gap-2 rounded-lg border border-ink-700 px-3 py-3 text-sm text-report-muted sm:flex-row sm:items-center sm:justify-between">
           <span>
             {expanded
-              ? `Показаны все ${rows.length} строк.`
-              : `Показаны ${visibleRows.length} самых проблемных строк, ещё ${hiddenRows} скрыто.`}
+              ? th("decks.allRows", { count: rows.length })
+              : th("decks.limitedRows", { visible: visibleRows.length, hidden: hiddenRows })}
           </span>
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
             className="inline-flex items-center justify-center rounded-lg border border-report-blue/35 bg-report-blue/10 px-3 py-2 font-medium text-report-blue transition hover:border-report-blue hover:bg-report-blue/15"
           >
-            {expanded ? "Свернуть таблицу" : "Показать все"}
+            {expanded ? th("decks.collapse") : th("decks.showAll")}
           </button>
         </div>
       )}
@@ -680,14 +670,14 @@ function ForecastSection() {
   const { forecast } = useReport();
 
   return (
-    <Panel title="Прогноз нагрузки" action={<StatusPill status={forecast.overloadRisk}>перегруз: {statusLabel[forecast.overloadRisk]}</StatusPill>}>
+    <Panel title={th("forecast.title")} action={<StatusPill status={forecast.overloadRisk}>{th("forecast.overload", { status: statusText(forecast.overloadRisk) })}</StatusPill>}>
       {forecast.available ? (
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MiniStat label="Завтра" value={forecast.tomorrow.toString()} />
-            <MiniStat label="7 дней" value={forecast.next7Days.toString()} />
-            <MiniStat label="30 дней" value={forecast.next30Days.toString()} />
-            <MiniStat label="Активный день" value={forecast.activeDayBaseline.toString()} />
+            <MiniStat label={th("forecast.tomorrow")} value={forecast.tomorrow.toString()} />
+            <MiniStat label={th("forecast.days7")} value={forecast.next7Days.toString()} />
+            <MiniStat label={th("forecast.days30")} value={forecast.next30Days.toString()} />
+            <MiniStat label={th("forecast.activeDay")} value={forecast.activeDayBaseline.toString()} />
           </div>
           <div className="h-64">
             <ResponsiveContainer>
@@ -711,7 +701,7 @@ function ForecastSection() {
           </p>
         </div>
       ) : (
-        <EmptyState title="Нет прогноза" text="Планировщик Anki не отдал due-данные, поэтому график нагрузки скрыт." />
+        <EmptyState title={th("forecast.emptyTitle")} text={th("forecast.emptyText")} />
       )}
     </Panel>
   );
@@ -722,13 +712,13 @@ function FsrsSection() {
   const recall = fsrs.predictedRecall ?? 0;
 
   return (
-    <Panel title="FSRS" action={<StatusPill status={fsrs.settings.enabled ? "good" : "neutral"}>{fsrs.settings.enabled ? "включено" : "выключено"}</StatusPill>}>
+    <Panel title="FSRS" action={<StatusPill status={fsrs.settings.enabled ? "good" : "neutral"}>{fsrs.settings.enabled ? th("fsrs.enabled") : th("fsrs.disabled")}</StatusPill>}>
       {fsrs.settings.enabled ? (
         <div className="grid gap-4">
           <div className="nested-surface rounded-lg border border-ink-700 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-report-muted">Средний predicted recall</p>
+                <p className="text-sm text-report-muted">{th("fsrs.predicted")}</p>
                 <p className="mt-1 text-3xl font-semibold">{formatPercent(recall)}</p>
               </div>
               <Brain className="text-report-purple" size={34} />
@@ -740,24 +730,24 @@ function FsrsSection() {
               />
             </div>
             <p className="mt-2 text-xs text-report-muted">
-              Desired retention: {fsrs.settings.desiredRetention ? formatPercent(fsrs.settings.desiredRetention) : "нет данных"}
+              {th("fsrs.desired", { value: fsrs.settings.desiredRetention ? formatPercent(fsrs.settings.desiredRetention) : th("fsrs.noDataLower") })}
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <MiniStat label="Ниже цели" value={fsrs.cardsBelowTarget.toString()} />
-            <MiniStat label="Риск забывания" value={fsrs.highForgettingRisk.toString()} tone="danger" />
-            <MiniStat label="Сложность" value={fsrs.averageDifficulty ? `${fsrs.averageDifficulty}%` : "Нет данных"} />
-            <MiniStat label="FSRS-нагрузка" value={fsrs.futureLoad30Days.toString()} />
+            <MiniStat label={th("fsrs.belowTarget")} value={fsrs.cardsBelowTarget.toString()} />
+            <MiniStat label={th("fsrs.forgettingRisk")} value={fsrs.highForgettingRisk.toString()} tone="danger" />
+            <MiniStat label={th("fsrs.difficulty")} value={fsrs.averageDifficulty ? `${fsrs.averageDifficulty}%` : th("technical.noData")} />
+            <MiniStat label={th("fsrs.workload")} value={fsrs.futureLoad30Days.toString()} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusPill status={fsrs.settings.helperDetected ? "good" : "neutral"}>FSRS Helper найден</StatusPill>
-            <StatusPill status={fsrs.settings.helperConfigAvailable ? "good" : "neutral"}>config есть</StatusPill>
+            <StatusPill status={fsrs.settings.helperDetected ? "good" : "neutral"}>{th("fsrs.helper")}</StatusPill>
+            <StatusPill status={fsrs.settings.helperConfigAvailable ? "good" : "neutral"}>{th("fsrs.config")}</StatusPill>
             <StatusPill status="neutral">reschedule {fsrs.settings.rescheduleEnabled ? "on" : "off"}</StatusPill>
             <StatusPill status={fsrs.settings.autoDisperse ? "good" : "neutral"}>auto disperse</StatusPill>
           </div>
         </div>
       ) : (
-        <EmptyState title="FSRS выключен" text="Когда FSRS появится в JSON, блок покажет recall, difficulty и риск забывания." />
+        <EmptyState title={th("fsrs.emptyTitle")} text={th("fsrs.emptyText")} />
       )}
     </Panel>
   );
@@ -770,11 +760,11 @@ function RecommendationsSection() {
     <section className="rounded-xl border border-report-blue/35 bg-gradient-to-br from-report-blue/12 via-ink-850 to-report-purple/12 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div>
-          <p className="text-sm uppercase tracking-[0.04em] text-report-blue">Что делать дальше</p>
+          <p className="text-sm uppercase tracking-[0.04em] text-report-blue">{th("recommendations.next")}</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal">{recommendations.mainAction}</h2>
           <p className="mt-4 text-sm leading-6 text-report-muted">{recommendations.why}</p>
           <p className="mt-3 rounded-lg border border-report-danger/35 bg-report-danger/10 p-3 text-sm leading-6 text-report-text">
-            Пока не делать: {recommendations.avoid}
+            {th("recommendations.avoid", { value: recommendations.avoid })}
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -807,7 +797,7 @@ function TechnicalDetails() {
   return (
     <details className="rounded-xl border border-ink-700 bg-ink-850 p-4 shadow-panel sm:p-5">
       <summary className="cursor-pointer text-lg font-semibold tracking-normal text-report-text">
-        Диагностика и технические детали
+        {th("technical.title")}
       </summary>
       <div className="mt-4 grid gap-2 md:grid-cols-2">
         {rows.map((row) => (
@@ -842,11 +832,11 @@ function TechnicalDetail({ label, value, detail }: { label: string; value: strin
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900/50 px-3 py-2">
       <p className="text-xs uppercase tracking-[0.04em] text-report-muted">{label}</p>
-      <p className="mt-1 break-words text-sm leading-6 text-report-text">{value || "Нет данных"}</p>
+      <p className="mt-1 break-words text-sm leading-6 text-report-text">{value || th("technical.noData")}</p>
       {detail ? (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs font-medium text-report-blue hover:text-report-text">
-            Показать список
+            {th("technical.showList")}
           </summary>
           <p className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-md border border-ink-700 bg-ink-900/50 p-2 text-xs leading-5 text-report-muted">
             {detail}
@@ -968,14 +958,7 @@ function formatPercent(value: number) {
 }
 
 function kpiLabel(metric: KpiMetric) {
-  return {
-    pass_rate: "Успешность",
-    fail_rate: "Ошибки",
-    new_cards: "Новые",
-    study_time: "Время учёбы",
-    active_decks: "Активные колоды",
-    tomorrow_due: "Очередь на завтра",
-  }[metric.id] ?? metric.label;
+  return homeKpiIds.has(metric.id) ? th(`kpi.${metric.id}`) : metric.label;
 }
 
 function answerLabel(label: string) {
@@ -988,35 +971,24 @@ function answerLabel(label: string) {
 }
 
 function humanizeUiText(value: string) {
-  return value.replace(/\bPass rate\b/g, "Успешность").replace(/\bFail rate\b/g, "Ошибки");
+  return value.replace(/\bPass rate\b/g, th("kpi.pass_rate")).replace(/\bFail rate\b/g, th("kpi.fail_rate"));
 }
 
 function deckScopeSummary(metadata: StudyReport["metadata"]) {
   const decks = metadata.selectedDecks.filter((deck) => deck.trim().length > 0);
-  if (decks.length === 0 || (decks.length === 1 && decks[0].toLowerCase() === "все колоды")) {
-    return { summary: "Все колоды" };
+  const allDeckLabels = [i18n.getFixedT("ru", "pages")("home.header.allDecks"), i18n.getFixedT("en", "pages")("home.header.allDecks")].map((value) => value.toLowerCase());
+  if (decks.length === 0 || (decks.length === 1 && allDeckLabels.includes(decks[0].toLowerCase()))) {
+    return { summary: th("header.allDecks") };
   }
   if (decks.length <= 3) {
-    return { summary: `${decks.length} ${pluralizeDecks(decks.length)}: ${decks.join(", ")}` };
+    return { summary: `${i18n.t("units.deck", { ns: "common", count: decks.length })}: ${decks.join(", ")}` };
   }
   const visible = decks.slice(0, 3).join(", ");
   return {
-    summary: `${decks.length} ${pluralizeDecks(decks.length)}: ${visible} + ещё ${decks.length - 3}`,
-    detail: "Полный список скрыт, чтобы не раздувать дашборд.",
+    summary: th("decks.scope", { decks: i18n.t("units.deck", { ns: "common", count: decks.length }), visible, hidden: decks.length - 3 }),
+    detail: th("decks.hiddenList"),
     fullList: decks.join(", "),
   };
-}
-
-function pluralizeDecks(count: number) {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) {
-    return "колода";
-  }
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "колоды";
-  }
-  return "колод";
 }
 
 function defaultActivityYear(days: Array<{ date: string }>) {
@@ -1069,7 +1041,7 @@ function comparisonStatus(current: DailyStats, baseline: DailyStats, delta: Comp
 function emptyComparison(): NonNullable<StudyReport["comparison"]> {
   const emptyStats: DailyStats = {
     date: "",
-    label: "Нет данных",
+    label: th("fallback.noData"),
     reviews: 0,
     newCards: 0,
     pass: 0,
@@ -1094,17 +1066,17 @@ function emptyComparison(): NonNullable<StudyReport["comparison"]> {
   };
   return {
     available: false,
-    message: "Недостаточно истории для сравнения. Данные начнут появляться после нескольких дней учёбы.",
-    today: { ...emptyStats, label: "Сегодня" },
+    message: th("comparison.shortText"),
+    today: { ...emptyStats, label: th("fallback.today") },
     baselines: {
-      yesterday: { ...emptyStats, label: "Вчера" },
-      avg7: { ...emptyStats, label: "Последние 7 дней" },
-      avg30: { ...emptyStats, label: "Последние 30 дней" },
-      sameWeekdayLastWeek: { ...emptyStats, label: "Этот день прошлой недели" },
-      currentWeek: { ...emptyStats, label: "Эта неделя" },
-      previousWeek: { ...emptyStats, label: "Прошлая неделя" },
-      currentMonth: { ...emptyStats, label: "Этот месяц" },
-      previousMonth: { ...emptyStats, label: "Прошлый месяц" },
+      yesterday: { ...emptyStats, label: th("fallback.yesterday") },
+      avg7: { ...emptyStats, label: th("fallback.last7") },
+      avg30: { ...emptyStats, label: th("fallback.last30") },
+      sameWeekdayLastWeek: { ...emptyStats, label: th("fallback.weekday") },
+      currentWeek: { ...emptyStats, label: th("fallback.currentWeek") },
+      previousWeek: { ...emptyStats, label: th("fallback.previousWeek") },
+      currentMonth: { ...emptyStats, label: th("fallback.currentMonth") },
+      previousMonth: { ...emptyStats, label: th("fallback.previousMonth") },
     },
     comparisons: {
       yesterday: emptyDelta,
@@ -1120,15 +1092,15 @@ function emptyComparison(): NonNullable<StudyReport["comparison"]> {
 
 function comparisonVerdict(status: Status, period: ComparisonPeriod) {
   if (status === "good") {
-    return period === "week" ? "Неделя идёт активнее обычного." : "Сегодня вы учитесь лучше или активнее нормы.";
+    return period === "week" ? th("comparison.goodWeek") : th("comparison.goodToday");
   }
   if (status === "danger") {
-    return "Объём высокий, но качество просело.";
+    return th("comparison.danger");
   }
   if (status === "warning") {
-    return "Есть сигнал к осторожности с нагрузкой.";
+    return th("comparison.warning");
   }
-  return period === "week" ? "Неделя близка к прошлой." : "Сегодня примерно в вашем обычном темпе.";
+  return period === "week" ? th("comparison.neutralWeek") : th("comparison.neutralToday");
 }
 
 function severityStatus(severity: "positive" | "neutral" | "warning" | "danger"): Status {
@@ -1160,7 +1132,7 @@ function toneTextClass(tone: Status) {
 }
 
 function formatNullablePercent(value: number | null) {
-  return value === null ? "Нет данных" : formatPercent(value);
+  return value === null ? th("comparison.noData") : formatPercent(value);
 }
 
 function formatCount(value: number) {
@@ -1172,57 +1144,58 @@ function formatCountDelta(value: number | null) {
 }
 
 function formatMinuteDelta(value: number | null) {
-  const formatted = formatSignedValue(value, " мин");
-  return formatted === "нет данных" ? formatted : formatted.replace("+0 мин", "0 мин");
+  const suffix = th("comparison.minutesSuffix");
+  const formatted = formatSignedValue(value, suffix);
+  return formatted === th("comparison.noValue") ? formatted : formatted.replace(`+0${suffix}`, `0${suffix}`);
 }
 
 function formatPercentDelta(value: number | null) {
   if (value === null) {
-    return "нет истории";
+    return th("comparison.noHistory");
   }
   const rounded = Math.round(value);
   if (Math.abs(rounded) < 1) {
-    return "→ около нормы";
+    return th("comparison.nearNorm");
   }
-  return `${rounded > 0 ? "↑" : "↓"} ${Math.abs(rounded)}% к норме`;
+  return th("comparison.normDelta", { arrow: rounded > 0 ? "↑" : "↓", value: Math.abs(rounded) });
 }
 
 function formatPointDelta(value: number | null) {
   if (value === null) {
-    return "нет данных";
+    return th("comparison.noValue");
   }
   if (Math.abs(value) < 0.5) {
-    return "→ 0 п.п.";
+    return th("comparison.zeroPoints");
   }
-  return `${value > 0 ? "↑" : "↓"} ${Math.abs(value).toFixed(1)} п.п.`;
+  return th("comparison.pointsDelta", { arrow: value > 0 ? "↑" : "↓", value: Math.abs(value).toFixed(1) });
 }
 
 function formatMinutes(value: number) {
   if (!Number.isFinite(value) || value <= 0) {
-    return "0 мин";
+    return i18n.t("units.minutesShort", { ns: "common", value: 0 });
   }
   const minutes = Math.round(value);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours && rest) {
-    return `${hours} ч ${rest} мин`;
+    return `${i18n.t("units.hoursShort", { ns: "common", value: hours })} ${i18n.t("units.minutesShort", { ns: "common", value: rest })}`;
   }
   if (hours) {
-    return `${hours} ч`;
+    return i18n.t("units.hoursShort", { ns: "common", value: hours });
   }
-  return `${minutes} мин`;
+  return i18n.t("units.minutesShort", { ns: "common", value: minutes });
 }
 
 function formatSeconds(value: number | null) {
   if (value === null || !Number.isFinite(value) || value <= 0) {
-    return "Нет данных";
+    return th("comparison.noData");
   }
-  return `${value.toFixed(value % 1 === 0 ? 0 : 1)} сек`;
+  return i18n.t("units.secondsShort", { ns: "common", value: new Intl.NumberFormat(localeForLanguage(i18n.language), { maximumFractionDigits: 1 }).format(value) });
 }
 
 function formatSignedValue(value: number | null, suffix: string) {
   if (value === null) {
-    return "нет данных";
+    return th("comparison.noValue");
   }
   const rounded = Math.round(value);
   if (rounded === 0) {

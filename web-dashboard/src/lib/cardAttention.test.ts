@@ -511,14 +511,14 @@ describe("cardAttention", () => {
     expect(rows[0].preview?.mediaBadges).toEqual(["audio", "image", "gif"]);
   });
 
-  it("exposes Russian user-facing issue labels", () => {
+  it("exposes the Russian localized issue-label contract", () => {
     expect(cardIssueLabels).toMatchObject({
-      leech: "частые провалы",
-      repeated_again: "повторные ошибки",
-      slow_answer: "долгий ответ",
-      low_pass_rate: "низкая успешность",
-      missing_audio: "нет аудио",
-      missing_image: "нет изображения",
+      leech: "Leech",
+      repeated_again: "Частые Again",
+      slow_answer: "Долгий ответ",
+      low_pass_rate: "Низкая успешность",
+      missing_audio: "Нет аудио",
+      missing_image: "Нет изображения",
     });
   });
 

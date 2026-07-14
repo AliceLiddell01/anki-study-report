@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import type { LoadState } from "./HomePage";
 import {
   dashboardToken,
@@ -25,55 +27,55 @@ type ButtonState = {
 
 type ActionButton = {
   id: string;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   icon: LucideIcon;
   action?: ReportAction;
   kind?: BrowserActionKind;
 };
 
-const sections: Array<{ title: string; actions: ActionButton[] }> = [
+const sections: Array<{ titleKey: string; actions: ActionButton[] }> = [
   {
-    title: "Основные действия",
+    titleKey: "actions.primary",
     actions: [
       {
         id: "open-problematic",
-        label: "Открыть проблемные колоды",
-        description: "Открыть Anki Browser с карточками и колодами, которым нужно внимание.",
+        labelKey: "actions.openProblematic",
+        descriptionKey: "actions.openProblematicDescription",
         icon: FolderSearch,
         action: "open-browser",
         kind: "problematic-decks",
       },
       {
         id: "open-again",
-        label: "Открыть Again за период",
-        description: "Открыть Anki Browser с ответами Again за выбранный период.",
+        labelKey: "actions.openAgain",
+        descriptionKey: "actions.openAgainDescription",
         icon: RotateCcw,
         action: "open-again",
       },
       {
         id: "open-new",
-        label: "Открыть New за период",
-        description: "Открыть Anki Browser с новыми карточками за выбранный период.",
+        labelKey: "actions.openNew",
+        descriptionKey: "actions.openNewDescription",
         icon: Sparkles,
         action: "open-new",
       },
     ],
   },
   {
-    title: "Экспорт",
+    titleKey: "actions.export",
     actions: [
       {
         id: "copy-markdown",
-        label: "Copy Markdown",
-        description: "Скопировать текущий отчёт как Markdown.",
+        labelKey: "actions.copyMarkdown",
+        descriptionKey: "actions.copyMarkdownDescription",
         icon: Clipboard,
         action: "copy-markdown",
       },
       {
         id: "save-markdown",
-        label: "Сохранить .md",
-        description: "Сохранить текущий отчёт в Markdown-файл.",
+        labelKey: "actions.saveMarkdown",
+        descriptionKey: "actions.saveMarkdownDescription",
         icon: Download,
         action: "save-markdown",
       },
@@ -82,18 +84,19 @@ const sections: Array<{ title: string; actions: ActionButton[] }> = [
 ];
 
 function ActionsPage({ report, loadState }: { report: StudyReport | null; loadState: LoadState }) {
+  const { t } = useTranslation("pages");
   const [buttonStates, setButtonStates] = useState<Record<string, ButtonState>>({});
   const reportAvailable = Boolean(report) && loadState === "ready";
   const tokenAvailable = dashboardToken().length > 0;
   const disabledReason = useMemo(() => {
     if (!tokenAvailable) {
-      return "Откройте дашборд из Anki Study Report, чтобы получить действующий token.";
+      return t("actions.tokenRequired");
     }
     if (!reportAvailable) {
-      return "Отчёт ещё не опубликован. Сначала откройте или создайте отчёт.";
+      return t("actions.unpublished");
     }
     return "";
-  }, [reportAvailable, tokenAvailable]);
+  }, [reportAvailable, t, tokenAvailable]);
 
   const runButton = async (button: ActionButton) => {
     if (!reportAvailable || !tokenAvailable) {
@@ -111,7 +114,7 @@ function ActionsPage({ report, loadState }: { report: StudyReport | null; loadSt
       setButtonResponse(button.id, {
         ok: false,
         action: button.action || button.id,
-        error: "Действие дашборда не выполнено.",
+        error: t("actions.failed"),
       });
     }
   };
@@ -129,22 +132,22 @@ function ActionsPage({ report, loadState }: { report: StudyReport | null; loadSt
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill ${reportAvailable ? "status-good" : "status-warning"}`}>
-              {reportAvailable ? "отчёт готов" : "нужен отчёт"}
+              {reportAvailable ? t("actions.reportReady") : t("actions.reportRequired")}
             </span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Инструменты</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">{t("actions.title")}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-              Быстрые действия с текущим отчётом и Anki Browser.
+              {t("actions.description")}
             </p>
           </div>
           <div className="rounded-lg border border-ink-700 bg-ink-900/45 px-3 py-2 text-sm text-report-muted">
-            {reportAvailable ? report?.metadata.period || "Текущий отчёт" : disabledReason}
+            {reportAvailable ? report?.metadata.period || t("actions.currentReport") : disabledReason}
           </div>
         </div>
       </section>
 
       {sections.map((section) => (
-        <section key={section.title} className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
-          <h2 className="text-lg font-semibold tracking-normal text-report-text">{section.title}</h2>
+        <section key={section.titleKey} className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
+          <h2 className="text-lg font-semibold tracking-normal text-report-text">{t(section.titleKey)}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {section.actions.map((button) => (
               <ActionCard
@@ -173,6 +176,7 @@ function ActionCard({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("pages");
   const Icon = button.icon;
   const response = state.response;
   const tone = response ? (response.ok ? "good" : "danger") : "neutral";
@@ -185,8 +189,8 @@ function ActionCard({
           <Icon size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-base font-semibold tracking-normal text-report-text">{button.label}</h3>
-          <p className="mt-1 text-sm leading-6 text-report-muted">{button.description}</p>
+          <h3 className="text-base font-semibold tracking-normal text-report-text">{t(button.labelKey)}</h3>
+          <p className="mt-1 text-sm leading-6 text-report-muted">{t(button.descriptionKey)}</p>
         </div>
       </div>
       <button
@@ -196,7 +200,7 @@ function ActionCard({
         onClick={onClick}
       >
         <MousePointerClick size={16} aria-hidden="true" />
-        {state.loading ? "Выполняю..." : button.label}
+        {state.loading ? t("actions.running") : t(button.labelKey)}
       </button>
       {text ? <p className={`mt-3 text-sm leading-6 ${response?.ok ? "text-report-success" : "text-report-danger"}`}>{text}</p> : null}
     </article>
@@ -205,15 +209,15 @@ function ActionCard({
 
 function successText(buttonId: string, fallback?: string) {
   if (buttonId === "copy-markdown") {
-    return "Markdown скопирован.";
+    return i18n.t("actions.copied", { ns: "pages" });
   }
   if (buttonId === "save-markdown") {
-    return fallback?.startsWith("Saved report to:") ? fallback.replace("Saved report to:", "Файл сохранён:") : "Файл сохранён.";
+    return fallback?.startsWith("Saved report to:") ? i18n.t("actions.fileSavedAt", { ns: "pages", path: fallback.slice("Saved report to:".length) }) : i18n.t("actions.fileSaved", { ns: "pages" });
   }
   if (buttonId.startsWith("open-")) {
-    return "Anki Browser открыт.";
+    return i18n.t("actions.browserOpened", { ns: "pages" });
   }
-  return fallback || "Готово.";
+  return fallback || i18n.t("actions.done", { ns: "pages" });
 }
 
 export default ActionsPage;

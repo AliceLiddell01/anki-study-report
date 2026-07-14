@@ -1,5 +1,7 @@
 import { Clipboard, Download, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localeForLanguage } from "../i18n/language";
 import { dashboardToken } from "../lib/actionsApi";
 
 type LogStatus = {
@@ -14,6 +16,7 @@ type LogStatus = {
 type LevelFilter = "all" | "info" | "warning" | "error" | "debug";
 
 function LogsPage() {
+  const { t, i18n } = useTranslation(["pages", "common"]);
   const [status, setStatus] = useState<LogStatus | null>(null);
   const [text, setText] = useState("");
   const [level, setLevel] = useState<LevelFilter>("all");
@@ -27,7 +30,7 @@ function LogsPage() {
     return fetch(`/api/logs/recent?token=${encodeURIComponent(token)}&max_bytes=200000`, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(response.status === 403 ? "Недействительный dashboard token." : "Не удалось загрузить логи.");
+          throw new Error(response.status === 403 ? t("logs.invalidToken") : t("logs.loadFailed"));
         }
         return response.json() as Promise<{ text?: string; status?: LogStatus }>;
       })
@@ -37,7 +40,7 @@ function LogsPage() {
         setMessage("");
       })
       .catch((error: Error) => setMessage(error.message));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadLogs().catch(() => undefined);
@@ -61,16 +64,16 @@ function LogsPage() {
   const copyLogs = async () => {
     try {
       await navigator.clipboard.writeText(filteredLines.join("\n"));
-      setMessage("Логи скопированы.");
+      setMessage(t("logs.copied"));
     } catch {
-      setMessage("Не удалось скопировать логи.");
+      setMessage(t("logs.copyFailed"));
     }
   };
 
   const clearLogs = () => {
     if (!confirmClear) {
       setConfirmClear(true);
-      setMessage("Нажмите «Очистить логи» ещё раз для подтверждения.");
+      setMessage(t("logs.clearConfirm"));
       return;
     }
     const token = dashboardToken();
@@ -78,13 +81,13 @@ function LogsPage() {
     fetch(`/api/logs/clear?token=${encodeURIComponent(token)}`, { method: "POST", cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(response.status === 403 ? "Недействительный dashboard token." : "Не удалось очистить логи.");
+          throw new Error(response.status === 403 ? t("logs.invalidToken") : t("logs.clearFailed"));
         }
         return response.json();
       })
       .then(() => {
         setConfirmClear(false);
-        setMessage("Логи очищены.");
+        setMessage(t("logs.cleared"));
         return loadLogs();
       })
       .catch((error: Error) => setMessage(error.message))
@@ -92,7 +95,7 @@ function LogsPage() {
   };
 
   const token = dashboardToken();
-  const modified = status?.modified ? new Date(status.modified * 1000).toLocaleString("ru-RU") : "ещё не создан";
+  const modified = status?.modified ? new Date(status.modified * 1000).toLocaleString(localeForLanguage(i18n.resolvedLanguage || i18n.language)) : t("logs.notCreated");
 
   return (
     <div className="grid gap-5">
@@ -100,29 +103,29 @@ function LogsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill ${status?.exists ? "status-good" : "status-warning"}`}>
-              {status?.exists ? "логи готовы" : "логов пока нет"}
+              {status?.exists ? t("logs.ready") : t("logs.emptyStatus")}
             </span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">Логи</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-normal text-report-text sm:text-3xl">{t("logs.title")}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">
-              Последние строки локального лога расширения. Секреты и dashboard token скрываются до записи.
+              {t("logs.description")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="toolbar-button" type="button" onClick={() => loadLogs().catch(() => undefined)}>
               <RefreshCw size={16} aria-hidden="true" />
-              Обновить
+              {t("actions.refresh", { ns: "common" })}
             </button>
             <button className="toolbar-button" type="button" onClick={copyLogs}>
               <Clipboard size={16} aria-hidden="true" />
-              Скопировать
+              {t("logs.copy")}
             </button>
             <a className="toolbar-button" href={`/api/logs/download?token=${encodeURIComponent(token)}`}>
               <Download size={16} aria-hidden="true" />
-              Скачать
+              {t("logs.download")}
             </a>
             <button className="toolbar-button toolbar-button-warning" type="button" disabled={clearing} onClick={clearLogs}>
               <Trash2 size={16} aria-hidden="true" />
-              {clearing ? "Очищаю…" : confirmClear ? "Подтвердить очистку" : "Очистить логи"}
+              {clearing ? t("logs.clearing") : confirmClear ? t("logs.confirmClear") : t("logs.clear")}
             </button>
           </div>
         </div>
@@ -130,9 +133,9 @@ function LogsPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Detail label="Путь" value={status?.path || "ещё не создан"} />
-        <Detail label="Размер" value={`${status?.size ?? 0} bytes`} />
-        <Detail label="Изменён" value={modified} />
+        <Detail label={t("logs.path")} value={status?.path || t("logs.notCreated")} />
+        <Detail label={t("logs.size")} value={`${status?.size ?? 0} bytes`} />
+        <Detail label={t("logs.modified")} value={modified} />
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
@@ -142,7 +145,7 @@ function LogsPage() {
             value={level}
             onChange={(event) => setLevel(event.target.value as LevelFilter)}
           >
-            <option value="all">Все уровни</option>
+            <option value="all">{t("logs.allLevels")}</option>
             <option value="info">INFO</option>
             <option value="warning">WARNING</option>
             <option value="error">ERROR</option>
@@ -152,7 +155,7 @@ function LogsPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-report-muted" size={16} />
             <input
               className="form-control w-full py-2.5 pl-10 pr-3 text-sm"
-              placeholder="Найти в логах"
+              placeholder={t("logs.searchPlaceholder")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -162,7 +165,7 @@ function LogsPage() {
         <pre className="log-viewer mt-4 max-h-[620px] overflow-auto rounded-lg border border-ink-700 bg-ink-950 p-4 font-mono text-report-muted">
           {filteredLines.length
             ? filteredLines.map((line, index) => <LogLine key={`${index}-${line.slice(0, 40)}`} line={line} />)
-            : "Подходящих строк нет."}
+            : t("logs.noMatches")}
         </pre>
       </section>
     </div>

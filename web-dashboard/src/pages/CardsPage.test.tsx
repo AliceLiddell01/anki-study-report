@@ -195,7 +195,7 @@ describe("CardsPage v5 adaptive card previews", () => {
     expect(html).not.toContain("GIF");
     expect(html).not.toContain("нет ударения");
     expect(html).not.toContain("Медиа:");
-    expect(html).toContain("нет аудио");
+    expect(html).toContain("Нет аудио");
   });
 
   it("renders tiles main preview from frontText only", () => {

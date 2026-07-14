@@ -1,12 +1,13 @@
 import { Brain, ChevronDown, Heart, Settings, UserRound, Wrench } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { RoutePath } from "../app/router";
 import { primaryNavItems } from "../app/router";
 
 const BOOSTY_SUPPORT_URL = "https://boosty.to/ankistudyreport";
 
 type ProfileMenuItem = {
-  label: string;
+  labelKey: string;
   icon: typeof UserRound;
 } & (
   | { path: RoutePath; externalHref?: never }
@@ -14,26 +15,27 @@ type ProfileMenuItem = {
 );
 
 const profileMenuSections: Array<{
-  label: string;
+  labelKey: string;
   items: ProfileMenuItem[];
 }> = [
   {
-    label: "Личное меню",
+    labelKey: "profile.personal",
     items: [
-      { path: "/profile", label: "Профиль", icon: UserRound },
-      { path: "/settings", label: "Настройки", icon: Settings },
+      { path: "/profile", labelKey: "profile.profile", icon: UserRound },
+      { path: "/settings", labelKey: "profile.settings", icon: Settings },
     ],
   },
   {
-    label: "Утилиты",
+    labelKey: "profile.utilities",
     items: [
-      { path: "/actions", label: "Инструменты", icon: Wrench },
-      { externalHref: BOOSTY_SUPPORT_URL, label: "Поддержать проект", icon: Heart },
+      { path: "/actions", labelKey: "profile.tools", icon: Wrench },
+      { externalHref: BOOSTY_SUPPORT_URL, labelKey: "profile.support", icon: Heart },
     ],
   },
 ];
 
 function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
+  const { t } = useTranslation("navigation");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileTriggerRef = useRef<HTMLButtonElement>(null);
@@ -81,16 +83,16 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
     <header className="topbar-surface sticky top-0 z-40 border-b border-ink-700/80 backdrop-blur">
       <div className="mx-auto flex min-h-[68px] w-full max-w-[1760px] items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
         <a href="#/home" className="flex min-w-0 shrink-0 items-center gap-3 py-0.5 text-report-text">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-report-blue/35 bg-report-blue/10 text-report-blue">
+          <span className="brand-icon-badge h-9 w-9 shrink-0 rounded-lg border border-report-blue/35 bg-report-blue/10 text-report-blue">
             <Brain size={19} aria-hidden="true" />
           </span>
           <span className="hidden min-w-0 leading-none sm:block">
             <span className="block truncate text-sm font-semibold leading-5 tracking-normal xl:text-base">Anki Study Report</span>
-            <span className="block whitespace-nowrap text-xs leading-5 text-report-muted">Локальный учебный портал</span>
+            <span className="block whitespace-nowrap text-xs leading-5 text-report-muted">{t("app.brandSubtitle", { ns: "common" })}</span>
           </span>
         </a>
 
-        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Основная навигация">
+        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label={t("primary.label")}>
           {primaryNavItems.map((item) => {
             const active = item.path === activeRoute || (item.path === "/stats" && activeRoute.startsWith("/stats/"));
             return (
@@ -105,7 +107,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
                 ].join(" ")}
                 aria-current={active ? "page" : undefined}
               >
-                {item.label}
+                {t(item.labelKey)}
               </a>
             );
           })}
@@ -121,7 +123,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
                 ? "border-report-blue/70 bg-report-blue/15 shadow-glow"
                 : "border-ink-700 bg-ink-850 hover:border-report-blue/45 hover:bg-ink-800",
             ].join(" ")}
-            aria-label="Открыть меню профиля"
+            aria-label={t("profile.trigger")}
             aria-haspopup="menu"
             aria-expanded={profileMenuOpen}
             aria-controls="profile-menu"
@@ -136,7 +138,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-report-blue/35 bg-report-blue/10 text-report-blue">
               <UserRound size={17} aria-hidden="true" />
             </span>
-            <span className="hidden sm:inline">Профиль</span>
+            <span className="hidden sm:inline">{t("profile.compactLabel")}</span>
             <ChevronDown
               size={15}
               aria-hidden="true"
@@ -148,7 +150,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
             <div
               id="profile-menu"
               role="menu"
-              aria-label="Меню профиля"
+              aria-label={t("profile.menu")}
               className="popover-motion absolute right-0 top-[calc(100%+0.65rem)] z-50 w-64 overflow-hidden rounded-xl border border-ink-700 bg-ink-850 p-2 shadow-[var(--shadow-popover)]"
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -164,9 +166,9 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
             >
               {profileMenuSections.map((section, sectionIndex) => (
                 <div
-                  key={section.label}
+                  key={section.labelKey}
                   role="group"
-                  aria-label={section.label}
+                  aria-label={t(section.labelKey)}
                   className={sectionIndex > 0 ? "mt-2 border-t border-ink-700/80 pt-2" : ""}
                 >
                   {section.items.map((item) => {
@@ -190,7 +192,7 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
                         onClick={() => setProfileMenuOpen(false)}
                       >
                         <Icon size={17} className="text-report-blue" aria-hidden="true" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </a>
                     );
                   })}

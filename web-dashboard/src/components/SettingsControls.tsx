@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { DeckOption } from "../types/settings";
 
 export function SettingsPageHeader({ title, description, status }: { title: string; description: string; status?: string }) {
@@ -75,6 +76,7 @@ export function DeckMultiSelect({
   disabled?: boolean;
   error?: string;
 }) {
+  const { t } = useTranslation("pages");
   const knownIds = new Set(options.map((option) => option.id));
   const stale = selectedIds.filter((idValue) => !knownIds.has(idValue));
   return (
@@ -90,7 +92,7 @@ export function DeckMultiSelect({
       onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => Number(option.value)))}
     >
       {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-      {stale.map((deckId) => <option key={deckId} value={deckId}>Недоступная колода ({deckId})</option>)}
+      {stale.map((deckId) => <option key={deckId} value={deckId}>{t("settingsCommon.unavailableDeck", { id: deckId })}</option>)}
     </select>
   );
 }
@@ -102,6 +104,7 @@ export function SettingsFormActions({ dirty, saving, message, onSave, onCancel }
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation(["pages", "common"]);
   return (
     <div className="settings-actions flex flex-wrap items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 p-4 shadow-panel">
       <button
@@ -110,7 +113,7 @@ export function SettingsFormActions({ dirty, saving, message, onSave, onCancel }
         disabled={!dirty || saving}
         onClick={onSave}
       >
-        {saving ? "Сохраняю…" : "Сохранить изменения"}
+        {saving ? t("settingsCommon.saving") : t("actions.saveChanges", { ns: "common" })}
       </button>
       <button
         type="button"
@@ -118,10 +121,10 @@ export function SettingsFormActions({ dirty, saving, message, onSave, onCancel }
         disabled={!dirty || saving}
         onClick={onCancel}
       >
-        Отменить изменения
+        {t("settingsCommon.cancelChanges")}
       </button>
       <p className="min-w-0 flex-1 text-sm text-report-muted" role="status" aria-live="polite">
-        {message || (dirty ? "Есть несохранённые изменения." : "Все изменения сохранены.")}
+        {message || (dirty ? t("settingsCommon.unsaved") : t("settingsCommon.saved"))}
       </p>
     </div>
   );

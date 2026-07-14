@@ -1,45 +1,47 @@
 import { Database, FileText, FileType2, Plug, Server } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { RoutePath } from "../app/router";
 
 export const settingsSections: Array<{
-  label: string;
-  items: Array<{ path: RoutePath; label: string; icon: typeof Database }>;
+  labelKey: string;
+  items: Array<{ path: RoutePath; labelKey: string; icon: typeof Database }>;
 }> = [
   {
-    label: "Отчёт",
-    items: [{ path: "/settings", label: "Отчёт", icon: FileType2 }],
+    labelKey: "settings.reportGroup",
+    items: [{ path: "/settings", labelKey: "settings.report", icon: FileType2 }],
   },
   {
-    label: "Данные",
-    items: [{ path: "/settings/data", label: "Данные", icon: Database }],
+    labelKey: "settings.dataGroup",
+    items: [{ path: "/settings/data", labelKey: "settings.data", icon: Database }],
   },
   {
-    label: "Система",
-    items: [{ path: "/settings/server", label: "Сервер", icon: Server }],
+    labelKey: "settings.systemGroup",
+    items: [{ path: "/settings/server", labelKey: "settings.server", icon: Server }],
   },
   {
-    label: "Диагностика",
+    labelKey: "settings.diagnosticsGroup",
     items: [
-      { path: "/settings/sources", label: "Источники данных", icon: Plug },
-      { path: "/settings/logs", label: "Логи", icon: FileText },
+      { path: "/settings/sources", labelKey: "settings.sources", icon: Plug },
+      { path: "/settings/logs", labelKey: "settings.logs", icon: FileText },
     ],
   },
 ];
 
 function SettingsLayout({ activeRoute, children }: { activeRoute: RoutePath; children: ReactNode }) {
+  const { t } = useTranslation("navigation");
   return (
     <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
       <aside className="settings-nav-shell rounded-xl border border-ink-700 bg-ink-850 p-3 shadow-panel lg:sticky lg:top-[88px]">
         <div className="px-2 pb-3 pt-1">
-          <p className="text-base font-semibold text-report-text">Настройки</p>
-          <p className="mt-1 text-xs leading-5 text-report-muted">Отчёт, данные, система и диагностика</p>
+          <p className="text-base font-semibold text-report-text">{t("settings.title")}</p>
+          <p className="mt-1 text-xs leading-5 text-report-muted">{t("settings.subtitle")}</p>
         </div>
-        <nav className="grid gap-3" aria-label="Настройки">
+        <nav className="grid gap-3" aria-label={t("settings.title")}>
           {settingsSections.map((section) => (
-            <div key={section.label}>
+            <div key={section.labelKey}>
               <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-report-muted">
-                {section.label}
+                {t(section.labelKey)}
               </p>
               <div className="grid gap-1">
                 {section.items.map((item) => {
@@ -58,7 +60,7 @@ function SettingsLayout({ activeRoute, children }: { activeRoute: RoutePath; chi
                       aria-current={active ? "page" : undefined}
                     >
                       <Icon size={16} aria-hidden="true" />
-                      {item.label}
+                      {t(item.labelKey)}
                     </a>
                   );
                 })}

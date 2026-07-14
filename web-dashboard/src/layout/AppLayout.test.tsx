@@ -49,7 +49,8 @@ describe("AppLayout global utilities", () => {
     expect(container.querySelectorAll('[data-testid="global-utility-dock"]')).toHaveLength(1);
     expect(container.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
     const dock = container.querySelector('[data-testid="global-utility-dock"]')!;
-    expect(dock.textContent).not.toMatch(/\b(?:RU|EN)\b|язык/i);
+    expect(dock.querySelectorAll('[data-testid="language-selector"]')).toHaveLength(1);
+    expect(dock.querySelector('[data-testid="language-selector"]')?.textContent).toContain("RU");
   });
 
   it("toggles light and dark, stores the existing explicit values, and updates action labels", async () => {
@@ -58,7 +59,7 @@ describe("AppLayout global utilities", () => {
     const toggle = themeToggle();
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(toggle.getAttribute("aria-label")).toBe("Включить тёмную тему");
-    expect(container.querySelector('[role="tooltip"]')?.textContent).toBe("Включить тёмную тему");
+    expect(container.querySelector('#theme-toggle-tooltip')?.textContent).toBe("Включить тёмную тему");
 
     await act(async () => toggle.click());
     expect(document.documentElement.dataset.theme).toBe("dark");
