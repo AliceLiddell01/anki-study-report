@@ -14,8 +14,15 @@ export default function SearchActionBar({ workspace, report }: { workspace: Sear
   const hasSelection = workspace.selectedIds.size > 0;
   const cardRows = workspace.response?.mode === "cards" ? workspace.response.items as SearchCardRow[] : [];
   const selectedRows = cardRows.filter((row) => workspace.selectedIds.has(row.cardId));
-  const currentDecks = [...new Set(selectedRows.map((row) => row.deckName))];
   const allSelectedVisible = selectedRows.length === workspace.selectedIds.size;
+  const currentDecks = [...new Set(selectedRows.map((row) => row.deckName))];
+  const currentDeckLabel = !allSelectedVisible
+    ? t("multipleDecks")
+    : currentDecks.length === 1
+      ? currentDecks[0]
+      : currentDecks.length > 1
+        ? t("multipleDecks")
+        : t("deckUnknown");
   const sameDestination = Boolean(deckId) && allSelectedVisible && selectedRows.every((row) => row.deckId === deckId);
   const deckOptions = report?.deckHub
     ? Object.values(report.deckHub.nodes).filter((node) => !node.filtered).sort((a, b) => a.fullName.localeCompare(b.fullName))
@@ -34,7 +41,7 @@ export default function SearchActionBar({ workspace, report }: { workspace: Sear
         <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("bury")}>{t("bury")}</button>
         <button type="button" disabled={workspace.actionPending} onClick={() => workspace.runEntityAction("unbury")}>{t("unbury")}</button>
         <span className="search-action-help">{t("buryHelp")}</span>
-        <label><span>{t("currentDeck")}</span><span className="search-current-deck">{currentDecks.length === 1 ? currentDecks[0] : currentDecks.length > 1 ? t("multipleDecks") : t("deckUnknown")}</span></label>
+        <label><span>{t("currentDeck")}</span><span className="search-current-deck">{currentDeckLabel}</span></label>
         <label><span>{t("destination")}</span><select value={deckId} disabled={workspace.actionPending || deckOptions.length === 0} onChange={(event) => setDeckId(event.target.value)}><option value="">{t("chooseDeck")}</option>{deckOptions.map((deck) => <option key={deck.deckId} value={String(deck.deckId)}>{deck.fullName}</option>)}</select></label>
         <button type="button" disabled={workspace.actionPending || !deckId || sameDestination} onClick={() => workspace.runEntityAction("move_to_deck", { deckId })}>{t("move")}</button>
         {sameDestination ? <span className="search-action-help">{t("sameDeck")}</span> : null}
