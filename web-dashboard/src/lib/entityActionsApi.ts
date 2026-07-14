@@ -54,23 +54,25 @@ function normalizeResponse(value: unknown, expectedType: "cards" | "notes"): Ent
   const requiredKeys = ["schemaVersion", "entityType", "action", "requestedCount", "affectedCount", "unchangedCount", "undoable", "resultCode", "args"];
   const exactShape = requiredKeys.every((key) => keys.includes(key)) &&
     keys.every((key) => requiredKeys.includes(key) || key === "requestId");
-  const allowedCodes: EntityActionResultCode[] = [
-    "cards.suspended", "cards.unsuspended", "cards.flag_set", "cards.flag_cleared", "cards.buried", "cards.unburied", "cards.moved",
-    "notes.tags_added", "notes.tags_removed", "action.no_changes",
-  ];
   const allowedActions = expectedType === "cards"
     ? ["suspend", "unsuspend", "set_flag", "clear_flag", "bury", "unbury", "move_to_deck"]
     : ["add_tags", "remove_tags"];
   const requestedCount = count(data.requestedCount);
   const affectedCount = count(data.affectedCount);
   const unchangedCount = count(data.unchangedCount);
+  const action = typeof data.action === "string" && allowedActions.includes(data.action) ? data.action : undefined;
+  const expectedResultCode = action ? resultCodeForAction(action) : undefined;
+  const resultCodeValid = typeof data.resultCode === "string" && (
+    affectedCount === 0
+      ? data.resultCode === "action.no_changes"
+      : data.resultCode === expectedResultCode
+  );
   if (
-    !exactShape || data.schemaVersion !== 1 || data.entityType !== expectedType ||
-    typeof data.action !== "string" || !allowedActions.includes(data.action) ||
+    !exactShape || data.schemaVersion !== 1 || data.entityType !== expectedType || !action ||
     requestedCount === undefined || affectedCount === undefined || unchangedCount === undefined ||
     affectedCount + unchangedCount !== requestedCount || typeof data.undoable !== "boolean" ||
-    typeof data.resultCode !== "string" || !allowedCodes.includes(data.resultCode as EntityActionResultCode) ||
-    !isSafeArgs(data.args) || (data.requestId !== undefined && typeof data.requestId !== "string")
+    data.undoable !== (affectedCount > 0) || !resultCodeValid ||
+    !isActionArgs(data.args, action) || !optionalRequestId(data.requestId)
   ) {
     throw new EntityActionApiError("Dashboard received an invalid entity action response.", {
       code: "invalid_entity_action_response",
@@ -78,6 +80,35 @@ function normalizeResponse(value: unknown, expectedType: "cards" | "notes"): Ent
     });
   }
   return data as EntityActionResponse;
+}
+
+function resultCodeForAction(action: string): EntityActionResultCode | undefined {
+  return ({
+    suspend: "cards.suspended",
+    unsuspend: "cards.unsuspended",
+    set_flag: "cards.flag_set",
+    clear_flag: "cards.flag_cleared",
+    bury: "cards.buried",
+    unbury: "cards.unburied",
+    move_to_deck: "cards.moved",
+    add_tags: "notes.tags_added",
+    remove_tags: "notes.tags_removed",
+  } as Record<string, EntityActionResultCode>)[action];
+}
+
+function isActionArgs(value: unknown, action: string): value is Record<string, number | string> {
+  const args = record(value);
+  const keys = Object.keys(args);
+  if (action === "set_flag") {
+    return keys.length === 1 && keys[0] === "flag" && integerInRange(args.flag, 1, 7);
+  }
+  if (action === "move_to_deck") {
+    return keys.length === 1 && keys[0] === "deckId" && positiveSafeInteger(args.deckId);
+  }
+  if (action === "add_tags" || action === "remove_tags") {
+    return keys.length === 1 && keys[0] === "tagCount" && integerInRange(args.tagCount, 1, 20);
+  }
+  return keys.length === 0;
 }
 
 function errorFromResponse(value: unknown, status: number): EntityActionApiError {
@@ -98,12 +129,19 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function count(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
-function isSafeArgs(value: unknown): value is Record<string, number | string> {
-  return value !== null && typeof value === "object" && !Array.isArray(value) &&
-    Object.values(value).every((item) => typeof item === "string" || (typeof item === "number" && Number.isFinite(item)));
+function integerInRange(value: unknown, minimum: number, maximum: number): boolean {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= minimum && value <= maximum;
+}
+
+function positiveSafeInteger(value: unknown): boolean {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function optionalRequestId(value: unknown): boolean {
+  return value === undefined || (typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value));
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
