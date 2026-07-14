@@ -268,6 +268,79 @@ def test_search_selection_browser_action_remains_token_protected_and_post_only()
         manager.stop()
 
 
+def test_entity_action_endpoints_are_separate_post_only_and_typed():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    calls = []
+
+    def card_handler(payload):
+        calls.append(("cards", payload))
+        return {"ok": True, "response": {"schemaVersion": 1, "entityType": "cards"}}
+
+    def note_handler(payload):
+        calls.append(("notes", payload))
+        return {"ok": False, "error": "entity_action_stale", "message": "Unavailable."}
+
+    manager.configure_entity_action_handlers(card_handler=card_handler, note_handler=note_handler)
+    card_body = {"action": "suspend", "cardIds": ["1"], "requestId": "cards-1"}
+    note_body = {"action": "add_tags", "noteIds": ["2"], "tags": ["x"], "requestId": "notes-1"}
+    try:
+        assert fetch(f"{base_url}/api/entities/cards/actions", method="POST", json_body=card_body)[0] == 403
+        status, _, body = fetch(f"{base_url}/api/entities/cards/actions?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+        status, _, body = fetch(
+            f"{base_url}/api/entities/cards/actions?token={token}", method="POST", json_body=card_body
+        )
+        assert status == 200
+        assert json.loads(body)["response"]["entityType"] == "cards"
+        status, _, body = fetch(
+            f"{base_url}/api/entities/notes/actions?token={token}", method="POST", json_body=note_body
+        )
+        assert status == 409
+        assert json.loads(body)["error"] == "entity_action_stale"
+        assert calls == [("cards", card_body), ("notes", note_body)]
+    finally:
+        manager.stop()
+
+
+def test_entity_action_endpoint_maps_invalid_timeout_unavailable_and_body_limit():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        status, _, body = fetch(
+            f"{base_url}/api/entities/cards/actions?token={token}", method="POST", json_body={"action": "suspend"}
+        )
+        assert status == 503
+        assert json.loads(body)["error"] == "entity_action_unavailable"
+        for code, expected in [
+            ("invalid_entity_action", 400),
+            ("entity_action_timeout", 504),
+            ("entity_action_failed", 503),
+        ]:
+            manager.configure_entity_action_handlers(
+                card_handler=lambda _payload, code=code: {"ok": False, "error": code, "message": "safe"}
+            )
+            status, _, body = fetch(
+                f"{base_url}/api/entities/cards/actions?token={token}", method="POST", json_body={"action": "suspend"}
+            )
+            assert status == expected
+            assert json.loads(body)["error"] == code
+        status, _, body = fetch_raw(
+            f"{base_url}/api/entities/cards/actions?token={token}", b'{"padding":"' + b"x" * 9000 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_entity_action"
+    finally:
+        manager.stop()
+
+
 def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch):
     dashboard_server = import_addon_module("dashboard_server")
     monkeypatch.setattr(dashboard_server, "_find_static_dir", lambda: None)

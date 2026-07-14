@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runReportAction, type ActionResponse } from "../lib/actionsApi";
+import { EntityActionApiError, runCardEntityAction, runNoteEntityAction } from "../lib/entityActionsApi";
 import { fetchSearchInspect, fetchSearchQuery, SearchApiError } from "../lib/searchApi";
+import type { CardEntityAction, EntityActionResponse, NoteEntityAction } from "../types/entityActions";
 import type {
   SearchCardDetails,
   SearchCardRow,
@@ -49,8 +51,13 @@ export function useSearchWorkspace() {
   const [inspectError, setInspectError] = useState<SearchApiError | null>(null);
   const [browserStatus, setBrowserStatus] = useState<ActionResponse | null>(null);
   const [browserPending, setBrowserPending] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionResponse, setActionResponse] = useState<EntityActionResponse | null>(null);
+  const [actionError, setActionError] = useState<EntityActionApiError | null>(null);
   const queryAbort = useRef<AbortController | null>(null);
   const inspectAbort = useRef<AbortController | null>(null);
+  const actionAbort = useRef<AbortController | null>(null);
+  const actionInFlight = useRef(false);
   const querySequence = useRef(0);
   const inspectSequence = useRef(0);
   const requestSequence = useRef(0);
@@ -62,6 +69,7 @@ export function useSearchWorkspace() {
   useEffect(() => () => {
     queryAbort.current?.abort();
     inspectAbort.current?.abort();
+    actionAbort.current?.abort();
   }, []);
 
   const executeQuery = useCallback(async (request: SearchQueryRequest) => {
@@ -99,6 +107,9 @@ export function useSearchWorkspace() {
   }, [activeId, response]);
 
   const submit = useCallback(() => {
+    if (actionInFlight.current) return;
+    setActionResponse(null);
+    setActionError(null);
     const request = buildRequest({ mode, query, filters, sortDirection, pageSize, page: 1, requestId: nextRequestId(requestSequence) });
     const fingerprintChanged = !submittedRequest || searchFingerprint(request) !== searchFingerprint(submittedRequest);
     if (fingerprintChanged) {
@@ -113,16 +124,19 @@ export function useSearchWorkspace() {
   }, [executeQuery, filters, mode, pageSize, query, sortDirection, submittedRequest]);
 
   const retry = useCallback(() => {
+    if (actionInFlight.current) return;
     const request = submittedRequest ?? buildRequest({ mode, query, filters, sortDirection, pageSize, page: 1, requestId: nextRequestId(requestSequence) });
     void executeQuery({ ...request, requestId: nextRequestId(requestSequence) });
   }, [executeQuery, filters, mode, pageSize, query, sortDirection, submittedRequest]);
 
   const goToPage = useCallback((page: number) => {
+    if (actionInFlight.current) return;
     if (!submittedRequest) return;
     void executeQuery({ ...submittedRequest, page, requestId: nextRequestId(requestSequence) });
   }, [executeQuery, submittedRequest]);
 
   const setPageSize = useCallback((value: 25 | 50 | 100) => {
+    if (actionInFlight.current) return;
     setPageSizeState(value);
     if (submittedRequest) {
       void executeQuery({ ...submittedRequest, page: 1, pageSize: value, requestId: nextRequestId(requestSequence) });
@@ -130,6 +144,7 @@ export function useSearchWorkspace() {
   }, [executeQuery, submittedRequest]);
 
   const setMode = useCallback((value: SearchMode) => {
+    if (actionInFlight.current) return;
     if (value === mode) return;
     queryAbort.current?.abort();
     inspectAbort.current?.abort();
@@ -145,9 +160,12 @@ export function useSearchWorkspace() {
     setInspectStatus("idle");
     setInspectResponse(null);
     setInspectError(null);
+    setActionResponse(null);
+    setActionError(null);
   }, [mode]);
 
   const clear = useCallback(() => {
+    if (actionInFlight.current) return;
     queryAbort.current?.abort();
     inspectAbort.current?.abort();
     setQuery("");
@@ -164,9 +182,12 @@ export function useSearchWorkspace() {
     setInspectStatus("idle");
     setInspectResponse(null);
     setInspectError(null);
+    setActionResponse(null);
+    setActionError(null);
   }, []);
 
-  const inspect = useCallback(async (id: string) => {
+  const inspect = useCallback(async (id: string, allowDuringAction = false) => {
+    if (actionInFlight.current && !allowDuringAction) return;
     setActiveId(id);
     inspectAbort.current?.abort();
     const controller = new AbortController();
@@ -237,12 +258,74 @@ export function useSearchWorkspace() {
     }
   }, [browserPending, mode, selectedIds]);
 
+  const refreshAfterAction = useCallback(async (request: SearchQueryRequest, inspectedId: string | null) => {
+    let refreshed = await executeQuery({ ...request, requestId: nextRequestId(requestSequence) });
+    if (refreshed && refreshed.pageCount > 0 && refreshed.page > refreshed.pageCount) {
+      refreshed = await executeQuery({
+        ...request,
+        page: refreshed.pageCount,
+        requestId: nextRequestId(requestSequence),
+      });
+    }
+    setSelectedIds(new Set());
+    setSelectionCapHit(false);
+    if (inspectedId && refreshed && entityIds(refreshed).includes(inspectedId)) {
+      await inspect(inspectedId, true);
+    }
+  }, [executeQuery, inspect]);
+
+  const runEntityAction = useCallback(async (
+    entityAction: CardEntityAction | NoteEntityAction,
+    options: { flag?: number; tags?: string[] } = {},
+  ) => {
+    if (actionInFlight.current || selectedIds.size === 0 || !submittedRequest) return;
+    actionInFlight.current = true;
+    setActionPending(true);
+    setActionResponse(null);
+    setActionError(null);
+    queryAbort.current?.abort();
+    querySequence.current += 1;
+    const controller = new AbortController();
+    actionAbort.current = controller;
+    const ids = [...selectedIds];
+    const inspectedId = activeId;
+    try {
+      const requestId = `entity-action-${nextRequestId(requestSequence)}`;
+      const value = mode === "cards"
+        ? await runCardEntityAction({
+            action: entityAction as CardEntityAction,
+            cardIds: ids,
+            ...(entityAction === "set_flag" ? { flag: options.flag } : {}),
+            requestId,
+          }, controller.signal)
+        : await runNoteEntityAction({
+            action: entityAction as NoteEntityAction,
+            noteIds: ids,
+            tags: options.tags ?? [],
+            requestId,
+          }, controller.signal);
+      if (controller.signal.aborted) return;
+      setActionResponse(value);
+      await refreshAfterAction(submittedRequest, inspectedId);
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setActionError(error instanceof EntityActionApiError
+          ? error
+          : new EntityActionApiError("The Anki action failed.", { code: "entity_action_failed", status: 0 }));
+      }
+    } finally {
+      if (!controller.signal.aborted) setActionPending(false);
+      actionInFlight.current = false;
+    }
+  }, [activeId, mode, refreshAfterAction, selectedIds, submittedRequest]);
+
   return {
     mode, setMode, query, setQuery, filters, setFilters, sortDirection, setSortDirection,
     pageSize, setPageSize, response, queryStatus, queryError, submit, retry, goToPage, clear,
     selectedIds, selectionCapHit, toggleSelection, togglePageSelection,
     activeId, inspect, inspectStatus, inspectResponse, inspectError,
     browserStatus, browserPending, openInBrowser,
+    actionPending, actionResponse, actionError, runEntityAction,
   };
 }
 

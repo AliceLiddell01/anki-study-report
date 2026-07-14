@@ -155,6 +155,7 @@ from .browser_actions import (
     open_browser_search,
 )
 from .search_runtime import run_search_inspect_sync, run_search_query_sync
+from .entity_action_runtime import run_card_action_sync, run_note_action_sync
 from .config_service import (
     DEFAULT_ENABLED_METRICS,
     SettingsValidationError,
@@ -1931,6 +1932,10 @@ def _configure_dashboard_cache_handlers() -> None:
         query_handler=_search_query_response,
         inspect_handler=_search_inspect_response,
     )
+    _DASHBOARD_SERVER.configure_entity_action_handlers(
+        card_handler=_card_action_response,
+        note_handler=_note_action_response,
+    )
     _DASHBOARD_SERVER.configure_media_handler(_dashboard_media_file)
 
 
@@ -2115,6 +2120,14 @@ def _search_query_response(payload: dict) -> dict:
 
 def _search_inspect_response(payload: dict) -> dict:
     return run_search_inspect_sync(mw, payload)
+
+
+def _card_action_response(payload: dict) -> dict:
+    return run_card_action_sync(mw, payload)
+
+
+def _note_action_response(payload: dict) -> dict:
+    return run_note_action_sync(mw, payload)
 
 
 def _statistics_query_on_main(payload: dict) -> dict:
