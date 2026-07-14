@@ -388,7 +388,7 @@ function OverviewView({ result }: { result: OverviewResult }) {
   return (
     <div className="statistics-section-stack" data-testid="fsrs-overview">
       <InsightBanner icon={<Sparkles size={22} />} eyebrow={tf("overview.eyebrow")} title={tf("overview.title")} tone={result.dataSufficiency === "insufficient" ? "neutral" : "accent"}>
-        {result.insight}
+        {tf(result.dataSufficiency === "insufficient" ? "overviewInsightInsufficient" : "overviewInsightSufficient")}
       </InsightBanner>
 
       <section className="fsrs-retention-comparison panel-surface" aria-labelledby="fsrs-retention-heading">

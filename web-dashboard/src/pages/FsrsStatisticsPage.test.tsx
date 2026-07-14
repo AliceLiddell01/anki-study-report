@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { mockReport } from "../data/mockReport";
+import i18n from "../i18n";
 import { fetchFsrs } from "../lib/fsrsApi";
 import FsrsStatisticsPage, { type FsrsSection } from "./FsrsStatisticsPage";
 
@@ -103,10 +104,16 @@ describe("FSRS Statistics", () => {
     await render("overview");
 
     expect(container.textContent).toContain("Главный вывод");
+    expect(container.textContent).toContain("Фактическое удержание рассчитано по последним 30 дням");
+    expect(container.textContent).not.toContain("Фактическое удержание находится внутри диапазона целей");
     expect(container.textContent).toContain("Фактическое и целевое удержание");
     expect(container.textContent).toContain("Факт внутри целевого диапазона");
     expect(container.textContent).toContain("Совместимые наборы настроек");
     expect(container.querySelector('a[href="#/stats/fsrs/calibration"]')).not.toBeNull();
+
+    await act(async () => { await i18n.changeLanguage("en"); });
+    expect(container.textContent).toContain("Actual retention is calculated from the last 30 days");
+    expect(container.textContent).not.toContain("Фактическое удержание рассчитано");
   });
 
   it("shows calibration loading and a sparse-safe calculated result", async () => {
