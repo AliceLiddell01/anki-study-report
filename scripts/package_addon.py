@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import ast
 from dataclasses import dataclass
 import importlib.util
 from pathlib import Path, PurePosixPath
+import re
 import sys
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -29,6 +31,7 @@ resolve_dashboard_asset_graph = _ASSET_GRAPH_MODULE.resolve_dashboard_asset_grap
 
 REQUIRED_FILES = {
     "__init__.py",
+    "version.py",
     "manifest.json",
     "config.json",
     "dashboard_server.py",
@@ -83,6 +86,8 @@ class ArchiveValidation:
     unsafe_dashboard_asset_refs: list[str]
     css_markers_missing: list[str]
     testzip_result: str | None
+    canonical_version: str | None
+    version_error: str | None
 
     @property
     def ok(self) -> bool:
@@ -98,7 +103,35 @@ class ArchiveValidation:
             and not self.unsafe_dashboard_asset_refs
             and not self.css_markers_missing
             and self.testzip_result is None
+            and self.canonical_version is not None
+            and self.version_error is None
         )
+
+
+SEMVER_RE = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
+)
+
+
+def parse_packaged_version(source: str) -> tuple[str | None, str | None]:
+    try:
+        module = ast.parse(source, filename="version.py")
+        assignments = [
+            node.value
+            for node in module.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets)
+        ]
+        if len(assignments) != 1:
+            raise ValueError("expected exactly one __version__ assignment")
+        value = ast.literal_eval(assignments[0])
+        if not isinstance(value, str) or not SEMVER_RE.fullmatch(value):
+            raise ValueError("__version__ must be a valid SemVer string literal")
+        return value, None
+    except (SyntaxError, ValueError, TypeError) as exc:
+        return None, str(exc)
 
 
 def should_include(path: Path) -> bool:
@@ -142,6 +175,12 @@ def validate_archive(path: Path = DEFAULT_OUTPUT) -> ArchiveValidation:
             for name in linked_assets
             if name.endswith(".css") and name in names
         )
+        if "version.py" in names:
+            canonical_version, version_error = parse_packaged_version(
+                archive.read("version.py").decode("utf-8", errors="strict")
+            )
+        else:
+            canonical_version, version_error = None, "version.py is missing"
 
     name_set = set(names)
     missing = sorted(REQUIRED_FILES - name_set)
@@ -181,14 +220,20 @@ def validate_archive(path: Path = DEFAULT_OUTPUT) -> ArchiveValidation:
         unsafe_dashboard_asset_refs=graph["unsafe"],
         css_markers_missing=css_markers_missing,
         testzip_result=testzip_result,
+        canonical_version=canonical_version,
+        version_error=version_error,
     )
 
 
 def is_forbidden_archive_name(name: str) -> bool:
     normalized = name.replace("\\", "/")
+    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
+        return True
     if any(normalized.startswith(prefix) for prefix in FORBIDDEN_PREFIXES):
         return True
     path = PurePosixPath(normalized)
+    if ".." in path.parts:
+        return True
     if any(part in FORBIDDEN_DIR_NAMES for part in path.parts):
         return True
     return path.suffix.lower() in FORBIDDEN_SUFFIXES
@@ -221,6 +266,8 @@ def main() -> int:
         print(f"Unsafe dashboard asset references: {validation.unsafe_dashboard_asset_refs}")
         print(f"Missing dashboard CSS markers: {validation.css_markers_missing}")
         print(f"Zip test result: {validation.testzip_result}")
+        print(f"Canonical package version: {validation.canonical_version}")
+        print(f"Version source error: {validation.version_error}")
         if not validation.ok:
             return 1
     return 0

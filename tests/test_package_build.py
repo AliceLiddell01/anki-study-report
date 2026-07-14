@@ -6,12 +6,15 @@ import sys
 from pathlib import Path
 from zipfile import ZipFile
 
+import pytest
+
 from conftest import ROOT
 
 
 PACKAGE_SCRIPT = ROOT / "scripts" / "package_addon.py"
 REQUIRED_ARCHIVE_FILES = {
     "__init__.py",
+    "version.py",
     "manifest.json",
     "config.json",
     "web_dashboard/index.html",
@@ -27,7 +30,13 @@ def load_package_script():
     return module
 
 
-def write_minimal_archive(path: Path, *, include_js: bool = True, css_payload: str | None = None) -> None:
+def write_minimal_archive(
+    path: Path,
+    *,
+    include_js: bool = True,
+    css_payload: str | None = None,
+    version_source: str = '__version__ = "1.0.0"\n',
+) -> None:
     css_payload = css_payload if css_payload is not None else "\n".join(
         [
             "[data-theme=light]",
@@ -39,6 +48,7 @@ def write_minimal_archive(path: Path, *, include_js: bool = True, css_payload: s
     )
     with ZipFile(path, "w") as archive:
         archive.writestr("__init__.py", "")
+        archive.writestr("version.py", version_source)
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
         archive.writestr("dashboard_server.py", "")
@@ -152,6 +162,7 @@ def write_split_archive(
     }
     with ZipFile(path, "w") as archive:
         archive.writestr("__init__.py", "")
+        archive.writestr("version.py", '__version__ = "1.0.0"\n')
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
         archive.writestr("dashboard_server.py", "")
@@ -230,3 +241,29 @@ def test_package_validation_rejects_manifest_path_escape(tmp_path):
 
     assert validation.ok is False
     assert validation.unsafe_dashboard_asset_refs == ["../outside.js"]
+
+
+def test_package_validation_requires_literal_semver_version_source(tmp_path):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "invalid-version.ankiaddon"
+    write_minimal_archive(archive_path, version_source='__version__ = "01.0.0"\n')
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is False
+    assert validation.canonical_version is None
+    assert "valid SemVer" in validation.version_error
+
+
+@pytest.mark.parametrize("unsafe_name", ["../escape.py", "/absolute.py", "C:/private.py"])
+def test_package_validation_rejects_unsafe_archive_paths(tmp_path, unsafe_name):
+    package_addon = load_package_script()
+    archive_path = tmp_path / "unsafe-path.ankiaddon"
+    write_minimal_archive(archive_path)
+    with ZipFile(archive_path, "a") as archive:
+        archive.writestr(unsafe_name, "unsafe")
+
+    validation = package_addon.validate_archive(archive_path)
+
+    assert validation.ok is False
+    assert unsafe_name in validation.forbidden

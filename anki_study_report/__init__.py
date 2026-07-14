@@ -15,6 +15,8 @@ import shutil
 import threading
 import traceback
 
+from .version import __version__
+
 
 def _e2e_events_enabled() -> bool:
     return os.environ.get("ANKI_STUDY_REPORT_E2E") == "1"
@@ -2881,12 +2883,7 @@ def _dashboard_token_from_url(url: str | None) -> str:
 
 
 def _addon_manifest_version() -> str:
-    try:
-        manifest = json.loads((Path(__file__).resolve().parent / "manifest.json").read_text(encoding="utf-8"))
-    except Exception:
-        return "unknown"
-    value = manifest.get("version") or manifest.get("mod") or "unknown"
-    return str(value)
+    return __version__
 
 
 def _web_dashboard_status_text() -> str:
