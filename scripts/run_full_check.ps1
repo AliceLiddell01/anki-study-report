@@ -211,8 +211,20 @@ if (-not $SkipDocker) {
     }
     $env:ANKI_E2E_SCOPE = $E2EScope
     $env:ANKI_E2E_SCREENSHOT_WORKERS = if ($ScreenshotWorkers -eq "auto") { "3" } else { $ScreenshotWorkers }
-    $env:ANKI_E2E_RESOURCE_TELEMETRY = if ($DisableResourceTelemetry) { "0" } else { "1" }
-    $env:ANKI_E2E_VERIFY_RESTART = switch ($VerifyRestart) { "true" { "1" }; "false" { "0" }; default { "auto" } }
+    $env:ANKI_E2E_RESOURCE_TELEMETRY = if ($DisableResourceTelemetry) {
+        "0"
+    } elseif ($previousTelemetry) {
+        $previousTelemetry
+    } else {
+        "1"
+    }
+    $env:ANKI_E2E_VERIFY_RESTART = if ($PSBoundParameters.ContainsKey("VerifyRestart")) {
+        switch ($VerifyRestart) { "true" { "1" }; "false" { "0" }; default { "auto" } }
+    } elseif ($previousRestart) {
+        $previousRestart
+    } else {
+        "auto"
+    }
     if ($NoDockerBuild) { $env:ANKI_E2E_NO_BUILD = "1" }
     if ($ApkgFixture) {
         $env:ANKI_E2E_APKG_FIXTURE = $ApkgFixture
