@@ -78,12 +78,17 @@ web-dashboard/src/lib/dateUtils.ts        date formatting
 web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
 web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
 web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
+web-dashboard/src/lib/searchApi.ts        future Search query/inspect client; no route/UI yet
 web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
 web-dashboard/src/lib/theme.ts            theme localStorage
 web-dashboard/src/i18n/index.ts           i18next initialization and bundled resources
 web-dashboard/src/i18n/language.ts        language normalization/storage/document sync
 web-dashboard/src/i18n/locales/           RU/EN namespace resources
 ```
+
+`types/search.ts` различает Cards/Notes row/details и хранит IDs строками.
+Search foundation не добавляет route: `#/search` отсутствует, primary
+navigation и Cards v2 остаются без изменений.
 
 ## Cards preview modes
 

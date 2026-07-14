@@ -92,6 +92,8 @@ class DashboardServerManager:
         self._profile_handler = None
         self._statistics_query_handler = None
         self._fsrs_query_handler = None
+        self._search_query_handler = None
+        self._search_inspect_handler = None
         self._media_file_provider = None
 
     def start(
@@ -262,6 +264,11 @@ class DashboardServerManager:
     def configure_fsrs_handler(self, query_handler=None) -> None:
         with self._lock:
             self._fsrs_query_handler = query_handler
+
+    def configure_search_handlers(self, query_handler=None, inspect_handler=None) -> None:
+        with self._lock:
+            self._search_query_handler = query_handler
+            self._search_inspect_handler = inspect_handler
 
     def configure_media_handler(self, media_file_provider=None) -> None:
         with self._lock:
@@ -437,6 +444,34 @@ class DashboardServerManager:
             log_exception("statistics.fsrs.error", "FSRS query failed")
             return {"ok": False, "error": "fsrs_query_failed", "message": "FSRS query failed."}
 
+    def query_search(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request_search("_search_query_handler", payload)
+
+    def inspect_search(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request_search("_search_inspect_handler", payload)
+
+    def _request_search(self, handler_attribute: str, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = getattr(self, handler_attribute)
+        if handler is None:
+            return {"ok": False, "error": "search_unavailable", "message": "Search is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "search_failed",
+                "message": "The search request failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "search.request.error",
+                "Search request handler failed",
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "search_failed", "message": "The search request failed."}
+
     def media_file(self, name: str) -> tuple[bytes, str] | None:
         with self._lock:
             provider = self._media_file_provider
@@ -549,6 +584,15 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({"ok": False, "error": "method_not_allowed", "message": "Use POST for FSRS queries."}, HTTPStatus.METHOD_NOT_ALLOWED)
             return
+        if path in {"/api/search/query", "/api/search/inspect"}:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for search requests."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path == "/api/logs/status":
             self._send_logs_status(_query_token(parsed))
             return
@@ -603,6 +647,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/statistics/fsrs/query":
             self._send_fsrs_query(_query_token(parsed))
+            return
+        if path == "/api/search/query":
+            self._send_search_request(_query_token(parsed), inspect=False)
+            return
+        if path == "/api/search/inspect":
+            self._send_search_request(_query_token(parsed), inspect=True)
             return
         if path.startswith("/api/actions/"):
             action = path.removeprefix("/api/actions/").strip("/")
@@ -1211,6 +1261,33 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         elif result.get("error") == "invalid_fsrs_query":
             status = HTTPStatus.BAD_REQUEST
         elif result.get("error") in {"fsrs_unavailable", "fsrs_query_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_search_request(self, token: str | None, *, inspect: bool) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_search_request", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.inspect_search(payload) if inspect else self.manager.query_search(payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_search_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "search_entity_not_found":
+            status = HTTPStatus.NOT_FOUND
+        elif error == "search_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"search_unavailable", "search_failed"}:
             status = HTTPStatus.SERVICE_UNAVAILABLE
         else:
             status = HTTPStatus.BAD_REQUEST

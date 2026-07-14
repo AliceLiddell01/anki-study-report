@@ -95,6 +95,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Архитектура](docs/architecture.md)
 - [Разработка и проверки](docs/development.md)
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
+- [Search Query Foundation](docs/search-query-foundation.md)
 - [Матрица проверок](docs/test-matrix.md)
 - [CI Foundation и будущий CD](docs/ci-cd.md)
 - [Готовность репозитория к публикации](docs/public-repository-readiness.md)

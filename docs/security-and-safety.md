@@ -96,6 +96,15 @@ unknown fields, arbitrary search и SQL-like payload. Frontend получает 
 daily/deck aggregates и grouped current state/due snapshot: raw revlog,
 individual card/note IDs/text, token и paths не публикуются.
 
+Search foundation — отдельное осознанное исключение для будущего Search v1:
+token-protected `POST /api/search/query` и `/api/search/inspect` возвращают
+только выбранные bounded plain-text Card/Note projections. Native query
+валидируется Anki, structured filters собираются без ручной конкатенации,
+arbitrary SQL/sort и mutation endpoints отсутствуют. Query/body/result/field
+limits, string IDs, safe text и generic runtime errors описаны в
+`docs/search-query-foundation.md`. Raw query и token не попадают в normal logs
+или E2E public artifact.
+
 ## Dashboard actions allowlist
 
 Разрешенные report actions описаны в `actionsApi.ts` и
