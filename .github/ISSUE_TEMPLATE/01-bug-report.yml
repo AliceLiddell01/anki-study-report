@@ -1,0 +1,127 @@
+name: Bug report
+description: Report a reproducible problem in Anki Study Report
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Do not include dashboard tokens, token-bearing URLs, collection/profile data, credentials, or private paths.
+
+        Security vulnerabilities must be reported privately according to the [security policy](https://github.com/AliceLiddell01/anki-study-report/security/policy), not through this form.
+
+  - type: input
+    id: addon-version
+    attributes:
+      label: Anki Study Report version
+      description: Provide the published version or commit SHA.
+      placeholder: "Example: 1.2.0 or ff84cf6"
+    validations:
+      required: true
+
+  - type: input
+    id: anki-version
+    attributes:
+      label: Anki version
+      placeholder: "Example: 26.05"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: installation
+    attributes:
+      label: Installation method
+      description: Explain how the add-on was installed or updated.
+      placeholder: "AnkiWeb, local .ankiaddon, repository checkout, other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Add-on startup or launcher
+        - Today
+        - Activity
+        - Statistics or FSRS
+        - Decks
+        - Cards or card preview
+        - Profile
+        - Settings, server, sources, or logs
+        - Packaging or installation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem description
+      description: Describe what went wrong and how it affects you.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reliable sequence that triggers the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only the relevant redacted lines. Remove tokens, token-bearing URLs, personal data, collection content, credentials, and private paths.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or additional context
+      description: Drag files here when useful. Review them for tokens and personal information first.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests for this problem.
+          required: true
+        - label: I removed dashboard tokens, token-bearing URLs, collection/profile data, credentials, and private paths from the report.
+          required: true
+        - label: This is not a security vulnerability requiring private disclosure.
+          required: true
+        - label: I agree to follow the project's Code of Conduct.
+          required: true
