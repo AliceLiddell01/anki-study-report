@@ -126,9 +126,9 @@ bytes. Уже опубликованные assets draft operation никогда
 возобновлением можно read-only проверить его так:
 
 ```powershell
-gh api --method GET --paginate --slurp `
+gh api --method GET --paginate `
   "repos/AliceLiddell01/anki-study-report/releases?per_page=100" `
-  --jq '.[][] | select(.tag_name == "v1.0.0") | {id,tag_name,draft,prerelease,target_commitish,assets}'
+  --jq '.[] | select(.tag_name == "v1.0.0") | {id,tag_name,draft,prerelease,target_commitish,assets}'
 git ls-remote --tags origin refs/tags/v1.0.0
 ```
 
