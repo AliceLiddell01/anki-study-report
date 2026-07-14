@@ -106,7 +106,7 @@ function isActionArgs(value: unknown, action: string): value is Record<string, n
     return keys.length === 1 && keys[0] === "deckId" && positiveSafeInteger(args.deckId);
   }
   if (action === "add_tags" || action === "remove_tags") {
-    return keys.length === 1 && keys[0] === "tagCount" && integerInRange(args.tagCount, 1, 20);
+    return keys.length === 0 || (keys.length === 1 && keys[0] === "tagCount" && integerInRange(args.tagCount, 1, 20));
   }
   return keys.length === 0;
 }
