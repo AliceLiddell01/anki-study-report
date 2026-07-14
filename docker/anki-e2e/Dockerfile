@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.49.1-noble
+FROM mcr.microsoft.com/playwright:v1.55.1-noble
 
 ARG ANKI_VERSION=26.05
 ARG ANKI_SHA256=
@@ -80,7 +80,7 @@ RUN if [ -n "$UBUNTU_MIRROR" ]; then \
 RUN mkdir -p /e2e/bin /e2e/artifacts /e2e/anki-data \
     && cd /e2e \
     && npm init -y >/dev/null 2>&1 \
-    && npm install pnpm@9.15.9 playwright@1.49.1 \
+    && npm install pnpm@9.15.9 playwright@1.55.1 \
     && python3 -m pip install --break-system-packages "${ANKI_PYTHON_PACKAGE}"
 
 COPY docker/anki-e2e/install-anki.sh /e2e/bin/install-anki.sh
