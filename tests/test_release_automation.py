@@ -83,10 +83,11 @@ def release_bundle(tmp_path: Path) -> tuple[Path, dict[str, bytes], dict]:
 def test_canonical_version_is_pure_semver_and_packaged_source():
     release = load_release_common()
 
-    assert release.read_version() == "1.0.0"
+    version = release.read_version()
+    assert release.SemVer.parse(version)
     source = (ROOT / "anki_study_report" / "version.py").read_text(encoding="utf-8")
     assert "aqt" not in source
-    assert "__version__ = \"1.0.0\"" in source
+    assert f'__version__ = "{version}"' in source
 
 
 @pytest.mark.parametrize("invalid", ["01.0.0", "1.00.0", "1.0", "v1.0.0", "1.0.0-01"])
@@ -99,12 +100,14 @@ def test_semver_rejects_invalid_or_leading_zero_versions(invalid: str):
 
 def test_release_notes_and_ankiweb_description_share_only_current_section():
     release = load_release_common()
+    version = release.read_version()
 
-    notes = release.release_notes("1.0.0")
-    description = release.render_ankiweb_description("1.0.0")
+    notes = release.release_notes(version)
+    description = release.render_ankiweb_description(version)
 
     assert notes.rstrip() in description
-    assert description.count("## What's new in 1.0.0") == 1
+    assert description.count(f"## What's new in {version}") == 1
+    assert "## New: Search your Anki collection" in description
     assert "[Unreleased]" not in notes
     assert "[Unreleased]" not in description
     assert "#/search" not in description.lower()
@@ -140,10 +143,11 @@ def test_public_renderer_guards_reject_private_or_internal_content(unsafe: str):
 
 def test_release_validation_checks_artifact_name_and_writes_no_secrets(tmp_path: Path):
     release = load_release_common()
+    version = release.read_version()
     artifact = tmp_path / "anki_study_report.ankiaddon"
     artifact.write_bytes(b"release-bytes")
 
-    report = release.validate_release("1.0.0", "stable", artifact=artifact, check_remote_tag=False, allow_existing_tag=True)
+    report = release.validate_release(version, "stable", artifact=artifact, check_remote_tag=False, allow_existing_tag=True)
 
     assert report["artifactName"] == artifact.name
     assert report["artifactSha256"] == release.sha256_file(artifact)
@@ -151,10 +155,11 @@ def test_release_validation_checks_artifact_name_and_writes_no_secrets(tmp_path:
     wrong = tmp_path / "other.ankiaddon"
     wrong.write_bytes(b"release-bytes")
     with pytest.raises(release.ReleaseError, match="Release artifact"):
-        release.validate_release("1.0.0", "stable", artifact=wrong, check_remote_tag=False, allow_existing_tag=True)
+        release.validate_release(version, "stable", artifact=wrong, check_remote_tag=False, allow_existing_tag=True)
 
 
 def test_prepared_release_check_is_read_only(tmp_path: Path):
+    version = load_release_common().read_version()
     checkout = tmp_path / "checkout"
     remote = tmp_path / "remote.git"
     subprocess.run(["git", "clone", "--quiet", "--no-tags", str(ROOT), str(checkout)], check=True)
@@ -162,7 +167,7 @@ def test_prepared_release_check_is_read_only(tmp_path: Path):
     subprocess.run(["git", "remote", "set-url", "origin", str(remote)], cwd=checkout, check=True)
     before = subprocess.run(["git", "status", "--short"], cwd=checkout, check=True, capture_output=True, text=True).stdout
     result = subprocess.run(
-        ["node", "scripts/run_python.mjs", "scripts/prepare_release.py", "--version", "1.0.0", "--check"],
+        ["node", "scripts/run_python.mjs", "scripts/prepare_release.py", "--version", version, "--check"],
         cwd=checkout,
         check=True,
         capture_output=True,

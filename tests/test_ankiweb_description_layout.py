@@ -29,11 +29,12 @@ def load_modules():
 
 def test_rendered_description_uses_product_first_layout_without_duplicate_h1() -> None:
     common, description_module = load_modules()
-    rendered = description_module.render_ankiweb_description("1.0.0")
-    notes = common.release_notes("1.0.0").rstrip()
+    version = common.read_version()
+    rendered = description_module.render_ankiweb_description(version)
+    notes = common.release_notes(version).rstrip()
 
     assert re.search(r"(?m)^#\s+", rendered) is None
-    assert rendered.count("## What's new in 1.0.0") == 1
+    assert rendered.count(f"## What's new in {version}") == 1
     assert rendered.count("https://boosty.to/ankistudyreport") == 1
     assert 'src="https://upload.wikimedia.org/wikipedia/commons/9/92/Boosty_logo.svg"' in rendered
     assert 'alt="Support the author on Boosty"' in rendered
@@ -41,15 +42,16 @@ def test_rendered_description_uses_product_first_layout_without_duplicate_h1() -
     assert "[Unreleased]" not in rendered
 
     intro = rendered.index("Anki Study Report turns your Anki review data")
+    search = rendered.index("## New: Search your Anki collection")
     support = rendered.index("## Support the author")
     features = rendered.index("## Main features")
     privacy = rendered.index("## Privacy and safety")
     compatibility = rendered.index("## Compatibility and limitations")
     links = rendered.index("## Links and contact")
-    changelog = rendered.index("## What's new in 1.0.0")
+    changelog = rendered.index(f"## What's new in {version}")
     history = rendered.index("[Full release history]")
 
-    assert intro < support < features < privacy < compatibility < links < changelog < history
+    assert intro < search < support < features < privacy < compatibility < links < changelog < history
     assert notes in rendered
     assert common.sha256_text(rendered) == common.sha256_text(rendered.replace("\n", "\r\n"))
 
