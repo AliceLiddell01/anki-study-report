@@ -4,6 +4,7 @@ export type ReportAction =
   | "open-browser"
   | "open-browser-search"
   | "open-deck-browser"
+  | "open-search-selection"
   | "open-problematic"
   | "open-again"
   | "open-new"
@@ -20,11 +21,19 @@ export type ActionResponse = {
   action: string;
   message?: string;
   error?: string;
+  resultCode?: string;
+  requestedCount?: number;
 };
 
 export async function runReportAction(
   action: ReportAction,
-  body: { kind?: BrowserActionKind; query?: string; deckId?: number; mode?: "subtree" | "direct" } = {},
+  body: {
+    kind?: BrowserActionKind;
+    query?: string;
+    deckId?: number;
+    mode?: "subtree" | "direct" | "cards" | "notes";
+    entityIds?: string[];
+  } = {},
 ): Promise<ActionResponse> {
   const token = dashboardToken();
   const response = await fetch(`/api/actions/${action}?token=${encodeURIComponent(token)}`, {
@@ -82,12 +91,20 @@ async function safeJson(response: Response): Promise<unknown> {
 function normalizeActionResponse(value: unknown, fallbackAction: ReportAction | ServerAction): ActionResponse {
   const data = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const ok = data.ok === true;
+  const resultCode = typeof data.resultCode === "string" ? data.resultCode : undefined;
+  const requestedCount = nonNegativeInteger(data.requestedCount);
   return {
     ok,
     action: typeof data.action === "string" && data.action.trim() ? data.action : fallbackAction,
     message: cleanText(data.message),
     error: ok ? undefined : cleanText(data.error) || cleanText(data.message),
+    ...(resultCode ? { resultCode } : {}),
+    ...(requestedCount !== undefined ? { requestedCount } : {}),
   };
+}
+
+function nonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
 }
 
 function cleanText(value: unknown): string | undefined {

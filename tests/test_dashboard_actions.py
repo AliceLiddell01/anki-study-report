@@ -95,6 +95,42 @@ def test_dashboard_action_rejects_invalid_deck_browser_mode(monkeypatch):
     }
 
 
+def test_dashboard_action_opens_explicit_search_selection(monkeypatch):
+    dashboard_actions = fresh_import_addon_module("dashboard_actions")
+    opened = []
+    monkeypatch.setattr(dashboard_actions, "mw", SimpleNamespace(col=object()))
+    monkeypatch.setattr(
+        dashboard_actions,
+        "build_entity_browser_query",
+        lambda col, mode, ids: ("(nid:1 OR nid:2)", len(ids)),
+    )
+    monkeypatch.setattr(
+        dashboard_actions,
+        "open_browser_search",
+        lambda query, **kwargs: opened.append((query, kwargs)),
+    )
+    actions = make_actions(dashboard_actions, opened)
+    result = actions.request_dashboard_action(
+        "open-search-selection", {"mode": "notes", "entityIds": ["1", "2"]}
+    )
+    assert result["ok"] is True
+    assert result["resultCode"] == "search.browser_opened"
+    assert result["requestedCount"] == 2
+    assert opened == [("(nid:1 OR nid:2)", {"prevalidated": True})]
+
+
+def test_dashboard_action_rejects_ambiguous_search_selection_body(monkeypatch):
+    dashboard_actions = fresh_import_addon_module("dashboard_actions")
+    monkeypatch.setattr(dashboard_actions, "mw", SimpleNamespace(col=object()))
+    actions = make_actions(dashboard_actions, [])
+    result = actions.request_dashboard_action(
+        "open-search-selection",
+        {"mode": "cards", "entityIds": ["1"], "query": "cid:2"},
+    )
+    assert result["ok"] is False
+    assert result["action"] == "open-search-selection"
+
+
 def test_dashboard_action_opens_native_stats_and_rejects_body():
     dashboard_actions = fresh_import_addon_module("dashboard_actions")
     opened = []

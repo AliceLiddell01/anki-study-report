@@ -14,6 +14,7 @@ describe("dashboard router", () => {
       { path: "/calendar", labelKey: "primary.activity" },
       { path: "/stats", labelKey: "primary.statistics" },
       { path: "/decks", labelKey: "primary.decks" },
+      { path: "/search", labelKey: "primary.search" },
       { path: "/cards", labelKey: "primary.cards" },
     ]);
     const primaryPaths: string[] = primaryNavItems.map((item) => item.path);
@@ -40,6 +41,7 @@ describe("dashboard router", () => {
       "/profile",
       "/decks",
       "/cards",
+      "/search",
       "/calendar",
       "/stats",
       "/stats/quality",
@@ -62,6 +64,7 @@ describe("dashboard router", () => {
       "/profile",
       "/decks",
       "/cards",
+      "/search",
       "/calendar",
       "/stats",
       "/stats/quality",

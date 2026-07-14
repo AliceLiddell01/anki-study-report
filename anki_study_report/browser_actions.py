@@ -12,7 +12,9 @@ from .metrics import collect_action_card_ids
 
 BROWSER_ACTION_CARD_LIMIT = 500
 BROWSER_SEARCH_DIRECT_MAX_LENGTH = 1800
+SEARCH_SELECTION_LIMIT = 200
 DECK_BROWSER_MODES = {"subtree", "direct"}
+SEARCH_ENTITY_MODES = {"cards", "notes"}
 
 
 class BrowserSearchQueryError(ValueError):
@@ -51,6 +53,45 @@ def collect_browser_action_card_ids(
 
 def card_ids_search_query(card_ids: list[int]) -> str:
     return balanced_or_search_query([f"cid:{int(card_id)}" for card_id in card_ids])
+
+
+def build_entity_browser_query(col, mode: object, entity_ids: object) -> tuple[str, int]:
+    """Validate an explicit Search selection and build the final native query."""
+
+    safe_mode = str(mode or "").strip()
+    if safe_mode not in SEARCH_ENTITY_MODES:
+        raise BrowserSearchQueryError("Search selection mode is invalid.")
+    if not isinstance(entity_ids, list) or not entity_ids:
+        raise BrowserSearchQueryError("Select at least one search result.")
+    if len(entity_ids) > SEARCH_SELECTION_LIMIT:
+        raise BrowserSearchQueryError(
+            f"Search selection exceeds the {SEARCH_SELECTION_LIMIT} item limit."
+        )
+
+    parsed_ids: list[int] = []
+    seen: set[int] = set()
+    for value in entity_ids:
+        if not isinstance(value, str) or not re.fullmatch(r"[1-9]\d{0,18}", value):
+            raise BrowserSearchQueryError("Search selection contains an invalid ID.")
+        parsed = int(value)
+        if parsed > 9_223_372_036_854_775_807 or parsed in seen:
+            raise BrowserSearchQueryError("Search selection contains an invalid or duplicate ID.")
+        seen.add(parsed)
+        parsed_ids.append(parsed)
+
+    getter = col.get_card if safe_mode == "cards" else col.get_note
+    try:
+        for entity_id in parsed_ids:
+            entity = getter(entity_id)
+            if int(getattr(entity, "id", 0) or 0) != entity_id:
+                raise LookupError
+    except Exception as error:
+        raise BrowserSearchQueryError(
+            "A selected search result is unavailable or was deleted."
+        ) from error
+
+    prefix = "cid" if safe_mode == "cards" else "nid"
+    return balanced_or_search_query([f"{prefix}:{entity_id}" for entity_id in parsed_ids]), len(parsed_ids)
 
 
 def balanced_or_search_query(terms: list[str]) -> str:

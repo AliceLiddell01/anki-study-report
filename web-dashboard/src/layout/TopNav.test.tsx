@@ -40,7 +40,7 @@ describe("TopNav", () => {
     await act(async () => i18n.changeLanguage("en"));
     renderNav();
     const nav = container.querySelector<HTMLElement>('nav[aria-label="Primary navigation"]')!;
-    expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual(["Today", "Activity", "Statistics", "Decks", "Cards"]);
+    expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual(["Today", "Activity", "Statistics", "Decks", "Search", "Cards"]);
     const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Open profile menu"]')!;
     act(() => trigger.click());
     expect(Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]'), (item) => item.textContent?.trim())).toEqual(["Profile", "Settings", "Tools", "Support the project"]);
@@ -55,6 +55,7 @@ describe("TopNav", () => {
       "Активность",
       "Статистика",
       "Колоды",
+      "Поиск",
       "Карточки",
     ]);
     expect(nav.textContent).not.toMatch(/Профиль|Инструменты|Источники данных|Логи|Настройки|Сервер|Stats|FSRS|Browse/);
