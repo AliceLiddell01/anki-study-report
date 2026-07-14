@@ -7,13 +7,12 @@ import threading
 import traceback
 from typing import Any
 
+from .search_metadata import execute_search_request, normalize_search_request
 from .search_service import (
     SearchEntityNotFoundError,
     SearchValidationError,
     execute_search_inspect,
-    execute_search_query,
     normalize_search_inspect_request,
-    normalize_search_query_request,
 )
 from .extension_logging import log_event
 
@@ -25,8 +24,8 @@ def run_search_query_sync(mw: Any, payload: object, *, timeout_seconds: float = 
     return _run_search_sync(
         mw,
         payload,
-        validator=normalize_search_query_request,
-        executor=execute_search_query,
+        validator=normalize_search_request,
+        executor=execute_search_request,
         timeout_seconds=timeout_seconds,
     )
 
