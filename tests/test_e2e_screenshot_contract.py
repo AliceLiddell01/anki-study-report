@@ -10,7 +10,8 @@ DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
 
 def _page_names() -> list[str]:
     text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    return re.findall(r'pageName:\s*"([^"]+)"', text)
+    block = text.split("const dashboardPageCases = [", 1)[1].split("];", 1)[0]
+    return re.findall(r'pageName:\s*"([^"]+)"', block)
 
 
 def _page_scopes() -> dict[str, str]:
