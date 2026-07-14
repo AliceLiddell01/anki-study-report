@@ -1,6 +1,6 @@
 # UI Polish & Global Controls
 
-Статус: implemented in Stage 5.5.
+Статус: implemented; RU/EN language control added in Stage 7.7.
 
 ## Scope
 
@@ -16,9 +16,20 @@ presentation слои Activity и Decks перед Statistics v1. Routes, backen
 modal/popover/toast слоёв, не входит в primary navigation, avatar menu или
 Settings sidebar и остаётся на месте при hash navigation.
 
-Сейчас stack содержит только theme toggle. Будущий language selector сможет
-стать вторым utility item без переработки shell, но Stage 5.5 не показывает
-language button/placeholder, не добавляет locale files и не внедряет i18n.
+Stack содержит language selector и theme toggle. Selector показывает текущий
+код `RU`/`EN`, открывает accessible `menuitemradio` menu, переключает весь
+product UI без reload и сохраняет выбор независимо от theme. Keyboard contract:
+стрелки и Home/End перемещают focus, Escape закрывает menu и возвращает focus.
+Архитектура ресурсов и storage описаны в `docs/localization.md`.
+
+## Shared icon badges и FSRS header
+
+`brand-icon-badge` и `statistics-sidebar-icon` используют единый optical
+alignment contract в `styles.css`: SVG остаётся block-level внутри border и
+получает одно общее минимальное vertical correction. Временный
+`styles.fsrs-final.css` удалён; все shell corrections живут в основном
+stylesheet. FSRS hero больше не создаёт декоративный glow/blob через
+pseudo-element, поэтому header одинаково чистый в light и dark themes.
 
 ## Theme storage и initialization
 
@@ -90,7 +101,7 @@ dock с actionable content; manifest индексирует proof как `kind: 
 
 ## Explicit non-goals
 
-Statistics/FSRS, новые routes, i18n/language UI, новый payload/backend API,
+новые routes, новый payload/backend API,
 Activity derivation, Decks scoring, Profile/Cards redesign, mobile-first layout,
 theme sync и release/CD automation не входят в этап.
 

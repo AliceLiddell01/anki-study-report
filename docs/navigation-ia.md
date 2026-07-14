@@ -43,8 +43,9 @@ Stage 5 не меняет IA: `#/decks` остаётся тем же primary rou
 теперь является master-detail Decks v2. См. `docs/decks-v2.md`.
 
 Stage 5.5 также не меняет routes. Постоянный theme control живёт в App Shell
-utility dock вне primary nav, avatar menu и Settings sidebar. Future language
-utility документирован, но не рендерится.
+utility dock вне primary nav, avatar menu и Settings sidebar. RU/EN language
+selector теперь живёт в том же dock и также не является navigation item; см.
+`docs/localization.md`.
 
 ## Роль Today/Home
 
