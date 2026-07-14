@@ -115,6 +115,14 @@ Do not run heavy Docker E2E for docs-only changes.
 - Release PR workflows pass without production secrets or mutations.
 - After merge, dispatch `release.yml` from exact current `master` with explicit
   version/channel.
+- Если предыдущий run оставил draft, проверить его через authenticated
+  paginated `List releases`, а не считать `404` published-by-tag endpoint
+  доказательством отсутствия release.
+- Existing matching draft должен быть reused и retargeted на exact новый
+  `master` SHA; не удалять его и не создавать второй вручную.
+- Перед Environment approval проверить `github-draft-report-*`: release ID,
+  target commitish, ровно три expected assets, `uploaded` state и verified
+  SHA-256 для каждого asset.
 - Approve `ankiweb-production` only after the exact-artifact `standard/full`
   gate and draft GitHub Release are green.
 - Confirm final run evidence: commit SHA, artifact SHA-256, E2E-tested package
