@@ -18,6 +18,7 @@ from release_common import APPROVED_ARTIFACT_NAME, ReleaseError, SemVer, sha256_
 
 ASSET_NAMES = (APPROVED_ARTIFACT_NAME, "SHA256SUMS.txt", "release-manifest.json")
 TOKEN_RE = re.compile(r"\b(?:gh[opusr]_|github_pat_)[A-Za-z0-9_]{12,}")
+DRAFT_LOOKUP_DELAYS = (1, 2, 4)
 PUBLISHED_LOOKUP_DELAYS = (1, 2, 4)
 
 
@@ -126,6 +127,25 @@ def find_release(repo: str, tag: str, *, include_drafts: bool = True) -> dict[st
         ids = sorted(release["id"] for release in matches)
         raise ReleaseError(f"Ambiguous GitHub releases for exact tag {tag}: release IDs {ids}")
     return matches[0] if matches else None
+
+
+def wait_for_draft_release(repo: str, tag: str) -> dict[str, Any]:
+    release = find_release(repo, tag, include_drafts=True)
+    for attempt, delay in enumerate(DRAFT_LOOKUP_DELAYS, start=1):
+        if release is not None:
+            return release
+        log_event(
+            "draft-lookup-retry", repository=repo, tag=tag,
+            attempt=attempt, delaySeconds=delay, reason="post-create-not-listed",
+        )
+        time.sleep(delay)
+        release = find_release(repo, tag, include_drafts=True)
+    if release is None:
+        raise ReleaseError(
+            f"Draft release {tag} remained unavailable from the authenticated listing "
+            "after bounded post-create verification retries"
+        )
+    return release
 
 
 def get_release_by_id(repo: str, release_id: int, *, expected_tag: str | None = None) -> dict[str, Any]:
@@ -305,9 +325,7 @@ def prepare_draft(
         if expected_prerelease:
             args.append("--prerelease")
         gh(*args)
-        release = find_release(repo, tag, include_drafts=True)
-        if release is None:
-            raise ReleaseError(f"Draft release {tag} was created but not found by authenticated listing")
+        release = wait_for_draft_release(repo, tag)
         action = "created"
     if not release["draft"]:
         raise ReleaseError(f"Refusing to modify published GitHub release {release['id']} in draft mode")
