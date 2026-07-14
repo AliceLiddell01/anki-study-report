@@ -4,7 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from release_common import ReleaseError, read_version, validate_release
+from ankiweb_description import render_ankiweb_description
+from release_common import ReleaseError, read_version, sha256_text, validate_release
 
 
 def main() -> int:
@@ -25,6 +26,7 @@ def main() -> int:
             check_remote_tag=not args.skip_remote_tag_check,
             allow_existing_tag=args.allow_existing_tag,
         )
+        report["descriptionSha256"] = sha256_text(render_ankiweb_description(version))
     except (ReleaseError, OSError, json.JSONDecodeError) as exc:
         print(f"Release validation failed: {exc}")
         return 1
