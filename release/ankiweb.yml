@@ -1,0 +1,22 @@
+schema_version: 1
+addon_id: 373100400
+title: "Anki Study Report"
+tags:
+  - stats
+  - report
+  - review
+  - deck
+  - study-time
+  - dashboard
+  - analytics
+  - forecast
+  - workload
+  - fsrs
+support_url: "https://t.me/Alice_ha_doko?direct"
+expected_branch_label: "Branch 1"
+minimum_anki_version: "26.05.0"
+maximum_anki_version: "26.05.0"
+download_client_version: 260500
+repository_url: "https://github.com/AliceLiddell01/anki-study-report"
+releases_url: "https://github.com/AliceLiddell01/anki-study-report/releases"
+donation_url: "https://boosty.to/ankistudyreport"
