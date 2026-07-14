@@ -1,12 +1,28 @@
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { SearchMetadataState } from "../../hooks/useSearchMetadata";
 import type { SearchFiltersState, SearchWorkspaceState } from "../../hooks/useSearchWorkspace";
 import type { StudyReport } from "../../types/report";
 import type { DeckOption } from "../../types/settings";
 
-export default function SearchQueryBar({ workspace, report, deckOptions }: { workspace: SearchWorkspaceState; report: StudyReport | null; deckOptions: DeckOption[] }) {
+export default function SearchQueryBar({
+  workspace,
+  report,
+  metadata,
+  fallbackDeckOptions,
+}: {
+  workspace: SearchWorkspaceState;
+  report: StudyReport | null;
+  metadata: SearchMetadataState;
+  fallbackDeckOptions: DeckOption[];
+}) {
   const { t } = useTranslation("pages", { keyPrefix: "search" });
-  const noteTypes = (report?.noteTypeCatalog ?? []).map((item) => ({ id: String(item.noteTypeId), name: item.name }));
+  const deckOptions = metadata.response
+    ? metadata.response.decks.map((item) => ({ id: Number(item.deckId), name: item.deckName }))
+    : fallbackDeckOptions;
+  const noteTypes = metadata.response
+    ? metadata.response.noteTypes.map((item) => ({ id: item.noteTypeId, name: item.noteTypeName }))
+    : (report?.noteTypeCatalog ?? []).map((item) => ({ id: String(item.noteTypeId), name: item.name }));
   const updateFilter = <K extends keyof SearchFiltersState>(key: K, value: SearchFiltersState[K]) => {
     workspace.setFilters((current) => ({ ...current, [key]: value }));
   };
@@ -14,6 +30,7 @@ export default function SearchQueryBar({ workspace, report, deckOptions }: { wor
     event.preventDefault();
     workspace.submit();
   };
+  const loadMetadata = () => { void metadata.load(); };
 
   return (
     <form className="search-command" onSubmit={submit} aria-label={t("query.formLabel")}>
@@ -44,8 +61,8 @@ export default function SearchQueryBar({ workspace, report, deckOptions }: { wor
             </label>
           ))}
         </fieldset>
-        <label><span>{t("filters.deck")}</span><select value={workspace.filters.deckId} onChange={(event) => updateFilter("deckId", event.target.value)}><option value="">{t("filters.allDecks")}</option>{deckOptions.map((item) => <option key={item.id} value={String(item.id)}>{item.name}</option>)}</select></label>
-        <label><span>{t("filters.noteType")}</span><select value={workspace.filters.noteTypeId} onChange={(event) => updateFilter("noteTypeId", event.target.value)}><option value="">{t("filters.allNoteTypes")}</option>{noteTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label><span>{t("filters.deck")}</span><select value={workspace.filters.deckId} onFocus={loadMetadata} onChange={(event) => updateFilter("deckId", event.target.value)}><option value="">{t("filters.allDecks")}</option>{deckOptions.map((item) => <option key={item.id} value={String(item.id)}>{item.name}</option>)}</select></label>
+        <label><span>{t("filters.noteType")}</span><select value={workspace.filters.noteTypeId} onFocus={loadMetadata} onChange={(event) => updateFilter("noteTypeId", event.target.value)}><option value="">{t("filters.allNoteTypes")}</option>{noteTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label><span>{t("filters.tag")}</span><input value={workspace.filters.tag} maxLength={100} onChange={(event) => updateFilter("tag", event.target.value)} placeholder={t("filters.tagPlaceholder")} /></label>
         {workspace.mode === "cards" ? <>
           <label><span>{t("filters.state")}</span><select value={workspace.filters.state} onChange={(event) => updateFilter("state", event.target.value as SearchFiltersState["state"])}><option value="">{t("filters.anyState")}</option>{["new", "learning", "review", "due", "suspended", "buried"].map((value) => <option key={value} value={value}>{t(`states.${value}`)}</option>)}</select></label>
