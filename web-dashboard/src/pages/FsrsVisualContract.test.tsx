@@ -6,14 +6,14 @@ import { mockReport } from "../data/mockReport";
 import FsrsStatisticsPage, { type FsrsSection } from "./FsrsStatisticsPage";
 
 const sections: FsrsSection[] = ["overview", "memory", "calibration", "steps", "simulator"];
-let finalCss = "";
+let stylesCss = "";
 
 beforeAll(async () => {
   const nodeFsSpecifier = "node:fs";
   const { readFileSync } = await import(/* @vite-ignore */ nodeFsSpecifier) as {
     readFileSync(path: string, encoding: "utf8"): string;
   };
-  finalCss = readFileSync("src/styles.fsrs-final.css", "utf8");
+  stylesCss = readFileSync("src/styles.css", "utf8");
 });
 
 describe("FSRS shared visual contract", () => {
@@ -31,15 +31,19 @@ describe("FSRS shared visual contract", () => {
   });
 
   it("keeps the sidebar icon inside the shared card without clipping focus outlines", () => {
-    expect(finalCss).toMatch(/\.statistics-sidebar\s*\{[^}]*box-sizing:\s*border-box/s);
-    expect(finalCss).toMatch(/\.statistics-sidebar-heading\s*\{[^}]*padding-inline:/s);
-    expect(finalCss).toMatch(/\.statistics-sidebar-icon\s*\{[^}]*margin:\s*0;[^}]*transform:\s*none;/s);
-    expect(finalCss).not.toMatch(/\.statistics-sidebar\s*\{[^}]*overflow:\s*hidden/s);
+    expect(stylesCss).toMatch(/\.statistics-sidebar\s*\{[^}]*box-sizing:\s*border-box/s);
+    expect(stylesCss).toMatch(/\.statistics-sidebar-heading\s*\{[^}]*padding:/s);
+    expect(stylesCss).toMatch(/\.statistics-sidebar-icon\s*\{[^}]*margin:\s*0;/s);
+    expect(stylesCss).not.toMatch(/\.statistics-sidebar\s*\{[^}]*overflow:\s*hidden/s);
   });
 
-  it("removes the FSRS-only decorative pseudo-element while retaining the shared header surface", () => {
-    expect(finalCss).toMatch(/\.fsrs-hero::after\s*\{[^}]*content:\s*none;[^}]*display:\s*none;/s);
-    expect(finalCss).toMatch(/\.fsrs-hero\s*\{[^}]*overflow:\s*visible;/s);
-    expect(finalCss).not.toMatch(/radial-gradient|border-radius:\s*50%|filter:\s*blur/i);
+  it("keeps both icon badges on one shared optical-alignment contract", () => {
+    expect(stylesCss).toMatch(/\.brand-icon-badge,\s*\.statistics-sidebar-icon\s*\{[^}]*line-height:\s*0/s);
+    expect(stylesCss).toMatch(/\.brand-icon-badge\s*>\s*svg,\s*\.statistics-sidebar-icon\s*>\s*svg\s*\{[^}]*display:\s*block;[^}]*transform:\s*translateY\(\.5px\)/s);
+  });
+
+  it("removes the FSRS-only decorative pseudo-element instead of overriding it later", () => {
+    expect(stylesCss).not.toMatch(/\.fsrs-hero::after/);
+    expect(stylesCss).not.toMatch(/\.fsrs-hero[^}]*radial-gradient|\.fsrs-hero[^}]*filter:\s*blur/is);
   });
 });
