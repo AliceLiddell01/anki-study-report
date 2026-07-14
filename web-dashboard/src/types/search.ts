@@ -19,12 +19,9 @@ export interface SearchQueryRequest {
   requestId?: string;
 }
 
-export interface SearchInspectRequest {
-  mode: SearchMode;
-  cardId?: string;
-  noteId?: string;
-  requestId?: string;
-}
+export type SearchInspectRequest =
+  | { mode: "cards"; cardId: string; noteId?: never; requestId?: string }
+  | { mode: "notes"; noteId: string; cardId?: never; requestId?: string };
 
 export interface SearchDeckSummary {
   deckId: string;
