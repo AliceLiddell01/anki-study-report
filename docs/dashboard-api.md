@@ -56,11 +56,25 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/dashboard/settings
 /api/profile
 /api/statistics/query
+/api/search/query
+/api/search/inspect
 /api/actions/<action>
 ```
 
 Server actions и dashboard actions должны оставаться небольшим allowlist-слоем,
 а не произвольным RPC в Anki.
+
+## Search query и inspect API
+
+`POST /api/search/query` и `POST /api/search/inspect` — отдельный read-only
+foundation будущего Search v1. Оба требуют token, ограничены 8 KiB JSON body,
+отклоняют unknown fields и не принимают SQL/arbitrary order. Query использует
+native Anki grammar, bounded structured filters, page sizes `25|50|100` и hard
+cap 2000; inspect принимает ровно один decimal string `cardId` или `noteId`.
+Успех возвращает `{"ok":true,"response":...}`; ошибки типизированы как
+`invalid_search_request`, `search_entity_not_found`, `search_unavailable`,
+`search_failed`, `search_timeout`. Полный request/response и bounding contract:
+`docs/search-query-foundation.md`.
 
 ## Settings API
 

@@ -102,6 +102,7 @@ try {
 
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
+  const searchQueryContract = shouldRunScope(scope, "global") ? await assertSearchQueryContract() : null;
   let shadowDetails = null;
   let apkgDetails = null;
   if (shouldRunScope(scope, "cards")) {
@@ -214,6 +215,7 @@ try {
     pageScreenshots,
     navigationScreenshots,
     scope,
+    searchQueryContract,
     screenshotWorkers,
     screenshotPerformance: pageCapture.performance,
   });
@@ -2477,6 +2479,118 @@ async function fetchReport() {
     throw new Error(`/api/report returned ${response.status}`);
   }
   return response.json();
+}
+
+async function assertSearchQueryContract() {
+  const nativeQuery = 'deck:"E2E Fixtures"';
+  const cardRequest = {
+    mode: "cards",
+    query: nativeQuery,
+    filters: [],
+    sort: { key: "entity_id", direction: "asc" },
+    page: 1,
+    pageSize: 25,
+    requestId: "e2e-cards",
+  };
+  const noteRequest = { ...cardRequest, mode: "notes", requestId: "e2e-notes" };
+
+  const invalidToken = await postSearchContract("/api/search/query", cardRequest, "invalid-token");
+  assertBrowser(invalidToken.status === 403, "Search query rejects an invalid token.");
+
+  const invalidQuery = await postSearchContract("/api/search/query", {
+    ...cardRequest,
+    query: 'deck:"unterminated',
+    requestId: "e2e-invalid-query",
+  });
+  assertBrowser(invalidQuery.status === 400, "Malformed native query returns HTTP 400.");
+  assertBrowser(invalidQuery.body?.error === "invalid_search_request", "Malformed native query returns a typed validation error.");
+
+  const cards = await postSearchContract("/api/search/query", cardRequest);
+  const notes = await postSearchContract("/api/search/query", noteRequest);
+  assertBrowser(cards.status === 200 && cards.body?.ok === true, "Native Cards query succeeds with a valid token.");
+  assertBrowser(notes.status === 200 && notes.body?.ok === true, "Native Notes query succeeds with a valid token.");
+  const cardResult = cards.body.response;
+  const noteResult = notes.body.response;
+  assertBoundedSearchResult(cardResult, "cards");
+  assertBoundedSearchResult(noteResult, "notes");
+  assertBrowser(cardResult.items.length > 0, "Native Cards query returns the deterministic E2E fixture.");
+  assertBrowser(noteResult.items.length > 0, "Native Notes query returns the deterministic E2E fixture.");
+
+  const cardId = String(cardResult.items[0].cardId || "");
+  const noteId = String(noteResult.items[0].noteId || "");
+  const cardInspect = await postSearchContract("/api/search/inspect", {
+    mode: "cards",
+    cardId,
+    requestId: "e2e-card-inspect",
+  });
+  const noteInspect = await postSearchContract("/api/search/inspect", {
+    mode: "notes",
+    noteId,
+    requestId: "e2e-note-inspect",
+  });
+  assertBrowser(cardInspect.status === 200 && cardInspect.body?.response?.details?.cardId === cardId, "Card inspect returns the selected fixture card.");
+  assertBrowser(noteInspect.status === 200 && noteInspect.body?.response?.details?.noteId === noteId, "Note inspect returns the selected fixture note.");
+
+  const cardsAfter = await postSearchContract("/api/search/query", cardRequest);
+  const notesAfter = await postSearchContract("/api/search/query", noteRequest);
+  const stableCards = JSON.stringify(cardsAfter.body?.response?.items?.map((item) => item.cardId)) === JSON.stringify(cardResult.items.map((item) => item.cardId));
+  const stableNotes = JSON.stringify(notesAfter.body?.response?.items?.map((item) => item.noteId)) === JSON.stringify(noteResult.items.map((item) => item.noteId));
+  assertBrowser(stableCards && stableNotes, "Read-only search and inspect calls leave the result set unchanged.");
+
+  const artifact = {
+    validTokenStatus: cards.status,
+    invalidTokenStatus: invalidToken.status,
+    invalidQuery: { status: invalidQuery.status, error: invalidQuery.body?.error || null },
+    cards: summarizeSearchResult(cardResult, cardId),
+    notes: summarizeSearchResult(noteResult, noteId),
+    inspect: { cardStatus: cardInspect.status, noteStatus: noteInspect.status },
+    collectionStable: stableCards && stableNotes,
+    mutationEndpointsUsed: false,
+    rawQueryExported: false,
+    tokenExported: false,
+  };
+  const serialized = JSON.stringify(artifact);
+  assertBrowser(!serialized.includes(nativeQuery) && !serialized.includes(ready.token), "Search contract artifact excludes the raw query and dashboard token.");
+  await writeJson("search-query-contract.json", artifact);
+  return artifact;
+}
+
+async function postSearchContract(endpoint, payload, token = ready.token) {
+  const response = await fetch(`${ready.baseUrl}${endpoint}?token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  let body = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  return { status: response.status, body };
+}
+
+function assertBoundedSearchResult(result, mode) {
+  assertBrowser(result?.mode === mode, `Search response preserves ${mode} discrimination.`);
+  assertBrowser(Array.isArray(result?.items), `${mode} search response contains items.`);
+  assertBrowser(result.page === 1 && result.pageSize === 25, `${mode} search response preserves paging.`);
+  assertBrowser(result.items.length <= result.pageSize, `${mode} search page is bounded.`);
+  assertBrowser(result.boundedTotal <= 2000, `${mode} search total respects the hard cap.`);
+  assertBrowser(typeof result.hasNext === "boolean" && typeof result.truncated === "boolean", `${mode} search exposes bounded result metadata.`);
+}
+
+function summarizeSearchResult(result, selectedId) {
+  return {
+    mode: result.mode,
+    page: result.page,
+    pageSize: result.pageSize,
+    returnedCount: result.returnedCount,
+    boundedTotal: result.boundedTotal,
+    hasNext: result.hasNext,
+    truncated: result.truncated,
+    selectedId,
+  };
 }
 
 function findApkgCards(report, importSummary) {

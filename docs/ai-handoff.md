@@ -34,6 +34,8 @@ dashboard через token-protected HTTP server.
 9. Если агенту нужны правила поведения - `docs/codex-agent-rules.md`.
 10. Если задача про GitHub Actions/Fast CI - `docs/ci-cd.md`.
 11. Если задача про E2E scopes/cache/telemetry - `docs/e2e-performance.md`.
+12. Если задача про native Cards/Notes query или inspect -
+    `docs/search-query-foundation.md`.
 
 Дополнительные справочники:
 
@@ -48,6 +50,7 @@ docs/profile-mvp.md              Stage 3 all-collection Profile, per-profile per
 docs/activity-calendar-v2.md     Stage 4 scoped calendar, day details and derived feed
 docs/decks-v2.md                 Stage 5 scoped hierarchy, direct/subtree health and Browser actions
 docs/ui-polish-global-controls.md Stage 5.5 theme dock and Activity/Decks presentation polish
+docs/search-query-foundation.md  read-only native query/inspect contract без Search UI
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map

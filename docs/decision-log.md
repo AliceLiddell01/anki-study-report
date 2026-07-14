@@ -767,3 +767,42 @@ Dashboard имел русский product UI и пустой extension slot дл
 `docs/localization.md`, `web-dashboard/src/i18n/`,
 `web-dashboard/src/layout/GlobalUtilityDock.tsx`,
 `docker/anki-e2e/smoke-browser.mjs`.
+
+## ADR-025: Search foundation использует native grammar и bounded read models
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Будущему Search v1 нужны Cards/Notes query и compact inspect, но прямой доступ
+frontend к collection, универсальный RPC/SQL, rich preview и преждевременный
+Search UI расширили бы security и product scope. `find_cards()`/`find_notes()`
+возвращают весь список matching IDs, а не paged cursor.
+
+### Решение
+
+- Native Anki query остаётся source of truth; structured deck/note type/tag/
+  state/flag filters собираются через supported search nodes.
+- Read выполняется сериализованным `QueryOp` с finite timeout. HTTP server
+  остаётся на `127.0.0.1`, token-protected и не логирует raw query.
+- Результат ограничен 2000 deterministic IDs, page sizes `25|50|100`; objects
+  загружаются только для страницы, IDs отдаются decimal strings.
+- Card/Note row/details разделены и содержат bounded safe plain text без
+  template rendering, media или mutation.
+- TypeScript client/types добавлены как foundation; `#/search`, navigation,
+  page/table/inspector/selection и mutation API отложены.
+
+### Последствия
+
+Следующий UI-этап может строиться на стабильном typed contract. Offset pages не
+являются collection snapshot, а широкий native search всё ещё вычисляет все
+matching IDs перед cap; эти ограничения задокументированы и проверяются на
+real Anki в `standard/global` и final `standard/full`.
+
+### Где смотреть
+
+`docs/search-query-foundation.md`, `anki_study_report/search_service.py`,
+`anki_study_report/search_runtime.py`, `web-dashboard/src/lib/searchApi.ts`,
+`docker/anki-e2e/smoke-browser.mjs`.

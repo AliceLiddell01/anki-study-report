@@ -44,6 +44,9 @@ git ls-files --others --exclude-standard
   parity tests и Docker browser smoke.
 - E2E performance/scopes: `docs/e2e-performance.md`,
   `docker/anki-e2e/e2e-contract.mjs`, `e2e-telemetry.py`.
+- Search query/inspect: `docs/search-query-foundation.md`,
+  `search_service.py`, `search_runtime.py`; не добавлять `#/search` или
+  mutation surface без отдельного этапа.
 
 ## Что нельзя делать
 

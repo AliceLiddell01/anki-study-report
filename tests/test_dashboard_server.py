@@ -22,6 +22,15 @@ def fetch(url: str, *, method: str = "GET", json_body=None) -> tuple[int, str, b
         return error.code, error.headers.get("Content-Type", ""), error.read()
 
 
+def fetch_raw(url: str, body: bytes) -> tuple[int, str, bytes]:
+    request = Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urlopen(request, timeout=5) as response:
+            return response.status, response.headers.get("Content-Type", ""), response.read()
+    except HTTPError as error:
+        return error.code, error.headers.get("Content-Type", ""), error.read()
+
+
 def write_dashboard_static(root: Path) -> None:
     assets_dir = root / "assets"
     assets_dir.mkdir(parents=True)
@@ -110,6 +119,122 @@ def test_dashboard_server_smoke_endpoints():
         manager.stop()
 
     assert manager.state().running is False
+
+
+def test_search_endpoints_require_token_post_and_preserve_typed_statuses():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    calls = []
+
+    def query_handler(payload):
+        calls.append(("query", payload))
+        return {"ok": True, "response": {"mode": payload["mode"], "items": []}}
+
+    def inspect_handler(payload):
+        calls.append(("inspect", payload))
+        return {"ok": False, "error": "search_entity_not_found", "message": "Entity unavailable."}
+
+    manager.configure_search_handlers(query_handler=query_handler, inspect_handler=inspect_handler)
+    try:
+        status, _, body = fetch(f"{base_url}/api/search/query", method="POST", json_body={"mode": "cards"})
+        assert status == 403
+        assert json.loads(body)["error"] == "invalid_dashboard_token"
+
+        status, _, body = fetch(f"{base_url}/api/search/query?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, content_type, body = fetch(
+            f"{base_url}/api/search/query?token={token}",
+            method="POST",
+            json_body={"mode": "cards", "query": "deck:Japanese"},
+        )
+        assert status == 200
+        assert "application/json" in content_type
+        assert json.loads(body) == {"ok": True, "response": {"mode": "cards", "items": []}}
+
+        status, _, body = fetch(
+            f"{base_url}/api/search/inspect?token={token}",
+            method="POST",
+            json_body={"mode": "notes", "noteId": "123"},
+        )
+        assert status == 404
+        assert json.loads(body)["error"] == "search_entity_not_found"
+        assert calls == [
+            ("query", {"mode": "cards", "query": "deck:Japanese"}),
+            ("inspect", {"mode": "notes", "noteId": "123"}),
+        ]
+    finally:
+        manager.stop()
+
+
+def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        status, _, body = fetch(
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
+        )
+        assert status == 503
+        assert json.loads(body)["error"] == "search_unavailable"
+
+        for raw_body in (b"{invalid", b"x" * 8193):
+            status, _, body = fetch_raw(f"{base_url}/api/search/query?token={token}", raw_body)
+            assert status == 400
+            assert json.loads(body)["error"] == "invalid_search_request"
+
+        for code, expected_status in [("invalid_search_request", 400), ("search_timeout", 504), ("search_failed", 503)]:
+            manager.configure_search_handlers(
+                query_handler=lambda payload, code=code: {"ok": False, "error": code, "message": "Safe failure."}
+            )
+            status, _, body = fetch(
+                f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
+            )
+            assert status == expected_status
+            assert json.loads(body)["error"] == code
+    finally:
+        manager.stop()
+
+
+def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    search_runtime = import_addon_module("search_runtime")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    logged = []
+    monkeypatch.setattr(dashboard_server, "log_event", lambda *args, **kwargs: logged.append((args, kwargs)))
+    try:
+        manager.configure_search_handlers(query_handler=lambda payload: search_runtime.run_search_query_sync(None, payload))
+        status, _, body = fetch(
+            f"{base_url}/api/search/query?token={token}",
+            method="POST",
+            json_body={"mode": "cards", "query": "", "rawSql": "secret-select"},
+        )
+        assert status == 400
+        assert json.loads(body)["fieldErrors"] == {"rawSql": "Unexpected field."}
+
+        manager.configure_search_handlers(
+            query_handler=lambda payload: (_ for _ in ()).throw(RuntimeError("secret-query token=secret-token"))
+        )
+        status, _, body = fetch(
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
+        )
+        assert status == 503
+        response_text = body.decode("utf-8")
+        assert "secret-query" not in response_text
+        assert "secret-token" not in response_text
+        assert "secret-query" not in repr(logged)
+        assert "secret-token" not in repr(logged)
+    finally:
+        manager.stop()
 
 
 def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch):

@@ -456,6 +456,10 @@ required manifest entries.
 - The fixture collection is generated from scratch.
 - Media fixtures are tiny synthetic files.
 - API response samples are sanitized and checked for token leakage.
+- `standard/global` и `standard/full` также пишут
+  `reports/search-query-contract.json`: real collection Cards/Notes native
+  query, bounded metadata, Card/Note inspect, invalid token/query и повторный
+  read-only результат без raw query/token или mutation endpoint.
 - Docker E2E is a heavy command and requires Docker Desktop/WSL2 on Windows.
 
 ## Security Notes
