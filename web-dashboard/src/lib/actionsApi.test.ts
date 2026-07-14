@@ -72,4 +72,24 @@ describe("actionsApi", () => {
       body: JSON.stringify({ mode: "notes", entityIds: ["1", "2"] }),
     }));
   });
+
+  it("normalizes report action transport failures instead of rejecting", async () => {
+    vi.stubGlobal("window", { location: { search: "?token=search-token" } });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("connection refused")));
+    await expect(runReportAction("open-search-selection", { mode: "cards", entityIds: ["1"] })).resolves.toEqual({
+      ok: false,
+      action: "open-search-selection",
+      error: "Dashboard action failed.",
+    });
+  });
+
+  it("normalizes server action transport failures instead of rejecting", async () => {
+    vi.stubGlobal("window", { location: { search: "?token=server-token" } });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("connection refused")));
+    await expect(runServerAction("copy-url")).resolves.toEqual({
+      ok: false,
+      action: "copy-url",
+      error: "Server action failed.",
+    });
+  });
 });
