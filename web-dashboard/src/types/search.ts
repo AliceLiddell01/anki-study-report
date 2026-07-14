@@ -23,6 +23,32 @@ export type SearchInspectRequest =
   | { mode: "cards"; cardId: string; noteId?: never; requestId?: string }
   | { mode: "notes"; noteId: string; cardId?: never; requestId?: string };
 
+export interface SearchMetadataRequest {
+  kind: "metadata";
+  requestId?: string;
+}
+
+export interface SearchMetadataDeck {
+  deckId: string;
+  deckName: string;
+  filtered: boolean;
+}
+
+export interface SearchMetadataNoteType {
+  noteTypeId: string;
+  noteTypeName: string;
+}
+
+export interface SearchMetadataResponse {
+  schemaVersion: 1;
+  kind: "metadata";
+  decks: SearchMetadataDeck[];
+  noteTypes: SearchMetadataNoteType[];
+  decksTruncated: boolean;
+  noteTypesTruncated: boolean;
+  requestId?: string;
+}
+
 export interface SearchDeckSummary {
   deckId: string;
   deckName: string;
