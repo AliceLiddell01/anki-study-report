@@ -2,10 +2,10 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { SearchFiltersState, SearchWorkspaceState } from "../../hooks/useSearchWorkspace";
 import type { StudyReport } from "../../types/report";
+import type { DeckOption } from "../../types/settings";
 
-export default function SearchQueryBar({ workspace, report }: { workspace: SearchWorkspaceState; report: StudyReport | null }) {
+export default function SearchQueryBar({ workspace, report, deckOptions }: { workspace: SearchWorkspaceState; report: StudyReport | null; deckOptions: DeckOption[] }) {
   const { t } = useTranslation("pages", { keyPrefix: "search" });
-  const decks = deckOptions(report);
   const noteTypes = (report?.noteTypeCatalog ?? []).map((item) => ({ id: String(item.noteTypeId), name: item.name }));
   const updateFilter = <K extends keyof SearchFiltersState>(key: K, value: SearchFiltersState[K]) => {
     workspace.setFilters((current) => ({ ...current, [key]: value }));
@@ -44,7 +44,7 @@ export default function SearchQueryBar({ workspace, report }: { workspace: Searc
             </label>
           ))}
         </fieldset>
-        <label><span>{t("filters.deck")}</span><select value={workspace.filters.deckId} onChange={(event) => updateFilter("deckId", event.target.value)}><option value="">{t("filters.allDecks")}</option>{decks.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label><span>{t("filters.deck")}</span><select value={workspace.filters.deckId} onChange={(event) => updateFilter("deckId", event.target.value)}><option value="">{t("filters.allDecks")}</option>{deckOptions.map((item) => <option key={item.id} value={String(item.id)}>{item.name}</option>)}</select></label>
         <label><span>{t("filters.noteType")}</span><select value={workspace.filters.noteTypeId} onChange={(event) => updateFilter("noteTypeId", event.target.value)}><option value="">{t("filters.allNoteTypes")}</option>{noteTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label><span>{t("filters.tag")}</span><input value={workspace.filters.tag} maxLength={100} onChange={(event) => updateFilter("tag", event.target.value)} placeholder={t("filters.tagPlaceholder")} /></label>
         {workspace.mode === "cards" ? <>
@@ -56,12 +56,4 @@ export default function SearchQueryBar({ workspace, report }: { workspace: Searc
       <p className="search-syntax-hint">{t("query.help")}</p>
     </form>
   );
-}
-
-function deckOptions(report: StudyReport | null): Array<{ id: string; name: string }> {
-  const hub = report?.deckHub;
-  if (hub) {
-    return Object.values(hub.nodes).map((node) => ({ id: String(node.deckId), name: node.fullName })).sort((a, b) => a.name.localeCompare(b.name));
-  }
-  return (report?.decks ?? []).map((deck) => ({ id: String(deck.id), name: deck.name })).sort((a, b) => a.name.localeCompare(b.name));
 }

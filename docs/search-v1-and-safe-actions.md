@@ -15,7 +15,9 @@ title, normal logs или публичные E2E-артефакты.
 interval, reviews, lapses и flag. Режим `Notes` показывает primary text, note
 type, tags, card count и decks. Card-only state/flag filters очищаются при
 переходе в Notes. Структурные deck/note type/tag filters объединяются с native
-query backend-ом через Anki search nodes, а не строковой конкатенацией.
+query backend-ом через Anki search nodes, а не строковой конкатенацией. Deck
+filter и move picker получают all-collection `deckOptions` через token-protected
+Settings API; scoped report catalogs используются только как fallback.
 
 Pagination использует `pageCount`, page sizes `25|50|100`, hard cap 2000 и
 не загружает все details заранее. Inspector выполняет отдельный bounded inspect
