@@ -7,11 +7,11 @@ from pathlib import Path
 import re
 import sys
 
+from ankiweb_description import render_ankiweb_description
 from release_common import (
     APPROVED_ARTIFACT_NAME,
     ReleaseError,
     release_notes,
-    render_ankiweb_description,
     sha256_file,
     sha256_text,
     validate_release,
