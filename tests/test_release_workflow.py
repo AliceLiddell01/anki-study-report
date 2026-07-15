@@ -139,6 +139,8 @@ def test_real_anki_runner_accepts_and_evidences_prebuilt_package() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci-e2e.yml").read_text(encoding="utf-8")
     assert "ANKI_E2E_PREBUILT_ADDON_PATH" in shell
     assert "package_addon.py" in shell
+    assert "exact prebuilt add-on validation and extraction" in shell
+    assert "exact release add-on validation and extraction" not in shell
     assert "e2e-artifacts/package/anki_study_report.ankiaddon" in workflow
     assert "not the exact release artifact" in workflow
 

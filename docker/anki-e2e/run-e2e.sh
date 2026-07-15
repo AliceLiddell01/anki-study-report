@@ -25,6 +25,10 @@ fi
 : "${ANKI_E2E_RESOURCE_TELEMETRY:=1}"
 : "${ANKI_E2E_VERIFY_RESTART:=auto}"
 : "${ANKI_E2E_PREBUILT_ADDON_PATH:=}"
+: "${ANKI_E2E_PACKAGE_SOURCE:=source-build}"
+: "${ANKI_E2E_FAST_CI_RUN_ID:=}"
+: "${ANKI_E2E_FAST_CI_TESTED_SHA:=}"
+: "${ANKI_E2E_FAST_CI_PACKAGE_SHA256:=}"
 
 export ANKI_BASE ANKI_PROFILE ANKI_PROFILE_DIR ANKI_STUDY_REPORT_E2E_ARTIFACTS
 export ANKI_STUDY_REPORT_E2E_RUNTIME_DIR ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR ANKI_STUDY_REPORT_E2E_REPORTS_DIR
@@ -32,11 +36,21 @@ export ANKI_STUDY_REPORT_E2E_HTML_DIR ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR ANKI
 export ANKI_STUDY_REPORT_E2E_READY_FILE
 export ANKI_STUDY_REPORT_E2E=1
 export E2E_MODE ANKI_E2E_SCOPE ANKI_E2E_SCREENSHOT_WORKERS ANKI_E2E_RESOURCE_TELEMETRY ANKI_E2E_VERIFY_RESTART
+export ANKI_E2E_PACKAGE_SOURCE ANKI_E2E_FAST_CI_RUN_ID ANKI_E2E_FAST_CI_TESTED_SHA ANKI_E2E_FAST_CI_PACKAGE_SHA256
 
 case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|settings) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
 case "$ANKI_E2E_SCREENSHOT_WORKERS" in 1|2|3|4) ;; *) echo "Screenshot workers must be 1..4: $ANKI_E2E_SCREENSHOT_WORKERS" >&2; exit 2;; esac
 case "$ANKI_E2E_RESOURCE_TELEMETRY" in 0|1) ;; *) echo "Resource telemetry must be 0 or 1" >&2; exit 2;; esac
 case "$ANKI_E2E_VERIFY_RESTART" in auto|0|1) ;; *) echo "Restart policy must be auto, 0, or 1" >&2; exit 2;; esac
+case "$ANKI_E2E_PACKAGE_SOURCE" in source-build|fast-ci-artifact|release-artifact) ;; *) echo "Unsupported package source: $ANKI_E2E_PACKAGE_SOURCE" >&2; exit 2;; esac
+if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ] && [ "$ANKI_E2E_PACKAGE_SOURCE" = "source-build" ]; then
+  echo "A prebuilt add-on path requires fast-ci-artifact or release-artifact package source." >&2
+  exit 2
+fi
+if [ -z "$ANKI_E2E_PREBUILT_ADDON_PATH" ] && [ "$ANKI_E2E_PACKAGE_SOURCE" != "source-build" ]; then
+  echo "Package source $ANKI_E2E_PACKAGE_SOURCE requires a prebuilt add-on path." >&2
+  exit 2
+fi
 
 TOTAL_STARTED_MS=$(date +%s%3N)
 TOTAL_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
@@ -172,17 +186,17 @@ ls -la web-dashboard || true
 test -f web-dashboard/package.json
 ADDON_INSTALL_SOURCE="$E2E_BUILD_DIR/anki_study_report"
 if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then
-  section "Validate exact prebuilt release artifact"
+  section "Validate exact prebuilt add-on artifact"
   test -f "$ANKI_E2E_PREBUILT_ADDON_PATH"
   phase_start
   python3 scripts/package_addon.py --output "$ANKI_E2E_PREBUILT_ADDON_PATH" --check-only
   cp "$ANKI_E2E_PREBUILT_ADDON_PATH" "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon"
-  RELEASE_ADDON_DIR="$E2E_BUILD_DIR/release-addon"
-  rm -rf "$RELEASE_ADDON_DIR"
-  mkdir -p "$RELEASE_ADDON_DIR"
-  python3 -m zipfile -e "$ANKI_E2E_PREBUILT_ADDON_PATH" "$RELEASE_ADDON_DIR"
-  ADDON_INSTALL_SOURCE="$RELEASE_ADDON_DIR"
-  phase_end "exact release add-on validation and extraction"
+  PREBUILT_ADDON_DIR="$E2E_BUILD_DIR/prebuilt-addon"
+  rm -rf "$PREBUILT_ADDON_DIR"
+  mkdir -p "$PREBUILT_ADDON_DIR"
+  python3 -m zipfile -e "$ANKI_E2E_PREBUILT_ADDON_PATH" "$PREBUILT_ADDON_DIR"
+  ADDON_INSTALL_SOURCE="$PREBUILT_ADDON_DIR"
+  phase_end "exact prebuilt add-on validation and extraction" "success" "packageSource=$ANKI_E2E_PACKAGE_SOURCE"
 else
   section "Build frontend dashboard"
   "$PNPM_BIN" --version
