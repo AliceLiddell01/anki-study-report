@@ -31,6 +31,10 @@ jobs:
           end = workflow.index("\n          PY\n", start)
           lines = workflow[start:end].splitlines()
           script = "\n".join(line[10:] if line.startswith("          ") else line for line in lines) + "\n"
+          script = script.replace(
+              '        <details className="privacy-disclosure">\n<summary>{t("privacy.notice.technicalDetails")}</summary>\n<p>{t("privacy.notice.processorDetails")}</p>\n        </details>',
+              '        <details className="privacy-disclosure">\n          <summary>{t("privacy.notice.technicalDetails")}</summary>\n          <p>{t("privacy.notice.processorDetails")}</p>\n        </details>',
+          )
           Path('/tmp/apply_stage9.py').write_text(script, encoding='utf-8')
           PYEXTRACT
           set +e
@@ -39,6 +43,16 @@ jobs:
           set -e
           cat apply-stage9.log
           if [ "$status" -ne 0 ]; then exit "$status"; fi
+          python - <<'PYFIX'
+          from pathlib import Path
+          path = Path('web-dashboard/src/components/PrivacyNoticeContent.tsx')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'import { useTranslation } from "react-i18next";',
+              'import type { ReactNode } from "react";\nimport { useTranslation } from "react-i18next";',
+          ).replace('children: React.ReactNode', 'children: ReactNode')
+          path.write_text(text, encoding='utf-8', newline='\n')
+          PYFIX
           git diff --check
       - name: Upload patch diagnostics
         if: failure()
