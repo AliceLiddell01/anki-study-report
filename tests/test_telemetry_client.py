@@ -127,7 +127,15 @@ def test_enrollment_batch_ack_and_credential_secrecy(tmp_path):
     assert len(transport.calls) == 2
     enrollment_body = json.loads(transport.calls[0]["body"])
     assert enrollment_body["purposes"] == ["featureUsage"]
+    assert set(enrollment_body) == {
+        "telemetrySchemaVersion",
+        "consentSchemaVersion",
+        "privacyNoticeVersion",
+        "purposes",
+    }
     event_call = transport.calls[1]
+    event_body = json.loads(event_call["body"])
+    assert isinstance(event_body["batchId"], str) and len(event_body["batchId"]) == 64
     assert event_call["headers"]["Authorization"] == "Bearer write-secret"
     assert "write-secret" not in event_call["url"]
     assert b"write-secret" not in event_call["body"]
@@ -250,7 +258,7 @@ def test_confirmed_delete_destroys_credentials_and_pending_state(tmp_path):
     assert store.credentials() is None
     assert privacy.read()["telemetry"]["deletionPending"] is False
     assert transport.calls[0]["method"] == "DELETE"
-    assert transport.calls[0]["url"].endswith("/v1/installations/install%2Fid")
+    assert transport.calls[0]["url"].endswith("/v1/installations/current")
     assert transport.calls[0]["headers"]["Authorization"] == "Bearer delete-token"
 
 
