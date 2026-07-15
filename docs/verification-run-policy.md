@@ -76,6 +76,21 @@ Stage 2 не меняет E2E contour: Docker E2E продолжает build fro
 скачивает Fast package. Cross-run handoff требует отдельного решения и не может
 добавляться как побочный эффект producer stage.
 
+## Fast package consumer policy
+
+Docker E2E может явно получить successful exact Fast package через
+`fast_ci_run_id`. Consumer обязан проверить source run и artifact list через
+read-only API, скачать diagnostics/package по artifact IDs, получить tested SHA
+из validated diagnostics, checkout-ить exact tested commit и связать metadata
+source head с исходным E2E workflow SHA. Invalid run ID, fork, ambiguity, expiry
+или identity/hash mismatch завершаются ошибкой без source-build fallback.
+
+Для Stage 3 разрешена одна пара cloud observations на exact branch: один manual
+Fast CI и один `standard/settings` с telemetry/restart off и полученным run ID.
+Не выполняются source-build comparison, warm repeat, full, strict APKG или
+Perf100. Stage 3 доказывает handoff semantics; performance A/B относится к Stage
+4. Release exact-artifact flow остаётся отдельным current-run gate.
+
 ## Release policy
 
 Release infrastructure, package version source, changelog, release workflow и

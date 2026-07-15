@@ -131,6 +131,18 @@ try {
 
     $volume = "$($ArtifactsDir):/e2e/artifacts"
     $runArgs = @("run", "--rm", "-v", $volume)
+    foreach ($name in @(
+        "ANKI_E2E_PREBUILT_ADDON_PATH",
+        "ANKI_E2E_PACKAGE_SOURCE",
+        "ANKI_E2E_FAST_CI_RUN_ID",
+        "ANKI_E2E_FAST_CI_TESTED_SHA",
+        "ANKI_E2E_FAST_CI_PACKAGE_SHA256"
+    )) {
+        $value = [Environment]::GetEnvironmentVariable($name)
+        if ($value) {
+            $runArgs += @("-e", "$name=$value")
+        }
+    }
     if ($env:ANKI_E2E_REAL_MEDIA_DIR) {
         $realMediaPath = Resolve-Path -LiteralPath $env:ANKI_E2E_REAL_MEDIA_DIR -ErrorAction Stop
         $runArgs += @("-v", "$($realMediaPath.Path):/e2e/real-media:ro", "-e", "ANKI_E2E_REAL_MEDIA_DIR=/e2e/real-media")
