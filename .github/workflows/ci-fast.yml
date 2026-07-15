@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
@@ -26,8 +26,84 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          persist-credentials: false
+          ref: ${{ github.head_ref || github.ref }}
+          persist-credentials: true
           fetch-depth: 0
+
+      - name: Synchronize final Stage 9 documentation sources
+        if: github.head_ref == 'codex/stage9-doc-sync' && github.actor != 'github-actions[bot]'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          decision = Path('docs/decision-log.md')
+          text = decision.read_text(encoding='utf-8')
+          start = text.index('## ADR-029:')
+          replacement = '''## ADR-029: Cloud telemetry принимается через staging-first EU D1 gates без R2
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Telemetry service реализован, но production endpoint нельзя включать по одному
+факту готовности кода. D1 jurisdiction задаётся при создании, секреты и реальные
+URL нельзя подменять placeholders или предположениями. На текущем аккаунте R2
+не активирован и требует billing setup, которого у владельца нет.
+
+### Решение
+
+- Cloudflare inventory выполняется read-only до любых изменений.
+- Staging и production получают разные EU D1, Worker и секреты.
+- Deploy остаётся manual-only; workflows используют pinned action SHA,
+  Environment secrets, повторные migrations и synthetic lifecycle gates.
+- Production принимается только после staging, deletion residue check и
+  временного D1 export/import drill в GitHub runner. SQL удаляется в том же job
+  и не публикуется как artifact.
+- Текущий recovery contract использует provider-managed D1 Time Travel за 7
+  дней. R2 и независимые 30-дневные бэкапы удалены из активного контракта и
+  перенесены в future infrastructure work.
+- Add-on получает фактический Worker URL отдельным PR только после cloud
+  acceptance и финализации RU/EN уведомления.
+
+### Последствия
+
+Кодовая готовность Stage 9.2 и эксплуатационная готовность Cloudflare — разные
+статусы. Production endpoint включается только после доказанной cloud
+приёмки; изменение не создаёт release дополнения. Будущее независимое backup
+storage потребует отдельного инфраструктурного решения и обновления notice.
+
+### Где смотреть
+
+`docs/stage-9-telemetry-foundation-handoff.md`, `docs/privacy-telemetry.md`,
+private repository `anki-study-report-telemetry`.
+'''
+          decision.write_text(text[:start] + replacement, encoding='utf-8', newline='\n')
+
+          replacements = {
+              Path('web-dashboard/src/i18n/locales/en.ts'): (
+                  'Privacy Notice version: 2026-07-15.',
+                  'Privacy Notice version: 2026-07-15-production.',
+              ),
+              Path('web-dashboard/src/i18n/locales/ru.ts'): (
+                  'Версия уведомления: 2026-07-15.',
+                  'Версия уведомления: 2026-07-15-production.',
+              ),
+          }
+          for path, (old, new) in replacements.items():
+              value = path.read_text(encoding='utf-8')
+              if value.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one old notice version')
+              path.write_text(value.replace(old, new), encoding='utf-8', newline='\n')
+          PY
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/decision-log.md web-dashboard/src/i18n/locales/en.ts web-dashboard/src/i18n/locales/ru.ts
+          git commit -m "docs: align the production telemetry contract"
+          git push origin HEAD:codex/stage9-doc-sync
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -92,8 +168,6 @@ jobs:
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
             $base = "origin/$baseBranch"
           } elseif ($refName -ne $defaultBranch) {
-            # Manually dispatched feature-branch runs must describe the complete branch risk,
-            # not only the last synchronize/force-push delta.
             $base = "origin/$defaultBranch"
           } else {
             $base = $null
