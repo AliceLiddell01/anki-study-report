@@ -1003,7 +1003,7 @@ async function captureAvatarMenu(page) {
     assertBrowser(linkContract.referrerPolicy === "no-referrer", "Boosty support link uses no-referrer policy.");
     const menuItems = await menu.getByRole("menuitem").allTextContents();
     assertBrowser(
-      JSON.stringify(menuItems.map((item) => item.trim())) === JSON.stringify(["Профиль", "Настройки", "Инструменты", "Поддержать проект"]),
+      JSON.stringify(menuItems.map((item) => item.trim())) === JSON.stringify(["Профиль", "Настройки", "Инструменты", "Что нового", "Поддержать проект"]),
       `Avatar menu items are complete: ${menuItems.join(", ")}`,
     );
     await waitForLayoutStabilization(page);
