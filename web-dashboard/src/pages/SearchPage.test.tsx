@@ -13,6 +13,11 @@ vi.mock("../lib/actionsApi", async (importOriginal) => {
   return { ...actual, runReportAction: vi.fn() };
 });
 
+vi.mock("../lib/telemetryApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/telemetryApi")>();
+  return { ...actual, emitTelemetryEvent: vi.fn().mockResolvedValue({ ok: true, code: "telemetry.disabled", queued: false }) };
+});
+
 const actionMock = vi.mocked(runReportAction);
 const card = {
   cardId: "1001", noteId: "2001", deckId: "3", deckName: "Japanese", noteTypeId: "7", noteTypeName: "Basic",

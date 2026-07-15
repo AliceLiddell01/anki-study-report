@@ -42,6 +42,7 @@ TOTAL_STARTED_MS=$(date +%s%3N)
 TOTAL_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
 RESOURCE_STOP_FILE="${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/resource-sampler.stop"
 RESOURCE_PID=""
+TELEMETRY_FAKE_PID=""
 
 record_phase() {
   local name="$1" started_ms="$2" started_at="$3" status="${4:-success}" notes="${5:-}"
@@ -67,6 +68,10 @@ run_status="failed"
 cleanup() {
   local exit_status=$?
   /e2e/bin/stop-anki.sh || true
+  if [ -n "$TELEMETRY_FAKE_PID" ]; then
+    kill "$TELEMETRY_FAKE_PID" >/dev/null 2>&1 || true
+    wait "$TELEMETRY_FAKE_PID" >/dev/null 2>&1 || true
+  fi
   if [ -n "$RESOURCE_PID" ]; then
     touch "$RESOURCE_STOP_FILE"
     wait "$RESOURCE_PID" || true
@@ -119,6 +124,20 @@ mkdir -p \
   "$ANKI_STUDY_REPORT_E2E_HTML_DIR" \
   "$ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR" \
   "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR"
+
+if [ -n "${ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT:-}" ]; then
+  /e2e/bin/fake-telemetry-server.py \
+    --summary "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR/telemetry-fake-summary.json" \
+    >"$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR/telemetry-fake.log" 2>&1 &
+  TELEMETRY_FAKE_PID=$!
+  for _ in $(seq 1 50); do
+    if python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8788/__e2e/state", timeout=1).read()' >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.1
+  done
+  kill -0 "$TELEMETRY_FAKE_PID"
+fi
 
 if [ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ]; then
   rm -f "$RESOURCE_STOP_FILE"
@@ -251,6 +270,14 @@ if [ "$verify_restart" = "1" ]; then
   phase_start
   /e2e/bin/smoke-api.py --label restart
   phase_end "restart API smoke"
+  if [ -n "${ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT:-}" ]; then
+    phase_start
+    /e2e/bin/verify-telemetry-restart.py \
+      --ready "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
+      --fake-endpoint "$ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT" \
+      --output "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR/telemetry-restart-proof.json"
+    phase_end "telemetry restart persistence and deletion"
+  fi
 else
   echo "Restart smoke skipped for targeted scope=$ANKI_E2E_SCOPE (policy=$ANKI_E2E_VERIFY_RESTART)."
 fi

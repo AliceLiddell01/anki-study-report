@@ -1,0 +1,65 @@
+{
+  "telemetrySchemaVersion": 1,
+  "purposes": [
+    "reliabilityDiagnostics",
+    "featureUsage"
+  ],
+  "events": {
+    "addon.started": {
+      "purpose": "reliabilityDiagnostics",
+      "fields": {}
+    },
+    "dashboard.opened": {
+      "purpose": "featureUsage",
+      "fields": {}
+    },
+    "page.opened": {
+      "purpose": "featureUsage",
+      "fields": {
+        "pageCode": ["home", "activity", "statistics", "decks", "search", "cards", "profile", "tools", "settings_report", "settings_data", "settings_privacy", "settings_server", "settings_sources", "settings_logs"]
+      }
+    },
+    "search.completed": {
+      "purpose": "featureUsage",
+      "fields": {
+        "resultCode": ["success", "no_results", "failed"],
+        "durationBucket": ["under_100_ms", "100_500_ms", "500_2000_ms", "over_2000_ms"],
+        "resultCountBucket": ["0", "1_10", "11_100", "101_1000", "over_1000"]
+      }
+    },
+    "entity_action.completed": {
+      "purpose": "featureUsage",
+      "fields": {
+        "actionCode": ["suspend", "unsuspend", "set_flag", "clear_flag", "bury", "unbury", "move_to_deck", "add_tags", "remove_tags"],
+        "resultCode": ["success", "no_change", "failed"],
+        "durationBucket": ["under_100_ms", "100_500_ms", "500_2000_ms", "over_2000_ms"]
+      }
+    },
+    "api_operation.failed": {
+      "purpose": "reliabilityDiagnostics",
+      "fields": {
+        "featureCode": ["dashboard_start", "report_load", "profile", "settings", "search_query", "search_inspect", "entity_action", "statistics_query", "fsrs_query"],
+        "errorCode": ["timeout", "unavailable", "invalid_response", "http_error", "internal_error"]
+      }
+    },
+    "dashboard_startup.completed": {
+      "purpose": "reliabilityDiagnostics",
+      "fields": {
+        "resultCode": ["success", "failed"],
+        "durationBucket": ["under_100_ms", "100_500_ms", "500_2000_ms", "over_2000_ms"]
+      }
+    }
+  },
+  "commonDimensions": {
+    "osFamily": ["windows", "macos", "linux", "other"],
+    "locale": ["ru", "en", "other", "unknown"],
+    "theme": ["light", "dark", "system", "unknown"]
+  },
+  "limits": {
+    "queueMaxEvents": 5000,
+    "queueMaxAgeDays": 7,
+    "batchMaxEvents": 50,
+    "requestBodyMaxBytes": 65536,
+    "eventBodyMaxBytes": 4096
+  }
+}

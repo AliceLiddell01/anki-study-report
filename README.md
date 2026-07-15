@@ -121,6 +121,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [UI Polish & Global Controls](docs/ui-polish-global-controls.md)
 - [Локализация RU/EN](docs/localization.md)
 - [Product notices и consent](docs/product-notices-and-consent.md)
+- [Telemetry client](docs/telemetry-client.md)
 - [Privacy и telemetry contract](docs/privacy-telemetry.md)
 - [Statistics v1](docs/statistics-v1.md)
 - [FSRS analytics](docs/fsrs-analytics.md)

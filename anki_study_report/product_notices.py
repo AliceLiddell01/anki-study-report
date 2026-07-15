@@ -274,6 +274,7 @@ class PrivacyStore:
 
         def update(document: dict[str, Any]) -> None:
             telemetry = document.setdefault("telemetry", {})
+            deletion_pending = telemetry.get("deletionPending") is True
             telemetry.update(
                 {
                     "status": status,
@@ -281,7 +282,7 @@ class PrivacyStore:
                     "privacyNoticeVersion": PRIVACY_NOTICE_VERSION,
                     "purposes": purposes,
                     "decidedAt": decided_at,
-                    "deletionPending": False,
+                    "deletionPending": deletion_pending,
                 }
             )
 
@@ -292,6 +293,13 @@ class PrivacyStore:
             {"purposes": {purpose: False for purpose in TELEMETRY_PURPOSES}},
             now=now,
         )
+
+    def set_deletion_pending(self, pending: bool) -> dict[str, Any]:
+        def update(document: dict[str, Any]) -> None:
+            telemetry = document.setdefault("telemetry", {})
+            telemetry["deletionPending"] = bool(pending)
+
+        return _public_privacy_document(self._store.update_document(update))
 
 
 def validate_privacy_choices(payload: Any) -> dict[str, bool]:
@@ -422,7 +430,7 @@ def _public_privacy_document(document: dict[str, Any]) -> dict[str, Any]:
         or telemetry["consentSchemaVersion"] != CONSENT_SCHEMA_VERSION
         or telemetry["privacyNoticeVersion"] != PRIVACY_NOTICE_VERSION
     )
-    effective = telemetry["purposes"] if telemetry["status"] == "accepted" and not requires else {
+    effective = telemetry["purposes"] if telemetry["status"] == "accepted" and not requires and not telemetry["deletionPending"] else {
         purpose: False for purpose in TELEMETRY_PURPOSES
     }
     telemetry["effectivePurposes"] = effective

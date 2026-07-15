@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runReportAction, type ActionResponse } from "../lib/actionsApi";
 import { EntityActionApiError, runCardEntityAction, runNoteEntityAction } from "../lib/entityActionsApi";
 import { fetchSearchInspect, fetchSearchQuery, SearchApiError } from "../lib/searchApi";
+import { durationBucket, emitTelemetryEvent, resultCountBucket, telemetryOccurredAt } from "../lib/telemetryApi";
 import type { CardEntityAction, EntityActionResponse, NoteEntityAction } from "../types/entityActions";
 import type {
   SearchCardDetails,
@@ -73,6 +74,7 @@ export function useSearchWorkspace() {
   }, []);
 
   const executeQuery = useCallback(async (request: SearchQueryRequest) => {
+    const startedAt = performance.now();
     queryAbort.current?.abort();
     const controller = new AbortController();
     queryAbort.current = controller;
@@ -86,6 +88,13 @@ export function useSearchWorkspace() {
       setResponse(value);
       setQueryStatus("ready");
       setSubmittedRequest(request);
+      void emitTelemetryEvent({
+        eventCode: "search.completed",
+        resultCode: value.boundedTotal === 0 ? "no_results" : "success",
+        durationBucket: durationBucket(performance.now() - startedAt),
+        resultCountBucket: resultCountBucket(value.boundedTotal),
+        occurredAt: telemetryOccurredAt(),
+      });
       const returnedIds = new Set(entityIds(value));
       setSelectedIds((current) => {
         if (!response || response.mode !== value.mode || response.page !== value.page) return current;
@@ -101,7 +110,21 @@ export function useSearchWorkspace() {
     } catch (error) {
       if (controller.signal.aborted || sequence !== querySequence.current) return null;
       setQueryStatus("error");
-      setQueryError(asSearchError(error));
+      const searchError = asSearchError(error);
+      setQueryError(searchError);
+      void emitTelemetryEvent({
+        eventCode: "search.completed",
+        resultCode: "failed",
+        durationBucket: durationBucket(performance.now() - startedAt),
+        resultCountBucket: "0",
+        occurredAt: telemetryOccurredAt(),
+      });
+      void emitTelemetryEvent({
+        eventCode: "api_operation.failed",
+        featureCode: "search_query",
+        errorCode: String(searchError.code).includes("timeout") ? "timeout" : "unavailable",
+        occurredAt: telemetryOccurredAt(),
+      });
       return null;
     }
   }, [activeId, response]);
@@ -288,6 +311,7 @@ export function useSearchWorkspace() {
     const controller = new AbortController();
     actionAbort.current = controller;
     const ids = [...selectedIds];
+    const startedAt = performance.now();
     const inspectedId = activeId;
     try {
       const requestId = `entity-action-${nextRequestId(requestSequence)}`;
@@ -307,12 +331,32 @@ export function useSearchWorkspace() {
           }, controller.signal);
       if (controller.signal.aborted) return;
       setActionResponse(value);
+      void emitTelemetryEvent({
+        eventCode: "entity_action.completed",
+        actionCode: entityAction,
+        resultCode: value.resultCode === "action.no_changes" ? "no_change" : "success",
+        durationBucket: durationBucket(performance.now() - startedAt),
+        occurredAt: telemetryOccurredAt(),
+      });
       await refreshAfterAction(submittedRequest, inspectedId);
     } catch (error) {
       if (!controller.signal.aborted) {
         setActionError(error instanceof EntityActionApiError
           ? error
           : new EntityActionApiError("The Anki action failed.", { code: "entity_action_failed", status: 0 }));
+        void emitTelemetryEvent({
+          eventCode: "entity_action.completed",
+          actionCode: entityAction,
+          resultCode: "failed",
+          durationBucket: durationBucket(performance.now() - startedAt),
+          occurredAt: telemetryOccurredAt(),
+        });
+        void emitTelemetryEvent({
+          eventCode: "api_operation.failed",
+          featureCode: "entity_action",
+          errorCode: "unavailable",
+          occurredAt: telemetryOccurredAt(),
+        });
       }
     } finally {
       if (!controller.signal.aborted) setActionPending(false);

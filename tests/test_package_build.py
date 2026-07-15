@@ -18,6 +18,7 @@ REQUIRED_ARCHIVE_FILES = {
     "manifest.json",
     "config.json",
     "changelog.json",
+    "telemetry_contract.json",
     "web_dashboard/index.html",
 }
 
@@ -53,6 +54,7 @@ def write_minimal_archive(
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
+        archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
         archive.writestr("dashboard_server.py", "")
         archive.writestr(
             "web_dashboard/index.html",
@@ -168,6 +170,7 @@ def write_split_archive(
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
+        archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
         archive.writestr("dashboard_server.py", "")
         archive.writestr(
             "web_dashboard/index.html",

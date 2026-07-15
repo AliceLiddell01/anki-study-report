@@ -368,9 +368,14 @@ GET  /api/product-notices
 POST /api/product-notices/seen
 GET  /api/privacy
 POST /api/privacy
+GET  /api/telemetry/status
+POST /api/telemetry/events
+POST /api/telemetry/delete
 ```
 
-`/seen` принимает только `{}`. Privacy POST принимает ровно `purposes` с двумя
+`/seen` и `/api/telemetry/delete` принимают только `{}`. Privacy POST принимает ровно `purposes` с двумя
 обязательными boolean полями. GET возвращает effective purposes, re-consent
-state и точные allowed/never-collected категории. Методы не выполняют внешнюю
-сеть; подробная shape — `docs/product-notices-and-consent.md`.
+state и точные allowed/never-collected категории. Telemetry event POST
+принимает только strict semantic union; status никогда не возвращает remote ID
+или write token. React использует только local endpoints. Подробная shape —
+`docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.

@@ -121,6 +121,7 @@ forecast
 | `ANKI_STUDY_REPORT_E2E_PACKAGE_DIR` | `<root>/package` | Docker-built add-on | Dev-only | Вычисляется runner-ом из artifact root |
 | `ANKI_STUDY_REPORT_E2E_READY_FILE` | `/e2e/artifacts/runtime/dashboard-ready.json` | readiness | Dev-only | Waiter и add-on должны читать/писать тот же path |
 | `ANKI_STUDY_REPORT_E2E_PORT` | `8766` | E2E dashboard start | Dev-only | Порт для E2E server |
+| `ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT` | loopback fake in Docker | telemetry client E2E | Dev-only | Читается только вместе с `ANKI_STUDY_REPORT_E2E=1`; production package endpoint не содержит |
 | `ANKI_STUDY_REPORT_E2E_DEBUG_QT` | `0` | `start-anki.sh` | Dev-only | Включает verbose Qt diagnostics |
 | `ANKI_E2E_APKG_FIXTURE` | empty | PowerShell wrapper | Dev-only | Использовать только sanitized fixture |
 | `ANKI_E2E_APKG_FIXTURE_PATH` | empty | container import | Dev-only | Container path to staged APKG |
@@ -171,3 +172,7 @@ Partial update сохраняет unknown/internal top-level и nested config ke
 `<profile>/addon_data/<addon_id>/`. Это не add-on config и не синхронизируется
 через Anki Sync. `release/changelog.json` — tracked canonical input;
 `anki_study_report/changelog.json` — generated packaged read-only asset.
+
+`telemetry.sqlite3` находится в том же per-profile runtime directory. Это не
+user config и не Anki Sync data. Public package содержит только read-only
+`telemetry_contract.json`; production endpoint не хранится в `config.json`.
