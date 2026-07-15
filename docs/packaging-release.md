@@ -184,3 +184,8 @@ dashboard server.
 
 Иначе можно случайно проверять новый архив через старые installed
 `web_dashboard/assets`.
+
+Archive обязан содержать generated `changelog.json` в корне add-on. Перед
+build/package выполняется `scripts/generate_changelog.py --check`. Per-profile
+`product_notices.json`, `privacy.json`, corrupt backups и любые runtime queue
+files в `.ankiaddon` не включаются.

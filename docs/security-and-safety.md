@@ -292,3 +292,13 @@ persistent browser profiles, но исключает `.git`, dependency trees (`
 считаются auth state. Audit выводит только относительные пути и никогда не читает
 или печатает содержимое найденных файлов; sanitized publisher report и release
 bundle разрешены.
+
+## Consent и product notices
+
+Privacy/notices state хранится в profile `addon_data`, а не в package,
+localStorage или report cache. UI вызывает только token-protected loopback
+endpoints; remote endpoint/credential в frontend отсутствуют. По умолчанию и
+при ошибке чтения effective purposes выключены. Unknown request fields,
+не-boolean choices и non-POST mutations отклоняются. Точный запрет на content,
+names, IDs, queries, secrets и raw diagnostics описан в
+`docs/privacy-telemetry.md`.

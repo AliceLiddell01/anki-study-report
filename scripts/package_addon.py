@@ -34,6 +34,7 @@ REQUIRED_FILES = {
     "version.py",
     "manifest.json",
     "config.json",
+    "changelog.json",
     "dashboard_server.py",
     "web_dashboard/index.html",
     "web_dashboard/manifest.json",

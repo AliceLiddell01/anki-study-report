@@ -13,7 +13,7 @@ PRODUCT_RULES = {
     "stats": ("anki_study_report/statistics_", "anki_study_report/fsrs_", "web-dashboard/src/pages/statistics", "web-dashboard/src/pages/fsrs", "web-dashboard/src/components/statistics"),
     "decks": ("anki_study_report/deck_", "web-dashboard/src/pages/decks"),
     "activity": ("anki_study_report/activity_", "web-dashboard/src/pages/activity", "web-dashboard/src/pages/calendar"),
-    "settings": ("anki_study_report/config_", "web-dashboard/src/pages/settings", "web-dashboard/src/pages/reportsettings", "web-dashboard/src/pages/serversettings"),
+    "settings": ("anki_study_report/config_", "anki_study_report/product_notices", "web-dashboard/src/pages/settings", "web-dashboard/src/pages/privacysettings", "web-dashboard/src/pages/reportsettings", "web-dashboard/src/pages/serversettings", "web-dashboard/src/components/productnotice", "web-dashboard/src/components/telemetryconsent", "web-dashboard/src/components/whatsnew"),
     "cards": ("anki_study_report/note_", "anki_study_report/browser_", "web-dashboard/src/pages/cards", "web-dashboard/src/components/ankicard"),
 }
 DOC_PREFIXES = ("docs/", "readme.md")

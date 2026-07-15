@@ -109,7 +109,7 @@ Do not run heavy Docker E2E for docs-only changes.
 
 ## Version and gated publication
 
-- `anki_study_report/version.py`, changelog section and `manifest.json.mod`
+- `anki_study_report/version.py`, `release/changelog.json`, generated changelog outputs and `manifest.json.mod`
   describe the same release.
 - `prepare_release.py --version <version> --check` passes.
 - Release PR workflows pass without production secrets or mutations.

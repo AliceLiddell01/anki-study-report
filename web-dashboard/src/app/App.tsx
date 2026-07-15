@@ -4,11 +4,13 @@ import type { LoadState } from "../pages/HomePage";
 import type { StudyReport } from "../types/report";
 import { compatibilityRedirectForHash, getRouteFromHash, renderRoute } from "./router";
 import { RouteDeliveryBoundary, RouteLoading } from "./RouteDeliveryBoundary";
+import ProductNoticeCoordinator from "../components/ProductNoticeCoordinator";
 
 function App() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
   const [report, setReport] = useState<StudyReport | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [noticeOpenRequest, setNoticeOpenRequest] = useState(0);
 
   useEffect(() => {
     const updateRoute = () => {
@@ -68,13 +70,18 @@ function App() {
   };
 
   return (
-    <AppLayout activeRoute={route}>
-      <RouteDeliveryBoundary key={route}>
-        <Suspense fallback={<RouteLoading />}>
-          {renderRoute(route, report, loadState, updateReport)}
-        </Suspense>
-      </RouteDeliveryBoundary>
-    </AppLayout>
+    <>
+      <div id="dashboard-app-shell">
+        <AppLayout activeRoute={route} onOpenWhatsNew={() => setNoticeOpenRequest((value) => value + 1)}>
+          <RouteDeliveryBoundary key={route}>
+            <Suspense fallback={<RouteLoading />}>
+              {renderRoute(route, report, loadState, updateReport, () => setNoticeOpenRequest((value) => value + 1))}
+            </Suspense>
+          </RouteDeliveryBoundary>
+        </AppLayout>
+      </div>
+      <ProductNoticeCoordinator manualOpenSignal={noticeOpenRequest} />
+    </>
   );
 }
 

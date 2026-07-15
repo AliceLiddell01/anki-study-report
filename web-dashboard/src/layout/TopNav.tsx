@@ -1,4 +1,4 @@
-import { Brain, ChevronDown, Heart, Settings, UserRound, Wrench } from "lucide-react";
+import { Brain, ChevronDown, Heart, Settings, Sparkles, UserRound, Wrench } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { RoutePath } from "../app/router";
@@ -12,6 +12,7 @@ type ProfileMenuItem = {
 } & (
   | { path: RoutePath; externalHref?: never }
   | { path?: never; externalHref: string }
+  | { path?: never; externalHref?: never; action: "whatsNew" }
 );
 
 const profileMenuSections: Array<{
@@ -29,12 +30,13 @@ const profileMenuSections: Array<{
     labelKey: "profile.utilities",
     items: [
       { path: "/actions", labelKey: "profile.tools", icon: Wrench },
+      { action: "whatsNew", labelKey: "profile.whatsNew", icon: Sparkles },
       { externalHref: BOOSTY_SUPPORT_URL, labelKey: "profile.support", icon: Heart },
     ],
   },
 ];
 
-function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
+function TopNav({ activeRoute, onOpenWhatsNew = () => undefined }: { activeRoute: RoutePath; onOpenWhatsNew?: () => void }) {
   const { t } = useTranslation("navigation");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -174,6 +176,23 @@ function TopNav({ activeRoute }: { activeRoute: RoutePath }) {
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const active = "path" in item && item.path === activeRoute;
+                    if ("action" in item) {
+                      return (
+                        <button
+                          key={item.action}
+                          type="button"
+                          role="menuitem"
+                          className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left text-sm font-medium text-report-secondary outline-none transition hover:bg-ink-800 hover:text-report-text focus:border-report-blue/45 focus:bg-ink-800 focus:text-report-text"
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            onOpenWhatsNew();
+                          }}
+                        >
+                          <Icon size={17} className="text-report-blue" aria-hidden="true" />
+                          {t(item.labelKey)}
+                        </button>
+                      );
+                    }
                     const href = "path" in item ? `#${item.path}` : item.externalHref;
                     return (
                       <a

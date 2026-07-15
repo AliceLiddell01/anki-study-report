@@ -67,3 +67,8 @@ AnkiWeb adapter всегда классифицируются как `full`. Pro
 `ANKI_E2E_PREBUILT_ADDON_PATH`; E2E evidence обязано иметь тот же SHA-256.
 PR запускает только validation/build. Manual dispatch с `master` — отдельное
 явное решение владельца и не является автоматическим продолжением merge.
+
+Для product notices/privacy targeted gate — `standard/settings` после Fast CI
+на exact ready-head SHA. Изменение App Shell, dashboard server, E2E smoke,
+package validation или canonical release input эскалирует финальный gate до
+`standard/full`; повторный local full не заменяет cloud proof.

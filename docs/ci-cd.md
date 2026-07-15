@@ -259,3 +259,9 @@ branch. Поэтому первый branch cloud proof использует вр
 targeted stats workers 3/4 и два full standard observations (first/warm).
 `LOCAL PASS != GITHUB CI
 PASS`; infrastructure failure также нужно отличать от project failure.
+
+Structured changelog freshness входит в canonical local/Fast CI path:
+`node scripts/run_python.mjs scripts/generate_changelog.py --check`. Product
+notices дополнительно используют focused Python/Vitest suites; exact-SHA
+real-Anki policy остаётся `settings` targeted и `full` при shared
+runtime/package/E2E изменениях.

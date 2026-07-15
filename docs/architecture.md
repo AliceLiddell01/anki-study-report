@@ -238,3 +238,12 @@ web-dashboard/dist/
 anki_study_report/web_dashboard/
 *.ankiaddon
 ```
+
+## Product notices и privacy state
+
+`product_notices.py` владеет двумя атомарными per-profile JSON stores и строгой
+валидацией consent. `dashboard_server.py` публикует token-protected local API,
+а `ProductNoticeCoordinator` последовательно показывает consent и What’s New.
+`release/changelog.json` является каноническим source; Markdown и bundled
+RU/EN assets генерируются. Этот слой работает офлайн и не является telemetry
+sender. Полный контракт: `docs/product-notices-and-consent.md`.

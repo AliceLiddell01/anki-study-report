@@ -102,3 +102,8 @@ Stage 7.7.1 закрыл остаточные frontend-owned подписи `Pas
 - preference browser-local и не синхронизируется через Python или Anki Sync;
 - backend/user content не переводится;
 - locale chunks не загружаются отдельно: оба словаря входят в bundle.
+
+What’s New и consent используют namespace `pages.whatsNew`/`pages.privacy`.
+Тексты changelog не дублируются в locale files: RU/EN пары генерируются из
+`release/changelog.json`. Переключение языка обновляет открытый modal, не
+сбрасывая раскрытые версии или выбранные purpose toggles.

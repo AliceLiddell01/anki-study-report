@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "unreleased": {
+    "sections": []
+  },
+  "releases": [
+    {
+      "version": "1.1.0",
+      "date": "2026-07-15",
+      "sections": [
+        {
+          "type": "added",
+          "items": [
+            {
+              "id": "search_workspace",
+              "text": {
+                "ru": "Добавлено отдельное рабочее пространство поиска карточек и записей с нативным синтаксисом запросов Anki.",
+                "en": "Added a dedicated Search workspace for cards and notes using native Anki query syntax."
+              }
+            },
+            {
+              "id": "search_filters_and_inspection",
+              "text": {
+                "ru": "Добавлены структурированные фильтры колод, типов записей, тегов, состояний и флагов, сортировка, ограниченная пагинация, компактный инспектор, явный выбор и передача в Anki Browser.",
+                "en": "Added structured deck, note type, tag, state, and flag filters with sorting, bounded pagination, compact inspection, explicit selection, and handoff to Anki Browser."
+              }
+            },
+            {
+              "id": "safe_undoable_search_actions",
+              "text": {
+                "ru": "Добавлены безопасные отменяемые действия: приостановка и возобновление карточек, установка и снятие флагов, добавление и удаление тегов записей, откладывание и возврат карточек, а также перемещение обычных карточек в обычные колоды.",
+                "en": "Added safe undoable actions for suspending and unsuspending cards, setting or clearing flags, adding or removing note tags, burying or unburying cards, and moving ordinary cards to normal decks."
+              }
+            }
+          ]
+        },
+        {
+          "type": "changed",
+          "items": [
+            {
+              "id": "search_primary_navigation",
+              "text": {
+                "ru": "Поиск добавлен в основную навигацию между Колодами и Карточками.",
+                "en": "Added Search to the primary navigation between Decks and Cards."
+              }
+            },
+            {
+              "id": "search_query_session_privacy",
+              "text": {
+                "ru": "Состояние поискового запроса остаётся локальным для текущей сессии и не помещается в URL, заголовок страницы, обычные логи или публичные диагностические артефакты.",
+                "en": "Kept Search query state session-local without placing raw queries in the URL, page title, normal logs, or public diagnostic artifacts."
+              }
+            },
+            {
+              "id": "search_action_reconciliation",
+              "text": {
+                "ru": "После подтверждённого действия обновляются результаты поиска, выбор, пагинация и активный инспектор.",
+                "en": "Refreshes Search results, selection, pagination, and the active inspector after a confirmed action."
+              }
+            },
+            {
+              "id": "ci_search_action_verification",
+              "text": {
+                "ru": "Сокращены дублирующиеся Fast CI запуски для pull request и усилена real-Anki проверка поиска, действий, перезапуска, телеметрии E2E и контрактов screenshots.",
+                "en": "Reduced duplicate Fast CI runs for pull requests and strengthened real-Anki verification around Search, actions, restart behavior, telemetry, and screenshot contracts."
+              }
+            }
+          ]
+        },
+        {
+          "type": "safety",
+          "items": [
+            {
+              "id": "mutation_allowlist_and_undo",
+              "text": {
+                "ru": "Все изменяющие операции используют явные allowlist карточек или записей, проверяют весь пакет до изменения коллекции и создают не более одного нативного шага отмены Anki.",
+                "en": "All modifying operations use explicit card or note allowlists, validate the full batch before changing the collection, and create at most one native Anki undo step."
+              }
+            },
+            {
+              "id": "filtered_deck_move_restrictions",
+              "text": {
+                "ru": "Назначения в filtered deck и перемещения карточек из filtered deck отклоняются вместо неявного изменения расписания или состояния FSRS.",
+                "en": "Filtered-deck destinations and moves from filtered-deck source cards are rejected instead of silently altering scheduling or FSRS state."
+              }
+            },
+            {
+              "id": "search_mutation_exclusions",
+              "text": {
+                "ru": "Поиск не позволяет удалять или перепланировать карточки, редактировать поля и шаблоны, менять тип записи, историю повторений или параметры FSRS.",
+                "en": "Search does not provide deletion, rescheduling, field editing, template execution, note type changes, review history changes, or FSRS parameter changes."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-07-14",
+      "sections": [
+        {
+          "type": "added",
+          "items": [
+            {
+              "id": "local_study_dashboard",
+              "text": {
+                "ru": "Добавлен локальный учебный dashboard для разделов Сегодня, Активность, Статистика, Колоды, Карточки, настроек профиля, диагностики и инструментов обслуживания.",
+                "en": "Added a local study dashboard for Today, Activity, Statistics, Decks, Cards, profile settings, diagnostics, and maintenance tools."
+              }
+            },
+            {
+              "id": "reports_forecasts_and_fsrs",
+              "text": {
+                "ru": "Добавлены Markdown-отчёты, прогноз нагрузки, здоровье колод, диагностика карточек, безопасный preview и read-only аналитика FSRS.",
+                "en": "Added Markdown reports, workload forecasts, deck health, card diagnostics, safe card previews, and read-only FSRS analytics."
+              }
+            },
+            {
+              "id": "bundled_ru_en_interface",
+              "text": {
+                "ru": "Добавлены полные встроенные русский и английский интерфейсы dashboard с постоянными настройками языка и темы.",
+                "en": "Added complete bundled Russian and English dashboard interfaces with persistent language and theme controls."
+              }
+            }
+          ]
+        },
+        {
+          "type": "changed",
+          "items": [
+            {
+              "id": "bounded_aggregate_cache",
+              "text": {
+                "ru": "Длительная аналитика ускорена опциональным локальным агрегированным cache и ограниченными контрактами запросов.",
+                "en": "Made long-period analytics faster with an optional local aggregate cache and bounded query contracts."
+              }
+            },
+            {
+              "id": "safe_dashboard_delivery",
+              "text": {
+                "ru": "Доставка dashboard усилена token-protected локальным доступом, санитизированными preview и проверяемыми lazy-loaded assets.",
+                "en": "Made dashboard delivery safer with token-protected local access, sanitized previews, and validated lazy-loaded assets."
+              }
+            }
+          ]
+        },
+        {
+          "type": "fixed",
+          "items": [
+            {
+              "id": "localization_preview_package_startup",
+              "text": {
+                "ru": "Улучшены согласованность локализации, совместимость preview карточек, проверка package и диагностика запуска в real Anki.",
+                "en": "Improved localization consistency, card preview compatibility, package validation, and real-Anki startup diagnostics."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

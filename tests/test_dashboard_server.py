@@ -525,6 +525,70 @@ def test_profile_endpoint_get_post_validation_and_auth():
         manager.stop()
 
 
+def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contracts():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    privacy_calls = []
+    seen_calls = []
+    manager.configure_product_notice_handlers(
+        notices_provider=lambda: {
+            "ok": True,
+            "currentVersion": "1.1.0",
+            "requiresConsent": True,
+            "showWhatsNew": True,
+        },
+        release_seen_handler=lambda: seen_calls.append(True) or {"ok": True, "showWhatsNew": False},
+        privacy_provider=lambda: {
+            "ok": True,
+            "privacy": {"telemetry": {"status": "undecided"}},
+        },
+        privacy_handler=lambda payload: privacy_calls.append(payload) or (
+            {"ok": False, "error": "invalid_privacy_choices", "fieldErrors": {"purposes": "invalid"}}
+            if "purposes" not in payload
+            else {"ok": True, "privacy": {"telemetry": {"status": "declined"}}}
+        ),
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        assert fetch(f"{base_url}/api/product-notices")[0] == 403
+        assert fetch(f"{base_url}/api/privacy")[0] == 403
+        assert fetch(f"{base_url}/api/product-notices/seen?token={token}")[0] == 405
+
+        status, _, body = fetch(f"{base_url}/api/product-notices?token={token}")
+        assert status == 200
+        assert json.loads(body)["requiresConsent"] is True
+
+        status, _, body = fetch(f"{base_url}/api/privacy?token={token}")
+        assert status == 200
+        assert json.loads(body)["privacy"]["telemetry"]["status"] == "undecided"
+
+        status, _, body = fetch(
+            f"{base_url}/api/privacy?token={token}",
+            method="POST",
+            json_body={"purposes": {"reliabilityDiagnostics": False, "featureUsage": False}},
+        )
+        assert status == 200
+        assert json.loads(body)["privacy"]["telemetry"]["status"] == "declined"
+        assert privacy_calls == [{"purposes": {"reliabilityDiagnostics": False, "featureUsage": False}}]
+
+        assert fetch(f"{base_url}/api/privacy?token={token}", method="POST", json_body={})[0] == 400
+        assert fetch(
+            f"{base_url}/api/product-notices/seen?token={token}",
+            method="POST",
+            json_body={"version": "spoofed"},
+        )[0] == 400
+        status, _, body = fetch(
+            f"{base_url}/api/product-notices/seen?token={token}", method="POST", json_body={}
+        )
+        assert status == 200
+        assert json.loads(body)["showWhatsNew"] is False
+        assert seen_calls == [True]
+    finally:
+        manager.stop()
+
+
 def test_statistics_query_endpoint_is_post_only_typed_bounded_and_token_protected():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()
