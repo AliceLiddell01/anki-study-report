@@ -11,13 +11,46 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  dispatch-stage9-settings-e2e:
+    if: github.head_ref == 'codex/dispatch-stage9-settings-e2e'
+    name: Dispatch exact Stage 9 settings E2E
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch standard/settings on the final branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: 811baaf0f9e00f055d2d7018690cce57f98a4194
+        shell: bash
+        run: |
+          gh workflow run ci-e2e.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref codex/activate-production-telemetry \
+            -f mode=standard \
+            -f scope=settings \
+            -f screenshot_workers=auto \
+            -f resource_telemetry=false \
+            -f verify_restart=auto
+          for attempt in {1..12}; do
+            run_json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-e2e.yml --branch codex/activate-production-telemetry --event workflow_dispatch --limit 10 --json databaseId,headSha,status,createdAt)"
+            run_id="$(printf '%s' "$run_json" | jq -r --arg sha "$EXPECTED_SHA" '[.[] | select(.headSha == $sha)][0].databaseId // empty')"
+            if [ -n "$run_id" ]; then
+              echo "Dispatched E2E run ID: $run_id"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "The exact-head E2E run was not found after dispatch." >&2
+          exit 1
+
   fast:
+    if: github.head_ref != 'codex/dispatch-stage9-settings-e2e'
     name: Frontend, Python and package
     runs-on: windows-2025
     timeout-minutes: 20
@@ -92,8 +125,6 @@ jobs:
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
             $base = "origin/$baseBranch"
           } elseif ($refName -ne $defaultBranch) {
-            # Manually dispatched feature-branch runs must describe the complete branch risk,
-            # not only the last synchronize/force-push delta.
             $base = "origin/$defaultBranch"
           } else {
             $base = $null
