@@ -266,12 +266,15 @@ async function assertProductNotices(page) {
     assertBrowser(await consent.getAttribute("aria-modal") === "true", "First-run consent is modal.");
     const checked = await consent.locator('input[type="checkbox"]:checked').count();
     assertBrowser(checked === 0, "First-run consent has no preselected purpose.");
+    assertBrowser(
+      await consent.getByRole("button", { name: "Сохранить выбранное", exact: true }).isDisabled(),
+      "First-run consent cannot affirm an empty purpose selection.",
+    );
     const inert = await page.locator("#dashboard-app-shell").evaluate((element) => element.inert && element.getAttribute("aria-hidden") === "true");
     assertBrowser(inert, "First-run consent makes the dashboard shell inert.");
-    const consentShot = artifactPaths.stateScreenshot("product-notices", "consent-first-run", "dark");
-    await ensureArtifactParent(consentShot);
-    await page.screenshot({ path: consentShot, fullPage: true });
-    screenshots.push(relativeArtifactPath(artifactPaths, consentShot));
+    for (const theme of ["light", "dark"]) {
+      screenshots.push(await captureProductNoticeState(page, consent, "consent-first-run", theme));
+    }
     await page.keyboard.press("Escape");
     await whatsNew.waitFor({ state: "visible", timeout: 15000 });
   }
@@ -283,10 +286,9 @@ async function assertProductNotices(page) {
   }
   assertBrowser(await whatsNew.getAttribute("role") === "dialog", "What's New uses a dialog role.");
   assertBrowser((await whatsNew.getByRole("button", { expanded: true }).count()) >= 1, "What's New expands at least the current release.");
-  const whatsNewShot = artifactPaths.stateScreenshot("product-notices", "whats-new", "dark");
-  await ensureArtifactParent(whatsNewShot);
-  await page.screenshot({ path: whatsNewShot, fullPage: true });
-  screenshots.push(relativeArtifactPath(artifactPaths, whatsNewShot));
+  for (const theme of ["light", "dark"]) {
+    screenshots.push(await captureProductNoticeState(page, whatsNew, "whats-new", theme));
+  }
   await whatsNew.getByRole("button", { name: "Понятно", exact: true }).click();
   await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
 
@@ -311,13 +313,18 @@ async function assertProductNotices(page) {
   await whatsNew.getByRole("button", { name: "Закрыть историю изменений", exact: true }).click();
   await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
 
-  await prepareDashboardRoute(page, "/settings/privacy", "light", "Приватность");
-  assertBrowser(await page.locator('input[type="checkbox"]').count() === 2, "Privacy settings exposes both granular purposes.");
-  assertBrowser((await page.locator("main").innerText()).includes("Privacy Notice"), "Privacy settings exposes the notice and exact data controls.");
-  const privacyShot = artifactPaths.stateScreenshot("product-notices", "privacy-settings", "light");
-  await ensureArtifactParent(privacyShot);
-  await page.screenshot({ path: privacyShot, fullPage: true });
-  screenshots.push(relativeArtifactPath(artifactPaths, privacyShot));
+  for (const theme of ["light", "dark"]) {
+    await prepareDashboardRoute(page, "/settings/privacy", theme, "Приватность");
+    assertBrowser(await page.locator('input[type="checkbox"]').count() === 2, `Privacy settings exposes both granular purposes in ${theme} theme.`);
+    assertBrowser(
+      (await page.locator("main").innerText()).includes("Уведомление о конфиденциальности"),
+      `Privacy settings exposes the localized notice and exact data controls in ${theme} theme.`,
+    );
+    const privacyShot = artifactPaths.stateScreenshot("product-notices", "privacy-settings", theme);
+    await ensureArtifactParent(privacyShot);
+    await page.screenshot({ path: privacyShot, fullPage: true });
+    screenshots.push(relativeArtifactPath(artifactPaths, privacyShot));
+  }
   return {
     firstRunObserved,
     persistedStatus: state.privacy?.privacy?.telemetry?.status || null,
@@ -326,6 +333,36 @@ async function assertProductNotices(page) {
     manualReopen: true,
     screenshots,
   };
+}
+
+async function captureProductNoticeState(page, modal, stateName, theme) {
+  await page.evaluate((selectedTheme) => {
+    window.localStorage.setItem("anki-study-report-theme", selectedTheme);
+    document.documentElement.dataset.theme = selectedTheme;
+    document.documentElement.style.colorScheme = selectedTheme;
+  }, theme);
+  await page.waitForFunction((selectedTheme) => document.documentElement.dataset.theme === selectedTheme, theme);
+  await waitForLayoutStabilization(page);
+  const colors = await modal.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      color: style.color,
+    };
+  });
+  const luminance = colorLuminance(colors.backgroundColor);
+  if (theme === "dark") {
+    assertBrowser(luminance < 90, `${stateName} dark modal surface is dark: ${colors.backgroundColor}.`);
+  } else {
+    assertBrowser(luminance > 180, `${stateName} light modal surface is light: ${colors.backgroundColor}.`);
+  }
+  assertBrowser(colors.borderColor !== colors.backgroundColor, `${stateName} ${theme} modal keeps a visible border.`);
+  assertBrowser(colors.color !== colors.backgroundColor, `${stateName} ${theme} modal keeps contrasting text.`);
+  const filePath = artifactPaths.stateScreenshot("product-notices", stateName, theme);
+  await ensureArtifactParent(filePath);
+  await page.screenshot({ path: filePath, fullPage: true });
+  return relativeArtifactPath(artifactPaths, filePath);
 }
 
 async function assertTelemetryClient(page) {

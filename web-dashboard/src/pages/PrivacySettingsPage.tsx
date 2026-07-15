@@ -1,6 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatDateTime, isValidDateTime } from "../lib/localizedDateTime";
 import {
   fetchPrivacy,
   savePrivacyChoices,
@@ -13,6 +14,12 @@ const EMPTY_CHOICES: Record<TelemetryPurpose, boolean> = {
   reliabilityDiagnostics: false,
   featureUsage: false,
 };
+
+function LocalizedDateTime({ value, fallback }: { value: string | null | undefined; fallback: string }) {
+  const formatted = formatDateTime(value, fallback);
+  if (!isValidDateTime(value)) return <span title={value || undefined}>{formatted}</span>;
+  return <time dateTime={value} title={value}>{formatted}</time>;
+}
 
 export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew: () => void }) {
   const { t } = useTranslation("pages");
@@ -79,6 +86,16 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
   const telemetry = response.privacy.telemetry;
   const client = response.telemetryClient;
   const statusKey = telemetry.requiresConsent ? "decisionRequired" : telemetry.status;
+  const deletionPending = Boolean(client?.deletionPending || telemetry.deletionPending);
+  const hasPersistedPurpose = Object.values(telemetry.purposes).some(Boolean);
+  const hasPendingTelemetry = (client?.pendingEventCount ?? 0) > 0 || deletionPending;
+  const canDisableAll = hasPersistedPurpose || hasPendingTelemetry;
+  const canDeleteRemote = Boolean(
+    client?.enrollmentState === "enrolled"
+      || (client?.pendingEventCount ?? 0) > 0
+      || deletionPending
+      || client?.lastSuccessfulDeliveryAt,
+  );
   return (
     <div className="grid gap-5">
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
@@ -95,7 +112,7 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
         <dl className="privacy-status-grid mt-5">
           <div><dt>{t("privacy.settings.status")}</dt><dd>{t(`privacy.status.${statusKey}`)}</dd></div>
           <div><dt>{t("privacy.settings.noticeVersion")}</dt><dd>{telemetry.privacyNoticeVersion}</dd></div>
-          <div><dt>{t("privacy.settings.decidedAt")}</dt><dd>{telemetry.decidedAt ?? t("privacy.settings.notDecided")}</dd></div>
+          <div><dt>{t("privacy.settings.decidedAt")}</dt><dd><LocalizedDateTime value={telemetry.decidedAt} fallback={t("privacy.settings.notDecided")} /></dd></div>
         </dl>
       </section>
 
@@ -106,13 +123,15 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
           <div><dt>{t("privacy.settings.endpointState")}</dt><dd>{t(`privacy.client.endpoint.${client?.endpointState ?? "not_configured"}`)}</dd></div>
           <div><dt>{t("privacy.settings.enrollmentState")}</dt><dd>{t(`privacy.client.enrollment.${client?.enrollmentState ?? "not_enrolled"}`)}</dd></div>
           <div><dt>{t("privacy.settings.pendingEvents")}</dt><dd>{client?.pendingEventCount ?? 0}</dd></div>
-          <div><dt>{t("privacy.settings.lastDelivery")}</dt><dd>{client?.lastSuccessfulDeliveryAt ?? t("privacy.settings.neverDelivered")}</dd></div>
+          <div><dt>{t("privacy.settings.lastDelivery")}</dt><dd><LocalizedDateTime value={client?.lastSuccessfulDeliveryAt} fallback={t("privacy.settings.neverDelivered")} /></dd></div>
           <div><dt>{t("privacy.settings.lastError")}</dt><dd>{client?.lastDeliveryErrorCode ?? t("privacy.settings.noError")}</dd></div>
-          <div><dt>{t("privacy.settings.deletionState")}</dt><dd>{client?.deletionPending || telemetry.deletionPending ? t("privacy.client.deletion.pending") : t("privacy.client.deletion.none")}</dd></div>
+          <div><dt>{t("privacy.settings.deletionState")}</dt><dd>{deletionPending ? t("privacy.client.deletion.pending") : t("privacy.client.deletion.none")}</dd></div>
         </dl>
-        {client?.deletionPending || telemetry.deletionPending ? (
-          <p role="status" className="privacy-deletion-warning mt-4">
-            {t("privacy.settings.deletionPendingDetail", { retryAt: client?.deletionNextAttemptAt ?? t("privacy.settings.retryUnknown") })}
+        {deletionPending ? (
+          <p role="status" className="privacy-deletion-warning mt-4" title={client?.deletionNextAttemptAt || undefined}>
+            {t("privacy.settings.deletionPendingDetail", {
+              retryAt: formatDateTime(client?.deletionNextAttemptAt, t("privacy.settings.retryUnknown")),
+            })}
           </p>
         ) : null}
       </section>
@@ -149,13 +168,29 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
         <h2 className="text-lg font-semibold text-report-text">{t("privacy.settings.withdrawTitle")}</h2>
         <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.settings.withdrawDescription")}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="button" className="secondary-button" disabled={saving || deleting} onClick={() => void disableAll()}>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={saving || deleting || !canDisableAll}
+            aria-describedby={!canDisableAll ? "privacy-disable-unavailable" : undefined}
+            title={!canDisableAll ? t("privacy.settings.disableUnavailable") : undefined}
+            onClick={() => void disableAll()}
+          >
             {t("privacy.settings.disableAll")}
           </button>
-          <button type="button" className="danger-button" disabled={saving || deleting} onClick={() => void deleteData()}>
+          <button
+            type="button"
+            className="danger-button"
+            disabled={saving || deleting || !canDeleteRemote}
+            aria-describedby={!canDeleteRemote ? "privacy-delete-unavailable" : undefined}
+            title={!canDeleteRemote ? t("privacy.settings.deleteUnavailable") : undefined}
+            onClick={() => void deleteData()}
+          >
             {deleting ? t("privacy.settings.deleting") : t("privacy.settings.deleteRemote")}
           </button>
         </div>
+        {!canDisableAll ? <p id="privacy-disable-unavailable" className="privacy-action-explanation">{t("privacy.settings.disableUnavailable")}</p> : null}
+        {!canDeleteRemote ? <p id="privacy-delete-unavailable" className="privacy-action-explanation">{t("privacy.settings.deleteUnavailable")}</p> : null}
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
@@ -188,6 +223,10 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
         <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.technicalDraft")}</p>
         <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.summary")}</p>
         <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.version")}</p>
+        <details className="privacy-disclosure">
+          <summary>{t("privacy.notice.technicalDetails")}</summary>
+          <p>{t("privacy.notice.processorDetails")}</p>
+        </details>
       </section>
     </div>
   );

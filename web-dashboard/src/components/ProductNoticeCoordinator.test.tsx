@@ -92,6 +92,10 @@ describe("product notice coordinator", () => {
     expect(container.querySelector('[data-testid="telemetry-consent-dialog"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="whats-new-dialog"]')).toBeNull();
     expect(Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).every((input) => !input.checked)).toBe(true);
+    const affirmative = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Сохранить выбранное");
+    expect(affirmative?.disabled).toBe(true);
+    expect(container.textContent).toContain("Для согласия выберите цель");
     expect(shell.inert).toBe(true);
 
     await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
@@ -178,6 +182,7 @@ describe("product notice coordinator", () => {
     const firstPurpose = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     act(() => firstPurpose.click());
     const save = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Сохранить выбранное")!;
+    expect(save.hasAttribute("disabled")).toBe(false);
     await act(async () => save.click());
     await settle();
 

@@ -82,7 +82,7 @@ describe("privacy settings", () => {
   it("shows accepted granular choices and bounded client status without credentials", async () => {
     await act(async () => root.render(<PrivacySettingsPage onOpenWhatsNew={() => undefined} />));
 
-    expect(container.textContent).toContain("Accepted");
+    expect(container.textContent).toContain("Allowed for selected purposes");
     expect(container.textContent).toContain("2");
     const checkboxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
     expect(checkboxes.map((item) => item.checked)).toEqual([true, false]);
@@ -119,6 +119,62 @@ describe("privacy settings", () => {
 
     expect(mocks.deleteTelemetryData).toHaveBeenCalledOnce();
     expect(container.textContent).toContain("Deletion is pending");
-    expect(container.textContent).toContain("2026-07-15T00:15:00Z");
+    expect(container.textContent).not.toContain("2026-07-15T00:15:00Z");
+    expect(container.querySelector('[title="2026-07-15T00:15:00Z"]')).not.toBeNull();
+  });
+
+  it("disables remote no-op actions and explains why they are unavailable", async () => {
+    mocks.fetchPrivacy.mockResolvedValue(response({
+      privacy: {
+        ...response().privacy!,
+        telemetry: {
+          ...response().privacy!.telemetry,
+          status: "declined",
+          purposes: { reliabilityDiagnostics: false, featureUsage: false },
+          effectivePurposes: { reliabilityDiagnostics: false, featureUsage: false },
+          deletionPending: false,
+        },
+      },
+      telemetryClient: {
+        ...response().telemetryClient!,
+        enrollmentState: "not_enrolled",
+        pendingEventCount: 0,
+        pendingByPurpose: { reliabilityDiagnostics: 0, featureUsage: 0 },
+        lastSuccessfulDeliveryAt: null,
+        deletionPending: false,
+      },
+    }));
+
+    await act(async () => root.render(<PrivacySettingsPage onOpenWhatsNew={() => undefined} />));
+
+    const disable = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Disable all telemetry");
+    const remove = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Delete already collected data");
+    expect(disable?.disabled).toBe(true);
+    expect(remove?.disabled).toBe(true);
+    expect(container.textContent).toContain("All purposes are disabled");
+    expect(container.textContent).toContain("Nothing can be deleted");
+    expect(mocks.savePrivacyChoices).not.toHaveBeenCalled();
+    expect(mocks.deleteTelemetryData).not.toHaveBeenCalled();
+  });
+
+  it("shows localized timestamps while retaining the raw ISO value for diagnostics", async () => {
+    await i18n.changeLanguage("ru");
+    mocks.fetchPrivacy.mockResolvedValue(response({
+      privacy: {
+        ...response().privacy!,
+        telemetry: { ...response().privacy!.telemetry, decidedAt: "2026-07-15T11:46:49.771921Z" },
+      },
+      telemetryClient: {
+        ...response().telemetryClient!,
+        lastSuccessfulDeliveryAt: "2026-07-15T11:47:00Z",
+      },
+    }));
+
+    await act(async () => root.render(<PrivacySettingsPage onOpenWhatsNew={() => undefined} />));
+
+    const decision = container.querySelector('time[datetime="2026-07-15T11:46:49.771921Z"]');
+    expect(decision).not.toBeNull();
+    expect(decision?.textContent).not.toContain("T11:46:49");
+    expect(decision?.getAttribute("title")).toBe("2026-07-15T11:46:49.771921Z");
   });
 });
