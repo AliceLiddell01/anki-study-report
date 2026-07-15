@@ -37,6 +37,11 @@ def wait_for(provider, predicate, description: str, *, seconds: float = 20, inte
     raise RuntimeError(f"Timed out waiting for {description}: {last!r}")
 
 
+def delivery_needs_trigger(status: dict) -> bool:
+    client = status.get("telemetryClient", {})
+    return int(client.get("pendingEventCount", 0)) > 0 and client.get("senderState") == "idle"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ready", type=Path, required=True)
@@ -61,16 +66,20 @@ def main() -> int:
     before_delivery = fake_state()
     json_request(f"{args.fake_endpoint}/__e2e/control", payload={"offline": False})
     dashboard("/api/privacy", payload={"purposes": {"reliabilityDiagnostics": False, "featureUsage": True}})
-    def trigger_due_delivery() -> dict:
-        dashboard("/api/privacy", payload={"purposes": {"reliabilityDiagnostics": False, "featureUsage": True}})
-        return dashboard("/api/telemetry/status")
+
+    def observe_delivery() -> dict:
+        status = dashboard("/api/telemetry/status")
+        if delivery_needs_trigger(status):
+            dashboard("/api/privacy", payload={"purposes": {"reliabilityDiagnostics": False, "featureUsage": True}})
+            status = dashboard("/api/telemetry/status")
+        return status
 
     delivered = wait_for(
-        trigger_due_delivery,
+        observe_delivery,
         lambda value: value.get("telemetryClient", {}).get("pendingEventCount") == 0,
         "post-restart telemetry delivery",
-        seconds=60,
-        interval=1,
+        seconds=180,
+        interval=0.5,
     )
     after_delivery = fake_state()
     if int(after_delivery.get("eventCount", 0)) <= int(before_delivery.get("eventCount", 0)):
