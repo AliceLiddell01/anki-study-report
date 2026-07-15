@@ -4,14 +4,14 @@ on:
   pull_request:
     branches:
       - master
-    types: [opened]
+    types: [opened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   sync:
-    if: github.head_ref == 'codex/stage9-doc-sync'
+    if: github.head_ref == 'codex/stage9-doc-sync' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
