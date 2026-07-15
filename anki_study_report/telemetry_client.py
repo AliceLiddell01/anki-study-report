@@ -25,6 +25,7 @@ from .telemetry_contract import (
 from .telemetry_store import QueuedEvent, TelemetryStore
 
 
+PRODUCTION_TELEMETRY_ENDPOINT = "https://anki-study-report-telemetry.anki-study-report.workers.dev"
 CONNECT_TOTAL_TIMEOUT_SECONDS = 10.0
 PERIODIC_MIN_SECONDS = 15 * 60
 QUEUE_SEND_THRESHOLD = 25
@@ -81,7 +82,10 @@ class TelemetryClient:
         self.store = store
         self.privacy_store = privacy_store
         self._common_dimensions_provider = common_dimensions_provider
-        self.endpoint = _validated_endpoint(endpoint, allow_http_loopback=allow_http_loopback)
+        resolved_endpoint = endpoint
+        if resolved_endpoint is None and not allow_http_loopback:
+            resolved_endpoint = PRODUCTION_TELEMETRY_ENDPOINT
+        self.endpoint = _validated_endpoint(resolved_endpoint, allow_http_loopback=allow_http_loopback)
         self._transport = transport or UrlLibTransport()
         self._now_provider = now_provider or (lambda: datetime.now(timezone.utc))
         self._random_provider = random_provider or random.random

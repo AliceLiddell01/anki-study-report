@@ -14,7 +14,7 @@ from uuid import uuid4
 CONTRACT_PATH = Path(__file__).resolve().with_name("telemetry_contract.json")
 TELEMETRY_SCHEMA_VERSION = 1
 CONSENT_SCHEMA_VERSION = 1
-PRIVACY_NOTICE_VERSION = "2026-07-15"
+PRIVACY_NOTICE_VERSION = "2026-07-15-production"
 _VERSION_RE = re.compile(r"^[0-9]+(?:\.[0-9]+){1,3}(?:[-+][0-9A-Za-z.-]+)?$")
 
 

@@ -25,7 +25,7 @@ function response(overrides: Partial<ProductNoticesResponse> = {}): ProductNotic
       telemetry: {
         status: "undecided",
         consentSchemaVersion: 1,
-        privacyNoticeVersion: "2026-07-15",
+        privacyNoticeVersion: "2026-07-15-production",
         purposes: { reliabilityDiagnostics: false, featureUsage: false },
         effectivePurposes: { reliabilityDiagnostics: false, featureUsage: false },
         decidedAt: null,
