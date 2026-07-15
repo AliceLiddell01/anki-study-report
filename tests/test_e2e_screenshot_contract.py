@@ -7,6 +7,7 @@ SMOKE_BROWSER = ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs"
 E2E_CONTRACT = ROOT / "docker" / "anki-e2e" / "e2e-contract.mjs"
 DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
 ROUTER = ROOT / "web-dashboard" / "src" / "app" / "router.tsx"
+TOP_NAV = ROOT / "web-dashboard" / "src" / "layout" / "TopNav.tsx"
 RU_LOCALE = ROOT / "web-dashboard" / "src" / "i18n" / "locales" / "ru.ts"
 
 
@@ -73,3 +74,33 @@ def test_statistics_smoke_navigation_follows_the_router_and_russian_locale() -> 
     assert "search" in keys
     assert all(key in labels for key in keys)
     assert _statistics_smoke_nav_labels() == [labels[key] for key in keys]
+
+
+def _profile_menu_label_keys() -> list[str]:
+    text = TOP_NAV.read_text(encoding="utf-8")
+    block = text.split("const profileMenuSections", 1)[1].split("> = [", 1)[1].split("];", 1)[0]
+    keys = re.findall(r'labelKey:\s*"profile\.([^\"]+)"', block)
+    return [key for key in keys if key not in {"personal", "utilities"}]
+
+
+def _ru_profile_menu_labels() -> dict[str, str]:
+    text = RU_LOCALE.read_text(encoding="utf-8")
+    navigation = text.split("navigation: {", 1)[1]
+    block = navigation.split("profile: {", 1)[1].split("},", 1)[0]
+    return dict(re.findall(r'^\s*(\w+):\s*"([^\"]+)"', block, re.MULTILINE))
+
+
+def _avatar_smoke_menu_labels() -> list[str]:
+    text = SMOKE_BROWSER.read_text(encoding="utf-8")
+    before_message = text.split("`Avatar menu items are complete:", 1)[0]
+    expected = before_message.rsplit("JSON.stringify(", 1)[1].split(")", 1)[0]
+    return re.findall(r'"([^\"]+)"', expected)
+
+
+def test_avatar_smoke_menu_follows_top_nav_and_russian_locale() -> None:
+    keys = _profile_menu_label_keys()
+    labels = _ru_profile_menu_labels()
+
+    assert keys
+    assert all(key in labels for key in keys)
+    assert _avatar_smoke_menu_labels() == [labels[key] for key in keys]
