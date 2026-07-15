@@ -246,4 +246,7 @@ anki_study_report/web_dashboard/
 а `ProductNoticeCoordinator` последовательно показывает consent и What’s New.
 `release/changelog.json` является каноническим source; Markdown и bundled
 RU/EN assets генерируются. Этот слой работает офлайн и не является telemetry
-sender. Полный контракт: `docs/product-notices-and-consent.md`.
+sender. Отдельный Python client валидирует semantic events, хранит bounded
+per-profile SQLite queue и выполняет consent-gated background delivery; React
+не знает remote endpoint/credentials. Контракты:
+`docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.

@@ -40,6 +40,10 @@ scripts/run_full_check.ps1 -DockerOnly
 - Package check: run before building or handing off `anki_study_report.ankiaddon`.
 - Docker E2E: run before merging renderer, dashboard runtime, or Anki desktop
   integration changes.
+- Telemetry client changes: use the built-in loopback fake and force restart,
+  for example `scripts/run_full_check.ps1 -DockerOnly -E2EScope settings
+  -VerifyRestart 1`. The fake never contacts the production service and its
+  public summaries contain counts/codes, not request bodies or credentials.
 - Docker E2E with `KEEP_E2E_DATA=1`: use only for debugging an E2E failure where
   preserving the temporary profile helps diagnosis.
 - Full check script: run before a large merge, checkpoint, or branch handoff.

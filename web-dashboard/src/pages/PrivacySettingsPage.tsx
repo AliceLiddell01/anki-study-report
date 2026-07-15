@@ -7,6 +7,7 @@ import {
   type PrivacyResponse,
   type TelemetryPurpose,
 } from "../lib/productNoticesApi";
+import { deleteTelemetryData } from "../lib/telemetryApi";
 
 const EMPTY_CHOICES: Record<TelemetryPurpose, boolean> = {
   reliabilityDiagnostics: false,
@@ -19,6 +20,7 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
   const [choices, setChoices] = useState(EMPTY_CHOICES);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +42,33 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
     setSaving(false);
   };
 
+  const disableAll = async () => {
+    setChoices(EMPTY_CHOICES);
+    setSaving(true);
+    setMessage("");
+    const saved = await savePrivacyChoices(EMPTY_CHOICES);
+    setResponse(saved);
+    setMessage(saved.ok ? t("privacy.settings.disabled") : t("privacy.settings.saveFailed"));
+    setSaving(false);
+  };
+
+  const deleteData = async () => {
+    setDeleting(true);
+    setMessage("");
+    const result = await deleteTelemetryData();
+    const refreshed = await fetchPrivacy();
+    setResponse(refreshed);
+    if (refreshed.privacy) setChoices(refreshed.privacy.telemetry.purposes);
+    setMessage(
+      result.confirmed
+        ? t("privacy.settings.deletionConfirmed")
+        : result.deletionPending
+          ? t("privacy.settings.deletionPending")
+          : t("privacy.settings.deletionFailed"),
+    );
+    setDeleting(false);
+  };
+
   if (!response) {
     return <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">{t("privacy.settings.loading")}</section>;
   }
@@ -48,6 +77,7 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
   }
 
   const telemetry = response.privacy.telemetry;
+  const client = response.telemetryClient;
   const statusKey = telemetry.requiresConsent ? "decisionRequired" : telemetry.status;
   return (
     <div className="grid gap-5">
@@ -67,6 +97,24 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
           <div><dt>{t("privacy.settings.noticeVersion")}</dt><dd>{telemetry.privacyNoticeVersion}</dd></div>
           <div><dt>{t("privacy.settings.decidedAt")}</dt><dd>{telemetry.decidedAt ?? t("privacy.settings.notDecided")}</dd></div>
         </dl>
+      </section>
+
+      <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
+        <h2 className="text-lg font-semibold text-report-text">{t("privacy.settings.connectionTitle")}</h2>
+        <p className="mt-2 text-sm text-report-secondary">{t("privacy.settings.connectionDescription")}</p>
+        <dl className="privacy-status-grid mt-5">
+          <div><dt>{t("privacy.settings.endpointState")}</dt><dd>{t(`privacy.client.endpoint.${client?.endpointState ?? "not_configured"}`)}</dd></div>
+          <div><dt>{t("privacy.settings.enrollmentState")}</dt><dd>{t(`privacy.client.enrollment.${client?.enrollmentState ?? "not_enrolled"}`)}</dd></div>
+          <div><dt>{t("privacy.settings.pendingEvents")}</dt><dd>{client?.pendingEventCount ?? 0}</dd></div>
+          <div><dt>{t("privacy.settings.lastDelivery")}</dt><dd>{client?.lastSuccessfulDeliveryAt ?? t("privacy.settings.neverDelivered")}</dd></div>
+          <div><dt>{t("privacy.settings.lastError")}</dt><dd>{client?.lastDeliveryErrorCode ?? t("privacy.settings.noError")}</dd></div>
+          <div><dt>{t("privacy.settings.deletionState")}</dt><dd>{client?.deletionPending || telemetry.deletionPending ? t("privacy.client.deletion.pending") : t("privacy.client.deletion.none")}</dd></div>
+        </dl>
+        {client?.deletionPending || telemetry.deletionPending ? (
+          <p role="status" className="privacy-deletion-warning mt-4">
+            {t("privacy.settings.deletionPendingDetail", { retryAt: client?.deletionNextAttemptAt ?? t("privacy.settings.retryUnknown") })}
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
@@ -94,6 +142,19 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
           </button>
           <button type="button" className="secondary-button" onClick={onOpenWhatsNew}>{t("privacy.settings.openWhatsNew")}</button>
           {message ? <span role="status" className="text-sm text-report-secondary">{message}</span> : null}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-report-danger/35 bg-ink-850 p-5 shadow-panel">
+        <h2 className="text-lg font-semibold text-report-text">{t("privacy.settings.withdrawTitle")}</h2>
+        <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.settings.withdrawDescription")}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="button" className="secondary-button" disabled={saving || deleting} onClick={() => void disableAll()}>
+            {t("privacy.settings.disableAll")}
+          </button>
+          <button type="button" className="danger-button" disabled={saving || deleting} onClick={() => void deleteData()}>
+            {deleting ? t("privacy.settings.deleting") : t("privacy.settings.deleteRemote")}
+          </button>
         </div>
       </section>
 

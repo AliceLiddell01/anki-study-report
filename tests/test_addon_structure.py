@@ -10,6 +10,7 @@ REQUIRED_FILES = [
     "__init__.py",
     "manifest.json",
     "config.json",
+    "telemetry_contract.json",
     "dashboard_server.py",
     "config_service.py",
     "browser_actions.py",
@@ -32,6 +33,9 @@ IMPORTABLE_MODULES = [
     "browser_actions",
     "dashboard_actions",
     "dashboard_payload",
+    "telemetry_contract",
+    "telemetry_store",
+    "telemetry_client",
 ]
 
 
@@ -40,8 +44,8 @@ def test_required_addon_files_exist():
     assert missing == []
 
 
-def test_manifest_and_config_are_valid_json():
-    for name in ["manifest.json", "config.json"]:
+def test_manifest_config_and_telemetry_contract_are_valid_json():
+    for name in ["manifest.json", "config.json", "telemetry_contract.json"]:
         data = json.loads((ADDON_DIR / name).read_text(encoding="utf-8"))
         assert isinstance(data, dict)
         assert data

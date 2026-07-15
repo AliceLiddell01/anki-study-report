@@ -35,6 +35,7 @@ REQUIRED_FILES = {
     "manifest.json",
     "config.json",
     "changelog.json",
+    "telemetry_contract.json",
     "dashboard_server.py",
     "web_dashboard/index.html",
     "web_dashboard/manifest.json",

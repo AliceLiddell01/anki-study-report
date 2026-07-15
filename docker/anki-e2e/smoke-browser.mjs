@@ -27,6 +27,7 @@ const artifacts = process.env.ANKI_STUDY_REPORT_E2E_ARTIFACTS || "/e2e/artifacts
 const artifactPaths = resolveArtifactPaths(artifacts);
 const readyFile = process.env.ANKI_STUDY_REPORT_E2E_READY_FILE || path.join(artifactPaths.runtime, "dashboard-ready.json");
 const ready = JSON.parse(await fs.readFile(readyFile, "utf8"));
+const telemetryE2eEndpoint = process.env.ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT || "";
 const cardsUrl = `${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/cards`;
 const baseViewport = { name: "desktop-1440", width: 1440, height: 1000 };
 const responsiveViewports = [
@@ -105,6 +106,7 @@ try {
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
   const productNoticesDetails = await assertProductNotices(page);
+  const telemetryClientDetails = telemetryE2eEndpoint ? await assertTelemetryClient(page) : null;
   const searchQueryContract = shouldRunScope(scope, "global") ? await assertSearchQueryContract() : null;
   let shadowDetails = null;
   let apkgDetails = null;
@@ -209,6 +211,7 @@ try {
     apkg: apkgDetails,
     profile: profileDetails,
     productNotices: productNoticesDetails,
+    telemetryClient: telemetryClientDetails,
     theme: themeDetails,
     localization: localizationDetails,
     activity: activityDetails,
@@ -322,6 +325,121 @@ async function assertProductNotices(page) {
     noRepeatAfterClose: true,
     manualReopen: true,
     screenshots,
+  };
+}
+
+async function assertTelemetryClient(page) {
+  const fakeState = async () => {
+    const response = await fetch(`${telemetryE2eEndpoint}/__e2e/state`);
+    assertBrowser(response.ok, "Telemetry fake state endpoint is reachable.");
+    return response.json();
+  };
+  const controlFake = async (offline) => {
+    const response = await fetch(`${telemetryE2eEndpoint}/__e2e/control`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offline }),
+    });
+    assertBrowser(response.ok, "Telemetry fake control endpoint accepted the bounded state change.");
+    return response.json();
+  };
+  const dashboardPost = (path, payload) => page.evaluate(async ({ path, payload }) => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const response = await fetch(`${path}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
+    return { status: response.status, body: await response.json() };
+  }, { path, payload });
+  const waitFor = async (predicate, description) => {
+    const deadline = Date.now() + 15000;
+    let state;
+    do {
+      state = await fakeState();
+      if (predicate(state)) return state;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } while (Date.now() < deadline);
+    throw new Error(`Timed out waiting for ${description}: ${JSON.stringify(state)}`);
+  };
+  const emitMany = async (event, count) => {
+    const started = Date.now();
+    for (let index = 0; index < count; index += 1) {
+      const result = await dashboardPost("/api/telemetry/events", event);
+      assertBrowser(result.status === 200 && result.body?.ok === true, "Local telemetry bridge accepts a bounded semantic event.");
+    }
+    return Date.now() - started;
+  };
+  const privacy = (reliabilityDiagnostics, featureUsage) => dashboardPost("/api/privacy", {
+    purposes: { reliabilityDiagnostics, featureUsage },
+  });
+
+  const declined = await fakeState();
+  assertBrowser(declined.enrollments === 0 && declined.eventCount === 0, "Declined consent produces zero outbound telemetry requests.");
+
+  const reliabilityChoice = await privacy(true, false);
+  assertBrowser(reliabilityChoice.status === 200, "Reliability-only consent is persisted through the local API.");
+  const disabledFeature = await dashboardPost("/api/telemetry/events", {
+    eventCode: "dashboard.opened",
+    occurredAt: new Date().toISOString(),
+  });
+  assertBrowser(disabledFeature.body?.queued === false, "Feature event is a quiet no-op when only reliability is enabled.");
+  const reliabilityDurationMs = await emitMany({
+    eventCode: "api_operation.failed",
+    featureCode: "dashboard_start",
+    errorCode: "internal_error",
+    occurredAt: new Date().toISOString(),
+  }, 25);
+  const afterReliability = await waitFor(
+    (state) => state.eventPurposes?.reliabilityDiagnostics >= 25,
+    "reliability-only batch delivery",
+  );
+  assertBrowser(afterReliability.eventPurposes.featureUsage === 0, "Reliability-only consent sends no feature-usage event.");
+
+  const featureChoice = await privacy(false, true);
+  assertBrowser(featureChoice.status === 200, "Feature-only consent is persisted through the local API.");
+  const disabledReliability = await dashboardPost("/api/telemetry/events", {
+    eventCode: "addon.started",
+    occurredAt: new Date().toISOString(),
+  });
+  assertBrowser(disabledReliability.body?.queued === false, "Reliability event is a quiet no-op when only feature usage is enabled.");
+  const featureDurationMs = await emitMany({
+    eventCode: "page.opened",
+    pageCode: "settings_privacy",
+    occurredAt: new Date().toISOString(),
+  }, 25);
+  const afterFeature = await waitFor(
+    (state) => state.eventPurposes?.featureUsage >= 25,
+    "feature-only batch delivery",
+  );
+  assertBrowser(afterFeature.eventBatches >= 2, "Telemetry events are delivered in bounded batches.");
+  assertBrowser(reliabilityDurationMs < 5000 && featureDurationMs < 5000, "Telemetry queueing does not freeze the dashboard UI.");
+
+  await controlFake(true);
+  const beforeOffline = await fakeState();
+  await emitMany({
+    eventCode: "dashboard.opened",
+    occurredAt: new Date().toISOString(),
+  }, 25);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const localStatus = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const response = await fetch(`/api/telemetry/status?token=${encodeURIComponent(token)}`, { cache: "no-store" });
+    return response.json();
+  });
+  const afterOffline = await fakeState();
+  assertBrowser(afterOffline.eventCount === beforeOffline.eventCount, "Offline fake ingestion accepts no event batch.");
+  assertBrowser(localStatus.telemetryClient?.pendingEventCount >= 25, "Offline telemetry remains in the persistent local queue.");
+
+  return {
+    declinedZeroOutbound: true,
+    reliabilityOnly: true,
+    featureOnly: true,
+    eventBatchesBeforeOffline: afterFeature.eventBatches,
+    pendingBeforeRestart: localStatus.telemetryClient.pendingEventCount,
+    queueDurationsMs: { reliability: reliabilityDurationMs, feature: featureDurationMs },
+    fakeSummary: afterOffline,
   };
 }
 

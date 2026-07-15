@@ -297,8 +297,11 @@ bundle разрешены.
 
 Privacy/notices state хранится в profile `addon_data`, а не в package,
 localStorage или report cache. UI вызывает только token-protected loopback
-endpoints; remote endpoint/credential в frontend отсутствуют. По умолчанию и
+endpoints; remote endpoint/credential в frontend отсутствуют. Python хранит
+write token только в per-profile `telemetry.sqlite3`, выдаёт наружу лишь
+bounded status и выполняет сеть в одном background sender. По умолчанию и
 при ошибке чтения effective purposes выключены. Unknown request fields,
 не-boolean choices и non-POST mutations отклоняются. Точный запрет на content,
 names, IDs, queries, secrets и raw diagnostics описан в
-`docs/privacy-telemetry.md`.
+`docs/privacy-telemetry.md`. Queue/retry/deletion boundary описана в
+`docs/telemetry-client.md`.

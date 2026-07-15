@@ -589,6 +589,70 @@ def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contra
         manager.stop()
 
 
+def test_telemetry_endpoints_are_local_token_protected_and_post_only():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    events = []
+    deletions = []
+    manager.configure_telemetry_handlers(
+        status_provider=lambda: {
+            "ok": True,
+            "pendingEventCount": 2,
+            "endpointState": "configured",
+        },
+        event_handler=lambda payload: events.append(payload) or {
+            "ok": True,
+            "code": "telemetry.queued",
+            "queued": True,
+        },
+        delete_handler=lambda: deletions.append(True) or {
+            "ok": True,
+            "deletionPending": True,
+            "confirmed": False,
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    event = {"eventCode": "dashboard.opened", "occurredAt": "2026-07-15T00:00:00Z"}
+    try:
+        assert fetch(f"{base_url}/api/telemetry/status")[0] == 403
+        assert fetch(f"{base_url}/api/telemetry/events", method="POST", json_body=event)[0] == 403
+        assert fetch(f"{base_url}/api/telemetry/delete", method="POST", json_body={})[0] == 403
+
+        status, _, body = fetch(f"{base_url}/api/telemetry/status?token={token}")
+        assert status == 200
+        assert json.loads(body)["pendingEventCount"] == 2
+        assert token not in body.decode("utf-8")
+
+        status, _, body = fetch(f"{base_url}/api/telemetry/events?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+        status, _, body = fetch(
+            f"{base_url}/api/telemetry/events?token={token}", method="POST", json_body=event
+        )
+        assert status == 200
+        assert json.loads(body)["code"] == "telemetry.queued"
+        assert events == [event]
+        assert token not in body.decode("utf-8")
+
+        assert fetch(f"{base_url}/api/telemetry/delete?token={token}")[0] == 405
+        assert fetch(
+            f"{base_url}/api/telemetry/delete?token={token}",
+            method="POST",
+            json_body={"installationId": "spoofed"},
+        )[0] == 400
+        status, _, body = fetch(
+            f"{base_url}/api/telemetry/delete?token={token}", method="POST", json_body={}
+        )
+        assert status == 200
+        assert json.loads(body)["deletionPending"] is True
+        assert deletions == [True]
+        assert token not in body.decode("utf-8")
+    finally:
+        manager.stop()
+
+
 def test_statistics_query_endpoint_is_post_only_typed_bounded_and_token_protected():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()

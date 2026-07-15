@@ -9,9 +9,11 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 import json
 import os
+import platform
 from pathlib import Path
 from time import monotonic
 import shutil
+import sys
 import threading
 import traceback
 
@@ -184,6 +186,9 @@ from .product_notices import (
     privacy_response,
     product_notices_response,
 )
+from .telemetry_client import TelemetryClient
+from .telemetry_contract import TelemetryValidationError, utc_now
+from .telemetry_store import TelemetryStore
 from .activity_service import build_activity_hub_payload
 from .deck_hub import collect_deck_catalog
 from .statistics_service import (
@@ -312,6 +317,25 @@ _STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3
 _PROFILE_STORE = ProfilePreferencesStore(_RUNTIME_DATA_DIR / "profile.json")
 _PRODUCT_NOTICE_STORE = ProductNoticeStore(_RUNTIME_DATA_DIR / "product_notices.json")
 _PRIVACY_STORE = PrivacyStore(_RUNTIME_DATA_DIR / "privacy.json")
+_TELEMETRY_STORE = TelemetryStore(_RUNTIME_DATA_DIR / "telemetry.sqlite3")
+
+
+def _new_telemetry_client(store: TelemetryStore, privacy_store: PrivacyStore) -> TelemetryClient:
+    return TelemetryClient(
+        store,
+        privacy_store,
+        lambda: _trusted_telemetry_dimensions(),
+        endpoint=(
+            os.environ.get("ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT")
+            if _e2e_events_enabled()
+            else None
+        ),
+        allow_http_loopback=_e2e_events_enabled(),
+    )
+
+
+_TELEMETRY_CLIENT = _new_telemetry_client(_TELEMETRY_STORE, _PRIVACY_STORE)
+_TELEMETRY_TIMER: object | None = None
 try:
     _PRODUCT_NOTICE_STORE.record_started(__version__)
 except Exception:
@@ -1946,6 +1970,11 @@ def _configure_dashboard_cache_handlers() -> None:
         privacy_provider=_privacy_response,
         privacy_handler=_update_privacy,
     )
+    _DASHBOARD_SERVER.configure_telemetry_handlers(
+        status_provider=_telemetry_status_response,
+        event_handler=_queue_telemetry_event,
+        delete_handler=_delete_telemetry_data,
+    )
     _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
     _DASHBOARD_SERVER.configure_fsrs_handler(_fsrs_query_response)
     _DASHBOARD_SERVER.configure_search_handlers(
@@ -2134,12 +2163,14 @@ def _mark_current_release_seen() -> dict:
 
 
 def _privacy_response() -> dict:
-    return privacy_response(_PRIVACY_STORE)
+    response = privacy_response(_PRIVACY_STORE)
+    response["telemetryClient"] = _TELEMETRY_CLIENT.public_status()
+    return response
 
 
 def _update_privacy(payload: dict) -> dict:
     try:
-        _PRIVACY_STORE.save_choices(payload)
+        privacy = _PRIVACY_STORE.save_choices(payload)
     except ProductNoticeValidationError as error:
         return {
             "ok": False,
@@ -2147,9 +2178,43 @@ def _update_privacy(payload: dict) -> dict:
             "message": "Проверьте выбор приватности.",
             "fieldErrors": error.field_errors,
         }
+    _TELEMETRY_CLIENT.apply_privacy_choices(privacy["telemetry"]["purposes"])
     response = _privacy_response()
     response["message"] = "Настройки приватности сохранены."
     return response
+
+
+def _trusted_telemetry_dimensions() -> dict:
+    aqt_module = sys.modules.get("aqt")
+    raw_anki_version = str(getattr(aqt_module, "appVersion", "0.0.0") or "0.0.0")
+    version_match = __import__("re").search(r"\d+(?:\.\d+){1,3}(?:[-+][0-9A-Za-z.-]+)?", raw_anki_version)
+    system = platform.system().lower()
+    return {
+        "addonVersion": __version__,
+        "ankiVersion": version_match.group(0) if version_match else "0.0.0",
+        "osFamily": {"windows": "windows", "darwin": "macos", "linux": "linux"}.get(system, "other"),
+        "locale": "unknown",
+        "theme": "unknown",
+    }
+
+
+def _telemetry_status_response() -> dict:
+    return {"ok": True, "telemetryClient": _TELEMETRY_CLIENT.public_status()}
+
+
+def _queue_telemetry_event(payload: dict) -> dict:
+    try:
+        return _TELEMETRY_CLIENT.queue_semantic_event(payload)
+    except TelemetryValidationError as error:
+        return {
+            "ok": False,
+            "error": "invalid_telemetry_event",
+            "fieldErrors": error.field_errors,
+        }
+
+
+def _delete_telemetry_data() -> dict:
+    return _TELEMETRY_CLIENT.delete_remote_data()
 
 
 def _statistics_query_response(payload: dict) -> dict:
@@ -3310,8 +3375,34 @@ def _setup_menu(main_window) -> None:
     setup_session_tracking(gui_hooks, mw)
     _maybe_configure_e2e_logging()
     log_event("addon.startup", "Anki Study Report add-on initialized")
+    _start_telemetry_runtime(main_window)
     _maybe_auto_start_web_dashboard()
     _schedule_e2e_dashboard_bootstrap("main_window_did_init")
+
+
+def _start_telemetry_runtime(main_window) -> None:
+    global _TELEMETRY_TIMER
+    try:
+        from aqt.qt import QTimer as _QTimer
+
+        if _TELEMETRY_TIMER is None:
+            _TELEMETRY_CLIENT.queue_semantic_event({"eventCode": "addon.started", "occurredAt": utc_now()})
+            _TELEMETRY_CLIENT.request_send(force=True)
+            _TELEMETRY_TIMER = _QTimer(main_window)
+            _TELEMETRY_TIMER.setInterval(15 * 60 * 1000)
+            _TELEMETRY_TIMER.timeout.connect(_TELEMETRY_CLIENT.request_send)
+        _TELEMETRY_TIMER.start()
+    except Exception:
+        log_exception("telemetry.startup.error", "Telemetry runtime initialization failed")
+
+
+def _stop_runtime_services(*args) -> None:
+    global _TELEMETRY_TIMER
+    if _TELEMETRY_TIMER is not None:
+        _TELEMETRY_TIMER.stop()
+        _TELEMETRY_TIMER = None
+    _TELEMETRY_CLIENT.close()
+    _stop_web_dashboard_server(*args)
 
 
 def _on_main_window_did_init() -> None:
@@ -3321,22 +3412,40 @@ def _on_main_window_did_init() -> None:
 
 def _on_profile_did_open(*_args) -> None:
     _write_e2e_event("hook_fired", hook="profile_did_open")
+    _rebind_profile_notice_telemetry_runtime()
+    _start_telemetry_runtime(_current_mw())
     _schedule_e2e_dashboard_bootstrap("profile_did_open")
+
+
+def _rebind_profile_notice_telemetry_runtime() -> None:
+    global _PRODUCT_NOTICE_STORE, _PRIVACY_STORE, _TELEMETRY_STORE, _TELEMETRY_CLIENT
+    data_dir = _addon_runtime_data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        _TELEMETRY_CLIENT.close()
+    except Exception:
+        pass
+    _PRODUCT_NOTICE_STORE = ProductNoticeStore(data_dir / "product_notices.json")
+    _PRIVACY_STORE = PrivacyStore(data_dir / "privacy.json")
+    _TELEMETRY_STORE = TelemetryStore(data_dir / "telemetry.sqlite3")
+    _TELEMETRY_CLIENT = _new_telemetry_client(_TELEMETRY_STORE, _PRIVACY_STORE)
+    _PRODUCT_NOTICE_STORE.record_started(__version__)
 
 
 if hasattr(gui_hooks, "main_window_did_init"):
     gui_hooks.main_window_did_init.append(_on_main_window_did_init)
     _write_e2e_event("hook_registered", hook="main_window_did_init")
-elif hasattr(gui_hooks, "profile_did_open"):
-    gui_hooks.profile_did_open.append(_on_profile_did_open)
-    _write_e2e_event("hook_registered", hook="profile_did_open")
-else:
+elif not hasattr(gui_hooks, "profile_did_open"):
     _write_e2e_event("error", where="hook_registration", error="No supported startup hook found")
 
+if hasattr(gui_hooks, "profile_did_open"):
+    gui_hooks.profile_did_open.append(_on_profile_did_open)
+    _write_e2e_event("hook_registered", hook="profile_did_open")
+
 if hasattr(gui_hooks, "profile_will_close"):
-    gui_hooks.profile_will_close.append(_stop_web_dashboard_server)
+    gui_hooks.profile_will_close.append(_stop_runtime_services)
 
 if hasattr(gui_hooks, "main_window_will_close"):
-    gui_hooks.main_window_will_close.append(_stop_web_dashboard_server)
+    gui_hooks.main_window_will_close.append(_stop_runtime_services)
 
 _write_e2e_event("import_done")

@@ -60,6 +60,21 @@ export type PrivacyResponse = {
     consentSchemaVersion: number;
     legalReviewStatus: "technical_draft_not_legal_advice";
   };
+  telemetryClient?: {
+    storeSchemaVersion: number;
+    telemetrySchemaVersion: number;
+    endpointState: "configured" | "not_configured";
+    enrollmentState: "enrolled" | "not_enrolled";
+    senderState: "idle" | "busy";
+    pendingEventCount: number;
+    pendingByPurpose: Record<TelemetryPurpose, number>;
+    lastSuccessfulDeliveryAt: string | null;
+    lastDeliveryAttemptAt: string | null;
+    lastDeliveryErrorCode: string | null;
+    deletionPending: boolean;
+    deletionErrorCode: string | null;
+    deletionNextAttemptAt: string | null;
+  };
   message?: string;
   error?: string;
   fieldErrors?: Record<string, string>;

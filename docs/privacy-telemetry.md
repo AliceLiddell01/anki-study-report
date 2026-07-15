@@ -5,15 +5,16 @@
 
 ## Текущий shipping status
 
-Product-notice/consent foundation работает офлайн. Сейчас add-on не создаёт
-очередь telemetry, не выполняет enrollment и не отправляет данные во внешний
-сервис. Сохранённый выбор — необходимое, но само по себе недостаточное условие
-будущей отправки.
+Consent-gated client, bounded SQLite queue, enrollment/delivery и authenticated
+deletion реализованы. Production endpoint в публичной конфигурации add-on пока
+отсутствует, поэтому обычная `.ankiaddon` не выполняет внешних запросов.
+Loopback fake разрешён только в явном E2E mode.
 
-До включения production telemetry должны быть готовы и проверены client
-contract, endpoint, deletion flow, retention, controller/контактная информация
-и финальный Privacy Notice. UI не обещает удаление remote data, пока эта
-операция реально не существует.
+Перед включением production endpoint должны быть проверены hosted service,
+retention/backup/deletion, controller/контактная информация и финальный Privacy
+Notice. UI уже поддерживает operational deletion contract: offline удаление
+честно остаётся `pending`, а credentials уничтожаются только после remote
+2xx/404. Детали клиента — `docs/telemetry-client.md`.
 
 ## Цели
 
@@ -52,5 +53,5 @@ Privacy Notice:  2026-07-15
 целей, получателей, разрешённых данных или retention требует новой версии
 consent/notice. До нового affirmative choice effective purposes выключены.
 
-Persistence, UI и local endpoints описаны в
-`docs/product-notices-and-consent.md`.
+Consent persistence и modal описаны в `docs/product-notices-and-consent.md`,
+queue/network/deletion — в `docs/telemetry-client.md`.

@@ -1,0 +1,373 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+import json
+import time
+
+import pytest
+
+from conftest import fresh_import_addon_module
+
+
+NOW = datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc)
+
+
+class FakeTransport:
+    def __init__(self, responder):
+        self.responder = responder
+        self.calls = []
+
+    def request(self, method, url, *, headers, body, timeout):
+        call = {"method": method, "url": url, "headers": dict(headers), "body": body, "timeout": timeout}
+        self.calls.append(call)
+        result = self.responder(call)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def load_modules():
+    product = fresh_import_addon_module("product_notices")
+    contract = fresh_import_addon_module("telemetry_contract")
+    store = fresh_import_addon_module("telemetry_store")
+    client = fresh_import_addon_module("telemetry_client")
+    return product, contract, store, client
+
+
+def common():
+    return {
+        "addonVersion": "1.1.0",
+        "ankiVersion": "26.05",
+        "osFamily": "windows",
+        "locale": "unknown",
+        "theme": "unknown",
+    }
+
+
+def semantic(code="dashboard.opened"):
+    return {"eventCode": code, "occurredAt": "2026-07-15T12:00:00Z"}
+
+
+def make_client(tmp_path, *, purposes=None, endpoint="https://telemetry.invalid", transport=None):
+    product, contract, store_module, client_module = load_modules()
+    privacy = product.PrivacyStore(tmp_path / "privacy.json")
+    if purposes is not None:
+        privacy.save_choices({"purposes": purposes}, now=NOW)
+    store = store_module.TelemetryStore(tmp_path / "telemetry.sqlite3")
+    client = client_module.TelemetryClient(
+        store,
+        privacy,
+        common,
+        endpoint=endpoint,
+        transport=transport or FakeTransport(lambda call: RuntimeError("network must not run")),
+        now_provider=lambda: NOW,
+        random_provider=lambda: 0.5,
+    )
+    return product, contract, store_module, client_module, privacy, store, client
+
+
+def test_no_consent_means_no_queue_and_no_network(tmp_path):
+    transport = FakeTransport(lambda call: RuntimeError("unexpected network"))
+    *_, store, client = make_client(tmp_path, purposes=None, transport=transport)
+
+    result = client.queue_semantic_event(semantic())
+
+    assert result == {"ok": True, "code": "telemetry.disabled", "queued": False, "purpose": "featureUsage"}
+    assert store.queue_count() == 0
+    assert client.send_once()["code"] == "telemetry.disabled"
+    assert transport.calls == []
+
+
+def test_one_purpose_only_and_spoofed_dimensions_rejected_before_queue(tmp_path):
+    *_, contract, store_module, client_module, privacy, store, client = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+    )
+    assert client.queue_semantic_event(semantic())["code"] == "telemetry.disabled"
+    queued = client.queue_semantic_event({
+        "eventCode": "api_operation.failed",
+        "featureCode": "search_query",
+        "errorCode": "timeout",
+        "occurredAt": "2026-07-15T12:00:00Z",
+    })
+    assert queued["queued"] is True
+    with pytest.raises(contract.TelemetryValidationError) as error:
+        client.queue_semantic_event({**semantic(), "addonVersion": "9.9.9", "query": "private"})
+    assert set(error.value.field_errors) == {"addonVersion", "query"}
+    assert store.purpose_counts() == {"reliabilityDiagnostics": 1, "featureUsage": 0}
+
+
+def test_enrollment_batch_ack_and_credential_secrecy(tmp_path):
+    client_module_holder = {}
+
+    def responder(call):
+        module = client_module_holder["module"]
+        if call["url"].endswith("/v1/installations"):
+            return module.HttpResult(201, {}, {"installationId": "install-1", "writeToken": "write-secret"})
+        body = json.loads(call["body"])
+        return module.HttpResult(202, {}, {"acknowledgedEventIds": [event["eventId"] for event in body["events"]]})
+
+    transport = FakeTransport(responder)
+    *_, client_module, privacy, store, client = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    client_module_holder["module"] = client_module
+    first = client.queue_semantic_event(semantic())
+    second = client.queue_semantic_event({"eventCode": "page.opened", "pageCode": "search", "occurredAt": "2026-07-15T12:00:00Z"})
+    assert first["queued"] and second["queued"]
+    ids = [item.event_id for item in store.due_batch(now="2026-07-15T12:00:00Z")]
+    assert len(ids) == len(set(ids)) == 2
+
+    result = client.send_once()
+
+    assert result == {"ok": True, "code": "telemetry.delivered", "acknowledgedCount": 2}
+    assert store.queue_count() == 0
+    assert len(transport.calls) == 2
+    enrollment_body = json.loads(transport.calls[0]["body"])
+    assert enrollment_body["purposes"] == ["featureUsage"]
+    event_call = transport.calls[1]
+    assert event_call["headers"]["Authorization"] == "Bearer write-secret"
+    assert "write-secret" not in event_call["url"]
+    assert b"write-secret" not in event_call["body"]
+    assert "write-secret" not in json.dumps(client.public_status())
+    assert "install-1" not in json.dumps(client.public_status())
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_retryable_statuses_defer_with_retry_after_and_no_storm(tmp_path, status):
+    holder = {}
+    transport = FakeTransport(lambda call: holder["module"].HttpResult(status, {"retry-after": "120"}, {"ok": False}))
+    *_, client_module, privacy, store, client = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    holder["module"] = client_module
+    store.save_credentials("install", "token")
+    client.queue_semantic_event(semantic())
+
+    result = client.send_once()
+
+    assert result["code"] == "telemetry.delivery_retry"
+    assert result["nextAttemptAt"] == "2026-07-15T12:02:00Z"
+    assert store.due_batch(now="2026-07-15T12:01:59Z") == []
+    assert store.due_batch(now="2026-07-15T12:02:00Z")[0].retry_count == 1
+    assert len(transport.calls) == 1
+
+
+def test_timeout_backoff_and_non_retryable_4xx(tmp_path):
+    timeout_transport = FakeTransport(lambda call: TimeoutError("bounded timeout"))
+    *_, store, timeout_client = make_client(
+        tmp_path / "timeout",
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=timeout_transport,
+    )[-3:]
+    store.save_credentials("install", "token")
+    timeout_client.queue_semantic_event(semantic())
+    retry = timeout_client.send_once()
+    assert retry["code"] == "telemetry.delivery_retry"
+    assert store.queue_count() == 1
+
+    holder = {}
+    transport = FakeTransport(lambda call: holder["module"].HttpResult(400, {}, {"ok": False}))
+    result = make_client(
+        tmp_path / "bad-request",
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    client_module, store, client = result[3], result[5], result[6]
+    holder["module"] = client_module
+    store.save_credentials("install", "token")
+    client.queue_semantic_event(semantic())
+    rejected = client.send_once()
+    assert rejected["code"] == "telemetry.delivery_rejected"
+    assert store.queue_count() == 0
+    assert len(transport.calls) == 1
+
+
+def test_partial_ack_keeps_unacknowledged_event_with_backoff(tmp_path):
+    holder = {}
+
+    def responder(call):
+        body = json.loads(call["body"])
+        return holder["module"].HttpResult(202, {}, {"acknowledgedEventIds": [body["events"][0]["eventId"]]})
+
+    transport = FakeTransport(responder)
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    client_module, store, client = result[3], result[5], result[6]
+    holder["module"] = client_module
+    store.save_credentials("install", "token")
+    client.queue_semantic_event(semantic())
+    client.queue_semantic_event({"eventCode": "page.opened", "pageCode": "home", "occurredAt": "2026-07-15T12:00:00Z"})
+    delivered = client.send_once()
+    assert delivered["acknowledgedCount"] == 1
+    assert store.queue_count() == 1
+    assert store.due_batch(now="2026-07-15T12:00:29Z") == []
+
+
+def test_withdrawal_clears_queue_and_offline_deletion_keeps_only_credentials(tmp_path):
+    *_, privacy, store, client = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": True},
+        endpoint=None,
+    )[-3:]
+    store.save_credentials("install", "delete-token")
+    client.queue_semantic_event(semantic())
+    result = client.delete_remote_data()
+
+    assert result["deletionPending"] is True
+    assert privacy.read()["telemetry"]["status"] == "declined"
+    assert privacy.read()["telemetry"]["deletionPending"] is True
+    assert not any(privacy.read()["telemetry"]["effectivePurposes"].values())
+    assert store.queue_count() == 0
+    assert store.credentials().write_token == "delete-token"
+    assert store.public_status()["deletionErrorCode"] == "endpoint_not_configured"
+
+
+def test_confirmed_delete_destroys_credentials_and_pending_state(tmp_path):
+    holder = {}
+    transport = FakeTransport(lambda call: holder["module"].HttpResult(204, {}, None))
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+        transport=transport,
+    )
+    client_module, privacy, store, client = result[3], result[4], result[5], result[6]
+    holder["module"] = client_module
+    store.save_credentials("install/id", "delete-token")
+    store.set_deletion_state(True)
+    privacy.set_deletion_pending(True)
+
+    deleted = client.attempt_deletion()
+
+    assert deleted["confirmed"] is True
+    assert store.credentials() is None
+    assert privacy.read()["telemetry"]["deletionPending"] is False
+    assert transport.calls[0]["method"] == "DELETE"
+    assert transport.calls[0]["url"].endswith("/v1/installations/install%2Fid")
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer delete-token"
+
+
+def test_reconsent_pause_preserves_queue_and_credentials_without_network(tmp_path):
+    transport = FakeTransport(lambda call: RuntimeError("network forbidden"))
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    privacy, store, client = result[4], result[5], result[6]
+    client.queue_semantic_event(semantic())
+    store.save_credentials("install", "token")
+    document = json.loads(privacy.path.read_text(encoding="utf-8"))
+    document["telemetry"]["privacyNoticeVersion"] = "2026-01-01"
+    privacy.path.write_text(json.dumps(document), encoding="utf-8")
+
+    assert client.send_once()["code"] == "telemetry.disabled"
+    assert store.queue_count() == 1
+    assert store.credentials() is not None
+    assert transport.calls == []
+
+
+def test_addon_update_reopen_preserves_decision_queue_and_credentials(tmp_path):
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        endpoint=None,
+    )
+    product, store_module = result[0], result[2]
+    privacy, store, client = result[4], result[5], result[6]
+    client.queue_semantic_event(semantic())
+    store.save_credentials("installation-before-update", "token-before-update")
+    expected_privacy = privacy.read()
+    store.close()
+
+    reopened_privacy = product.PrivacyStore(tmp_path / "privacy.json")
+    reopened_store = store_module.TelemetryStore(tmp_path / "telemetry.sqlite3")
+
+    assert reopened_privacy.read() == expected_privacy
+    assert reopened_store.queue_count() == 1
+    assert reopened_store.credentials().installation_id == "installation-before-update"
+    assert "token-before-update" not in json.dumps(reopened_store.public_status())
+    reopened_store.close()
+
+
+def test_transport_failures_do_not_print_event_body_or_token(tmp_path, capsys, caplog):
+    transport = FakeTransport(lambda call: TimeoutError("private-content-must-not-be-logged"))
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    store, client = result[5], result[6]
+    store.save_credentials("installation-secret", "write-token-secret")
+    client.queue_semantic_event(semantic())
+
+    client.send_once()
+
+    captured = capsys.readouterr()
+    combined = captured.out + captured.err + caplog.text
+    assert "private-content-must-not-be-logged" not in combined
+    assert "write-token-secret" not in combined
+    assert "dashboard.opened" not in combined
+
+
+def test_background_request_is_non_blocking_and_single_sender(tmp_path):
+    holder = {}
+
+    def slow(call):
+        time.sleep(0.1)
+        return holder["module"].HttpResult(201, {}, {"installationId": "install", "writeToken": "token"})
+
+    transport = FakeTransport(slow)
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+        transport=transport,
+    )
+    holder["module"] = result[3]
+    client = result[6]
+    started = time.perf_counter()
+    assert client.request_send(force=True) is True
+    assert client.request_send(force=True) is False
+    assert time.perf_counter() - started < 0.05
+    client._worker.join(timeout=1)
+
+
+def test_threshold_request_is_coalesced_while_enrollment_worker_is_busy(tmp_path):
+    holder = {}
+
+    def slow(call):
+        if call["url"].endswith("/v1/installations"):
+            time.sleep(0.05)
+            return holder["module"].HttpResult(201, {}, {"installationId": "install", "writeToken": "token"})
+        body = json.loads(call["body"])
+        return holder["module"].HttpResult(202, {}, {"acknowledgedEventIds": [event["eventId"] for event in body["events"]]})
+
+    transport = FakeTransport(slow)
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+        transport=transport,
+    )
+    holder["module"] = result[3]
+    store, client = result[5], result[6]
+    assert client.request_send(force=True) is True
+    for _ in range(25):
+        assert client.queue_semantic_event({
+            "eventCode": "api_operation.failed",
+            "featureCode": "dashboard_start",
+            "errorCode": "internal_error",
+            "occurredAt": "2026-07-15T12:00:00Z",
+        })["queued"] is True
+    deadline = time.monotonic() + 2
+    while store.queue_count() and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert store.queue_count() == 0
+    assert [call["url"].rsplit("/", 1)[-1] for call in transport.calls].count("events") >= 1

@@ -1,16 +1,27 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import type { LoadState } from "../pages/HomePage";
 import type { StudyReport } from "../types/report";
 import { compatibilityRedirectForHash, getRouteFromHash, renderRoute } from "./router";
 import { RouteDeliveryBoundary, RouteLoading } from "./RouteDeliveryBoundary";
 import ProductNoticeCoordinator from "../components/ProductNoticeCoordinator";
+import { durationBucket, emitTelemetryEvent, telemetryOccurredAt } from "../lib/telemetryApi";
 
 function App() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
   const [report, setReport] = useState<StudyReport | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [noticeOpenRequest, setNoticeOpenRequest] = useState(0);
+  const startupStartedAt = useRef(performance.now());
+  const startupEventSent = useRef(false);
+
+  useEffect(() => {
+    void emitTelemetryEvent({ eventCode: "dashboard.opened", occurredAt: telemetryOccurredAt() });
+  }, []);
+
+  useEffect(() => {
+    void emitTelemetryEvent({ eventCode: "page.opened", pageCode: telemetryPageCode(route), occurredAt: telemetryOccurredAt() });
+  }, [route]);
 
   useEffect(() => {
     const updateRoute = () => {
@@ -42,6 +53,15 @@ function App() {
         if (!cancelled) {
           setReport(loadedReport);
           setLoadState("ready");
+          if (!startupEventSent.current) {
+            startupEventSent.current = true;
+            void emitTelemetryEvent({
+              eventCode: "dashboard_startup.completed",
+              resultCode: "success",
+              durationBucket: durationBucket(performance.now() - startupStartedAt.current),
+              occurredAt: telemetryOccurredAt(),
+            });
+          }
         }
       })
       .catch((error: Error) => {
@@ -57,6 +77,21 @@ function App() {
         if (!cancelled) {
           setReport(null);
           setLoadState(error.message === "empty" ? "empty" : error.message === "forbidden" ? "forbidden" : "error");
+          if (!startupEventSent.current) {
+            startupEventSent.current = true;
+            void emitTelemetryEvent({
+              eventCode: "dashboard_startup.completed",
+              resultCode: "failed",
+              durationBucket: durationBucket(performance.now() - startupStartedAt.current),
+              occurredAt: telemetryOccurredAt(),
+            });
+            void emitTelemetryEvent({
+              eventCode: "api_operation.failed",
+              featureCode: "report_load",
+              errorCode: error.message === "forbidden" ? "http_error" : "unavailable",
+              occurredAt: telemetryOccurredAt(),
+            });
+          }
         }
       });
     return () => {
@@ -86,3 +121,23 @@ function App() {
 }
 
 export default App;
+
+function telemetryPageCode(route: ReturnType<typeof getRouteFromHash>): string {
+  if (route.startsWith("/stats")) return "statistics";
+  const pageCodes: Partial<Record<ReturnType<typeof getRouteFromHash>, string>> = {
+    "/home": "home",
+    "/calendar": "activity",
+    "/decks": "decks",
+    "/search": "search",
+    "/cards": "cards",
+    "/profile": "profile",
+    "/actions": "tools",
+    "/settings": "settings_report",
+    "/settings/data": "settings_data",
+    "/settings/privacy": "settings_privacy",
+    "/settings/server": "settings_server",
+    "/settings/sources": "settings_sources",
+    "/settings/logs": "settings_logs",
+  };
+  return pageCodes[route] ?? "home";
+}
