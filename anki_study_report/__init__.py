@@ -176,6 +176,14 @@ from .profile_service import (
     ProfileValidationError,
     build_profile_payload,
 )
+from .product_notices import (
+    PrivacyStore,
+    ProductNoticeStore,
+    ProductNoticeValidationError,
+    load_bundled_changelog,
+    privacy_response,
+    product_notices_response,
+)
 from .activity_service import build_activity_hub_payload
 from .deck_hub import collect_deck_catalog
 from .statistics_service import (
@@ -302,6 +310,12 @@ _LAUNCHER_DIALOG: LauncherDialog | None = None
 _DASHBOARD_SERVER = DashboardServerManager()
 _STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3")
 _PROFILE_STORE = ProfilePreferencesStore(_RUNTIME_DATA_DIR / "profile.json")
+_PRODUCT_NOTICE_STORE = ProductNoticeStore(_RUNTIME_DATA_DIR / "product_notices.json")
+_PRIVACY_STORE = PrivacyStore(_RUNTIME_DATA_DIR / "privacy.json")
+try:
+    _PRODUCT_NOTICE_STORE.record_started(__version__)
+except Exception:
+    log_exception("product_notices.startup.error", "Could not persist product notice startup state")
 _E2E_BOOTSTRAP_STARTED = False
 _E2E_BOOTSTRAP_DONE = False
 
@@ -1926,6 +1940,12 @@ def _configure_dashboard_cache_handlers() -> None:
         profile_provider=_profile_response,
         profile_handler=_update_profile,
     )
+    _DASHBOARD_SERVER.configure_product_notice_handlers(
+        notices_provider=_product_notices_response,
+        release_seen_handler=_mark_current_release_seen,
+        privacy_provider=_privacy_response,
+        privacy_handler=_update_privacy,
+    )
     _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
     _DASHBOARD_SERVER.configure_fsrs_handler(_fsrs_query_response)
     _DASHBOARD_SERVER.configure_search_handlers(
@@ -2093,6 +2113,43 @@ def _update_profile(payload: dict) -> dict:
         "message": "Профиль сохранён.",
         "profile": profile,
     }
+
+
+def _bundled_changelog() -> dict:
+    return load_bundled_changelog(Path(__file__).resolve().parent / "changelog.json")
+
+
+def _product_notices_response() -> dict:
+    return product_notices_response(
+        __version__,
+        _PRODUCT_NOTICE_STORE,
+        _PRIVACY_STORE,
+        _bundled_changelog(),
+    )
+
+
+def _mark_current_release_seen() -> dict:
+    _PRODUCT_NOTICE_STORE.mark_release_seen(__version__)
+    return _product_notices_response()
+
+
+def _privacy_response() -> dict:
+    return privacy_response(_PRIVACY_STORE)
+
+
+def _update_privacy(payload: dict) -> dict:
+    try:
+        _PRIVACY_STORE.save_choices(payload)
+    except ProductNoticeValidationError as error:
+        return {
+            "ok": False,
+            "error": "invalid_privacy_choices",
+            "message": "Проверьте выбор приватности.",
+            "fieldErrors": error.field_errors,
+        }
+    response = _privacy_response()
+    response["message"] = "Настройки приватности сохранены."
+    return response
 
 
 def _statistics_query_response(payload: dict) -> dict:

@@ -214,3 +214,12 @@ Production build создаёт Vite manifest и восемь JS chunks. Bundle 
   side, но backend sanitizer остается главным барьером.
 - Note CSS должен оставаться внутри preview, а не протекать в документ.
 - Cards page требует browser/live smoke после изменений rendering/media.
+
+## Product notices
+
+`ProductNoticeCoordinator.tsx` монтируется рядом с `#dashboard-app-shell` и
+владеет единственным активным modal. `AccessibleModal.tsx` реализует focus
+trap/inert/return focus; `TelemetryConsentDialog.tsx` и `WhatsNewDialog.tsx`
+остаются разными решениями. `PrivacySettingsPage.tsx` обслуживает
+`#/settings/privacy`. Local API client находится в `lib/productNoticesApi.ts`,
+а bundled fallback — в `data/changelog.generated.ts`.

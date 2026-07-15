@@ -6,11 +6,33 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import ast
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 from typing import Any
+
+try:
+    from changelog import (
+        STRUCTURED_CHANGELOG_FILE,
+        load_changelog_document,
+        render_changelog_markdown,
+        render_release_body,
+    )
+except ModuleNotFoundError:
+    _changelog_path = Path(__file__).resolve().with_name("changelog.py")
+    _changelog_spec = importlib.util.spec_from_file_location("changelog", _changelog_path)
+    if _changelog_spec is None or _changelog_spec.loader is None:
+        raise RuntimeError("Could not load structured changelog helpers.")
+    _changelog_module = importlib.util.module_from_spec(_changelog_spec)
+    sys.modules.setdefault("changelog", _changelog_module)
+    _changelog_spec.loader.exec_module(_changelog_module)
+    STRUCTURED_CHANGELOG_FILE = _changelog_module.STRUCTURED_CHANGELOG_FILE
+    load_changelog_document = _changelog_module.load_changelog_document
+    render_changelog_markdown = _changelog_module.render_changelog_markdown
+    render_release_body = _changelog_module.render_release_body
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -158,6 +180,26 @@ def write_version(version: str, path: Path = VERSION_FILE) -> None:
 
 
 def parse_changelog(text: str | None = None, path: Path = CHANGELOG_FILE) -> dict[str, ChangelogSection]:
+    if text is None and path == CHANGELOG_FILE:
+        document = load_changelog_document(STRUCTURED_CHANGELOG_FILE)
+        generated = normalize_markdown(render_changelog_markdown(document))
+        tracked = normalize_markdown(path.read_text(encoding="utf-8-sig"))
+        if tracked != generated:
+            raise ReleaseError("CHANGELOG.md is stale; run scripts/generate_changelog.py")
+        sections: dict[str, ChangelogSection] = {
+            "Unreleased": ChangelogSection(
+                "Unreleased",
+                None,
+                render_release_body(document["unreleased"], locale="en").strip(),
+            )
+        }
+        for release in document["releases"]:
+            sections[release["version"]] = ChangelogSection(
+                release["version"],
+                release["date"],
+                render_release_body(release, locale="en").strip(),
+            )
+        return sections
     content = normalize_markdown(text if text is not None else path.read_text(encoding="utf-8-sig"))
     matches = list(CHANGELOG_HEADING_RE.finditer(content))
     if not matches or matches[0].group("version") != "Unreleased":

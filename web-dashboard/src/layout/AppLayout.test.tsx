@@ -9,7 +9,7 @@ import AppLayout from "./AppLayout";
 
 const routes: RoutePath[] = [
   "/home", "/calendar", "/decks", "/cards", "/profile", "/actions",
-  "/settings", "/settings/data", "/settings/server", "/settings/sources", "/settings/logs",
+  "/settings", "/settings/data", "/settings/privacy", "/settings/server", "/settings/sources", "/settings/logs",
 ];
 
 describe("AppLayout global utilities", () => {

@@ -90,6 +90,10 @@ class DashboardServerManager:
         self._display_settings_handler = None
         self._profile_provider = None
         self._profile_handler = None
+        self._product_notices_provider = None
+        self._product_notice_seen_handler = None
+        self._privacy_provider = None
+        self._privacy_handler = None
         self._statistics_query_handler = None
         self._fsrs_query_handler = None
         self._search_query_handler = None
@@ -259,6 +263,19 @@ class DashboardServerManager:
             self._profile_provider = profile_provider
             self._profile_handler = profile_handler
 
+    def configure_product_notice_handlers(
+        self,
+        notices_provider=None,
+        release_seen_handler=None,
+        privacy_provider=None,
+        privacy_handler=None,
+    ) -> None:
+        with self._lock:
+            self._product_notices_provider = notices_provider
+            self._product_notice_seen_handler = release_seen_handler
+            self._privacy_provider = privacy_provider
+            self._privacy_handler = privacy_handler
+
     def configure_statistics_handler(self, query_handler=None) -> None:
         with self._lock:
             self._statistics_query_handler = query_handler
@@ -424,6 +441,54 @@ class DashboardServerManager:
             traceback.print_exc()
             log_exception("profile.update.error", "Profile update failed")
             return {"ok": False, "error": "Profile update failed."}
+
+    def product_notices(self) -> dict[str, Any]:
+        with self._lock:
+            provider = self._product_notices_provider
+        if provider is None:
+            return {"ok": False, "error": "product_notices_unavailable"}
+        try:
+            result = provider()
+            return result if isinstance(result, dict) else {"ok": False, "error": "product_notices_unavailable"}
+        except Exception:
+            log_exception("product_notices.read.error", "Product notices read failed")
+            return {"ok": False, "error": "product_notices_unavailable"}
+
+    def mark_product_release_seen(self) -> dict[str, Any]:
+        with self._lock:
+            handler = self._product_notice_seen_handler
+        if handler is None:
+            return {"ok": False, "error": "product_notices_unavailable"}
+        try:
+            result = handler()
+            return result if isinstance(result, dict) else {"ok": False, "error": "product_notices_unavailable"}
+        except Exception:
+            log_exception("product_notices.update.error", "Product notice update failed")
+            return {"ok": False, "error": "product_notices_unavailable"}
+
+    def privacy(self) -> dict[str, Any]:
+        with self._lock:
+            provider = self._privacy_provider
+        if provider is None:
+            return {"ok": False, "error": "privacy_unavailable"}
+        try:
+            result = provider()
+            return result if isinstance(result, dict) else {"ok": False, "error": "privacy_unavailable"}
+        except Exception:
+            log_exception("privacy.read.error", "Privacy state read failed")
+            return {"ok": False, "error": "privacy_unavailable"}
+
+    def update_privacy(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._privacy_handler
+        if handler is None:
+            return {"ok": False, "error": "privacy_unavailable"}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {"ok": False, "error": "privacy_unavailable"}
+        except Exception:
+            log_exception("privacy.update.error", "Privacy state update failed")
+            return {"ok": False, "error": "privacy_unavailable"}
 
     def query_statistics(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
@@ -600,6 +665,21 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/profile":
             self._send_profile(_query_token(parsed))
             return
+        if path == "/api/product-notices":
+            self._send_product_notices(_query_token(parsed))
+            return
+        if path == "/api/privacy":
+            self._send_privacy(_query_token(parsed))
+            return
+        if path == "/api/product-notices/seen":
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST to mark release notes seen."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path == "/api/statistics/query":
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
@@ -681,6 +761,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/profile":
             self._send_profile_update(_query_token(parsed))
+            return
+        if path == "/api/product-notices/seen":
+            self._send_product_release_seen(_query_token(parsed))
+            return
+        if path == "/api/privacy":
+            self._send_privacy_update(_query_token(parsed))
             return
         if path == "/api/statistics/query":
             self._send_statistics_query(_query_token(parsed))
@@ -1269,6 +1355,48 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(_action_error("profile", "Invalid JSON request body."), HTTPStatus.BAD_REQUEST)
             return
         result = self.manager.update_profile(payload)
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
+
+    def _send_product_notices(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        result = self.manager.product_notices()
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.SERVICE_UNAVAILABLE)
+
+    def _send_product_release_seen(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None or payload:
+            self._send_json(
+                {"ok": False, "error": "invalid_product_notice_request", "message": "Expected an empty JSON object."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.mark_product_release_seen()
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.SERVICE_UNAVAILABLE)
+
+    def _send_privacy(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        result = self.manager.privacy()
+        self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.SERVICE_UNAVAILABLE)
+
+    def _send_privacy_update(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_privacy_choices", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.update_privacy(payload)
         self._send_json(result, HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST)
 
     def _send_statistics_query(self, token: str | None) -> None:

@@ -43,7 +43,7 @@ describe("TopNav", () => {
     expect(Array.from(nav.querySelectorAll("a"), (link) => link.textContent)).toEqual(["Today", "Activity", "Statistics", "Decks", "Search", "Cards"]);
     const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Open profile menu"]')!;
     act(() => trigger.click());
-    expect(Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]'), (item) => item.textContent?.trim())).toEqual(["Profile", "Settings", "Tools", "Support the project"]);
+    expect(Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]'), (item) => item.textContent?.trim())).toEqual(["Profile", "Settings", "Tools", "What's New", "Support the project"]);
   });
 
   it("shows only the agreed primary navigation in the product order", () => {
@@ -75,13 +75,14 @@ describe("TopNav", () => {
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     const menu = openProfileMenu();
-    const items = Array.from(menu.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]'));
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
 
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(items.map((item) => [item.textContent?.trim(), item.getAttribute("href")])).toEqual([
       ["Профиль", "#/profile"],
       ["Настройки", "#/settings"],
       ["Инструменты", "#/actions"],
+      ["Что нового", null],
       ["Поддержать проект", "https://boosty.to/ankistudyreport"],
     ]);
     expect(document.activeElement).toBe(items[0]);
@@ -92,10 +93,10 @@ describe("TopNav", () => {
     renderNav();
     const menu = openProfileMenu();
     const utilityGroup = menu.querySelector<HTMLElement>('[role="group"][aria-label="Утилиты"]')!;
-    const utilityItems = Array.from(utilityGroup.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]'));
-    const support = utilityItems[1];
+    const utilityItems = Array.from(utilityGroup.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    const support = utilityItems[2] as HTMLAnchorElement;
 
-    expect(utilityItems.map((item) => item.textContent?.trim())).toEqual(["Инструменты", "Поддержать проект"]);
+    expect(utilityItems.map((item) => item.textContent?.trim())).toEqual(["Инструменты", "Что нового", "Поддержать проект"]);
     expect(support.getAttribute("href")).toBe("https://boosty.to/ankistudyreport");
     expect(support.getAttribute("target")).toBe("_blank");
     expect(support.getAttribute("rel")?.split(/\s+/)).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));

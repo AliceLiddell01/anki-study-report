@@ -8,6 +8,7 @@ import HomePage, { type LoadState } from "../pages/HomePage";
 import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
+import PrivacySettingsPage from "../pages/PrivacySettingsPage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
 import SearchPage from "../pages/SearchPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
@@ -37,6 +38,7 @@ export type RoutePath =
   | "/actions"
   | "/settings"
   | "/settings/data"
+  | "/settings/privacy"
   | "/settings/server"
   | "/settings/sources"
   | "/settings/logs";
@@ -70,6 +72,7 @@ const routePaths = new Set<RoutePath>([
   "/actions",
   "/settings",
   "/settings/data",
+  "/settings/privacy",
   "/settings/server",
   "/settings/sources",
   "/settings/logs",
@@ -97,6 +100,7 @@ export function renderRoute(
   report: StudyReport | null,
   loadState: LoadState,
   onReportUpdated?: (report: StudyReport) => void,
+  onOpenWhatsNew: () => void = () => undefined,
 ): ReactNode {
   switch (route) {
     case "/profile":
@@ -139,6 +143,8 @@ export function renderRoute(
       return <SettingsLayout activeRoute={route}><ServerSettingsPage /></SettingsLayout>;
     case "/settings/data":
       return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
+    case "/settings/privacy":
+      return <SettingsLayout activeRoute={route}><PrivacySettingsPage onOpenWhatsNew={onOpenWhatsNew} /></SettingsLayout>;
     case "/settings":
       return <SettingsLayout activeRoute={route}><ReportSettingsPage onReportUpdated={onReportUpdated} /></SettingsLayout>;
     case "/home":

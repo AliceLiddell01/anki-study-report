@@ -162,3 +162,11 @@ Hub и не влияет на Profile. См. `docs/profile-mvp.md`.
 В Hub нет placeholder controls для Statistics, FSRS page, accounts, cloud sync,
 external services, arbitrary themes или plugin/DLC system. Новые sections
 добавляются только вместе с реальным backend contract и persistence.
+
+## Privacy
+
+`#/settings/privacy` — реальный Data-group route. Он показывает сохранённый
+per-profile status, две granular purpose toggles, версии/время решения, точные
+allowed/never-collected категории и action «Открыть What’s New». Страница не
+содержит фиктивного remote delete: такая кнопка появится только вместе с
+работающим client/server deletion contract.

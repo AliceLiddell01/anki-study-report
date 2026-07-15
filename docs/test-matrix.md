@@ -90,7 +90,7 @@ preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
 
-Обычный strict APKG browser smoke также фиксирует 42 page screenshots, 2 avatar
+Обычный strict APKG browser smoke также фиксирует 44 page screenshots, 2 avatar
 menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
 `e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
 relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.
@@ -108,3 +108,12 @@ Cards/APKG/performance contracts не менялись.
 PR release workflow проверяет build без secrets/mutations. Live AnkiWeb
 `--dry-run` допустим только с env credentials и проверяет форму без выбора файла
 и Save. Publish proof требует совпадения build/E2E/GitHub/AnkiWeb SHA-256.
+
+## Product notices и consent
+
+Нужны `test_product_notices.py`, `test_changelog.py`, dashboard/package/release
+tests, coordinator/API Vitest и RU/EN parity. Planner выбирает targeted
+`standard/settings`; shared App Shell, dashboard server, E2E или package/release
+diff дополнительно требует final `standard/full`. Real-Anki smoke проверяет
+consent-first order, no preselection, decline persistence, What’s New
+no-repeat/manual reopen и Privacy route.

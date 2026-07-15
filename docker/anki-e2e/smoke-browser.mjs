@@ -52,6 +52,7 @@ const dashboardPageCases = [
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
   { route: "/settings", pageName: "settings/report", heading: "Отчёт", settingsHref: "#/settings" },
   { route: "/settings/data", pageName: "settings/data", heading: "Данные", settingsHref: "#/settings/data" },
+  { route: "/settings/privacy", pageName: "settings/privacy", heading: "Приватность", settingsHref: "#/settings/privacy" },
   { route: "/settings/server", pageName: "settings/server", heading: "Сервер", settingsHref: "#/settings/server" },
   { route: "/settings/sources", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/settings/sources" },
   { route: "/settings/logs", pageName: "settings/logs", heading: "Логи", settingsHref: "#/settings/logs" },
@@ -103,6 +104,7 @@ try {
 
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
+  const productNoticesDetails = await assertProductNotices(page);
   const searchQueryContract = shouldRunScope(scope, "global") ? await assertSearchQueryContract() : null;
   let shadowDetails = null;
   let apkgDetails = null;
@@ -206,6 +208,7 @@ try {
     cssDiagnostics,
     apkg: apkgDetails,
     profile: profileDetails,
+    productNotices: productNoticesDetails,
     theme: themeDetails,
     localization: localizationDetails,
     activity: activityDetails,
@@ -246,6 +249,80 @@ try {
   throw error;
 } finally {
   await browser.close();
+}
+
+async function assertProductNotices(page) {
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/home`, { waitUntil: "networkidle", timeout: 60000 });
+  const consent = page.getByTestId("telemetry-consent-dialog");
+  const whatsNew = page.getByTestId("whats-new-dialog");
+  const firstRunObserved = await consent.isVisible().catch(() => false);
+  const screenshots = [];
+
+  if (firstRunObserved) {
+    assertBrowser(await consent.getAttribute("role") === "dialog", "First-run consent uses a dialog role.");
+    assertBrowser(await consent.getAttribute("aria-modal") === "true", "First-run consent is modal.");
+    const checked = await consent.locator('input[type="checkbox"]:checked').count();
+    assertBrowser(checked === 0, "First-run consent has no preselected purpose.");
+    const inert = await page.locator("#dashboard-app-shell").evaluate((element) => element.inert && element.getAttribute("aria-hidden") === "true");
+    assertBrowser(inert, "First-run consent makes the dashboard shell inert.");
+    const consentShot = artifactPaths.stateScreenshot("product-notices", "consent-first-run", "dark");
+    await ensureArtifactParent(consentShot);
+    await page.screenshot({ path: consentShot, fullPage: true });
+    screenshots.push(relativeArtifactPath(artifactPaths, consentShot));
+    await page.keyboard.press("Escape");
+    await whatsNew.waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  if (!await whatsNew.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: "Открыть меню профиля", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Что нового", exact: true }).click();
+    await whatsNew.waitFor({ state: "visible", timeout: 15000 });
+  }
+  assertBrowser(await whatsNew.getAttribute("role") === "dialog", "What's New uses a dialog role.");
+  assertBrowser((await whatsNew.getByRole("button", { expanded: true }).count()) >= 1, "What's New expands at least the current release.");
+  const whatsNewShot = artifactPaths.stateScreenshot("product-notices", "whats-new", "dark");
+  await ensureArtifactParent(whatsNewShot);
+  await page.screenshot({ path: whatsNewShot, fullPage: true });
+  screenshots.push(relativeArtifactPath(artifactPaths, whatsNewShot));
+  await whatsNew.getByRole("button", { name: "Понятно", exact: true }).click();
+  await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
+
+  const state = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const [privacyResponse, noticesResponse] = await Promise.all([
+      fetch(`/api/privacy?token=${encodeURIComponent(token)}`, { cache: "no-store" }),
+      fetch(`/api/product-notices?token=${encodeURIComponent(token)}`, { cache: "no-store" }),
+    ]);
+    return { privacy: await privacyResponse.json(), notices: await noticesResponse.json() };
+  });
+  if (firstRunObserved) {
+    assertBrowser(state.privacy?.privacy?.telemetry?.status === "declined", "Escape persists a declined first-run choice.");
+  }
+  assertBrowser(state.notices?.showWhatsNew === false, "Closing What's New marks the current release seen.");
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  assertBrowser(await page.locator('[role="dialog"]').count() === 0, "Product notices do not repeat after persisted close.");
+
+  await page.getByRole("button", { name: "Открыть меню профиля", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Что нового", exact: true }).click();
+  await whatsNew.waitFor({ state: "visible", timeout: 15000 });
+  await whatsNew.getByRole("button", { name: "Закрыть историю изменений", exact: true }).click();
+  await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
+
+  await prepareDashboardRoute(page, "/settings/privacy", "light", "Приватность");
+  assertBrowser(await page.locator('input[type="checkbox"]').count() === 2, "Privacy settings exposes both granular purposes.");
+  assertBrowser((await page.locator("main").innerText()).includes("Privacy Notice"), "Privacy settings exposes the notice and exact data controls.");
+  const privacyShot = artifactPaths.stateScreenshot("product-notices", "privacy-settings", "light");
+  await ensureArtifactParent(privacyShot);
+  await page.screenshot({ path: privacyShot, fullPage: true });
+  screenshots.push(relativeArtifactPath(artifactPaths, privacyShot));
+  return {
+    firstRunObserved,
+    persistedStatus: state.privacy?.privacy?.telemetry?.status || null,
+    currentVersion: state.notices?.currentVersion || null,
+    noRepeatAfterClose: true,
+    manualReopen: true,
+    screenshots,
+  };
 }
 
 async function capture(page, mode, theme, filePath) {

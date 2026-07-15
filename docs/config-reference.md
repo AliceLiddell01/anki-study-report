@@ -164,3 +164,10 @@ Partial update сохраняет unknown/internal top-level и nested config ke
 - Manifest package identity.
 - Dashboard token.
 - Generated frontend assets.
+
+## Product notice runtime state
+
+`product_notices.json` и `privacy.json` находятся рядом с `profile.json` в
+`<profile>/addon_data/<addon_id>/`. Это не add-on config и не синхронизируется
+через Anki Sync. `release/changelog.json` — tracked canonical input;
+`anki_study_report/changelog.json` — generated packaged read-only asset.

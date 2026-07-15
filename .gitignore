@@ -25,6 +25,8 @@ docker/anki-e2e/local-input/
 anki_study_report/user_files/*.sqlite3
 anki_study_report/user_files/*.sqlite3-wal
 anki_study_report/user_files/*.sqlite3-shm
+anki_study_report/user_files/*.json
+anki_study_report/user_files/*.json.corrupt-*
 anki_study_report/user_files/logs/*.log*
 anki_study_report/web_dashboard/
 

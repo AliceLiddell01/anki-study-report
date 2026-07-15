@@ -1,4 +1,4 @@
-import { Database, FileText, FileType2, Plug, Server } from "lucide-react";
+import { Database, FileText, FileType2, Plug, Server, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { RoutePath } from "../app/router";
@@ -13,7 +13,10 @@ export const settingsSections: Array<{
   },
   {
     labelKey: "settings.dataGroup",
-    items: [{ path: "/settings/data", labelKey: "settings.data", icon: Database }],
+    items: [
+      { path: "/settings/data", labelKey: "settings.data", icon: Database },
+      { path: "/settings/privacy", labelKey: "settings.privacy", icon: ShieldCheck },
+    ],
   },
   {
     labelKey: "settings.systemGroup",

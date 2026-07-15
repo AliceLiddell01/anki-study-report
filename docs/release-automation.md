@@ -164,3 +164,11 @@ workflow/publisher из прежнего commit. Новый run сам retarget-
 
 Текущий этап добавляет только delivery infrastructure. Search UI, route и
 navigation entry не входят в release automation.
+
+## Structured changelog
+
+Канонический release input теперь `release/changelog.json`. Редактируется только
+он; `scripts/generate_changelog.py` создаёт `CHANGELOG.md` и bundled RU/EN
+assets. `prepare_release.py` переносит structured Unreleased в новый SemVer, а
+существующие GitHub/AnkiWeb consumers получают current English section через
+`release_common.py`. Check mode отклоняет stale generated outputs.

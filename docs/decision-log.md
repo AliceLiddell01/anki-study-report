@@ -884,3 +884,40 @@ PR может доказать release build без secrets и mutations. Stable
 `docs/release-automation.md`, `.github/workflows/release.yml`,
 `scripts/release_common.py`, `scripts/manage_github_release.py`,
 `scripts/publish_ankiweb.mjs`.
+
+## ADR-028: Product notices разделяют release history и consent
+
+### Статус
+
+Принято.
+
+### Контекст
+
+История обновлений нужна на первом запуске и после skipped versions, но её
+нельзя связывать с разрешением telemetry. Browser storage и package files не
+переживают профильные обновления надёжно, а English Markdown не даёт RU/EN
+parity для UI.
+
+### Решение
+
+- Два атомарных JSON store живут в profile `addon_data` и имеют собственные
+  schema/migrations/quarantine.
+- Consent и What’s New — отдельные accessible modal; coordinator всегда ставит
+  требуемое решение раньше release history.
+- Ничего не выбрано заранее; decline не ухудшает продукт, material notice
+  change выключает effective purposes до re-consent.
+- `release/changelog.json` — единый structured RU/EN source, остальные release
+  и frontend outputs генерируются детерминированно.
+- React общается только с loopback token API; foundation не отправляет события.
+
+### Последствия
+
+Обновления и ручной reopen не стирают историю или privacy choice. Package
+содержит только read-only changelog, а runtime state остаётся per-profile.
+Networking может добавляться отдельным reviewable изменением только поверх
+этого fail-closed контракта.
+
+### Где смотреть
+
+`docs/product-notices-and-consent.md`, `docs/privacy-telemetry.md`,
+`anki_study_report/product_notices.py`, `release/changelog.json`.

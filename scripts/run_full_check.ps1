@@ -157,6 +157,11 @@ if (-not $DockerOnly) {
     }
 
     Invoke-CheckedCommand `
+        -Name "Structured changelog generated outputs" `
+        -FilePath $node `
+        -Arguments @("scripts/run_python.mjs", "scripts/generate_changelog.py", "--check")
+
+    Invoke-CheckedCommand `
         -Name "Frontend tests" `
         -FilePath $pnpm `
         -Arguments @("run", "test:frontend") `

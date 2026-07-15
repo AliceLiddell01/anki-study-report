@@ -38,6 +38,8 @@ dashboard через token-protected HTTP server.
     `docs/search-query-foundation.md`.
 13. Если задача про `#/search`, selection или mutations —
     `docs/search-v1-and-safe-actions.md`.
+14. Если задача про What’s New, consent или privacy state —
+    `docs/product-notices-and-consent.md` и `docs/privacy-telemetry.md`.
 
 Дополнительные справочники:
 
@@ -54,6 +56,8 @@ docs/decks-v2.md                 Stage 5 scoped hierarchy, direct/subtree health
 docs/ui-polish-global-controls.md Stage 5.5 theme dock and Activity/Decks presentation polish
 docs/search-query-foundation.md  native query/inspect foundation
 docs/search-v1-and-safe-actions.md Search route, selection, Browser bridge и undoable mutations
+docs/product-notices-and-consent.md per-profile notices, consent, modal order и changelog
+docs/privacy-telemetry.md         точный privacy/telemetry data contract и shipping status
 docs/config-reference.md         config/env vars/runtime paths
 docs/decision-log.md             архитектурные решения и причины
 docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
@@ -380,7 +384,7 @@ git diff --check
 ## Release delivery truth
 
 Каноническая версия находится в `anki_study_report/version.py`, release notes —
-в versioned section `CHANGELOG.md`, публичная стабильная AnkiWeb часть — в
+в structured `release/changelog.json`; `CHANGELOG.md` генерируется. Публичная стабильная AnkiWeb часть — в
 `release/ankiweb-description.md`. `release.yml` на PR только валидирует и
 строит; production запускается вручную с current `master`.
 

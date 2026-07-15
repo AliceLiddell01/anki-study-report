@@ -17,6 +17,7 @@ REQUIRED_ARCHIVE_FILES = {
     "version.py",
     "manifest.json",
     "config.json",
+    "changelog.json",
     "web_dashboard/index.html",
 }
 
@@ -51,6 +52,7 @@ def write_minimal_archive(
         archive.writestr("version.py", version_source)
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
+        archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("dashboard_server.py", "")
         archive.writestr(
             "web_dashboard/index.html",
@@ -165,6 +167,7 @@ def write_split_archive(
         archive.writestr("version.py", '__version__ = "1.0.0"\n')
         archive.writestr("manifest.json", "{}")
         archive.writestr("config.json", "{}")
+        archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("dashboard_server.py", "")
         archive.writestr(
             "web_dashboard/index.html",

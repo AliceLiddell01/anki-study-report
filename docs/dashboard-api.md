@@ -358,3 +358,19 @@ canonical live payload (`attentionCards` / `attentionCardsStatus`).
 4. Обновить frontend normalization/tests.
 5. Обновить этот документ.
 6. Прогнать минимум payload tests + frontend typecheck/tests.
+
+## Product notices и privacy API
+
+Отдельные token-protected local endpoints не входят в `StudyReport` payload:
+
+```text
+GET  /api/product-notices
+POST /api/product-notices/seen
+GET  /api/privacy
+POST /api/privacy
+```
+
+`/seen` принимает только `{}`. Privacy POST принимает ровно `purposes` с двумя
+обязательными boolean полями. GET возвращает effective purposes, re-consent
+state и точные allowed/never-collected категории. Методы не выполняют внешнюю
+сеть; подробная shape — `docs/product-notices-and-consent.md`.

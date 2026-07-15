@@ -186,3 +186,7 @@ web-dashboard/src/layout/SettingsLayout.tsx
 web-dashboard/src/app/router.test.tsx
 web-dashboard/src/layout/TopNav.test.tsx
 ```
+
+What’s New не является primary navigation item. Он открывается action-кнопкой
+«Что нового» в utility group profile menu и из `#/settings/privacy`. Privacy
+входит в Data group Settings shell между Data и System routes.

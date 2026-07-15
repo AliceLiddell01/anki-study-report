@@ -3,15 +3,19 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
-from pathlib import Path
+
+from changelog import (
+    STRUCTURED_CHANGELOG_FILE,
+    generate_outputs,
+    load_changelog_document,
+    validate_changelog_document,
+)
 
 from release_common import (
-    CHANGELOG_FILE,
     MANIFEST_FILE,
     ReleaseError,
     SemVer,
     ensure_new_tag,
-    normalize_markdown,
     parse_changelog,
     read_version,
     validate_manifest_release_date,
@@ -35,27 +39,42 @@ def prepare(version: str, release_date: str, mod_timestamp: int, *, dry_run: boo
     if not current < target:
         raise ReleaseError(f"New version {version} must be greater than canonical version {current_text}")
     ensure_new_tag(version)
-    changelog_text = CHANGELOG_FILE.read_text(encoding="utf-8-sig")
-    sections = parse_changelog(changelog_text)
+    document = load_changelog_document()
+    sections = parse_changelog()
     if version in sections:
         raise ReleaseError(f"Changelog already contains released version {version}")
-    unreleased = sections["Unreleased"].body.strip()
-    if not unreleased:
+    unreleased_sections = document["unreleased"]["sections"]
+    if not unreleased_sections:
         raise ReleaseError("[Unreleased] is empty; add user-facing release notes before preparation")
-    marker = "## [Unreleased]"
-    start = changelog_text.index(marker)
-    next_heading = changelog_text.find("\n## [", start + len(marker))
-    if next_heading < 0:
-        next_heading = len(changelog_text)
-    replacement = f"{marker}\n\n## [{version}] - {release_date}\n\n{unreleased}\n"
-    new_changelog = normalize_markdown(changelog_text[:start] + replacement + changelog_text[next_heading:])
+    document["releases"].insert(
+        0,
+        {
+            "version": version,
+            "date": release_date,
+            "sections": unreleased_sections,
+        },
+    )
+    document["unreleased"] = {"sections": []}
+    validate_changelog_document(document)
     manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8-sig"))
     manifest["mod"] = mod_timestamp
-    changed = ["anki_study_report/version.py", "anki_study_report/manifest.json", "CHANGELOG.md"]
+    changed = [
+        "anki_study_report/version.py",
+        "anki_study_report/manifest.json",
+        "release/changelog.json",
+        "CHANGELOG.md",
+        "anki_study_report/changelog.json",
+        "web-dashboard/src/data/changelog.generated.ts",
+    ]
     if not dry_run:
         write_version(version)
         MANIFEST_FILE.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        CHANGELOG_FILE.write_text(new_changelog, encoding="utf-8", newline="\n")
+        STRUCTURED_CHANGELOG_FILE.write_text(
+            json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        generate_outputs()
         prepared_state(version)
     return changed
 
