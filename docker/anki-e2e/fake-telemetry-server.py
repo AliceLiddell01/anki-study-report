@@ -98,7 +98,8 @@ def handler_factory(state: State):
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                     return
                 events = body.get("events")
-                if body.get("telemetrySchemaVersion") != 1 or not isinstance(events, list) or not events:
+                batch_id = body.get("batchId")
+                if body.get("telemetrySchemaVersion") != 1 or not isinstance(batch_id, str) or not batch_id or not isinstance(events, list) or not events:
                     self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid_events"})
                     return
                 event_ids = []
@@ -118,7 +119,7 @@ def handler_factory(state: State):
                     state.event_batches += 1
                     state.event_count += len(events)
                     state._persist()
-                self._json(HTTPStatus.ACCEPTED, {"acknowledgedEventIds": event_ids})
+                self._json(HTTPStatus.ACCEPTED, {"batchId": batch_id, "acknowledgedEventIds": event_ids})
                 return
             self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
@@ -127,7 +128,7 @@ def handler_factory(state: State):
             if state.offline:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "e2e_offline"})
                 return
-            if not path.startswith("/v1/installations/") or self.headers.get("Authorization") != "Bearer e2e-write-token":
+            if path != "/v1/installations/current" or self.headers.get("Authorization") != "Bearer e2e-write-token":
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
             with state.lock:

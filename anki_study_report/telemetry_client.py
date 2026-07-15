@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import random
 import threading
 import urllib.error
-import urllib.parse
 import urllib.request
 from typing import Any, Callable
 
@@ -229,7 +229,6 @@ class TelemetryClient:
             "consentSchemaVersion": CONSENT_SCHEMA_VERSION,
             "privacyNoticeVersion": PRIVACY_NOTICE_VERSION,
             "purposes": [purpose for purpose in CONTRACT["purposes"] if purposes.get(purpose) is True],
-            "client": self._common_dimensions_provider(),
         }
         result = self._request_json("POST", "/v1/installations", payload=payload)
         if isinstance(result, Exception):
@@ -246,7 +245,12 @@ class TelemetryClient:
 
     def _send_batch(self, batch: list[QueuedEvent], credentials: Any) -> dict[str, Any]:
         ids = [item.event_id for item in batch]
-        payload = {"telemetrySchemaVersion": TELEMETRY_SCHEMA_VERSION, "events": [item.payload for item in batch]}
+        batch_id = hashlib.sha256(("telemetry-batch-v1\0" + "\0".join(ids)).encode("utf-8")).hexdigest()
+        payload = {
+            "telemetrySchemaVersion": TELEMETRY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "events": [item.payload for item in batch],
+        }
         body_size = len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
         if body_size > int(CONTRACT["limits"]["requestBodyMaxBytes"]):
             self.store.acknowledge(ids)
@@ -301,7 +305,7 @@ class TelemetryClient:
                 return {"ok": False, "code": "telemetry.deletion_pending", "deletionPending": True}
             result = self._request_json(
                 "DELETE",
-                f"/v1/installations/{urllib.parse.quote(credentials.installation_id, safe='')}",
+                "/v1/installations/current",
                 authorization=credentials.write_token,
             )
             if isinstance(result, Exception):

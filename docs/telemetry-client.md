@@ -53,7 +53,7 @@ Enrollment разрешён только после актуального affir
 ```text
 POST   /v1/installations
 POST   /v1/events
-DELETE /v1/installations/{installationId}
+DELETE /v1/installations/current
 ```
 
 Внешний endpoint обязан быть HTTPS. Исключение — явно включённый loopback E2E.

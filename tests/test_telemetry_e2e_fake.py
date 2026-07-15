@@ -54,11 +54,11 @@ def test_fake_ingestion_is_deterministic_and_persists_only_safe_summary(tmp_path
             base_url,
             "/v1/events",
             method="POST",
-            payload={"telemetrySchemaVersion": 1, "events": [event]},
+            payload={"telemetrySchemaVersion": 1, "batchId": "batch-secret-id", "events": [event]},
             token=enrolled["writeToken"],
         )
         assert status == 202
-        assert ack == {"acknowledgedEventIds": ["event-secret-id"]}
+        assert ack == {"batchId": "batch-secret-id", "acknowledgedEventIds": ["event-secret-id"]}
         persisted = summary.read_text(encoding="utf-8")
         assert "dashboard.opened" in persisted
         assert "event-secret-id" not in persisted
@@ -70,7 +70,7 @@ def test_fake_ingestion_is_deterministic_and_persists_only_safe_summary(tmp_path
             base_url,
             "/v1/events",
             method="POST",
-            payload={"telemetrySchemaVersion": 1, "events": [event]},
+            payload={"telemetrySchemaVersion": 1, "batchId": "batch-secret-id-2", "events": [event]},
             token=enrolled["writeToken"],
         )[0] == 503
         assert json.loads(summary.read_text(encoding="utf-8"))["eventCount"] == 1
