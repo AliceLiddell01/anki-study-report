@@ -1,0 +1,93 @@
+name: Finalize clean Stage 9 branch
+
+on:
+  push:
+    branches:
+      - codex/finish-stage-9-production-telemetry
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: codex/finish-stage-9-production-telemetry
+          fetch-depth: 0
+          show-progress: false
+      - name: Align the accepted recovery decision
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/decision-log.md')
+          text = path.read_text(encoding='utf-8')
+          marker = '## ADR-029:'
+          start = text.index(marker)
+          replacement = '''## ADR-029: Cloud telemetry принимается через staging-first EU D1 gates без R2
+
+### Статус
+
+Принято.
+
+### Контекст
+
+Telemetry service реализован, но production endpoint нельзя включать по одному
+факту готовности кода. D1 jurisdiction задаётся при создании, секреты и реальные
+URL нельзя подменять placeholders или предположениями. На текущем аккаунте R2
+не активирован и требует billing setup, которого у владельца нет.
+
+### Решение
+
+- Cloudflare inventory выполняется read-only до любых изменений.
+- Staging и production получают разные EU D1, Worker и секреты.
+- Deploy остаётся manual-only; workflows используют pinned action SHA,
+  Environment secrets, повторные migrations и synthetic lifecycle gates.
+- Production принимается только после staging, deletion residue check и
+  временного D1 export/import drill в GitHub runner. SQL удаляется в том же job
+  и не публикуется как artifact.
+- Текущий recovery contract использует provider-managed D1 Time Travel за 7
+  дней. R2 и независимые 30-дневные бэкапы удалены из активного контракта и
+  перенесены в future infrastructure work.
+- Add-on получает фактический Worker URL отдельным PR только после cloud
+  acceptance и финализации RU/EN уведомления.
+
+### Последствия
+
+Кодовая готовность Stage 9.2 и эксплуатационная готовность Cloudflare — разные
+статусы. Production endpoint включается только после доказанной cloud
+приёмки; изменение не создаёт release дополнения. Будущее независимое backup
+storage потребует отдельного инфраструктурного решения и обновления notice.
+
+### Где смотреть
+
+`docs/stage-9-telemetry-foundation-handoff.md`, `docs/privacy-telemetry.md`,
+private repository `anki-study-report-telemetry`.
+'''
+          path.write_text(text[:start] + replacement, encoding='utf-8', newline='\n')
+          PY
+      - name: Build one clean commit on a carrier branch
+        shell: bash
+        run: |
+          rm -f .github/workflows/finalize-stage-9-branch.yml .stage9-finalize-trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git reset --soft origin/master
+          git commit -m "feat: activate consent-gated production telemetry"
+          git push --force origin HEAD:codex/stage9-final-carrier
+          git rev-parse HEAD > stage9-final-commit.txt
+          git show -s --format=%T HEAD > stage9-final-tree.txt
+      - name: Publish final commit metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stage-9-final-commit
+          path: |
+            stage9-final-commit.txt
+            stage9-final-tree.txt
+          retention-days: 1
