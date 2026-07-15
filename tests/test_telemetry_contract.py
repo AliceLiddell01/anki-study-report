@@ -16,6 +16,7 @@ def test_contract_has_exact_version_purposes_and_bounded_events(contract_module)
     contract = contract_module.load_telemetry_contract()
 
     assert contract["telemetrySchemaVersion"] == 1
+    assert contract_module.PRIVACY_NOTICE_VERSION == "2026-07-15-production"
     assert contract["purposes"] == ["reliabilityDiagnostics", "featureUsage"]
     assert set(contract["events"]) == {
         "addon.started", "dashboard.opened", "page.opened", "search.completed",

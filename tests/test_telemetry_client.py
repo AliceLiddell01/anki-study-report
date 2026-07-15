@@ -78,6 +78,16 @@ def test_no_consent_means_no_queue_and_no_network(tmp_path):
     assert transport.calls == []
 
 
+def test_default_endpoint_is_pinned_and_explicit_empty_endpoint_stays_disabled(tmp_path):
+    production = make_client(tmp_path / "production", purposes=None, endpoint=None)
+    production_module, production_client = production[3], production[6]
+    assert production_client.endpoint == production_module.PRODUCTION_TELEMETRY_ENDPOINT
+    assert production_client.endpoint == "https://anki-study-report-telemetry.anki-study-report.workers.dev"
+
+    disabled = make_client(tmp_path / "disabled", purposes=None, endpoint="")
+    assert disabled[6].endpoint is None
+
+
 def test_one_purpose_only_and_spoofed_dimensions_rejected_before_queue(tmp_path):
     *_, contract, store_module, client_module, privacy, store, client = make_client(
         tmp_path,
@@ -223,7 +233,7 @@ def test_withdrawal_clears_queue_and_offline_deletion_keeps_only_credentials(tmp
     *_, privacy, store, client = make_client(
         tmp_path,
         purposes={"reliabilityDiagnostics": True, "featureUsage": True},
-        endpoint=None,
+        endpoint="",
     )[-3:]
     store.save_credentials("install", "delete-token")
     client.queue_semantic_event(semantic())
@@ -286,7 +296,7 @@ def test_addon_update_reopen_preserves_decision_queue_and_credentials(tmp_path):
     result = make_client(
         tmp_path,
         purposes={"reliabilityDiagnostics": False, "featureUsage": True},
-        endpoint=None,
+        endpoint="",
     )
     product, store_module = result[0], result[2]
     privacy, store, client = result[4], result[5], result[6]

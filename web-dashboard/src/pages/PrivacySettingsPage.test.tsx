@@ -31,7 +31,7 @@ function response(overrides: Partial<PrivacyResponse> = {}): PrivacyResponse {
       telemetry: {
         status: "accepted",
         consentSchemaVersion: 1,
-        privacyNoticeVersion: "2026-07-15",
+        privacyNoticeVersion: "2026-07-15-production",
         purposes: { reliabilityDiagnostics: true, featureUsage: false },
         effectivePurposes: { reliabilityDiagnostics: true, featureUsage: false },
         decidedAt: "2026-07-15T00:00:00Z",
