@@ -59,9 +59,34 @@ closure-контракта: они не воспроизводятся из merg
 
 ## Стабилизационные PR
 
-Корректирующие PR этого прохода будут перечислены отдельно после merge с их
-собственными base/head SHA и GitHub PR statistics. Их значения нельзя
-прибавлять к foundation PR без явного определения агрегата.
+### Add-on PR #21
+
+`AliceLiddell01/anki-study-report#21` — 20 changed files, 424 additions,
+52 deletions.
+
+- base SHA: `9cdce8f0475ef0fe81016c35e9d026c89249b832`;
+- tested head SHA: `e964249d7ec870103f5fff0c8835757943cf0e1f`;
+- final master SHA after rebase merge: `7e02badd94872c47d1e72d2b3ffe9bca530494f0`;
+- method: GitHub REST PR metadata fields `changed_files`, `additions`,
+  `deletions` and base/head/merge SHA;
+- scope: consent/What’s New polish, localized timestamps, screenshot contract
+  and reproducible telemetry handoff.
+
+### Add-on PR #23
+
+`AliceLiddell01/anki-study-report#23` — 17 changed files, 276 additions,
+52 deletions.
+
+- base SHA: `7e02badd94872c47d1e72d2b3ffe9bca530494f0`;
+- tested head SHA: `811baaf0f9e00f055d2d7018690cce57f98a4194`;
+- final master SHA after rebase merge: `694d16c0ff0dc6a02d177e97ba147de000fbd575`;
+- method: GitHub REST PR metadata fields `changed_files`, `additions`,
+  `deletions` and base/head/merge SHA;
+- scope: accepted production endpoint, fresh production re-consent, full RU/EN
+  notice, lazy notice chunk, tests and cloud-acceptance documentation.
+
+Эти PR statistics остаются отдельными compare ranges и не прибавляются к
+foundation PR без заранее определённого агрегата.
 
 ## Уже принято до cloud deployment
 
