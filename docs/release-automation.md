@@ -1,6 +1,6 @@
 # Gated release delivery
 
-Снимок документации: 2026-07-14.
+Снимок документации: 2026-07-16.
 
 Проект использует каноническую SemVer-версию из
 `anki_study_report/version.py`, пользовательский changelog из `CHANGELOG.md`
@@ -29,8 +29,14 @@ node scripts/run_python.mjs scripts/validate_release.py --version 1.0.0 --channe
 Preparation обновляет version source, намеренный `manifest.json.mod` и
 версионированный раздел changelog, сохраняя свежий `[Unreleased]`. Release PR
 должен включать эти изменения. PR-запуск `Gated Release Delivery` выполняет
-валидацию, полный non-Docker pipeline и строит внутренний артефакт, но не
-получает production secrets, write permissions и не публикует ничего.
+только `Validate release contract`. Job `Test and build exact release artifact`
+сохраняет прежнее имя, но получает `skipped` через job-level условие; на PR не
+устанавливаются frontend dependencies, не повторяется canonical non-Docker
+pipeline и не создаётся release bundle. Production secrets, write permissions,
+Environment и mutations остаются недоступны PR.
+
+Exact artifact build и все последующие release gates выполняются только при
+явном `workflow_dispatch` с актуального `master`.
 
 ## Production flow
 

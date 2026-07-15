@@ -4,7 +4,7 @@ Fast CI publishes the advisory output of `scripts/plan_verification.py`; it
 never auto-starts expensive E2E. Run order is defined in
 `verification-run-policy.md`.
 
-Снимок документации: 2026-07-14.
+Снимок документации: 2026-07-16.
 
 В проекте реализованы Fast CI, переиспользуемый Full Docker / Anki E2E и
 ручной gated release delivery для GitHub Releases и существующей AnkiWeb page.
@@ -164,18 +164,27 @@ Run всегда сопоставляется с exact commit SHA, а не с «
 - автоматическая local fallback orchestration;
 - deployment, self-hosted runners, OIDC и secrets.
 
-Release workflow остаётся отдельным manual-dispatch контуром и не ослабляет или
-не дублирует canonical test logic Fast CI.
+Fast CI остаётся единственным PR-исполнителем canonical non-Docker pipeline.
+Release workflow сохраняет PR trigger и check identities, но на PR выполняет
+только release contract validation; heavy build получает `skipped` через
+job-level условие. Manual dispatch сохраняет полный exact-artifact contour.
 
 ## Gated Release Delivery
 
-`.github/workflows/release.yml` на PR выполняет только validation/build без
-secrets и mutations. Production dispatch разрешён только с текущего `master` и
-сериализован concurrency group. Exact release archive проходит
-`standard/full` через reusable `.github/workflows/ci-e2e.yml`, затем создаётся
-проверенный draft GitHub Release. Stable channel продолжает в защищённом
-`ankiweb-production`; только этот job получает environment secrets. GitHub
-Release становится публичным после успешной проверки публичного AnkiWeb файла.
+`.github/workflows/release.yml` сохраняет `pull_request` trigger для base
+`master`. На PR job `Validate release contract` выполняется, а
+`Test and build exact release artifact` и все production jobs получают
+`skipped` через job-level условия. Это сохраняет workflow/job identities для
+branch protection, но не повторяет dependency installation, canonical command
+`.\scripts\run_full_check.ps1 -SkipDocker` или создание release bundle.
+Workflow-level `paths`/`paths-ignore` не используются.
+
+Production dispatch разрешён только с текущего `master` и сериализован
+concurrency group. Exact release archive проходит `standard/full` через reusable
+`.github/workflows/ci-e2e.yml`, затем создаётся проверенный draft GitHub Release.
+Stable channel продолжает в защищённом `ankiweb-production`; только этот job
+получает environment secrets. GitHub Release становится публичным после
+успешной проверки публичного AnkiWeb файла.
 
 Write permissions разделены: draft/finalize jobs имеют только GitHub contents
 write, publisher — только contents read и Environment secrets. PR, forks и

@@ -65,8 +65,11 @@ Release infrastructure, package version source, changelog, release workflow и
 AnkiWeb adapter всегда классифицируются как `full`. Production workflow
 переиспользует `ci-e2e.yml` и устанавливает exact final archive через
 `ANKI_E2E_PREBUILT_ADDON_PATH`; E2E evidence обязано иметь тот же SHA-256.
-PR запускает только validation/build. Manual dispatch с `master` — отдельное
-явное решение владельца и не является автоматическим продолжением merge.
+PR запускает `Validate release contract`; heavy build и production jobs
+сохраняют прежние check identities, но получают `skipped` через job-level
+условия. Manual dispatch с `master` выполняет exact build и полную release chain;
+это отдельное явное решение владельца и не является автоматическим продолжением
+merge.
 
 Для product notices/privacy targeted gate — `standard/settings` после Fast CI
 на exact ready-head SHA. Изменение App Shell, dashboard server, E2E smoke,

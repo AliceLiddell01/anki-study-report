@@ -18,15 +18,61 @@ def job(text: str, name: str, next_name: str | None = None) -> str:
     return text[start:end]
 
 
-def test_pr_is_validation_only_and_dispatch_is_explicit() -> None:
+def job_header(text: str, name: str, next_name: str | None = None) -> str:
+    block = job(text, name, next_name)
+    marker = "    steps:\n"
+    return block[: block.index(marker)] if marker in block else block
+
+
+def test_pr_keeps_validation_and_skips_heavy_build_at_job_level() -> None:
     text = workflow_text()
     trigger = text[: text.index("permissions:")]
+    validation = job_header(text, "validate", "build")
+    build = job_header(text, "build", "real-anki-gate")
+
     assert "pull_request:" in trigger
     assert "workflow_dispatch:" in trigger
     assert "pull_request_target:" not in trigger
     assert "push:" not in trigger
+    assert "paths:" not in trigger
+    assert "paths-ignore:" not in trigger
+
+    assert "name: Validate release contract" in validation
+    assert "if: github.event_name == 'workflow_dispatch'" not in validation
+    assert "name: Test and build exact release artifact" in build
+    assert "if: github.event_name == 'workflow_dispatch'" in build
+    assert "needs: validate" in build
+
     assert "refs/heads/master" in text
     assert "current origin/master" in text
+
+
+def test_manual_build_preserves_exact_release_work() -> None:
+    text = workflow_text()
+    build = job(text, "build", "real-anki-gate")
+
+    assert r".\scripts\run_full_check.ps1 -SkipDocker" in build
+    assert "scripts/create_release_bundle.py" in build
+    assert "release-artifacts/anki_study_report.ankiaddon" in build
+    assert "artifact_sha256:" in build
+    assert "bundle_name:" in build
+
+
+def test_production_jobs_remain_dispatch_only() -> None:
+    text = workflow_text()
+    real_anki = job_header(text, "real-anki-gate", "github-draft")
+    draft = job_header(text, "github-draft", "ankiweb-publish")
+    publisher = job_header(text, "ankiweb-publish", "github-finalize")
+    finalize = job_header(text, "github-finalize")
+
+    for block in (real_anki, draft, publisher, finalize):
+        assert "github.event_name == 'workflow_dispatch'" in block
+
+    assert "- validate" in real_anki
+    assert "- build" in real_anki
+    assert "- real-anki-gate" in draft
+    assert "- github-draft" in publisher
+    assert "- github-draft" in finalize
 
 
 def test_secrets_exist_only_in_approved_environment_job() -> None:

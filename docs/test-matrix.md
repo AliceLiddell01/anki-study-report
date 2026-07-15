@@ -1,6 +1,6 @@
 # Матрица проверок
 
-Снимок документации: 2026-07-13.
+Снимок документации: 2026-07-16.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько
@@ -106,7 +106,8 @@ Release/version/package/publisher/workflow изменения требуют foc
 release artifact SHA. `strict-apkg` и `perf100` не добавляются, если их
 Cards/APKG/performance contracts не менялись.
 
-PR release workflow проверяет build без secrets/mutations. Live AnkiWeb
+PR release workflow проверяет release contract без secrets/mutations; heavy
+build остаётся manual-dispatch-only и получает `skipped` на PR. Live AnkiWeb
 `--dry-run` допустим только с env credentials и проверяет форму без выбора файла
 и Save. Publish proof требует совпадения build/E2E/GitHub/AnkiWeb SHA-256.
 
