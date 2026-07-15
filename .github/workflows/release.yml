@@ -78,6 +78,7 @@ jobs:
 
   build:
     name: Test and build exact release artifact
+    if: github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: windows-2025
     timeout-minutes: 25
