@@ -9,13 +9,14 @@
 - Stage 9.0: COMPLETE.
 - Stage 9.1: COMPLETE.
 - Stage 9.2 code foundation: COMPLETE.
-- Cloudflare deployment/operations acceptance: PENDING до появления прямых
-  доказательств EU provisioning, staging/production deploy, deletion и
-  backup/restore.
+- Cloudflare deployment/operations acceptance: COMPLETE для EU D1,
+  staging/production deploy, synthetic deletion и временного D1 export/import
+  recovery drill.
+- Add-on endpoint и RU/EN production notice: COMPLETE в текущем checkout.
 
-Production endpoint в add-on остаётся выключенным до завершения cloud
-acceptance и финализации RU/EN уведомления о конфиденциальности. Новый
-`.ankiaddon` release этим этапом не создаётся.
+R2 не активирован и не входит в active contract. 30-дневные независимые
+бэкапы перенесены в future infrastructure work. Новый `.ankiaddon` release
+этим этапом не создаётся.
 
 ## Воспроизводимая статистика merged foundation PR
 
@@ -75,9 +76,37 @@ closure-контракта: они не воспроизводятся из merg
 
 ## Cloud acceptance evidence
 
-До завершения provisioning здесь намеренно нет выдуманных resource ID, URL,
-workflow run ID или утверждений о jurisdiction. После успешной приёмки раздел
-должен содержать только санитизированные имена/ID, доказанную EU jurisdiction,
-точный Worker URL, repository SHA, deployment/backup run ID, migration names,
-synthetic result codes, row counts и checksums — без secret values, токенов,
-Authorization headers, IP/User-Agent или database export bytes.
+Staging:
+
+- Worker: `https://anki-study-report-telemetry-staging.anki-study-report.workers.dev`;
+- D1: `anki-study-report-telemetry-staging`,
+  `a3e06e45-26f0-4bf9-a0f2-dfc762a292dc`, jurisdiction `eu`;
+- final notice-version deployment: SHA
+  `79627fe0f861447ee5a3af7aa0a6026285737201`, run `29427911018`, PASS;
+- recovery drill: run `29425019956`, export SHA-256
+  `fff84bf0b91be46d6e5bfb4d4e10aa8130cae9d0c7a7819aadae9a6669ff6ffb`,
+  5,527 bytes, source/restored row counts matched, temporary D1 destroyed,
+  SQL artifact absent.
+
+Production:
+
+- Worker: `https://anki-study-report-telemetry.anki-study-report.workers.dev`;
+- D1: `anki-study-report-telemetry-prod`,
+  `00dcea29-9a7e-48b4-a845-d585e8d6f0f2`, jurisdiction `eu`;
+- final notice-version deployment: SHA
+  `79627fe0f861447ee5a3af7aa0a6026285737201`, run `29427988405`, PASS;
+- recovery drill: run `29426752402`, export SHA-256
+  `ec462a229dcc63e76c07f2af0b19b24182a217eba28ae2f627d78c4d0b09c153`,
+  4,805 bytes, source/restored row counts matched, temporary D1 destroyed,
+  SQL artifact absent.
+
+Обе среды доказали provider-managed D1 Time Travel за 7 дней. Synthetic smoke
+проверил health/schema, enrollment, valid/duplicate/invalid/unauthorized paths,
+confirmed deletion, invalidated token и нулевой residue. Первый staging run
+`29427549104` честно завершился FAIL из-за edge propagation старой notice
+version; после добавления exact-schema wait тот же acceptance прошёл.
+
+GitHub Environments `cloudflare-staging` и `cloudflare-production` содержат
+только names `CLOUDFLARE_ACCOUNT_ID` и `CLOUDFLARE_API_TOKEN`; Worker secrets:
+`TOKEN_HASH_SECRET`, `ABUSE_HMAC_SECRET`, `ADMIN_MAINTENANCE_TOKEN`. Secret
+values, Authorization headers, IP/User-Agent и SQL bytes в evidence не входят.

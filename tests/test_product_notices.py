@@ -136,6 +136,10 @@ def test_privacy_accept_and_decline_survive_application_updates(service, tmp_pat
     }
 
 
+def test_production_notice_version_is_current(service):
+    assert service.PRIVACY_NOTICE_VERSION == "2026-07-15-production"
+
+
 def test_reconsent_pauses_effective_purposes_without_rewriting_old_choice(service, tmp_path):
     path = tmp_path / "privacy.json"
     path.write_text(
