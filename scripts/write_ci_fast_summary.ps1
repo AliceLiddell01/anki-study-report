@@ -44,7 +44,6 @@ function Get-GitValue {
 
 New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $OutputPath "logs") | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $OutputPath "package") | Out-Null
 
 $pythonVersion = Get-SafeCommandVersion -FilePath "python" -Arguments @("--version")
 $nodeVersion = Get-SafeCommandVersion -FilePath "node" -Arguments @("--version")
@@ -130,7 +129,8 @@ $markdown = @"
 | Started (UTC) | $started |
 | Finished (UTC) | $finished |
 
-The package under ``package/`` is a non-release CI build artifact.
+This diagnostics artifact contains logs, environment data, summaries, and the verification plan only.
+The exact non-release package is published separately with ``package-metadata.json`` after a successful run.
 "@
 $markdown | Set-Content -LiteralPath (Join-Path $OutputPath "ci-summary.md") -Encoding utf8
 
