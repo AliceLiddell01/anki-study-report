@@ -37,9 +37,10 @@
 - `Immediate XP` и `Pending XP`;
 - общие FSRS-сигналы;
 - защита от повторяемых дешёвых действий;
-- целевая структура экономики Anki XP.
+- целевая структура экономики Anki XP;
+- ссылки на детальные Review-спецификации.
 
-Текущий статус: **DRAFT v0.1**.
+Текущий статус: **DRAFT v0.2**.
 
 ### 3. [Anki Review Event Taxonomy](anki-review-event-taxonomy.md)
 
@@ -58,6 +59,25 @@
 
 Текущий статус: **DRAFT v0.1**.
 
+### 4. [Anki Review Reward Model](anki-review-reward-model.md)
+
+Второй детальный этап Review XP:
+
+- `Review Unit` как промежуточная единица;
+- ограниченная аддитивная формула вместо мультипликативной;
+- `AttemptCredit` и `OutcomeCredit`;
+- challenge curve по `Retrievability`;
+- защита от backlog farming;
+- counterfactual `Good` для memory gain;
+- отказ от отдельного `DifficultyFactor`;
+- время ответа как validity-сигнал;
+- fallback без FSRS;
+- support cap для relearning;
+- explainability и версионирование;
+- 22 расчётных и классификационных примера.
+
+Текущий статус: **DRAFT v0.1**.
+
 ## Принятый порядок проектирования
 
 ```text
@@ -65,11 +85,11 @@ Progression Foundation
         ↓
 Anki XP Foundation
         ↓
-Review Event Taxonomy                  ← текущий завершённый концептуальный этап
+Review Event Taxonomy                  ← завершённый концептуальный этап
         ↓
-Review Reward Model                    ← следующий этап
+Review Reward Model                    ← завершённый концептуальный этап
         ↓
-Review Abuse Model
+Review Abuse Model                     ← следующий этап
         ↓
 Review Session and Day Aggregation
         ↓
@@ -91,25 +111,51 @@ Skills, achievements, quests, rewards and UI
 Планируемый файл:
 
 ```text
-anki-review-reward-model.md
+anki-review-abuse-model.md
 ```
 
-Он должен определить относительную стоимость одного валидного `core` Review Episode и последовательно проработать:
+Он должен проверить, можно ли манипулировать Reward Model через:
 
-1. `RetrievalChallengeFactor`;
-2. `OutcomeFactor`;
-3. `MemoryGainFactor`;
-4. `DifficultyFactor`;
-5. `ResponseValidityFactor`;
-6. contextual modifiers;
-7. caps и взаимодействие коэффициентов.
+1. намеренную просрочку;
+2. изменение desired retention;
+3. систематическое использование `Easy` или `Hard` не по назначению;
+4. экстремально быстрые ответы;
+5. удерживание карточки открытой;
+6. filtered decks и early review;
+7. repeated relearning;
+8. forced due, reset и rescheduling;
+9. изменение FSRS-параметров;
+10. импорт, Undo, синхронизацию и повторную обработку событий;
+11. sibling exposure;
+12. custom schedulers.
 
-Первой подзадачей является функция:
+Результатом должна стать таблица угроз:
 
 ```text
-Retrievability before answer
-→ Retrieval Challenge reward
+стратегия
+→ возможная выгода
+→ доступные сигналы
+→ предотвращение
+→ риск ложного срабатывания
+→ остаточный риск
 ```
+
+## Иерархия решений
+
+При пересечении документов действует правило:
+
+```text
+более новый детальный документ
+→ уточняет профильный foundation
+→ профильный foundation
+→ общий Progression Foundation
+```
+
+В частности:
+
+- `anki-review-event-taxonomy.md` определяет право события участвовать в Review XP;
+- `anki-review-reward-model.md` определяет относительную стоимость допустимого эпизода;
+- ранние формулы из `anki-xp-foundation.md` не применяются, если детальная спецификация уже приняла другое решение.
 
 ## Правила развития документации
 
@@ -121,3 +167,5 @@ Retrievability before answer
 - Новая механика не должна подталкивать к ухудшению реального обучения ради XP.
 - Внешняя документация Anki и FSRS используется для проверки фактов, а не как готовый дизайн игровой экономики.
 - При противоречии более детальный и новый документ уточняет общий foundation, но изменение должно быть явно отражено в индексах и версиях.
+- Примеры внутри спецификаций являются обязательной частью проверки понятности модели.
+- Формула должна быть не только вычислимой, но и объяснимой пользователю через reward breakdown.
