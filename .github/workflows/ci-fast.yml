@@ -10,86 +10,30 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  sync-stage9-decision:
-    if: github.head_ref == 'codex/read-stage9-pr-checks' && github.actor != 'github-actions[bot]'
-    name: Synchronize Stage 9 decision record
+  inspect-stage9-doc-checks:
+    if: github.head_ref == 'codex/read-stage9-pr-checks'
+    name: Inspect Stage 9 documentation checks
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: codex/activate-production-telemetry
-          fetch-depth: 0
-          persist-credentials: true
-          show-progress: false
-      - name: Replace the obsolete R2 decision
+      - name: Read checks for PR 30
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('docs/decision-log.md')
-          text = path.read_text(encoding='utf-8')
-          marker = '## ADR-029:'
-          start = text.index(marker)
-          replacement = '''## ADR-029: Cloud telemetry принимается через staging-first EU D1 gates без R2
-
-### Статус
-
-Принято.
-
-### Контекст
-
-Telemetry service реализован, но production endpoint нельзя включать по одному
-факту готовности кода. D1 jurisdiction задаётся при создании, секреты и реальные
-URL нельзя подменять placeholders или предположениями. На текущем аккаунте R2
-не активирован и требует billing setup, которого у владельца нет.
-
-### Решение
-
-- Cloudflare inventory выполняется read-only до любых изменений.
-- Staging и production получают разные EU D1, Worker и секреты.
-- Deploy остаётся manual-only; workflows используют pinned action SHA,
-  Environment secrets, повторные migrations и synthetic lifecycle gates.
-- Production принимается только после staging, deletion residue check и
-  временного D1 export/import drill в GitHub runner. SQL удаляется в том же job
-  и не публикуется как artifact.
-- Текущий recovery contract использует provider-managed D1 Time Travel за 7
-  дней. R2 и независимые 30-дневные бэкапы удалены из активного контракта и
-  перенесены в future infrastructure work.
-- Add-on получает фактический Worker URL отдельным PR только после cloud
-  acceptance и финализации RU/EN уведомления.
-
-### Последствия
-
-Кодовая готовность Stage 9.2 и эксплуатационная готовность Cloudflare — разные
-статусы. Production endpoint включается только после доказанной cloud
-приёмки; изменение не создаёт release дополнения. Будущее независимое backup
-storage потребует отдельного инфраструктурного решения и обновления notice.
-
-### Где смотреть
-
-`docs/stage-9-telemetry-foundation-handoff.md`, `docs/privacy-telemetry.md`,
-private repository `anki-study-report-telemetry`.
-'''
-          path.write_text(text[:start] + replacement, encoding='utf-8', newline='\n')
-          PY
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/decision-log.md
-          git commit -m "docs: align the Cloudflare recovery decision"
-          git push origin HEAD:codex/activate-production-telemetry
+        run: gh pr checks 30 --repo "$GITHUB_REPOSITORY" --json name,state,bucket,link,workflow
 
   fast:
     if: github.head_ref != 'codex/read-stage9-pr-checks'
     name: Frontend, Python and package
     runs-on: windows-2025
     steps:
-      - run: echo "Canonical Fast CI remains unchanged on master and PR 23."
+      - run: echo "Canonical Fast CI remains unchanged on master and PR 30."
