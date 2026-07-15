@@ -70,9 +70,11 @@ reliabilityDiagnostics
 featureUsage
 ```
 
-Обе изначально `false`. Пустой сохранённый выбор, X и Escape записывают
-`declined`; хотя бы одна выбранная цель записывает `accepted`. Отказ не меняет
-ни одной функции add-on. Решение применяется только к текущему профилю.
+Обе изначально `false`. Affirmative-кнопка недоступна, пока пользователь не
+выбрал хотя бы одну цель. Явные пути «Не отправлять», X и Escape записывают
+`declined`; хотя бы одна выбранная цель позволяет сохранить `accepted`. Отказ
+не меняет ни одной функции add-on. Решение применяется только к текущему
+профилю.
 
 Повторное решение требуется только при изменении `consentSchemaVersion` или
 материальном изменении `privacyNoticeVersion`. Пока новое решение не принято,
@@ -85,7 +87,9 @@ featureUsage
 локализованный title, начальный фокус на heading, focus trap, Escape, возврат
 фокуса invoker, scrollable content и inert/`aria-hidden` для App Shell. Release
 accordion управляется кнопками с `aria-expanded`. Компоненты поддерживают
-RU/EN, light/dark и `prefers-reduced-motion`.
+RU/EN, light/dark и `prefers-reduced-motion`. Общая modal surface использует
+семантические theme tokens; E2E проверяет computed luminance и сохраняет
+consent/What’s New screenshots для обеих тем.
 
 ## Local API
 

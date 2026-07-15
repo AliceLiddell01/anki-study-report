@@ -40,6 +40,8 @@ dashboard через token-protected HTTP server.
     `docs/search-v1-and-safe-actions.md`.
 14. Если задача про What’s New, consent или privacy state —
     `docs/product-notices-and-consent.md` и `docs/privacy-telemetry.md`.
+15. Если задача про завершение telemetry foundation и Cloudflare acceptance —
+    `docs/stage-9-telemetry-foundation-handoff.md`.
 
 Дополнительные справочники:
 
