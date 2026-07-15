@@ -4,6 +4,10 @@ All notable user-facing changes to Anki Study Report are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Improved light and dark consent and release-history dialogs, localized dates, and disabled unavailable data actions.
+
 ## [1.1.0] - 2026-07-15
 
 ### Added

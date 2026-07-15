@@ -19,6 +19,7 @@ export default function TelemetryConsentDialog({
 }) {
   const { t } = useTranslation("pages");
   const [choices, setChoices] = useState(EMPTY_CHOICES);
+  const hasSelection = Object.values(choices).some(Boolean);
 
   return (
     <AccessibleModal
@@ -31,7 +32,13 @@ export default function TelemetryConsentDialog({
           <button type="button" className="secondary-button" disabled={busy} onClick={onDecline}>
             {t("privacy.consent.doNotSend")}
           </button>
-          <button type="button" className="primary-button" disabled={busy} onClick={() => onSave(choices)}>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={busy || !hasSelection}
+            aria-describedby={!hasSelection ? "telemetry-consent-selection-required" : undefined}
+            onClick={() => onSave(choices)}
+          >
             {busy ? t("privacy.consent.saving") : t("privacy.consent.saveSelected")}
           </button>
         </div>
@@ -55,6 +62,11 @@ export default function TelemetryConsentDialog({
           </label>
         ))}
       </fieldset>
+      {!hasSelection ? (
+        <p id="telemetry-consent-selection-required" className="product-modal-selection-hint">
+          {t("privacy.consent.selectionRequired")}
+        </p>
+      ) : null}
       <details className="privacy-disclosure">
         <summary>{t("privacy.consent.exactData")}</summary>
         <ul>

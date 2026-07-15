@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import i18n from "../i18n";
 import { formatDurationSeconds, formatInteger, formatPercent, formatSeconds } from "./formatters";
+import { formatDateTime, isValidDateTime } from "./localizedDateTime";
 
 describe("locale-aware formatters and plurals", () => {
   it("uses Russian plural categories", async () => {
@@ -26,5 +27,19 @@ describe("locale-aware formatters and plurals", () => {
     await i18n.changeLanguage("en");
     expect(formatSeconds(1.5)).toBe("1.5 sec");
     expect(formatDurationSeconds(3660)).toBe("1 hr 1 min");
+  });
+
+  it("formats local date-times in Russian and English with safe invalid fallback", async () => {
+    const raw = "2026-07-15T11:46:49.771921Z";
+    expect(isValidDateTime(raw)).toBe(true);
+    await i18n.changeLanguage("ru");
+    const russian = formatDateTime(raw, "—");
+    await i18n.changeLanguage("en");
+    const english = formatDateTime(raw, "—");
+    expect(russian).toContain("2026");
+    expect(english).toContain("2026");
+    expect(russian).not.toBe(english);
+    expect(formatDateTime("not-a-date", "Unknown")).toBe("Unknown");
+    expect(isValidDateTime(null)).toBe(false);
   });
 });

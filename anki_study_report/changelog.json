@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
   "unreleased": {
-    "sections": []
+    "sections": [
+      {
+        "type": "fixed",
+        "items": [
+          {
+            "id": "privacy_consent_presentation",
+            "text": {
+              "ru": "Улучшены светлая и тёмная темы окон согласия и истории изменений, локализованы даты и отключены недоступные действия с данными.",
+              "en": "Improved light and dark consent and release-history dialogs, localized dates, and disabled unavailable data actions."
+            }
+          }
+        ]
+      }
+    ]
   },
   "releases": [
     {
