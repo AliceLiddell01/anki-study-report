@@ -272,3 +272,11 @@ def test_browser_artifact_resolver_builds_deterministic_nested_paths(tmp_path: P
         "screenshots/zoom-125/settings/report.png",
         "screenshots/cards/apkg/anki-preview/dark.png",
     ]
+
+
+def test_restart_verifier_retriggers_only_an_idle_sender_with_pending_events():
+    verifier = load_e2e_module("verify-telemetry-restart.py", "anki_study_report_verify_telemetry_restart")
+
+    assert verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 1, "senderState": "idle"}})
+    assert not verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 1, "senderState": "busy"}})
+    assert not verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 0, "senderState": "idle"}})
