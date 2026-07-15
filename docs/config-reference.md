@@ -95,7 +95,7 @@ forecast
 | --- | --- | --- | --- | --- |
 | `track_reviewer_sessions` | `false` | `session_tracker.py` | Да | Включает собственный journal интервалов |
 | `session_idle_timeout_seconds` | `600` | `session_tracker.py` | Да | Влияет на разрыв сессий |
-| `session_gap_cap_seconds` | `120` | `session_tracker.py` | Да | Влияет на capped gaps |
+| `session_gap_cap_seconds` | `120` | session tracker | Да | Влияет на capped gaps |
 | `use_study_time_stats` | `false` | `study_time_integration.py` | Да | Включает внешний источник времени, если доступен |
 
 ## Docker/E2E env vars
@@ -121,7 +121,7 @@ forecast
 | `ANKI_STUDY_REPORT_E2E_PACKAGE_DIR` | `<root>/package` | Docker-built add-on | Dev-only | Вычисляется runner-ом из artifact root |
 | `ANKI_STUDY_REPORT_E2E_READY_FILE` | `/e2e/artifacts/runtime/dashboard-ready.json` | readiness | Dev-only | Waiter и add-on должны читать/писать тот же path |
 | `ANKI_STUDY_REPORT_E2E_PORT` | `8766` | E2E dashboard start | Dev-only | Порт для E2E server |
-| `ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT` | loopback fake in Docker | telemetry client E2E | Dev-only | Читается только вместе с `ANKI_STUDY_REPORT_E2E=1`; production package endpoint не содержит |
+| `ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT` | loopback fake in Docker | telemetry client E2E | Dev-only | Читается только вместе с `ANKI_STUDY_REPORT_E2E=1` и тогда заменяет закреплённый production host |
 | `ANKI_STUDY_REPORT_E2E_DEBUG_QT` | `0` | `start-anki.sh` | Dev-only | Включает verbose Qt diagnostics |
 | `ANKI_E2E_APKG_FIXTURE` | empty | PowerShell wrapper | Dev-only | Использовать только sanitized fixture |
 | `ANKI_E2E_APKG_FIXTURE_PATH` | empty | container import | Dev-only | Container path to staged APKG |
@@ -175,4 +175,7 @@ Partial update сохраняет unknown/internal top-level и nested config ke
 
 `telemetry.sqlite3` находится в том же per-profile runtime directory. Это не
 user config и не Anki Sync data. Public package содержит только read-only
-`telemetry_contract.json`; production endpoint не хранится в `config.json`.
+`telemetry_contract.json`. Production endpoint
+`https://anki-study-report-telemetry.anki-study-report.workers.dev` закреплён в
+Python runtime и не хранится в `config.json`; React получает только bounded
+public status без URL или credentials.

@@ -1,6 +1,6 @@
 # Product notices и consent foundation
 
-Снимок контракта: 2026-07-15. Product-notice/consent слой остаётся локальным и
+Снимок контракта: 2026-07-15-production. Product-notice/consent слой остаётся локальным и
 сам не создаёт events. Сохранённый выбор передаётся отдельному consent-gated
 client, описанному в `docs/telemetry-client.md`.
 
@@ -80,6 +80,10 @@ featureUsage
 материальном изменении `privacyNoticeVersion`. Пока новое решение не принято,
 `effectivePurposes` принудительно равны `false`, даже если старый документ был
 `accepted`.
+
+Production notice заменил прежний технический черновик до включения endpoint,
+поэтому версия поднята с `2026-07-15` до `2026-07-15-production`. Старое
+решение не может разрешить production delivery без нового выбора.
 
 ## Accessibility contract
 

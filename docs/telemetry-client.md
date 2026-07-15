@@ -1,10 +1,11 @@
 # Telemetry client
 
-Снимок контракта: 2026-07-15. Клиент реализован, но production endpoint в
-публичной конфигурации add-on отсутствует. Обычная сборка поэтому не может
-выполнить enrollment или отправку. Loopback endpoint разрешается только при
-`ANKI_STUDY_REPORT_E2E=1` через
-`ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT`.
+Снимок контракта: 2026-07-15. Python runtime использует проверенный production
+endpoint `https://anki-study-report-telemetry.anki-study-report.workers.dev`.
+Enrollment и отправка всё равно невозможны до актуального affirmative consent
+хотя бы для одной цели. При `ANKI_STUDY_REPORT_E2E=1` production host заменяется
+только на явный `ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT`; это сохраняет
+изолированный loopback fake для CI/E2E.
 
 ## Граница доверия
 
@@ -57,6 +58,9 @@ DELETE /v1/installations/current
 ```
 
 Внешний endpoint обязан быть HTTPS. Исключение — явно включённый loopback E2E.
+Production endpoint является reviewable Python constant и не хранится в
+`config.json`; пользователь не может незаметно перенаправить telemetry на
+произвольный host.
 Сетевые операции выполняются в одном daemon worker, не в UI thread. Отправка
 запрашивается после consent, при 25 queued events, на старте и bounded timer не
 чаще 15 минут. Один запрос имеет конечный timeout 10 секунд.

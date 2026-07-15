@@ -1,5 +1,5 @@
 import { ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDateTime, isValidDateTime } from "../lib/localizedDateTime";
 import {
@@ -9,6 +9,8 @@ import {
   type TelemetryPurpose,
 } from "../lib/productNoticesApi";
 import { deleteTelemetryData } from "../lib/telemetryApi";
+
+const PrivacyNoticeContent = lazy(() => import("../components/PrivacyNoticeContent"));
 
 const EMPTY_CHOICES: Record<TelemetryPurpose, boolean> = {
   reliabilityDiagnostics: false,
@@ -220,13 +222,11 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <h2 className="text-lg font-semibold text-report-text">{t("privacy.notice.title")}</h2>
-        <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.technicalDraft")}</p>
-        <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.summary")}</p>
-        <p className="mt-2 text-sm leading-6 text-report-secondary">{t("privacy.notice.version")}</p>
-        <details className="privacy-disclosure">
-          <summary>{t("privacy.notice.technicalDetails")}</summary>
-          <p>{t("privacy.notice.processorDetails")}</p>
-        </details>
+        <div className="mt-3">
+<Suspense fallback={<p className="text-sm leading-6 text-report-secondary">{t("privacy.notice.summary")}</p>}>
+  <PrivacyNoticeContent />
+</Suspense>
+        </div>
       </section>
     </div>
   );

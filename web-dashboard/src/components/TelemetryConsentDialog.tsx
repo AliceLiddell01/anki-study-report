@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TelemetryPurpose } from "../lib/productNoticesApi";
 import AccessibleModal from "./AccessibleModal";
+
+const PrivacyNoticeContent = lazy(() => import("./PrivacyNoticeContent"));
 
 const EMPTY_CHOICES: Record<TelemetryPurpose, boolean> = {
   reliabilityDiagnostics: false,
@@ -78,9 +80,9 @@ export default function TelemetryConsentDialog({
       </details>
       <details className="privacy-disclosure">
         <summary>{t("privacy.consent.notice")}</summary>
-        <p>{t("privacy.notice.technicalDraft")}</p>
-        <p>{t("privacy.notice.summary")}</p>
-        <p>{t("privacy.notice.version")}</p>
+        <Suspense fallback={null}>
+          <PrivacyNoticeContent />
+        </Suspense>
       </details>
       <p className="privacy-never">{t("privacy.consent.neverContent")}</p>
     </AccessibleModal>
