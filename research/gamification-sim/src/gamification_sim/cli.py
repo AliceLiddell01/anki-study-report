@@ -10,6 +10,7 @@ from .breakdown import to_dict
 from .day_aggregation import aggregate_day
 from .episode_reward import evaluate_episode
 from .input_parsing import day_from_dict, episode_from_dict
+from .output_digest import verify_output_digest
 from .reporting import render_json_report, render_markdown_report, write_reports
 from .scenario_loader import (
     ScenarioDomainError,
@@ -19,7 +20,7 @@ from .scenario_loader import (
 from .scenario_models import ScenarioCategory
 from .scenario_runner import run_corpus, run_definitions
 from .scenario_schema import ScenarioSchemaError
-from .strict_json import StrictJsonError
+from .strict_json import StrictJsonError, load_strict_json
 from .validation import close
 
 
@@ -69,6 +70,12 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("fixture", type=Path)
     evaluate.add_argument("--json", action="store_true", dest="as_json")
 
+    verify_report = subparsers.add_parser(
+        "verify-report",
+        help="verify a detached digest in an existing scenario report",
+    )
+    verify_report.add_argument("report", type=Path)
+
     validate = subparsers.add_parser("validate-scenarios", help="validate a scenario corpus")
     validate.add_argument("scenario_dir", type=Path)
     validate.add_argument("--json", action="store_true", dest="as_json")
@@ -108,6 +115,15 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args) -> int:
+    if args.command == "verify-report":
+        payload = load_strict_json(args.report)
+        if not isinstance(payload, dict):
+            raise ValueError("scenario report must be a JSON object")
+        if not verify_output_digest(payload):
+            print("MISMATCH: output digest verification failed", file=sys.stderr)
+            return 1
+        print("VERIFIED detached-corpus-result-v1")
+        return 0
     if args.command == "validate-scenarios":
         definitions = load_corpus(args.scenario_dir)
         if args.as_json:

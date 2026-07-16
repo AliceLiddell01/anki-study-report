@@ -137,6 +137,8 @@ python -m gamification_sim run-scenario scenarios\edge\session-invariance.json -
 python -m gamification_sim run-scenarios scenarios
 python -m gamification_sim run-scenarios scenarios --json --no-write
 
+python -m gamification_sim verify-report outputs\run-<digest>\results.json
+
 python -m gamification_sim compare-scenarios `
   scenarios\controls\timely-backlog-control.json `
   scenarios\abuse\intentional-backlog.json `
@@ -179,6 +181,10 @@ scenario
 ├── assertions
 └── optional matched control and comparison explanation
 ```
+
+`control_scenario_id` exists only at the scenario root. Assertion objects cannot
+select or override a control: every comparison assertion in a scenario uses the
+same resolved top-level control, which is executed first.
 
 All closed schema objects reject unknown fields. Scenario IDs and session IDs use stable lowercase kebab-case identifiers. Days must be unique and strictly increasing. Session IDs are unique within a day, and episode `anki_day` must match its containing day.
 
@@ -297,6 +303,20 @@ command
 ```
 
 Digests are SHA-256 over UTF-8 canonical JSON. They exclude timestamps, absolute paths, usernames, hostnames, virtual-environment paths, tokens, and OS-specific path separators.
+
+The output digest uses one explicit detached contract:
+
+```text
+output_digest = SHA-256(
+  canonical CorpusRunResult where manifest.output_digest == ""
+)
+
+output_digest_contract = detached-corpus-result-v1
+```
+
+`verify-report` strict-loads an existing JSON report, rejects duplicate keys and
+non-standard numbers, and verifies this digest without discovering or executing
+any scenarios. Whitespace and object-key formatting do not affect verification.
 
 Equivalent runs produce the same digests regardless of scenario file discovery order, absolute checkout path, current time, or platform path separator.
 

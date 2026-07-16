@@ -67,7 +67,6 @@ class ScenarioAssertion:
     expected: float
     tolerance: float
     anki_day: str | None = None
-    control_scenario_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +148,7 @@ class RunManifest:
     scenario_ids: tuple[str, ...]
     input_digest: str
     output_digest: str
+    output_digest_contract: str
     command: str
 
 

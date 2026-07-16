@@ -94,6 +94,26 @@ def test_corpus_control_reference_rules(tmp_path):
         load_corpus(root)
 
 
+def test_abuse_scenario_without_top_level_control_is_rejected(tmp_path):
+    abuse = payload("abuse-without-control", "abuse")
+    with pytest.raises(ScenarioDomainError, match="abuse scenario requires control_scenario_id"):
+        load_scenario(write(tmp_path / "abuse.json", abuse))
+
+
+def test_comparison_assertion_without_top_level_control_is_rejected(tmp_path):
+    scenario = payload("comparison-without-control")
+    scenario["assertions"] = [
+        {
+            "type": "equals_control",
+            "scope": "comparison",
+            "metric": "total_review_units",
+            "expected": 0,
+        }
+    ]
+    with pytest.raises(ScenarioDomainError, match="top-level control_scenario_id"):
+        load_scenario(write(tmp_path / "comparison.json", scenario))
+
+
 def test_control_wrong_category_rejected(tmp_path):
     root = tmp_path / "scenarios"
     control = payload("control", "ordinary")

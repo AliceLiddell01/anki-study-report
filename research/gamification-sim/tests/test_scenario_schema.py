@@ -60,6 +60,20 @@ def test_invalid_assertion_operator():
     assert_invalid(payload)
 
 
+def test_assertion_level_control_reference_is_rejected():
+    payload = valid_payload()
+    payload["assertions"] = [
+        {
+            "type": "equals_control",
+            "scope": "comparison",
+            "metric": "total_review_units",
+            "expected": 0,
+            "control_scenario_id": "legacy-control",
+        }
+    ]
+    assert_invalid(payload, "Additional properties")
+
+
 def test_schema_error_order_is_deterministic():
     payload = valid_payload(); payload["category"] = "x"; payload["scenario_id"] = "X X"
     validator = load_validator()

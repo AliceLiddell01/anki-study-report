@@ -50,7 +50,6 @@ def _parse_assertion(data: dict[str, Any]) -> ScenarioAssertion:
         expected=float(data["expected"]),
         tolerance=float(data.get("tolerance", TOLERANCE)),
         anki_day=data.get("anki_day"),
-        control_scenario_id=data.get("control_scenario_id"),
     )
 
 
@@ -173,14 +172,9 @@ def validate_definition(definition: ScenarioDefinition) -> None:
                 raise ScenarioDomainError(
                     f"{definition.scenario_id}: control assertion must use comparison scope"
                 )
-            control_id = assertion.control_scenario_id or definition.control_scenario_id
-            if not control_id:
+            if not definition.control_scenario_id:
                 raise ScenarioDomainError(
-                    f"{definition.scenario_id}: control assertion requires a control reference"
-                )
-            if control_id == definition.scenario_id:
-                raise ScenarioDomainError(
-                    f"{definition.scenario_id}: assertion control cannot point to itself"
+                    f"{definition.scenario_id}: control assertion requires top-level control_scenario_id"
                 )
         elif assertion.scope is AssertionScope.COMPARISON:
             raise ScenarioDomainError(
@@ -233,19 +227,6 @@ def load_corpus(root: Path) -> tuple[ScenarioDefinition, ...]:
                 raise ScenarioDomainError(
                     f"{item.scenario_id}: referenced control has category {control.category.value}"
                 )
-        for assertion in item.assertions:
-            control_id = assertion.control_scenario_id
-            if control_id:
-                control = by_id.get(control_id)
-                if control is None:
-                    raise ScenarioDomainError(
-                        f"{item.scenario_id}: assertion control does not exist: {control_id}"
-                    )
-                if control.category is not ScenarioCategory.CONTROL:
-                    raise ScenarioDomainError(
-                        f"{item.scenario_id}: assertion control has wrong category"
-                    )
-
     def visit(scenario_id: str, active: set[str], complete: set[str]) -> None:
         if scenario_id in complete:
             return

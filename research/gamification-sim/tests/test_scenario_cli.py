@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -60,6 +62,38 @@ def test_run_corpus_no_write():
     result = run_cli("run-scenarios", "scenarios", "--json", "--no-write")
     assert result.returncode == 0
     assert len(json.loads(result.stdout)["scenario_results"]) == 26
+
+
+def test_verify_report_without_rerunning_scenarios(tmp_path):
+    generated = run_cli("run-scenarios", "scenarios", "--json", "--no-write")
+    report = tmp_path / "results.json"
+    report.write_text(generated.stdout, encoding="utf-8")
+    verified = run_cli("verify-report", report)
+    assert verified.returncode == 0
+    assert "VERIFIED detached-corpus-result-v1" in verified.stdout
+
+
+def test_verify_report_returns_nonzero_for_digest_mismatch(tmp_path):
+    generated = run_cli("run-scenarios", "scenarios", "--json", "--no-write")
+    payload = json.loads(generated.stdout)
+    payload["manifest"]["command"] = "mutated"
+    report = tmp_path / "mutated.json"
+    report.write_text(json.dumps(payload), encoding="utf-8")
+    verified = run_cli("verify-report", report)
+    assert verified.returncode == 1
+    assert "MISMATCH" in verified.stderr
+
+
+@pytest.mark.parametrize(
+    "contents",
+    ['{"manifest":{},"manifest":{}}', '{"value":NaN}'],
+)
+def test_verify_report_strictly_rejects_invalid_json(tmp_path, contents):
+    report = tmp_path / "invalid.json"
+    report.write_text(contents, encoding="utf-8")
+    verified = run_cli("verify-report", report)
+    assert verified.returncode == 2
+    assert "INVALID:" in verified.stderr
 
 
 def test_compare_scenarios():

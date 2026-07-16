@@ -6,7 +6,12 @@ from pathlib import Path
 from .assertions import evaluate_assertion
 from .canonical_json import canonical_digest
 from .comparisons import compare_results
-from .manifest import SCENARIO_SCHEMA_VERSION, SIMULATOR_VERSION, python_major_minor
+from .manifest import (
+    OUTPUT_DIGEST_CONTRACT,
+    SCENARIO_SCHEMA_VERSION,
+    SIMULATOR_VERSION,
+    python_major_minor,
+)
 from .models import Outcome, ReviewDayBreakdown
 from .parameters import CURRENT_PARAMETERS
 from .scenario_loader import load_corpus
@@ -21,6 +26,7 @@ from .scenario_models import (
     ScenarioRunResult,
 )
 from .day_aggregation import aggregate_day
+from .output_digest import compute_output_digest
 
 
 def _day_metrics(day: ScenarioDay, breakdown: ReviewDayBreakdown) -> dict[str, float]:
@@ -99,6 +105,23 @@ def run_scenario(
     control_definition: ScenarioDefinition | None = None,
     control_result: ScenarioRunResult | None = None,
 ) -> ScenarioRunResult:
+    requires_control = any(assertion.type.requires_control for assertion in definition.assertions)
+    if definition.control_scenario_id:
+        if control_definition is None or control_result is None:
+            if requires_control:
+                raise ValueError(
+                    f"{definition.scenario_id}: resolved top-level control is required"
+                )
+        elif (
+            control_definition.scenario_id != definition.control_scenario_id
+            or control_result.scenario_id != definition.control_scenario_id
+        ):
+            raise ValueError(
+                f"{definition.scenario_id}: resolved control does not match top-level control_scenario_id"
+            )
+    elif control_definition is not None or control_result is not None:
+        raise ValueError(f"{definition.scenario_id}: unexpected resolved control")
+
     day_results: list[ScenarioDayResult] = []
     for day in definition.days:
         breakdown = aggregate_day(day.day_input, CURRENT_PARAMETERS)
@@ -212,10 +235,11 @@ def run_definitions(
         scenario_ids=tuple(item.scenario_id for item in ordered_results),
         input_digest=input_digest,
         output_digest="",
+        output_digest_contract=OUTPUT_DIGEST_CONTRACT,
         command=command,
     )
     provisional = CorpusRunResult(manifest, ordered_results, tuple(sorted(set(warnings))))
-    digest = canonical_digest(provisional)
+    digest = compute_output_digest(provisional)
     return replace(provisional, manifest=replace(manifest, output_digest=digest))
 
 
