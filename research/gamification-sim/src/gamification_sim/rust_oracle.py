@@ -205,12 +205,12 @@ def verify_rust_oracle(package_root: Path, parameter_set_id: str) -> dict[str, A
         command = [*_cargo_command(package_root), str(valid_contract)]
         process = subprocess.run(
             command, cwd=package_root, text=True, capture_output=True, check=False,
-            env=cargo_environment(),
+            env=cargo_environment(), timeout=120,
         )
         invalid_command = [*_cargo_command(package_root), str(invalid_contract)]
         invalid_process = subprocess.run(
             invalid_command, cwd=package_root, text=True, capture_output=True, check=False,
-            env=cargo_environment(),
+            env=cargo_environment(), timeout=120,
         )
     if process.returncode != 0:
         raise ValueError(f"Rust oracle failed ({process.returncode}): {process.stderr.strip()}")

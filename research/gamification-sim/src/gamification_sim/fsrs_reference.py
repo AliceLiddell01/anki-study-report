@@ -138,7 +138,7 @@ def _rust_reference(package_root: Path, contract_path: Path) -> dict[str, Any]:
     ]
     process = subprocess.run(
         command, cwd=package_root, text=True, capture_output=True, check=False,
-        env=cargo_environment(),
+        env=cargo_environment(), timeout=120,
     )
     if process.returncode:
         raise ValueError(f"fsrs-rs reference failed ({process.returncode}): {process.stderr.strip()}")

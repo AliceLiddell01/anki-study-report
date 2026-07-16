@@ -89,6 +89,8 @@ def _validator() -> Draft202012Validator:
 
 
 def _load_persona(path: Path, validator: Draft202012Validator) -> Persona:
+    if path.is_symlink():
+        raise ValueError(f"{path}: symlink persona files are not allowed")
     payload = load_strict_json(path)
     errors = sorted(
         validator.iter_errors(payload),
