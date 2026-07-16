@@ -64,6 +64,7 @@ class SupportKind(StrEnum):
     FIRST_STEP = "first_step"
     SECOND_STEP = "second_step"
     COMPLETION = "completion"
+    INTERDAY_RECOVERY = "interday_recovery"
     OTHER = "other"
 
 
@@ -145,7 +146,6 @@ class ReviewEpisodeInput:
 class SupportEventInput:
     source_event_key: str
     parent_episode_key: str
-    units: float
     kind: SupportKind = SupportKind.OTHER
 
 

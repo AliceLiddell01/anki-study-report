@@ -13,7 +13,7 @@ from .models import (
 )
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
 from .safeguards import apply_decision, decide_safeguards
-from .validation import require_non_negative
+from .validation import require_non_negative, require_non_negative_int
 
 
 def volume_credit(qualified_volume: float, params: RewardParameterSet = CURRENT_PARAMETERS) -> tuple[float, tuple[str, ...]]:
@@ -61,6 +61,19 @@ def aggregate_day(
     day: ReviewDayInput,
     params: RewardParameterSet = CURRENT_PARAMETERS,
 ) -> ReviewDayBreakdown:
+    require_non_negative_int(
+        "workload.natural_due_at_start",
+        day.workload.natural_due_at_start,
+    )
+    require_non_negative_int(
+        "workload.due_visible_under_limits",
+        day.workload.due_visible_under_limits,
+    )
+    require_non_negative_int(
+        "workload.due_hidden_by_limits",
+        day.workload.due_hidden_by_limits,
+    )
+
     seen_sources: set[str] = set()
     seen_card_days: set[tuple[str, str]] = set()
     episode_breakdowns = []
@@ -98,7 +111,10 @@ def aggregate_day(
     applied_caps: list[str] = []
     support_by_parent: dict[str, float] = defaultdict(float)
     for event in day.support_events:
-        units = require_non_negative("support units", event.units)
+        units = require_non_negative(
+            f"support value for {event.kind.value}",
+            params.support_value(event.kind),
+        )
         if event.source_event_key in seen_sources:
             reasons.append(ReasonCode.DUPLICATE_SOURCE_EVENT.value)
             continue

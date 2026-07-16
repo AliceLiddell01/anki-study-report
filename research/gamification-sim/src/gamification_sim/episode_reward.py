@@ -4,7 +4,7 @@ import math
 
 from .models import EpisodeRewardBreakdown, Outcome, ReasonCode, ReviewEpisodeInput
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
-from .validation import require_positive, require_range
+from .validation import require_binary_int, require_positive, require_range
 
 
 def _interpolate(value: float, anchors: tuple[tuple[float, float], ...]) -> float:
@@ -82,9 +82,7 @@ def evaluate_episode(
     if not episode.anki_day.strip():
         raise ValueError("anki_day must not be empty")
 
-    core_eligibility = int(episode.core_eligibility)
-    if core_eligibility not in {0, 1}:
-        raise ValueError("core_eligibility must be 0 or 1")
+    core_eligibility = require_binary_int("core_eligibility", episode.core_eligibility)
     if core_eligibility and episode.outcome is Outcome.NONE:
         raise ValueError("eligible core episode must have a review outcome")
 

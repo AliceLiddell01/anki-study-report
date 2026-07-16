@@ -48,6 +48,7 @@ class RewardParameterSet:
         (SupportKind.FIRST_STEP, 0.05),
         (SupportKind.SECOND_STEP, 0.04),
         (SupportKind.COMPLETION, 0.03),
+        (SupportKind.INTERDAY_RECOVERY, 0.12),
         (SupportKind.OTHER, 0.00),
     )
     support_episode_cap: float = 0.12

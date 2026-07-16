@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from gamification_sim.day_aggregation import aggregate_day, contribution_band, volume_credit
@@ -11,8 +13,10 @@ from gamification_sim.models import (
     ReviewEpisodeInput,
     SupplementalInput,
     SupportEventInput,
+    SupportKind,
     WorkloadSnapshot,
 )
+from gamification_sim.parameters import CURRENT_PARAMETERS
 from gamification_sim.validation import close
 
 
@@ -31,8 +35,55 @@ def test_volume_boundaries(q, expected):
     assert close(volume_credit(q)[0], expected)
 
 
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        (SupportKind.FIRST_STEP, 0.05),
+        (SupportKind.SECOND_STEP, 0.04),
+        (SupportKind.COMPLETION, 0.03),
+        (SupportKind.INTERDAY_RECOVERY, 0.12),
+        (SupportKind.OTHER, 0.00),
+    ],
+)
+def test_support_kind_values_are_parameterized(kind, expected):
+    event = SupportEventInput("support", "parent", kind)
+    result = aggregate_day(ReviewDayInput(DAY, support_events=(event,)))
+    assert close(result.raw_support, expected)
+
+
+def test_support_reward_uses_supplied_parameter_set():
+    custom_values = tuple(
+        (kind, 0.07 if kind is SupportKind.FIRST_STEP else value)
+        for kind, value in CURRENT_PARAMETERS.support_values
+    )
+    params = replace(
+        CURRENT_PARAMETERS,
+        rule_version="review-custom",
+        support_values=custom_values,
+    )
+    event = SupportEventInput("support", "parent", SupportKind.FIRST_STEP)
+
+    default_result = aggregate_day(ReviewDayInput(DAY, support_events=(event,)))
+    custom_result = aggregate_day(
+        ReviewDayInput(DAY, support_events=(event,)),
+        params,
+    )
+
+    assert close(default_result.raw_support, 0.05)
+    assert close(custom_result.raw_support, 0.07)
+    assert custom_result.rule_version == "review-custom"
+
+
 def test_support_episode_and_day_caps():
-    events = tuple(SupportEventInput(f"s{i}", "parent", 0.04) for i in range(10))
+    kinds = (
+        SupportKind.FIRST_STEP,
+        SupportKind.SECOND_STEP,
+        SupportKind.COMPLETION,
+    )
+    events = tuple(
+        SupportEventInput(f"s{i}", "parent", kinds[i % len(kinds)])
+        for i in range(12)
+    )
     day = ReviewDayInput(DAY, episodes=successes(30), support_events=events)
     result = aggregate_day(day)
     assert close(result.raw_support, 0.12)
@@ -40,11 +91,20 @@ def test_support_episode_and_day_caps():
     assert "support_episode_cap" in result.reason_codes
 
 
-def test_daily_support_cap_allows_interday_relearning_only():
-    events = tuple(SupportEventInput(f"s{i}", f"parent-{i}", 0.12) for i in range(4))
+def test_daily_support_cap_allows_and_caps_interday_relearning_only():
+    events = tuple(
+        SupportEventInput(
+            f"s{i}",
+            f"parent-{i}",
+            SupportKind.INTERDAY_RECOVERY,
+        )
+        for i in range(5)
+    )
     result = aggregate_day(ReviewDayInput(DAY, support_events=events))
+    assert close(result.raw_support, 0.60)
     assert close(result.support_cap, 0.50)
-    assert close(result.capped_support, 0.48)
+    assert close(result.capped_support, 0.50)
+    assert "support_day_cap" in result.applied_caps
 
 
 def test_daily_supplemental_cap():
@@ -119,7 +179,13 @@ def test_full_breakdown_equality():
         ReviewDayInput(
             DAY,
             episodes=successes(100),
-            support_events=(SupportEventInput("s", "p", 0.12),),
+            support_events=(
+                SupportEventInput(
+                    "s",
+                    "p",
+                    SupportKind.INTERDAY_RECOVERY,
+                ),
+            ),
             supplemental_events=(SupplementalInput("p", 5.0),),
             workload=WorkloadSnapshot(status=CompletionStatus.COLLECTION_CLEARED),
         )

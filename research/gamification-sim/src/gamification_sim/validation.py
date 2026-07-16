@@ -38,6 +38,30 @@ def require_positive(name: str, value: float) -> float:
     return value
 
 
+def require_int(
+    name: str,
+    value: Any,
+    *,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    if type(value) is not int:
+        raise ValueError(f"{name} must be an integer without coercion")
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be at most {maximum}")
+    return value
+
+
+def require_non_negative_int(name: str, value: Any) -> int:
+    return require_int(name, value, minimum=0)
+
+
+def require_binary_int(name: str, value: Any) -> int:
+    return require_int(name, value, minimum=0, maximum=1)
+
+
 def close(a: float, b: float, tolerance: float = TOLERANCE) -> bool:
     return math.isclose(a, b, rel_tol=tolerance, abs_tol=tolerance)
 

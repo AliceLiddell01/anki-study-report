@@ -12,6 +12,7 @@ The package is not part of the Anki add-on. It does not import `anki_study_repor
 The core implements:
 
 - immutable normalized episode, support, supplemental, workload, and day models;
+- strict, non-coercing integer validation for binary flags and workload/count inputs;
 - the versioned candidate parameter set `review-v0.1`;
 - `AttemptCredit + Pass × OutcomeCredit` baseline calculation;
 - retrieval challenge interpolation and natural-due delay protection;
@@ -20,6 +21,7 @@ The core implements:
 - separate `CoreEligibility` and `BonusEligibility` handling;
 - deterministic source-event idempotency and card/day uniqueness;
 - Undo, administrative, preview, forced-due, support, and supplemental routing;
+- support rewards derived only from versioned `SupportKind` parameters;
 - support episode/day caps, supplemental day cap, volume tiers, and completion credit;
 - contribution bands and structured reason codes;
 - executable golden examples and tests for hard invariants H01–H18;
@@ -111,6 +113,14 @@ ReviewDayUnits =
 
 No component is accumulated through hidden mutable global state.
 
+## Input contracts
+
+- Integer-semantic inputs accept only a real Python `int`; `bool`, floats, numeric strings, `NaN`, infinity, and out-of-range values are rejected rather than coerced.
+- A support fixture supplies only `source_event_key`, `parent_episode_key`, and `kind`; it cannot assign arbitrary reward units. Unknown support fields are rejected.
+- `FIRST_STEP`, `SECOND_STEP`, and `COMPLETION` use their versioned candidate values from `RewardParameterSet`.
+- `INTERDAY_RECOVERY` is the explicit interday support kind and is valued at `0.12 Review Unit` in `review-v0.1`, subject to the unchanged episode and daily caps.
+- `OTHER` is accepted as a neutral support classification and contributes `0`.
+
 ## Numeric policy
 
 - Inputs must be finite; `NaN` and infinities are rejected.
@@ -137,4 +147,4 @@ The simulator must remain outside:
 - production verification scripts;
 - `.ankiaddon` contents.
 
-Run it manually from this directory. A future research-only CI check requires a separate explicit decision; it must not silently extend Fast CI.
+Run it manually from this directory. Fixtures are static, reviewed inputs and are not generated during ordinary test runs. A future research-only CI check requires a separate explicit decision; it must not silently extend Fast CI.

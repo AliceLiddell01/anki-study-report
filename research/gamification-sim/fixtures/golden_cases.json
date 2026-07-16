@@ -1,1 +1,930 @@
-{"fixture_version":"golden-v0.1","rule_version":"review-v0.1","tolerance":1e-09,"cases":[{"expected":{"baseline":0.9,"context":0.1,"total":1.0,"challenge_credit":0.05,"memory_gain_credit":0.05,"core_eligibility":1,"bonus_eligibility":1.0},"id":"ordinary_on_time_good","input":{"anki_day":"2026-07-16","card_lineage":"c1","memory":{"confidence":"high","retrievability_actual":0.9,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":1.5168967963882134},"outcome":"good","source_event_key":"e1"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.1,"total":1.0,"challenge_credit":0.05,"memory_gain_credit":0.05,"core_eligibility":1,"bonus_eligibility":1.0},"id":"button_neutral_hard","input":{"anki_day":"2026-07-16","card_lineage":"c-hard","memory":{"confidence":"high","retrievability_actual":0.9,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":1.5168967963882134},"outcome":"hard","source_event_key":"hard"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.1,"total":1.0,"challenge_credit":0.05,"memory_gain_credit":0.05,"core_eligibility":1,"bonus_eligibility":1.0},"id":"button_neutral_easy","input":{"anki_day":"2026-07-16","card_lineage":"c-easy","memory":{"confidence":"high","retrievability_actual":0.9,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":1.5168967963882134},"outcome":"easy","source_event_key":"easy"},"kind":"episode"},{"expected":{"baseline":0.25,"context":0.0,"total":0.25,"challenge_credit":0.0,"memory_gain_credit":0.0,"core_eligibility":1,"bonus_eligibility":1.0},"id":"again_attempt_credit","input":{"anki_day":"2026-07-16","card_lineage":"c-again","memory":{"confidence":"high","retrievability_actual":0.9,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":1.5168967963882134},"outcome":"again","source_event_key":"again"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.3,"total":1.2,"challenge_credit":0.22,"memory_gain_credit":0.08,"core_eligibility":1,"bonus_eligibility":1.0},"id":"difficult_success","input":{"anki_day":"2026-07-16","card_lineage":"c-difficult","memory":{"confidence":"high","retrievability_actual":0.65,"retrievability_natural_due":0.65,"stability_before":1.0,"stability_good_counterfactual":2.0137527074704766},"outcome":"good","source_event_key":"difficult"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.195,"total":1.095,"challenge_credit":0.075,"memory_gain_credit":0.12,"core_eligibility":1,"bonus_eligibility":1.0},"id":"heavy_backlog","input":{"anki_day":"2026-07-16","card_lineage":"c-backlog","due_relation":"overdue","memory":{"confidence":"high","retrievability_actual":0.1,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":3.0041660239464334},"outcome":"good","source_event_key":"backlog"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.1,"total":1.0,"challenge_credit":0.0,"memory_gain_credit":0.0,"core_eligibility":1,"bonus_eligibility":1.0},"id":"no_fsrs_fallback","input":{"anki_day":"2026-07-16","card_lineage":"c-no-fsrs","outcome":"good","source_event_key":"no-fsrs"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.175,"total":1.075,"challenge_credit":0.3,"memory_gain_credit":0.09999999999999999,"core_eligibility":1,"bonus_eligibility":1.0},"id":"low_confidence_model","input":{"anki_day":"2026-07-16","card_lineage":"c-low-conf","memory":{"confidence":"low","retrievability_actual":0.5,"retrievability_natural_due":0.5,"stability_before":1.0,"stability_good_counterfactual":2.45960311115695},"outcome":"good","source_event_key":"low-conf"},"kind":"episode"},{"expected":{"baseline":0.9,"context":0.0,"total":0.9,"challenge_credit":0.05,"memory_gain_credit":0.05,"core_eligibility":1,"bonus_eligibility":0.0},"id":"suspicious_time_suppresses_bonus_only","input":{"anki_day":"2026-07-16","card_lineage":"c-fast","memory":{"confidence":"high","retrievability_actual":0.9,"retrievability_natural_due":0.9,"stability_before":1.0,"stability_good_counterfactual":1.5168967963882134},"outcome":"good","response_validity":0.0,"source_event_key":"fast"},"kind":"episode"},{"expected":{"core_baseline":0.25,"core_context":0.0,"capped_support":0.12,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.37,"contribution_band":"review_light"},"id":"normal_relearning","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-lapse","outcome":"again","source_event_key":"lapse"}],"support_events":[{"kind":"first_step","parent_episode_key":"lapse","source_event_key":"s1","units":0.05},{"kind":"second_step","parent_episode_key":"lapse","source_event_key":"s2","units":0.04},{"kind":"completion","parent_episode_key":"lapse","source_event_key":"s3","units":0.03}]},"kind":"day"},{"expected":{"core_baseline":0.25,"core_context":0.0,"capped_support":0.12,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.37,"contribution_band":"review_light"},"id":"relearning_loop_after_cap","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-loop","outcome":"again","source_event_key":"loop"}],"support_events":[{"parent_episode_key":"loop","source_event_key":"ls0","units":0.04},{"parent_episode_key":"loop","source_event_key":"ls1","units":0.04},{"parent_episode_key":"loop","source_event_key":"ls2","units":0.04},{"parent_episode_key":"loop","source_event_key":"ls3","units":0.04},{"parent_episode_key":"loop","source_event_key":"ls4","units":0.04},{"parent_episode_key":"loop","source_event_key":"ls5","units":0.04}]},"kind":"day"},{"expected":{"core_baseline":0.9,"core_context":0.1,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":1.0,"contribution_band":"review_light"},"id":"due_filtered_rescheduling","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-filtered","outcome":"good","source":"filtered_rescheduling","source_event_key":"filtered"}]},"kind":"day"},{"expected":{"core_baseline":0,"core_context":0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.0,"contribution_band":"review_none"},"id":"preview_without_rescheduling","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-preview","outcome":"good","preview_without_rescheduling":true,"source":"filtered_preview","source_event_key":"preview"}]},"kind":"day"},{"expected":{"core_baseline":0.9,"core_context":0.1,"capped_support":0.0,"capped_supplemental":0.027,"volume_credit":0.0,"completion_credit":0.0,"total":1.027,"contribution_band":"review_light"},"id":"forced_due_routed_to_supplemental","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-base","outcome":"good","source_event_key":"base"},{"anki_day":"2026-07-16","card_lineage":"c-forced","due_relation":"forced_due","forced_due":true,"outcome":"good","source_event_key":"forced","supplemental_units":0.2}]},"kind":"day"},{"expected":{"core_baseline":0,"core_context":0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.0,"contribution_band":"review_none"},"id":"manual_record_zero","input":{"anki_day":"2026-07-16","episodes":[{"administrative":true,"anki_day":"2026-07-16","card_lineage":"c-manual","outcome":"none","role":"administrative","source":"manual_operation","source_event_key":"manual"}]},"kind":"day"},{"expected":{"core_baseline":0.9,"core_context":0.1,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":1.0,"contribution_band":"review_light"},"id":"duplicate_replay_noop","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-dup","outcome":"good","source_event_key":"dup"},{"anki_day":"2026-07-16","card_lineage":"c-dup","outcome":"good","source_event_key":"dup"}]},"kind":"day"},{"expected":{"core_baseline":0,"core_context":0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.0,"contribution_band":"review_none"},"id":"undo_reverses_reward","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"c-undo","outcome":"good","source_event_key":"undo-me"}],"undone_source_event_keys":["undo-me"]},"kind":"day"},{"expected":{"core_baseline":9.0,"core_context":1.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":10.0,"contribution_band":"review_light"},"id":"10_successful_core_reviews","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":10,"prefix":"n10-","template":{"outcome":"good"}}]},"kind":"day"},{"expected":{"core_baseline":27.0,"core_context":3.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.91,"completion_credit":0.0,"total":30.91,"contribution_band":"review_full"},"id":"30_successful_core_reviews","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":30,"prefix":"n30-","template":{"outcome":"good"}}]},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":0.0,"total":106.75,"contribution_band":"review_full"},"id":"100_successful_core_reviews","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"n100-","template":{"outcome":"good"}}]},"kind":"day"},{"expected":{"core_baseline":270.0,"core_context":30.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":15.0,"completion_credit":0.0,"total":315.0,"contribution_band":"review_full"},"id":"300_successful_core_reviews","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":300,"prefix":"n300-","template":{"outcome":"good"}}]},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":0.0,"total":106.75,"contribution_band":"review_full"},"id":"same_events_one_session","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"sess-","template":{"outcome":"good"}}],"session_ids":["one"]},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":0.0,"total":106.75,"contribution_band":"review_full"},"id":"same_events_multiple_sessions","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"sess-","template":{"outcome":"good"}}],"session_ids":["morning","afternoon","evening"]},"kind":"day"},{"expected":{"core_baseline":0,"core_context":0,"capped_support":0.36,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.36,"contribution_band":"review_none"},"id":"interday_relearning_only","input":{"anki_day":"2026-07-16","support_events":[{"parent_episode_key":"previous-0","source_event_key":"inter0","units":0.12},{"parent_episode_key":"previous-1","source_event_key":"inter1","units":0.12},{"parent_episode_key":"previous-2","source_event_key":"inter2","units":0.12}]},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":2.0,"volume_credit":6.75,"completion_credit":0.0,"total":108.75,"contribution_band":"review_full"},"id":"supplemental_day_cap","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"supp-","template":{"outcome":"good"}}],"supplemental_events":[{"source_event_key":"p0","units":1.0},{"source_event_key":"p1","units":1.0},{"source_event_key":"p2","units":1.0},{"source_event_key":"p3","units":1.0},{"source_event_key":"p4","units":1.0}]},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":2.6999999999999997,"total":109.45,"contribution_band":"review_full"},"id":"collection_completion","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"collection-","template":{"outcome":"good"}}],"workload":{"due_visible_under_limits":100,"natural_due_at_start":100,"status":"collection_cleared"}},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":2.1599999999999997,"total":108.91,"contribution_band":"review_full"},"id":"locked_scope_completion","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"scope-","template":{"outcome":"good"}}],"workload":{"due_visible_under_limits":100,"natural_due_at_start":100,"status":"scope_cleared"}},"kind":"day"},{"expected":{"core_baseline":90.0,"core_context":10.0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":6.75,"completion_credit":1.3499999999999999,"total":108.1,"contribution_band":"review_full"},"id":"configured_review_limit","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":100,"prefix":"limit-","template":{"outcome":"good"}}],"workload":{"due_hidden_by_limits":50,"due_visible_under_limits":100,"natural_due_at_start":150,"status":"configured_limit_reached"}},"kind":"day"},{"expected":{"core_baseline":0.9,"core_context":0.1,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.027,"total":1.027,"contribution_band":"review_light"},"id":"one_card_due_day","input":{"anki_day":"2026-07-16","episodes":[{"anki_day":"2026-07-16","card_lineage":"one-card","outcome":"good","source_event_key":"one"}],"workload":{"due_visible_under_limits":1,"natural_due_at_start":1,"status":"collection_cleared"}},"kind":"day"},{"expected":{"core_baseline":0,"core_context":0,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.0,"completion_credit":0.0,"total":0.0,"contribution_band":"review_none"},"id":"zero_due_day","input":{"anki_day":"2026-07-16","workload":{"natural_due_at_start":0,"status":"zero_due"}},"kind":"day"},{"expected":{"core_baseline":27.900000000000002,"core_context":3.1,"capped_support":0.0,"capped_supplemental":0.0,"volume_credit":0.9820000000000002,"completion_credit":0.0,"total":31.982000000000003,"contribution_band":"review_full"},"id":"late_recomputation","input":{"anki_day":"2026-07-16","repeat_episodes":[{"count":31,"prefix":"late-","template":{"outcome":"good"}}],"session_ids":["initial","late-sync"]},"kind":"day"}]}
+{
+  "fixture_version": "golden-v0.1",
+  "rule_version": "review-v0.1",
+  "tolerance": 1e-09,
+  "cases": [
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.1,
+        "total": 1.0,
+        "challenge_credit": 0.05,
+        "memory_gain_credit": 0.05,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "ordinary_on_time_good",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c1",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.9,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 1.5168967963882134
+        },
+        "outcome": "good",
+        "source_event_key": "e1"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.1,
+        "total": 1.0,
+        "challenge_credit": 0.05,
+        "memory_gain_credit": 0.05,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "button_neutral_hard",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-hard",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.9,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 1.5168967963882134
+        },
+        "outcome": "hard",
+        "source_event_key": "hard"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.1,
+        "total": 1.0,
+        "challenge_credit": 0.05,
+        "memory_gain_credit": 0.05,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "button_neutral_easy",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-easy",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.9,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 1.5168967963882134
+        },
+        "outcome": "easy",
+        "source_event_key": "easy"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.25,
+        "context": 0.0,
+        "total": 0.25,
+        "challenge_credit": 0.0,
+        "memory_gain_credit": 0.0,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "again_attempt_credit",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-again",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.9,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 1.5168967963882134
+        },
+        "outcome": "again",
+        "source_event_key": "again"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.3,
+        "total": 1.2,
+        "challenge_credit": 0.22,
+        "memory_gain_credit": 0.08,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "difficult_success",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-difficult",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.65,
+          "retrievability_natural_due": 0.65,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 2.0137527074704766
+        },
+        "outcome": "good",
+        "source_event_key": "difficult"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.195,
+        "total": 1.095,
+        "challenge_credit": 0.075,
+        "memory_gain_credit": 0.12,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "heavy_backlog",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-backlog",
+        "due_relation": "overdue",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.1,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 3.0041660239464334
+        },
+        "outcome": "good",
+        "source_event_key": "backlog"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.1,
+        "total": 1.0,
+        "challenge_credit": 0.0,
+        "memory_gain_credit": 0.0,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "no_fsrs_fallback",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-no-fsrs",
+        "outcome": "good",
+        "source_event_key": "no-fsrs"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.175,
+        "total": 1.075,
+        "challenge_credit": 0.3,
+        "memory_gain_credit": 0.09999999999999999,
+        "core_eligibility": 1,
+        "bonus_eligibility": 1.0
+      },
+      "id": "low_confidence_model",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-low-conf",
+        "memory": {
+          "confidence": "low",
+          "retrievability_actual": 0.5,
+          "retrievability_natural_due": 0.5,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 2.45960311115695
+        },
+        "outcome": "good",
+        "source_event_key": "low-conf"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "baseline": 0.9,
+        "context": 0.0,
+        "total": 0.9,
+        "challenge_credit": 0.05,
+        "memory_gain_credit": 0.05,
+        "core_eligibility": 1,
+        "bonus_eligibility": 0.0
+      },
+      "id": "suspicious_time_suppresses_bonus_only",
+      "input": {
+        "anki_day": "2026-07-16",
+        "card_lineage": "c-fast",
+        "memory": {
+          "confidence": "high",
+          "retrievability_actual": 0.9,
+          "retrievability_natural_due": 0.9,
+          "stability_before": 1.0,
+          "stability_good_counterfactual": 1.5168967963882134
+        },
+        "outcome": "good",
+        "response_validity": 0.0,
+        "source_event_key": "fast"
+      },
+      "kind": "episode"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.25,
+        "core_context": 0.0,
+        "capped_support": 0.12,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.37,
+        "contribution_band": "review_light"
+      },
+      "id": "normal_relearning",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-lapse",
+            "outcome": "again",
+            "source_event_key": "lapse"
+          }
+        ],
+        "support_events": [
+          {
+            "kind": "first_step",
+            "parent_episode_key": "lapse",
+            "source_event_key": "s1"
+          },
+          {
+            "kind": "second_step",
+            "parent_episode_key": "lapse",
+            "source_event_key": "s2"
+          },
+          {
+            "kind": "completion",
+            "parent_episode_key": "lapse",
+            "source_event_key": "s3"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.25,
+        "core_context": 0.0,
+        "capped_support": 0.12,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.37,
+        "contribution_band": "review_light"
+      },
+      "id": "relearning_loop_after_cap",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-loop",
+            "outcome": "again",
+            "source_event_key": "loop"
+          }
+        ],
+        "support_events": [
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls0",
+            "kind": "first_step"
+          },
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls1",
+            "kind": "second_step"
+          },
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls2",
+            "kind": "completion"
+          },
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls3",
+            "kind": "first_step"
+          },
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls4",
+            "kind": "second_step"
+          },
+          {
+            "parent_episode_key": "loop",
+            "source_event_key": "ls5",
+            "kind": "completion"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.9,
+        "core_context": 0.1,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 1.0,
+        "contribution_band": "review_light"
+      },
+      "id": "due_filtered_rescheduling",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-filtered",
+            "outcome": "good",
+            "source": "filtered_rescheduling",
+            "source_event_key": "filtered"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0,
+        "core_context": 0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.0,
+        "contribution_band": "review_none"
+      },
+      "id": "preview_without_rescheduling",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-preview",
+            "outcome": "good",
+            "preview_without_rescheduling": true,
+            "source": "filtered_preview",
+            "source_event_key": "preview"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.9,
+        "core_context": 0.1,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.027,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 1.027,
+        "contribution_band": "review_light"
+      },
+      "id": "forced_due_routed_to_supplemental",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-base",
+            "outcome": "good",
+            "source_event_key": "base"
+          },
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-forced",
+            "due_relation": "forced_due",
+            "forced_due": true,
+            "outcome": "good",
+            "source_event_key": "forced",
+            "supplemental_units": 0.2
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0,
+        "core_context": 0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.0,
+        "contribution_band": "review_none"
+      },
+      "id": "manual_record_zero",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "administrative": true,
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-manual",
+            "outcome": "none",
+            "role": "administrative",
+            "source": "manual_operation",
+            "source_event_key": "manual"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.9,
+        "core_context": 0.1,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 1.0,
+        "contribution_band": "review_light"
+      },
+      "id": "duplicate_replay_noop",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-dup",
+            "outcome": "good",
+            "source_event_key": "dup"
+          },
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-dup",
+            "outcome": "good",
+            "source_event_key": "dup"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0,
+        "core_context": 0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.0,
+        "contribution_band": "review_none"
+      },
+      "id": "undo_reverses_reward",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "c-undo",
+            "outcome": "good",
+            "source_event_key": "undo-me"
+          }
+        ],
+        "undone_source_event_keys": [
+          "undo-me"
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 9.0,
+        "core_context": 1.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 10.0,
+        "contribution_band": "review_light"
+      },
+      "id": "10_successful_core_reviews",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 10,
+            "prefix": "n10-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 27.0,
+        "core_context": 3.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.91,
+        "completion_credit": 0.0,
+        "total": 30.91,
+        "contribution_band": "review_full"
+      },
+      "id": "30_successful_core_reviews",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 30,
+            "prefix": "n30-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 0.0,
+        "total": 106.75,
+        "contribution_band": "review_full"
+      },
+      "id": "100_successful_core_reviews",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "n100-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 270.0,
+        "core_context": 30.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 15.0,
+        "completion_credit": 0.0,
+        "total": 315.0,
+        "contribution_band": "review_full"
+      },
+      "id": "300_successful_core_reviews",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 300,
+            "prefix": "n300-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 0.0,
+        "total": 106.75,
+        "contribution_band": "review_full"
+      },
+      "id": "same_events_one_session",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "sess-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "session_ids": [
+          "one"
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 0.0,
+        "total": 106.75,
+        "contribution_band": "review_full"
+      },
+      "id": "same_events_multiple_sessions",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "sess-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "session_ids": [
+          "morning",
+          "afternoon",
+          "evening"
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0,
+        "core_context": 0,
+        "capped_support": 0.36,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.36,
+        "contribution_band": "review_none"
+      },
+      "id": "interday_relearning_only",
+      "input": {
+        "anki_day": "2026-07-16",
+        "support_events": [
+          {
+            "parent_episode_key": "previous-0",
+            "source_event_key": "inter0",
+            "kind": "interday_recovery"
+          },
+          {
+            "parent_episode_key": "previous-1",
+            "source_event_key": "inter1",
+            "kind": "interday_recovery"
+          },
+          {
+            "parent_episode_key": "previous-2",
+            "source_event_key": "inter2",
+            "kind": "interday_recovery"
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 2.0,
+        "volume_credit": 6.75,
+        "completion_credit": 0.0,
+        "total": 108.75,
+        "contribution_band": "review_full"
+      },
+      "id": "supplemental_day_cap",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "supp-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "supplemental_events": [
+          {
+            "source_event_key": "p0",
+            "units": 1.0
+          },
+          {
+            "source_event_key": "p1",
+            "units": 1.0
+          },
+          {
+            "source_event_key": "p2",
+            "units": 1.0
+          },
+          {
+            "source_event_key": "p3",
+            "units": 1.0
+          },
+          {
+            "source_event_key": "p4",
+            "units": 1.0
+          }
+        ]
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 2.6999999999999997,
+        "total": 109.45,
+        "contribution_band": "review_full"
+      },
+      "id": "collection_completion",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "collection-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "workload": {
+          "due_visible_under_limits": 100,
+          "natural_due_at_start": 100,
+          "status": "collection_cleared"
+        }
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 2.1599999999999997,
+        "total": 108.91,
+        "contribution_band": "review_full"
+      },
+      "id": "locked_scope_completion",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "scope-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "workload": {
+          "due_visible_under_limits": 100,
+          "natural_due_at_start": 100,
+          "status": "scope_cleared"
+        }
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 90.0,
+        "core_context": 10.0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 6.75,
+        "completion_credit": 1.3499999999999999,
+        "total": 108.1,
+        "contribution_band": "review_full"
+      },
+      "id": "configured_review_limit",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 100,
+            "prefix": "limit-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "workload": {
+          "due_hidden_by_limits": 50,
+          "due_visible_under_limits": 100,
+          "natural_due_at_start": 150,
+          "status": "configured_limit_reached"
+        }
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0.9,
+        "core_context": 0.1,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.027,
+        "total": 1.027,
+        "contribution_band": "review_light"
+      },
+      "id": "one_card_due_day",
+      "input": {
+        "anki_day": "2026-07-16",
+        "episodes": [
+          {
+            "anki_day": "2026-07-16",
+            "card_lineage": "one-card",
+            "outcome": "good",
+            "source_event_key": "one"
+          }
+        ],
+        "workload": {
+          "due_visible_under_limits": 1,
+          "natural_due_at_start": 1,
+          "status": "collection_cleared"
+        }
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 0,
+        "core_context": 0,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.0,
+        "completion_credit": 0.0,
+        "total": 0.0,
+        "contribution_band": "review_none"
+      },
+      "id": "zero_due_day",
+      "input": {
+        "anki_day": "2026-07-16",
+        "workload": {
+          "natural_due_at_start": 0,
+          "status": "zero_due"
+        }
+      },
+      "kind": "day"
+    },
+    {
+      "expected": {
+        "core_baseline": 27.900000000000002,
+        "core_context": 3.1,
+        "capped_support": 0.0,
+        "capped_supplemental": 0.0,
+        "volume_credit": 0.9820000000000002,
+        "completion_credit": 0.0,
+        "total": 31.982000000000003,
+        "contribution_band": "review_full"
+      },
+      "id": "late_recomputation",
+      "input": {
+        "anki_day": "2026-07-16",
+        "repeat_episodes": [
+          {
+            "count": 31,
+            "prefix": "late-",
+            "template": {
+              "outcome": "good"
+            }
+          }
+        ],
+        "session_ids": [
+          "initial",
+          "late-sync"
+        ]
+      },
+      "kind": "day"
+    }
+  ]
+}
