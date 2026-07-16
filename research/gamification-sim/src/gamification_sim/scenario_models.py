@@ -44,6 +44,17 @@ class AssertionScope(StrEnum):
     COMPARISON = "comparison"
 
 
+class AssertionClass(StrEnum):
+    INVARIANT = "invariant"
+    REGRESSION = "regression"
+
+
+class AssertionStatus(StrEnum):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
 class ScenarioMetric(StrEnum):
     CORE_BASELINE = "core_baseline"
     CORE_CONTEXT = "core_context"
@@ -61,11 +72,14 @@ class ScenarioMetric(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ScenarioAssertion:
+    assertion_class: AssertionClass
     type: AssertionType
     scope: AssertionScope
     metric: ScenarioMetric
     expected: float
     tolerance: float
+    rationale: str
+    applies_to_parameter_set_ids: tuple[str, ...] = ()
     anki_day: str | None = None
 
 
@@ -108,10 +122,18 @@ class ScenarioDayResult:
 @dataclass(frozen=True, slots=True)
 class AssertionResult:
     assertion: ScenarioAssertion
-    passed: bool
+    status: AssertionStatus
     observed: float | None
     control_value: float | None
     detail: str
+
+    @property
+    def passed(self) -> bool:
+        return self.status is AssertionStatus.PASSED
+
+    @property
+    def failed(self) -> bool:
+        return self.status is AssertionStatus.FAILED
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,13 +158,14 @@ class ScenarioRunResult:
 
     @property
     def passed(self) -> bool:
-        return all(item.passed for item in self.assertions)
+        return all(not item.failed for item in self.assertions)
 
 
 @dataclass(frozen=True, slots=True)
 class RunManifest:
     simulator_version: str
     rule_version: str
+    parameter_set_id: str
     scenario_schema_version: str
     python_version: str
     scenario_ids: tuple[str, ...]

@@ -3,11 +3,26 @@ from __future__ import annotations
 import pytest
 
 from gamification_sim.assertions import evaluate_assertion
-from gamification_sim.scenario_models import AssertionScope, AssertionType, ScenarioAssertion, ScenarioMetric
+from gamification_sim.scenario_models import (
+    AssertionClass,
+    AssertionScope,
+    AssertionStatus,
+    AssertionType,
+    ScenarioAssertion,
+    ScenarioMetric,
+)
 
 
 def a(kind, expected, tolerance=1e-9):
-    return ScenarioAssertion(kind, AssertionScope.SCENARIO, ScenarioMetric.TOTAL_REVIEW_UNITS, expected, tolerance)
+    return ScenarioAssertion(
+        AssertionClass.INVARIANT,
+        kind,
+        AssertionScope.SCENARIO,
+        ScenarioMetric.TOTAL_REVIEW_UNITS,
+        expected,
+        tolerance,
+        "candidate-independent test invariant",
+    )
 
 
 @pytest.mark.parametrize(
@@ -36,12 +51,35 @@ def test_local_operators(kind, observed, expected, passed):
     ],
 )
 def test_control_operators(kind, observed, control, expected, passed):
-    assertion = ScenarioAssertion(kind, AssertionScope.COMPARISON, ScenarioMetric.TOTAL_REVIEW_UNITS, expected, 1e-9)
+    assertion = ScenarioAssertion(
+        AssertionClass.INVARIANT,
+        kind,
+        AssertionScope.COMPARISON,
+        ScenarioMetric.TOTAL_REVIEW_UNITS,
+        expected,
+        1e-9,
+        "candidate-independent control invariant",
+    )
     assert evaluate_assertion(assertion, observed=observed, control_value=control).passed is passed
 
 
 def test_zero_control_ratio_is_explicit_failure():
-    assertion = ScenarioAssertion(AssertionType.RATIO_TO_CONTROL_LTE, AssertionScope.COMPARISON, ScenarioMetric.TOTAL_REVIEW_UNITS, 1, 1e-9)
+    assertion = ScenarioAssertion(
+        AssertionClass.INVARIANT,
+        AssertionType.RATIO_TO_CONTROL_LTE,
+        AssertionScope.COMPARISON,
+        ScenarioMetric.TOTAL_REVIEW_UNITS,
+        1,
+        1e-9,
+        "ratio requires a non-zero control",
+    )
     result = evaluate_assertion(assertion, observed=0, control_value=0)
     assert not result.passed
     assert "undefined" in result.detail
+
+
+def test_non_applicable_regression_has_explicit_status():
+    result = evaluate_assertion(a(AssertionType.EQUALS, 999), observed=1, applicable=False)
+    assert result.status is AssertionStatus.NOT_APPLICABLE
+    assert result.passed is False
+    assert result.failed is False

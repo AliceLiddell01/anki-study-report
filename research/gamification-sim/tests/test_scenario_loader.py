@@ -10,7 +10,7 @@ from gamification_sim.scenario_loader import ScenarioDomainError, load_corpus, l
 
 def payload(sid="valid-scenario", category="ordinary"):
     return {
-        "scenario_version": "review-scenario-v0.1",
+        "scenario_version": "review-scenario-v0.2",
         "scenario_id": sid,
         "title": sid,
         "category": category,
@@ -81,7 +81,7 @@ def test_strict_integer_contract_reaches_repeat_loader(tmp_path):
 
 
 def test_invalid_assertion_cross_fields(tmp_path):
-    p = payload(); p["assertions"] = [{"type":"equals","scope":"day","metric":"total_review_units","expected":0}]
+    p = payload(); p["assertions"] = [{"class":"invariant","rationale":"day must exist","type":"equals","scope":"day","metric":"total_review_units","expected":0}]
     with pytest.raises(ScenarioDomainError, match="existing anki_day"):
         load_scenario(write(tmp_path / "s.json", p))
 
@@ -104,6 +104,8 @@ def test_comparison_assertion_without_top_level_control_is_rejected(tmp_path):
     scenario = payload("comparison-without-control")
     scenario["assertions"] = [
         {
+            "class": "invariant",
+            "rationale": "comparison requires a resolved control",
             "type": "equals_control",
             "scope": "comparison",
             "metric": "total_review_units",

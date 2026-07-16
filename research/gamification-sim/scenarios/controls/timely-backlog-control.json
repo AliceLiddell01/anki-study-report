@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "timely-backlog-control",
   "title": "Timely review matched control",
   "category": "control",
@@ -25,7 +25,7 @@
                 "confidence": "high",
                 "retrievability_actual": 0.9,
                 "retrievability_natural_due": 0.9,
-                "stability_before": 1.0,
+                "stability_before": 1,
                 "stability_good_counterfactual": 1.5168967963882134
               }
             }
@@ -36,10 +36,15 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 1.0
+      "expected": 1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

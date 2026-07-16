@@ -4,6 +4,7 @@ import math
 
 from .scenario_models import (
     AssertionResult,
+    AssertionStatus,
     AssertionType,
     ScenarioAssertion,
 )
@@ -15,7 +16,16 @@ def evaluate_assertion(
     *,
     observed: float,
     control_value: float | None = None,
+    applicable: bool = True,
 ) -> AssertionResult:
+    if not applicable:
+        return AssertionResult(
+            assertion,
+            AssertionStatus.NOT_APPLICABLE,
+            None,
+            None,
+            "regression assertion does not apply to this parameter set",
+        )
     kind = assertion.type
     expected = assertion.expected
     tolerance = assertion.tolerance
@@ -36,7 +46,7 @@ def evaluate_assertion(
         passed = observed >= expected
     else:
         if control_value is None:
-            return AssertionResult(assertion, False, None, None, "control value is unavailable")
+            return AssertionResult(assertion, AssertionStatus.FAILED, None, None, "control value is unavailable")
         if kind is AssertionType.EQUALS_CONTROL:
             compared = observed - control_value
             passed = close(observed, control_value, tolerance)
@@ -52,17 +62,18 @@ def evaluate_assertion(
             if close(control_value, 0.0):
                 return AssertionResult(
                     assertion,
-                    False,
+                    AssertionStatus.FAILED,
                     None,
                     control_value,
                     "ratio is undefined because the control value is zero",
                 )
             compared = observed / control_value
             if not math.isfinite(compared):
-                return AssertionResult(assertion, False, None, control_value, "ratio is not finite")
+                return AssertionResult(assertion, AssertionStatus.FAILED, None, control_value, "ratio is not finite")
             passed = (compared <= expected or close(compared, expected, tolerance)) if kind is AssertionType.RATIO_TO_CONTROL_LTE else (compared >= expected or close(compared, expected, tolerance))
             detail = f"ratio={compared}"
 
     if not detail:
         detail = f"observed={compared}, expected={expected}"
-    return AssertionResult(assertion, passed, compared, control_value, detail)
+    status = AssertionStatus.PASSED if passed else AssertionStatus.FAILED
+    return AssertionResult(assertion, status, compared, control_value, detail)

@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "high-volume-day",
   "title": "High-volume honest review day",
   "category": "ordinary",
@@ -28,22 +28,37 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "core_baseline",
-      "expected": 90.0
+      "expected": 90,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "volume_credit",
-      "expected": 6.75
+      "expected": 6.75,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 106.75
+      "expected": 106.75,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

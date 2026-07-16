@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "late-recomputation",
   "title": "Derived late recomputation remains deterministic",
   "category": "edge",
@@ -44,24 +44,39 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "day",
       "metric": "total_review_units",
-      "expected": 10.0,
-      "anki_day": "2026-02-04"
+      "expected": 10,
+      "anki_day": "2026-02-04",
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "day",
       "metric": "total_review_units",
       "expected": 31.982,
-      "anki_day": "2026-02-05"
+      "anki_day": "2026-02-05",
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 41.982
+      "expected": 41.982,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

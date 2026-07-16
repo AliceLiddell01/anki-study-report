@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "interday-recovery-only",
   "title": "Interday recovery-only support day",
   "category": "edge",
@@ -38,16 +38,26 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "support",
-      "expected": 0.36
+      "expected": 0.36,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 0.36
+      "expected": 0.36,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

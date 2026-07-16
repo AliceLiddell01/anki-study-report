@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "mixed-success-and-lapses",
   "title": "Mixed successful reviews and lapses",
   "category": "ordinary",
@@ -75,28 +75,42 @@
   ],
   "assertions": [
     {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
       "type": "equals",
       "scope": "scenario",
       "metric": "successful_core_episodes",
-      "expected": 8.0
+      "expected": 8
     },
     {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
       "type": "equals",
       "scope": "scenario",
       "metric": "failed_core_episodes",
-      "expected": 2.0
+      "expected": 2
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "support",
-      "expected": 0.24
+      "expected": 0.24,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 8.74
+      "expected": 8.74,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

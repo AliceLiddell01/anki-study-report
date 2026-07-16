@@ -238,7 +238,7 @@ research/gamification-sim/
 
 Реализованы:
 
-1. локальная JSON Schema Draft 2020-12 `review-scenario-v0.1`;
+1. локальная JSON Schema Draft 2020-12 `review-scenario-v0.2` с явным разделением invariant/regression assertions;
 2. strict UTF-8 JSON loader с запретом BOM, duplicate keys, `NaN` и infinities;
 3. schema validation через `Draft202012Validator.check_schema()` и `iter_errors()`;
 4. отдельная domain validation для версий, порядка дней, уникальности и controls;

@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "core-formula-regression",
   "title": "Core formula regression smoke",
   "category": "regression",
@@ -35,22 +35,37 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "core_baseline",
-      "expected": 1.15
+      "expected": 1.15,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "core_context",
-      "expected": 0.1
+      "expected": 0.1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 1.25
+      "expected": 1.25,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

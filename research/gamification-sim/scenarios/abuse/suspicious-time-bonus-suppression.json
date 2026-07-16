@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "suspicious-time-bonus-suppression",
   "title": "Suspicious response time suppresses bonus only",
   "category": "abuse",
@@ -21,7 +21,7 @@
               "card_lineage": "time-card",
               "anki_day": "2026-01-06",
               "outcome": "good",
-              "response_validity": 0.0
+              "response_validity": 0
             }
           ]
         }
@@ -30,22 +30,34 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "ratio_to_control_lte",
       "scope": "comparison",
       "metric": "total_review_units",
-      "expected": 0.9
+      "expected": 0.9,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "core_baseline",
-      "expected": 0.9
+      "expected": 0.9,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "core_context",
-      "expected": 0.0
+      "expected": 0
     }
   ],
   "control_scenario_id": "normal-time-control",

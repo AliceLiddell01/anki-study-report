@@ -13,7 +13,7 @@ class ScenarioSchemaError(ValueError):
 
 
 def default_schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "schemas" / "review-scenario-v0.1.schema.json"
+    return Path(__file__).resolve().parents[2] / "schemas" / "review-scenario-v0.2.schema.json"
 
 
 def format_json_path(parts: list[Any]) -> str:

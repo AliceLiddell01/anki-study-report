@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "relearning-loop",
   "title": "Relearning loop remains episode-capped",
   "category": "abuse",
@@ -91,16 +91,23 @@
   ],
   "assertions": [
     {
+      "class": "invariant",
+      "rationale": "Matched abuse/control safety bound is independent of the candidate coefficient values.",
       "type": "ratio_to_control_lte",
       "scope": "comparison",
       "metric": "total_review_units",
-      "expected": 1.0
+      "expected": 1
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "support",
-      "expected": 0.12
+      "expected": 0.12,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ],
   "control_scenario_id": "relearning-loop-control",

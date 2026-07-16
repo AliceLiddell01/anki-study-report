@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "undo-with-support",
   "title": "Undo reverses core and linked support",
   "category": "edge",
@@ -38,16 +38,20 @@
   ],
   "assertions": [
     {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
       "type": "equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 0.0
+      "expected": 0
     },
     {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
       "type": "equals",
       "scope": "scenario",
       "metric": "support",
-      "expected": 0.0
+      "expected": 0
     }
   ]
 }

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .breakdown import to_dict
 from .scenario_models import CorpusRunResult
+from .scenario_models import AssertionStatus
 
 
 def report_payload(result: CorpusRunResult) -> dict:
@@ -17,12 +18,20 @@ def report_payload(result: CorpusRunResult) -> dict:
         }
         for scenario in result.scenario_results
         for assertion in scenario.assertions
-        if not assertion.passed
+        if assertion.status is AssertionStatus.FAILED
     ]
     payload["corpus_summary"] = {
         "scenario_count": len(result.scenario_results),
         "passed": passed,
         "failed": len(result.scenario_results) - passed,
+        "assertions": {
+            status.value: sum(
+                assertion.status is status
+                for scenario in result.scenario_results
+                for assertion in scenario.assertions
+            )
+            for status in AssertionStatus
+        },
     }
     payload["failures"] = failures
     return payload
@@ -51,6 +60,9 @@ def render_markdown_report(result: CorpusRunResult) -> str:
         f"- Scenarios: **{len(result.scenario_results)}**",
         f"- Passed: **{passed}**",
         f"- Failed: **{failed}**",
+        f"- Assertions passed: **{sum(a.status is AssertionStatus.PASSED for s in result.scenario_results for a in s.assertions)}**",
+        f"- Assertions failed: **{sum(a.status is AssertionStatus.FAILED for s in result.scenario_results for a in s.assertions)}**",
+        f"- Assertions not applicable: **{sum(a.status is AssertionStatus.NOT_APPLICABLE for s in result.scenario_results for a in s.assertions)}**",
         f"- Input digest: `{result.manifest.input_digest}`",
         f"- Output digest: `{result.manifest.output_digest}`",
         "",
@@ -71,7 +83,7 @@ def render_markdown_report(result: CorpusRunResult) -> str:
         (scenario.scenario_id, assertion.detail)
         for scenario in result.scenario_results
         for assertion in scenario.assertions
-        if not assertion.passed
+        if assertion.status is AssertionStatus.FAILED
     ]
     lines.extend(["", "## Failed assertions", ""])
     if failures:

@@ -2,7 +2,7 @@
 
 Status: **research implementation through Stage 5B.2**  
 Rule version: **`review-v0.1`**  
-Scenario schema: **`review-scenario-v0.1`**
+Scenario schema: **`review-scenario-v0.2`** (`v0.1` retained as superseded history)
 
 This package is an isolated executable model of the candidate Review XP design documented by Anki Study Report. Stage 5B.1 provides the pure deterministic episode/day calculation core. Stage 5B.2 adds a strict, reproducible multi-day scenario runner around that core without changing any reward formula.
 
@@ -25,7 +25,7 @@ The package is not part of the Anki add-on. It does not import `anki_study_repor
 
 ### Stage 5B.2 — deterministic scenario runner
 
-- Draft 2020-12 schema: `schemas/review-scenario-v0.1.schema.json`;
+- Draft 2020-12 schema: `schemas/review-scenario-v0.2.schema.json`;
 - strict UTF-8 JSON loading with duplicate-key, BOM, non-standard-number, empty-file, and size checks;
 - schema validation through `Draft202012Validator.check_schema()` and deterministic `iter_errors()` output;
 - immutable typed scenario, assertion, comparison, manifest, and result models;
@@ -67,7 +67,8 @@ research/gamification-sim/
 ├── fixtures/
 │   └── golden_cases.json
 ├── schemas/
-│   └── review-scenario-v0.1.schema.json
+│   ├── review-scenario-v0.1.schema.json  # superseded strict contract
+│   └── review-scenario-v0.2.schema.json  # explicit assertion taxonomy
 ├── scenarios/
 │   ├── ordinary/
 │   ├── edge/
@@ -214,6 +215,13 @@ json.dumps(
 ```
 
 ## Assertions
+
+Every v0.2 assertion declares `class` and a human-readable `rationale`.
+Candidate-independent `invariant` assertions execute for every parameter set.
+Exact numeric `regression` assertions declare
+`applies_to_parameter_set_ids`; a non-matching run records
+`NOT_APPLICABLE`, which is neither pass evidence nor a failure. Reports count
+`PASSED`, `FAILED`, and `NOT_APPLICABLE` separately.
 
 No expression language is provided. Supported assertion types are:
 

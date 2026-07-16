@@ -8,6 +8,7 @@ from .input_parsing import day_from_dict, episode_from_dict
 from .manifest import SCENARIO_SCHEMA_VERSION
 from .parameters import CURRENT_PARAMETERS
 from .scenario_models import (
+    AssertionClass,
     AssertionScope,
     AssertionType,
     ScenarioAssertion,
@@ -44,11 +45,14 @@ def _expand_session(day_value: str, session: dict[str, Any]) -> tuple[dict[str, 
 
 def _parse_assertion(data: dict[str, Any]) -> ScenarioAssertion:
     return ScenarioAssertion(
+        assertion_class=AssertionClass(data["class"]),
         type=AssertionType(data["type"]),
         scope=AssertionScope(data["scope"]),
         metric=ScenarioMetric(data["metric"]),
         expected=float(data["expected"]),
         tolerance=float(data.get("tolerance", TOLERANCE)),
+        rationale=data["rationale"],
+        applies_to_parameter_set_ids=tuple(data.get("applies_to_parameter_set_ids", ())),
         anki_day=data.get("anki_day"),
     )
 
@@ -158,6 +162,15 @@ def validate_definition(definition: ScenarioDefinition) -> None:
 
     known_days = set(day_values)
     for assertion in definition.assertions:
+        if assertion.assertion_class is AssertionClass.REGRESSION:
+            if not assertion.applies_to_parameter_set_ids:
+                raise ScenarioDomainError(
+                    f"{definition.scenario_id}: regression assertion requires applies_to_parameter_set_ids"
+                )
+        elif assertion.applies_to_parameter_set_ids:
+            raise ScenarioDomainError(
+                f"{definition.scenario_id}: invariant assertion cannot declare applicability"
+            )
         if assertion.scope is AssertionScope.DAY:
             if assertion.anki_day not in known_days:
                 raise ScenarioDomainError(

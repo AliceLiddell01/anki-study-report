@@ -15,6 +15,7 @@ from gamification_sim.parameters import CURRENT_PARAMETERS
 from gamification_sim.strict_json import StrictJsonError
 from gamification_sim.sweep import (
     SENSITIVITY_GRIDS,
+    evaluate_candidate,
     load_sweep_config,
     run_sensitivity,
     run_sweep,
@@ -94,6 +95,12 @@ def test_sequential_sweep_is_bounded_deterministic_and_pareto_only(sweep_payload
     assert by_id["R-CURRENT"]["hard_gate_pass"] is True
     assert all(by_id[item]["hard_gate_pass"] for item in sweep_payload["pareto"]["candidate_ids"])
     assert all(item["rejection_reason_codes"] for item in sweep_payload["candidates"] if not item["hard_gate_pass"])
+
+
+def test_current_only_regressions_do_not_reject_alternative_candidate():
+    config = load_sweep_config(CONFIG, ROOT)
+    evaluation = evaluate_candidate(parameter_candidate("R-NO-GAIN"), config, ROOT)
+    assert "SCENARIO_ASSERTION_FAILURE" not in evaluation.rejection_reason_codes
 
 
 def test_sweep_writes_complete_gitignored_report_set(tmp_path, sweep_payload):

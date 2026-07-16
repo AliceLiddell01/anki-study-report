@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 import gamification_sim.scenario_runner as runner
+from gamification_sim.parameter_catalog import PARAMETER_CANDIDATES, parameter_candidate
+from gamification_sim.parameters import CURRENT_PARAMETERS
 from gamification_sim.scenario_loader import load_corpus, load_scenario
+from gamification_sim.scenario_models import AssertionClass, AssertionStatus
 from gamification_sim.scenario_runner import run_corpus, run_scenario
 from gamification_sim.validation import close
 
@@ -46,6 +50,55 @@ def test_corpus_all_assertions_pass():
     result = run_corpus(ROOT / "scenarios")
     assert result.passed
     assert len(result.scenario_results) == 26
+
+
+def test_all_migrated_assertions_have_explicit_taxonomy_and_rationale():
+    assertions = [
+        assertion
+        for definition in load_corpus(ROOT / "scenarios")
+        for assertion in definition.assertions
+    ]
+    assert len(assertions) == 53
+    assert sum(a.assertion_class is AssertionClass.INVARIANT for a in assertions) == 17
+    assert sum(a.assertion_class is AssertionClass.REGRESSION for a in assertions) == 36
+    assert all(a.rationale for a in assertions)
+
+
+def test_invariant_assertions_run_for_every_catalog_candidate():
+    definition = load_scenario(ROOT / "scenarios/edge/undo-with-support.json")
+    for candidate in PARAMETER_CANDIDATES:
+        result = run_scenario(
+            definition,
+            params=candidate.parameters,
+            parameter_set_id=candidate.parameter_set_id,
+        )
+        invariant_results = [
+            item for item in result.assertions
+            if item.assertion.assertion_class is AssertionClass.INVARIANT
+        ]
+        assert invariant_results
+        assert all(item.status is AssertionStatus.PASSED for item in invariant_results)
+
+
+def test_regression_assertion_applies_only_to_matching_parameter_set():
+    definition = load_scenario(ROOT / "scenarios/regression/core-formula-regression.json")
+    current = run_scenario(definition, parameter_set_id="R-CURRENT")
+    alternative = parameter_candidate("R-NO-GAIN")
+    changed = run_scenario(
+        definition,
+        params=alternative.parameters,
+        parameter_set_id=alternative.parameter_set_id,
+    )
+    assert all(item.status is AssertionStatus.PASSED for item in current.assertions)
+    assert all(item.status is AssertionStatus.NOT_APPLICABLE for item in changed.assertions)
+    assert changed.passed
+
+
+def test_current_regression_catches_changed_current_formula():
+    definition = load_scenario(ROOT / "scenarios/regression/core-formula-regression.json")
+    changed = replace(CURRENT_PARAMETERS, neutral_context_credit=0.2)
+    result = run_scenario(definition, params=changed, parameter_set_id="R-CURRENT")
+    assert any(item.status is AssertionStatus.FAILED for item in result.assertions)
 
 
 def test_repeated_run_digest_equality():

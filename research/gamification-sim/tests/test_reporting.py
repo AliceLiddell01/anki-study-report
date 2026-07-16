@@ -18,7 +18,12 @@ def test_json_report_is_valid_and_contains_digests():
     assert payload["manifest"]["input_digest"]
     assert payload["manifest"]["output_digest"]
     assert payload["manifest"]["output_digest_contract"] == "detached-corpus-result-v1"
-    assert payload["corpus_summary"] == {"scenario_count": 26, "passed": 26, "failed": 0}
+    assert payload["corpus_summary"] == {
+        "scenario_count": 26,
+        "passed": 26,
+        "failed": 0,
+        "assertions": {"PASSED": 53, "FAILED": 0, "NOT_APPLICABLE": 0},
+    }
     assert payload["failures"] == []
 
 

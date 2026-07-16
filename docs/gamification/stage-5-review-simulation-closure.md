@@ -6,7 +6,13 @@
 
 ## Status
 
-**COMPLETE**
+**PARTIAL — calibration methodology correction in progress**
+
+The initial closure result was superseded by Stage 5B.C because the first sweep
+mixed current-model regression assertions with candidate-independent gates and
+used placeholder metrics. Исторические результаты ниже сохранены как evidence
+первого прогона, но shortlist и вывод `COMPLETE` не являются актуальной
+калибровкой до прохождения gates C1–C6.
 
 Все обязательные research gates `H`, `P`, `G`, `M`, `R` и `F` выполнены.
 Статус не означает production readiness, утверждение финальной экономики или
@@ -21,9 +27,10 @@
 | 5B.1 hardening | COMPLETE |
 | 5B.2 — Scenario Runner | COMPLETE |
 | 5B.2H — Contract Hardening | COMPLETE |
-| 5B.3 — Parameter Sweep | COMPLETE |
-| 5B.4 — Property-based Verification | COMPLETE |
-| 5B.5 — Synthetic Population | COMPLETE |
+| 5B.3 — Initial Parameter Sweep | SUPERSEDED |
+| 5B.4 — Initial Property-based Verification | SUPERSEDED |
+| 5B.5 — Independent-day Workload Stress | COMPLETE (not longitudinal evidence) |
+| 5B.C — Calibration Correction | IN PROGRESS |
 | 5B.6 — Rust Oracle | COMPLETE |
 | 5B.7 — FSRS Reference | COMPLETE |
 

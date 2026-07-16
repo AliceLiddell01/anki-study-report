@@ -261,10 +261,11 @@ def _hard_invariants(
     days = [day.breakdown for item in result.scenario_results for day in item.day_results]
     probes = _probe_invariants(params)
     session = by_id["session-invariance"]
+    session_totals = [day.breakdown.total for day in session.day_results]
     duplicate_delta = _total(by_id, "duplicate-replay") - _total(by_id, "duplicate-replay-control")
     invariants = {
         **probes,
-        "H05": session.passed,
+        "H05": len(session_totals) == 2 and close(session_totals[0], session_totals[1]),
         "H11": all(
             day.capped_support <= day.support_cap + 1e-9
             and day.capped_support <= params.support_day_cap + 1e-9
@@ -355,7 +356,11 @@ def _metrics(result: CorpusRunResult, package_root: Path, params: RewardParamete
     relearn_control = _total(by_id, "relearning-loop-control")
     relearn = _total(by_id, "relearning-loop")
     preview = _total(by_id, "preview-only-farming")
-    scenario_failures = sum(not assertion.passed for item in result.scenario_results for assertion in item.assertions)
+    scenario_failures = sum(
+        assertion.failed
+        for item in result.scenario_results
+        for assertion in item.assertions
+    )
     breakdown_mismatches = sum(
         not close(
             day.total,
@@ -431,8 +436,18 @@ def evaluate_candidate(
     config: SweepConfig,
     package_root: Path,
 ) -> CandidateEvaluation:
-    result = run_corpus(config.corpus_root, command="run-sweep", params=candidate.parameters)
-    repeated = run_corpus(config.corpus_root, command="run-sweep", params=candidate.parameters)
+    result = run_corpus(
+        config.corpus_root,
+        command="run-sweep",
+        params=candidate.parameters,
+        parameter_set_id=candidate.parameter_set_id,
+    )
+    repeated = run_corpus(
+        config.corpus_root,
+        command="run-sweep",
+        params=candidate.parameters,
+        parameter_set_id=candidate.parameter_set_id,
+    )
     invariants = _hard_invariants(result, repeated, candidate.parameters)
     reasons = [f"INVARIANT_{name}" for name, passed in invariants if not passed]
     if any(not item.passed for item in result.scenario_results):
@@ -677,7 +692,12 @@ def run_sensitivity(
         )
         for value in values:
             params = _sensitivity_variant(base.parameters, name, value)
-            result = run_corpus(config.corpus_root, command="run-sensitivity", params=params)
+            result = run_corpus(
+                config.corpus_root,
+                command="run-sensitivity",
+                params=params,
+                parameter_set_id=f"SENSITIVITY-{name.upper().replace('_', '-')}-{value:g}",
+            )
             metrics = _metrics(result, package_root, params)
             delta = metrics["median_successful_core_reward"] - base_metrics["median_successful_core_reward"]
             normalized = 0.0 if close(value, base_value) else delta / (value - base_value)

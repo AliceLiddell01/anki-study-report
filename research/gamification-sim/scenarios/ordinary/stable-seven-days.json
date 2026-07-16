@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "stable-seven-days",
   "title": "Stable seven-day review routine",
   "category": "ordinary",
@@ -125,22 +125,34 @@
   ],
   "assertions": [
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 70.0
+      "expected": 70,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     },
     {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
       "type": "equals",
       "scope": "scenario",
       "metric": "unique_core_episodes",
-      "expected": 70.0
+      "expected": 70
     },
     {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
       "type": "approximately_equals",
       "scope": "scenario",
       "metric": "bonus_share",
-      "expected": 0.1
+      "expected": 0.1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
     }
   ]
 }

@@ -12,7 +12,7 @@ from gamification_sim.strict_json import load_strict_json
 
 def valid_payload():
     return {
-        "scenario_version": "review-scenario-v0.1",
+        "scenario_version": "review-scenario-v0.2",
         "scenario_id": "schema-smoke",
         "title": "Schema smoke",
         "category": "ordinary",
@@ -56,7 +56,7 @@ def test_invalid_integer_and_boolean():
 
 def test_invalid_assertion_operator():
     payload = valid_payload()
-    payload["assertions"] = [{"type": "eval", "scope": "scenario", "metric": "total_review_units", "expected": 0}]
+    payload["assertions"] = [{"class": "invariant", "rationale": "semantic safety property", "type": "eval", "scope": "scenario", "metric": "total_review_units", "expected": 0}]
     assert_invalid(payload)
 
 
@@ -64,6 +64,8 @@ def test_assertion_level_control_reference_is_rejected():
     payload = valid_payload()
     payload["assertions"] = [
         {
+            "class": "invariant",
+            "rationale": "control relationship is semantic",
             "type": "equals_control",
             "scope": "comparison",
             "metric": "total_review_units",
@@ -72,6 +74,30 @@ def test_assertion_level_control_reference_is_rejected():
         }
     ]
     assert_invalid(payload, "Additional properties")
+
+
+def test_unknown_assertion_class_is_rejected():
+    payload = valid_payload()
+    payload["assertions"] = [{"class": "magic", "rationale": "invalid class", "type": "equals", "scope": "scenario", "metric": "total_review_units", "expected": 0}]
+    assert_invalid(payload, "magic")
+
+
+def test_regression_requires_explicit_applicability():
+    payload = valid_payload()
+    payload["assertions"] = [{"class": "regression", "rationale": "exact current value", "type": "equals", "scope": "scenario", "metric": "total_review_units", "expected": 0}]
+    assert_invalid(payload, "applies_to_parameter_set_ids")
+
+
+def test_invariant_rejects_applicability():
+    payload = valid_payload()
+    payload["assertions"] = [{"class": "invariant", "rationale": "semantic property", "applies_to_parameter_set_ids": ["R-CURRENT"], "type": "equals", "scope": "scenario", "metric": "total_review_units", "expected": 0}]
+    assert_invalid(payload)
+
+
+def test_v01_contract_is_rejected_with_version_message():
+    payload = valid_payload()
+    payload["scenario_version"] = "review-scenario-v0.1"
+    assert_invalid(payload, "review-scenario-v0.2")
 
 
 def test_schema_error_order_is_deterministic():

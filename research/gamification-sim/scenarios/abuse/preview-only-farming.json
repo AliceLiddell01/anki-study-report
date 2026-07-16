@@ -1,5 +1,5 @@
 {
-  "scenario_version": "review-scenario-v0.1",
+  "scenario_version": "review-scenario-v0.2",
   "scenario_id": "preview-only-farming",
   "title": "Preview-only activity earns no permanent review reward",
   "category": "abuse",
@@ -31,16 +31,20 @@
   ],
   "assertions": [
     {
+      "class": "invariant",
+      "rationale": "Matched abuse/control safety bound is independent of the candidate coefficient values.",
       "type": "ratio_to_control_lte",
       "scope": "comparison",
       "metric": "total_review_units",
-      "expected": 0.0
+      "expected": 0
     },
     {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
       "type": "equals",
       "scope": "scenario",
       "metric": "total_review_units",
-      "expected": 0.0
+      "expected": 0
     }
   ],
   "control_scenario_id": "preview-farming-control",

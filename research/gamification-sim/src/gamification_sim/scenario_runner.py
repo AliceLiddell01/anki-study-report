@@ -16,6 +16,7 @@ from .models import Outcome, ReviewDayBreakdown
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
 from .scenario_loader import load_corpus
 from .scenario_models import (
+    AssertionClass,
     AssertionScope,
     CorpusRunResult,
     RunManifest,
@@ -103,6 +104,7 @@ def run_scenario(
     definition: ScenarioDefinition,
     *,
     params: RewardParameterSet = CURRENT_PARAMETERS,
+    parameter_set_id: str = "R-CURRENT",
     control_definition: ScenarioDefinition | None = None,
     control_result: ScenarioRunResult | None = None,
 ) -> ScenarioRunResult:
@@ -141,6 +143,13 @@ def run_scenario(
     for assertion in definition.assertions:
         if assertion.type.requires_control:
             continue
+        applicable = (
+            assertion.assertion_class is AssertionClass.INVARIANT
+            or parameter_set_id in assertion.applies_to_parameter_set_ids
+        )
+        if not applicable:
+            assertion_results.append(evaluate_assertion(assertion, observed=0.0, applicable=False))
+            continue
         observed = _value_for_assertion(definition, frozen_days, scenario_metrics, assertion)
         assertion_results.append(evaluate_assertion(assertion, observed=observed))
 
@@ -168,6 +177,13 @@ def run_scenario(
         control_metrics = dict(control_result.metrics)
         for assertion in definition.assertions:
             if not assertion.type.requires_control:
+                continue
+            applicable = (
+                assertion.assertion_class is AssertionClass.INVARIANT
+                or parameter_set_id in assertion.applies_to_parameter_set_ids
+            )
+            if not applicable:
+                assertion_results.append(evaluate_assertion(assertion, observed=0.0, applicable=False))
                 continue
             observed = _value_for_assertion(definition, frozen_days, scenario_metrics, assertion)
             assertion_results.append(
@@ -209,6 +225,7 @@ def run_definitions(
     *,
     command: str,
     params: RewardParameterSet = CURRENT_PARAMETERS,
+    parameter_set_id: str = "R-CURRENT",
 ) -> CorpusRunResult:
     by_id = {item.scenario_id: item for item in definitions}
     input_digest = canonical_digest(
@@ -228,6 +245,7 @@ def run_definitions(
         result = run_scenario(
             definition,
             params=params,
+            parameter_set_id=parameter_set_id,
             control_definition=control_definition,
             control_result=control_result,
         )
@@ -238,6 +256,7 @@ def run_definitions(
     manifest = RunManifest(
         simulator_version=SIMULATOR_VERSION,
         rule_version=params.rule_version,
+        parameter_set_id=parameter_set_id,
         scenario_schema_version=SCENARIO_SCHEMA_VERSION,
         python_version=python_major_minor(),
         scenario_ids=tuple(item.scenario_id for item in ordered_results),
@@ -256,5 +275,11 @@ def run_corpus(
     *,
     command: str = "run-scenarios",
     params: RewardParameterSet = CURRENT_PARAMETERS,
+    parameter_set_id: str = "R-CURRENT",
 ) -> CorpusRunResult:
-    return run_definitions(load_corpus(root), command=command, params=params)
+    return run_definitions(
+        load_corpus(root),
+        command=command,
+        params=params,
+        parameter_set_id=parameter_set_id,
+    )
