@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "environmentVersion": "env-v1",
+  "imageName": "ghcr.io/aliceliddell01/anki-study-report-e2e",
+  "platform": "linux/amd64",
+  "playwrightImage": "mcr.microsoft.com/playwright:v1.55.1-noble",
+  "playwrightBaseDigest": "sha256:2f29369043d81d6d69a815ceb80760f55e85f5020371ad06a4d996f18503ad1c",
+  "playwrightVersion": "1.55.1",
+  "ankiVersion": "26.05",
+  "ankiArchiveSha256": "6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274",
+  "ankiPythonPackage": "anki==26.5",
+  "pnpmVersion": "9.15.9"
+}
