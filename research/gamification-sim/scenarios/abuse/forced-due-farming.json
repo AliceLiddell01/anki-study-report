@@ -1,0 +1,49 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "forced-due-farming",
+  "title": "Forced-due-only activity cannot form a reward day",
+  "category": "abuse",
+  "rule_version": "review-v0.1",
+  "description": "Forced-due-only activity cannot form a reward day",
+  "tags": [
+    "abuse",
+    "matched-control"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-04",
+      "sessions": [
+        {
+          "session_id": "forced",
+          "episodes": [
+            {
+              "source_event_key": "forced-abuse",
+              "card_lineage": "forced-card",
+              "anki_day": "2026-01-04",
+              "outcome": "good",
+              "due_relation": "forced_due",
+              "forced_due": true,
+              "supplemental_units": 0.2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "ratio_to_control_lte",
+      "scope": "comparison",
+      "metric": "total_review_units",
+      "expected": 0.0
+    },
+    {
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0.0
+    }
+  ],
+  "control_scenario_id": "forced-due-control",
+  "comparison_basis": "same-core-opportunities"
+}

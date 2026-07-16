@@ -1,0 +1,52 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "duplicate-replay",
+  "title": "Duplicate replay cannot add reward",
+  "category": "abuse",
+  "rule_version": "review-v0.1",
+  "description": "Duplicate replay cannot add reward",
+  "tags": [
+    "abuse",
+    "matched-control"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-01",
+      "sessions": [
+        {
+          "session_id": "replay",
+          "episodes": [
+            {
+              "source_event_key": "dup-abuse",
+              "card_lineage": "dup-card",
+              "anki_day": "2026-01-01",
+              "outcome": "good"
+            },
+            {
+              "source_event_key": "dup-abuse",
+              "card_lineage": "dup-card",
+              "anki_day": "2026-01-01",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "ratio_to_control_lte",
+      "scope": "comparison",
+      "metric": "total_review_units",
+      "expected": 1.0
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1.0
+    }
+  ],
+  "control_scenario_id": "duplicate-replay-control",
+  "comparison_basis": "same-core-opportunities"
+}

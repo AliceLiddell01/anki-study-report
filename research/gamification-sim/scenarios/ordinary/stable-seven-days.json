@@ -1,0 +1,146 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "stable-seven-days",
+  "title": "Stable seven-day review routine",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "Stable seven-day review routine",
+  "tags": [
+    "ordinary",
+    "multi-day"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-07-10",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-0-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-11",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-1-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-12",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-2-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-13",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-3-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-14",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-4-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-15",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-5-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-07-16",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "stable-6-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 70.0
+    },
+    {
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "unique_core_episodes",
+      "expected": 70.0
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "bonus_share",
+      "expected": 0.1
+    }
+  ]
+}

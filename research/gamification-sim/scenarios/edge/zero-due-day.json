@@ -1,0 +1,43 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "zero-due-day",
+  "title": "Neutral day with no due reviews",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Neutral day with no due reviews",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-02-01",
+      "sessions": [
+        {
+          "session_id": "empty",
+          "episodes": []
+        }
+      ],
+      "workload": {
+        "status": "zero_due",
+        "natural_due_at_start": 0,
+        "due_visible_under_limits": 0,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0.0
+    },
+    {
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "bonus_share",
+      "expected": 0.0
+    }
+  ]
+}

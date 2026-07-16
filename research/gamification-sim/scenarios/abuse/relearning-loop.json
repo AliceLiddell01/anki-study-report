@@ -1,0 +1,108 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "relearning-loop",
+  "title": "Relearning loop remains episode-capped",
+  "category": "abuse",
+  "rule_version": "review-v0.1",
+  "description": "Relearning loop remains episode-capped",
+  "tags": [
+    "abuse",
+    "matched-control"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-02",
+      "sessions": [
+        {
+          "session_id": "loop",
+          "episodes": [
+            {
+              "source_event_key": "lapse-abuse",
+              "card_lineage": "lapse-card",
+              "anki_day": "2026-01-02",
+              "outcome": "again"
+            }
+          ]
+        }
+      ],
+      "support_events": [
+        {
+          "source_event_key": "loop-s0",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "loop-s1",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "loop-s2",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "completion"
+        },
+        {
+          "source_event_key": "loop-s3",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "loop-s4",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "loop-s5",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "completion"
+        },
+        {
+          "source_event_key": "loop-s6",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "loop-s7",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "loop-s8",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "completion"
+        },
+        {
+          "source_event_key": "loop-s9",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "loop-s10",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "loop-s11",
+          "parent_episode_key": "lapse-abuse",
+          "kind": "completion"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "ratio_to_control_lte",
+      "scope": "comparison",
+      "metric": "total_review_units",
+      "expected": 1.0
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "support",
+      "expected": 0.12
+    }
+  ],
+  "control_scenario_id": "relearning-loop-control",
+  "comparison_basis": "same-core-opportunities"
+}

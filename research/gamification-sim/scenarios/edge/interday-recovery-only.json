@@ -1,0 +1,53 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "interday-recovery-only",
+  "title": "Interday recovery-only support day",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Interday recovery-only support day",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-02-06",
+      "sessions": [
+        {
+          "session_id": "recovery",
+          "episodes": []
+        }
+      ],
+      "support_events": [
+        {
+          "source_event_key": "interday-0",
+          "parent_episode_key": "previous-0",
+          "kind": "interday_recovery"
+        },
+        {
+          "source_event_key": "interday-1",
+          "parent_episode_key": "previous-1",
+          "kind": "interday_recovery"
+        },
+        {
+          "source_event_key": "interday-2",
+          "parent_episode_key": "previous-2",
+          "kind": "interday_recovery"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "support",
+      "expected": 0.36
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0.36
+    }
+  ]
+}

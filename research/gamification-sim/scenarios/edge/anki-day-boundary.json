@@ -1,0 +1,53 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "anki-day-boundary",
+  "title": "Events around an Anki day boundary",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Events around an Anki day boundary",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-03-31",
+      "sessions": [
+        {
+          "session_id": "late-night",
+          "episodes": [
+            {
+              "source_event_key": "boundary-before",
+              "card_lineage": "card-boundary-before",
+              "anki_day": "2026-03-31",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-04-01",
+      "sessions": [
+        {
+          "session_id": "after-boundary",
+          "episodes": [
+            {
+              "source_event_key": "boundary-after",
+              "card_lineage": "card-boundary-after",
+              "anki_day": "2026-04-01",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 2.0
+    }
+  ]
+}

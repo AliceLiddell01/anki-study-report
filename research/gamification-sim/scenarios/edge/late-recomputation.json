@@ -1,0 +1,67 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "late-recomputation",
+  "title": "Derived late recomputation remains deterministic",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Derived late recomputation remains deterministic",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-02-04",
+      "sessions": [
+        {
+          "session_id": "initial",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "late-initial-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-02-05",
+      "sessions": [
+        {
+          "session_id": "expanded",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 31,
+              "prefix": "late-expanded-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "day",
+      "metric": "total_review_units",
+      "expected": 10.0,
+      "anki_day": "2026-02-04"
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "day",
+      "metric": "total_review_units",
+      "expected": 31.982,
+      "anki_day": "2026-02-05"
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 41.982
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "normal-time-control",
+  "title": "Normal response validity control",
+  "category": "control",
+  "rule_version": "review-v0.1",
+  "description": "Normal response validity control",
+  "tags": [
+    "control",
+    "matched"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-06",
+      "sessions": [
+        {
+          "session_id": "normal",
+          "episodes": [
+            {
+              "source_event_key": "time-control",
+              "card_lineage": "time-card",
+              "anki_day": "2026-01-06",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1.0
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "timely-backlog-control",
+  "title": "Timely review matched control",
+  "category": "control",
+  "rule_version": "review-v0.1",
+  "description": "Timely review matched control",
+  "tags": [
+    "control",
+    "matched"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-05",
+      "sessions": [
+        {
+          "session_id": "timely",
+          "episodes": [
+            {
+              "source_event_key": "timely-backlog",
+              "card_lineage": "backlog-card",
+              "anki_day": "2026-01-05",
+              "outcome": "good",
+              "memory": {
+                "confidence": "high",
+                "retrievability_actual": 0.9,
+                "retrievability_natural_due": 0.9,
+                "stability_before": 1.0,
+                "stability_good_counterfactual": 1.5168967963882134
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1.0
+    }
+  ]
+}

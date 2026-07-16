@@ -1,0 +1,90 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "session-invariance",
+  "title": "Equivalent work split across sessions",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Equivalent work split across sessions",
+  "tags": [
+    "edge",
+    "session-invariance"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-04-01",
+      "sessions": [
+        {
+          "session_id": "single",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "single-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-04-02",
+      "sessions": [
+        {
+          "session_id": "morning",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 4,
+              "prefix": "split-a-",
+              "template": {}
+            }
+          ]
+        },
+        {
+          "session_id": "afternoon",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "split-b-",
+              "template": {}
+            }
+          ]
+        },
+        {
+          "session_id": "evening",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "split-c-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "day",
+      "metric": "total_review_units",
+      "expected": 10.0,
+      "anki_day": "2026-04-01"
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "day",
+      "metric": "total_review_units",
+      "expected": 10.0,
+      "anki_day": "2026-04-02"
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 20.0
+    }
+  ]
+}

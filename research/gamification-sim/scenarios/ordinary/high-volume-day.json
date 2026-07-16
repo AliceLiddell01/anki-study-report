@@ -1,0 +1,49 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "high-volume-day",
+  "title": "High-volume honest review day",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "High-volume honest review day",
+  "tags": [
+    "ordinary"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-07-16",
+      "sessions": [
+        {
+          "session_id": "long-session",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 100,
+              "prefix": "high-",
+              "template": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "core_baseline",
+      "expected": 90.0
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "volume_credit",
+      "expected": 6.75
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 106.75
+    }
+  ]
+}

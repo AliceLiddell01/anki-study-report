@@ -1,0 +1,50 @@
+{
+  "scenario_version": "review-scenario-v0.1",
+  "scenario_id": "configured-review-limit",
+  "title": "Configured review limit completion",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Configured review limit completion",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-02-02",
+      "sessions": [
+        {
+          "session_id": "limited",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 30,
+              "prefix": "limit-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "configured_limit_reached",
+        "natural_due_at_start": 60,
+        "due_visible_under_limits": 30,
+        "due_hidden_by_limits": 30,
+        "snapshot_confident": true
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "completion_credit",
+      "expected": 0.405
+    },
+    {
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 31.315
+    }
+  ]
+}
