@@ -364,7 +364,6 @@ No component is accumulated through hidden mutable global state.
 
 Deliberately excluded:
 
-- parameter sweep and sensitivity analysis;
 - Monte Carlo and random seeds;
 - synthetic populations;
 - FSRS or `py-fsrs` adapters;
@@ -391,10 +390,39 @@ The simulator remains outside:
 
 Run it manually from this directory. A future research-only CI job requires a separate explicit decision and must not silently extend Fast CI.
 
-## Next possible stage
+## Stage 5B.3 parameter sweep
 
 ```text
-Stage 5B.3 — parameter sweep and sensitivity design
+review-v0.1 remains immutable
+→ strict local sweep config
+→ sequential family overlays
+→ hard gates
+→ nondominated Pareto front
+→ one-at-a-time sensitivity and reward-cliff probes
 ```
 
-It is not started by Stage 5B.2.
+The first pass is bounded to 48 candidate evaluations and does not construct a
+full Cartesian product. Every catalog entry has a full normalized parameter
+snapshot and SHA-256 digest; family overlays apply only declared changed fields.
+The runner receives parameters explicitly, while all pre-existing commands keep
+using `review-v0.1` by default.
+
+```powershell
+python -m gamification_sim list-parameter-sets
+python -m gamification_sim validate-sweep configs/review-sweep-v0.1.json
+python -m gamification_sim run-sweep configs/review-sweep-v0.1.json --no-write
+python -m gamification_sim run-sensitivity configs/review-sweep-v0.1.json --parameter-set R-CURRENT --no-write
+```
+
+`run-sweep` rejects candidates before ranking when an H01–H18 invariant,
+scenario assertion, breakdown identity, cap, or deterministic digest contract
+fails. Rejections carry stable reason codes. Survivors are compared through a
+declared set of Pareto objectives; there is no aggregate winner score.
+
+Without `--no-write`, sweep reports are written under the gitignored
+`outputs/sweeps/<digest-prefix>/` directory as `manifest.json`,
+`candidates.json`, `metrics.csv`, `summary.md`, and `pareto.json`.
+
+Sensitivity grids use explicit endpoints rather than floating `arange`. Cliff
+probes evaluate `threshold - epsilon`, `threshold`, and `threshold + epsilon`
+for challenge, cap, tier, and contribution-band boundaries.

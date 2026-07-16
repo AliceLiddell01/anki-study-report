@@ -258,10 +258,35 @@ regression: 1
 
 Stage 5B.2 доказывает воспроизводимое выполнение заявленного deterministic corpus и проверку текущих contracts. Он не завершает population calibration и не делает simulator или `review-v0.1` production-ready.
 
+### Stage 5B.3 — Parameter Sweep and Sensitivity Engine
+
+Подэтап реализован как ограниченный последовательный поиск, а не полный
+Cartesian product. `review-v0.1` сохранён без числовых изменений.
+
+Реализованы:
+
+1. typed catalog из 17 versioned candidates с полным parameter snapshot и digest;
+2. явная передача `RewardParameterSet` в scenario runner;
+3. strict Draft 2020-12 contract `review-sweep-v0.1`;
+4. последовательность Reward → Volume → Completion → Support → Supplemental;
+5. верхний budget на число evaluated candidates;
+6. H01–H18, deterministic digest и component/cap gates до ranking;
+7. reason codes для каждого rejected candidate;
+8. correctness, reward, bonus, fairness, abuse и complexity metrics;
+9. quantitative gates из simulation specification без изменения порогов;
+10. nondominated Pareto front без единого aggregate score;
+11. deterministic one-at-a-time sensitivity по 13 explicit grids;
+12. автоматические `threshold ± epsilon` reward-cliff probes;
+13. gitignored report set для локального анализа.
+
+Первый sweep является исследовательским сравнением committed corpus. Он не
+утверждает production-экономику и не заменяет property-based, population,
+cross-language или FSRS-reference gates следующих подэтапов.
+
 ### Изоляция и CI
 
 ```text
-Stage 5B.1 + Stage 5B.2
+Stage 5B.1 + Stage 5B.2 + Stage 5B.3
 → local/manual execution
 → отдельное environment
 → не импортируют production-модули

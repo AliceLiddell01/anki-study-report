@@ -21,6 +21,14 @@ from .scenario_models import ScenarioCategory
 from .scenario_runner import run_corpus, run_definitions
 from .scenario_schema import ScenarioSchemaError
 from .strict_json import StrictJsonError, load_strict_json
+from .parameter_catalog import PARAMETER_CANDIDATES, candidate_payload
+from .sweep import (
+    load_sweep_config,
+    render_sweep_summary,
+    run_sensitivity,
+    run_sweep,
+    write_sweep_reports,
+)
 from .validation import close
 
 
@@ -92,6 +100,22 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("control", type=Path)
     compare.add_argument("scenario", type=Path)
     _add_run_flags(compare)
+
+    subparsers.add_parser("list-parameter-sets", help="list versioned sweep candidates")
+
+    validate_sweep = subparsers.add_parser("validate-sweep", help="validate a bounded sweep config")
+    validate_sweep.add_argument("config", type=Path)
+
+    sweep = subparsers.add_parser("run-sweep", help="run a bounded sequential parameter sweep")
+    sweep.add_argument("config", type=Path)
+    sweep.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    sweep.add_argument("--no-write", action="store_true")
+
+    sensitivity = subparsers.add_parser("run-sensitivity", help="run deterministic OAT sensitivity")
+    sensitivity.add_argument("config", type=Path)
+    sensitivity.add_argument("--parameter-set", required=True)
+    sensitivity.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    sensitivity.add_argument("--no-write", action="store_true")
     return parser
 
 
@@ -115,6 +139,32 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args) -> int:
+    if args.command == "list-parameter-sets":
+        print(json.dumps([candidate_payload(item) for item in PARAMETER_CANDIDATES], indent=2, sort_keys=True, allow_nan=False))
+        return 0
+    if args.command == "validate-sweep":
+        config = load_sweep_config(args.config, PACKAGE_ROOT)
+        print(f"VALID {config.sweep_version} {config.sweep_id}")
+        return 0
+    if args.command == "run-sweep":
+        config = load_sweep_config(args.config, PACKAGE_ROOT)
+        payload = run_sweep(config, PACKAGE_ROOT)
+        print(render_sweep_summary(payload), end="")
+        if not args.no_write:
+            run_dir = write_sweep_reports(payload, args.output_dir)
+            print(f"reports: {run_dir}", file=sys.stderr)
+        return 0
+    if args.command == "run-sensitivity":
+        config = load_sweep_config(args.config, PACKAGE_ROOT)
+        payload = run_sensitivity(config, PACKAGE_ROOT, args.parameter_set)
+        print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+        if not args.no_write:
+            output_root = args.output_dir.resolve() / "sensitivity"
+            output_root.mkdir(parents=True, exist_ok=True)
+            output_path = output_root / f"{payload['manifest']['output_digest'][:12]}.json"
+            output_path.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
+            print(f"report: {output_path}", file=sys.stderr)
+        return 0
     if args.command == "verify-report":
         payload = load_strict_json(args.report)
         if not isinstance(payload, dict):
