@@ -98,7 +98,7 @@ def main() -> int:
     confirmed = wait_for(
         lambda: dashboard("/api/telemetry/status"),
         lambda value: value.get("telemetryClient", {}).get("deletionPending") is False
-        and value.get("telemetryClient", {}).get("enrollmentState") == "not_enrolled",
+        and value.get("telemetryClient", {}).get("enrollmentState") == "not_attempted",
         "confirmed remote deletion and credential destruction",
     )
     final_fake = fake_state()
@@ -113,7 +113,7 @@ def main() -> int:
         "deliveredAfterRestart": int(after_delivery["eventCount"]) - int(before_delivery["eventCount"]),
         "offlineDeletionPending": True,
         "confirmedDeletion": True,
-        "credentialDestroyed": confirmed["telemetryClient"]["enrollmentState"] == "not_enrolled",
+        "credentialDestroyed": confirmed["telemetryClient"]["enrollmentState"] == "not_attempted",
         "finalFakeSummary": final_fake,
         "lastDeliveryErrorCode": delivered["telemetryClient"].get("lastDeliveryErrorCode"),
     }
