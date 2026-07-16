@@ -98,6 +98,14 @@ class DashboardServerManager:
         self._telemetry_event_handler = None
         self._telemetry_delete_handler = None
         self._telemetry_check_handler = None
+        self._notification_summary_provider = None
+        self._notification_list_handler = None
+        self._notification_read_handler = None
+        self._notification_read_all_handler = None
+        self._notification_settings_provider = None
+        self._notification_settings_handler = None
+        self._notification_toasts_handler = None
+        self._notification_toast_delivered_handler = None
         self._statistics_query_handler = None
         self._fsrs_query_handler = None
         self._search_query_handler = None
@@ -296,6 +304,49 @@ class DashboardServerManager:
     def configure_statistics_handler(self, query_handler=None) -> None:
         with self._lock:
             self._statistics_query_handler = query_handler
+
+    def configure_notification_handlers(
+        self,
+        *,
+        summary_provider=None,
+        list_handler=None,
+        read_handler=None,
+        read_all_handler=None,
+        settings_provider=None,
+        settings_handler=None,
+        toasts_handler=None,
+        toast_delivered_handler=None,
+    ) -> None:
+        with self._lock:
+            self._notification_summary_provider = summary_provider
+            self._notification_list_handler = list_handler
+            self._notification_read_handler = read_handler
+            self._notification_read_all_handler = read_all_handler
+            self._notification_settings_provider = settings_provider
+            self._notification_settings_handler = settings_handler
+            self._notification_toasts_handler = toasts_handler
+            self._notification_toast_delivered_handler = toast_delivered_handler
+
+    def notification_call(self, name: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        with self._lock:
+            handler = {
+                "summary": self._notification_summary_provider,
+                "list": self._notification_list_handler,
+                "read": self._notification_read_handler,
+                "read-all": self._notification_read_all_handler,
+                "settings": self._notification_settings_provider,
+                "settings-update": self._notification_settings_handler,
+                "toasts": self._notification_toasts_handler,
+                "toast-delivered": self._notification_toast_delivered_handler,
+            }.get(name)
+        if handler is None:
+            return {"ok": False, "error": "notifications_unavailable"}
+        try:
+            result = handler() if payload is None else handler(payload)
+            return result if isinstance(result, dict) else {"ok": False, "error": "notifications_unavailable"}
+        except Exception:
+            log_exception("notifications.api.error", "Notification API operation failed", operation=name)
+            return {"ok": False, "error": "notifications_unavailable"}
 
     def configure_fsrs_handler(self, query_handler=None) -> None:
         with self._lock:
@@ -739,6 +790,24 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/telemetry/status":
             self._send_telemetry_status(_query_token(parsed))
             return
+        if path == "/api/notifications/summary":
+            self._send_notification_get(_query_token(parsed), "summary", parsed)
+            return
+        if path == "/api/notifications":
+            self._send_notification_get(_query_token(parsed), "list", parsed)
+            return
+        if path == "/api/settings/notifications":
+            self._send_notification_get(_query_token(parsed), "settings", parsed)
+            return
+        if path == "/api/notifications/toasts":
+            self._send_notification_get(_query_token(parsed), "toasts", parsed)
+            return
+        if path in {"/api/notifications/read", "/api/notifications/read-all", "/api/notifications/toast-delivered"}:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json({"ok": False, "error": "method_not_allowed"}, HTTPStatus.METHOD_NOT_ALLOWED)
+            return
         if path in {"/api/telemetry/events", "/api/telemetry/delete", "/api/telemetry/check-send"}:
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
@@ -854,6 +923,21 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/telemetry/check-send":
             self._send_telemetry_check(_query_token(parsed))
             return
+        if path == "/api/notifications/read":
+            self._send_notification_post(_query_token(parsed), "read")
+            return
+        if path == "/api/notifications/read-all":
+            self._send_notification_post(_query_token(parsed), "read-all")
+            return
+        if path == "/api/notifications/toast-delivered":
+            self._send_notification_post(_query_token(parsed), "toast-delivered")
+            return
+        if path == "/api/settings/notifications":
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json({"ok": False, "error": "method_not_allowed"}, HTTPStatus.METHOD_NOT_ALLOWED)
+            return
         if path == "/api/statistics/query":
             self._send_statistics_query(_query_token(parsed))
             return
@@ -877,6 +961,15 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_dashboard_action(_query_token(parsed), action)
             return
 
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def do_PUT(self) -> None:
+        self.manager.touch()
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        if path == "/api/settings/notifications":
+            self._send_notification_post(_query_token(parsed), "settings-update")
+            return
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -1643,6 +1736,30 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.BAD_REQUEST
         self._send_json(result, status)
 
+    def _send_notification_get(self, token: str | None, action: str, parsed) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = _notification_query(action, parsed)
+        if payload is None:
+            self._send_json({"ok": False, "error": "invalid_notification_query"}, HTTPStatus.BAD_REQUEST)
+            return
+        result = self.manager.notification_call(action, payload if action in {"list", "toasts"} else None)
+        status = HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST if result.get("error") == "invalid_notification_request" else HTTPStatus.SERVICE_UNAVAILABLE
+        self._send_json(result, status)
+
+    def _send_notification_post(self, token: str | None, action: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json({"ok": False, "error": "invalid_notification_request"}, HTTPStatus.BAD_REQUEST)
+            return
+        result = self.manager.notification_call(action, payload)
+        status = HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST if result.get("error") == "invalid_notification_request" else HTTPStatus.SERVICE_UNAVAILABLE
+        self._send_json(result, status)
+
     def _read_json_body(self) -> dict[str, Any] | None:
         length_header = self.headers.get("Content-Length")
         if not length_header:
@@ -1822,6 +1939,34 @@ def _query_token(parsed) -> str | None:
     if not values:
         return None
     return values[0]
+
+
+def _notification_query(action: str, parsed) -> dict[str, Any] | None:
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    allowed = {
+        "summary": {"token"},
+        "settings": {"token"},
+        "list": {"token", "page", "pageLimit", "tab", "category"},
+        "toasts": {"token", "sessionStartedAt"},
+    }.get(action, {"token"})
+    if set(query) - allowed or any(len(values) != 1 for values in query.values()):
+        return None
+    if action == "list":
+        try:
+            page = int(query.get("page", ["1"])[0])
+            page_limit = int(query.get("pageLimit", ["20"])[0])
+        except ValueError:
+            return None
+        return {
+            "page": page,
+            "pageLimit": page_limit,
+            "tab": query.get("tab", ["all"])[0],
+            "category": query.get("category", ["all"])[0],
+        }
+    if action == "toasts":
+        started = query.get("sessionStartedAt", [""])[0]
+        return {"sessionStartedAt": started} if started else None
+    return {}
 
 
 def _query_int(parsed, name: str, fallback: int) -> int:
