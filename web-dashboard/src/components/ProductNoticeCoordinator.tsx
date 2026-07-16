@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchProductNotices,
   markCurrentReleaseSeen,
@@ -6,8 +6,9 @@ import {
   type ProductNoticesResponse,
   type TelemetryPurpose,
 } from "../lib/productNoticesApi";
-import TelemetryConsentDialog from "./TelemetryConsentDialog";
-import WhatsNewDialog from "./WhatsNewDialog";
+
+const TelemetryConsentDialog = lazy(() => import("./TelemetryConsentDialog"));
+const WhatsNewDialog = lazy(() => import("./WhatsNewDialog"));
 
 type ActiveModal = "consent" | "whatsNew" | null;
 
@@ -15,6 +16,7 @@ export default function ProductNoticeCoordinator({ manualOpenSignal }: { manualO
   const [data, setData] = useState<ProductNoticesResponse | null>(null);
   const [active, setActive] = useState<ActiveModal>(null);
   const [busy, setBusy] = useState(false);
+  const lastHandledManualSignal = useRef(0);
 
   const applyStartupOrder = useCallback((next: ProductNoticesResponse) => {
     setData(next);
@@ -32,7 +34,10 @@ export default function ProductNoticeCoordinator({ manualOpenSignal }: { manualO
   }, [applyStartupOrder]);
 
   useEffect(() => {
-    if (manualOpenSignal > 0 && data) setActive("whatsNew");
+    if (manualOpenSignal > lastHandledManualSignal.current && data) {
+      lastHandledManualSignal.current = manualOpenSignal;
+      setActive("whatsNew");
+    }
   }, [data, manualOpenSignal]);
 
   const saveConsent = useCallback(async (purposes: Record<TelemetryPurpose, boolean>) => {
@@ -53,12 +58,12 @@ export default function ProductNoticeCoordinator({ manualOpenSignal }: { manualO
     setActive(null);
     void markCurrentReleaseSeen().then((response) => {
       if (response.ok) setData(response);
-    });
+    }).catch(() => undefined);
   }, []);
 
   if (!data || !active) return null;
   if (active === "consent") {
-    return <TelemetryConsentDialog busy={busy} onSave={(purposes) => void saveConsent(purposes)} onDecline={decline} />;
+    return <Suspense fallback={null}><TelemetryConsentDialog busy={busy} onSave={(purposes) => void saveConsent(purposes)} onDecline={decline} /></Suspense>;
   }
-  return <WhatsNewDialog data={data} onClose={closeWhatsNew} />;
+  return <Suspense fallback={null}><WhatsNewDialog data={data} onClose={closeWhatsNew} /></Suspense>;
 }
