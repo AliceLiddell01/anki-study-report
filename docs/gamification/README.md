@@ -152,8 +152,8 @@
 - формат simulation report;
 - Pareto shortlist вместо одного общего score;
 - privacy requirements для реальных данных;
-- граница будущего пакета `research/gamification-sim/`;
-- явный запрет интеграции этапа 5A в fast CI и существующие workflows.
+- граница пакета `research/gamification-sim/`;
+- явный запрет неявной интеграции research-задач в Fast CI и существующие workflows.
 
 Ключевой инвариант этапа:
 
@@ -180,7 +180,9 @@ Stage 5A: Simulation Specification     ← завершённый концепт
         ↓
 Stage 5B.1: Deterministic Core         ← реализованный research-подэтап
         ↓
-Stage 5B.2: Scenario Runner            ← следующий возможный research-подэтап
+Stage 5B.2: Scenario Runner            ← реализованный research-подэтап
+        ↓
+Stage 5B.3: Parameter Sweep Design     ← следующий возможный research-подэтап
         ↓
 Learn XP Specification
         ↓
@@ -214,38 +216,78 @@ research/gamification-sim/
 7. explainable episode/day breakdown;
 8. executable golden cases;
 9. автоматические проверки hard invariants `H01–H18`;
-10. локальный CLI для проверки fixtures.
+10. локальный CLI для проверки fixtures;
+11. strict non-coercing integer validation;
+12. единый versioned источник support reward по `SupportKind`.
 
 Статус 5B.1 подтверждает соответствие реализации текущей исследовательской спецификации. Он не объявляет формулы или числовые параметры утверждённой production-экономикой.
+
+### Stage 5B.2 — Deterministic Scenario Runner
+
+Подэтап реализован поверх чистого ядра 5B.1 без копирования reward-формул.
+
+Реализованы:
+
+1. локальная JSON Schema Draft 2020-12 `review-scenario-v0.1`;
+2. strict UTF-8 JSON loader с запретом BOM, duplicate keys, `NaN` и infinities;
+3. schema validation через `Draft202012Validator.check_schema()` и `iter_errors()`;
+4. отдельная domain validation для версий, порядка дней, уникальности и controls;
+5. immutable typed models для scenarios, days, sessions, assertions, comparisons и manifests;
+6. последовательности нескольких Anki-дней;
+7. аналитические sessions, сворачиваемые в единый `ReviewDayInput` без session multipliers;
+8. выполнение каждого дня через существующий `aggregate_day()`;
+9. allowlisted assertions без `eval`, `exec`, arbitrary JSONPath и пользовательского кода;
+10. matched control comparisons с component deltas, ratios и compatibility warnings;
+11. canonical JSON и SHA-256 digests;
+12. deterministic JSON и Markdown reports;
+13. script-friendly CLI с фиксированными exit codes;
+14. committed corpus из 26 deterministic scenarios;
+15. автоматические tests strict loader, schema, domain rules, assertions, controls, reports, digests, CLI и всего corpus.
+
+Corpus включает:
+
+```text
+ordinary:   6
+edge:       7
+control:    6
+abuse:      6
+regression: 1
+```
+
+Каждый committed abuse scenario имеет содержательный control.
+
+Stage 5B.2 доказывает воспроизводимое выполнение заявленного deterministic corpus и проверку текущих contracts. Он не завершает population calibration и не делает simulator или `review-v0.1` production-ready.
 
 ### Изоляция и CI
 
 ```text
-Stage 5B.1
+Stage 5B.1 + Stage 5B.2
 → local/manual execution
 → отдельное environment
-→ не импортирует production-модули
-→ не входит в add-on build или .ankiaddon
-→ не входит в production verification chain
-→ не меняет Fast CI, Full CI или release workflows
+→ не импортируют production-модули
+→ не входят в add-on build или .ankiaddon
+→ не входят в production verification chain
+→ не меняют Fast CI, Full CI или release workflows
+→ generated outputs остаются gitignored
 ```
 
-Возможное подключение отдельной research-проверки рассматривается только позднее, после измерения времени выполнения и отдельного одобрения. Fast CI не должен автоматически получать simulator job.
+Подключение отдельной research-проверки возможно только после отдельного решения. Fast CI не должен автоматически получать simulator job.
 
 ### Следующий возможный этап
 
 ```text
-Stage 5B.2 — deterministic scenario runner
+Stage 5B.3 — parameter sweep and sensitivity design
 ```
 
-Он может добавить structured multi-day scenarios и controls. Parameter sweep, Monte Carlo, synthetic populations, FSRS adapter и real-history replay требуют последующих отдельных решений.
+Он может определить ограниченные parameter families, sweep contract, sensitivity metrics и gates. Monte Carlo, synthetic populations, FSRS adapter и real-history replay требуют последующих отдельных решений и не начинаются автоматически.
 
 ## Иерархия решений
 
 При пересечении документов действует правило:
 
 ```text
-anki-review-simulation-spec.md
+актуальный simulator code и tests
+→ anki-review-simulation-spec.md
 → anki-review-session-and-day.md
 → anki-review-abuse-model.md
 → anki-review-reward-model.md
@@ -258,11 +300,12 @@ anki-review-simulation-spec.md
 
 В частности:
 
+- актуальный simulator code и tests задают фактически реализованный research-contract;
 - `anki-review-event-taxonomy.md` определяет право события участвовать в Review XP;
 - `anki-review-reward-model.md` определяет относительную стоимость допустимого эпизода;
 - `anki-review-abuse-model.md` определяет допустимые ограничения и уточняет применение validity-сигналов;
 - `anki-review-session-and-day.md` определяет дневную агрегацию, caps и дополнительные бонусы;
-- `anki-review-simulation-spec.md` определяет, как проверяются все предыдущие решения и по каким gates выбирается модель;
+- `anki-review-simulation-spec.md` определяет, как проверяются предыдущие решения и по каким gates выбирается модель;
 - ранние формулы из `anki-xp-foundation.md` и `progression-foundation.md` не применяются, если детальная спецификация уже приняла другое решение.
 
 ### Уточнение Reward Model третьим этапом
@@ -296,7 +339,7 @@ Volume, Completion, Support и Supplemental
 
 Окончательная междоменная политика будет выбрана после Review simulation и проектирования Learn/Create XP.
 
-### Приоритет hard gates этапа 5A
+### Приоритет hard gates этапов 5A–5B
 
 Средний результат симуляции не может оправдать нарушение инварианта.
 
@@ -320,7 +363,7 @@ duplicate или replay создаёт дополнительный XP
 
 - Один крупный предмет проектирования — один отдельный документ.
 - Общие решения не дублируются полностью в каждом файле; используются ссылки.
-- Числовая гипотеза не становится финальным правилом до симуляции.
+- Числовая гипотеза не становится финальным правилом до симуляции и калибровки.
 - Сначала определяется валидное событие, затем его стоимость, дневная агрегация и только потом экспериментальная проверка.
 - Product concept, research implementation и production implementation не смешиваются.
 - Новая механика не должна подталкивать к ухудшению реального обучения ради XP.
@@ -338,8 +381,9 @@ duplicate или replay создаёт дополнительный XP
 - No-FSRS, low-confidence, small-collection и backlog-return входят в обязательную fairness matrix.
 - Реальные пользовательские histories не коммитятся и не читаются напрямую из рабочей collection.
 - Research simulator не входит в production runtime и `.ankiaddon`.
-- Stage 5B.1 не меняет fast CI, full CI, workflows или verification scripts.
-- Внешняя документация Anki и FSRS используется для проверки фактов, а не как готовый дизайн игровой экономики.
+- Stage 5B.1 и Stage 5B.2 не меняют Fast CI, Full CI, workflows или production verification scripts.
+- Generated scenario reports и local outputs не коммитятся.
+- Внешняя документация Anki, Python, JSON Schema и FSRS используется для проверки фактов, а не как готовый дизайн игровой экономики.
 - При противоречии более детальный и новый документ уточняет общий foundation, но изменение должно быть явно отражено в индексах и версиях.
 - Примеры внутри спецификаций являются обязательной частью проверки понятности модели.
 - Формула должна быть не только вычислимой, но и объяснимой пользователю через reward breakdown.
