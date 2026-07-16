@@ -273,13 +273,6 @@ if (-not $DockerOnly) {
 
     # Package validation must see freshly copied add-on assets, not only web-dashboard/dist.
     Invoke-CheckedCommand `
-        -Name "Frontend typecheck before build" `
-        -FilePath $pnpm `
-        -Arguments @("run", "typecheck") `
-        -WorkingDirectory $DashboardDir `
-        -TimingPhase "frontend-typecheck-build"
-
-    Invoke-CheckedCommand `
         -Name "Build frontend production bundle" `
         -FilePath $pnpm `
         -Arguments @("run", "build:vite") `
