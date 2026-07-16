@@ -28,6 +28,8 @@ _ALLOWED_SCREENSHOT_WORKERS = {"auto", "1", "2", "3", "4"}
 _ALLOWED_TELEMETRY = {"true", "false"}
 _ALLOWED_RESTART = {"auto", "true", "false"}
 _SAFE_INITIAL_E2E_ENV = {
+    "E2E_MODE": "standard",
+    "E2E_SCOPE": "full",
     "ANKI_E2E_SCOPE": "full",
     "ANKI_E2E_SCREENSHOT_WORKERS": "3",
     "ANKI_E2E_RESOURCE_TELEMETRY": "0",
@@ -80,6 +82,8 @@ def normalize_e2e_inputs(
     telemetry = "1" if telemetry_input == "true" else "0"
     restart = {"true": "1", "false": "0", "auto": "auto"}[restart_input]
     return {
+        "E2E_MODE": normalized_mode,
+        "E2E_SCOPE": normalized_scope,
         "ANKI_E2E_SCOPE": normalized_scope,
         "ANKI_E2E_SCREENSHOT_WORKERS": workers,
         "ANKI_E2E_RESOURCE_TELEMETRY": telemetry,
