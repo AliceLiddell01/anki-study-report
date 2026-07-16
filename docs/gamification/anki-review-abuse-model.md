@@ -1691,3 +1691,16 @@ anki-review-session-and-day.md
 - FSRS overview: <https://faqs.ankiweb.net/what-spaced-repetition-algorithm.html>
 
 Внешние источники используются для проверки технических фактов и рисков. Они не определяют игровую экономику автоматически.
+
+## Stage 5B.C matched longitudinal correction
+
+Retention cycling and intentional backlog are now evaluated on persistent
+matched cohorts rather than independent daily samples. A comparison must share
+the initial cohort digest and common latent recall stream; only the retention
+timeline or delay window may differ. Reported exploit advantage subtracts the
+CoreBaseline attached to additional legitimate scheduled reviews before the
+remainder is normalized by the control total. Thus a policy is not labeled an
+exploit merely because it schedules more real work.
+
+The 90-day cycling and intentional-backlog gates are `<= 3%` unexplained
+advantage. Missing matched evidence is `UNSUPPORTED`, never numeric zero.

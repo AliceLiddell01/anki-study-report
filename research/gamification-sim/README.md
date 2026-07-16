@@ -550,3 +550,21 @@ iteration order therefore do not select a different random world. Higher
 desired retention produces shorter intervals and more scheduled reviews on the
 committed matched cohort. Scheduler uncertainty and no-FSRS operation never
 suppress the eligible core baseline.
+
+## Stage 5B.C4 matched fairness and abuse controls
+
+Policy-pair definitions declare exactly one changed factor and reject extra
+differences. Retention pairs vary only the desired-retention timeline; backlog
+pairs vary only the delay window. Every longitudinal comparison verifies equal
+initial cohort and latent-stream digests, reports review-count difference,
+baseline/context/total deltas, RU per eligible review, and baseline
+preservation.
+
+Abuse advantage is not raw cumulative reward. It subtracts the additional
+legitimate CoreBaseline caused by a different number of scheduled reviews, then
+normalizes the unexplained remainder by the control total. The 90-day
+high/low-cycle and intentional-backlog gates require at most 3% unexplained
+advantage. Duplicate replay, session splitting, relearning, preview, forced-due,
+and micro-scope completion remain explicit one-factor deterministic controls.
+Missing policy evidence is serialized as `UNSUPPORTED` with a reason; it is
+never emitted as an ideal zero.

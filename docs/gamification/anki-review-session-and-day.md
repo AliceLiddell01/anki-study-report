@@ -1567,3 +1567,11 @@ anki-review-simulation-spec.md
 - влияние параметров на длинные сессии, backlog и маленькие коллекции;
 - критерии выбора окончательной модели;
 - формат отчёта симуляции.
+
+## Stage 5B.C matched-history clarification
+
+Backlog evidence requires a full pre-delay, delay, catch-up, and post-catch-up
+stabilization horizon on the same card lineages. Analytical session partition
+remains reward-neutral: the same Anki-day events in one or several sessions
+must produce zero delta. Longitudinal policy names and iteration order do not
+participate in child-seed derivation.

@@ -422,6 +422,9 @@ def run_longitudinal(
 ) -> dict[str, Any]:
     if type(master_seed) is not int or master_seed < 0:
         raise ValueError("longitudinal seed must be a non-negative integer")
+    from .matched_analysis import validate_policy_pairs
+
+    validate_policy_pairs(config.policies)
     mode = config.mode(mode_id)
     selected_parameters = parameter_set_ids or config.parameter_set_ids
     selected_policy_ids = set(policy_ids or tuple(item.policy_id for item in config.policies))
@@ -460,6 +463,21 @@ def run_longitudinal(
         },
         "policy_results": results,
     }
+    from .matched_analysis import deterministic_matched_matrices, longitudinal_matrices
+
+    fairness, abuse = longitudinal_matrices(payload)
+    deterministic_fairness: list[dict[str, Any]] = []
+    deterministic_abuse: list[dict[str, Any]] = []
+    for parameter_set_id in selected_parameters:
+        fair_items, abuse_items = deterministic_matched_matrices(
+            Path(__file__).resolve().parents[2], parameter_set_id
+        )
+        deterministic_fairness.extend(fair_items)
+        deterministic_abuse.extend(abuse_items)
+    fairness["comparisons"].extend(deterministic_fairness)
+    abuse["comparisons"].extend(deterministic_abuse)
+    payload["fairness"] = fairness
+    payload["abuse"] = abuse
     payload["manifest"]["trajectory_digest"] = canonical_digest(
         [item["trajectory_digest"] for item in results]
     )
@@ -479,6 +497,24 @@ def validate_longitudinal_result(payload: dict[str, Any]) -> None:
             raise ValueError(f"baseline suppression in {result['policy_id']}")
         if not close(metrics["baseline_preservation_ratio"], 1.0):
             raise ValueError(f"baseline preservation ratio failed in {result['policy_id']}")
+    if payload["manifest"]["mode"] in {"calibration-90", "calibration-365"}:
+        missing = [
+            item for item in payload["abuse"]["unsupported"]
+            if item["comparison"] in {
+                "retention-high-cycle",
+                "retention-low-cycle",
+                "intentional-backlog",
+            }
+        ]
+        if missing:
+            raise ValueError("required matched abuse evidence is unsupported")
+        failed = [
+            item["comparison"]
+            for item in payload["abuse"]["comparisons"]
+            if item["status"] == "FAIL"
+        ]
+        if failed:
+            raise ValueError(f"matched abuse gate failure: {', '.join(sorted(set(failed)))}")
 
 
 def render_longitudinal_summary(payload: dict[str, Any]) -> str:
@@ -537,13 +573,9 @@ def write_longitudinal_reports(payload: dict[str, Any], output_root: Path) -> Pa
     writer.writeheader()
     writer.writerows(rows)
     (run_dir / "policy-metrics.csv").write_text(stream.getvalue(), encoding="utf-8")
-    deferred = {
-        "status": "DEFERRED",
-        "reason": "matched fairness and abuse comparisons are computed at gate C4",
-    }
-    for name in ("fairness.json", "abuse.json"):
+    for name, value in (("fairness.json", payload["fairness"]), ("abuse.json", payload["abuse"])):
         (run_dir / name).write_text(
-            json.dumps(deferred, indent=2, sort_keys=True) + "\n",
+            json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n",
             encoding="utf-8",
         )
     states = [

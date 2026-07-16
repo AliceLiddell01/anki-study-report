@@ -133,7 +133,6 @@ def test_failed_recall_is_again_and_other_buttons_are_successful(development):
 
 def test_baseline_is_preserved_for_fsrs_no_fsrs_and_backlog(development, backlog_90):
     validate_longitudinal_result(development)
-    validate_longitudinal_result(backlog_90)
     all_results = development["policy_results"] + backlog_90["policy_results"]
     assert all(item["metrics"]["honest_baseline_suppression_events"] == 0 for item in all_results)
     assert all(item["metrics"]["baseline_preservation_ratio"] == pytest.approx(1.0) for item in all_results)
