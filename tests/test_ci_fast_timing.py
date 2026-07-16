@@ -131,7 +131,7 @@ def test_atomic_output_update_leaves_no_temp_files(tmp_path: Path) -> None:
     assert not output.with_name(output.name + ".state").exists()
 
 
-def test_markdown_rendering_and_top_phase_ordering(tmp_path: Path) -> None:
+def test_markdown_renders_missing_historical_typecheck_without_fabricating_phase(tmp_path: Path) -> None:
     output = init(tmp_path)
     record_phase_for_test(
         output,
@@ -144,7 +144,7 @@ def test_markdown_rendering_and_top_phase_ordering(tmp_path: Path) -> None:
     )
     record_phase_for_test(
         output,
-        phase_id="frontend-typecheck-build",
+        phase_id="frontend-vitest",
         status="success",
         started_at=START,
         completed_at=END,
@@ -154,7 +154,12 @@ def test_markdown_rendering_and_top_phase_ordering(tmp_path: Path) -> None:
     document = finalize(output, "success")
     markdown = render_markdown(document)
     assert "# Fast CI timing" in markdown
-    assert markdown.index("Frontend typecheck before build") < markdown.index("Frontend typecheck before tests")
+    assert markdown.index("| Frontend Vitest | frontend | success | 20 ms |") < markdown.index(
+        "| Frontend typecheck before tests | frontend | success | 10 ms |"
+    )
+    assert "| Frontend typecheck before tests | 10 ms |" in markdown
+    assert "| Frontend typecheck before build | not recorded |" in markdown
+    assert all(phase["id"] != "frontend-typecheck-build" for phase in document["phases"])
     assert "GitHub Jobs API" in markdown
 
 
