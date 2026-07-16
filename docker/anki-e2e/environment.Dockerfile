@@ -16,7 +16,7 @@ ENV ANKI_VERSION=${ANKI_VERSION}
 ENV ANKI_SHA256=${ANKI_SHA256}
 ENV ANKI_REQUIRE_SHA256=1
 ENV ANKI_PYTHON_PACKAGE=${ANKI_PYTHON_PACKAGE}
-ENV ANKI_BIN=/opt/anki/anki
+ENV ANKI_BIN=/usr/local/bin/anki-desktop
 ENV ANKI_BASE=/e2e/anki-data
 ENV HOME=/e2e/home
 ENV WORKSPACE=/workspace
@@ -101,8 +101,8 @@ COPY docker/anki-e2e/install-anki.sh /e2e/bin/install-anki.sh
 RUN sed -i 's/\r$//' /e2e/bin/install-anki.sh \
     && chmod 0755 /e2e/bin/install-anki.sh \
     && /e2e/bin/install-anki.sh \
-    && test -x /opt/anki/anki \
-    && test -L /usr/local/bin/anki-desktop
+    && test -L /usr/local/bin/anki-desktop \
+    && test -x /usr/local/bin/anki-desktop
 
 WORKDIR /workspace
 
