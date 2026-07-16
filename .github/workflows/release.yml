@@ -357,7 +357,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           python scripts/manage_github_release.py finalize
-          --version '${{ neds.validate.outputs.version }}'
+          --version '${{ needs.validate.outputs.version }}'
           --channel '${{ needs.validate.outputs.channel }}'
           --bundle release-artifacts
           --commit-sha '${{ github.sha }}'
