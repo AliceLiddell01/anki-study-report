@@ -1,8 +1,10 @@
+import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FULL_CHECK = ROOT / "scripts" / "run_full_check.ps1"
+PACKAGE_JSON = ROOT / "web-dashboard" / "package.json"
 
 
 def text() -> str:
@@ -18,13 +20,12 @@ def test_default_contract_keeps_timing_optional_and_skip_docker_unchanged() -> N
     assert "Docker E2E" in source
 
 
-def test_canonical_command_order_is_preserved_and_split_only_for_measurement() -> None:
+def test_canonical_command_order_has_one_typecheck_before_tests_and_build() -> None:
     source = text()
     ordered = [
         '"changelog-check"',
         '"frontend-typecheck-tests"',
         '"frontend-vitest"',
-        '"frontend-typecheck-build"',
         '"frontend-vite-build"',
         '"frontend-bundle-check"',
         '"frontend-addon-assets-copy"',
@@ -34,7 +35,9 @@ def test_canonical_command_order_is_preserved_and_split_only_for_measurement() -
     ]
     positions = [source.index(value) for value in ordered]
     assert positions == sorted(positions)
-    assert '@("run", "typecheck")' in source
+    assert source.count('@("run", "typecheck")') == 1
+    assert '"frontend-typecheck-build"' not in source
+    assert "Frontend typecheck before build" not in source
     assert '@("run", "test:run")' in source
     assert '@("run", "build:vite")' in source
     assert '@("run", "build:check-bundle")' in source
@@ -42,6 +45,14 @@ def test_canonical_command_order_is_preserved_and_split_only_for_measurement() -
     assert '@("scripts/run_python.mjs", "-m", "pytest")' in source
     assert '@("scripts/run_python.mjs", "scripts/package_addon.py", "--check")' in source
     assert '@("scripts/run_python.mjs", "scripts/package_addon.py", "--check-only")' in source
+
+
+def test_standalone_frontend_build_keeps_its_own_typecheck() -> None:
+    package = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
+    scripts = package["scripts"]
+    assert scripts["typecheck"] == "tsc --noEmit"
+    assert scripts["build"].split(" && ", 1)[0] == "pnpm run typecheck"
+    assert scripts["build:addon"].split(" && ", 1)[0] == "pnpm run build"
 
 
 def test_failure_preserves_primary_error_and_attempts_timing_finish() -> None:
