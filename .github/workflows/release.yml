@@ -158,6 +158,7 @@ jobs:
     uses: ./.github/workflows/ci-e2e.yml
     permissions:
       contents: read
+      actions: read
     with:
       mode: standard
       scope: full

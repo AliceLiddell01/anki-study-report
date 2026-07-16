@@ -59,6 +59,38 @@ once; telemetry off; no warm-cache/local duplicate. Поскольку actual St
 также меняет dashboard server и E2E fixture/contract, planner корректно
 эскалирует final integration requirement, но не создаёт лишний ранний full run.
 
+## Fast package producer policy
+
+Успешный Fast CI run публикует diagnostics artifact отдельно от краткоживущего
+exact package artifact. Diagnostics загружается через `always()` и не содержит
+`.ankiaddon`; package artifact появляется только после успешных canonical,
+planner, summary, package validation и diagnostics upload.
+
+Producer metadata обязано различать tested `github.sha`, source head SHA и
+source base SHA. `packageSha256` относится к внутренним `.ankiaddon` bytes;
+GitHub artifact digest относится к transport artifact и не записывается внутрь
+immutable metadata. Один manual Fast CI `workflow_dispatch` на exact feature
+branch допустим для проверки producer contract после локального PASS.
+
+Stage 2 не меняет E2E contour: Docker E2E продолжает build from source и не
+скачивает Fast package. Cross-run handoff требует отдельного решения и не может
+добавляться как побочный эффект producer stage.
+
+## Fast package consumer policy
+
+Docker E2E может явно получить successful exact Fast package через
+`fast_ci_run_id`. Consumer обязан проверить source run и artifact list через
+read-only API, скачать diagnostics/package по artifact IDs, получить tested SHA
+из validated diagnostics, checkout-ить exact tested commit и связать metadata
+source head с исходным E2E workflow SHA. Invalid run ID, fork, ambiguity, expiry
+или identity/hash mismatch завершаются ошибкой без source-build fallback.
+
+Для Stage 3 разрешена одна пара cloud observations на exact branch: один manual
+Fast CI и один `standard/settings` с telemetry/restart off и полученным run ID.
+Не выполняются source-build comparison, warm repeat, full, strict APKG или
+Perf100. Stage 3 доказывает handoff semantics; performance A/B относится к Stage
+4. Release exact-artifact flow остаётся отдельным current-run gate.
+
 ## Release policy
 
 Release infrastructure, package version source, changelog, release workflow и

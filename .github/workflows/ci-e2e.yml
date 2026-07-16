@@ -31,6 +31,10 @@ on:
         required: false
         default: ""
         type: string
+      fast_ci_run_id:
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       mode:
@@ -72,8 +76,15 @@ on:
         default: auto
         type: choice
         options: [auto, "true", "false"]
+      fast_ci_run_id:
+        description: Successful Fast CI run ID; empty keeps source-build mode
+        required: false
+        default: ""
+        type: string
+
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ci-e2e-${{ github.ref }}-${{ inputs.mode || 'standard' }}-${{ inputs.scope || 'stats' }}-${{ inputs.screenshot_workers || '3' }}
@@ -90,6 +101,9 @@ jobs:
       SCREENSHOT_WORKERS_INPUT: ${{ inputs.screenshot_workers || '3' }}
       RESOURCE_TELEMETRY_INPUT: ${{ inputs.resource_telemetry && 'true' || 'false' }}
       VERIFY_RESTART_INPUT: ${{ inputs.verify_restart || 'auto' }}
+      RELEASE_ARTIFACT_NAME_INPUT: ${{ inputs.release_artifact_name || '' }}
+      RELEASE_ARTIFACT_SHA256_INPUT: ${{ inputs.release_artifact_sha256 || '' }}
+      FAST_CI_RUN_ID_INPUT: ${{ inputs.fast_ci_run_id || '' }}
       ANKI_E2E_IMAGE: anki-study-report-e2e:ci
       ANKI_VERSION: "26.05"
       # Official GitHub release asset digest for anki-26.05-linux-x86_64.tar.zst.
@@ -101,16 +115,148 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Capture workflow source and validate package source inputs
+        id: source_mode
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-e2e-raw | Out-Null
+          $started = [DateTime]::UtcNow.ToString('o')
+          "CI_E2E_STARTED_AT=$started" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CI_E2E_PWSH_VERSION=$($PSVersionTable.PSVersion)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CI_E2E_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CI_E2E_ARTIFACT_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_BUILD_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_SIZE_BYTES=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_CACHE_STATE=unavailable" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_REF=${{ github.ref }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_CHECKOUT_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          python scripts/verify_fast_ci_e2e_handoff.py validate-inputs `
+            --release-artifact-name "$env:RELEASE_ARTIFACT_NAME_INPUT" `
+            --release-artifact-sha256 "$env:RELEASE_ARTIFACT_SHA256_INPUT" `
+            --fast-ci-run-id "$env:FAST_CI_RUN_ID_INPUT" `
+            --output "$env:RUNNER_TEMP/package-source.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid E2E package source inputs.' }
+          $source = Get-Content "$env:RUNNER_TEMP/package-source.json" -Raw | ConvertFrom-Json
+          "ANKI_E2E_PACKAGE_SOURCE=$($source.packageSource)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Resolve exact successful Fast CI run and artifact IDs
+        id: resolve_fast_ci
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $runJson = Join-Path $env:RUNNER_TEMP 'fast-ci-run.json'
+          $artifactsJson = Join-Path $env:RUNNER_TEMP 'fast-ci-artifacts.json'
+          gh api "repos/${{ github.repository }}/actions/runs/$env:FAST_CI_RUN_ID_INPUT" | Set-Content -LiteralPath $runJson -Encoding utf8NoBOM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the requested Fast CI run.' }
+          gh api "repos/${{ github.repository }}/actions/runs/$env:FAST_CI_RUN_ID_INPUT/artifacts?per_page=100" | Set-Content -LiteralPath $artifactsJson -Encoding utf8NoBOM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve artifacts for the requested Fast CI run.' }
+          python scripts/verify_fast_ci_e2e_handoff.py resolve-run `
+            --run-json $runJson `
+            --artifacts-json $artifactsJson `
+            --repository '${{ github.repository }}' `
+            --run-id $env:FAST_CI_RUN_ID_INPUT `
+            --output "$env:RUNNER_TEMP/fast-ci-resolution.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI source-run resolution failed.' }
+
+      - name: Download exact Fast CI diagnostics by artifact ID
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.resolve_fast_ci.outputs.diagnostics_artifact_id }}
+          path: ${{ runner.temp }}/fast-ci-diagnostics
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.resolve_fast_ci.outputs.source_run_id }}
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Validate Fast CI diagnostics and derive tested commit
+        id: fast_diagnostics
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        run: |
+          python scripts/verify_fast_ci_e2e_handoff.py validate-diagnostics `
+            --resolution "$env:RUNNER_TEMP/fast-ci-resolution.json" `
+            --directory "$env:RUNNER_TEMP/fast-ci-diagnostics" `
+            --output "$env:RUNNER_TEMP/fast-ci-diagnostics-validated.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI diagnostics validation failed.' }
+
+      - name: Check out exact Fast CI tested commit
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ steps.fast_diagnostics.outputs.tested_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact tested commit checkout
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        env:
+          EXPECTED_TESTED_SHA: ${{ steps.fast_diagnostics.outputs.tested_sha }}
+        run: |
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_TESTED_SHA) {
+            throw "Exact Fast CI tested commit checkout mismatch: $actual"
+          }
+          "E2E_CHECKOUT_SHA=$actual" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Download exact Fast CI package by artifact ID
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.resolve_fast_ci.outputs.package_artifact_id }}
+          path: ${{ runner.temp }}/fast-ci-package
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.resolve_fast_ci.outputs.source_run_id }}
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Validate and stage exact Fast CI package
+        id: fast_package
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        run: |
+          python scripts/write_ci_package_metadata.py --verify-only --output-directory "$env:RUNNER_TEMP/fast-ci-package"
+          if ($LASTEXITCODE -ne 0) { throw 'Stage 2 package metadata validation failed.' }
+          $checkoutSha = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          python scripts/verify_fast_ci_e2e_handoff.py validate-package `
+            --resolution "$env:RUNNER_TEMP/fast-ci-resolution.json" `
+            --diagnostics "$env:RUNNER_TEMP/fast-ci-diagnostics-validated.json" `
+            --directory "$env:RUNNER_TEMP/fast-ci-package" `
+            --e2e-workflow-source-sha $env:E2E_WORKFLOW_SOURCE_SHA `
+            --e2e-checkout-sha $checkoutSha `
+            --output "$env:RUNNER_TEMP/fast-ci-handoff.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Cross-run Fast CI package validation failed.' }
+          $source = Join-Path $env:RUNNER_TEMP 'fast-ci-package/anki_study_report.ankiaddon'
+          New-Item -ItemType Directory -Force docker/anki-e2e/local-input | Out-Null
+          Copy-Item -LiteralPath $source -Destination docker/anki-e2e/local-input/anki_study_report.ankiaddon -Force
+          'ANKI_E2E_PREBUILT_ADDON_PATH=/e2e/local-input/anki_study_report.ankiaddon' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          'ANKI_E2E_PACKAGE_SOURCE=fast-ci-artifact' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $handoff = Get-Content "$env:RUNNER_TEMP/fast-ci-handoff.json" -Raw | ConvertFrom-Json
+          "ANKI_E2E_FAST_CI_RUN_ID=$env:FAST_CI_RUN_ID_INPUT" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_FAST_CI_TESTED_SHA=$($handoff.sourceTestedCommitSha)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_FAST_CI_PACKAGE_SHA256=$($handoff.packageSha256)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Download exact release artifact
-        if: inputs.release_artifact_name != ''
+        if: steps.source_mode.outputs.package_source == 'release-artifact'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ inputs.release_artifact_name }}
           path: release-e2e-input
 
       - name: Stage and verify exact release artifact
-        if: inputs.release_artifact_name != ''
+        if: steps.source_mode.outputs.package_source == 'release-artifact'
         shell: pwsh
         env:
           EXPECTED_SHA256: ${{ inputs.release_artifact_sha256 }}
@@ -129,24 +275,19 @@ jobs:
           New-Item -ItemType Directory -Force docker/anki-e2e/local-input | Out-Null
           Copy-Item -LiteralPath $source -Destination docker/anki-e2e/local-input/anki_study_report.ankiaddon -Force
           'ANKI_E2E_PREBUILT_ADDON_PATH=/e2e/local-input/anki_study_report.ankiaddon' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          'ANKI_E2E_PACKAGE_SOURCE=release-artifact' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Capture runner and Docker preflight
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force ci-e2e-raw | Out-Null
-          $started = [DateTime]::UtcNow.ToString('o')
-          "CI_E2E_STARTED_AT=$started" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "CI_E2E_PWSH_VERSION=$($PSVersionTable.PSVersion)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "CI_E2E_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_BUILD_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_SIZE_BYTES=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_CACHE_STATE=unavailable" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           @(
             "runnerOs=$env:RUNNER_OS"
             "runnerArch=$env:RUNNER_ARCH"
             "imageOs=$env:ImageOS"
             "imageVersion=$env:ImageVersion"
-            "commitSha=$env:GITHUB_SHA"
+            "workflowSourceSha=$env:E2E_WORKFLOW_SOURCE_SHA"
+            "e2eCheckoutSha=$env:E2E_CHECKOUT_SHA"
+            "packageSource=$env:ANKI_E2E_PACKAGE_SOURCE"
             "runId=$env:GITHUB_RUN_ID"
             "runAttempt=$env:GITHUB_RUN_ATTEMPT"
             "mode=$env:E2E_MODE"
@@ -271,7 +412,7 @@ jobs:
           "CI_E2E_EXIT_CODE=$exitCode" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Verify tested release artifact hash
-        if: inputs.release_artifact_name != ''
+        if: steps.source_mode.outputs.package_source == 'release-artifact'
         shell: pwsh
         env:
           EXPECTED_SHA256: ${{ inputs.release_artifact_sha256 }}
@@ -284,6 +425,32 @@ jobs:
           if ($actual -ne $env:EXPECTED_SHA256) {
             throw "The package tested by real Anki is not the exact release artifact: $actual"
           }
+
+      - name: Verify tested Fast CI package hash
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        env:
+          EXPECTED_SHA256: ${{ steps.fast_package.outputs.package_sha256 }}
+        run: |
+          $tested = 'e2e-artifacts/package/anki_study_report.ankiaddon'
+          if (-not (Test-Path -LiteralPath $tested -PathType Leaf)) {
+            throw 'The E2E package evidence is missing.'
+          }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tested).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_SHA256) {
+            throw "The package tested by real Anki is not the exact Fast CI artifact: $actual"
+          }
+
+      - name: Publish sanitized Fast CI handoff evidence
+        if: always() && steps.source_mode.outputs.package_source == 'fast-ci-artifact' && steps.fast_package.outcome == 'success'
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'fast-ci-handoff.json'
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw 'Validated Fast CI handoff evidence is missing.'
+          }
+          New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
+          Copy-Item -LiteralPath $source -Destination e2e-artifacts/reports/fast-ci-handoff.json -Force
 
       - name: Capture final Docker state
         if: always()
@@ -314,7 +481,12 @@ jobs:
               --e2e-exit-code $env:CI_E2E_EXIT_CODE `
               --started-at $env:CI_E2E_STARTED_AT `
               --commit-sha $env:GITHUB_SHA `
-              --ref $env:GITHUB_REF
+              --ref $env:GITHUB_REF `
+              --package-source $env:ANKI_E2E_PACKAGE_SOURCE `
+              --source-fast-ci-run-id "$env:ANKI_E2E_FAST_CI_RUN_ID" `
+              --source-fast-ci-tested-sha "$env:ANKI_E2E_FAST_CI_TESTED_SHA" `
+              --source-package-sha256 "$env:ANKI_E2E_FAST_CI_PACKAGE_SHA256" `
+              --e2e-checkout-sha $env:E2E_CHECKOUT_SHA
             if ($LASTEXITCODE -ne 0) { throw "Artifact preparation exited with $LASTEXITCODE" }
           } catch {
             $artifactExit = 1

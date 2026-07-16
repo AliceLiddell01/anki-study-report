@@ -43,6 +43,37 @@ function Invoke-DockerCompose {
     }
 }
 
+function Restore-E2EArtifactOwnership {
+    param([string]$Volume)
+
+    if (-not $IsLinux) {
+        return
+    }
+
+    $uid = (& id -u).Trim()
+    if ($LASTEXITCODE -ne 0 -or $uid -notmatch '^\d+$') {
+        throw "Could not resolve the host UID for E2E artifact ownership restoration."
+    }
+    $gid = (& id -g).Trim()
+    if ($LASTEXITCODE -ne 0 -or $gid -notmatch '^\d+$') {
+        throw "Could not resolve the host GID for E2E artifact ownership restoration."
+    }
+
+    Invoke-DockerCompose @(
+        "run",
+        "--rm",
+        "--no-deps",
+        "-v",
+        $Volume,
+        "--entrypoint",
+        "/bin/chown",
+        "anki-e2e",
+        "-R",
+        "$($uid):$($gid)",
+        "/e2e/artifacts"
+    )
+}
+
 function Assert-E2EArtifactManifest {
     param([string]$ArtifactsRoot)
 
@@ -131,6 +162,18 @@ try {
 
     $volume = "$($ArtifactsDir):/e2e/artifacts"
     $runArgs = @("run", "--rm", "-v", $volume)
+    foreach ($name in @(
+        "ANKI_E2E_PREBUILT_ADDON_PATH",
+        "ANKI_E2E_PACKAGE_SOURCE",
+        "ANKI_E2E_FAST_CI_RUN_ID",
+        "ANKI_E2E_FAST_CI_TESTED_SHA",
+        "ANKI_E2E_FAST_CI_PACKAGE_SHA256"
+    )) {
+        $value = [Environment]::GetEnvironmentVariable($name)
+        if ($value) {
+            $runArgs += @("-e", "$name=$value")
+        }
+    }
     if ($env:ANKI_E2E_REAL_MEDIA_DIR) {
         $realMediaPath = Resolve-Path -LiteralPath $env:ANKI_E2E_REAL_MEDIA_DIR -ErrorAction Stop
         $runArgs += @("-v", "$($realMediaPath.Path):/e2e/real-media:ro", "-e", "ANKI_E2E_REAL_MEDIA_DIR=/e2e/real-media")
@@ -139,7 +182,11 @@ try {
         $runArgs += @("-e", "ANKI_E2E_REQUIRE_REAL_MEDIA=$($env:ANKI_E2E_REQUIRE_REAL_MEDIA)")
     }
     $runArgs += "anki-e2e"
-    Invoke-DockerCompose $runArgs
+    try {
+        Invoke-DockerCompose $runArgs
+    } finally {
+        Restore-E2EArtifactOwnership -Volume $volume
+    }
     Assert-E2EArtifactManifest -ArtifactsRoot $ArtifactsDir
 } finally {
     Pop-Location

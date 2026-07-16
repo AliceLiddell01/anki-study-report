@@ -149,7 +149,7 @@ def test_export_rejects_secret_like_text(tmp_path: Path):
     source = tmp_path / "source"
     create_source(source)
     (source / "reports/browser-smoke-first.json").write_text(
-        json.dumps({"credential": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"}), encoding="utf-8"
+        json.dumps({"credential": "ghp_" + "A" * 30}), encoding="utf-8"
     )
 
     with pytest.raises(ValueError, match="Secret-like content"):
@@ -163,6 +163,28 @@ def test_export_rejects_unredacted_private_path(tmp_path: Path):
         module.assert_safe_text("path=C:/Users/Alice/private.txt", "report.txt")
 
 
+def summary_args(**overrides) -> Namespace:
+    values = dict(
+        started_at="2026-07-13T00:00:00Z",
+        e2e_exit_code=0,
+        commit_sha="a" * 40,
+        ref="refs/heads/test",
+        mode="standard",
+        scope="stats",
+        screenshot_workers=3,
+        cache_state="gha-enabled",
+        build_duration_ms=1200,
+        image_size_bytes=456,
+        package_source="source-build",
+        source_fast_ci_run_id="",
+        source_fast_ci_tested_sha="",
+        source_package_sha256="",
+        e2e_checkout_sha="a" * 40,
+    )
+    values.update(overrides)
+    return Namespace(**values)
+
+
 def test_summary_v2_keeps_targeted_comparison_honest(tmp_path: Path, monkeypatch):
     module = load_module()
     output = tmp_path / "output"
@@ -172,18 +194,7 @@ def test_summary_v2_keeps_targeted_comparison_honest(tmp_path: Path, monkeypatch
     performance = {"baseline": {"canonicalDurationSeconds": 183}, "current": {}, "improvement": {}}
     (reports / "e2e-performance-summary.json").write_text(json.dumps(performance), encoding="utf-8")
     monkeypatch.setenv("GITHUB_RUN_ID", "42")
-    args = Namespace(
-        started_at="2026-07-13T00:00:00Z",
-        e2e_exit_code=0,
-        commit_sha="abc123",
-        ref="refs/heads/test",
-        mode="standard",
-        scope="stats",
-        screenshot_workers=3,
-        cache_state="gha-enabled",
-        build_duration_ms=1200,
-        image_size_bytes=456,
-    )
+    args = summary_args()
 
     module.write_summary(output, args=args, manifest_status="success", artifact_files=[])
 
@@ -192,6 +203,8 @@ def test_summary_v2_keeps_targeted_comparison_honest(tmp_path: Path, monkeypatch
     assert summary["schemaVersion"] == 2
     assert summary["scope"] == "stats"
     assert summary["screenshotWorkers"] == 3
+    assert summary["packageSource"] == "source-build"
+    assert summary["sourceFastCiRunId"] is None
     assert exported_performance["improvement"]["canonicalSavedSeconds"] is None
     assert "not an apples-to-apples" in exported_performance["improvement"]["comparisonReason"]
 
@@ -209,18 +222,7 @@ def test_summary_compares_canonical_duration_with_canonical_baseline(tmp_path: P
     }
     (reports / "e2e-performance-summary.json").write_text(json.dumps(performance), encoding="utf-8")
     monkeypatch.setattr(module, "utc_now", lambda: "2026-07-13T00:03:30Z")
-    args = Namespace(
-        started_at="2026-07-13T00:00:00Z",
-        e2e_exit_code=0,
-        commit_sha="abc123",
-        ref="refs/heads/test",
-        mode="standard",
-        scope="full",
-        screenshot_workers=3,
-        cache_state="gha-enabled",
-        build_duration_ms=1200,
-        image_size_bytes=456,
-    )
+    args = summary_args(scope="full")
 
     module.write_summary(output, args=args, manifest_status="success", artifact_files=[])
 
@@ -232,3 +234,78 @@ def test_summary_compares_canonical_duration_with_canonical_baseline(tmp_path: P
     assert exported_performance["improvement"]["canonicalSavedSeconds"] == 33
     assert "Saved vs canonical baseline | 33 seconds" in markdown
     assert "Workflow duration | 210 seconds" in markdown
+
+
+def test_fast_package_summary_records_safe_source_and_absent_build_phases(tmp_path: Path, monkeypatch):
+    module = load_module()
+    output = tmp_path / "output"
+    reports = output / "artifacts" / "reports"
+    reports.mkdir(parents=True)
+    (output / "logs").mkdir()
+    phase_payload = {
+        "phases": [
+            {
+                "name": "exact prebuilt add-on validation and extraction",
+                "durationMs": 4321,
+                "status": "success",
+                "notes": "packageSource=fast-ci-artifact",
+            }
+        ]
+    }
+    (reports / "e2e-phase-timings.json").write_text(json.dumps(phase_payload), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_RUN_ID", "99")
+    args = summary_args(
+        package_source="fast-ci-artifact",
+        source_fast_ci_run_id="123456",
+        source_fast_ci_tested_sha="d" * 40,
+        source_package_sha256="e" * 64,
+        e2e_checkout_sha="d" * 40,
+    )
+
+    module.write_summary(output, args=args, manifest_status="success", artifact_files=["artifacts/reports/fast-ci-handoff.json"])
+
+    summary = json.loads((output / "ci-e2e-summary.json").read_text(encoding="utf-8"))
+    assert summary["packageSource"] == "fast-ci-artifact"
+    assert summary["sourceFastCiRunId"] == 123456
+    assert summary["sourceFastCiTestedSha"] == "d" * 40
+    assert summary["sourcePackageSha256"] == "e" * 64
+    assert summary["e2eCheckoutSha"] == "d" * 40
+    phases = summary["productBuildPhases"]
+    assert phases["frontendDependencyInstall"] == {"status": "absent", "durationMs": None, "notes": None}
+    assert phases["frontendBuild"]["status"] == "absent"
+    assert phases["addOnPackage"]["status"] == "absent"
+    assert phases["exactPrebuiltValidationAndExtraction"]["durationMs"] == 4321
+    assert "artifacts/reports/fast-ci-handoff.json" in summary["artifactFiles"]
+
+
+@pytest.mark.parametrize("package_source", ["source-build", "release-artifact"])
+def test_non_fast_sources_keep_fast_fields_null(tmp_path: Path, package_source: str):
+    module = load_module()
+    output = tmp_path / package_source
+    (output / "artifacts" / "reports").mkdir(parents=True)
+    (output / "logs").mkdir()
+    args = summary_args(package_source=package_source)
+
+    module.write_summary(output, args=args, manifest_status="success", artifact_files=[])
+
+    summary = json.loads((output / "ci-e2e-summary.json").read_text(encoding="utf-8"))
+    assert summary["packageSource"] == package_source
+    assert summary["sourceFastCiRunId"] is None
+    assert summary["sourceFastCiTestedSha"] is None
+    assert summary["sourcePackageSha256"] is None
+
+
+def test_fast_summary_requires_exact_checkout_and_all_identity_fields(tmp_path: Path):
+    module = load_module()
+    output = tmp_path / "output"
+    (output / "artifacts" / "reports").mkdir(parents=True)
+    (output / "logs").mkdir()
+    args = summary_args(
+        package_source="fast-ci-artifact",
+        source_fast_ci_run_id="7",
+        source_fast_ci_tested_sha="d" * 40,
+        source_package_sha256="e" * 64,
+        e2e_checkout_sha="f" * 40,
+    )
+    with pytest.raises(ValueError, match="checkout SHA"):
+        module.write_summary(output, args=args, manifest_status="success", artifact_files=[])

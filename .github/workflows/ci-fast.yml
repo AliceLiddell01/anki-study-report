@@ -52,7 +52,7 @@ jobs:
       - name: Prepare diagnostics
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force ci-fast/logs, ci-fast/package | Out-Null
+          New-Item -ItemType Directory -Force ci-fast/logs | Out-Null
           "CI_FAST_STARTED_AT=$([DateTime]::UtcNow.ToString('o'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           python --version
           node --version
@@ -106,14 +106,6 @@ jobs:
 
           python scripts/plan_verification.py --base $base --head HEAD --output-dir ci-fast/verification-plan
 
-      - name: Collect non-release package
-        if: always()
-        shell: pwsh
-        run: |
-          if (Test-Path -LiteralPath anki_study_report.ankiaddon) {
-            Copy-Item -LiteralPath anki_study_report.ankiaddon -Destination ci-fast/package/anki_study_report-ci.ankiaddon
-          }
-
       - name: Write CI summary
         if: always()
         shell: pwsh
@@ -127,6 +119,37 @@ jobs:
             -FailureCategory $category `
             -StartedAt $env:CI_FAST_STARTED_AT
 
+      - name: Prepare exact Fast CI package
+        if: success()
+        shell: pwsh
+        env:
+          ARTIFACT_NAME: ci-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          SOURCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'null' }}
+          TESTED_COMMIT_SHA: ${{ github.sha }}
+          WORKFLOW_REF: ${{ github.ref }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python scripts/write_ci_package_metadata.py `
+            --package anki_study_report.ankiaddon `
+            --output-directory ci-package `
+            --repository '${{ github.repository }}' `
+            --event-name $env:EVENT_NAME `
+            --ref $env:WORKFLOW_REF `
+            --tested-commit-sha $env:TESTED_COMMIT_SHA `
+            --source-head-sha $env:SOURCE_HEAD_SHA `
+            --source-base-sha $env:SOURCE_BASE_SHA `
+            --run-id $env:RUN_ID `
+            --run-attempt $env:RUN_ATTEMPT `
+            --artifact-name $env:ARTIFACT_NAME
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI package metadata generation failed.' }
+          python scripts/package_addon.py --output ci-package/anki_study_report.ankiaddon --check-only
+          if ($LASTEXITCODE -ne 0) { throw 'Staged Fast CI package validation failed.' }
+          python scripts/write_ci_package_metadata.py --verify-only --output-directory ci-package
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI package metadata verification failed.' }
+
       - name: Upload Fast CI diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -135,3 +158,38 @@ jobs:
           path: ci-fast/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload exact Fast CI package
+        id: upload_ci_package
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-package/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Summarize exact Fast CI package
+        if: success()
+        shell: pwsh
+        env:
+          ARTIFACT_ID: ${{ steps.upload_ci_package.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload_ci_package.outputs.artifact-digest }}
+        run: |
+          if (-not $env:ARTIFACT_ID -or -not $env:ARTIFACT_DIGEST) {
+            throw 'Package artifact upload outputs are incomplete.'
+          }
+          $metadata = Get-Content ci-package/package-metadata.json -Raw | ConvertFrom-Json
+          @(
+            '## Fast CI exact package'
+            ''
+            '| Field | Value |'
+            '| --- | --- |'
+            "| Artifact | ``$($metadata.artifactName)`` |"
+            "| Artifact ID | ``$env:ARTIFACT_ID`` |"
+            "| Tested commit | ``$($metadata.testedCommitSha)`` |"
+            "| Source head | ``$($metadata.sourceHeadSha)`` |"
+            "| Package SHA-256 | ``$($metadata.packageSha256)`` |"
+            "| GitHub artifact digest | ``$env:ARTIFACT_DIGEST`` |"
+            '| Retention | 7 days |'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8

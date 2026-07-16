@@ -1,189 +1,25 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime
 import json
 import os
-from pathlib import Path, PurePosixPath
-import re
+from pathlib import Path
 import shutil
-import subprocess
+import sys
 from typing import Iterable
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
 
-SCHEMA_VERSION = 2
-ALLOWED_MODES = {"standard", "strict-apkg", "perf100"}
-ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings"}
-ALLOWED_TOP_LEVEL = {
-    "artifact-manifest.json",
-    "runtime",
-    "diagnostics",
-    "reports",
-    "html",
-    "package",
-    "screenshots",
-}
-TEXT_SUFFIXES = {".json", ".jsonl", ".txt", ".log", ".md", ".html", ".htm", ".xml"}
-SECRET_PATTERNS = (
-    re.compile(r"ghp_[A-Za-z0-9]{20,}"),
-    re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
-    re.compile(r"gh[ousr]_[A-Za-z0-9]{20,}"),
-    re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
-    re.compile(r"AKIA[0-9A-Z]{16}"),
-    re.compile(r"-----BEGIN (?:OPENSSH |RSA )?PRIVATE KEY-----"),
-    re.compile(r"(?i)authorization:\s*bearer\s+\S+"),
+from ci_e2e_artifact_common import (
+    ALLOWED_MODES, ALLOWED_PACKAGE_SOURCES, ALLOWED_SCOPES, PRODUCT_PHASES,
+    SCHEMA_VERSION, SHA256_RE, SHA_RE, TEXT_SUFFIXES, _optional_hash,
+    _optional_positive, _phase_observations, assert_safe_text, command_version,
+    copy_safe_artifacts, read_json_file, read_readiness, redact_text, utc_now,
+    validate_manifest, write_json_file,
 )
-TOKEN_QUERY = re.compile(
-    r"(?:[?&]|&amp;)token=(?:<redacted-token>|\[REDACTED\]|[^&\s\"'<>]+)",
-    re.IGNORECASE,
-)
-WINDOWS_PRIVATE_PATH = re.compile(r"(?i)[A-Z]:[\\/]Users[\\/][^\\/\s\"'<>]+")
-LINUX_PRIVATE_PATH = re.compile(r"/home/(?!e2e(?:/|$))[^/\s\"'<>]+")
-
-
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def safe_relative_path(value: str) -> str:
-    normalized = value.replace("\\", "/")
-    path = PurePosixPath(normalized)
-    if not normalized or path.is_absolute() or ".." in path.parts or re.match(r"^[A-Za-z]:", normalized):
-        raise ValueError(f"Unsafe artifact path: {value}")
-    return normalized
-
-
-def manifest_paths(manifest: dict) -> list[str]:
-    paths: list[str] = []
-    for value in (manifest.get("runtime") or {}).values():
-        if isinstance(value, str) and value:
-            paths.append(value)
-    for values in (manifest.get("artifacts") or {}).values():
-        if isinstance(values, list):
-            paths.extend(value for value in values if isinstance(value, str) and value)
-    for entry in manifest.get("screenshots") or []:
-        if isinstance(entry, dict) and isinstance(entry.get("path"), str):
-            paths.append(entry["path"])
-    return paths
-
-
-def validate_manifest(source: Path, manifest: dict) -> list[str]:
-    paths = [safe_relative_path(value) for value in manifest_paths(manifest)]
-    if len(paths) != len(set(paths)):
-        raise ValueError("Artifact manifest contains duplicate paths")
-    for relative in paths:
-        if not (source / relative).is_file():
-            raise ValueError(f"Artifact manifest references a missing file: {relative}")
-    return paths
-
-
-def redact_text(text: str, *, known_tokens: Iterable[str], private_roots: Iterable[str]) -> str:
-    redacted = TOKEN_QUERY.sub("", text)
-    for token in known_tokens:
-        if token:
-            redacted = redacted.replace(token, "[REDACTED]")
-    for root in private_roots:
-        if not root:
-            continue
-        variants = {root, root.replace("\\", "/"), root.replace("/", "\\")}
-        for variant in variants:
-            redacted = redacted.replace(variant, "[WORKSPACE]")
-    return redacted
-
-
-def redact_json(value, *, known_tokens: Iterable[str], private_roots: Iterable[str]):
-    if isinstance(value, str):
-        return redact_text(value, known_tokens=known_tokens, private_roots=private_roots)
-    if isinstance(value, list):
-        return [redact_json(item, known_tokens=known_tokens, private_roots=private_roots) for item in value]
-    if isinstance(value, dict):
-        return {
-            key: redact_json(item, known_tokens=known_tokens, private_roots=private_roots)
-            for key, item in value.items()
-        }
-    return value
-
-
-def assert_safe_text(text: str, relative_path: str) -> None:
-    for pattern in SECRET_PATTERNS:
-        if pattern.search(text):
-            raise ValueError(f"Secret-like content remains in {relative_path}")
-    if TOKEN_QUERY.search(text):
-        raise ValueError(f"Token-bearing URL remains in {relative_path}")
-    if WINDOWS_PRIVATE_PATH.search(text) or LINUX_PRIVATE_PATH.search(text):
-        raise ValueError(f"Private absolute path remains in {relative_path}")
-
-
-def read_readiness(source: Path) -> tuple[dict | None, list[str]]:
-    path = source / "runtime" / "dashboard-ready.json"
-    if not path.is_file():
-        return None, []
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    tokens = [str(payload.get("token") or "")]
-    payload.pop("token", None)
-    for key, value in list(payload.items()):
-        if isinstance(value, str):
-            payload[key] = TOKEN_QUERY.sub("", value)
-    payload["redacted"] = True
-    return payload, tokens
-
-
-def copy_safe_artifacts(source: Path, destination: Path, private_roots: Iterable[str]) -> tuple[str, list[str]]:
-    manifest_status = "missing"
-    manifest: dict | None = None
-    manifest_path = source / "artifact-manifest.json"
-    if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        validate_manifest(source, manifest)
-        manifest_status = str(manifest.get("status") or "unknown")
-
-    readiness, known_tokens = read_readiness(source)
-    copied: list[str] = []
-    if source.is_dir():
-        for path in sorted(source.rglob("*")):
-            if not path.is_file():
-                continue
-            relative = path.relative_to(source).as_posix()
-            top = relative.split("/", 1)[0]
-            if top not in ALLOWED_TOP_LEVEL or relative == "runtime/dashboard-ready.json":
-                continue
-            target = destination / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if path.suffix.lower() in TEXT_SUFFIXES or path.name == "artifact-manifest.json":
-                text = path.read_text(encoding="utf-8")
-                if path.suffix.lower() == ".json" or relative == "artifact-manifest.json":
-                    data = json.loads(text)
-                    if relative == "artifact-manifest.json":
-                        runtime = data.get("runtime") or {}
-                        if runtime.get("dashboardReady"):
-                            runtime["dashboardReady"] = "runtime/dashboard-ready.redacted.json"
-                    data = redact_json(data, known_tokens=known_tokens, private_roots=private_roots)
-                    text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-                else:
-                    text = redact_text(text, known_tokens=known_tokens, private_roots=private_roots)
-                assert_safe_text(text, relative)
-                target.write_text(text, encoding="utf-8")
-            else:
-                shutil.copyfile(path, target)
-            copied.append(f"artifacts/{relative}")
-
-    if readiness is not None:
-        relative = "runtime/dashboard-ready.redacted.json"
-        text = json.dumps(readiness, ensure_ascii=False, indent=2) + "\n"
-        assert_safe_text(text, relative)
-        target = destination / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
-        copied.append(f"artifacts/{relative}")
-    return manifest_status, copied
-
-
-def command_version(arguments: list[str]) -> str:
-    try:
-        result = subprocess.run(arguments, check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError):
-        return "unavailable"
-    return (result.stdout or result.stderr).strip().splitlines()[0]
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
@@ -195,6 +31,40 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         duration = 0
     success = args.e2e_exit_code == 0
     direct_baseline_comparison = args.mode == "standard" and args.scope == "full"
+    package_source = args.package_source or "source-build"
+    if package_source not in ALLOWED_PACKAGE_SOURCES:
+        raise ValueError(f"Unsupported package source: {package_source}")
+    source_fast_run_id = _optional_positive(args.source_fast_ci_run_id)
+    source_fast_tested_sha = _optional_hash(args.source_fast_ci_tested_sha, SHA_RE, "source-fast-ci-tested-sha")
+    source_package_sha256 = _optional_hash(args.source_package_sha256, SHA256_RE, "source-package-sha256")
+    e2e_checkout_sha = _optional_hash(args.e2e_checkout_sha, SHA_RE, "e2e-checkout-sha") or args.commit_sha
+    fast_handoff_complete = False
+    if package_source == "fast-ci-artifact":
+        if source_fast_run_id is None:
+            raise ValueError("fast-ci-artifact summary requires a source run ID")
+        fast_handoff_complete = source_fast_tested_sha is not None and source_package_sha256 is not None
+        if success and not fast_handoff_complete:
+            raise ValueError("successful fast-ci-artifact summary requires tested SHA and package SHA-256")
+        if source_package_sha256 is not None and source_fast_tested_sha is None:
+            raise ValueError("Fast CI package SHA-256 requires a tested SHA")
+        if source_fast_tested_sha is not None and e2e_checkout_sha != source_fast_tested_sha:
+            raise ValueError("Fast CI tested SHA must equal E2E checkout SHA")
+    else:
+        source_fast_run_id = None
+        source_fast_tested_sha = None
+        source_package_sha256 = None
+
+    phase_path = output / "artifacts" / "reports" / "e2e-phase-timings.json"
+    phase_payload = read_json_file(phase_path)
+    product_phases = _phase_observations(phase_payload)
+    exported_manifest = read_json_file(output / "artifacts" / "artifact-manifest.json")
+    screenshot_rows = exported_manifest.get("screenshots") if isinstance(exported_manifest, dict) else []
+    screenshot_count = len(screenshot_rows) if isinstance(screenshot_rows, list) else 0
+    failure_category = (
+        "none" if success
+        else "fast-ci-handoff" if package_source == "fast-ci-artifact" and not fast_handoff_complete
+        else "unknown"
+    )
     summary = {
         "schemaVersion": SCHEMA_VERSION,
         "repository": os.environ.get("GITHUB_REPOSITORY", "AliceLiddell01/anki-study-report"),
@@ -207,6 +77,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "mode": args.mode,
         "scope": args.scope,
         "screenshotWorkers": args.screenshot_workers,
+        "screenshotCount": screenshot_count,
         "cacheState": args.cache_state,
         "dockerBuildDurationMs": args.build_duration_ms,
         "imageSizeBytes": args.image_size_bytes,
@@ -219,16 +90,23 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "ankiVersion": os.environ.get("ANKI_VERSION", "26.05"),
         "requireApkgFixture": args.mode in {"strict-apkg", "perf100"},
         "perf100": args.mode == "perf100",
+        "packageSource": package_source,
+        "sourceFastCiRunId": source_fast_run_id,
+        "sourceFastCiTestedSha": source_fast_tested_sha,
+        "sourcePackageSha256": source_package_sha256,
+        "e2eCheckoutSha": e2e_checkout_sha,
+        "productBuildPhases": product_phases,
         "result": "success" if success else "failure",
-        "failureCategory": "none" if success else "unknown",
+        "failureCategory": failure_category,
         "startedAt": started_at,
         "finishedAt": finished_at,
         "durationSeconds": duration,
+        "workflowDurationSeconds": duration,
+        "canonicalDurationSeconds": None,
         "artifactManifestStatus": manifest_status,
         "artifactFiles": sorted(set(artifact_files + ["ci-e2e-summary.json", "ci-e2e-summary.md", "environment.txt"])),
     }
-    phase_path = output / "artifacts" / "reports" / "e2e-phase-timings.json"
-    phase_payload = read_json_file(phase_path)
+
     if phase_payload:
         phase_rows = phase_payload.setdefault("phases", [])
         existing_names = {item.get("name") for item in phase_rows}
@@ -280,8 +158,6 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "uploadDurationMs": None,
             "uploadDurationReason": "reported after upload in GitHub Step Summary",
         }
-        exported_manifest = read_json_file(exported_root / "artifact-manifest.json")
-        screenshot_count = len(exported_manifest.get("screenshots") or [])
         current = performance.setdefault("current", {})
         current.update({
             "runId": summary["runId"],
@@ -294,6 +170,12 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "screenshotCount": screenshot_count,
             "artifactFileCount": composition["fileCount"],
             "artifactBytes": composition["totalBytes"],
+            "packageSource": package_source,
+            "sourceFastCiRunId": source_fast_run_id,
+            "sourceFastCiTestedSha": source_fast_tested_sha,
+            "sourcePackageSha256": source_package_sha256,
+            "e2eCheckoutSha": e2e_checkout_sha,
+            "productBuildPhases": product_phases,
         })
         cache = performance.setdefault("cache", {})
         cache.update({"backend": "type=gha", "state": args.cache_state, "buildDurationMs": args.build_duration_ms, "imageSizeBytes": args.image_size_bytes})
@@ -337,9 +219,13 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Failure category | {summary['failureCategory']} |
 | Commit | `{summary['commitSha']}` |
 | Ref | `{summary['ref']}` |
+| E2E checkout | `{summary['e2eCheckoutSha']}` |
+| Package source | {summary['packageSource']} |
+| Fast CI source run | {summary['sourceFastCiRunId'] if summary['sourceFastCiRunId'] is not None else 'n/a'} |
 | Mode | {summary['mode']} |
 | Scope | {summary['scope']} |
 | Screenshot workers | {summary['screenshotWorkers']} |
+| Screenshot count | {summary['screenshotCount']} |
 | Build cache | {summary['cacheState']} (`type=gha`) |
 | Runner | {summary['runnerOs']} / {summary['runnerImage']} |
 | Anki | {summary['ankiVersion']} |
@@ -365,8 +251,9 @@ Perf100 measurements are diagnostics, not release thresholds.
         key: summary[key]
         for key in (
             "repository", "commitSha", "ref", "event", "workflow", "runId", "runAttempt",
-            "mode", "scope", "screenshotWorkers", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
-            "dockerServerVersion", "dockerComposeVersion", "ankiVersion",
+            "mode", "scope", "screenshotWorkers", "screenshotCount", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
+            "dockerServerVersion", "dockerComposeVersion", "ankiVersion", "packageSource", "sourceFastCiRunId",
+            "sourceFastCiTestedSha", "sourcePackageSha256", "e2eCheckoutSha",
         )
     }
     (output / "environment.txt").write_text("".join(f"{key}={value}\n" for key, value in environment.items()), encoding="utf-8")
@@ -398,18 +285,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--started-at", default="")
     parser.add_argument("--commit-sha", default="unknown")
     parser.add_argument("--ref", default="local")
+    parser.add_argument("--package-source", default="source-build")
+    parser.add_argument("--source-fast-ci-run-id", default="")
+    parser.add_argument("--source-fast-ci-tested-sha", default="")
+    parser.add_argument("--source-package-sha256", default="")
+    parser.add_argument("--e2e-checkout-sha", default="")
     return parser.parse_args()
-
-
-def read_json_file(path: Path) -> dict:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def write_json_file(path: Path, value: dict) -> None:
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:

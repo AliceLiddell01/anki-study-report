@@ -3,7 +3,7 @@
 Stage 7 expands `stats` to 20 page screenshots (five legacy + five FSRS routes,
 light/dark) and full to 40. New FSRS states and 125% proofs remain risk-based.
 
-Снимок документации: 2026-07-13.
+Снимок документации: 2026-07-16.
 
 Подробный технический README уже есть в `docker/anki-e2e/README.md`. Эта
 страница фиксирует, как Docker E2E вписывается в общий проект и какие решения
@@ -44,6 +44,39 @@ Docker E2E запускает add-on внутри реального Anki Deskto
 ```powershell
 .\scripts\run_anki_e2e_docker.ps1
 ```
+
+## Источник проверяемого add-on package
+
+Docker E2E поддерживает три взаимоисключающих package-source режима.
+
+### `source-build`
+
+Используется, когда не заданы `release_artifact_name` и `fast_ci_run_id`.
+Контейнер выполняет offline frontend dependency install, frontend build, сборку
+`.ankiaddon` и package validation. Это default и локальный fallback mode.
+
+### `release-artifact`
+
+Existing reusable release caller передаёт current-run exact release artifact и
+обязательный SHA-256. Workflow проверяет hash, stage-ит package и выполняет
+validation/extraction. Release flow остаётся независимым от Fast CI.
+
+### `fast-ci-artifact`
+
+Optional input `fast_ci_run_id` выбирает successful same-repository `Fast CI`
+run. Workflow разрешает diagnostics и package по exact artifact IDs, проверяет
+transport digests, identities, metadata, внутренний SHA-256 и размер, затем
+checkout-ит exact `testedCommitSha` и stage-ит package через
+`ANKI_E2E_PREBUILT_ADDON_PATH`. Frontend install/build и повторная упаковка в
+контейнере не выполняются.
+
+`release_artifact_name` и `fast_ci_run_id` нельзя задавать одновременно.
+Неполный, invalid или неоднозначный explicit input завершает workflow ошибкой и
+не переключается автоматически на `source-build`.
+
+Stage 3 не изменяет Docker image build, BuildKit setup, GHA cache restore/export,
+image load, real-Anki lifecycle, API/browser/screenshots или artifact
+export/upload. Точное ускорение определяется только отдельным cloud measurement.
 
 ## Ключевые пути внутри контейнера
 
@@ -102,7 +135,7 @@ e2e-artifacts/
 ├─ diagnostics/                startup trees, logs and tails
 ├─ reports/                    API/browser/APKG JSON summaries
 ├─ html/                       redacted DOM dumps
-├─ package/                    Docker-built .ankiaddon
+├─ package/                    exact .ankiaddon, проверенный real-Anki E2E
 └─ screenshots/
    ├─ navigation/              avatar menu, light/dark
    ├─ pages/                   current non-Cards routes, light/dark
@@ -110,6 +143,11 @@ e2e-artifacts/
       ├─ synthetic/            table/tiles/anki-preview, light/dark
       └─ apkg/                 table/tiles/anki-preview, light/dark
 ```
+
+Источник файла в `package/` фиксируется полем `packageSource` и может быть
+`source-build`, `release-artifact` или `fast-ci-artifact`. Это package,
+фактически установленный и проверенный real-Anki E2E, а не обязательно archive,
+собранный внутри Docker.
 
 Readiness readers и add-on E2E bootstrap используют `runtime/`. На
 timeout/failure в первую очередь полезны:
@@ -255,6 +293,32 @@ desktop/laptop dashboard layout и отсутствие clipping/raw HTML/consol
 Если smoke падает на Cards page, сначала проверить активный mode и текущую DOM
 форму. Не менять production component, пока не доказано, что проблема не в
 ожиданиях smoke script.
+
+## Package-source evidence и phases
+
+`ci-e2e-summary.json` сохраняет `packageSource`, `sourceFastCiRunId`,
+`sourceFastCiTestedSha`, `sourcePackageSha256` и `e2eCheckoutSha`. Для
+`fast-ci-artifact` public artifact дополнительно содержит sanitized
+`reports/fast-ci-handoff.json`; raw API JSON, token и локальные absolute paths в
+него не включаются.
+
+В prebuilt modes отсутствуют phases `frontend dependency install`, `frontend
+build` и `add-on package`. Вместо них выполняется и измеряется phase
+`exact prebuilt add-on validation and extraction`. Пропущенная работа не
+представляется как успешная фаза длительностью `0 ms`.
+
+## Ручная Stage 3 cloud-проверка
+
+1. Запустить Fast CI на exact HEAD Stage 3 branch.
+2. Скопировать ID успешного Fast CI run.
+3. Запустить `Full Docker / Anki E2E` на той же branch.
+4. Выбрать `mode=standard`, `scope=settings`, `screenshot_workers=auto`,
+   `resource_telemetry=false`, `verify_restart=false`.
+5. Передать Fast run ID через `fast_ci_run_id`.
+6. До интеграции проверить Fast и E2E artifacts, package identities и screenshots.
+
+Эта последовательность описывает требуемую проверку, но не утверждает, что
+Stage 3 handoff уже получил real-Anki cloud PASS.
 
 ## Runtime artifacts не коммитить
 
