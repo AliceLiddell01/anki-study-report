@@ -1,0 +1,23 @@
+{
+  "version": "review-longitudinal-v0.1",
+  "config_id": "review-calibration-correction",
+  "start_date": "2026-01-01",
+  "max_reviews_per_day": 1000,
+  "modes": {
+    "development": {"horizon_days": 30, "cohort_size": 12, "replicas": 1},
+    "calibration-90": {"horizon_days": 90, "cohort_size": 24, "replicas": 2},
+    "calibration-365": {"horizon_days": 365, "cohort_size": 20, "replicas": 2}
+  },
+  "policies": [
+    {"policy_id": "stable-default", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.90}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "stable-high", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.95}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "stable-low", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.80}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "temporary-high-cycle", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.95}, {"start_day": 30, "desired_retention": 0.90}, {"start_day": 60, "desired_retention": 0.95}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "temporary-low-cycle", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.80}, {"start_day": 30, "desired_retention": 0.90}, {"start_day": 60, "desired_retention": 0.80}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "timely-control", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.90}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000},
+    {"policy_id": "intentional-backlog", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.90}], "delay_start_day": 30, "delay_end_day": 45, "review_limit": 1000},
+    {"policy_id": "honest-backlog-return", "scheduler": "py-fsrs", "retention_timeline": [{"start_day": 0, "desired_retention": 0.90}], "delay_start_day": 30, "delay_end_day": 45, "review_limit": 1000},
+    {"policy_id": "no-fsrs-neutral", "scheduler": "neutral-synthetic", "retention_timeline": [{"start_day": 0, "desired_retention": 0.90}], "delay_start_day": null, "delay_end_day": null, "review_limit": 1000}
+  ],
+  "parameter_set_ids": ["R-CURRENT", "R-NO-GAIN", "R-LOW-CHALLENGE", "R-NEUTRAL-CONTEXT"]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anki-study-report.local/schemas/review-longitudinal-v0.1.schema.json",
+  "title": "Review XP longitudinal calibration config v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "config_id", "start_date", "max_reviews_per_day", "modes", "policies", "parameter_set_ids"],
+  "properties": {
+    "version": {"const": "review-longitudinal-v0.1"},
+    "config_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 80},
+    "start_date": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "max_reviews_per_day": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "modes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["development", "calibration-90", "calibration-365"],
+      "properties": {
+        "development": {"$ref": "#/$defs/mode"},
+        "calibration-90": {"$ref": "#/$defs/mode"},
+        "calibration-365": {"$ref": "#/$defs/mode"}
+      }
+    },
+    "policies": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/policy"}
+    },
+    "parameter_set_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 17,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*(?:\\+[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*)*$"}
+    }
+  },
+  "$defs": {
+    "mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["horizon_days", "cohort_size", "replicas"],
+      "properties": {
+        "horizon_days": {"type": "integer", "minimum": 1, "maximum": 365},
+        "cohort_size": {"type": "integer", "minimum": 2, "maximum": 1000},
+        "replicas": {"type": "integer", "minimum": 1, "maximum": 20}
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_day", "desired_retention"],
+      "properties": {
+        "start_day": {"type": "integer", "minimum": 0, "maximum": 364},
+        "desired_retention": {"type": "number", "minimum": 0.7, "maximum": 0.97}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "scheduler", "retention_timeline", "delay_start_day", "delay_end_day", "review_limit"],
+      "properties": {
+        "policy_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 80},
+        "scheduler": {"enum": ["py-fsrs", "neutral-synthetic"]},
+        "retention_timeline": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/timeline"}},
+        "delay_start_day": {"type": ["integer", "null"], "minimum": 0, "maximum": 364},
+        "delay_end_day": {"type": ["integer", "null"], "minimum": 0, "maximum": 365},
+        "review_limit": {"type": "integer", "minimum": 1, "maximum": 10000}
+      }
+    }
+  }
+}

@@ -37,6 +37,13 @@ from .population import (
 )
 from .rust_oracle import verify_rust_oracle
 from .fsrs_reference import verify_fsrs_reference
+from .longitudinal_config import load_longitudinal_config
+from .longitudinal_runner import (
+    render_longitudinal_summary,
+    run_longitudinal,
+    validate_longitudinal_result,
+    write_longitudinal_reports,
+)
 from .validation import close
 
 
@@ -137,6 +144,28 @@ def build_parser() -> argparse.ArgumentParser:
     population.add_argument("--smoke", action="store_true", help="bounded smoke for long mode")
     population.add_argument("--no-write", action="store_true")
 
+    validate_longitudinal = subparsers.add_parser(
+        "validate-longitudinal-config",
+        help="validate a bounded persistent-card simulation config",
+    )
+    validate_longitudinal.add_argument("config", type=Path)
+
+    longitudinal = subparsers.add_parser(
+        "run-longitudinal",
+        help="run bounded persistent-card policy histories",
+    )
+    longitudinal.add_argument("config", type=Path)
+    longitudinal.add_argument(
+        "--mode",
+        choices=("development", "calibration-90", "calibration-365"),
+        required=True,
+    )
+    longitudinal.add_argument("--seed", type=int, required=True)
+    longitudinal.add_argument("--parameter-set", action="append", dest="parameter_sets")
+    longitudinal.add_argument("--policy", action="append", dest="policies")
+    longitudinal.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    longitudinal.add_argument("--no-write", action="store_true")
+
     rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
     rust.add_argument("--parameter-set", required=True)
     rust.add_argument("--corpus", type=Path, default=PACKAGE_ROOT / "scenarios")
@@ -170,6 +199,28 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args) -> int:
+    if args.command == "validate-longitudinal-config":
+        config = load_longitudinal_config(args.config)
+        print(
+            f"VALID {config.version} {config.config_id} "
+            f"{len(config.policies)} policies"
+        )
+        return 0
+    if args.command == "run-longitudinal":
+        config = load_longitudinal_config(args.config)
+        payload = run_longitudinal(
+            config,
+            mode_id=args.mode,
+            master_seed=args.seed,
+            parameter_set_ids=tuple(args.parameter_sets) if args.parameter_sets else None,
+            policy_ids=tuple(args.policies) if args.policies else None,
+        )
+        validate_longitudinal_result(payload)
+        print(render_longitudinal_summary(payload), end="")
+        if not args.no_write:
+            run_dir = write_longitudinal_reports(payload, args.output_dir)
+            print(f"reports: {run_dir}", file=sys.stderr)
+        return 0
     if args.command == "verify-fsrs-reference":
         payload = verify_fsrs_reference(args.contract, PACKAGE_ROOT)
         print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))

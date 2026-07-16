@@ -39,7 +39,7 @@ from .validation import close
 
 
 PERSONA_VERSION = "review-persona-v0.1"
-GENERATOR_VERSION = "synthetic-review-population-v0.1"
+GENERATOR_VERSION = "independent-day-workload-v0.2"
 EXPECTED_PERSONA_IDS = tuple(
     f"P{index:02d}_{name}"
     for index, name in enumerate(
@@ -468,7 +468,7 @@ def run_population(
 def render_population_summary(payload: dict[str, Any]) -> str:
     manifest = payload["manifest"]
     lines = [
-        "# Synthetic review population",
+        "# Independent-day workload stress simulation",
         "",
         f"- Mode: `{manifest['mode']}`",
         f"- Persona-days: **{manifest['persona_days']}**",
@@ -491,7 +491,7 @@ def render_population_summary(payload: dict[str, Any]) -> str:
         "",
         "## Scope",
         "",
-        "Synthetic parameterized personas only; no real review history, card text, deck name, or personal data.",
+        "Independent synthetic days only; this report is workload/cap stress evidence, not a longitudinal card history. No real review history, card text, deck name, or personal data.",
     ])
     return "\n".join(lines) + "\n"
 

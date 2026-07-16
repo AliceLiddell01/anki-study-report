@@ -2185,3 +2185,23 @@ Stage 5B.1 — Pure Deterministic Review Simulator Core
 ```
 
 Он должен реализовать только формулы, breakdown и exact scenarios без Monte Carlo, FSRS adapter и CI-интеграции.
+
+## Stage 5B.C correction: longitudinal evidence boundary
+
+The original seeded persona generator is retained as an **independent-day
+workload stress simulation**. It remains valid for distribution and cap stress,
+but it is not evidence that card memory, due state, backlog, or desired
+retention evolved across days.
+
+Longitudinal calibration uses the separate strict
+`review-longitudinal-v0.1` contract. A persistent `card_lineage_id` carries
+memory state, last review, natural next due, interval, lapse/review counts,
+policy/preset identity, and active state across the horizon. FSRS-enabled
+histories call official py-fsrs transitions; no-FSRS histories use the declared
+neutral synthetic scheduler. A missed due card remains the same overdue lineage
+until catch-up. Common random numbers derive from seed, replica, lineage, review
+ordinal, and channel—not iteration order or policy ID.
+
+Learning/relearning transitions exist only for schedule continuity. They do not
+define or award Learn XP. Review events continue through the existing reward
+core, and scheduling-adapter uncertainty cannot suppress eligible CoreBaseline.

@@ -221,3 +221,26 @@ def test_cli_rejects_fixture_with_legacy_support_units(tmp_path):
 
     assert result.returncode != 0
     assert "unsupported field(s): units" in result.stderr
+
+
+def test_longitudinal_cli_validate_and_bounded_no_write():
+    config = ROOT / "configs/review-longitudinal-v0.1.json"
+    validated = run_cli("validate-longitudinal-config", str(config))
+    assert validated.returncode == 0
+    assert "VALID review-longitudinal-v0.1" in validated.stdout
+
+    run = run_cli(
+        "run-longitudinal",
+        str(config),
+        "--mode",
+        "development",
+        "--seed",
+        "20260716",
+        "--parameter-set",
+        "R-CURRENT",
+        "--policy",
+        "stable-default",
+        "--no-write",
+    )
+    assert run.returncode == 0
+    assert "Longitudinal Review XP simulation" in run.stdout

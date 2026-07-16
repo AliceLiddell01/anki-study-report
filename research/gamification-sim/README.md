@@ -460,7 +460,7 @@ canonical digests, and invalid numeric/enum/order/JSON inputs. Invalid parameter
 sets are rejected at `RewardParameterSet` construction; they are never silently
 normalized.
 
-## Stage 5B.5 seeded synthetic population
+## Stage 5B.5 independent-day workload stress simulation
 
 The strict `review-persona-v0.1` catalog contains 16 parameterized synthetic
 classes. It contains model inputs only—no card text, deck names, collection
@@ -475,7 +475,9 @@ python -m gamification_sim run-population --mode standard --parameter-set R-CURR
 python -m gamification_sim run-population --mode long --parameter-set R-CURRENT --seed 20260716 --smoke --no-write
 ```
 
-Development executes 480 persona-days. Standard executes 584,000 persona-days.
+Development executes 480 independent persona-days. Standard executes 584,000
+independent persona-days. Each generated day is a fresh workload sample; these
+runs are cap/distribution stress evidence, not longitudinal card histories.
 The full long mode is approximately 1.098 million persona-days and is never part
 of the ordinary suite; `--smoke` validates its path with 112 persona-days.
 Reports include distribution tails, component shares, baseline preservation,
@@ -525,3 +527,26 @@ learning/relearning steps, while `fsrs-rs::next_states` reports the model
 interval. This documented scheduler-layer difference is not classified as a
 reward defect. High-, low-, no-FSRS, and backlog contexts all retain identical
 CoreBaseline.
+
+## Stage 5B.C3 persistent longitudinal card simulation
+
+The separate `review-longitudinal-v0.1` engine keeps stable card lineages and
+evolving scheduler state across 30/90/365-day horizons. The py-fsrs path uses
+official `fsrs 6.3.1` transitions with fuzzing disabled; the no-FSRS path is
+explicitly `neutral-synthetic-v0.1` and does not claim legacy Anki scheduler
+parity.
+
+```powershell
+python -m gamification_sim validate-longitudinal-config configs/review-longitudinal-v0.1.json
+python -m gamification_sim run-longitudinal configs/review-longitudinal-v0.1.json --mode development --seed 20260716 --no-write
+```
+
+Each day gathers cards from state-derived due dates, applies a bounded policy
+limit, leaves missed cards overdue, reviews the same lineage during catch-up,
+updates scheduler state, and then sends normalized inputs to the unchanged
+reward core. Matched policies share an initial cohort and latent draws keyed by
+master seed, replica, lineage, review ordinal, and channel. Policy names and
+iteration order therefore do not select a different random world. Higher
+desired retention produces shorter intervals and more scheduled reviews on the
+committed matched cohort. Scheduler uncertainty and no-FSRS operation never
+suppress the eligible core baseline.
