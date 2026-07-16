@@ -21,7 +21,7 @@
 | Docker E2E/runtime behavior | Targeted local checks перед запуском | `.\scripts\run_full_check.ps1 -CleanDocker` | Да | Проверяет реальный Anki Desktop/import/readiness/browser |
 | E2E artifact paths/screenshots | `node scripts/run_python.mjs -m pytest tests/test_docker_smoke_helpers.py` | `.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture` | Да | Проверяет readers/writers, manifest и synthetic/APKG screenshot hierarchy |
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
-| `.github/workflows/ci-fast.yml` или Fast CI scripts | `pytest tests/test_ci_fast_workflow.py tests/test_ci_package_metadata.py` + `git diff --check` | `.\scripts\run_full_check.ps1 -SkipDocker`; для artifact contract один manual Fast CI dispatch на exact branch | Нет | Cloud CI и local fallback сохраняют canonical command, а producer contract отдельно проверяет diagnostics/package inventory, commit identity и inner SHA-256 |
+| `.github/workflows/ci-fast.yml`, `run_full_check.ps1` или Fast CI timing scripts | `pytest tests/test_ci_fast_timing.py tests/test_ci_fast_workflow.py tests/test_full_check_timing.py tests/test_ci_package_metadata.py` + `git diff --check` | `.\scripts\run_full_check.ps1 -SkipDocker`; затем ровно один manual Fast CI dispatch на exact branch для runtime baseline | Нет | Проверяет schema/failure behavior, отдельные canonical phases, неизменные runner/cache/checkout/package contracts и diagnostics timing inventory; Jobs API анализ выполняется после run |
 | `.github/workflows/ci-e2e.yml`, Docker wrapper, Fast-package handoff или public artifact exporter | handoff/workflow/exporter pytest + `git diff --check` | один exact-SHA Fast CI и один targeted `standard/settings` с `fast_ci_run_id`; strict APKG/Perf100 только при их собственном scope | Да для runtime handoff | Проверяет source modes, same-repo run/artifact identity, exact checkout, inner/transport hashes, prebuilt install, redaction и отсутствие token в container/public artifact |
 | E2E scopes/parallel queue/telemetry/BuildKit layers | `pytest tests/test_e2e_performance.py tests/test_docker_smoke_helpers.py tests/test_ci_e2e_artifacts.py` + syntax/YAML checks | exact-SHA `stats` workers 3/4, затем first+warm `full standard` | Да для cloud benchmark | Проверяет deterministic tasks, bounded cleanup, p50/p90/p95, resource aggregation, cache structure и artifact v2 |
 | `config.json` / Settings Hub API | `node scripts/run_python.mjs -m pytest tests/test_config_service.py tests/test_dashboard_server.py` | Frontend settings tests + package check | Нет обычно | Defaults, allowlist, partial update и token contract должны совпадать |
@@ -53,6 +53,11 @@ pnpm run test:all
 .\scripts\run_full_check.ps1 -DockerOnly
 .\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
 ```
+
+Fast CI instrumentation использует optional `-TimingOutput`; без него canonical
+локальный contour не создаёт timing files. Stage 5A разрешает один manual Fast CI
+run после local PASS. Он является observational baseline, не before/after pair и
+не основанием для объявления ускорения.
 
 ## Когда не запускать Docker E2E
 

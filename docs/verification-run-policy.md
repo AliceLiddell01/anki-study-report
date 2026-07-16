@@ -59,6 +59,25 @@ once; telemetry off; no warm-cache/local duplicate. Поскольку actual St
 также меняет dashboard server и E2E fixture/contract, planner корректно
 эскалирует final integration requirement, но не создаёт лишний ранний full run.
 
+## Fast CI instrumentation baseline policy
+
+Изменение только Fast CI timing contract сначала проходит focused helper,
+workflow, summary и `run_full_check.ps1` tests, затем canonical local
+`.\scripts\run_full_check.ps1 -SkipDocker`. После local PASS для Stage 5A
+разрешён ровно один `workflow_dispatch` на exact instrumentation branch.
+
+Этот run является observational baseline. Не выполняются before/after pair,
+warm-cache repeat, PR-trigger surrogate, Docker E2E или release. Internal
+monotonic phase timings анализируются вместе с Jobs API action/step timestamps;
+artifact upload и post-job cache work не приписываются внутренним phase timers.
+Второй TypeScript typecheck, runner, checkout и caches сохраняются до отдельного
+Stage 5B decision.
+
+Если authorized baseline падает, automatic rerun запрещён. Нужно скачать
+доступные diagnostics, классифицировать project/instrumentation/infrastructure
+failure и вернуть `FAIL` или `PARTIAL`; исправление и новый run требуют отдельного
+решения владельца.
+
 ## Fast package producer policy
 
 Успешный Fast CI run публикует diagnostics artifact отдельно от краткоживущего

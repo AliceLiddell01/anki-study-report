@@ -11,8 +11,11 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "build": "pnpm run typecheck && vite build && node scripts/check-bundle.mjs",
-    "build:addon": "pnpm run build && node scripts/copy-to-addon.mjs",
+    "build:vite": "vite build",
+    "build:check-bundle": "node scripts/check-bundle.mjs",
+    "build:copy-addon": "node scripts/copy-to-addon.mjs",
+    "build": "pnpm run typecheck && pnpm run build:vite && pnpm run build:check-bundle",
+    "build:addon": "pnpm run build && pnpm run build:copy-addon",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest",
     "test:run": "vitest run",

@@ -76,8 +76,13 @@ $environmentLines | Set-Content -LiteralPath (Join-Path $OutputPath "environment
 
 $artifactFiles = @(
     Get-ChildItem -LiteralPath $OutputPath -Recurse -File |
+        Where-Object { -not $_.Name.EndsWith(".state", [StringComparison]::OrdinalIgnoreCase) } |
         ForEach-Object { $_.FullName.Substring($OutputPath.Length + 1).Replace("\", "/") }
 )
+$timingJson = Join-Path $OutputPath "timing\fast-ci-timing.json"
+if (Test-Path -LiteralPath $timingJson) {
+    $artifactFiles += @("timing/fast-ci-timing.json", "timing/fast-ci-timing.md")
+}
 $artifactFiles += @("ci-summary.md", "ci-summary.json")
 $artifactFiles = @($artifactFiles | Sort-Object -Unique)
 
@@ -129,8 +134,9 @@ $markdown = @"
 | Started (UTC) | $started |
 | Finished (UTC) | $finished |
 
-This diagnostics artifact contains logs, environment data, summaries, and the verification plan only.
+This diagnostics artifact contains logs, environment data, summaries, the verification plan, and schema-versioned Fast CI timing only.
 The exact non-release package is published separately with ``package-metadata.json`` after a successful run.
+Action setup, artifact upload, and post-job cache durations are external step timings obtained from the GitHub Jobs API.
 "@
 $markdown | Set-Content -LiteralPath (Join-Path $OutputPath "ci-summary.md") -Encoding utf8
 

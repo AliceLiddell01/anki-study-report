@@ -52,26 +52,53 @@ jobs:
       - name: Prepare diagnostics
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force ci-fast/logs | Out-Null
+          New-Item -ItemType Directory -Force ci-fast/logs, ci-fast/timing | Out-Null
           "CI_FAST_STARTED_AT=$([DateTime]::UtcNow.ToString('o'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          python scripts/ci_fast_timing.py initialize `
+            --output ci-fast/timing/fast-ci-timing.json `
+            --repository '${{ github.repository }}' `
+            --event-name '${{ github.event_name }}' `
+            --ref '${{ github.ref }}' `
+            --tested-commit-sha '${{ github.sha }}' `
+            --run-id '${{ github.run_id }}' `
+            --run-attempt '${{ github.run_attempt }}'
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI timing initialization failed.' }
           python --version
           node --version
           pnpm --version
           $PSVersionTable.PSVersion.ToString()
 
       - name: Install Python dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+        shell: pwsh
+        run: |
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id install-python-dependencies
+          if ($LASTEXITCODE -ne 0) { throw 'Python dependency timing start failed.' }
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id install-python-dependencies --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { exit $commandExit }
+          if ($timingExit -ne 0) { throw 'Python dependency timing finish failed.' }
 
       - name: Install frontend dependencies
+        shell: pwsh
         working-directory: web-dashboard
-        run: pnpm install --frozen-lockfile
+        run: |
+          python ../scripts/ci_fast_timing.py start --output ../ci-fast/timing/fast-ci-timing.json --phase-id install-frontend-dependencies
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency timing start failed.' }
+          pnpm install --frozen-lockfile
+          $commandExit = $LASTEXITCODE
+          python ../scripts/ci_fast_timing.py finish --output ../ci-fast/timing/fast-ci-timing.json --phase-id install-frontend-dependencies --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { exit $commandExit }
+          if ($timingExit -ne 0) { throw 'Frontend dependency timing finish failed.' }
 
       - name: Run canonical fast pipeline
         id: fast_check
         shell: pwsh
         run: |
           try {
-            & .\scripts\run_full_check.ps1 -SkipDocker *>&1 |
+            & .\scripts\run_full_check.ps1 -SkipDocker -TimingOutput ci-fast/timing/fast-ci-timing.json *>&1 |
               Tee-Object -FilePath ci-fast/logs/fast-check.log
           } catch {
             $_ | Out-String | Tee-Object -FilePath ci-fast/logs/fast-check.log -Append
@@ -79,9 +106,13 @@ jobs:
           }
 
       - name: Publish verification plan
+        id: verification_plan
         if: always()
         shell: pwsh
         run: |
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id verification-planner
+          if ($LASTEXITCODE -ne 0) { throw 'Verification planner timing start failed.' }
+
           $eventName = "${{ github.event_name }}"
           $defaultBranch = "${{ github.event.repository.default_branch }}"
           $refName = "${{ github.ref_name }}"
@@ -105,21 +136,35 @@ jobs:
           }
 
           python scripts/plan_verification.py --base $base --head HEAD --output-dir ci-fast/verification-plan
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id verification-planner --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { exit $commandExit }
+          if ($timingExit -ne 0) { throw 'Verification planner timing finish failed.' }
 
       - name: Write CI summary
+        id: ci_summary
         if: always()
         shell: pwsh
         env:
           FAST_CHECK_OUTCOME: ${{ steps.fast_check.outcome }}
         run: |
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id ci-summary
+          if ($LASTEXITCODE -ne 0) { throw 'CI summary timing start failed.' }
           $result = if ($env:FAST_CHECK_OUTCOME -eq 'success') { 'success' } else { 'failure' }
           $category = if ($env:FAST_CHECK_OUTCOME -in @('', 'skipped')) { 'environment' } else { 'unknown' }
           .\scripts\write_ci_fast_summary.ps1 `
             -Result $result `
             -FailureCategory $category `
             -StartedAt $env:CI_FAST_STARTED_AT
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id ci-summary --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { exit $commandExit }
+          if ($timingExit -ne 0) { throw 'CI summary timing finish failed.' }
 
       - name: Prepare exact Fast CI package
+        id: prepare_ci_package
         if: success()
         shell: pwsh
         env:
@@ -132,6 +177,8 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id package-metadata-write
+          if ($LASTEXITCODE -ne 0) { throw 'Package metadata timing start failed.' }
           python scripts/write_ci_package_metadata.py `
             --package anki_study_report.ankiaddon `
             --output-directory ci-package `
@@ -144,11 +191,50 @@ jobs:
             --run-id $env:RUN_ID `
             --run-attempt $env:RUN_ATTEMPT `
             --artifact-name $env:ARTIFACT_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'Fast CI package metadata generation failed.' }
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id package-metadata-write --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { throw 'Fast CI package metadata generation failed.' }
+          if ($timingExit -ne 0) { throw 'Package metadata timing finish failed.' }
+
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id package-staged-validation
+          if ($LASTEXITCODE -ne 0) { throw 'Staged package timing start failed.' }
           python scripts/package_addon.py --output ci-package/anki_study_report.ankiaddon --check-only
-          if ($LASTEXITCODE -ne 0) { throw 'Staged Fast CI package validation failed.' }
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id package-staged-validation --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { throw 'Staged Fast CI package validation failed.' }
+          if ($timingExit -ne 0) { throw 'Staged package timing finish failed.' }
+
+          python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id package-metadata-verify
+          if ($LASTEXITCODE -ne 0) { throw 'Package metadata verification timing start failed.' }
           python scripts/write_ci_package_metadata.py --verify-only --output-directory ci-package
-          if ($LASTEXITCODE -ne 0) { throw 'Fast CI package metadata verification failed.' }
+          $commandExit = $LASTEXITCODE
+          python scripts/ci_fast_timing.py finish --output ci-fast/timing/fast-ci-timing.json --phase-id package-metadata-verify --exit-code $commandExit
+          $timingExit = $LASTEXITCODE
+          if ($commandExit -ne 0) { throw 'Fast CI package metadata verification failed.' }
+          if ($timingExit -ne 0) { throw 'Package metadata verification timing finish failed.' }
+
+      - name: Finalize structured timing
+        id: timing_finalize
+        if: always()
+        shell: pwsh
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $result = switch ($env:JOB_STATUS) {
+            'success' { 'success' }
+            'cancelled' { 'cancelled' }
+            default { 'failure' }
+          }
+          python scripts/ci_fast_timing.py finalize `
+            --output ci-fast/timing/fast-ci-timing.json `
+            --result $result `
+            --markdown-output ci-fast/timing/fast-ci-timing.md `
+            --summary-output $env:GITHUB_STEP_SUMMARY
+          if ($LASTEXITCODE -ne 0) { throw 'Fast CI timing finalization failed.' }
+          python scripts/ci_fast_timing.py validate --output ci-fast/timing/fast-ci-timing.json
+          if ($LASTEXITCODE -ne 0) { throw 'Final Fast CI timing validation failed.' }
 
       - name: Upload Fast CI diagnostics
         if: always()
