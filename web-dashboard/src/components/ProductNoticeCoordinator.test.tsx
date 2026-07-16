@@ -48,6 +48,7 @@ describe("product notice coordinator", () => {
 
   beforeEach(async () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    await import("./TelemetryConsentDialog");
     await i18n.changeLanguage("ru");
     window.history.replaceState({}, "", "/?token=dashboard-token");
     shell = document.createElement("div");
@@ -214,6 +215,66 @@ describe("product notice coordinator", () => {
     expect(container.querySelector('[data-testid="whats-new-dialog"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="telemetry-consent-dialog"]')).toBeNull();
   });
+
+  it("consumes each manual request once across Got it, X, Escape, async refresh, and failure", async () => {
+    const settled = response({
+      requiresConsent: false,
+      showWhatsNew: false,
+      unseenReleaseVersions: [],
+      notice: { schemaVersion: 1, firstObservedVersion: "1.0.0", lastStartedVersion: "1.2.0", lastSeenReleaseVersion: "1.2.0" },
+    });
+    let resolveSeen: ((value: Response) => void) | undefined;
+    const pendingSeen = new Promise<Response>((resolve) => { resolveSeen = resolve; });
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse(settled))
+      .mockReturnValueOnce(pendingSeen)
+      .mockResolvedValueOnce(jsonResponse(settled))
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({ ok: false, error: "state_unavailable" }) } as Response)
+      .mockRejectedValueOnce(new TypeError("offline"));
+
+    function Harness() {
+      const [signal, setSignal] = useState(0);
+      return (
+        <>
+          <button type="button" data-testid="invoker" onClick={() => setSignal((value) => value + 1)}>Open</button>
+          <ProductNoticeCoordinator manualOpenSignal={signal} />
+        </>
+      );
+    }
+
+    await act(async () => root.render(<Harness />));
+    await settle();
+    const invoker = container.querySelector<HTMLButtonElement>('[data-testid="invoker"]')!;
+
+    invoker.focus();
+    act(() => invoker.click());
+    expect(container.querySelector('[data-testid="whats-new-dialog"]')).not.toBeNull();
+    const gotIt = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Понятно")!;
+    act(() => gotIt.click());
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(invoker);
+    resolveSeen?.(jsonResponse(settled));
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    act(() => invoker.click());
+    const close = container.querySelector<HTMLButtonElement>('[aria-label="Закрыть историю изменений"]')!;
+    act(() => close.click());
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    act(() => invoker.click());
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    act(() => invoker.click());
+    act(() => Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Понятно")!.click());
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
 });
 
 function jsonResponse(payload: unknown): Response {
@@ -224,5 +285,6 @@ async function settle() {
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
   });
 }
