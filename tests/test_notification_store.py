@@ -161,3 +161,26 @@ def test_toast_preferences_and_history_pruning_are_bounded(tmp_path, monkeypatch
     store.reconcile("workload.review_pressure", [candidate("warning", load=90)], source_revision="r2", evaluated_at="2026-07-17T12:00:00Z")
     assert store.list_notifications(page_limit=50)["total"] <= 3
     assert store.summary()["activeSignalCount"] == 1
+
+
+def test_toasts_only_follow_new_escalated_and_reactivated_records(tmp_path):
+    module = fresh_import_addon_module("notification_store")
+    store = module.NotificationStore(tmp_path / "notifications.sqlite3")
+    store.update_preferences({"minimumToastSeverity": "warning"})
+    store.reconcile("workload.review_pressure", [candidate("warning")], source_revision="r1", evaluated_at=NOW)
+    created = store.toast_candidates(session_started_at=NOW)
+    assert [item["kind"] for item in created] == ["signal_created"]
+    store.mark_toast_delivered([created[0]["notificationId"]])
+
+    store.reconcile("workload.review_pressure", [candidate("warning", load=85)], source_revision="r2", evaluated_at="2026-07-17T11:00:00Z")
+    assert store.toast_candidates(session_started_at=NOW) == []
+    store.reconcile("workload.review_pressure", [candidate("critical", load=150)], source_revision="r3", evaluated_at="2026-07-17T12:00:00Z")
+    escalated = store.toast_candidates(session_started_at=NOW)
+    assert [item["kind"] for item in escalated] == ["severity_escalated"]
+    store.mark_toast_delivered([escalated[0]["notificationId"]])
+
+    store.reconcile("workload.review_pressure", [], source_revision="r4", evaluated_at="2026-07-17T13:00:00Z")
+    store.reconcile("workload.review_pressure", [], source_revision="r5", evaluated_at="2026-07-17T14:00:00Z")
+    store.reconcile("workload.review_pressure", [candidate("warning")], source_revision="r6", evaluated_at="2026-07-17T15:00:00Z")
+    reactivated = store.toast_candidates(session_started_at=NOW)
+    assert [item["kind"] for item in reactivated] == ["signal_reactivated"]

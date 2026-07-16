@@ -18,6 +18,7 @@ const StatisticsPage = lazy(() => import("../pages/StatisticsPage"));
 const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 const PrivacySettingsPage = lazy(() => import("../pages/PrivacySettingsPage"));
 const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPage"));
+const NotificationSettingsPage = lazy(() => import("../pages/NotificationSettingsPage"));
 
 export type RoutePath =
   | "/home"
@@ -41,6 +42,7 @@ export type RoutePath =
   | "/settings"
   | "/settings/data"
   | "/settings/privacy"
+  | "/settings/notifications"
   | "/settings/server"
   | "/settings/sources"
   | "/settings/logs";
@@ -76,6 +78,7 @@ const routePaths = new Set<RoutePath>([
   "/settings",
   "/settings/data",
   "/settings/privacy",
+  "/settings/notifications",
   "/settings/server",
   "/settings/sources",
   "/settings/logs",
@@ -150,6 +153,8 @@ export function renderRoute(
       return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
     case "/settings/privacy":
       return <SettingsLayout activeRoute={route}><PrivacySettingsPage onOpenWhatsNew={onOpenWhatsNew} /></SettingsLayout>;
+    case "/settings/notifications":
+      return <SettingsLayout activeRoute={route}><NotificationSettingsPage /></SettingsLayout>;
     case "/settings":
       return <SettingsLayout activeRoute={route}><ReportSettingsPage onReportUpdated={onReportUpdated} /></SettingsLayout>;
     case "/home":
