@@ -70,8 +70,9 @@ workflow, summary и `run_full_check.ps1` tests, затем canonical local
 warm-cache repeat, PR-trigger surrogate, Docker E2E или release. Internal
 monotonic phase timings анализируются вместе с Jobs API action/step timestamps;
 artifact upload и post-job cache work не приписываются внутренним phase timers.
-Второй TypeScript typecheck, runner, checkout и caches сохраняются до отдельного
-Stage 5B decision.
+После PR #37 canonical contour содержит ровно один TypeScript typecheck; не
+возвращать удалённый `frontend-typecheck-build` или второй `pnpm run typecheck`.
+Runner, checkout и caches сохраняются без изменений.
 
 Если authorized baseline падает, automatic rerun запрещён. Нужно скачать
 доступные diagnostics, классифицировать project/instrumentation/infrastructure
@@ -126,3 +127,12 @@ merge.
 на exact ready-head SHA. Изменение App Shell, dashboard server, E2E smoke,
 package validation или canonical release input эскалирует финальный gate до
 `standard/full`; повторный local full не заменяет cloud proof.
+
+Для Stage 9.0.1 порядок: focused tests → `-SkipDocker` → exact-SHA Fast CI →
+один `standard/settings` с exact package artifact. Planner может потребовать
+один final `standard/full` из-за shared dashboard server/E2E smoke. Cloud
+telemetry deployment следует только после service CI: staging migration/deploy
+и sanitized synthetic lifecycle, затем manual production deploy и такой же
+lifecycle. Automated tests не обращаются к production. Реальный профиль
+требует отдельного явного checkpoint владельца и не считается принятым по
+synthetic proof.

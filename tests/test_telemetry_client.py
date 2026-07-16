@@ -389,3 +389,91 @@ def test_threshold_request_is_coalesced_while_enrollment_worker_is_busy(tmp_path
 
     assert store.queue_count() == 0
     assert [call["url"].rsplit("/", 1)[-1] for call in transport.calls].count("events") >= 1
+
+
+def test_enrollment_backoff_persists_and_manual_check_bypasses_it_once(tmp_path):
+    holder = {}
+    transport = FakeTransport(
+        lambda call: holder["module"].HttpResult(503, {"retry-after": "120"}, {"error": "service_disabled"})
+    )
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": False, "featureUsage": True},
+        transport=transport,
+    )
+    client_module, privacy, store, client = result[3], result[4], result[5], result[6]
+    holder["module"] = client_module
+    client.queue_semantic_event(semantic())
+
+    first = client.send_once()
+    waiting = client.send_once()
+
+    assert first["code"] == "telemetry.enrollment_retry"
+    assert first["errorCode"] == "service_disabled"
+    assert first["nextAttemptAt"] == "2026-07-15T12:02:00Z"
+    assert waiting == {
+        "ok": False,
+        "code": "telemetry.enrollment_waiting",
+        "nextAttemptAt": "2026-07-15T12:02:00Z",
+    }
+    assert len(transport.calls) == 1
+    assert client.public_status()["enrollmentState"] == "waiting_retry"
+    store.close()
+
+    reopened_store = result[2].TelemetryStore(tmp_path / "telemetry.sqlite3")
+    reopened = client_module.TelemetryClient(
+        reopened_store,
+        privacy,
+        common,
+        endpoint="https://telemetry.invalid",
+        transport=transport,
+        now_provider=lambda: NOW,
+        random_provider=lambda: 0.5,
+    )
+    assert reopened.send_once()["code"] == "telemetry.enrollment_waiting"
+    manual = reopened.check_connection_and_send_now()
+    assert manual == {"ok": True, "code": "telemetry.manual_send_started", "started": True}
+    reopened._worker.join(timeout=1)
+    assert len(transport.calls) == 2
+    assert reopened.public_status()["lastEnrollmentErrorCode"] == "service_disabled"
+    reopened.close()
+
+
+def test_manual_check_requires_effective_purpose_and_refuses_deletion_or_busy_sender(tmp_path):
+    disabled = make_client(tmp_path / "disabled", purposes=None)
+    assert disabled[6].check_connection_and_send_now()["code"] == "telemetry.manual_send_disabled"
+
+    deletion = make_client(
+        tmp_path / "deletion",
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+        endpoint="",
+    )
+    deletion[4].set_deletion_pending(True)
+    assert deletion[6].check_connection_and_send_now()["code"] == "telemetry.deletion_pending"
+
+
+def test_active_client_timer_indirection_never_calls_closed_profile_client():
+    module = load_modules()[3]
+
+    class FakeClient:
+        def __init__(self):
+            self.calls = 0
+            self.closed = False
+
+        def request_send(self):
+            assert not self.closed
+            self.calls += 1
+
+        def close(self):
+            self.closed = True
+
+    profile_a = FakeClient()
+    profile_b = FakeClient()
+    active = {"client": profile_a}
+    module.request_active_client_send(lambda: active["client"])
+    profile_a.close()
+    active["client"] = profile_b
+    module.request_active_client_send(lambda: active["client"])
+
+    assert profile_a.calls == 1
+    assert profile_b.calls == 1

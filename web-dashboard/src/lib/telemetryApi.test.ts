@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  checkConnectionAndSendNow,
   deleteTelemetryData,
   durationBucket,
   emitTelemetryEvent,
@@ -24,11 +25,13 @@ describe("telemetry API", () => {
 
     const result = await emitTelemetryEvent(event);
     await deleteTelemetryData();
+    await checkConnectionAndSendNow();
 
     expect(result.queued).toBe(true);
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       "/api/telemetry/events?token=local-token",
       "/api/telemetry/delete?token=local-token",
+      "/api/telemetry/check-send?token=local-token",
     ]);
     expect(fetchMock.mock.calls.every(([url]) => !/^https?:/i.test(String(url)))).toBe(true);
     expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({
@@ -36,6 +39,7 @@ describe("telemetry API", () => {
       body: JSON.stringify(event),
     }));
     expect(fetchMock.mock.calls[1]?.[1]).toEqual(expect.objectContaining({ method: "POST", body: "{}" }));
+    expect(fetchMock.mock.calls[2]?.[1]).toEqual(expect.objectContaining({ method: "POST", body: "{}" }));
   });
 
   it("fails quietly when the local bridge is unavailable", async () => {
@@ -46,6 +50,7 @@ describe("telemetry API", () => {
       occurredAt: "2026-07-15T00:00:00Z",
     })).resolves.toEqual({ ok: false, error: "local_telemetry_unavailable" });
     await expect(deleteTelemetryData()).resolves.toEqual({ ok: false, error: "local_telemetry_unavailable" });
+    await expect(checkConnectionAndSendNow()).resolves.toEqual({ ok: false, error: "local_telemetry_unavailable" });
   });
 
   it("maps raw measurements into bounded buckets", () => {

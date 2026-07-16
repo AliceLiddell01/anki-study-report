@@ -42,6 +42,9 @@ dashboard через token-protected HTTP server.
     `docs/product-notices-and-consent.md` и `docs/privacy-telemetry.md`.
 15. Если задача про завершение telemetry foundation и Cloudflare acceptance —
     `docs/stage-9-telemetry-foundation-handoff.md`.
+16. Если задача про enrollment retry, manual check/send, abuse quotas или
+    Stage 9.0.1 acceptance —
+    `docs/stage-9-0-1-telemetry-reliability-handoff.md`.
 
 Дополнительные справочники:
 

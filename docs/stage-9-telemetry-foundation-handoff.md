@@ -13,6 +13,9 @@
   staging/production deploy, synthetic deletion и временного D1 export/import
   recovery drill.
 - Add-on endpoint и RU/EN production notice: COMPLETE в текущем checkout.
+- Stage 9.0.1 reliability/abuse hardening: code/tests complete в feature
+  branches; cloud synthetic acceptance и manual real-profile acceptance
+  отслеживаются отдельно в `docs/stage-9-0-1-telemetry-reliability-handoff.md`.
 
 R2 не активирован и не входит в active contract. 30-дневные независимые
 бэкапы перенесены в future infrastructure work. Новый `.ankiaddon` release

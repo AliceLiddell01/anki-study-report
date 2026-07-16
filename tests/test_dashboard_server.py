@@ -594,6 +594,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
     manager = dashboard_server.DashboardServerManager()
     events = []
     deletions = []
+    checks = []
     manager.configure_telemetry_handlers(
         status_provider=lambda: {
             "ok": True,
@@ -610,6 +611,11 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
             "deletionPending": True,
             "confirmed": False,
         },
+        check_handler=lambda: checks.append(True) or {
+            "ok": True,
+            "code": "telemetry.manual_send_started",
+            "started": True,
+        },
     )
     state = manager.start(port=0, idle_timeout_seconds=0)
     base_url = f"http://127.0.0.1:{state.port}"
@@ -619,6 +625,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
         assert fetch(f"{base_url}/api/telemetry/status")[0] == 403
         assert fetch(f"{base_url}/api/telemetry/events", method="POST", json_body=event)[0] == 403
         assert fetch(f"{base_url}/api/telemetry/delete", method="POST", json_body={})[0] == 403
+        assert fetch(f"{base_url}/api/telemetry/check-send", method="POST", json_body={})[0] == 403
 
         status, _, body = fetch(f"{base_url}/api/telemetry/status?token={token}")
         assert status == 200
@@ -648,6 +655,20 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
         assert status == 200
         assert json.loads(body)["deletionPending"] is True
         assert deletions == [True]
+        assert token not in body.decode("utf-8")
+
+        assert fetch(f"{base_url}/api/telemetry/check-send?token={token}")[0] == 405
+        assert fetch(
+            f"{base_url}/api/telemetry/check-send?token={token}",
+            method="POST",
+            json_body={"force": True},
+        )[0] == 400
+        status, _, body = fetch(
+            f"{base_url}/api/telemetry/check-send?token={token}", method="POST", json_body={}
+        )
+        assert status == 202
+        assert json.loads(body)["code"] == "telemetry.manual_send_started"
+        assert checks == [True]
         assert token not in body.decode("utf-8")
     finally:
         manager.stop()

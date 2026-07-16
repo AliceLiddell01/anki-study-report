@@ -124,3 +124,11 @@ tests, coordinator/API Vitest и RU/EN parity. Planner выбирает targeted
 diff дополнительно требует final `standard/full`. Real-Anki smoke проверяет
 consent-first order, no preselection, decline persistence, What’s New
 no-repeat/manual reopen и Privacy route.
+
+Stage 9.0.1 добавляет persisted enrollment retry/manual check, active-profile
+timer, language-menu tooltip и service abuse hardening. Локально нужны focused
+Python/Vitest, telemetry service `pnpm check`, затем только
+`.\scripts\run_full_check.ps1 -SkipDocker`. После exact-SHA Fast CI выполняется
+один `standard/settings` с exact package handoff; shared dashboard server и E2E
+smoke в actual diff требуют один final `standard/full`. Локальный Docker,
+повтор targeted run, strict APKG, Perf100 и release не запускаются.

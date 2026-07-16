@@ -313,6 +313,24 @@ async function assertProductNotices(page) {
   await whatsNew.getByRole("button", { name: "Закрыть историю изменений", exact: true }).click();
   await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
 
+  await prepareDashboardRoute(page, "/settings/privacy", "light", "Приватность");
+  const privacyInvoker = page.getByRole("button", { name: "Открыть «Что нового»", exact: true });
+  for (const closeMode of ["x", "escape", "got-it"]) {
+    await privacyInvoker.click();
+    await whatsNew.waitFor({ state: "visible", timeout: 15000 });
+    if (closeMode === "x") {
+      await whatsNew.getByRole("button", { name: "Закрыть историю изменений", exact: true }).click();
+    } else if (closeMode === "escape") {
+      await page.keyboard.press("Escape");
+    } else {
+      await whatsNew.getByRole("button", { name: "Понятно", exact: true }).click();
+    }
+    await whatsNew.waitFor({ state: "hidden", timeout: 15000 });
+    await page.waitForTimeout(250);
+    assertBrowser(!await whatsNew.isVisible().catch(() => false), `Manual What's New remains closed after ${closeMode} and async mark-seen response.`);
+    assertBrowser(await privacyInvoker.evaluate((element) => document.activeElement === element), `Focus returns to the Privacy invoker after ${closeMode}.`);
+  }
+
   for (const theme of ["light", "dark"]) {
     await prepareDashboardRoute(page, "/settings/privacy", theme, "Приватность");
     assertBrowser(await page.locator('input[type="checkbox"]').count() === 2, `Privacy settings exposes both granular purposes in ${theme} theme.`);
@@ -325,14 +343,87 @@ async function assertProductNotices(page) {
     await page.screenshot({ path: privacyShot, fullPage: true });
     screenshots.push(relativeArtifactPath(artifactPaths, privacyShot));
   }
+  const telemetryStatusScreenshots = await captureTelemetryStatusEvidence(page);
+  screenshots.push(...telemetryStatusScreenshots);
   return {
     firstRunObserved,
     persistedStatus: state.privacy?.privacy?.telemetry?.status || null,
     currentVersion: state.notices?.currentVersion || null,
     noRepeatAfterClose: true,
     manualReopen: true,
+    manualCloseModes: ["x", "escape", "got-it"],
+    focusRestored: true,
+    telemetryStatusScreenshots,
     screenshots,
   };
+}
+
+async function captureTelemetryStatusEvidence(page) {
+  const token = new URLSearchParams(new URL(page.url()).search).get("token") || "";
+  const baselineResponse = await page.request.get(`${ready.baseUrl}/api/privacy?token=${encodeURIComponent(token)}`);
+  assertBrowser(baselineResponse.ok(), "Privacy baseline is available for sanitized status evidence.");
+  const baseline = await baselineResponse.json();
+  const timestamps = {
+    attempt: "2026-07-15T11:45:00Z",
+    retry: "2026-07-15T12:15:00Z",
+    delivered: "2026-07-15T12:05:00Z",
+  };
+  const states = {
+    "waiting-retry": {
+      enrollmentState: "waiting_retry", pendingEventCount: 3,
+      lastEnrollmentAttemptAt: timestamps.attempt, lastEnrollmentErrorCode: "network_error",
+      enrollmentNextAttemptAt: timestamps.retry, lastEnrollmentSuccessAt: null,
+      lastDeliveryAttemptAt: null, lastDeliveryErrorCode: null, lastSuccessfulDeliveryAt: null,
+    },
+    "enrollment-failed": {
+      enrollmentState: "failed", pendingEventCount: 3,
+      lastEnrollmentAttemptAt: timestamps.attempt, lastEnrollmentErrorCode: "unsupported_contract",
+      enrollmentNextAttemptAt: null, lastEnrollmentSuccessAt: null,
+      lastDeliveryAttemptAt: null, lastDeliveryErrorCode: null, lastSuccessfulDeliveryAt: null,
+    },
+    "enrolled-pending": {
+      enrollmentState: "enrolled", pendingEventCount: 3,
+      lastEnrollmentAttemptAt: timestamps.attempt, lastEnrollmentErrorCode: null,
+      enrollmentNextAttemptAt: null, lastEnrollmentSuccessAt: timestamps.attempt,
+      lastDeliveryAttemptAt: timestamps.delivered, lastDeliveryErrorCode: "network_error", lastSuccessfulDeliveryAt: null,
+    },
+    delivered: {
+      enrollmentState: "enrolled", pendingEventCount: 0,
+      lastEnrollmentAttemptAt: timestamps.attempt, lastEnrollmentErrorCode: null,
+      enrollmentNextAttemptAt: null, lastEnrollmentSuccessAt: timestamps.attempt,
+      lastDeliveryAttemptAt: timestamps.delivered, lastDeliveryErrorCode: null, lastSuccessfulDeliveryAt: timestamps.delivered,
+    },
+  };
+  let activeState = states["waiting-retry"];
+  const handler = async (route) => {
+    const client = {
+      ...(baseline.telemetryClient || {}),
+      endpointState: "configured",
+      senderState: "idle",
+      deletionPending: false,
+      deletionErrorCode: null,
+      deletionNextAttemptAt: null,
+      ...activeState,
+    };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...baseline, telemetryClient: client }) });
+  };
+  await page.route("**/api/privacy?*", handler);
+  const screenshots = [];
+  try {
+    for (const [stateName, state] of Object.entries(states)) {
+      activeState = state;
+      for (const theme of ["light", "dark"]) {
+        await prepareDashboardRoute(page, "/settings/privacy", theme, "Приватность");
+        const filePath = artifactPaths.stateScreenshot("telemetry-status", stateName, theme);
+        await ensureArtifactParent(filePath);
+        await page.screenshot({ path: filePath, fullPage: true });
+        screenshots.push(relativeArtifactPath(artifactPaths, filePath));
+      }
+    }
+  } finally {
+    await page.unroute("**/api/privacy?*", handler);
+  }
+  return screenshots;
 }
 
 async function captureProductNoticeState(page, modal, stateName, theme) {
@@ -673,6 +764,12 @@ async function assertLocalizationDock(page) {
 
   const initialHash = new URL(page.url()).hash;
   await page.getByTestId("language-selector").click();
+  assertBrowser(await page.locator("#language-selector-tooltip").count() === 0, "Language tooltip is absent while aria-expanded is true.");
+  assertBrowser(await page.getByTestId("language-selector").getAttribute("aria-expanded") === "true", "Language trigger exposes the open menu state.");
+  const languageMenuShot = artifactPaths.stateScreenshot("localization", "language-menu-open-ru", "light");
+  await ensureArtifactParent(languageMenuShot);
+  await page.screenshot({ path: languageMenuShot, fullPage: true });
+  screenshots.push(relativeArtifactPath(artifactPaths, languageMenuShot));
   await page.getByRole("menuitemradio", { name: "English", exact: true }).click();
   await page.waitForFunction(() => document.documentElement.lang === "en");
   assertBrowser(new URL(page.url()).hash === initialHash, "Language switch preserves the active route.");
