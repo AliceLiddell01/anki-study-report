@@ -674,6 +674,108 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
         manager.stop()
 
 
+def test_notification_endpoints_are_strict_bounded_and_token_protected():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    calls = []
+    summary = {
+        "ok": True,
+        "schemaVersion": 1,
+        "unreadCount": 1,
+        "activeSignalCount": 1,
+        "items": [],
+    }
+    manager.configure_notification_handlers(
+        summary_provider=lambda: summary,
+        list_handler=lambda payload: calls.append(("list", payload)) or {
+            "ok": True,
+            "schemaVersion": 1,
+            "page": payload["page"],
+            "pageLimit": payload["pageLimit"],
+            "pageCount": 0,
+            "total": 0,
+            "items": [],
+        },
+        read_handler=lambda payload: calls.append(("read", payload)) or {**summary, "updated": 1},
+        read_all_handler=lambda payload: calls.append(("read-all", payload)) or {**summary, "updated": 1},
+        settings_provider=lambda: {
+            "ok": True,
+            "schemaVersion": 1,
+            "preferences": {"showUnreadBadge": True},
+        },
+        settings_handler=lambda payload: calls.append(("settings", payload)) or {
+            "ok": True,
+            "schemaVersion": 1,
+            "preferences": payload,
+        },
+        toasts_handler=lambda payload: calls.append(("toasts", payload)) or {
+            "ok": True,
+            "schemaVersion": 1,
+            "items": [],
+        },
+        toast_delivered_handler=lambda payload: calls.append(("toast-delivered", payload)) or {
+            "ok": True,
+            "updated": len(payload["notificationIds"]),
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        assert fetch(f"{base_url}/api/notifications/summary")[0] == 403
+        status, _, body = fetch(f"{base_url}/api/notifications/summary?token={token}")
+        assert status == 200
+        assert json.loads(body)["unreadCount"] == 1
+
+        status, _, body = fetch(
+            f"{base_url}/api/notifications?token={token}&page=2&pageLimit=50&tab=active&category=workload"
+        )
+        assert status == 200
+        assert json.loads(body)["pageLimit"] == 50
+        assert calls[-1] == (
+            "list",
+            {"page": 2, "pageLimit": 50, "tab": "active", "category": "workload"},
+        )
+        assert fetch(f"{base_url}/api/notifications?token={token}&pageLimit=51&extra=1")[0] == 400
+        assert fetch(f"{base_url}/api/notifications/read?token={token}")[0] == 405
+
+        status, _, _ = fetch(
+            f"{base_url}/api/notifications/read?token={token}",
+            method="POST",
+            json_body={"notificationIds": ["n1"]},
+        )
+        assert status == 200
+        assert calls[-1] == ("read", {"notificationIds": ["n1"]})
+
+        assert fetch(
+            f"{base_url}/api/settings/notifications?token={token}",
+            method="POST",
+            json_body={},
+        )[0] == 405
+        status, _, _ = fetch(
+            f"{base_url}/api/settings/notifications?token={token}",
+            method="PUT",
+            json_body={"showUnreadBadge": False},
+        )
+        assert status == 200
+        assert calls[-1] == ("settings", {"showUnreadBadge": False})
+
+        status, _, _ = fetch(
+            f"{base_url}/api/notifications/toasts?token={token}&sessionStartedAt=2026-07-17T00%3A00%3A00Z"
+        )
+        assert status == 200
+        assert calls[-1] == ("toasts", {"sessionStartedAt": "2026-07-17T00:00:00Z"})
+        status, _, _ = fetch(
+            f"{base_url}/api/notifications/toast-delivered?token={token}",
+            method="POST",
+            json_body={"notificationIds": ["n1"]},
+        )
+        assert status == 200
+        assert token not in repr(calls)
+    finally:
+        manager.stop()
+
+
 def test_statistics_query_endpoint_is_post_only_typed_bounded_and_token_protected():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()
