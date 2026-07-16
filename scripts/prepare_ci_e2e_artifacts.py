@@ -5,7 +5,6 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import sys
 from typing import Iterable
@@ -18,8 +17,10 @@ from ci_e2e_artifact_common import (
     ALLOWED_MODES, ALLOWED_PACKAGE_SOURCES, ALLOWED_SCOPES, PRODUCT_PHASES,
     SCHEMA_VERSION, SHA256_RE, SHA_RE, TEXT_SUFFIXES, _optional_hash,
     _optional_positive, _phase_observations, assert_safe_text, command_version,
-    copy_safe_artifacts, read_json_file, read_readiness, utc_now, validate_manifest, write_json_file,
+    copy_safe_artifacts, read_json_file, read_readiness, redact_text, utc_now,
+    validate_manifest, write_json_file,
 )
+
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
     finished_at = utc_now()
@@ -37,10 +38,16 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
     source_fast_tested_sha = _optional_hash(args.source_fast_ci_tested_sha, SHA_RE, "source-fast-ci-tested-sha")
     source_package_sha256 = _optional_hash(args.source_package_sha256, SHA256_RE, "source-package-sha256")
     e2e_checkout_sha = _optional_hash(args.e2e_checkout_sha, SHA_RE, "e2e-checkout-sha") or args.commit_sha
+    fast_handoff_complete = False
     if package_source == "fast-ci-artifact":
-        if source_fast_run_id is None or source_fast_tested_sha is None or source_package_sha256 is None:
-            raise ValueError("fast-ci-artifact summary requires run ID, tested SHA, and package SHA-256")
-        if e2e_checkout_sha != source_fast_tested_sha:
+        if source_fast_run_id is None:
+            raise ValueError("fast-ci-artifact summary requires a source run ID")
+        fast_handoff_complete = source_fast_tested_sha is not None and source_package_sha256 is not None
+        if success and not fast_handoff_complete:
+            raise ValueError("successful fast-ci-artifact summary requires tested SHA and package SHA-256")
+        if source_package_sha256 is not None and source_fast_tested_sha is None:
+            raise ValueError("Fast CI package SHA-256 requires a tested SHA")
+        if source_fast_tested_sha is not None and e2e_checkout_sha != source_fast_tested_sha:
             raise ValueError("Fast CI tested SHA must equal E2E checkout SHA")
     else:
         source_fast_run_id = None
@@ -50,6 +57,14 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
     phase_path = output / "artifacts" / "reports" / "e2e-phase-timings.json"
     phase_payload = read_json_file(phase_path)
     product_phases = _phase_observations(phase_payload)
+    exported_manifest = read_json_file(output / "artifacts" / "artifact-manifest.json")
+    screenshot_rows = exported_manifest.get("screenshots") if isinstance(exported_manifest, dict) else []
+    screenshot_count = len(screenshot_rows) if isinstance(screenshot_rows, list) else 0
+    failure_category = (
+        "none" if success
+        else "fast-ci-handoff" if package_source == "fast-ci-artifact" and not fast_handoff_complete
+        else "unknown"
+    )
     summary = {
         "schemaVersion": SCHEMA_VERSION,
         "repository": os.environ.get("GITHUB_REPOSITORY", "AliceLiddell01/anki-study-report"),
@@ -62,6 +77,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "mode": args.mode,
         "scope": args.scope,
         "screenshotWorkers": args.screenshot_workers,
+        "screenshotCount": screenshot_count,
         "cacheState": args.cache_state,
         "dockerBuildDurationMs": args.build_duration_ms,
         "imageSizeBytes": args.image_size_bytes,
@@ -81,7 +97,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "e2eCheckoutSha": e2e_checkout_sha,
         "productBuildPhases": product_phases,
         "result": "success" if success else "failure",
-        "failureCategory": "none" if success else "unknown",
+        "failureCategory": failure_category,
         "startedAt": started_at,
         "finishedAt": finished_at,
         "durationSeconds": duration,
@@ -142,8 +158,6 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "uploadDurationMs": None,
             "uploadDurationReason": "reported after upload in GitHub Step Summary",
         }
-        exported_manifest = read_json_file(exported_root / "artifact-manifest.json")
-        screenshot_count = len(exported_manifest.get("screenshots") or [])
         current = performance.setdefault("current", {})
         current.update({
             "runId": summary["runId"],
@@ -211,6 +225,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Mode | {summary['mode']} |
 | Scope | {summary['scope']} |
 | Screenshot workers | {summary['screenshotWorkers']} |
+| Screenshot count | {summary['screenshotCount']} |
 | Build cache | {summary['cacheState']} (`type=gha`) |
 | Runner | {summary['runnerOs']} / {summary['runnerImage']} |
 | Anki | {summary['ankiVersion']} |
@@ -236,7 +251,7 @@ Perf100 measurements are diagnostics, not release thresholds.
         key: summary[key]
         for key in (
             "repository", "commitSha", "ref", "event", "workflow", "runId", "runAttempt",
-            "mode", "scope", "screenshotWorkers", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
+            "mode", "scope", "screenshotWorkers", "screenshotCount", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
             "dockerServerVersion", "dockerComposeVersion", "ankiVersion", "packageSource", "sourceFastCiRunId",
             "sourceFastCiTestedSha", "sourcePackageSha256", "e2eCheckoutSha",
         )
