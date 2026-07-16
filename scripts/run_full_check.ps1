@@ -12,7 +12,8 @@ param(
     [ValidateSet("auto", "true", "false")]
     [string]$VerifyRestart = "auto",
     [switch]$DisableResourceTelemetry,
-    [switch]$NoDockerBuild
+    [switch]$NoDockerBuild,
+    [string]$TimingOutput = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,6 +21,13 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $DashboardDir = Join-Path $Root "web-dashboard"
 $ComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
 $DockerRunner = Join-Path $Root "scripts\run_anki_e2e_docker.ps1"
+$TimingHelper = Join-Path $Root "scripts\ci_fast_timing.py"
+$TimingOutputPath = if ($TimingOutput) {
+    if ([IO.Path]::IsPathRooted($TimingOutput)) { $TimingOutput } else { Join-Path $Root $TimingOutput }
+} else {
+    ""
+}
+$TimingNode = $null
 
 function Write-Section {
     param([string]$Message)
@@ -28,23 +36,74 @@ function Write-Section {
     Write-Host "==> $Message" -ForegroundColor Cyan
 }
 
+function Invoke-TimingHelper {
+    param([string[]]$Arguments)
+
+    if (-not $TimingOutputPath) {
+        return
+    }
+    if (-not $TimingNode) {
+        throw "Timing helper cannot run before Node.js is resolved."
+    }
+
+    & $TimingNode "scripts/run_python.mjs" $TimingHelper @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fast CI timing helper failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Invoke-CheckedCommand {
     param(
         [string]$Name,
         [string]$FilePath,
         [string[]]$Arguments,
-        [string]$WorkingDirectory = $Root
+        [string]$WorkingDirectory = $Root,
+        [string]$TimingPhase = ""
     )
 
     Write-Section $Name
+    $phaseStarted = $false
+    $commandError = $null
+    $exitCode = 0
+
+    if ($TimingOutputPath -and $TimingPhase) {
+        Invoke-TimingHelper -Arguments @("start", "--output", $TimingOutputPath, "--phase-id", $TimingPhase)
+        $phaseStarted = $true
+    }
+
     Push-Location $WorkingDirectory
     try {
         & $FilePath @Arguments
-        if ($LASTEXITCODE -ne 0) {
-            throw "$FilePath failed with exit code $LASTEXITCODE"
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            throw "$FilePath failed with exit code $exitCode"
+        }
+    } catch {
+        $commandError = $_
+        if ($exitCode -eq 0) {
+            $exitCode = 1
         }
     } finally {
         Pop-Location
+        if ($phaseStarted) {
+            try {
+                Invoke-TimingHelper -Arguments @(
+                    "finish", "--output", $TimingOutputPath,
+                    "--phase-id", $TimingPhase,
+                    "--exit-code", "$exitCode"
+                )
+            } catch {
+                if ($commandError) {
+                    Write-Warning "Timing finalization failed after the canonical command failure: $($_.Exception.Message)"
+                } else {
+                    throw
+                }
+            }
+        }
+    }
+
+    if ($commandError) {
+        throw $commandError
     }
 }
 
@@ -141,6 +200,39 @@ function Assert-RepositoryHygiene {
     }
 }
 
+function Initialize-TimingIfNeeded {
+    if (-not $TimingOutputPath) {
+        return
+    }
+    if (-not (Test-Path -LiteralPath $TimingHelper)) {
+        throw "Timing helper not found: $TimingHelper"
+    }
+    if (Test-Path -LiteralPath $TimingOutputPath) {
+        Invoke-TimingHelper -Arguments @("validate", "--output", $TimingOutputPath, "--allow-running")
+        return
+    }
+
+    $repository = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AliceLiddell01/anki-study-report" }
+    $eventName = if ($env:GITHUB_EVENT_NAME) { $env:GITHUB_EVENT_NAME } else { "local" }
+    $ref = if ($env:GITHUB_REF) { $env:GITHUB_REF } else {
+        $branch = (& git branch --show-current).Trim()
+        if ($branch) { "refs/heads/$branch" } else { "refs/heads/local" }
+    }
+    $sha = if ($env:GITHUB_SHA) { $env:GITHUB_SHA } else { (& git rev-parse HEAD).Trim() }
+    $runId = if ($env:GITHUB_RUN_ID) { $env:GITHUB_RUN_ID } else { "1" }
+    $runAttempt = if ($env:GITHUB_RUN_ATTEMPT) { $env:GITHUB_RUN_ATTEMPT } else { "1" }
+
+    Invoke-TimingHelper -Arguments @(
+        "initialize", "--output", $TimingOutputPath,
+        "--repository", $repository,
+        "--event-name", $eventName,
+        "--ref", $ref,
+        "--tested-commit-sha", $sha,
+        "--run-id", $runId,
+        "--run-attempt", $runAttempt
+    )
+}
+
 Set-Location $Root
 Add-BundledNodeToPath
 Assert-RepositoryHygiene
@@ -150,44 +242,81 @@ if (-not $DockerOnly) {
     if (-not $node) {
         throw "Could not find node. Install Node.js or use the bundled Codex runtime."
     }
+    $TimingNode = $node
 
     $pnpm = Find-CommandPath @("pnpm.cmd", "pnpm")
     if (-not $pnpm) {
         throw "Could not find pnpm. Install pnpm or enable Corepack, then rerun this script."
     }
 
+    Initialize-TimingIfNeeded
+
     Invoke-CheckedCommand `
         -Name "Structured changelog generated outputs" `
         -FilePath $node `
-        -Arguments @("scripts/run_python.mjs", "scripts/generate_changelog.py", "--check")
+        -Arguments @("scripts/run_python.mjs", "scripts/generate_changelog.py", "--check") `
+        -TimingPhase "changelog-check"
+
+    Invoke-CheckedCommand `
+        -Name "Frontend typecheck before tests" `
+        -FilePath $pnpm `
+        -Arguments @("run", "typecheck") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-typecheck-tests"
 
     Invoke-CheckedCommand `
         -Name "Frontend tests" `
         -FilePath $pnpm `
-        -Arguments @("run", "test:frontend") `
-        -WorkingDirectory $DashboardDir
+        -Arguments @("run", "test:run") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-vitest"
 
     # Package validation must see freshly copied add-on assets, not only web-dashboard/dist.
     Invoke-CheckedCommand `
-        -Name "Build frontend assets for add-on" `
+        -Name "Frontend typecheck before build" `
         -FilePath $pnpm `
-        -Arguments @("run", "build:addon") `
-        -WorkingDirectory $DashboardDir
+        -Arguments @("run", "typecheck") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-typecheck-build"
+
+    Invoke-CheckedCommand `
+        -Name "Build frontend production bundle" `
+        -FilePath $pnpm `
+        -Arguments @("run", "build:vite") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-vite-build"
+
+    Invoke-CheckedCommand `
+        -Name "Validate frontend bundle" `
+        -FilePath $pnpm `
+        -Arguments @("run", "build:check-bundle") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-bundle-check"
+
+    Invoke-CheckedCommand `
+        -Name "Synchronize dashboard assets into add-on" `
+        -FilePath $pnpm `
+        -Arguments @("run", "build:copy-addon") `
+        -WorkingDirectory $DashboardDir `
+        -TimingPhase "frontend-addon-assets-copy"
 
     Invoke-CheckedCommand `
         -Name "Python tests" `
         -FilePath $node `
-        -Arguments @("scripts/run_python.mjs", "-m", "pytest")
+        -Arguments @("scripts/run_python.mjs", "-m", "pytest") `
+        -TimingPhase "python-pytest"
 
     Invoke-CheckedCommand `
         -Name "Build and validate package archive" `
         -FilePath $node `
-        -Arguments @("scripts/run_python.mjs", "scripts/package_addon.py", "--check")
+        -Arguments @("scripts/run_python.mjs", "scripts/package_addon.py", "--check") `
+        -TimingPhase "package-build-check"
 
     Invoke-CheckedCommand `
         -Name "Verify package archive" `
         -FilePath $node `
-        -Arguments @("scripts/run_python.mjs", "scripts/package_addon.py", "--check-only")
+        -Arguments @("scripts/run_python.mjs", "scripts/package_addon.py", "--check-only") `
+        -TimingPhase "package-check-only"
 }
 
 if (-not $SkipDocker) {

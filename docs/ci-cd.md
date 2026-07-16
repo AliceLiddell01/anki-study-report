@@ -87,7 +87,7 @@ Fast CI публикует два независимых artifacts с разны
 
 | Artifact | Condition | Name | Contents | Retention |
 | --- | --- | --- | --- | --- |
-| Diagnostics | `if: always()` | `ci-fast-<run-id>-<run-attempt>` | logs, verification plan, `ci-summary.json`, `ci-summary.md`, `environment.txt` | 14 дней |
+| Diagnostics | `if: always()` | `ci-fast-<run-id>-<run-attempt>` | logs, verification plan, `ci-summary.json`, `ci-summary.md`, `environment.txt`, `timing/fast-ci-timing.json`, `timing/fast-ci-timing.md` | 14 дней |
 | Exact package | только после успешного Fast contour и diagnostics upload | `ci-package-<tested-sha>-<run-id>-<run-attempt>` | ровно `anki_study_report.ankiaddon` и `package-metadata.json` | 7 дней |
 
 Diagnostics больше не содержит package или package metadata. Его upload остаётся
@@ -113,6 +113,27 @@ GitHub `artifact-digest` относится к immutable transport artifact, а 
 включается внутрь уже загруженного metadata. `artifact-url` и token-bearing URLs
 не логируются. Summary, metadata и environment не содержат tokens,
 пользовательские Anki paths, profile data или полный event payload.
+
+## Structured Fast CI timing diagnostics
+
+Fast CI ведёт schema-versioned observational timing в
+`ci-fast/timing/fast-ci-timing.json` и рендерит компактный Markdown рядом. Внутри
+repository scripts используются monotonic high-resolution интервалы для
+установки dependencies, двух TypeScript typechecks, Vitest, Vite, bundle/assets,
+pytest, package checks, verification planner, summary и exact-package staging.
+Обычный локальный вызов без `-TimingOutput` сохраняет прежний контракт и не
+создаёт runtime files.
+
+GitHub action setup, checkout, cache restore/save, artifact upload и post-job
+работа не подменяются внутренними таймерами: их длительности берутся из Jobs API
+и logs после run. Step timestamps имеют более грубую granularity, поэтому два
+источника анализируются отдельно. Cache enabled не считается доказанным exact
+hit без соответствующего log/output evidence.
+
+Инструментализация не является оптимизацией. Runner `windows-2025`, checkout
+`fetch-depth: 0`, setup-python/setup-node caches, dependency commands, canonical
+coverage, повторный TypeScript typecheck и package producer contract сохранены.
+Выбор изменения относится к отдельному Stage 5B после runtime baseline.
 
 ## Fast CI package handoff to Docker E2E
 
