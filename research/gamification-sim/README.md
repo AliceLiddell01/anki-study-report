@@ -434,24 +434,28 @@ Every sweep metric is a typed `MetricResult` with status `MEASURED`, `DERIVED`,
 warnings, and (for missing evidence) a required reason with `value: null`.
 Collection metadata independence is derived from the input contract and a
 matched workload; confidence and FSRS-availability deltas use matched episodes.
-Observed volume/completion maxima drive Q06/Q07. Longitudinal retention,
-backlog, and long-session metrics remain explicit missing evidence until C3/C4;
-they are never substituted with ideal zero/one constants.
+Observed volume/completion maxima drive Q06/Q07. The C3/C4 engine now measures
+retention, backlog, and long-session metrics from matched 90-day histories for
+every evaluated parameter set. A caller that omits longitudinal evidence still
+receives explicit `UNSUPPORTED`/`DEFERRED` values, never ideal zero/one constants.
 
 Without `--no-write`, sweep reports are written under the gitignored
 `outputs/sweeps/<digest-prefix>/` directory as `manifest.json`,
 `candidates.json`, `metrics.csv`, `summary.md`, and `pareto.json`.
 
-Sensitivity grids use explicit endpoints rather than floating `arange`. Cliff
-probes evaluate `threshold - epsilon`, `threshold`, and `threshold + epsilon`
-for challenge, cap, tier, and contribution-band boundaries.
+Sensitivity grids use explicit endpoints rather than floating `arange`. Every
+point reports invariant and quantitative-gate status, five longitudinal metric
+deltas, reward-cliff status, and evidence completeness. Cliff probes evaluate
+`threshold - epsilon`, `threshold`, and `threshold + epsilon` for challenge,
+cap, tier, and contribution-band boundaries.
 
 ## Stage 5B.4 property-based invariants
 
 Hypothesis is confined to the `test` extra. The committed property profile uses
 `database=None`, `derandomize=True`, a fixed example budget, no deadlines, no
-machine clock, and no global random state. It exercises H01–H18 for both
-`review-v0.1` and the equivalent final Stage 5B.3 shortlist overlay.
+machine clock, and no global random state. It exercises H01–H18 across distinct
+catalog candidates, corrected Pareto candidates, every sensitivity endpoint,
+and a valid sensitivity boundary that is expected to fail Q01.
 
 Generated cases cover baseline monotonicity, session partitions, replay, Undo,
 card/day uniqueness, button neutrality, administrative and preview zero,
@@ -568,3 +572,19 @@ advantage. Duplicate replay, session splitting, relearning, preview, forced-due,
 and micro-scope completion remain explicit one-factor deterministic controls.
 Missing policy evidence is serialized as `UNSUPPORTED` with a reason; it is
 never emitted as an ideal zero.
+
+## Stage 5B.C5 corrected sweep and sensitivity
+
+The corrected sequential sweep evaluates all 17 catalog entries and bounded
+family composites. Exact `R-CURRENT` regressions are `NOT_APPLICABLE` to other
+parameter sets; only invariant failures, applicable regressions, measured
+quantitative failures, invalid contracts, or nondeterminism can reject a
+candidate. `PASS` is required for Pareto participation, and normalized
+parameter digests collapse semantically identical overlays before ranking.
+
+The fixed config and seed evaluate 30 distinct candidate IDs. All 30 have
+complete longitudinal evidence and pass the candidate gates; the nondominated
+front contains 14 unique normalized parameter states. Sensitivity covers 63
+explicit points: every point has complete longitudinal evidence and passes all
+H01–H18 invariants, while ten points cross a declared quantitative gate. These
+crossings are reported as evidence rather than silently removed from the grid.

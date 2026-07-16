@@ -195,7 +195,14 @@ def candidate_payload(candidate: ParameterCandidate) -> dict[str, Any]:
         "changed_fields": list(candidate.changed_fields),
         "parameter_snapshot": dataclass_to_dict(candidate.parameters),
         "digest": candidate.digest,
+        "normalized_parameter_digest": normalized_parameter_digest(candidate.parameters),
     }
+
+
+def normalized_parameter_digest(params: RewardParameterSet) -> str:
+    payload = dataclass_to_dict(params)
+    payload.pop("rule_version", None)
+    return canonical_digest(payload)
 
 
 def compose_parameter_candidates(

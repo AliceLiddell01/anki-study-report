@@ -24,6 +24,8 @@ from .evidence import (
     unavailable,
 )
 from .input_parsing import day_from_dict, episode_from_dict
+from .longitudinal_config import load_longitudinal_config
+from .longitudinal_runner import run_longitudinal
 from .models import (
     CompletionStatus,
     ConfidenceLevel,
@@ -41,6 +43,7 @@ from .parameter_catalog import (
     ParameterCandidate,
     candidate_payload,
     compose_parameter_candidates,
+    normalized_parameter_digest,
     parameter_candidate,
 )
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
@@ -54,6 +57,9 @@ from .validation import close, dataclass_to_dict
 
 SWEEP_VERSION = "review-sweep-v0.1"
 SENSITIVITY_VERSION = "review-sensitivity-v0.1"
+
+
+_LONGITUDINAL_EVIDENCE_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +92,7 @@ class CandidateEvaluation:
     quantitative_gate_failures: tuple[str, ...]
     metrics: tuple[tuple[str, MetricResult], ...]
     result_digest: str
+    longitudinal_digest: str | None
     evaluation_digest: str
 
     @property
@@ -422,6 +429,7 @@ def _metrics(
     result: CorpusRunResult,
     package_root: Path,
     params: RewardParameterSet,
+    longitudinal: dict[str, Any] | None = None,
 ) -> dict[str, MetricResult]:
     by_id = _result_by_id(result)
     ordinary = [item for item in result.scenario_results if item.category is ScenarioCategory.ORDINARY]
@@ -512,13 +520,29 @@ def _metrics(
         "enabled_dynamic_components": observed("enabled_dynamic_components", float(enabled), unit="count", count=1, method="count of enabled reward channels"),
         "explainability_complexity_score": observed("explainability_complexity_score", float(explainability), unit="count", count=1, method="declared structural complexity proxy"),
     }
-    values.update({
-        "high_low_retention_parity": unavailable("high_low_retention_parity", MetricStatus.UNSUPPORTED, unit="Review Units delta", source_ids=("longitudinal-retention-pair",), method="matched longitudinal policy histories", reason="persistent scheduler histories are introduced at gate C3"),
-        "backlog_return_viability": unavailable("backlog_return_viability", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="matched backlog catch-up history", reason="existing scenarios do not provide a full catch-up and stabilization horizon"),
-        "long_session_baseline_ratio": unavailable("long_session_baseline_ratio", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-high-volume",), method="awarded baseline divided by expected eligible baseline", reason="requires the C3 high-volume longitudinal cohort"),
-        "intentional_backlog_advantage": unavailable("intentional_backlog_advantage", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="unexplained reward after comparable obligations", reason="requires delayed persistent cards and post-catch-up stabilization"),
-        "retention_cycling_advantage": unavailable("retention_cycling_advantage", MetricStatus.UNSUPPORTED, unit="ratio", source_ids=("longitudinal-retention-cycle",), method="matched cumulative reward minus legitimate extra baseline", reason="retention timelines are not available before gate C3"),
-    })
+    if longitudinal is None:
+        values.update({
+            "high_low_retention_parity": unavailable("high_low_retention_parity", MetricStatus.UNSUPPORTED, unit="ratio", source_ids=("longitudinal-retention-pair",), method="matched longitudinal policy histories", reason="longitudinal evidence was not supplied"),
+            "backlog_return_viability": unavailable("backlog_return_viability", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="matched backlog catch-up history", reason="longitudinal evidence was not supplied"),
+            "long_session_baseline_ratio": unavailable("long_session_baseline_ratio", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-high-volume",), method="awarded baseline divided by expected eligible baseline", reason="longitudinal evidence was not supplied"),
+            "intentional_backlog_advantage": unavailable("intentional_backlog_advantage", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="unexplained reward after comparable obligations", reason="longitudinal evidence was not supplied"),
+            "retention_cycling_advantage": unavailable("retention_cycling_advantage", MetricStatus.UNSUPPORTED, unit="ratio", source_ids=("longitudinal-retention-cycle",), method="matched cumulative reward minus legitimate extra baseline", reason="longitudinal evidence was not supplied"),
+        })
+    else:
+        fairness = longitudinal["fairness"]["comparisons"]
+        abuse = longitudinal["abuse"]["comparisons"]
+        retention = [item for item in fairness if item["comparison"] == "retention-high-vs-low"]
+        backlog = [item for item in fairness if item["comparison"] == "honest-backlog-return"]
+        cycling = [item for item in abuse if item["comparison"] in {"retention-high-cycle", "retention-low-cycle"}]
+        intentional = [item for item in abuse if item["comparison"] == "intentional-backlog"]
+        high_volume = max(longitudinal["policy_results"], key=lambda item: item["metrics"]["review_count"])
+        values.update({
+            "high_low_retention_parity": measured("high_low_retention_parity", max(abs(item["unexplained_advantage"]) for item in retention), unit="ratio", sample_count=len(retention), source_ids=("retention-high-vs-low",), method="maximum absolute unexplained reward ratio across matched 90-day replicas"),
+            "backlog_return_viability": measured("backlog_return_viability", min(item["left_baseline_preservation"] for item in backlog), unit="ratio", sample_count=len(backlog), source_ids=("honest-backlog-return",), method="minimum baseline preservation across matched catch-up replicas"),
+            "long_session_baseline_ratio": measured("long_session_baseline_ratio", high_volume["metrics"]["baseline_preservation_ratio"], unit="ratio", sample_count=high_volume["metrics"]["review_count"], source_ids=(f"{high_volume['policy_id']}:replica-{high_volume['replica']}",), method="baseline ratio of the maximum-review longitudinal cohort"),
+            "intentional_backlog_advantage": measured("intentional_backlog_advantage", max(item["unexplained_advantage"] for item in intentional), unit="ratio", sample_count=len(intentional), source_ids=("intentional-backlog",), method="maximum unexplained 90-day advantage after subtracting legitimate additional baseline"),
+            "retention_cycling_advantage": measured("retention_cycling_advantage", max(item["unexplained_advantage"] for item in cycling), unit="ratio", sample_count=len(cycling), source_ids=("retention-high-cycle", "retention-low-cycle"), method="maximum unexplained 90-day cycling advantage after subtracting legitimate additional baseline"),
+        })
     return values
 
 
@@ -578,6 +602,33 @@ def _quantitative_failures(metrics: dict[str, MetricResult], params: RewardParam
     )
 
 
+def _longitudinal_evidence(
+    package_root: Path,
+    parameter_set_id: str,
+    params: RewardParameterSet,
+) -> dict[str, Any]:
+    cache_key = (
+        str(package_root.resolve()),
+        parameter_set_id,
+        normalized_parameter_digest(params),
+    )
+    cached = _LONGITUDINAL_EVIDENCE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    longitudinal_config = load_longitudinal_config(
+        package_root / "configs" / "review-longitudinal-v0.1.json"
+    )
+    result = run_longitudinal(
+        longitudinal_config,
+        mode_id="calibration-90",
+        master_seed=20260716,
+        parameter_set_ids=(parameter_set_id,),
+        parameter_overrides={parameter_set_id: params},
+    )
+    _LONGITUDINAL_EVIDENCE_CACHE[cache_key] = result
+    return result
+
+
 def evaluate_candidate(
     candidate: ParameterCandidate,
     config: SweepConfig,
@@ -599,7 +650,17 @@ def evaluate_candidate(
     reasons = [f"INVARIANT_{name}" for name, passed in invariants if not passed]
     if any(not item.passed for item in result.scenario_results):
         reasons.append("SCENARIO_ASSERTION_FAILURE")
-    metrics = _metrics(result, package_root, candidate.parameters)
+    longitudinal = _longitudinal_evidence(
+        package_root,
+        candidate.parameter_set_id,
+        candidate.parameters,
+    )
+    metrics = _metrics(
+        result,
+        package_root,
+        candidate.parameters,
+        longitudinal=longitudinal,
+    )
     if _metric_value(metrics, "breakdown_mismatch_count"):
         reasons.append("BREAKDOWN_MISMATCH")
     if (
@@ -639,6 +700,7 @@ def evaluate_candidate(
         "quantitative_gate_failures": list(quantitative),
         "metrics": metrics,
         "result_digest": result.manifest.output_digest,
+        "longitudinal_digest": longitudinal["manifest"]["report_digest"],
     }
     return CandidateEvaluation(
         candidate=candidate,
@@ -649,6 +711,7 @@ def evaluate_candidate(
         quantitative_gate_failures=quantitative,
         metrics=tuple(sorted(metrics.items())),
         result_digest=result.manifest.output_digest,
+        longitudinal_digest=longitudinal["manifest"]["report_digest"],
         evaluation_digest=canonical_digest(provisional),
     )
 
@@ -657,6 +720,8 @@ _PARETO_OBJECTIVES = (
     "scenario_assertion_failure_count",
     "p95_additional_bonus_share",
     "p95_support_share",
+    "retention_cycling_advantage",
+    "intentional_backlog_advantage",
     "non_default_parameter_count",
     "explainability_complexity_score",
 )
@@ -667,12 +732,25 @@ def pareto_front(
     *,
     include_incomplete: bool = False,
 ) -> tuple[CandidateEvaluation, ...]:
-    survivors = [
+    eligible = [
         item
         for item in evaluations
         if item.status is CandidateStatus.PASS
         or (include_incomplete and item.status is CandidateStatus.INCOMPLETE_EVIDENCE)
     ]
+    by_digest: dict[str, CandidateEvaluation] = {}
+    for item in sorted(
+        eligible,
+        key=lambda candidate: (
+            _metric_value(dict(candidate.metrics), "non_default_parameter_count"),
+            candidate.candidate.parameter_set_id,
+        ),
+    ):
+        by_digest.setdefault(
+            normalized_parameter_digest(item.candidate.parameters),
+            item,
+        )
+    survivors = list(by_digest.values())
     front: list[CandidateEvaluation] = []
     for candidate in survivors:
         values = dict(candidate.metrics)
@@ -775,6 +853,7 @@ def _evaluation_payload(evaluation: CandidateEvaluation) -> dict[str, Any]:
             for metric_id, metric in evaluation.metrics
         },
         "result_digest": evaluation.result_digest,
+        "longitudinal_digest": evaluation.longitudinal_digest,
         "evaluation_digest": evaluation.evaluation_digest,
     }
 
@@ -895,15 +974,33 @@ def run_sensitivity(
         )
         for value in values:
             params = _sensitivity_variant(base.parameters, name, value)
+            point_id = f"SENSITIVITY-{name.upper().replace('_', '-')}-{value:g}"
             result = run_corpus(
                 config.corpus_root,
                 command="run-sensitivity",
                 params=params,
-                parameter_set_id=f"SENSITIVITY-{name.upper().replace('_', '-')}-{value:g}",
+                parameter_set_id=point_id,
             )
-            metrics = _metrics(result, package_root, params)
+            repeated = run_corpus(
+                config.corpus_root,
+                command="run-sensitivity",
+                params=params,
+                parameter_set_id=point_id,
+            )
+            longitudinal = _longitudinal_evidence(package_root, point_id, params)
+            metrics = _metrics(result, package_root, params, longitudinal=longitudinal)
             delta = _metric_value(metrics, "median_successful_core_reward") - _metric_value(base_metrics, "median_successful_core_reward")
             normalized = 0.0 if close(value, base_value) else delta / (value - base_value)
+            invariants = dict(_hard_invariants(result, repeated, params))
+            gates = _quantitative_gate_results(metrics, params)
+            required_longitudinal = (
+                "high_low_retention_parity",
+                "backlog_return_viability",
+                "long_session_baseline_ratio",
+                "intentional_backlog_advantage",
+                "retention_cycling_advantage",
+            )
+            cliff_probes = _cliff_probes(params, config.epsilon)
             points.append(
                 {
                     "value": value,
@@ -911,8 +1008,30 @@ def run_sensitivity(
                         "median_successful_core_reward": delta,
                         "p95_additional_bonus_share": _metric_value(metrics, "p95_additional_bonus_share") - _metric_value(base_metrics, "p95_additional_bonus_share"),
                     },
+                    "longitudinal_metric_deltas": {
+                        metric_id: _metric_value(metrics, metric_id) - _metric_value(base_metrics, metric_id)
+                        for metric_id in required_longitudinal
+                    },
                     "normalized_local_sensitivity": normalized,
                     "gate_crossings": list(_quantitative_failures(metrics, params)),
+                    "invariant_status": "PASS" if all(invariants.values()) else "FAIL",
+                    "failed_invariants": [name for name, passed in invariants.items() if not passed],
+                    "quantitative_gate_status": (
+                        "PASS" if all(item["passed"] is not False for item in gates.values()) else "FAIL"
+                    ),
+                    "quantitative_gates": gates,
+                    "reward_cliff_status": (
+                        "BOUNDED_PIECEWISE"
+                        if any(item["disproportionate_reward_jump"] for item in cliff_probes)
+                        else "PASS"
+                    ),
+                    "evidence_completeness": (
+                        "COMPLETE"
+                        if all(metrics[metric_id].supported for metric_id in required_longitudinal)
+                        else "INCOMPLETE_EVIDENCE"
+                    ),
+                    "result_digest": result.manifest.output_digest,
+                    "longitudinal_digest": longitudinal["manifest"]["report_digest"],
                 }
             )
         analyses.append({"parameter": name, "base_value": base_value, "tested_values": list(values), "points": points})

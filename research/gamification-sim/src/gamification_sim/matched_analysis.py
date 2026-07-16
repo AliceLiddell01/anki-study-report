@@ -18,6 +18,7 @@ from .models import (
 from .population import resolve_parameter_set
 from .scenario_runner import run_corpus
 from .validation import close
+from .parameters import RewardParameterSet
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,8 +182,16 @@ def longitudinal_matrices(payload: dict[str, Any]) -> tuple[dict[str, Any], dict
     )
 
 
-def deterministic_matched_matrices(package_root: Path, parameter_set_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    normalized_id, params = resolve_parameter_set(parameter_set_id)
+def deterministic_matched_matrices(
+    package_root: Path,
+    parameter_set_id: str,
+    *,
+    params_override: RewardParameterSet | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if params_override is None:
+        normalized_id, params = resolve_parameter_set(parameter_set_id)
+    else:
+        normalized_id, params = parameter_set_id, params_override
     scenario = run_corpus(
         package_root / "scenarios",
         command="matched-matrix",

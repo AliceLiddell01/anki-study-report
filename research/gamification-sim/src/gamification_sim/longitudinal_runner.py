@@ -34,6 +34,7 @@ from .models import (
 )
 from .population import resolve_parameter_set
 from .validation import close, dataclass_to_dict
+from .parameters import RewardParameterSet
 
 
 GENERATOR_VERSION = "longitudinal-review-cards-v0.1"
@@ -227,9 +228,13 @@ def run_policy(
     master_seed: int,
     mode_id: str,
     replica: int,
+    params_override: RewardParameterSet | None = None,
 ) -> dict[str, Any]:
     mode = config.mode(mode_id)
-    normalized_id, params = resolve_parameter_set(parameter_set_id)
+    if params_override is None:
+        normalized_id, params = resolve_parameter_set(parameter_set_id)
+    else:
+        normalized_id, params = parameter_set_id, params_override
     cards = initial_cohort(
         master_seed=master_seed,
         replica=replica,
@@ -419,6 +424,7 @@ def run_longitudinal(
     master_seed: int,
     parameter_set_ids: tuple[str, ...] | None = None,
     policy_ids: tuple[str, ...] | None = None,
+    parameter_overrides: dict[str, RewardParameterSet] | None = None,
 ) -> dict[str, Any]:
     if type(master_seed) is not int or master_seed < 0:
         raise ValueError("longitudinal seed must be a non-negative integer")
@@ -443,6 +449,7 @@ def run_longitudinal(
                         master_seed=master_seed,
                         mode_id=mode_id,
                         replica=replica,
+                        params_override=(parameter_overrides or {}).get(parameter_set_id),
                     )
                 )
     payload = {
@@ -470,7 +477,9 @@ def run_longitudinal(
     deterministic_abuse: list[dict[str, Any]] = []
     for parameter_set_id in selected_parameters:
         fair_items, abuse_items = deterministic_matched_matrices(
-            Path(__file__).resolve().parents[2], parameter_set_id
+            Path(__file__).resolve().parents[2],
+            parameter_set_id,
+            params_override=(parameter_overrides or {}).get(parameter_set_id),
         )
         deterministic_fairness.extend(fair_items)
         deterministic_abuse.extend(abuse_items)
