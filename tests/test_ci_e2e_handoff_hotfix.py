@@ -252,6 +252,37 @@ def test_early_fast_handoff_failure_creates_safe_public_artifact(tmp_path: Path,
     assert "fast-ci-run.json" not in exported
 
 
+def test_validate_package_restores_diagnostics_directory_after_clean_checkout(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    resolution = tmp_path / "resolution.json"
+    diagnostics = tmp_path / "diagnostics.json"
+    package_dir = tmp_path / "package"
+    output = tmp_path / "handoff.json"
+    resolution.write_text("{}", encoding="utf-8")
+    diagnostics.write_text("{}", encoding="utf-8")
+    package_dir.mkdir()
+
+    monkeypatch.setattr(HANDOFF, "validate_package_handoff", lambda **_: {
+        "packageSha256": "e" * 64,
+        "packageSizeBytes": 123,
+        "sourceTestedCommitSha": SHA,
+    })
+    monkeypatch.setattr(sys, "argv", [
+        "verify_fast_ci_e2e_handoff.py", "validate-package",
+        "--resolution", str(resolution),
+        "--diagnostics", str(diagnostics),
+        "--directory", str(package_dir),
+        "--e2e-workflow-source-sha", SHA,
+        "--e2e-checkout-sha", SHA,
+        "--output", str(output),
+    ])
+
+    assert not (tmp_path / "ci-e2e-raw").exists()
+    assert HANDOFF.main() == 0
+    assert (tmp_path / "ci-e2e-raw").is_dir()
+    assert json.loads(output.read_text(encoding="utf-8"))["packageSha256"] == "e" * 64
+
+
 def test_successful_fast_summary_still_requires_complete_identity(tmp_path: Path):
     output = tmp_path / "output"
     (output / "artifacts").mkdir(parents=True)
