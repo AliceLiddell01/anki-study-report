@@ -74,7 +74,7 @@
 - fallback без FSRS;
 - support cap для relearning;
 - explainability и версионирование;
-- 22 расчётных и классификационных примера.
+- расчётные и классификационные примеры.
 
 Текущий статус: **DRAFT v0.1**.
 
@@ -105,6 +105,33 @@
 
 Текущий статус: **DRAFT v0.1**.
 
+### 6. [Anki Review Session and Day Aggregation](anki-review-session-and-day.md)
+
+Четвёртый детальный этап Review XP:
+
+- `Anki Day` как экономическая единица;
+- `Review Session` как аналитическая группировка;
+- отсутствие session multipliers и reset-эксплойтов;
+- полное сохранение `CoreBaseline` независимо от дневного объёма;
+- `QualifiedVolume` без повторного учёта context bonus;
+- аддитивный прогрессивный `VolumeCredit` с cap;
+- дневные caps для support и supplemental work;
+- `Workload Snapshot`;
+- locked completion scope;
+- `collection_cleared`, `scope_cleared`, `configured_limit_reached`, `partial` и `zero_due`;
+- небольшой пропорциональный `CompletionCredit`;
+- нейтральный zero-due day;
+- review contribution bands;
+- late sync reconciliation;
+- derived transactions;
+- подробные сценарии и acceptance criteria.
+
+Ключевой инвариант этапа:
+
+> Каждое подтверждённое уникальное core-повторение сохраняет полную базовую награду. Diminishing returns и caps применяются только к дополнительным бонусам, support и supplemental channels.
+
+Текущий статус: **DRAFT v0.1**.
+
 ## Принятый порядок проектирования
 
 ```text
@@ -118,9 +145,9 @@ Review Reward Model                    ← завершённый концепт
         ↓
 Review Abuse Model                     ← завершённый концептуальный этап
         ↓
-Review Session and Day Aggregation     ← следующий этап
+Review Session and Day Aggregation     ← завершённый концептуальный этап
         ↓
-Review Simulation Specification
+Review Simulation Specification        ← следующий этап
         ↓
 Learn XP Specification
         ↓
@@ -138,29 +165,28 @@ Skills, achievements, quests, rewards and UI
 Планируемый файл:
 
 ```text
-anki-review-session-and-day.md
+anki-review-simulation-spec.md
 ```
 
 Он должен определить:
 
-1. границы `Review Session`;
-2. агрегацию нескольких сессий в один Anki-день;
-3. сумму `core`, `support` и `supplemental` units;
-4. количество уникальных карточек и уникальных эпизодов;
-5. нужен ли volume bonus;
-6. нужен ли бонус за закрытие due queue;
-7. как избежать второго слоя anti-grind поверх episode-level safeguards;
-8. минимальный, частичный и полноценный Review-день;
-9. поведение при backlog;
-10. поведение при нулевой due queue;
-11. взаимодействие с будущим стриком;
-12. дневные caps и diminishing returns;
-13. защиту длинной честной сессии от чрезмерного обесценивания;
-14. explainability итоговой награды за день.
+1. synthetic personas и типовые учебные режимы;
+2. формат импорта и анонимизации реальной review history;
+3. набор обычных, edge-case и exploit-сценариев;
+4. сравниваемые варианты Reward Model;
+5. сравниваемые volume, support, supplemental и completion parameters;
+6. распределение Review Units по дням и пользователям;
+7. влияние модели на маленькие и большие коллекции;
+8. влияние backlog, desired retention и FSRS confidence;
+9. fairness metrics;
+10. abuse-resistance metrics;
+11. sensitivity analysis;
+12. критерии выбора окончательных параметров;
+13. формат итогового simulation report.
 
 Главное ограничение следующего этапа:
 
-> Дневная агрегация не должна повторно штрафовать работу, которая уже прошла event taxonomy, reward model и abuse safeguards.
+> Симулятор должен проверять одновременно exploit resistance и сохранение награды честного пользователя. Вариант, который лучше подавляет фарм, но заметно обесценивает нормальную работу, не считается улучшением.
 
 ## Иерархия решений
 
@@ -178,7 +204,8 @@ anki-review-session-and-day.md
 - `anki-review-event-taxonomy.md` определяет право события участвовать в Review XP;
 - `anki-review-reward-model.md` определяет относительную стоимость допустимого эпизода;
 - `anki-review-abuse-model.md` определяет допустимые ограничения и уточняет применение validity-сигналов;
-- ранние формулы из `anki-xp-foundation.md` не применяются, если детальная спецификация уже приняла другое решение.
+- `anki-review-session-and-day.md` определяет дневную агрегацию, caps и дополнительные бонусы;
+- ранние формулы из `anki-xp-foundation.md` и `progression-foundation.md` не применяются, если детальная спецификация уже приняла другое решение.
 
 ### Уточнение Reward Model третьим этапом
 
@@ -194,18 +221,38 @@ ContextBonus
 
 Только детерминированно неучебное, отменённое или повторно обработанное событие может потерять baseline. Неоднозначное событие сохраняет базовую учебную награду и при необходимости теряет только контекстный бонус.
 
+### Уточнение общего diminishing returns четвёртым этапом
+
+Ранняя гипотеза глобального дневного envelope не применяется к `Review CoreBaseline`.
+
+```text
+Review CoreBaseline
+→ сохраняется полностью;
+
+Volume, Completion, Support и Supplemental
+→ имеют собственные ограниченные правила;
+
+будущий combined-domain envelope
+→ не должен повторно уменьшать подтверждённую базовую review-работу.
+```
+
+Окончательная междоменная политика будет выбрана после Review simulation и проектирования Learn/Create XP.
+
 ## Правила развития документации
 
 - Один крупный предмет проектирования — один отдельный документ.
 - Общие решения не дублируются полностью в каждом файле; используются ссылки.
-- Числовая гипотеза не становится правилом до симуляции.
-- Сначала определяется валидное событие, затем его стоимость.
+- Числовая гипотеза не становится финальным правилом до симуляции.
+- Сначала определяется валидное событие, затем его стоимость и только потом дневная агрегация.
 - Product concept не смешивается с production implementation.
 - Новая механика не должна подталкивать к ухудшению реального обучения ради XP.
 - Anti-abuse не должен разрушать базовую награду честного пользователя.
 - Одна слабая эвристика не может обнулить core reward.
 - Несколько safeguards не должны повторно штрафовать одно событие за одну причину.
 - Неопределённость должна ограничивать bonus раньше, чем baseline.
+- Длинная честная работа не получает diminishing returns по базовому reward.
+- Сессия не является способом сбросить дневные caps или повторно получить bonus.
+- Completion не должен превращать микроколоды или искусственные scopes в выгодную стратегию.
 - Внешняя документация Anki и FSRS используется для проверки фактов, а не как готовый дизайн игровой экономики.
 - При противоречии более детальный и новый документ уточняет общий foundation, но изменение должно быть явно отражено в индексах и версиях.
 - Примеры внутри спецификаций являются обязательной частью проверки понятности модели.
