@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SearchInspector from "../components/search/SearchInspector";
 import SearchActionBar from "../components/search/SearchActionBar";
@@ -9,15 +9,18 @@ import { useSearchWorkspace } from "../hooks/useSearchWorkspace";
 import type { StudyReport } from "../types/report";
 import type { DeckOption } from "../types/settings";
 import type { LoadState } from "./HomePage";
+import { consumeNotificationHandoff } from "../lib/notificationHandoff";
 
 export default function SearchPage({ report, loadState }: { report: StudyReport | null; loadState: LoadState }) {
   const { t } = useTranslation("pages", { keyPrefix: "search" });
   const workspace = useSearchWorkspace();
   const metadata = useSearchMetadata();
+  const [notificationHandoff] = useState(() => consumeNotificationHandoff("card_problems"));
   const readyReport = loadState === "ready" ? report : null;
   const fallbackDeckOptions = useMemo(() => deckOptionsFromReport(readyReport), [readyReport]);
   return <div className="search-page" data-testid="search-page">
     <header className="search-page-header"><div><span>{t("eyebrow")}</span><h1>{t("title")}</h1><p>{t("description")}</p></div><p className="search-privacy-note">{t("privacy")}</p></header>
+    {notificationHandoff ? <p role="status" className="rounded-lg border border-report-blue/45 bg-report-blue/10 px-4 py-3 text-sm text-report-secondary">{t("notificationHandoff")}</p> : null}
     <SearchQueryBar workspace={workspace} report={readyReport} metadata={metadata} fallbackDeckOptions={fallbackDeckOptions} />
     {workspace.selectedIds.size ? <div className="search-batch-bar"><span>{t("selection.count", { count: workspace.selectedIds.size })}</span><button className="search-primary-button" type="button" disabled={workspace.browserPending} onClick={workspace.openInBrowser}>{workspace.browserPending ? t("browser.opening") : t("browser.open")}</button>{workspace.browserStatus ? <span role="status" className={workspace.browserStatus.ok ? "is-success" : "is-error"}>{workspace.browserStatus.ok ? t("browser.opened", { count: workspace.browserStatus.requestedCount ?? workspace.selectedIds.size }) : t("browser.failed")}</span> : null}</div> : null}
     <SearchActionBar workspace={workspace} metadata={metadata} fallbackDeckOptions={fallbackDeckOptions} />
