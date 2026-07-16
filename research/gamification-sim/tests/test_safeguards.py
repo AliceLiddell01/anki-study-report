@@ -89,3 +89,28 @@ def test_reason_codes_are_not_repeated():
     )
     result = aggregate_day(day)
     assert len(result.reason_codes) == len(set(result.reason_codes))
+
+
+def test_source_event_idempotency_is_global_across_channels():
+    day = ReviewDayInput(
+        "2026-07-16",
+        episodes=(ep("shared", "core-card"),),
+        supplemental_events=(SupplementalInput("shared", 1.0),),
+    )
+    result = aggregate_day(day)
+    assert close(result.core_baseline, 0.90)
+    assert close(result.raw_supplemental, 0.0)
+    assert result.reason_codes.count("duplicate_source_event") == 1
+
+
+def test_undo_removes_support_event_by_its_own_source_key():
+    from gamification_sim.models import SupportEventInput
+
+    day = ReviewDayInput(
+        "2026-07-16",
+        support_events=(SupportEventInput("support-undo", "parent", 0.12),),
+        undone_source_event_keys=frozenset({"support-undo"}),
+    )
+    result = aggregate_day(day)
+    assert close(result.raw_support, 0.0)
+    assert "undone" in result.reason_codes

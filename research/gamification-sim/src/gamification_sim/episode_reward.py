@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from .models import EpisodeRewardBreakdown, ReasonCode, ReviewEpisodeInput
+from .models import EpisodeRewardBreakdown, Outcome, ReasonCode, ReviewEpisodeInput
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
 from .validation import require_positive, require_range
 
@@ -75,9 +75,28 @@ def evaluate_episode(
     episode: ReviewEpisodeInput,
     params: RewardParameterSet = CURRENT_PARAMETERS,
 ) -> EpisodeRewardBreakdown:
+    if not episode.source_event_key.strip():
+        raise ValueError("source_event_key must not be empty")
+    if not episode.card_lineage.strip():
+        raise ValueError("card_lineage must not be empty")
+    if not episode.anki_day.strip():
+        raise ValueError("anki_day must not be empty")
+
     core_eligibility = int(episode.core_eligibility)
     if core_eligibility not in {0, 1}:
         raise ValueError("core_eligibility must be 0 or 1")
+    if core_eligibility and episode.outcome is Outcome.NONE:
+        raise ValueError("eligible core episode must have a review outcome")
+
+    memory = episode.memory
+    if memory.retrievability_actual is not None:
+        require_range("retrievability_actual", memory.retrievability_actual, 0.0, 1.0)
+    if memory.retrievability_natural_due is not None:
+        require_range("retrievability_natural_due", memory.retrievability_natural_due, 0.0, 1.0)
+    if memory.stability_before is not None:
+        require_positive("stability_before", memory.stability_before)
+    if memory.stability_good_counterfactual is not None:
+        require_positive("stability_good_counterfactual", memory.stability_good_counterfactual)
     bonus_eligibility = require_range("bonus_eligibility", episode.bonus_eligibility, 0.0, 1.0)
     response_validity = require_range("response_validity", episode.response_validity, 0.0, 1.0)
     effective_bonus = min(bonus_eligibility, response_validity)

@@ -95,17 +95,20 @@ def aggregate_day(
     core_context = sum(item.context for item in episode_breakdowns)
     qualified_volume = core_baseline
 
+    applied_caps: list[str] = []
     support_by_parent: dict[str, float] = defaultdict(float)
-    support_seen: set[str] = set()
     for event in day.support_events:
-        if event.source_event_key in support_seen:
+        units = require_non_negative("support units", event.units)
+        if event.source_event_key in seen_sources:
             reasons.append(ReasonCode.DUPLICATE_SOURCE_EVENT.value)
             continue
-        support_seen.add(event.source_event_key)
-        if event.parent_episode_key in day.undone_source_event_keys:
+        seen_sources.add(event.source_event_key)
+        if (
+            event.source_event_key in day.undone_source_event_keys
+            or event.parent_episode_key in day.undone_source_event_keys
+        ):
             reasons.append(ReasonCode.UNDONE.value)
             continue
-        units = require_non_negative("support units", event.units)
         support_by_parent[event.parent_episode_key] += units
 
     raw_support = 0.0
@@ -113,27 +116,29 @@ def aggregate_day(
         capped = min(units, params.support_episode_cap)
         raw_support += capped
         if units > capped:
+            applied_caps.append(ReasonCode.SUPPORT_EPISODE_CAP.value)
             reasons.append(ReasonCode.SUPPORT_EPISODE_CAP.value)
     support_cap = min(
         params.support_day_cap,
         max(params.support_day_floor, params.support_day_rate * core_baseline),
     )
     capped_support = min(raw_support, support_cap)
-    applied_caps: list[str] = []
     if raw_support > capped_support:
         applied_caps.append(ReasonCode.SUPPORT_DAY_CAP.value)
         reasons.append(ReasonCode.SUPPORT_DAY_CAP.value)
 
-    supplemental_seen: set[str] = set()
     raw_supplemental = routed_supplemental_raw
     for event in day.supplemental_events:
-        if event.source_event_key in supplemental_seen:
+        units = require_non_negative("supplemental units", event.units)
+        if event.source_event_key in seen_sources:
             reasons.append(ReasonCode.DUPLICATE_SOURCE_EVENT.value)
             continue
-        supplemental_seen.add(event.source_event_key)
+        seen_sources.add(event.source_event_key)
         if event.source_event_key in day.undone_source_event_keys or not event.permanent_eligible:
+            if event.source_event_key in day.undone_source_event_keys:
+                reasons.append(ReasonCode.UNDONE.value)
             continue
-        raw_supplemental += require_non_negative("supplemental units", event.units)
+        raw_supplemental += units
     supplemental_cap = min(
         params.supplemental_day_cap,
         params.supplemental_day_rate * core_baseline,

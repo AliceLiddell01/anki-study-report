@@ -147,3 +147,21 @@ def test_invalid_numeric_values_are_rejected(bad):
     )
     with pytest.raises(ValueError):
         evaluate_episode(episode)
+
+
+def test_core_none_outcome_is_rejected():
+    episode = ReviewEpisodeInput("none", "card", "2026-07-16", Outcome.NONE)
+    with pytest.raises(ValueError):
+        evaluate_episode(episode)
+
+
+def test_invalid_unused_memory_value_is_rejected():
+    episode = ReviewEpisodeInput(
+        "again-invalid",
+        "card",
+        "2026-07-16",
+        Outcome.AGAIN,
+        memory=MemoryContext(retrievability_actual=float("nan")),
+    )
+    with pytest.raises(ValueError):
+        evaluate_episode(episode)
