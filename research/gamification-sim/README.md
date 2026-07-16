@@ -482,3 +482,27 @@ On Windows without MSVC Build Tools, the verified local toolchain is the officia
 `+stable-x86_64-pc-windows-gnu`). The differential report classifies exact,
 within-tolerance, semantic-mismatch, and unsupported cases. Invalid inputs must
 be rejected by both implementations and by the Rust process exit code.
+
+## Stage 5B.7 FSRS reference comparison
+
+The optional `fsrs` extra pins official `py-fsrs` 6.3.1. The Rust oracle pins
+official `open-spaced-repetition/fsrs-rs` crate 6.6.1. Neither dependency is
+required by the deterministic reward core or production add-on.
+
+```powershell
+python -m pip install -e ".[test,fsrs]"
+python -m gamification_sim verify-fsrs-reference contracts/fsrs-trajectories-v0.1.json --no-write
+```
+
+The committed UTC corpus contains 10 synthetic trajectories: new, Good, Hard,
+Easy, Again/relearning, long-overdue, high/low desired retention, low-history,
+and no-FSRS fallback. The report compares retrievability, stability, difficulty,
+counterfactual Good stability, model intervals, and normalized serialized
+trajectory signatures.
+
+State tolerances are explicit (`1e-4` for f64/f32 reference state fields).
+Scheduled intervals are reported separately: `py-fsrs` applies configured
+learning/relearning steps, while `fsrs-rs::next_states` reports the model
+interval. This documented scheduler-layer difference is not classified as a
+reward defect. High-, low-, no-FSRS, and backlog contexts all retain identical
+CoreBaseline.

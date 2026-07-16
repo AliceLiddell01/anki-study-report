@@ -330,10 +330,25 @@ unsupported cases. Corpus охватывает 31 golden cases, все 26 scenar
 threshold triplets, Stage 5B.3 survivors, фиксированные property edges и
 invalid-input rejection parity.
 
+### Stage 5B.7 — FSRS reference comparison
+
+Optional research extras фиксируют официальный `py-fsrs 6.3.1` и официальный
+crate `open-spaced-repetition/fsrs-rs 6.6.1`. Они не входят в deterministic core,
+production runtime или add-on package.
+
+Versioned UTC corpus содержит 10 synthetic trajectories. Сравниваются
+retrievability, stability, difficulty, scheduled interval, counterfactual Good
+state и normalized serialized trajectory. `f64`/`f32` state tolerance задан как
+`1e-4`; различие learning/relearning step scheduler в py-fsrs и model interval
+из `fsrs-rs::next_states` документируется отдельно и не объявляется defect.
+
+Reward integration отдельно подтверждает одинаковый `CoreBaseline` для
+high-confidence, low-confidence, no-FSRS fallback и backlog natural-due context.
+
 ### Изоляция и CI
 
 ```text
-Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4 + Stage 5B.5 + Stage 5B.6
+Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4 + Stage 5B.5 + Stage 5B.6 + Stage 5B.7
 → local/manual execution
 → отдельное environment
 → не импортируют production-модули
