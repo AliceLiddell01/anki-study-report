@@ -124,7 +124,7 @@ function App() {
 export default App;
 
 export function telemetryPageCode(route: ReturnType<typeof getRouteFromHash>): string | null {
-  if (route === "/notifications") return null;
+  if (route === "/notifications" || route === "/settings/notifications") return null;
   if (route.startsWith("/stats")) return "statistics";
   const pageCodes: Partial<Record<ReturnType<typeof getRouteFromHash>, string>> = {
     "/home": "home",
