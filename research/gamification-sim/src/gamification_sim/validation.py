@@ -71,6 +71,8 @@ def dataclass_to_dict(value: Any) -> Any:
         return {field.name: dataclass_to_dict(getattr(value, field.name)) for field in fields(value)}
     if isinstance(value, tuple):
         return [dataclass_to_dict(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): dataclass_to_dict(item) for key, item in value.items()}
     if isinstance(value, frozenset):
         return sorted(dataclass_to_dict(item) for item in value)
     if hasattr(value, "value"):

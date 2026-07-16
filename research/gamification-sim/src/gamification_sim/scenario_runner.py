@@ -13,7 +13,7 @@ from .manifest import (
     python_major_minor,
 )
 from .models import Outcome, ReviewDayBreakdown
-from .parameters import CURRENT_PARAMETERS
+from .parameters import CURRENT_PARAMETERS, RewardParameterSet
 from .scenario_loader import load_corpus
 from .scenario_models import (
     AssertionScope,
@@ -102,6 +102,7 @@ def _value_for_assertion(
 def run_scenario(
     definition: ScenarioDefinition,
     *,
+    params: RewardParameterSet = CURRENT_PARAMETERS,
     control_definition: ScenarioDefinition | None = None,
     control_result: ScenarioRunResult | None = None,
 ) -> ScenarioRunResult:
@@ -124,7 +125,7 @@ def run_scenario(
 
     day_results: list[ScenarioDayResult] = []
     for day in definition.days:
-        breakdown = aggregate_day(day.day_input, CURRENT_PARAMETERS)
+        breakdown = aggregate_day(day.day_input, params)
         metrics = _day_metrics(day, breakdown)
         day_results.append(
             ScenarioDayResult(
@@ -146,7 +147,7 @@ def run_scenario(
     provisional = ScenarioRunResult(
         scenario_id=definition.scenario_id,
         category=definition.category,
-        rule_version=definition.rule_version,
+        rule_version=params.rule_version,
         day_results=frozen_days,
         metrics=tuple(sorted(scenario_metrics.items())),
         assertions=tuple(assertion_results),
@@ -207,9 +208,15 @@ def run_definitions(
     definitions: tuple[ScenarioDefinition, ...],
     *,
     command: str,
+    params: RewardParameterSet = CURRENT_PARAMETERS,
 ) -> CorpusRunResult:
     by_id = {item.scenario_id: item for item in definitions}
-    input_digest = canonical_digest(tuple(sorted(definitions, key=lambda item: item.scenario_id)))
+    input_digest = canonical_digest(
+        {
+            "definitions": tuple(sorted(definitions, key=lambda item: item.scenario_id)),
+            "parameters": params,
+        }
+    )
     results: dict[str, ScenarioRunResult] = {}
     warnings: list[str] = []
     for definition in _execution_order(definitions):
@@ -220,6 +227,7 @@ def run_definitions(
             control_result = results[definition.control_scenario_id]
         result = run_scenario(
             definition,
+            params=params,
             control_definition=control_definition,
             control_result=control_result,
         )
@@ -229,7 +237,7 @@ def run_definitions(
     ordered_results = tuple(results[key] for key in sorted(results))
     manifest = RunManifest(
         simulator_version=SIMULATOR_VERSION,
-        rule_version=CURRENT_PARAMETERS.rule_version,
+        rule_version=params.rule_version,
         scenario_schema_version=SCENARIO_SCHEMA_VERSION,
         python_version=python_major_minor(),
         scenario_ids=tuple(item.scenario_id for item in ordered_results),
@@ -243,5 +251,10 @@ def run_definitions(
     return replace(provisional, manifest=replace(manifest, output_digest=digest))
 
 
-def run_corpus(root: Path, *, command: str = "run-scenarios") -> CorpusRunResult:
-    return run_definitions(load_corpus(root), command=command)
+def run_corpus(
+    root: Path,
+    *,
+    command: str = "run-scenarios",
+    params: RewardParameterSet = CURRENT_PARAMETERS,
+) -> CorpusRunResult:
+    return run_definitions(load_corpus(root), command=command, params=params)
