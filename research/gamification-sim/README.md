@@ -588,3 +588,21 @@ front contains 14 unique normalized parameter states. Sensitivity covers 63
 explicit points: every point has complete longitudinal evidence and passes all
 H01–H18 invariants, while ten points cross a declared quantitative gate. These
 crossings are reported as evidence rather than silently removed from the grid.
+
+## Stage 5B.C6 corrected population calibration
+
+The gitignored fixed-seed evidence set contains a 30-day development run over
+all four configured candidates and nine policies, a 90-day run over all 14
+normalized Pareto candidates and nine policies, and the required seven-policy
+365-day `R-CURRENT` run. Repeated 90/365 executions reproduce trajectory, final
+cohort, and report digests; a different seed changes the history while retaining
+the same contract. Honest baseline preservation remains 1.0 within floating
+tolerance in every result.
+
+The cross-horizon abuse check intentionally remains stricter than the individual
+3% endpoint gate: each retention-cycle group fails when advantage increases in
+every matched replica from day 90 to day 365. `R-CURRENT` stays below 3% at day
+365, but both high- and low-retention cycle groups show systematic growth, so
+this evidence does not support a complete Stage 5 closure. The intentional
+backlog group passes and all generated reports remain under gitignored
+`outputs/longitudinal/` directories.

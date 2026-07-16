@@ -7,7 +7,11 @@ import pytest
 
 from gamification_sim.longitudinal_config import load_longitudinal_config
 from gamification_sim.longitudinal_runner import run_longitudinal
-from gamification_sim.matched_analysis import POLICY_PAIRS, validate_policy_pairs
+from gamification_sim.matched_analysis import (
+    POLICY_PAIRS,
+    compare_abuse_horizons,
+    validate_policy_pairs,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -19,6 +23,16 @@ def calibration_90():
     return run_longitudinal(
         CONFIG,
         mode_id="calibration-90",
+        master_seed=20260716,
+        parameter_set_ids=("R-CURRENT",),
+    )
+
+
+@pytest.fixture(scope="module")
+def calibration_365():
+    return run_longitudinal(
+        CONFIG,
+        mode_id="calibration-365",
         master_seed=20260716,
         parameter_set_ids=("R-CURRENT",),
     )
@@ -108,6 +122,27 @@ def test_retention_cycling_gate_is_measured_not_placeholder(calibration_90):
     assert all(isinstance(item["unexplained_advantage"], float) for item in cycling)
     assert all(item["unexplained_advantage"] <= 0.03 + 1e-9 for item in cycling)
     assert all(item["status"] == "PASS" for item in cycling)
+
+
+def test_long_horizon_comparison_exposes_systematic_cycling_growth(calibration_90, calibration_365):
+    comparison = compare_abuse_horizons(calibration_90, calibration_365)
+    assert comparison["status"] == "FAIL"
+    assert all(item["long_horizon_gate_pass"] for item in comparison["cells"])
+    failed = [item for item in comparison["groups"] if item["status"] == "FAIL"]
+    assert {item["comparison"] for item in failed} == {
+        "retention-high-cycle",
+        "retention-low-cycle",
+    }
+    assert all(item["systematic_growth"] for item in failed)
+
+
+def test_horizon_comparison_rejects_unmatched_seed(calibration_90, calibration_365):
+    changed = {
+        **calibration_365,
+        "manifest": {**calibration_365["manifest"], "master_seed": 20260717},
+    }
+    with pytest.raises(ValueError, match="unmatched master_seed"):
+        compare_abuse_horizons(calibration_90, changed)
 
 
 def test_missing_policy_evidence_remains_explicit():

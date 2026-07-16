@@ -182,6 +182,82 @@ def longitudinal_matrices(payload: dict[str, Any]) -> tuple[dict[str, Any], dict
     )
 
 
+def compare_abuse_horizons(
+    calibration_90: dict[str, Any],
+    calibration_365: dict[str, Any],
+    *,
+    tolerance: float = 1e-9,
+) -> dict[str, Any]:
+    short_manifest = calibration_90["manifest"]
+    long_manifest = calibration_365["manifest"]
+    if short_manifest["horizon_days"] != 90 or long_manifest["horizon_days"] != 365:
+        raise ValueError("abuse horizon comparison requires 90-day and 365-day results")
+    for field in ("config_digest", "master_seed", "parameter_set_ids"):
+        if short_manifest[field] != long_manifest[field]:
+            raise ValueError(f"abuse horizon comparison has unmatched {field}")
+
+    comparison_ids = {
+        "retention-high-cycle",
+        "retention-low-cycle",
+        "intentional-backlog",
+    }
+    short = {
+        (item["comparison"], item["parameter_set_id"], item["replica"]): item
+        for item in calibration_90["abuse"]["comparisons"]
+        if item["comparison"] in comparison_ids and "replica" in item
+    }
+    long = {
+        (item["comparison"], item["parameter_set_id"], item["replica"]): item
+        for item in calibration_365["abuse"]["comparisons"]
+        if item["comparison"] in comparison_ids and "replica" in item
+    }
+    if short.keys() != long.keys() or not short:
+        raise ValueError("abuse horizon comparison requires the same complete matched cells")
+
+    cells = []
+    for key in sorted(short):
+        short_item = short[key]
+        long_item = long[key]
+        delta = long_item["unexplained_advantage"] - short_item["unexplained_advantage"]
+        cells.append(
+            {
+                "comparison": key[0],
+                "parameter_set_id": key[1],
+                "replica": key[2],
+                "advantage_90": short_item["unexplained_advantage"],
+                "advantage_365": long_item["unexplained_advantage"],
+                "advantage_delta": delta,
+                "grew": delta > tolerance,
+                "long_horizon_gate_pass": long_item["unexplained_advantage"] <= 0.03 + tolerance,
+            }
+        )
+
+    groups = []
+    for comparison, parameter_set_id in sorted({(item["comparison"], item["parameter_set_id"]) for item in cells}):
+        group_cells = [
+            item for item in cells
+            if item["comparison"] == comparison and item["parameter_set_id"] == parameter_set_id
+        ]
+        systematic_growth = comparison.startswith("retention-") and all(item["grew"] for item in group_cells)
+        long_horizon_gate_pass = all(item["long_horizon_gate_pass"] for item in group_cells)
+        groups.append(
+            {
+                "comparison": comparison,
+                "parameter_set_id": parameter_set_id,
+                "replicas": len(group_cells),
+                "systematic_growth": systematic_growth,
+                "long_horizon_gate_pass": long_horizon_gate_pass,
+                "status": "PASS" if long_horizon_gate_pass and not systematic_growth else "FAIL",
+            }
+        )
+    return {
+        "status": "PASS" if all(item["status"] == "PASS" for item in groups) else "FAIL",
+        "method": "365-day unexplained advantage must remain <=3%; retention cycling must not increase in every matched replica",
+        "cells": cells,
+        "groups": groups,
+    }
+
+
 def deterministic_matched_matrices(
     package_root: Path,
     parameter_set_id: str,
