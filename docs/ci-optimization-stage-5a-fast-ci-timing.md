@@ -1,8 +1,8 @@
 # CI optimization Stage 5A: Fast CI timing baseline
 
-## 1. Scope and snapshot
+## 1. Scope and closure status
 
-Дата baseline: **2026-07-16**.
+Дата baseline и closure: **2026-07-16**.
 
 Repository:
 
@@ -16,29 +16,35 @@ Base `master` SHA:
 4d197c1037fd66401735e654c6697791364518a4
 ```
 
-Instrumentation commit tested by the runtime run:
+Instrumentation commit tested by the authorized runtime run:
 
 ```text
 9746b1cd7b3b4ec63b4dd8111543f4cb3aadc80b
 ```
 
-Branch:
+Stage 5A branch before this closure update:
 
 ```text
 chatgpt/ci-optimization-stage-5a-fast-ci-instrumentation
+bdc15ae25076bdc884f0c045351c37852aa05164
 ```
 
-Stage 5A added observational instrumentation only. It did **not** remove work,
-change caches, change the runner, change checkout depth, change dependency
-commands, change test coverage, or implement a Fast CI optimization.
+Formal closure status is **COMPLETE**.
 
-Formal closure status is **PARTIAL** despite the successful cloud run because the
-required pre-dispatch local `run_full_check.ps1 -SkipDocker` PASS was not supplied,
-and the available GitHub connector exposed the Jobs API step inventory but omitted
-the run/job/step timestamp fields. No second run is needed to close those evidence
-gaps.
+The initial baseline document was intentionally marked `PARTIAL` because the
+local canonical PASS and raw GitHub REST timestamps were not yet available to the
+report author. Both gaps were subsequently closed:
 
-## 2. Run identity
+- the user supplied a successful local `run_full_check.ps1 -SkipDocker` result
+  with a clean working tree;
+- raw workflow, job and step REST timestamps were supplied for the single
+  authorized cloud baseline.
+
+Stage 5A remains observational only. It did **not** remove work, change caches,
+change the runner, change checkout depth, change dependency commands, change test
+coverage or implement a Fast CI optimization.
+
+## 2. Runtime run identity
 
 | Field | Value |
 | --- | --- |
@@ -67,10 +73,45 @@ Run URL:
 https://github.com/AliceLiddell01/anki-study-report/actions/runs/29501875205
 ```
 
-The job and all repository-owned steps concluded successfully. No Docker E2E or
-release workflow was started.
+The job and every repository-owned, upload and post-job step concluded
+successfully. No Docker E2E, release dispatch or production deployment was
+started.
 
-## 3. Measurement model
+## 3. Local canonical verification
+
+Local canonical verification: **PASS**.
+
+The user ran the Stage 5A branch through:
+
+```powershell
+.\scripts\run_full_check.ps1 -SkipDocker
+git status --short
+```
+
+Observed result:
+
+```text
+Vitest: 40 files, 245 tests passed
+pytest: 547 passed, 3 skipped
+package build/check: PASS
+package check-only: PASS
+Full check completed.
+git status --short: empty
+```
+
+The three local skips are Windows symlink-capability tests:
+
+```text
+tests/test_fast_ci_e2e_handoff.py
+tests/test_security_boundaries.py
+tests/test_trusted_media_selector.py
+```
+
+Local Python was `3.12.13`; cloud Python was `3.11.9`. The local run establishes
+correctness and repository cleanliness. Its duration is not used as a direct
+performance comparison with the GitHub-hosted runner.
+
+## 4. Measurement model
 
 The baseline separates two clocks.
 
@@ -87,108 +128,126 @@ timing/fast-ci-timing.md
 The JSON is schema v1, atomically written, allowlisted by stable phase IDs and
 contains no absolute paths, tokens, authorization headers or token-bearing URLs.
 
-### GitHub action/job timing
+### GitHub workflow, job and step timing
 
-GitHub's Jobs API represents a job and its steps with `started_at` and
-`completed_at`. Those timestamps have coarser granularity than the internal
-monotonic timers and include action setup/post work that repository scripts cannot
-measure.
+GitHub REST workflow and Jobs APIs provide second-granularity lifecycle and step
+timestamps. They include action setup, cache restore/save, artifact upload and
+post-job work that repository-owned monotonic timers cannot measure.
 
 Official references:
 
 - https://docs.github.com/en/rest/actions/workflow-jobs
 - https://docs.github.com/en/rest/actions/workflow-runs
+- https://docs.github.com/en/rest/actions/artifacts
 - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching
 - https://github.com/actions/setup-node
 - https://github.com/actions/setup-python
 
-For this run, the connector returned the complete successful step inventory and
-the decoded job log, but its normalized job/step response omitted timestamp
-fields and only the initial log segment was available to the analysis surface.
-Consequently external timings below are exact where an artifact/log boundary
-exists, lower bounds where post-job work continues, and `unavailable` where a
-value would otherwise be fabricated.
+Internal monotonic values and REST wall-clock values are therefore reported
+separately. A zero difference between second-granularity step timestamps is
+rendered as `<1 s`, not as a proven zero-duration step.
 
-## 4. Top-level timing
+## 5. Top-level timing
 
-| Metric | Duration | Evidence | Confidence |
-| --- | ---: | --- | --- |
-| Queue wait | unavailable | Run-level `created_at` was not exposed | none |
-| Runner log start → internal timer start | `92.640 s` | Job log `13:22:04.4573863Z` → timing JSON `13:23:37.097Z` | high for aggregate |
-| Internal instrumented window | `131.906 s` | timing JSON | high |
-| Sum of completed internal phases | `126.389 s` | timing JSON | high |
-| Internal orchestration/gap remainder | `5.517 s` | instrumented window − phase sum | high |
-| Runner log start → diagnostics artifact created | `225.543 s` | job log → artifact API | high lower bound |
-| Runner log start → package artifact created | `226.543 s` | job log → artifact API | high lower bound |
-| Complete job execution | `>226.543 s` | package upload was followed by package summary and post actions | high lower bound |
-| Workflow elapsed | unavailable | Run-level created/completed timestamps were not exposed | none |
+Raw lifecycle timestamps:
 
-The `92.640 s` pre-internal aggregate includes runner/action preparation,
-checkout, setup-python, setup-pnpm, setup-node/cache work and diagnostics
-initialization. It must not be attributed entirely to cache restore or checkout.
+```text
+workflow created_at:      2026-07-16T13:21:51Z
+workflow run_started_at:  2026-07-16T13:21:51Z
+workflow updated_at:      2026-07-16T13:25:57Z
+job created_at:           2026-07-16T13:21:53Z
+job started_at:           2026-07-16T13:22:01Z
+job completed_at:         2026-07-16T13:25:56Z
+```
 
-## 5. Action/setup phases
+| Metric | Duration | Source |
+| --- | ---: | --- |
+| Workflow elapsed | `246 s` | workflow REST timestamps |
+| Workflow creation → job start | `10 s` | workflow/job REST timestamps |
+| Job queue after job creation | `8 s` | job REST timestamps |
+| Job execution | `235 s` | job REST timestamps |
+| Visible step sum | approximately `230 s` | step timestamp differences |
+| Step gaps/rounding/orchestration remainder | approximately `5 s` | job execution − visible step sum |
+| Internal instrumented window | `131.906 s` | timing JSON |
+| Sum of completed internal phases | `126.389 s` | timing JSON |
+| Internal orchestration/gap remainder | `5.517 s` | internal window − phase sum |
+| Internal phase coverage | `95.82%` | timing JSON |
 
-| Phase | Duration | Evidence | Confidence |
-| --- | ---: | --- | --- |
-| Runner/action preparation before checkout | `1.729 s` | runner log start → checkout group start | medium |
-| Checkout start → repository fetch completion | `8.644 s` | decoded job log | high lower bound |
-| Checkout completion + Python/pnpm/Node setup/cache + diagnostics initialization | `82.266 s` | fetch completion → internal timer start | high aggregate, low attribution |
-| Setup Python | unavailable separately | Jobs step success; no surfaced step timestamps | none |
-| Setup pnpm | unavailable separately | Jobs step success; no surfaced step timestamps | none |
-| Setup Node.js/pnpm cache | unavailable separately | Jobs step success; no surfaced step timestamps | none |
-| Post setup-node | unavailable | Successful post step inventory | none |
-| Post setup-pnpm | unavailable | Successful post step inventory | none |
-| Post setup-python | unavailable | Successful post step inventory | none |
-| Post checkout | unavailable | Successful post step inventory | none |
+The REST step sum is approximate because every step boundary has only
+second-level precision. It must not be reconciled to internal milliseconds as if
+both clocks had the same granularity or coverage.
+
+## 6. GitHub action and setup phases
+
+| Step | Duration | Interpretation |
+| --- | ---: | --- |
+| Set up job | `2 s` | runner job initialization |
+| Check out repository | `11 s` | full action step wall time |
+| Set up Python | `6 s` | action wall time, including any pip-cache work |
+| Set up pnpm | `38 s` | pnpm action wall time; not a pure cache duration |
+| Set up Node.js | `24 s` | action wall time, including pnpm-cache handling |
+| Prepare diagnostics | `12 s` | timing initialization plus runtime/version output |
+| Post Set up Node.js | `<1 s` | second-granularity timestamps |
+| Post Set up pnpm | `<1 s` | second-granularity timestamps |
+| Post Set up Python | `<1 s` | second-granularity timestamps |
+| Post Check out repository | `2 s` | checkout cleanup wall time |
+| Complete job | `<1 s` | second-granularity timestamps |
 
 All action references remained pinned to full commit SHAs. Checkout remained
 `persist-credentials: false` with `fetch-depth: 0`.
 
-## 6. Dependency phases
+Action wall time is not equivalent to cache overhead. In particular, the `38 s`
+pnpm setup and `24 s` Node setup measurements cannot be decomposed into download,
+runtime setup, restore and orchestration without dedicated log/output evidence.
 
-| Phase | Duration | Share of internal window | Evidence | Confidence |
-| --- | ---: | ---: | --- | --- |
-| Python dependency install | `7.594 s` | `5.76%` | monotonic phase | high |
-| Frontend dependency install | `2.609 s` | `1.98%` | monotonic phase | high |
-| Combined dependency commands | `10.203 s` | `7.74%` | phase sum | high |
+## 7. Dependency phases
 
-These values measure the install commands after setup/cache restore. They do not
-include setup-python or setup-node cache work.
+| Phase | Internal duration | REST step wall | Share of internal window |
+| --- | ---: | ---: | ---: |
+| Python dependency install | `7.594 s` | `8 s` | `5.76%` |
+| Frontend dependency install | `2.609 s` | `3 s` | `1.98%` |
+| Combined dependency commands | `10.203 s` | approximately `11 s` | `7.74%` |
 
-## 7. Frontend phases
+Internal values measure the install commands after setup/cache restore. They do
+not include setup-python or setup-node action work.
 
-| Phase | Duration | Share of internal window | Evidence | Confidence |
-| --- | ---: | ---: | --- | --- |
-| Typecheck before tests | `8.687 s` | `6.59%` | monotonic phase | high |
-| Vitest | `20.641 s` | `15.65%` | monotonic phase | high |
-| Typecheck before build | `8.609 s` | `6.53%` | monotonic phase | high |
-| Vite production build | `7.437 s` | `5.64%` | monotonic phase | high |
-| Bundle validation | `0.688 s` | `0.52%` | monotonic phase | high |
-| Dashboard asset synchronization | `0.703 s` | `0.53%` | monotonic phase | high |
-| Frontend total | `46.765 s` | `35.45%` | phase sum | high |
+## 8. Frontend phases
+
+| Phase | Duration | Share of internal window |
+| --- | ---: | ---: |
+| Typecheck before tests | `8.687 s` | `6.59%` |
+| Vitest | `20.641 s` | `15.65%` |
+| Typecheck before build | `8.609 s` | `6.53%` |
+| Vite production build | `7.437 s` | `5.64%` |
+| Bundle validation | `0.688 s` | `0.52%` |
+| Dashboard asset synchronization | `0.703 s` | `0.53%` |
+| Frontend total | `46.765 s` | `35.45%` |
 
 Vitest reported `40` test files and `245` tests passed. Its own runner summary
-reported `19.26 s`; the enclosing monotonic phase was `20.641 s`, which also
-includes process startup/teardown and orchestration.
+reported `19.26 s`; the enclosing monotonic phase was `20.641 s`, which includes
+process startup, teardown and orchestration.
 
-The Vite log reported `2243` transformed modules and a `6.40 s` inner build;
-the enclosing phase was `7.437 s`.
+The Vite log reported `2243` transformed modules and a `6.40 s` inner build; the
+enclosing phase was `7.437 s`.
 
-## 8. Python/package phases
+The complete canonical pipeline step had a REST wall duration of `117 s`. This
+step wraps frontend, pytest and package work and must not replace the more precise
+internal breakdown.
 
-| Phase | Duration | Share of internal window | Evidence | Confidence |
-| --- | ---: | ---: | --- | --- |
-| Changelog generated-output check | `0.250 s` | `0.19%` | monotonic phase | high |
-| pytest | `67.047 s` | `50.83%` | monotonic phase | high |
-| Package build and validation | `0.390 s` | `0.30%` | monotonic phase | high |
-| Package check-only revalidation | `0.281 s` | `0.21%` | monotonic phase | high |
-| Python/package total | `67.968 s` | `51.53%` | phase sum | high |
+## 9. Python and package phases
 
-pytest collected `550` tests and finished with `549 passed, 1 skipped` in
-`66.40 s`. The enclosing phase was `67.047 s`.
+| Phase | Duration | Share of internal window |
+| --- | ---: | ---: |
+| Changelog generated-output check | `0.250 s` | `0.19%` |
+| pytest | `67.047 s` | `50.83%` |
+| Package build and validation | `0.390 s` | `0.30%` |
+| Package check-only revalidation | `0.281 s` | `0.21%` |
+| Python/package total | `67.968 s` | `51.53%` |
 
-Both package validations passed with:
+Cloud pytest collected `550` tests and finished with `549 passed, 1 skipped` in
+`66.40 s`; the enclosing phase was `67.047 s`.
+
+Both cloud package validations passed with:
 
 ```text
 Archive entries: 53
@@ -198,25 +257,36 @@ Zip test result: None
 Canonical package version: 1.1.0
 ```
 
-## 9. CI finalization
+## 10. CI finalization
 
-| Phase | Duration | Evidence | Confidence |
-| --- | ---: | --- | --- |
-| Verification planner | `0.157 s` | monotonic phase | high |
-| Fast CI summary preparation | `0.875 s` | monotonic phase | high |
-| Exact package metadata write | `0.140 s` | monotonic phase | high |
-| Staged exact package validation | `0.156 s` | monotonic phase | high |
-| Exact package metadata verify | `0.125 s` | monotonic phase | high |
-| Internal finalization total | `1.453 s` | phase sum | high |
-| Timing end → diagnostics artifact created | approximately `1.002 s` | timing completion and artifact API, second-rounded | medium |
-| Timing end → package artifact created | approximately `2.002 s` | timing completion and artifact API, second-rounded | medium |
-| Package summary/post-job work | unavailable | Occurs after package artifact creation | none |
+Internal subphase timing:
 
-The upload duration cannot be written precisely into the artifact being uploaded.
-Artifact API creation timestamps therefore provide only an external
-second-granularity boundary.
+| Internal subphase | Duration |
+| --- | ---: |
+| Verification planner | `0.157 s` |
+| Fast CI summary preparation | `0.875 s` |
+| Exact package metadata write | `0.140 s` |
+| Staged exact package validation | `0.156 s` |
+| Exact package metadata verify | `0.125 s` |
+| Internal finalization total | `1.453 s` |
 
-## 10. Coverage accounting
+GitHub step wall timing:
+
+| Step | Duration |
+| --- | ---: |
+| Publish verification plan | `1 s` |
+| Write CI summary | `1 s` |
+| Prepare exact Fast CI package | `1 s` |
+| Finalize structured timing | `1 s` |
+| Upload Fast CI diagnostics | `1 s` |
+| Upload exact Fast CI package | `1 s` |
+| Summarize exact Fast CI package | `1 s` |
+
+The internal values isolate repository-owned subcommands with monotonic
+millisecond precision. REST values represent whole step wall time with
+second-level granularity, including shell/action orchestration.
+
+## 11. Coverage accounting
 
 ```text
 internal timing window                 131906 ms
@@ -235,43 +305,44 @@ Logical internal groups:
 | CI-only finalization | `1.453 s` | `1.10%` |
 | Internal orchestration/gaps | `5.517 s` | `4.18%` |
 
-The complete job cannot be reconciled to milliseconds because the runner log,
-internal monotonic timer, artifact API and unavailable Jobs API timestamps are
-different measurement surfaces.
+The full `235 s` job includes runner/action work outside the internal timer.
+Internal coverage therefore describes the `131.906 s` instrumented window, not
+the complete job.
 
-## 11. Cache evidence
+## 12. Cache evidence
 
 ### setup-python pip cache
 
 | Field | Value |
 | --- | --- |
 | Action | `actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1` (`v6.3.0`) |
-| Cache configuration | `cache: pip`, `cache-dependency-path: requirements-dev.txt` |
-| Cached data semantics | global pip cache directory |
-| Setup duration | unavailable separately |
-| Post duration | unavailable separately |
-| Install duration | `7.594 s` |
+| Configuration | `cache: pip`, `cache-dependency-path: requirements-dev.txt` |
+| Setup action wall | `6 s` |
+| Post action wall | `<1 s` |
+| Install command | `7.594 s` internal / `8 s` REST step |
 | Classification | `enabled-unknown` |
-| Reason | Cache was configured and setup/post steps succeeded, but no exact-hit output or restore-key log was preserved in the uploaded diagnostics or exposed connector segment |
 
 ### setup-node pnpm cache
 
 | Field | Value |
 | --- | --- |
 | Action | `actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e` (`v6.4.0`) |
-| Cache configuration | `cache: pnpm`, `cache-dependency-path: web-dashboard/pnpm-lock.yaml` |
+| Configuration | `cache: pnpm`, `cache-dependency-path: web-dashboard/pnpm-lock.yaml` |
 | Cached data semantics | pnpm global package-manager data; not `node_modules` |
-| Setup duration | unavailable separately |
-| Post duration | unavailable separately |
-| Install duration | `2.609 s` |
+| Setup Node.js action wall | `24 s` |
+| Post setup-node wall | `<1 s` |
+| Frontend install command | `2.609 s` internal / `3 s` REST step |
 | Classification | `enabled-unknown` |
-| Reason | Cache was configured and setup/post steps succeeded, but no exact-hit output or restore-key log was preserved in the uploaded diagnostics or exposed connector segment |
 
-GitHub defines an exact key match as a cache hit; a partial restore or absent
-exact match is not an exact hit. This report therefore does not infer cache
-effectiveness from `cache:` being enabled.
+`Set up pnpm` separately took `38 s`; that action installs/configures pnpm and is
+not itself proof of a setup-node cache hit or miss.
 
-## 12. Duplicate TypeScript typecheck analysis
+Neither REST timestamps nor the preserved diagnostics prove `exact-hit`,
+`partial-hit` or `miss`. Cache classification therefore remains
+`enabled-unknown`; no cache effectiveness claim is made from configuration or
+action duration alone.
+
+## 13. Duplicate TypeScript typecheck analysis
 
 1. First typecheck: **`8.687 s`**.
 2. Second typecheck: **`8.609 s`**.
@@ -284,37 +355,37 @@ effectiveness from `cache:` being enabled.
 
 4. Both use the same `web-dashboard/tsconfig.json`, whose input graph is
    `include: ["src"]`.
-5. The only canonical operation between them is `vitest run`. The current command
+5. The only canonical operation between them is `vitest run`; the current command
    graph does not declare generated TypeScript source output from Vitest.
 6. The second typecheck runs **before** Vite/assets generation, so it is not a
    validation of generated bundle assets. Bundle validation and asset copy have
-   separate measured phases.
-7. Safe upper-bound saving from removing only the duplicate invocation is the
-   observed second phase: **`8.609 s`**, plus negligible shell/process overhead.
-8. This is `6.53%` of the internal timing window and approximately `3.80%` of the
-   observed runner-start-to-package lower bound.
-9. The two measurements differ by only `78 ms` (`0.90%`), which is consistent with
-   the same command and input graph in this one run.
+   separate phases.
+7. The safe observed upper-bound saving from removing only the duplicate
+   invocation is **`8.609 s`**, plus negligible shell/process overhead.
+8. The two measurements differ by `78 ms` (`0.90%`), consistent with the same
+   command and input graph in this observation.
 
-The report does not implement the removal.
+Stage 5A records this evidence but does not implement the removal.
 
-## 13. Ranked bottlenecks
+## 14. Ranked bottlenecks
 
-| Rank | Phase/group | Duration | Share | Confidence | Candidate |
-| ---: | --- | ---: | ---: | --- | --- |
-| 1 | pytest | `67.047 s` | `50.83%` internal | high | possible future test-performance investigation; broad risk |
-| 2 | Pre-internal action/setup aggregate | `92.640 s` aggregate | not comparable to internal share | high aggregate / low attribution | cache/setup investigation requires complete step/cache evidence |
-| 3 | Vitest | `20.641 s` | `15.65%` internal | high | possible future frontend test optimization |
-| 4 | Duplicate second TypeScript typecheck | `8.609 s` | `6.53%` internal | high | **recommended Stage 5B candidate** |
-| 5 | Python dependency install | `7.594 s` | `5.76%` internal | high | lower priority without cache evidence |
-| 6 | Vite production build | `7.437 s` | `5.64%` internal | high | lower priority; required production artifact work |
+| Rank | Phase/action | Duration | Evidence quality | Stage 5B suitability |
+| ---: | --- | ---: | --- | --- |
+| 1 | pytest | `67.047 s` | high, internal monotonic | largest phase, but broad correctness and architecture risk |
+| 2 | Set up pnpm | `38 s` action wall | high wall time, low attribution | needs dedicated setup analysis |
+| 3 | Set up Node.js | `24 s` action wall | high wall time, cache state unknown | needs hit/miss evidence and controlled experiment |
+| 4 | Vitest | `20.641 s` | high, internal monotonic | requires frontend test-performance analysis |
+| 5 | Duplicate second typecheck | `8.609 s` | high, bounded semantic duplication | **selected low-risk candidate** |
+| 6 | Python dependency install | `7.594 s` | high, internal monotonic | lower priority without cache experiment |
+| 7 | Vite production build | `7.437 s` | high, internal monotonic | required production artifact work |
 
-Although pytest is the largest measured phase, changing test selection,
-parallelism or architecture has materially higher correctness and maintenance
-risk. The pre-internal setup aggregate is larger still, but current evidence
-cannot attribute it safely to a specific cache or action.
+The largest measured phase is not automatically the best optimization candidate.
+Removing or restructuring pytest/Vitest work can change coverage and maintenance
+cost. Setup action walls are large but cannot be attributed to cache or one
+suboperation. The duplicate typecheck has a smaller but directly measured,
+bounded and low-risk opportunity.
 
-## 14. Stage 5B decision
+## 15. Stage 5B decision
 
 Selected primary candidate:
 
@@ -324,37 +395,18 @@ duplicate TypeScript typecheck
 
 Evidence:
 
-- measured duration: `8.609 s`;
-- frequency: every Fast CI run and every local canonical non-Docker check;
-- safe upper-bound saving: approximately `8.609 s` per run;
-- semantic duplication: same `tsc --noEmit`, same working directory, same
-  `tsconfig.json`, same `src` input graph;
-- no generated TypeScript input is introduced between the two invocations;
-- bundle/assets have independent validations;
-- implementation scope can remain local to canonical orchestration and package
-  scripts without changing TypeScript options or coverage.
+- measured second invocation: `8.609 s`;
+- frequency: every Fast CI run and local canonical non-Docker check;
+- same `tsc --noEmit`, working directory, `tsconfig.json` and `src` input graph;
+- no generated TypeScript input is introduced between invocations;
+- bundle and copied assets have independent validations;
+- lower behavioral risk than test architecture or cache redesign.
 
-Required Stage 5B verification:
+Stage 5B must preserve one full typecheck, Vitest, Vite, bundle validation, asset
+copy, pytest and package checks. It requires a separate authorization and
+before/after verification. No Stage 5B implementation is included here.
 
-1. Preserve one full `tsc --noEmit` before Vitest/build.
-2. Preserve exact Vitest, Vite, bundle-check and asset-copy commands/order.
-3. Preserve ordinary `pnpm run build` behavior unless a versioned script contract
-   is intentionally introduced.
-4. Update workflow/script contract tests.
-5. Run focused tests and `run_full_check.ps1 -SkipDocker`.
-6. Perform a separately authorized exact-SHA Fast CI before/after comparison.
-
-Alternatives are lower priority for Stage 5B because:
-
-- pytest is larger but requires a dedicated test architecture/performance study;
-- cache/setup work lacks exact hit/partial/miss and per-action duration evidence;
-- package revalidation costs only `0.281 s`;
-- Vite is required production work and is slightly cheaper than the duplicate
-  typecheck.
-
-No Stage 5B implementation is included in Stage 5A.
-
-## 15. Artifacts, out of scope and caveats
+## 16. Artifacts
 
 ### Diagnostics artifact
 
@@ -417,25 +469,26 @@ PASS
 ```
 
 The metadata identity, package size and inner SHA-256 match the downloaded bytes.
+Diagnostics and exact-package artifacts remain separate.
 
-### Not performed
+## 17. Boundaries and caveats
+
+Not performed in Stage 5A:
 
 - no Fast CI optimization;
-- no second cloud run;
-- no warm/cold cache pair;
+- no second manual cloud run or warm/cold pair;
 - no Docker E2E;
-- no release workflow;
-- no Pull Request;
-- no merge/rebase into `master`;
+- no release dispatch or production deployment;
 - no runner/cache/checkout change;
 - no Stage 5B implementation.
 
-### Caveats
+Remaining evidence limitations:
 
-- one runtime observation does not establish an average;
-- queue wait and exact complete job wall were not exposed;
-- per-action cache restore/save durations were not exposed;
+- this is one cloud observation, not an average or distribution;
 - cache state remains `enabled-unknown`;
-- the required pre-run local canonical PASS was not supplied;
-- the runtime tested the instrumentation commit before this docs-only baseline
-  commit; no second Fast CI run should be made for the docs-only commit.
+- no controlled warm/cold cache pair was performed;
+- action wall durations are not pure cache overhead;
+- the baseline runtime tested instrumentation commit `9746b1c…`, before the
+  docs-only baseline and closure commits;
+- the synthetic PR merge ref has not yet been tested at the time of this closure
+  commit and belongs to the integration draft PR verification.
