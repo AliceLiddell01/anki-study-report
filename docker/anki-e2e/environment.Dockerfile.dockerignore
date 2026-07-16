@@ -1,0 +1,7 @@
+# Deny the repository by default. Only the environment Dockerfile and the
+# stable Anki installer are part of this build context.
+**
+!docker/
+!docker/anki-e2e/
+!docker/anki-e2e/environment.Dockerfile
+!docker/anki-e2e/install-anki.sh
