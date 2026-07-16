@@ -43,6 +43,37 @@ function Invoke-DockerCompose {
     }
 }
 
+function Restore-E2EArtifactOwnership {
+    param([string]$Volume)
+
+    if (-not $IsLinux) {
+        return
+    }
+
+    $uid = (& id -u).Trim()
+    if ($LASTEXITCODE -ne 0 -or $uid -notmatch '^\d+$') {
+        throw "Could not resolve the host UID for E2E artifact ownership restoration."
+    }
+    $gid = (& id -g).Trim()
+    if ($LASTEXITCODE -ne 0 -or $gid -notmatch '^\d+$') {
+        throw "Could not resolve the host GID for E2E artifact ownership restoration."
+    }
+
+    Invoke-DockerCompose @(
+        "run",
+        "--rm",
+        "--no-deps",
+        "-v",
+        $Volume,
+        "--entrypoint",
+        "/bin/chown",
+        "anki-e2e",
+        "-R",
+        "$($uid):$($gid)",
+        "/e2e/artifacts"
+    )
+}
+
 function Assert-E2EArtifactManifest {
     param([string]$ArtifactsRoot)
 
@@ -151,7 +182,11 @@ try {
         $runArgs += @("-e", "ANKI_E2E_REQUIRE_REAL_MEDIA=$($env:ANKI_E2E_REQUIRE_REAL_MEDIA)")
     }
     $runArgs += "anki-e2e"
-    Invoke-DockerCompose $runArgs
+    try {
+        Invoke-DockerCompose $runArgs
+    } finally {
+        Restore-E2EArtifactOwnership -Volume $volume
+    }
     Assert-E2EArtifactManifest -ArtifactsRoot $ArtifactsDir
 } finally {
     Pop-Location
