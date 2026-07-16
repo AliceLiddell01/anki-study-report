@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import random
+import re
 import threading
 import urllib.error
 import urllib.request
@@ -23,6 +24,7 @@ from .telemetry_contract import (
     utc_now,
 )
 from .telemetry_store import QueuedEvent, TelemetryStore
+from .version import __version__
 
 
 PRODUCTION_TELEMETRY_ENDPOINT = "https://anki-study-report-telemetry.anki-study-report.workers.dev"
@@ -41,6 +43,33 @@ ENROLLMENT_ERROR_CODES = {
     "invalid_response",
     "service_disabled",
 }
+_PRODUCT_VERSION_RE = re.compile(
+    r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
+
+
+def product_user_agent(version: str = __version__) -> str:
+    """Return the stable, non-identifying telemetry transport signature."""
+    if not isinstance(version, str) or not _PRODUCT_VERSION_RE.fullmatch(version):
+        raise ValueError("The canonical add-on version is not a safe SemVer User-Agent value")
+    value = f"AnkiStudyReport/{version}"
+    if not value.isascii() or "\r" in value or "\n" in value:
+        raise ValueError("The telemetry User-Agent must be ASCII without line breaks")
+    return value
+
+
+PRODUCT_USER_AGENT = product_user_agent()
+
+
+def telemetry_request_headers(*, authorization: str | None = None) -> dict[str, str]:
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": PRODUCT_USER_AGENT,
+    }
+    if authorization:
+        headers["Authorization"] = f"Bearer {authorization}"
+    return headers
 
 
 @dataclass(frozen=True)
@@ -60,7 +89,11 @@ class UrlLibTransport:
         body: bytes | None,
         timeout: float,
     ) -> HttpResult:
-        request = urllib.request.Request(url, method=method, headers=headers, data=body)
+        # Enforce the reviewed product signature at the actual urllib boundary as
+        # well as in TelemetryClient so wrappers and smoke tools cannot regress to
+        # Python-urllib/<version> or substitute a browser signature.
+        request_headers = {**headers, "User-Agent": PRODUCT_USER_AGENT}
+        request = urllib.request.Request(url, method=method, headers=request_headers, data=body)
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 payload = response.read(int(CONTRACT["limits"]["requestBodyMaxBytes"]) + 1)
@@ -439,9 +472,7 @@ class TelemetryClient:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8") if payload is not None else None
         if body is not None and len(body) > int(CONTRACT["limits"]["requestBodyMaxBytes"]):
             return ValueError("request too large")
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        if authorization:
-            headers["Authorization"] = f"Bearer {authorization}"
+        headers = telemetry_request_headers(authorization=authorization)
         try:
             return self._transport.request(
                 method,
