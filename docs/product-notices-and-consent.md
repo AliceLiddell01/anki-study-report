@@ -54,8 +54,11 @@ Git. Оба store используют UTF-8, normalized JSON, `RLock`, врем
 
 На первом запуске What’s New раскрывает текущую версию. После обновления
 раскрываются все версии новее `lastSeenReleaseVersion`; более старые остаются
-доступны свёрнутыми. X, Escape и «Понятно» записывают текущую версию как
-просмотренную. Ручное открытие из profile menu или `#/settings/privacy` не
+доступны свёрнутыми. X, Escape и «Понятно» оптимистично закрывают modal и ровно
+один раз отправляют запись текущей версии как просмотренной. Ошибка или
+задержка local API не открывает modal повторно в той же сессии. Каждый новый
+manual-open signal потребляется один раз; следующий signal снова открывает
+историю. Ручное открытие из profile menu или `#/settings/privacy` не
 переоткрывает consent.
 
 Если runtime state API недоступен, bundled changelog всё ещё открывается,
@@ -94,6 +97,10 @@ accordion управляется кнопками с `aria-expanded`. Компо
 RU/EN, light/dark и `prefers-reduced-motion`. Общая modal surface использует
 семантические theme tokens; E2E проверяет computed luminance и сохраняет
 consent/What’s New screenshots для обеих тем.
+
+Регрессия закрытия проверяется для X, Escape и «Понятно», включая delayed,
+failed и rejected `mark-seen`, отсутствие повторного открытия и возврат фокуса
+на invoker.
 
 ## Local API
 

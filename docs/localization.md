@@ -97,6 +97,15 @@ Stage 7.7.1 закрыл остаточные frontend-owned подписи `Pas
 
 ## Ограничения первой версии
 
+Telemetry state и ошибки не переводятся из произвольного backend text. UI
+сопоставляет allowlisted codes (`not_attempted`, `waiting_retry`, `failed`,
+`enrolled`, `network_error`, `service_disabled` и другие bounded codes) с
+typed RU/EN resources; неизвестное значение получает безопасную общую строку.
+
+Language menu не оставляет tooltip в DOM, пока открыт `role="menu"`; после
+Escape, выбора или outside click tooltip возвращается, а Escape возвращает
+фокус на trigger. Это исключает одновременно объявляемые tooltip и menu.
+
 - только `ru` и `en`, оба LTR;
 - язык выбирается явно, без browser/profile detection;
 - preference browser-local и не синхронизируется через Python или Anki Sync;

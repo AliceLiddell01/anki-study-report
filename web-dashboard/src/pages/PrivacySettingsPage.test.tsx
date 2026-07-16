@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   fetchPrivacy: vi.fn(),
   savePrivacyChoices: vi.fn(),
   deleteTelemetryData: vi.fn(),
+  checkConnectionAndSendNow: vi.fn(),
 }));
 
 vi.mock("../lib/productNoticesApi", async () => {
@@ -19,7 +20,11 @@ vi.mock("../lib/productNoticesApi", async () => {
 });
 vi.mock("../lib/telemetryApi", async () => {
   const actual = await vi.importActual<typeof import("../lib/telemetryApi")>("../lib/telemetryApi");
-  return { ...actual, deleteTelemetryData: mocks.deleteTelemetryData };
+  return {
+    ...actual,
+    deleteTelemetryData: mocks.deleteTelemetryData,
+    checkConnectionAndSendNow: mocks.checkConnectionAndSendNow,
+  };
 });
 
 function response(overrides: Partial<PrivacyResponse> = {}): PrivacyResponse {
@@ -47,6 +52,10 @@ function response(overrides: Partial<PrivacyResponse> = {}): PrivacyResponse {
       senderState: "idle",
       pendingEventCount: 2,
       pendingByPurpose: { reliabilityDiagnostics: 2, featureUsage: 0 },
+      lastEnrollmentAttemptAt: "2026-07-15T11:45:00Z",
+      lastEnrollmentErrorCode: null,
+      enrollmentNextAttemptAt: null,
+      lastEnrollmentSuccessAt: "2026-07-15T11:45:00Z",
       lastSuccessfulDeliveryAt: null,
       lastDeliveryAttemptAt: null,
       lastDeliveryErrorCode: null,
@@ -71,6 +80,9 @@ describe("privacy settings", () => {
     mocks.fetchPrivacy.mockReset().mockResolvedValue(response());
     mocks.savePrivacyChoices.mockReset().mockResolvedValue(response());
     mocks.deleteTelemetryData.mockReset();
+    mocks.checkConnectionAndSendNow.mockReset().mockResolvedValue({
+      ok: true, code: "telemetry.manual_send_started", started: true,
+    });
   });
 
   afterEach(async () => {
@@ -137,7 +149,7 @@ describe("privacy settings", () => {
       },
       telemetryClient: {
         ...response().telemetryClient!,
-        enrollmentState: "not_enrolled",
+        enrollmentState: "not_attempted",
         pendingEventCount: 0,
         pendingByPurpose: { reliabilityDiagnostics: 0, featureUsage: 0 },
         lastSuccessfulDeliveryAt: null,
@@ -176,5 +188,43 @@ describe("privacy settings", () => {
     expect(decision).not.toBeNull();
     expect(decision?.textContent).not.toContain("T11:46:49");
     expect(decision?.getAttribute("title")).toBe("2026-07-15T11:46:49.771921Z");
+  });
+
+  it("distinguishes waiting retry and enrollment failure with bounded localized errors", async () => {
+    mocks.fetchPrivacy.mockResolvedValue(response({
+      telemetryClient: {
+        ...response().telemetryClient!,
+        enrollmentState: "waiting_retry",
+        lastEnrollmentErrorCode: "http_5xx",
+        enrollmentNextAttemptAt: "2026-07-15T12:15:00Z",
+        lastEnrollmentSuccessAt: null,
+        lastSuccessfulDeliveryAt: null,
+      },
+    }));
+    await act(async () => root.render(<PrivacySettingsPage onOpenWhatsNew={() => undefined} />));
+    expect(container.textContent).toContain("Waiting for the next attempt");
+    expect(container.textContent).toContain("Temporary service error");
+    expect(container.textContent).toContain("Queued means stored locally only");
+    expect(container.textContent).not.toContain("No error");
+    expect(container.textContent).not.toContain("https://");
+  });
+
+  it("starts one manual background cycle and refreshes public status", async () => {
+    const delivered = response({
+      telemetryClient: {
+        ...response().telemetryClient!,
+        pendingEventCount: 0,
+        pendingByPurpose: { reliabilityDiagnostics: 0, featureUsage: 0 },
+        lastSuccessfulDeliveryAt: "2026-07-15T12:05:00Z",
+      },
+    });
+    mocks.fetchPrivacy.mockResolvedValueOnce(response()).mockResolvedValueOnce(delivered);
+    await act(async () => root.render(<PrivacySettingsPage onOpenWhatsNew={() => undefined} />));
+    const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent === "Check connection and send now")!;
+    await act(async () => button.click());
+    expect(mocks.checkConnectionAndSendNow).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("One background enrollment/send attempt started");
+    expect(container.textContent).toContain("0");
   });
 });

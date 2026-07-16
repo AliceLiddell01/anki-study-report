@@ -41,6 +41,38 @@ describe("GlobalUtilityDock language control", () => {
     expect(onThemeChange).not.toHaveBeenCalled();
   });
 
+  it("removes the language tooltip while the menu is open and restores it after Escape", async () => {
+    await act(async () => root.render(<GlobalUtilityDock resolvedTheme="dark" onThemeChange={() => undefined} />));
+    const trigger = container.querySelector<HTMLButtonElement>('[data-testid="language-selector"]')!;
+    expect(container.querySelector('[role="tooltip"]#language-selector-tooltip')).not.toBeNull();
+    expect(trigger.getAttribute("aria-describedby")).toBe("language-selector-tooltip");
+
+    act(() => trigger.click());
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector('[role="tooltip"]#language-selector-tooltip')).toBeNull();
+    expect(trigger.hasAttribute("aria-describedby")).toBe(false);
+    expect(container.querySelectorAll('[role="menuitemradio"]')).toHaveLength(2);
+
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
+    expect(container.querySelector('[role="tooltip"]#language-selector-tooltip')).not.toBeNull();
+  });
+
+  it("keeps Arrow, Home/End and outside-click keyboard behavior", async () => {
+    await act(async () => root.render(<GlobalUtilityDock resolvedTheme="light" onThemeChange={() => undefined} />));
+    const trigger = container.querySelector<HTMLButtonElement>('[data-testid="language-selector"]')!;
+    act(() => trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
+    const items = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+    expect(document.activeElement).toBe(items[0]);
+    act(() => items[0].dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true })));
+    expect(document.activeElement).toBe(items[1]);
+    act(() => items[1].dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })));
+    expect(document.activeElement).toBe(items[0]);
+    act(() => document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("keeps the language selection unchanged when toggling theme", async () => {
     await act(async () => i18n.changeLanguage("en"));
     const onThemeChange = vi.fn();

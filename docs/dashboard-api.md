@@ -370,12 +370,18 @@ GET  /api/privacy
 POST /api/privacy
 GET  /api/telemetry/status
 POST /api/telemetry/events
+POST /api/telemetry/check-send
 POST /api/telemetry/delete
 ```
 
-`/seen` и `/api/telemetry/delete` принимают только `{}`. Privacy POST принимает ровно `purposes` с двумя
+`/seen`, `/api/telemetry/check-send` и `/api/telemetry/delete` принимают только `{}`. Privacy POST принимает ровно `purposes` с двумя
 обязательными boolean полями. GET возвращает effective purposes, re-consent
 state и точные allowed/never-collected категории. Telemetry event POST
 принимает только strict semantic union; status никогда не возвращает remote ID
 или write token. React использует только local endpoints. Подробная shape —
 `docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.
+
+Check/send отвечает `202 started`, `409 busy|deletion_pending`,
+`400 purposes_disabled` или `503 unavailable`; GET для этого маршрута получает
+`405`. Status включает только bounded enrollment/sender state, queue counters и
+timestamps.
