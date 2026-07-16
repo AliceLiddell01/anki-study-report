@@ -69,6 +69,7 @@ function GlobalUtilityDock({
           aria-haspopup="menu"
           aria-expanded={languageMenuOpen}
           aria-controls="language-selector-menu"
+          aria-describedby={languageMenuOpen ? undefined : "language-selector-tooltip"}
           data-testid="language-selector"
           onClick={() => setLanguageMenuOpen((open) => !open)}
           onKeyDown={(event) => {
@@ -81,7 +82,9 @@ function GlobalUtilityDock({
           <Languages size={18} aria-hidden="true" />
           <span aria-hidden="true">{activeLanguage.toUpperCase()}</span>
         </button>
-        <span role="tooltip" className="utility-tooltip">{t("utility.languageButton")}</span>
+        {!languageMenuOpen ? (
+          <span id="language-selector-tooltip" role="tooltip" className="utility-tooltip">{t("utility.languageButton")}</span>
+        ) : null}
         {languageMenuOpen ? (
           <div
             id="language-selector-menu"
