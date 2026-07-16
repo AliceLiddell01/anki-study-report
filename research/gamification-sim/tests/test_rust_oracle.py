@@ -21,7 +21,7 @@ def test_differential_corpus_has_every_required_source_class():
         "golden": 31,
         "scenario": 43,
         "threshold": 42,
-        "survivor": 5,
+        "survivor": 14,
         "property-edge": 3,
         "invalid": 2,
     }
@@ -34,6 +34,6 @@ def test_python_and_rust_oracle_match_for_full_contract():
     if not cargo.is_file() and shutil.which("cargo") is None:
         pytest.skip("cargo is not installed")
     payload = verify_rust_oracle(ROOT, "R-CURRENT")
-    assert payload["manifest"]["case_count"] == 126
+    assert payload["manifest"]["case_count"] == 135
     assert payload["counts"]["semantic_mismatch"] == 0
-    assert payload["counts"]["exact_match"] + payload["counts"]["within_tolerance"] == 126
+    assert payload["counts"]["exact_match"] + payload["counts"]["within_tolerance"] == 135

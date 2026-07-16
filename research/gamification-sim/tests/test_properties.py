@@ -21,6 +21,7 @@ from gamification_sim.models import (
     WorkloadSnapshot,
 )
 from gamification_sim.parameter_catalog import (
+    CORRECTED_PARETO_PARAMETER_SET_IDS,
     PARAMETER_CANDIDATES,
     candidate_payload,
     compose_parameter_candidates,
@@ -43,24 +44,6 @@ PROPERTY_SETTINGS = settings(
     print_blob=True,
 )
 
-PARETO_CANDIDATE_IDS = (
-    "R-CURRENT",
-    "R-CURRENT+V-CURRENT+C-CURRENT+S-EPISODE-ONLY",
-    "R-CURRENT+V-CURRENT+C-LOW",
-    "R-CURRENT+V-CURRENT+C-LOW+S-EPISODE-ONLY",
-    "R-CURRENT+V-CURRENT+C-SYMBOLIC",
-    "R-CURRENT+V-NONE",
-    "R-CURRENT+V-NONE+C-LOW",
-    "R-CURRENT+V-NONE+C-SYMBOLIC",
-    "R-CURRENT+V-SOFT",
-    "R-LOW-CHALLENGE",
-    "R-LOW-CHALLENGE+V-NONE",
-    "R-LOW-CHALLENGE+V-SOFT",
-    "R-NEUTRAL-CONTEXT",
-    "R-NO-GAIN",
-)
-
-
 def _composite(identifier: str) -> RewardParameterSet:
     parts = tuple(parameter_candidate(item) for item in identifier.split("+"))
     return parts[0].parameters if len(parts) == 1 else compose_parameter_candidates(parts).parameters
@@ -68,7 +51,10 @@ def _composite(identifier: str) -> RewardParameterSet:
 
 def _verified_parameter_cases():
     candidates = [(item.parameter_set_id, item.parameters) for item in PARAMETER_CANDIDATES]
-    candidates.extend((identifier, _composite(identifier)) for identifier in PARETO_CANDIDATE_IDS)
+    candidates.extend(
+        (identifier, _composite(identifier))
+        for identifier in CORRECTED_PARETO_PARAMETER_SET_IDS
+    )
     for name, values in SENSITIVITY_GRIDS.items():
         for value in (values[0], values[-1]):
             candidates.append((f"sensitivity-{name}-{value:g}", _sensitivity_variant(CURRENT_PARAMETERS, name, value)))

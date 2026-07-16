@@ -173,6 +173,24 @@ PARAMETER_CANDIDATES: tuple[ParameterCandidate, ...] = (
 )
 
 
+CORRECTED_PARETO_PARAMETER_SET_IDS = (
+    "R-CURRENT",
+    "R-CURRENT+V-CURRENT+C-CURRENT+S-EPISODE-ONLY",
+    "R-CURRENT+V-CURRENT+C-LOW",
+    "R-CURRENT+V-CURRENT+C-LOW+S-EPISODE-ONLY",
+    "R-CURRENT+V-CURRENT+C-SYMBOLIC",
+    "R-CURRENT+V-NONE",
+    "R-CURRENT+V-NONE+C-LOW",
+    "R-CURRENT+V-NONE+C-SYMBOLIC",
+    "R-CURRENT+V-SOFT",
+    "R-LOW-CHALLENGE",
+    "R-LOW-CHALLENGE+V-NONE",
+    "R-LOW-CHALLENGE+V-SOFT",
+    "R-NEUTRAL-CONTEXT",
+    "R-NO-GAIN",
+)
+
+
 _BY_ID = {candidate.parameter_set_id: candidate for candidate in PARAMETER_CANDIDATES}
 if len(_BY_ID) != len(PARAMETER_CANDIDATES):  # pragma: no cover - import-time contract
     raise RuntimeError("parameter candidate IDs must be unique")

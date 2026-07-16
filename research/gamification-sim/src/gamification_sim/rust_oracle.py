@@ -14,7 +14,12 @@ from .day_aggregation import aggregate_day
 from .episode_reward import evaluate_episode
 from .input_parsing import day_from_dict, episode_from_dict
 from .models import ConfidenceLevel, MemoryContext, Outcome, ReviewDayInput, ReviewEpisodeInput
-from .parameter_catalog import candidate_payload, compose_parameter_candidates, parameter_candidate
+from .parameter_catalog import (
+    CORRECTED_PARETO_PARAMETER_SET_IDS,
+    candidate_payload,
+    compose_parameter_candidates,
+    parameter_candidate,
+)
 from .scenario_loader import load_corpus
 from .strict_json import loads_strict, load_strict_json
 from .validation import close, dataclass_to_dict
@@ -106,15 +111,8 @@ def build_differential_cases(package_root: Path, parameter_set_id: str) -> list[
                 ),
             )
             cases.append(_case(f"threshold:volume:{count}", "day", day, selected, source="threshold"))
-    survivor_ids = (
-        "R-CURRENT",
-        "R-CURRENT+V-CURRENT",
-        "R-CURRENT+V-CURRENT+C-CURRENT",
-        "R-CURRENT+V-CURRENT+C-CURRENT+S-CURRENT",
-        "R-CURRENT+V-CURRENT+C-CURRENT+S-CURRENT+P-CURRENT",
-    )
     edge_episode = ReviewEpisodeInput("survivor", "survivor", "2026-01-01", Outcome.GOOD)
-    for survivor_id in survivor_ids:
+    for survivor_id in CORRECTED_PARETO_PARAMETER_SET_IDS:
         survivor_parts = tuple(parameter_candidate(item) for item in survivor_id.split("+"))
         survivor = survivor_parts[0] if len(survivor_parts) == 1 else compose_parameter_candidates(survivor_parts)
         cases.append(_case(f"survivor:{survivor_id}", "episode", edge_episode, survivor, source="survivor"))
