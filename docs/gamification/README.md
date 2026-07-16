@@ -161,6 +161,14 @@
 
 Текущий статус: **DRAFT v0.1**.
 
+### 8. [Stage 5 Review Simulation Closure](stage-5-review-simulation-closure.md)
+
+Самодостаточное закрытие research-этапа Review XP simulation: gates, parameter
+outcomes, Pareto shortlist, population, Rust parity, FSRS references, residual
+risks и граница следующего product-design этапа.
+
+Текущий статус: **COMPLETE (research only)**.
+
 ## Принятый порядок проектирования
 
 ```text
@@ -176,15 +184,17 @@ Review Abuse Model                     ← завершённый концепт
         ↓
 Review Session and Day Aggregation     ← завершённый концептуальный этап
         ↓
-Stage 5A: Simulation Specification     ← завершённый концептуальный этап
-        ↓
-Stage 5B.1: Deterministic Core         ← реализованный research-подэтап
-        ↓
-Stage 5B.2: Scenario Runner            ← реализованный research-подэтап
-        ↓
-Stage 5B.3: Parameter Sweep Design     ← следующий возможный research-подэтап
-        ↓
-Learn XP Specification
+Stage 5A: Simulation Specification          COMPLETE
+Stage 5B.1: Deterministic Core              COMPLETE
+Stage 5B.2: Scenario Runner                 COMPLETE
+Stage 5B.2H: Contract Hardening             COMPLETE
+Stage 5B.3: Parameter Sweep                 COMPLETE
+Stage 5B.4: Property-based Verification     COMPLETE
+Stage 5B.5: Synthetic Population            COMPLETE
+Stage 5B.6: Rust Oracle                     COMPLETE
+Stage 5B.7: FSRS Reference                  COMPLETE
+Stage 5 Review Simulation                   COMPLETE
+Next: Learn XP Specification
         ↓
 Create XP Specification
         ↓
