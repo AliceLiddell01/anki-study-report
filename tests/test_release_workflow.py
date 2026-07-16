@@ -75,6 +75,26 @@ def test_production_jobs_remain_dispatch_only() -> None:
     assert "- github-draft" in finalize
 
 
+def test_real_anki_reusable_caller_has_least_privilege_permissions() -> None:
+    text = workflow_text()
+    top_level_permissions = text[text.index("permissions:") : text.index("concurrency:")]
+    gate = job_header(text, "real-anki-gate", "github-draft")
+    permission_start = gate.index("    permissions:\n")
+    permission_end = gate.index("    with:\n", permission_start)
+    permissions = gate[permission_start:permission_end]
+
+    assert top_level_permissions == "permissions:\n  contents: read\n\n"
+    assert "name: Test exact artifact in real Anki Desktop" in gate
+    assert "if: github.event_name == 'workflow_dispatch'" in gate
+    assert "needs:\n      - validate\n      - build" in gate
+    assert "uses: ./.github/workflows/ci-e2e.yml" in gate
+    assert permissions == "    permissions:\n      contents: read\n      actions: read\n"
+    assert "write" not in permissions
+    assert "release_artifact_name: ${{ needs.build.outputs.bundle_name }}" in gate
+    assert "release_artifact_sha256: ${{ needs.build.outputs.artifact_sha256 }}" in gate
+    assert "fast_ci_run_id:" not in gate
+
+
 def test_secrets_exist_only_in_approved_environment_job() -> None:
     text = workflow_text()
     publisher = job(text, "ankiweb-publish", "github-finalize")
