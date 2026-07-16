@@ -103,14 +103,14 @@ def test_structured_timing_is_initialized_finalized_and_uploaded_only_with_diagn
     assert "path: ci-package/" in package
 
 
-def test_required_internal_phases_are_measured() -> None:
+def test_required_current_internal_phases_are_measured() -> None:
     text = workflow_text()
+    full_check = FULL_CHECK.read_text(encoding="utf-8")
     required = {
         "install-python-dependencies",
         "install-frontend-dependencies",
         "frontend-typecheck-tests",
         "frontend-vitest",
-        "frontend-typecheck-build",
         "frontend-vite-build",
         "frontend-addon-assets-copy",
         "python-pytest",
@@ -123,7 +123,8 @@ def test_required_internal_phases_are_measured() -> None:
         "package-metadata-verify",
     }
     for phase_id in required:
-        assert phase_id in text or phase_id in FULL_CHECK.read_text(encoding="utf-8")
+        assert phase_id in text or phase_id in full_check
+    assert "frontend-typecheck-build" not in full_check
 
 
 def test_diagnostics_artifact_remains_always_available_and_contains_no_package() -> None:
