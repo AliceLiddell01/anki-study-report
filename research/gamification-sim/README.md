@@ -440,3 +440,26 @@ component caps, non-negative explainable totals, deterministic serialization,
 canonical digests, and invalid numeric/enum/order/JSON inputs. Invalid parameter
 sets are rejected at `RewardParameterSet` construction; they are never silently
 normalized.
+
+## Stage 5B.5 seeded synthetic population
+
+The strict `review-persona-v0.1` catalog contains 16 parameterized synthetic
+classes. It contains model inputs only—no card text, deck names, collection
+content, identifiers, or real review history. Each replica receives a child seed
+derived from SHA-256 over the master seed, persona ID, and replica number, then
+uses its own `random.Random` instance.
+
+```powershell
+python -m gamification_sim validate-personas personas
+python -m gamification_sim run-population --mode development --parameter-set R-CURRENT --seed 20260716 --no-write
+python -m gamification_sim run-population --mode standard --parameter-set R-CURRENT --seed 20260716
+python -m gamification_sim run-population --mode long --parameter-set R-CURRENT --seed 20260716 --smoke --no-write
+```
+
+Development executes 480 persona-days. Standard executes 584,000 persona-days.
+The full long mode is approximately 1.098 million persona-days and is never part
+of the ordinary suite; `--smoke` validates its path with 112 persona-days.
+Reports include distribution tails, component shares, baseline preservation,
+fairness comparisons, and matched deterministic abuse/control results. Concepts
+outside the current input contract are explicitly deferred rather than assigned
+placeholder numbers.

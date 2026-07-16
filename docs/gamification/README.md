@@ -296,10 +296,32 @@ non-monotonic anchors и negative caps.
 volume tiers при создании. Некорректные candidates отклоняются, а не
 исправляются автоматически.
 
+### Stage 5B.5 — Seeded synthetic personas and population
+
+Добавлен strict `review-persona-v0.1` catalog из 16 synthetic classes. Profiles
+содержат только model inputs и не включают тексты карточек, deck names,
+collection content, personal identifiers или реальные histories.
+
+Generator создаёт нормализованные `ReviewDayInput`/`ReviewEpisodeInput`, после
+чего вызывает единственный reward core 5B.1. Child seeds выводятся SHA-256 из
+master seed, persona ID и replica; каждая траектория использует собственный
+`random.Random`, без global random state.
+
+Режимы:
+
+- development — 480 persona-days;
+- standard — 584 000 persona-days;
+- long — примерно 1,098 млн persona-days, только по explicit request;
+- long `--smoke` — 112 persona-days для проверки пути без полного stress run.
+
+Отчёт сохраняет distributions, tails, bonus shares, baseline preservation,
+fairness matrix и matched abuse/control comparisons. Unsupported lifetime/FSRS
+trajectory concepts отмечаются `deferred` без вымышленных placeholder metrics.
+
 ### Изоляция и CI
 
 ```text
-Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4
+Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4 + Stage 5B.5
 → local/manual execution
 → отдельное environment
 → не импортируют production-модули

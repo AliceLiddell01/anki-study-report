@@ -29,6 +29,12 @@ from .sweep import (
     run_sweep,
     write_sweep_reports,
 )
+from .population import (
+    load_personas,
+    render_population_summary,
+    run_population,
+    write_population_reports,
+)
 from .validation import close
 
 
@@ -116,6 +122,18 @@ def build_parser() -> argparse.ArgumentParser:
     sensitivity.add_argument("--parameter-set", required=True)
     sensitivity.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
     sensitivity.add_argument("--no-write", action="store_true")
+
+    personas = subparsers.add_parser("validate-personas", help="validate the synthetic persona catalog")
+    personas.add_argument("persona_dir", type=Path)
+
+    population = subparsers.add_parser("run-population", help="run a seeded synthetic population")
+    population.add_argument("--mode", choices=("development", "standard", "long"), required=True)
+    population.add_argument("--parameter-set", required=True)
+    population.add_argument("--seed", type=int, required=True)
+    population.add_argument("--persona-dir", type=Path, default=PACKAGE_ROOT / "personas")
+    population.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    population.add_argument("--smoke", action="store_true", help="bounded smoke for long mode")
+    population.add_argument("--no-write", action="store_true")
     return parser
 
 
@@ -139,6 +157,25 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args) -> int:
+    if args.command == "validate-personas":
+        personas = load_personas(args.persona_dir)
+        print(f"VALID {len(personas)} personas {personas[0].version}")
+        return 0
+    if args.command == "run-population":
+        personas = load_personas(args.persona_dir)
+        payload = run_population(
+            personas,
+            PACKAGE_ROOT,
+            mode=args.mode,
+            parameter_set_id=args.parameter_set,
+            master_seed=args.seed,
+            smoke=args.smoke,
+        )
+        print(render_population_summary(payload), end="")
+        if not args.no_write:
+            run_dir = write_population_reports(payload, args.output_dir)
+            print(f"reports: {run_dir}", file=sys.stderr)
+        return 0
     if args.command == "list-parameter-sets":
         print(json.dumps([candidate_payload(item) for item in PARAMETER_CANDIDATES], indent=2, sort_keys=True, allow_nan=False))
         return 0
