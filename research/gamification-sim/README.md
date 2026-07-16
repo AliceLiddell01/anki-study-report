@@ -463,3 +463,22 @@ Reports include distribution tails, component shares, baseline preservation,
 fairness comparisons, and matched deterministic abuse/control results. Concepts
 outside the current input contract are explicitly deferred rather than assigned
 placeholder numbers.
+
+## Stage 5B.6 standalone Rust oracle
+
+`rust-oracle/` is an independent Rust CLI for the deterministic episode/day
+subset. The boundary is UTF-8 JSONL through files/stdout; there is no FFI, PyO3,
+Maturin, shared library, add-on import, build integration, or workflow.
+
+```powershell
+python -m gamification_sim verify-rust-oracle --parameter-set R-CURRENT --corpus scenarios --no-write
+cargo fmt --manifest-path rust-oracle/Cargo.toml -- --check
+cargo test --manifest-path rust-oracle/Cargo.toml
+cargo clippy --manifest-path rust-oracle/Cargo.toml -- -D warnings
+```
+
+On Windows without MSVC Build Tools, the verified local toolchain is the official
+`stable-x86_64-pc-windows-gnu` target (prefix Cargo with
+`+stable-x86_64-pc-windows-gnu`). The differential report classifies exact,
+within-tolerance, semantic-mismatch, and unsupported cases. Invalid inputs must
+be rejected by both implementations and by the Rust process exit code.

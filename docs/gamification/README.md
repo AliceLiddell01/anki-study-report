@@ -318,10 +318,22 @@ master seed, persona ID и replica; каждая траектория испол
 fairness matrix и matched abuse/control comparisons. Unsupported lifetime/FSRS
 trajectory concepts отмечаются `deferred` без вымышленных placeholder metrics.
 
+### Stage 5B.6 — Rust deterministic verification oracle
+
+В `research/gamification-sim/rust-oracle/` добавлена независимая реализация
+deterministic episode/day subset. Process boundary — только UTF-8 JSONL;
+отсутствуют PyO3, FFI, shared libraries, production imports и build/CI wiring.
+
+Differential runner сравнивает every component и ordered reason codes с
+tolerance `1e-9`, классифицируя exact, within-tolerance, semantic mismatch и
+unsupported cases. Corpus охватывает 31 golden cases, все 26 scenario files,
+threshold triplets, Stage 5B.3 survivors, фиксированные property edges и
+invalid-input rejection parity.
+
 ### Изоляция и CI
 
 ```text
-Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4 + Stage 5B.5
+Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4 + Stage 5B.5 + Stage 5B.6
 → local/manual execution
 → отдельное environment
 → не импортируют production-модули

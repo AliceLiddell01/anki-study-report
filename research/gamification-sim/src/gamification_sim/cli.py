@@ -35,6 +35,7 @@ from .population import (
     run_population,
     write_population_reports,
 )
+from .rust_oracle import verify_rust_oracle
 from .validation import close
 
 
@@ -134,6 +135,12 @@ def build_parser() -> argparse.ArgumentParser:
     population.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
     population.add_argument("--smoke", action="store_true", help="bounded smoke for long mode")
     population.add_argument("--no-write", action="store_true")
+
+    rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
+    rust.add_argument("--parameter-set", required=True)
+    rust.add_argument("--corpus", type=Path, default=PACKAGE_ROOT / "scenarios")
+    rust.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    rust.add_argument("--no-write", action="store_true")
     return parser
 
 
@@ -157,6 +164,18 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args) -> int:
+    if args.command == "verify-rust-oracle":
+        if args.corpus.resolve() != (PACKAGE_ROOT / "scenarios").resolve():
+            raise ValueError("verify-rust-oracle currently requires the committed scenarios corpus")
+        payload = verify_rust_oracle(PACKAGE_ROOT, args.parameter_set)
+        print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+        if not args.no_write:
+            output_dir = args.output_dir.resolve() / "rust-oracle"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            path = output_dir / f"{payload['manifest']['output_digest'][:12]}.json"
+            path.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
+            print(f"report: {path}", file=sys.stderr)
+        return 0
     if args.command == "validate-personas":
         personas = load_personas(args.persona_dir)
         print(f"VALID {len(personas)} personas {personas[0].version}")
