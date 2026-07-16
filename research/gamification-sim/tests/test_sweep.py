@@ -16,6 +16,7 @@ from gamification_sim.evidence import CandidateStatus, MetricStatus, measured
 from gamification_sim.strict_json import StrictJsonError
 from gamification_sim.sweep import (
     SENSITIVITY_GRIDS,
+    _metrics,
     _quantitative_failures,
     count_baseline_suppressions,
     evaluate_candidate,
@@ -25,6 +26,7 @@ from gamification_sim.sweep import (
     pareto_front,
     write_sweep_reports,
 )
+from gamification_sim.scenario_runner import run_corpus
 
 
 ROOT = __import__("pathlib").Path(__file__).parents[1]
@@ -97,14 +99,43 @@ def test_sequential_sweep_is_bounded_deterministic_and_pareto_only(sweep_payload
     assert "no aggregate score" in sweep_payload["manifest"]["selection_method"]
     by_id = {item["parameter_set"]["parameter_set_id"]: item for item in sweep_payload["candidates"]}
     assert by_id["R-CURRENT"]["hard_gate_pass"] is True
+    assert all(item["status"] == CandidateStatus.PASS.value for item in sweep_payload["candidates"])
+    assert all(all(item["hard_invariants"].values()) for item in sweep_payload["candidates"])
     assert all(by_id[item]["hard_gate_pass"] for item in sweep_payload["pareto"]["candidate_ids"])
     assert all(item["rejection_reason_codes"] for item in sweep_payload["candidates"] if not item["hard_gate_pass"])
+    pareto_digests = {
+        by_id[item]["parameter_set"]["normalized_parameter_digest"]
+        for item in sweep_payload["pareto"]["candidate_ids"]
+    }
+    assert len(pareto_digests) == len(sweep_payload["pareto"]["candidate_ids"])
 
 
 def test_current_only_regressions_do_not_reject_alternative_candidate():
     config = load_sweep_config(CONFIG, ROOT)
     evaluation = evaluate_candidate(parameter_candidate("R-NO-GAIN"), config, ROOT)
     assert "SCENARIO_ASSERTION_FAILURE" not in evaluation.rejection_reason_codes
+
+
+def test_valid_sensitivity_boundary_is_rejected_by_expected_quantitative_gate():
+    base = parameter_candidate("R-CURRENT")
+    params = replace(
+        base.parameters,
+        attempt_credit=0.15,
+        rule_version="review-v0.1+test-rejected-attempt-boundary",
+    )
+    candidate = replace(
+        base,
+        parameter_set_id="TEST-REJECTED-ATTEMPT-BOUNDARY",
+        rule_version=params.rule_version,
+        family="sensitivity-boundary",
+        rationale="Prove that a valid parameter contract can fail a measured gate.",
+        changed_fields=("attempt_credit",),
+        parameters=params,
+    )
+    evaluation = evaluate_candidate(candidate, load_sweep_config(CONFIG, ROOT), ROOT)
+    assert evaluation.status is CandidateStatus.REJECT
+    assert evaluation.quantitative_gate_failures == ("Q01_ORDINARY_MEDIAN",)
+    assert all(dict(evaluation.hard_invariants).values())
 
 
 def test_placeholder_metrics_are_replaced_with_typed_evidence():
@@ -116,13 +147,26 @@ def test_placeholder_metrics_are_replaced_with_typed_evidence():
     metrics = dict(evaluation.metrics)
     assert metrics["collection_size_parity"].status is MetricStatus.DERIVED
     assert metrics["low_confidence_parity"].status is MetricStatus.MEASURED
-    assert metrics["high_low_retention_parity"].value is None
-    assert metrics["long_session_baseline_ratio"].value is None
-    assert metrics["retention_cycling_advantage"].value is None
+    assert metrics["high_low_retention_parity"].status is MetricStatus.MEASURED
+    assert metrics["long_session_baseline_ratio"].status is MetricStatus.MEASURED
+    assert metrics["retention_cycling_advantage"].status is MetricStatus.MEASURED
     assert metrics["honest_baseline_suppression_events"].status is MetricStatus.MEASURED
-    assert evaluation.status is CandidateStatus.INCOMPLETE_EVIDENCE
-    assert evaluation.incomplete_evidence_reason_codes
+    assert evaluation.status is CandidateStatus.PASS
+    assert not evaluation.incomplete_evidence_reason_codes
     assert all(metric.source_ids for metric in metrics.values())
+
+
+def test_missing_longitudinal_input_is_explicitly_unavailable():
+    candidate = parameter_candidate("R-CURRENT")
+    result = run_corpus(
+        ROOT / "scenarios",
+        command="test-missing-longitudinal",
+        params=candidate.parameters,
+        parameter_set_id=candidate.parameter_set_id,
+    )
+    metrics = _metrics(result, ROOT, candidate.parameters)
+    assert metrics["high_low_retention_parity"].status is MetricStatus.UNSUPPORTED
+    assert metrics["backlog_return_viability"].status is MetricStatus.DEFERRED
 
 
 def test_measured_volume_and_completion_caps_detect_invalid_observation():
@@ -160,8 +204,13 @@ def test_incomplete_candidate_is_not_a_final_pareto_winner():
         load_sweep_config(CONFIG, ROOT),
         ROOT,
     )
-    assert pareto_front((evaluation,)) == ()
-    assert pareto_front((evaluation,), include_incomplete=True) == (evaluation,)
+    incomplete = replace(
+        evaluation,
+        status=CandidateStatus.INCOMPLETE_EVIDENCE,
+        incomplete_evidence_reason_codes=("CONSTRUCTED_MISSING_EVIDENCE",),
+    )
+    assert pareto_front((incomplete,)) == ()
+    assert pareto_front((incomplete,), include_incomplete=True) == (incomplete,)
 
 
 def test_sweep_writes_complete_gitignored_report_set(tmp_path, sweep_payload):
@@ -178,6 +227,14 @@ def test_sensitivity_uses_explicit_grids_and_reports_cliff_triplets():
     for probe in payload["reward_cliffs"]:
         assert len(probe["tested_values"]) == 3
         assert probe["tested_values"] == sorted(probe["tested_values"])
+    for analysis in payload["parameters"]:
+        for point in analysis["points"]:
+            assert point["invariant_status"] == "PASS"
+            assert point["quantitative_gate_status"] in {"PASS", "FAIL"}
+            assert point["reward_cliff_status"] in {"PASS", "BOUNDED_PIECEWISE"}
+            assert point["evidence_completeness"] == "COMPLETE"
+            assert len(point["longitudinal_metric_deltas"]) == 5
+            assert len(point["longitudinal_digest"]) == 64
     assert payload["manifest"]["output_digest"] == run_sensitivity(
         load_sweep_config(CONFIG, ROOT), ROOT, "R-CURRENT"
     )["manifest"]["output_digest"]

@@ -21,14 +21,17 @@ from gamification_sim.models import (
     WorkloadSnapshot,
 )
 from gamification_sim.parameter_catalog import (
+    PARAMETER_CANDIDATES,
     candidate_payload,
     compose_parameter_candidates,
+    normalized_parameter_digest,
     parameter_candidate,
 )
 from gamification_sim.parameters import CURRENT_PARAMETERS, RewardParameterSet
 from gamification_sim.scenario_loader import ScenarioDomainError, validate_definition
 from gamification_sim.scenario_models import ScenarioCategory, ScenarioDay, ScenarioDefinition
 from gamification_sim.strict_json import StrictJsonError, loads_strict
+from gamification_sim.sweep import SENSITIVITY_GRIDS, _sensitivity_variant
 from gamification_sim.validation import close, require_non_negative_int
 
 
@@ -40,15 +43,42 @@ PROPERTY_SETTINGS = settings(
     print_blob=True,
 )
 
-SHORTLISTED_PARAMETERS = (
-    CURRENT_PARAMETERS,
-    compose_parameter_candidates(
-        tuple(
-            parameter_candidate(identifier)
-            for identifier in ("R-CURRENT", "V-CURRENT", "C-CURRENT", "S-CURRENT", "P-CURRENT")
-        )
-    ).parameters,
+PARETO_CANDIDATE_IDS = (
+    "R-CURRENT",
+    "R-CURRENT+V-CURRENT+C-CURRENT+S-EPISODE-ONLY",
+    "R-CURRENT+V-CURRENT+C-LOW",
+    "R-CURRENT+V-CURRENT+C-LOW+S-EPISODE-ONLY",
+    "R-CURRENT+V-CURRENT+C-SYMBOLIC",
+    "R-CURRENT+V-NONE",
+    "R-CURRENT+V-NONE+C-LOW",
+    "R-CURRENT+V-NONE+C-SYMBOLIC",
+    "R-CURRENT+V-SOFT",
+    "R-LOW-CHALLENGE",
+    "R-LOW-CHALLENGE+V-NONE",
+    "R-LOW-CHALLENGE+V-SOFT",
+    "R-NEUTRAL-CONTEXT",
+    "R-NO-GAIN",
 )
+
+
+def _composite(identifier: str) -> RewardParameterSet:
+    parts = tuple(parameter_candidate(item) for item in identifier.split("+"))
+    return parts[0].parameters if len(parts) == 1 else compose_parameter_candidates(parts).parameters
+
+
+def _verified_parameter_cases():
+    candidates = [(item.parameter_set_id, item.parameters) for item in PARAMETER_CANDIDATES]
+    candidates.extend((identifier, _composite(identifier)) for identifier in PARETO_CANDIDATE_IDS)
+    for name, values in SENSITIVITY_GRIDS.items():
+        for value in (values[0], values[-1]):
+            candidates.append((f"sensitivity-{name}-{value:g}", _sensitivity_variant(CURRENT_PARAMETERS, name, value)))
+    unique = {}
+    for identifier, params in candidates:
+        unique.setdefault(normalized_parameter_digest(params), (identifier, params))
+    return tuple(pytest.param(params, id=identifier) for identifier, params in unique.values())
+
+
+VERIFIED_PARAMETERS = _verified_parameter_cases()
 
 
 def episode(index: int, *, outcome: Outcome = Outcome.GOOD) -> ReviewEpisodeInput:
@@ -60,7 +90,7 @@ def episode(index: int, *, outcome: Outcome = Outcome.GOOD) -> ReviewEpisodeInpu
     )
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(first=st.integers(min_value=0, max_value=40), extra=st.integers(min_value=0, max_value=40))
 def test_h01_h10_unique_core_baseline_is_monotonic_without_daily_diminishing_returns(params, first, extra):
@@ -70,7 +100,7 @@ def test_h01_h10_unique_core_baseline_is_monotonic_without_daily_diminishing_ret
     assert close(after.core_baseline - before.core_baseline, expected_increment)
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(boundary=st.integers(min_value=0, max_value=30), count=st.integers(min_value=0, max_value=60))
 def test_h05_session_partition_is_analytical_only(params, boundary, count):
@@ -81,7 +111,7 @@ def test_h05_session_partition_is_analytical_only(params, boundary, count):
     assert one.total == split.total
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(replays=st.integers(min_value=1, max_value=25), same_card=st.integers(min_value=1, max_value=25))
 def test_h02_h03_source_replay_and_card_day_are_idempotent(params, replays, same_card):
@@ -94,7 +124,7 @@ def test_h02_h03_source_replay_and_card_day_are_idempotent(params, replays, same
     assert close(result.total, evaluate_episode(base, params).total)
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(count=st.integers(min_value=1, max_value=50))
 def test_h04_undo_reverses_exact_selected_events(params, count):
@@ -104,7 +134,7 @@ def test_h04_undo_reverses_exact_selected_events(params, count):
     assert result.total == 0
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(outcome=st.sampled_from((Outcome.HARD, Outcome.GOOD, Outcome.EASY)))
 def test_h06_h07_success_buttons_are_neutral_and_validity_cannot_add_reward(params, outcome):
@@ -114,7 +144,7 @@ def test_h06_h07_success_buttons_are_neutral_and_validity_cannot_add_reward(para
     assert evaluate_episode(replace(base, response_validity=0.0), params).total <= totals[0]
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(preview=st.booleans())
 def test_h08_h09_manual_and_preview_operations_are_zero(params, preview):
@@ -128,7 +158,7 @@ def test_h08_h09_manual_and_preview_operations_are_zero(params, preview):
     assert aggregate_day(ReviewDayInput("2026-01-01", (changed,)), params).total == 0
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(count=st.integers(min_value=0, max_value=100))
 def test_h11_support_episode_and_day_caps_hold(params, count):
@@ -142,7 +172,7 @@ def test_h11_support_episode_and_day_caps_hold(params, count):
     assert result.capped_support <= params.support_day_cap + 1e-9
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(count=st.integers(min_value=0, max_value=100), units=st.floats(min_value=0, max_value=10, allow_nan=False, allow_infinity=False))
 def test_h12_supplemental_cap_holds(params, count, units):
@@ -151,7 +181,7 @@ def test_h12_supplemental_cap_holds(params, count, units):
     assert result.capped_supplemental <= params.supplemental_day_cap + 1e-9
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(count=st.integers(min_value=0, max_value=350), status=st.sampled_from(tuple(CompletionStatus)))
 def test_h13_h14_volume_and_completion_caps_hold(params, count, status):
@@ -169,7 +199,7 @@ def test_h13_h14_volume_and_completion_caps_hold(params, count, status):
         assert result.completion_credit == 0
 
 
-@pytest.mark.parametrize("params", SHORTLISTED_PARAMETERS)
+@pytest.mark.parametrize("params", VERIFIED_PARAMETERS)
 @PROPERTY_SETTINGS
 @given(count=st.integers(min_value=0, max_value=80))
 def test_h16_h17_h18_totals_are_nonnegative_explainable_and_deterministic(params, count):
@@ -186,7 +216,7 @@ def test_h16_h17_h18_totals_are_nonnegative_explainable_and_deterministic(params
 
 
 @PROPERTY_SETTINGS
-@given(candidate=st.sampled_from(tuple(parameter_candidate(item) for item in ("R-CURRENT", "R-NO-GAIN", "V-NONE", "C-LOW", "S-LOW", "P-LOW"))))
+@given(candidate=st.sampled_from(PARAMETER_CANDIDATES))
 def test_candidate_serialization_roundtrip_and_canonical_digest_are_stable(candidate):
     payload = candidate_payload(candidate)
     roundtrip = json.loads(json.dumps(payload, sort_keys=True, allow_nan=False))
