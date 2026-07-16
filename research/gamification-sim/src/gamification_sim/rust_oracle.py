@@ -150,6 +150,14 @@ def _cargo_command(package_root: Path) -> list[str]:
     ]
 
 
+def cargo_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    mingw = Path("C:/msys64/mingw64/bin")
+    if mingw.is_dir():
+        environment["PATH"] = str(mingw) + os.pathsep + environment.get("PATH", "")
+    return environment
+
+
 def _compare(expected: Any, actual: Any, path: str = "$") -> tuple[str, list[str]]:
     if type(expected) is not type(actual) and not (
         isinstance(expected, (int, float)) and isinstance(actual, (int, float))
@@ -195,9 +203,15 @@ def verify_rust_oracle(package_root: Path, parameter_set_id: str) -> dict[str, A
         valid_contract.write_text(serialize(case for case in cases if not case["expected_error"]), encoding="utf-8")
         invalid_contract.write_text(serialize(case for case in cases if case["expected_error"]), encoding="utf-8")
         command = [*_cargo_command(package_root), str(valid_contract)]
-        process = subprocess.run(command, cwd=package_root, text=True, capture_output=True, check=False)
+        process = subprocess.run(
+            command, cwd=package_root, text=True, capture_output=True, check=False,
+            env=cargo_environment(),
+        )
         invalid_command = [*_cargo_command(package_root), str(invalid_contract)]
-        invalid_process = subprocess.run(invalid_command, cwd=package_root, text=True, capture_output=True, check=False)
+        invalid_process = subprocess.run(
+            invalid_command, cwd=package_root, text=True, capture_output=True, check=False,
+            env=cargo_environment(),
+        )
     if process.returncode != 0:
         raise ValueError(f"Rust oracle failed ({process.returncode}): {process.stderr.strip()}")
     if invalid_process.returncode == 0:

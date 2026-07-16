@@ -616,13 +616,101 @@ fn run_file(command: &str, path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn run_fsrs_reference(path: &Path) -> Result<()> {
+    let payload: Value = serde_json::from_reader(File::open(path)?)?;
+    let fsrs = FSRS::default();
+    let mut trajectories = Vec::new();
+    for trajectory in array(&payload, "trajectories")? {
+        let trajectory_id = text(trajectory, "trajectory_id")?;
+        if text(trajectory, "mode")? == "no_fsrs" {
+            trajectories.push(json!({
+                "trajectory_id": trajectory_id,
+                "mode": "no_fsrs",
+                "steps": [],
+            }));
+            continue;
+        }
+        let desired_retention = number(trajectory, "desired_retention")? as f32;
+        let mut state: Option<MemoryState> = None;
+        let mut previous_day = 0_u32;
+        let mut steps = Vec::new();
+        for (index, review) in array(trajectory, "reviews")?.iter().enumerate() {
+            let day_i64 = integer(review, "day")?;
+            if day_i64 < 0 {
+                return Err(OracleError::Invalid(
+                    "FSRS review day must be non-negative".into(),
+                ));
+            }
+            let day = day_i64 as u32;
+            if index > 0 && day < previous_day {
+                return Err(OracleError::Invalid(
+                    "FSRS review days must be nondecreasing".into(),
+                ));
+            }
+            let elapsed = if index == 0 { day } else { day - previous_day };
+            let retrievability = state
+                .map(|memory| current_retrievability(memory, elapsed as f32, FSRS6_DEFAULT_DECAY))
+                .unwrap_or(0.0);
+            let next = fsrs
+                .next_states(state, desired_retention, elapsed)
+                .map_err(|error| OracleError::Invalid(format!("FSRS next_states: {error}")))?;
+            let selected = match text(review, "rating")? {
+                "Again" => &next.again,
+                "Hard" => &next.hard,
+                "Good" => &next.good,
+                "Easy" => &next.easy,
+                rating => {
+                    return Err(OracleError::Invalid(format!(
+                        "unknown FSRS rating: {rating}"
+                    )));
+                }
+            };
+            steps.push(json!({
+                "day": day,
+                "rating": text(review, "rating")?,
+                "retrievability_before": retrievability,
+                "stability": selected.memory.stability,
+                "difficulty": selected.memory.difficulty,
+                "scheduled_interval_days": selected.interval,
+                "counterfactual_good_stability": next.good.memory.stability,
+            }));
+            state = Some(selected.memory);
+            previous_day = day;
+        }
+        trajectories.push(json!({
+            "trajectory_id": trajectory_id,
+            "mode": "fsrs",
+            "desired_retention": desired_retention,
+            "steps": steps,
+        }));
+    }
+    println!(
+        "{}",
+        serde_json::to_string(&json!({
+            "implementation": "fsrs-rs",
+            "crate_version": "6.6.1",
+            "trajectories": trajectories,
+        }))?
+    );
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 || !["verify-golden", "evaluate-jsonl"].contains(&args[1].as_str()) {
-        eprintln!("usage: gamification-rust-oracle <verify-golden|evaluate-jsonl> <path>");
+    if args.len() != 3
+        || !["verify-golden", "evaluate-jsonl", "fsrs-reference"].contains(&args[1].as_str())
+    {
+        eprintln!(
+            "usage: gamification-rust-oracle <verify-golden|evaluate-jsonl|fsrs-reference> <path>"
+        );
         std::process::exit(2);
     }
-    if let Err(error) = run_file(&args[1], Path::new(&args[2])) {
+    let result = if args[1] == "fsrs-reference" {
+        run_fsrs_reference(Path::new(&args[2]))
+    } else {
+        run_file(&args[1], Path::new(&args[2]))
+    };
+    if let Err(error) = result {
         eprintln!("{error}");
         std::process::exit(1);
     }
@@ -645,3 +733,4 @@ mod tests {
         assert!((1.0_f64 - (1.0 + 5e-10)).abs() <= TOLERANCE);
     }
 }
+use fsrs::{FSRS, FSRS6_DEFAULT_DECAY, MemoryState, current_retrievability};

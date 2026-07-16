@@ -1,0 +1,23 @@
+{
+  "trajectory_version": "fsrs-trajectories-v0.1",
+  "timezone": "UTC",
+  "start_datetime": "2026-01-01T00:00:00+00:00",
+  "scheduler": {
+    "learning_steps_minutes": [1, 10],
+    "relearning_steps_minutes": [10],
+    "maximum_interval_days": 36500,
+    "fuzzing": false
+  },
+  "trajectories": [
+    {"trajectory_id": "new-card", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Good"}]},
+    {"trajectory_id": "successful-good-chain", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Good"}, {"day": 1, "rating": "Good"}, {"day": 4, "rating": "Good"}, {"day": 12, "rating": "Good"}]},
+    {"trajectory_id": "hard-chain", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Hard"}, {"day": 1, "rating": "Hard"}, {"day": 3, "rating": "Hard"}, {"day": 7, "rating": "Hard"}]},
+    {"trajectory_id": "easy-chain", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Easy"}, {"day": 5, "rating": "Easy"}, {"day": 20, "rating": "Easy"}]},
+    {"trajectory_id": "again-relearning", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Good"}, {"day": 2, "rating": "Again"}, {"day": 2, "rating": "Good"}, {"day": 4, "rating": "Good"}]},
+    {"trajectory_id": "long-overdue", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Good"}, {"day": 1, "rating": "Good"}, {"day": 120, "rating": "Good"}]},
+    {"trajectory_id": "high-desired-retention", "mode": "fsrs", "desired_retention": 0.95, "reviews": [{"day": 0, "rating": "Good"}, {"day": 1, "rating": "Good"}, {"day": 3, "rating": "Good"}, {"day": 8, "rating": "Good"}]},
+    {"trajectory_id": "low-desired-retention", "mode": "fsrs", "desired_retention": 0.80, "reviews": [{"day": 0, "rating": "Good"}, {"day": 2, "rating": "Good"}, {"day": 10, "rating": "Good"}, {"day": 35, "rating": "Good"}]},
+    {"trajectory_id": "low-history-uncertain", "mode": "fsrs", "desired_retention": 0.90, "reviews": [{"day": 0, "rating": "Again"}]},
+    {"trajectory_id": "missing-fsrs-fallback", "mode": "no_fsrs", "desired_retention": 0.90, "reviews": []}
+  ]
+}
