@@ -8,7 +8,7 @@
 
 Эта папка изолирует продуктовую и исследовательскую документацию будущей системы игрофикации от основной документации уже реализованного Anki Study Report.
 
-Документы здесь описывают концепт, гипотезы, формулы и будущие правила. Они не означают, что соответствующая функциональность уже реализована или включена в production dashboard.
+Документы здесь описывают концепт, гипотезы, формулы, экспериментальные критерии и будущие правила. Они не означают, что соответствующая функциональность уже реализована или включена в production dashboard.
 
 ## Текущие документы
 
@@ -132,6 +132,35 @@
 
 Текущий статус: **DRAFT v0.1**.
 
+### 7. [Anki Review Simulation Specification](anki-review-simulation-spec.md)
+
+Этап 5A — спецификация проверки Review XP до реализации:
+
+- разделение `5A Specification` и `5B Research Simulator`;
+- нормализованные inputs, независимые от Anki runtime;
+- deterministic examples и hard invariants;
+- structured scenario matrix;
+- parameter sweep и sensitivity analysis;
+- seeded Monte Carlo personas;
+- optional sanitized real-history replay;
+- ordinary, edge-case и abuse scenarios;
+- обязательные exploit controls;
+- correctness, reward, fairness и abuse-resistance metrics;
+- quantitative acceptance criteria;
+- reward-cliff analysis;
+- reproducibility manifest;
+- формат simulation report;
+- Pareto shortlist вместо одного общего score;
+- privacy requirements для реальных данных;
+- граница будущего пакета `research/gamification-sim/`;
+- явный запрет интеграции этапа 5A в fast CI и существующие workflows.
+
+Ключевой инвариант этапа:
+
+> Вариант формулы не проходит дальше, если он лучше подавляет abuse ценой потери baseline честного review, нарушения session invariance или ухудшения fairness.
+
+Текущий статус: **DRAFT v0.1**.
+
 ## Принятый порядок проектирования
 
 ```text
@@ -147,7 +176,9 @@ Review Abuse Model                     ← завершённый концепт
         ↓
 Review Session and Day Aggregation     ← завершённый концептуальный этап
         ↓
-Review Simulation Specification        ← следующий этап
+Stage 5A: Simulation Specification     ← завершённый концептуальный этап
+        ↓
+Stage 5B: Research Simulator           ← следующий отдельный этап, пока не начат
         ↓
 Learn XP Specification
         ↓
@@ -160,33 +191,51 @@ Full Economy Calibration
 Skills, achievements, quests, rewards and UI
 ```
 
-## Следующий документ
+## Следующий возможный этап
 
-Планируемый файл:
+Будущий этап:
 
 ```text
-anki-review-simulation-spec.md
+Stage 5B.1 — Pure Deterministic Review Simulator Core
 ```
 
-Он должен определить:
+Предполагаемое расположение:
 
-1. synthetic personas и типовые учебные режимы;
-2. формат импорта и анонимизации реальной review history;
-3. набор обычных, edge-case и exploit-сценариев;
-4. сравниваемые варианты Reward Model;
-5. сравниваемые volume, support, supplemental и completion parameters;
-6. распределение Review Units по дням и пользователям;
-7. влияние модели на маленькие и большие коллекции;
-8. влияние backlog, desired retention и FSRS confidence;
-9. fairness metrics;
-10. abuse-resistance metrics;
-11. sensitivity analysis;
-12. критерии выбора окончательных параметров;
-13. формат итогового simulation report.
+```text
+research/gamification-sim/
+```
 
-Главное ограничение следующего этапа:
+Минимальный scope 5B.1:
 
-> Симулятор должен проверять одновременно exploit resistance и сохранение награды честного пользователя. Вариант, который лучше подавляет фарм, но заметно обесценивает нормальную работу, не считается улучшением.
+1. отдельный Python package и virtual environment;
+2. нормализованные domain models;
+3. pure Reward Model;
+4. Abuse safeguards;
+5. Session and Day Aggregation;
+6. reward breakdown;
+7. exact examples из документации;
+8. hard invariant checks;
+9. локальный ручной запуск;
+10. отсутствие Monte Carlo, real-history replay и FSRS adapter в первом подэтапе.
+
+### Ограничение по CI
+
+По текущему решению:
+
+```text
+Stage 5A
+→ documentation-only
+→ никаких изменений fast CI
+→ никаких изменений full CI
+→ никаких новых workflows
+
+начало Stage 5B
+→ local/manual execution
+→ отдельное environment
+→ не входит в production verification chain
+```
+
+Возможное подключение отдельной research-проверки рассматривается только позднее, после измерения времени выполнения и отдельного одобрения. Fast CI не должен автоматически получать simulator job.
 
 ## Иерархия решений
 
@@ -205,6 +254,7 @@ anki-review-simulation-spec.md
 - `anki-review-reward-model.md` определяет относительную стоимость допустимого эпизода;
 - `anki-review-abuse-model.md` определяет допустимые ограничения и уточняет применение validity-сигналов;
 - `anki-review-session-and-day.md` определяет дневную агрегацию, caps и дополнительные бонусы;
+- `anki-review-simulation-spec.md` определяет, как проверяются все предыдущие решения и по каким gates выбирается модель;
 - ранние формулы из `anki-xp-foundation.md` и `progression-foundation.md` не применяются, если детальная спецификация уже приняла другое решение.
 
 ### Уточнение Reward Model третьим этапом
@@ -238,12 +288,32 @@ Volume, Completion, Support и Supplemental
 
 Окончательная междоменная политика будет выбрана после Review simulation и проектирования Learn/Create XP.
 
+### Приоритет hard gates этапа 5A
+
+Средний результат симуляции не может оправдать нарушение инварианта.
+
+```text
+hard invariant violation
+→ parameter set отклоняется;
+
+baseline loss у честного core-review
+→ parameter set отклоняется;
+
+session split изменяет XP
+→ parameter set отклоняется;
+
+duplicate или replay создаёт дополнительный XP
+→ parameter set отклоняется.
+```
+
+Только после hard gates сравниваются fairness, bonus shares, sensitivity и exploit ratios.
+
 ## Правила развития документации
 
 - Один крупный предмет проектирования — один отдельный документ.
 - Общие решения не дублируются полностью в каждом файле; используются ссылки.
 - Числовая гипотеза не становится финальным правилом до симуляции.
-- Сначала определяется валидное событие, затем его стоимость и только потом дневная агрегация.
+- Сначала определяется валидное событие, затем его стоимость, дневная агрегация и только потом экспериментальная проверка.
 - Product concept не смешивается с production implementation.
 - Новая механика не должна подталкивать к ухудшению реального обучения ради XP.
 - Anti-abuse не должен разрушать базовую награду честного пользователя.
@@ -253,6 +323,15 @@ Volume, Completion, Support и Supplemental
 - Длинная честная работа не получает diminishing returns по базовому reward.
 - Сессия не является способом сбросить дневные caps или повторно получить bonus.
 - Completion не должен превращать микроколоды или искусственные scopes в выгодную стратегию.
+- Simulation всегда сравнивает abuse-сценарий с содержательным control.
+- Hard invariants имеют приоритет над средними метриками.
+- Один общий optimization score не используется для выбора экономики.
+- При сопоставимом качестве выбирается более простая и объяснимая модель.
+- No-FSRS, low-confidence, small-collection и backlog-return входят в обязательную fairness matrix.
+- Реальные пользовательские histories не коммитятся и не читаются напрямую из рабочей collection.
+- Research simulator не входит в production runtime и `.ankiaddon`.
+- Этап 5A не меняет fast CI, full CI, workflows или verification scripts.
+- Начало 5B выполняется локально и вручную до отдельного решения.
 - Внешняя документация Anki и FSRS используется для проверки фактов, а не как готовый дизайн игровой экономики.
 - При противоречии более детальный и новый документ уточняет общий foundation, но изменение должно быть явно отражено в индексах и версиях.
 - Примеры внутри спецификаций являются обязательной частью проверки понятности модели.
