@@ -163,11 +163,17 @@
 
 ### 8. [Stage 5 Review Simulation Closure](stage-5-review-simulation-closure.md)
 
-Самодостаточное закрытие research-этапа Review XP simulation: gates, parameter
-outcomes, Pareto shortlist, population, Rust parity, FSRS references, residual
-risks и граница следующего product-design этапа.
+Самодостаточный closure Review XP simulation: corrected gates, longitudinal
+calibration, Rust parity, FSRS references, residual risks и evidence gap.
 
-Текущий статус: **COMPLETE (research only)**.
+Текущий статус: **PARTIAL**.
+
+### 9. [Stage 5B.C Calibration Correction](stage-5-calibration-correction.md)
+
+Исправленная assertion taxonomy, typed evidence, persistent-card simulator,
+matched fairness/abuse matrix, corrected sweep, property/sensitivity verification
+и 30/90/365-day calibration. Cross-horizon retention cycling остаётся открытым
+gap, поэтому Learn XP не начат.
 
 ## Принятый порядок проектирования
 
@@ -184,26 +190,22 @@ Review Abuse Model                     ← завершённый концепт
         ↓
 Review Session and Day Aggregation     ← завершённый концептуальный этап
         ↓
-Stage 5A: Simulation Specification          COMPLETE
-Stage 5B.1: Deterministic Core              COMPLETE
-Stage 5B.2: Scenario Runner                 COMPLETE
-Stage 5B.2H: Contract Hardening             COMPLETE
-Stage 5B.3: Parameter Sweep                 COMPLETE
-Stage 5B.4: Property-based Verification     COMPLETE
-Stage 5B.5: Synthetic Population            COMPLETE
-Stage 5B.6: Rust Oracle                     COMPLETE
-Stage 5B.7: FSRS Reference                  COMPLETE
-Stage 5 Review Simulation                   COMPLETE
-Next: Learn XP Specification
-        ↓
-Create XP Specification
-        ↓
-Anki Day and Streak Specification
-        ↓
-Full Economy Calibration
-        ↓
-Skills, achievements, quests, rewards and UI
+Stage 5A                                  COMPLETE
+Stage 5B.1                               COMPLETE
+Stage 5B.2                               COMPLETE
+Stage 5B.2H                              COMPLETE
+Stage 5B.3 initial calibration            SUPERSEDED
+Stage 5B.C calibration correction         PARTIAL
+Stage 5B.5 Independent-day stress         COMPLETE
+Stage 5B.6 Rust Oracle                    COMPLETE
+Stage 5B.7 FSRS Reference                 COMPLETE
+Stage 5 Review Simulation                 PARTIAL
+Next                                      Learn XP Specification
 ```
+
+`Next` показывает следующий product milestone, но он заблокирован текущим
+`PARTIAL`: сначала нужно закрыть Stage 5 cross-horizon cycling gap. Learn XP не
+начат.
 
 ## Research Simulator
 

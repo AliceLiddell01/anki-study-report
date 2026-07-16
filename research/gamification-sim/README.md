@@ -1,10 +1,10 @@
 # Deterministic Review XP Research Simulator
 
-Status: **research implementation through Stage 5B.2**  
+Status: **Stage 5B.C correction implemented; closure PARTIAL**
 Rule version: **`review-v0.1`**  
 Scenario schema: **`review-scenario-v0.2`** (`v0.1` retained as superseded history)
 
-This package is an isolated executable model of the candidate Review XP design documented by Anki Study Report. Stage 5B.1 provides the pure deterministic episode/day calculation core. Stage 5B.2 adds a strict, reproducible multi-day scenario runner around that core without changing any reward formula.
+This package is an isolated executable model of the candidate Review XP design documented by Anki Study Report. It includes the deterministic core, strict scenarios, independent-day stress model, persistent-card longitudinal engine, corrected sweep, Rust differential oracle, and FSRS reference checks. The open evidence gap is cross-horizon retention cycling.
 
 The package is not part of the Anki add-on. It does not import `anki_study_report`, read an Anki collection, build the dashboard, change dashboard payloads, participate in `.ankiaddon` packaging, or run in Fast CI, Full CI, release workflows, or production verification scripts.
 
@@ -372,11 +372,7 @@ No component is accumulated through hidden mutable global state.
 
 Deliberately excluded:
 
-- Monte Carlo and random seeds;
-- synthetic populations;
-- FSRS or `py-fsrs` adapters;
-- real-history replay;
-- Rust/C++ oracle implementations;
+- real-history replay and production collection data;
 - production persistence and reward ledger;
 - Anki collection or `revlog` access;
 - dashboard or web UI;
@@ -507,6 +503,9 @@ On Windows without MSVC Build Tools, the verified local toolchain is the officia
 `+stable-x86_64-pc-windows-gnu`). The differential report classifies exact,
 within-tolerance, semantic-mismatch, and unsupported cases. Invalid inputs must
 be rejected by both implementations and by the Rust process exit code.
+The corrected corpus covers 135 differential cases, including all 14 normalized
+Pareto parameter states: 134 exact matches, one documented within-tolerance
+match, zero semantic mismatches, and zero unsupported cases.
 
 ## Stage 5B.7 FSRS reference comparison
 
