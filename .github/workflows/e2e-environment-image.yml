@@ -1,0 +1,304 @@
+name: E2E Environment Image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: e2e-environment-image
+  cancel-in-progress: false
+
+jobs:
+  environment-image:
+    name: Build immutable E2E environment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SPEC_PATH: docker/anki-e2e/environment-image-spec.json
+      DOCKERFILE_PATH: docker/anki-e2e/environment.Dockerfile
+      DOCKERIGNORE_PATH: docker/anki-e2e/environment.Dockerfile.dockerignore
+      INSTALLER_PATH: docker/anki-e2e/install-anki.sh
+      METADATA_DIRECTORY: e2e-environment-image-metadata
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Validate environment specification
+        id: spec
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/validate_e2e_environment_image.py validate-spec \
+            --spec "$SPEC_PATH" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Calculate environment contract digest
+        id: contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/validate_e2e_environment_image.py contract-hash \
+            --spec "$SPEC_PATH" \
+            --dockerfile "$DOCKERFILE_PATH" \
+            --dockerignore "$DOCKERIGNORE_PATH" \
+            --installer "$INSTALLER_PATH" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Check deterministic tag collision
+        id: registry
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ steps.spec.outputs.image_name }}
+          HUMAN_TAG: ${{ steps.spec.outputs.human_tag }}
+          EXPECTED_CONTRACT: ${{ steps.contract.outputs.environment_contract_sha256 }}
+        run: |
+          set -Eeuo pipefail
+          image_ref="${IMAGE_NAME}:${HUMAN_TAG}"
+          inspect_output="$(mktemp)"
+          if docker buildx imagetools inspect "$image_ref" >"$inspect_output" 2>&1; then
+            docker pull "$image_ref"
+            exact_ref="$(docker image inspect "$image_ref" --format '{{index .RepoDigests 0}}')"
+            digest="${exact_ref##*@}"
+            contract="$(docker image inspect "$image_ref" --format '{{index .Config.Labels "io.github.anki-study-report.e2e.environment-contract"}}')"
+            if [ "$contract" != "$EXPECTED_CONTRACT" ]; then
+              echo "Deterministic tag collision: $image_ref has contract $contract, expected $EXPECTED_CONTRACT" >&2
+              exit 1
+            fi
+            echo "publish_required=false" >> "$GITHUB_OUTPUT"
+            echo "image_digest=$digest" >> "$GITHUB_OUTPUT"
+          else
+            if grep -Eqi 'manifest unknown|not found|no such manifest' "$inspect_output"; then
+              echo "publish_required=true" >> "$GITHUB_OUTPUT"
+              echo "image_digest=" >> "$GITHUB_OUTPUT"
+            else
+              cat "$inspect_output" >&2
+              echo "Could not distinguish an absent tag from a registry failure." >&2
+              exit 1
+            fi
+          fi
+          rm -f "$inspect_output"
+
+      - name: Derive deterministic OCI metadata
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        with:
+          images: ${{ steps.spec.outputs.image_name }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ steps.spec.outputs.human_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/AliceLiddell01/anki-study-report
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.spec.outputs.environment_version }}
+            org.opencontainers.image.title=Anki Study Report E2E Environment
+            org.opencontainers.image.description=Environment-only runtime for Anki Study Report real-Anki E2E
+            org.opencontainers.image.created={{date 'YYYY-MM-DDTHH:mm:ss[Z]'}}
+            io.github.anki-study-report.e2e.environment-contract=${{ steps.contract.outputs.environment_contract_sha256 }}
+            io.github.anki-study-report.e2e.playwright-base-digest=${{ steps.spec.outputs.playwright_base_digest }}
+
+      - name: Build and push immutable environment image
+        id: build
+        if: steps.registry.outputs.publish_required == 'true'
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: docker/anki-e2e/environment.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ANKI_VERSION=${{ steps.spec.outputs.anki_version }}
+            ANKI_SHA256=${{ steps.spec.outputs.anki_archive_sha256 }}
+            ANKI_PYTHON_PACKAGE=${{ steps.spec.outputs.anki_python_package }}
+            PNPM_VERSION=${{ steps.spec.outputs.pnpm_version }}
+            PLAYWRIGHT_VERSION=${{ steps.spec.outputs.playwright_version }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Resolve exact image digest
+        id: image
+        shell: bash
+        env:
+          PUBLISH_REQUIRED: ${{ steps.registry.outputs.publish_required }}
+          EXISTING_DIGEST: ${{ steps.registry.outputs.image_digest }}
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE_NAME: ${{ steps.spec.outputs.image_name }}
+        run: |
+          set -Eeuo pipefail
+          if [ "$PUBLISH_REQUIRED" = "true" ]; then
+            digest="$BUILT_DIGEST"
+          else
+            digest="$EXISTING_DIGEST"
+          fi
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Invalid resolved image digest: $digest" >&2
+            exit 1
+          fi
+          echo "image_digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "exact_reference=${IMAGE_NAME}@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate container image attestation
+        id: attest
+        if: steps.registry.outputs.publish_required == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ${{ steps.spec.outputs.image_name }}
+          subject-digest: ${{ steps.image.outputs.image_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Pull and inspect exact registry image
+        shell: bash
+        env:
+          EXACT_REFERENCE: ${{ steps.image.outputs.exact_reference }}
+          EXPECTED_PLATFORM: ${{ steps.spec.outputs.platform }}
+          EXPECTED_SOURCE: https://github.com/AliceLiddell01/anki-study-report
+          EXPECTED_VERSION: ${{ steps.spec.outputs.environment_version }}
+          EXPECTED_CONTRACT: ${{ steps.contract.outputs.environment_contract_sha256 }}
+          EXPECTED_BASE_DIGEST: ${{ steps.spec.outputs.playwright_base_digest }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$METADATA_DIRECTORY"
+          docker image rm "$EXACT_REFERENCE" >/dev/null 2>&1 || true
+          docker pull "$EXACT_REFERENCE"
+          docker buildx imagetools inspect "$EXACT_REFERENCE" | tee "$METADATA_DIRECTORY/registry-inspect.txt"
+          platform="$(docker image inspect "$EXACT_REFERENCE" --format '{{.Os}}/{{.Architecture}}')"
+          source="$(docker image inspect "$EXACT_REFERENCE" --format '{{index .Config.Labels "org.opencontainers.image.source"}}')"
+          version="$(docker image inspect "$EXACT_REFERENCE" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')"
+          contract="$(docker image inspect "$EXACT_REFERENCE" --format '{{index .Config.Labels "io.github.anki-study-report.e2e.environment-contract"}}')"
+          base_digest="$(docker image inspect "$EXACT_REFERENCE" --format '{{index .Config.Labels "io.github.anki-study-report.e2e.playwright-base-digest"}}')"
+          test "$platform" = "$EXPECTED_PLATFORM"
+          test "$source" = "$EXPECTED_SOURCE"
+          test "$version" = "$EXPECTED_VERSION"
+          test "$contract" = "$EXPECTED_CONTRACT"
+          test "$base_digest" = "$EXPECTED_BASE_DIGEST"
+
+      - name: Run environment runtime smoke
+        shell: bash
+        env:
+          EXACT_REFERENCE: ${{ steps.image.outputs.exact_reference }}
+          EXPECTED_PNPM: ${{ steps.spec.outputs.pnpm_version }}
+          EXPECTED_PLAYWRIGHT: ${{ steps.spec.outputs.playwright_version }}
+        run: |
+          set -Eeuo pipefail
+          docker run --rm \
+            -e EXPECTED_PNPM="$EXPECTED_PNPM" \
+            -e EXPECTED_PLAYWRIGHT="$EXPECTED_PLAYWRIGHT" \
+            "$EXACT_REFERENCE" \
+            bash -Eeuo pipefail -c '
+              python3 --version
+              python3 -c "from importlib.metadata import version; assert version(\"anki\") == \"26.5\"; import anki"
+              node --version
+              test "$(pnpm --version)" = "$EXPECTED_PNPM"
+              test "$(node -p "require(\"/e2e/node_modules/playwright/package.json\").version")" = "$EXPECTED_PLAYWRIGHT"
+              node -e "const { chromium } = require(\"/e2e/node_modules/playwright\"); (async () => { const browser = await chromium.launch({ headless: true }); await browser.close(); })().catch((error) => { console.error(error); process.exit(1); });"
+              command -v xvfb-run
+              test -x "$ANKI_BIN"
+              timeout 30s xvfb-run -a "$ANKI_BIN" --version
+              for path in /workspace /e2e/artifacts /e2e/anki-data /e2e/local-input /e2e/home; do test -d "$path"; done
+            '
+
+      - name: Verify environment image boundary and mounts
+        shell: bash
+        env:
+          EXACT_REFERENCE: ${{ steps.image.outputs.exact_reference }}
+        run: |
+          set -Eeuo pipefail
+          docker run --rm "$EXACT_REFERENCE" bash -Eeuo pipefail -c '
+            test -z "$(find /workspace -mindepth 1 -print -quit)"
+            test -z "$(find /e2e -type f -name "*.ankiaddon" -print -quit)"
+            test ! -e /workspace/.git
+            test ! -e /e2e/bin/entrypoint.sh
+            test ! -e /e2e/bin/run-e2e.sh
+            test ! -e /e2e/bin/smoke-browser.mjs
+            test ! -e /e2e/bin/resource_monitor.py
+            test ! -e /workspace/anki_study_report
+            test ! -e /workspace/web-dashboard
+          '
+          docker run --rm \
+            --mount "type=bind,src=${GITHUB_WORKSPACE},dst=/workspace,readonly" \
+            "$EXACT_REFERENCE" \
+            bash -Eeuo pipefail -c '
+              test -f /workspace/docker/anki-e2e/run-e2e.sh
+              test -f /workspace/docker/anki-e2e/smoke-browser.mjs
+              if printf x >> /workspace/README.md 2>/dev/null; then exit 1; fi
+            '
+          package_sentinel="$RUNNER_TEMP/anki_study_report.ankiaddon"
+          printf "mount-contract-only\n" > "$package_sentinel"
+          docker run --rm \
+            --mount "type=bind,src=${package_sentinel},dst=/e2e/local-input/anki_study_report.ankiaddon,readonly" \
+            "$EXACT_REFERENCE" \
+            bash -Eeuo pipefail -c '
+              test -f /e2e/local-input/anki_study_report.ankiaddon
+              if printf x >> /e2e/local-input/anki_study_report.ankiaddon 2>/dev/null; then exit 1; fi
+            '
+          rm -f "$package_sentinel"
+
+      - name: Create sanitized publication metadata
+        shell: bash
+        env:
+          EXACT_REFERENCE: ${{ steps.image.outputs.exact_reference }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.image_digest }}
+          PUBLISH_REQUIRED: ${{ steps.registry.outputs.publish_required }}
+          CONTRACT_DIGEST: ${{ steps.contract.outputs.environment_contract_sha256 }}
+        run: |
+          set -Eeuo pipefail
+          image_revision="$(docker image inspect "$EXACT_REFERENCE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+          if [ "$PUBLISH_REQUIRED" = "true" ]; then
+            attestation_status="created"
+          else
+            attestation_status="existing-not-reissued"
+          fi
+          python3 scripts/validate_e2e_environment_image.py write-published-metadata \
+            --spec "$SPEC_PATH" \
+            --output "$METADATA_DIRECTORY/environment-image-metadata.json" \
+            --source-commit-sha "${{ github.sha }}" \
+            --image-revision "$image_revision" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --image-digest "$IMAGE_DIGEST" \
+            --environment-contract-sha256 "$CONTRACT_DIGEST" \
+            --attestation-status "$attestation_status"
+          python3 scripts/validate_e2e_environment_image.py validate-published-metadata \
+            --spec "$SPEC_PATH" \
+            --metadata "$METADATA_DIRECTORY/environment-image-metadata.json"
+          python3 scripts/validate_e2e_environment_image.py render-markdown \
+            --spec "$SPEC_PATH" \
+            --metadata "$METADATA_DIRECTORY/environment-image-metadata.json" \
+            --output "$METADATA_DIRECTORY/environment-image-metadata.md"
+
+      - name: Upload sanitized environment metadata
+        id: upload_metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-environment-image-${{ steps.spec.outputs.environment_version }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: e2e-environment-image-metadata/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Write publication summary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat "$METADATA_DIRECTORY/environment-image-metadata.md" >> "$GITHUB_STEP_SUMMARY"
+          printf '\nArtifact ID: `%s`\n' '${{ steps.upload_metadata.outputs.artifact-id }}' >> "$GITHUB_STEP_SUMMARY"
