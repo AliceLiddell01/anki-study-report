@@ -103,6 +103,11 @@ def append_github_env(path: Path | None, values: dict[str, Any]) -> None:
             handle.write(f"{key}={rendered}\n")
 
 
+def ensure_workspace_diagnostics_dir(path: Path = Path("ci-e2e-raw")) -> None:
+    """Restore the untracked diagnostics directory removed by a clean checkout."""
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def resolve_source_run(
     *, run_payload: dict[str, Any], artifacts_payload: dict[str, Any],
     repository: str, input_run_id: int,
@@ -214,6 +219,10 @@ def main() -> int:
                 "source_ref": result["sourceRef"],
             })
         elif args.command == "validate-package":
+            # The exact tested-commit checkout uses the checkout action's default clean
+            # behavior, which removes untracked ci-e2e-raw/. Recreate it before any
+            # package validation can fail so preflight and always() diagnostics remain writable.
+            ensure_workspace_diagnostics_dir()
             result = validate_package_handoff(
                 resolution=load_json(args.resolution),
                 diagnostics=load_json(args.diagnostics),
