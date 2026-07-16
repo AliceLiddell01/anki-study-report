@@ -423,9 +423,20 @@ python -m gamification_sim run-sensitivity configs/review-sweep-v0.1.json --para
 ```
 
 `run-sweep` rejects candidates before ranking when an H01–H18 invariant,
-scenario assertion, breakdown identity, cap, or deterministic digest contract
-fails. Rejections carry stable reason codes. Survivors are compared through a
-declared set of Pareto objectives; there is no aggregate winner score.
+applicable regression, measured quantitative gate, breakdown identity, cap, or
+deterministic digest contract fails. Current-only regressions are recorded as
+`NOT_APPLICABLE` for alternatives. Rejections carry stable reason codes.
+Candidates with required missing evidence are `INCOMPLETE_EVIDENCE`, not
+`REJECT`, and cannot enter the final Pareto front.
+
+Every sweep metric is a typed `MetricResult` with status `MEASURED`, `DERIVED`,
+`UNSUPPORTED`, or `DEFERRED`, plus unit, sample count, source IDs, method,
+warnings, and (for missing evidence) a required reason with `value: null`.
+Collection metadata independence is derived from the input contract and a
+matched workload; confidence and FSRS-availability deltas use matched episodes.
+Observed volume/completion maxima drive Q06/Q07. Longitudinal retention,
+backlog, and long-session metrics remain explicit missing evidence until C3/C4;
+they are never substituted with ideal zero/one constants.
 
 Without `--no-write`, sweep reports are written under the gitignored
 `outputs/sweeps/<digest-prefix>/` directory as `manifest.json`,

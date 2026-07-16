@@ -231,7 +231,7 @@ def test_unknown_enums_unsorted_days_and_duplicate_scenario_ids_are_rejected():
     day_late = ScenarioDay("2026-01-02", (), ReviewDayInput("2026-01-02"))
     day_early = ScenarioDay("2026-01-01", (), ReviewDayInput("2026-01-01"))
     definition = ScenarioDefinition(
-        "review-scenario-v0.1", "unsorted", "Unsorted", ScenarioCategory.EDGE,
+        "review-scenario-v0.2", "unsorted", "Unsorted", ScenarioCategory.EDGE,
         "review-v0.1", "Unsorted days", (), (day_late, day_early), (),
     )
     with pytest.raises(ScenarioDomainError, match="strictly increasing"):

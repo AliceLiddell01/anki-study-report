@@ -15,10 +15,19 @@ from .breakdown import to_dict
 from .canonical_json import canonical_digest
 from .day_aggregation import aggregate_day, contribution_band, volume_credit
 from .episode_reward import evaluate_episode
+from .evidence import (
+    CandidateStatus,
+    MetricResult,
+    MetricStatus,
+    derived,
+    measured,
+    unavailable,
+)
 from .input_parsing import day_from_dict, episode_from_dict
 from .models import (
     CompletionStatus,
     ConfidenceLevel,
+    DueRelation,
     EligibilityClass,
     Outcome,
     MemoryContext,
@@ -35,6 +44,7 @@ from .parameter_catalog import (
     parameter_candidate,
 )
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
+from .scenario_loader import load_corpus
 from .scenario_models import CorpusRunResult, ScenarioCategory
 from .scenario_runner import run_corpus
 from .scenario_schema import format_json_path
@@ -69,16 +79,22 @@ class SweepConfig:
 @dataclass(frozen=True, slots=True)
 class CandidateEvaluation:
     candidate: ParameterCandidate
+    status: CandidateStatus
     hard_invariants: tuple[tuple[str, bool], ...]
     rejection_reason_codes: tuple[str, ...]
+    incomplete_evidence_reason_codes: tuple[str, ...]
     quantitative_gate_failures: tuple[str, ...]
-    metrics: tuple[tuple[str, float], ...]
+    metrics: tuple[tuple[str, MetricResult], ...]
     result_digest: str
     evaluation_digest: str
 
     @property
     def hard_gate_pass(self) -> bool:
-        return not self.rejection_reason_codes
+        return self.status is not CandidateStatus.REJECT
+
+    @property
+    def evidence_complete(self) -> bool:
+        return self.status is CandidateStatus.PASS
 
 
 def default_sweep_schema_path() -> Path:
@@ -331,7 +347,82 @@ def _complexity(params: RewardParameterSet) -> tuple[int, int, int]:
     return changed, enabled, explainability
 
 
-def _metrics(result: CorpusRunResult, package_root: Path, params: RewardParameterSet) -> dict[str, float]:
+def _baseline_suppression_events(
+    result: CorpusRunResult,
+    package_root: Path,
+    params: RewardParameterSet,
+) -> tuple[int, int, tuple[str, ...]]:
+    definitions = {item.scenario_id: item for item in load_corpus(package_root / "scenarios")}
+    checked = 0
+    awarded_expected: list[tuple[float, float]] = []
+    sources: set[str] = set()
+    for scenario in result.scenario_results:
+        if scenario.category not in {
+            ScenarioCategory.ORDINARY,
+            ScenarioCategory.EDGE,
+            ScenarioCategory.CONTROL,
+        }:
+            continue
+        definition = definitions[scenario.scenario_id]
+        input_days = {item.anki_day: item for item in definition.days}
+        for day in scenario.day_results:
+            inputs: dict[str, ReviewEpisodeInput] = {}
+            for episode in input_days[day.anki_day].day_input.episodes:
+                inputs.setdefault(episode.source_event_key, episode)
+            for episode in day.breakdown.episode_breakdowns:
+                source = inputs.get(episode.source_event_key)
+                if source is None:
+                    continue
+                expected = episode.core_eligibility * (
+                    params.attempt_credit
+                    + (params.outcome_credit if source.outcome.passed else 0.0)
+                )
+                checked += 1
+                sources.add(scenario.scenario_id)
+                awarded_expected.append((episode.baseline, expected))
+    return count_baseline_suppressions(awarded_expected), checked, tuple(sorted(sources))
+
+
+def count_baseline_suppressions(
+    awarded_expected: Iterable[tuple[float, float]],
+) -> int:
+    return sum(awarded + 1e-9 < expected for awarded, expected in awarded_expected)
+
+
+def _matched_context_deltas(params: RewardParameterSet) -> dict[str, float]:
+    base = ReviewEpisodeInput(
+        source_event_key="matched-context",
+        card_lineage="matched-card",
+        anki_day="2026-01-01",
+        outcome=Outcome.GOOD,
+        due_relation=DueRelation.ON_TIME,
+        memory=MemoryContext(
+            retrievability_actual=0.75,
+            retrievability_natural_due=0.80,
+            confidence=ConfidenceLevel.HIGH,
+        ),
+    )
+    high = evaluate_episode(base, params)
+    low = evaluate_episode(
+        replace(base, memory=replace(base.memory, confidence=ConfidenceLevel.LOW)),
+        params,
+    )
+    no_fsrs = evaluate_episode(replace(base, memory=MemoryContext()), params)
+    return {
+        "low_confidence_baseline_delta": low.baseline - high.baseline,
+        "low_confidence_context_delta": low.context - high.context,
+        "low_confidence_total_delta": low.total - high.total,
+        "no_fsrs_baseline_delta": no_fsrs.baseline - high.baseline,
+        "no_fsrs_context_delta": no_fsrs.context - high.context,
+        "no_fsrs_total_delta": no_fsrs.total - high.total,
+    }
+
+
+def _metrics(
+    result: CorpusRunResult,
+    package_root: Path,
+    params: RewardParameterSet,
+) -> dict[str, MetricResult]:
     by_id = _result_by_id(result)
     ordinary = [item for item in result.scenario_results if item.category is ScenarioCategory.ORDINARY]
     ordinary_days = [day.breakdown for item in ordinary for day in item.day_results]
@@ -351,8 +442,6 @@ def _metrics(result: CorpusRunResult, package_root: Path, params: RewardParamete
     changed, enabled, explainability = _complexity(params)
     duplicate_single = _total(by_id, "duplicate-replay-control")
     duplicate_replay = _total(by_id, "duplicate-replay")
-    backlog_control = _total(by_id, "timely-backlog-control")
-    backlog = _total(by_id, "intentional-backlog")
     relearn_control = _total(by_id, "relearning-loop-control")
     relearn = _total(by_id, "relearning-loop")
     preview = _total(by_id, "preview-only-farming")
@@ -369,66 +458,124 @@ def _metrics(result: CorpusRunResult, package_root: Path, params: RewardParamete
         )
         for day in all_days
     )
-    return {
-        "golden_mismatch_count": float(_golden_mismatches(package_root, params)),
-        "scenario_assertion_failure_count": float(scenario_failures),
-        "breakdown_mismatch_count": float(breakdown_mismatches),
-        "median_successful_core_reward": median(successful_core) if successful_core else 0.0,
-        "p95_successful_core_reward": _percentile(successful_core, 0.95),
-        "median_daily_review_units": median(daily) if daily else 0.0,
-        "p95_daily_review_units": _percentile(daily, 0.95),
-        "max_core_episode": max((episode.total for day in all_days for episode in day.episode_breakdowns), default=0.0),
-        "median_additional_bonus_share": median(additional) if additional else 0.0,
-        "p95_additional_bonus_share": _percentile(additional, 0.95),
-        "median_support_share": median(support) if support else 0.0,
-        "p95_support_share": _percentile(support, 0.95),
-        "max_supplemental_to_baseline_share": max(supplemental, default=0.0),
-        "support_share": _ratio(sum(day.capped_support for day in all_days), component_total),
-        "supplemental_share": _ratio(sum(day.capped_supplemental for day in all_days), component_total),
-        "volume_share": _ratio(sum(day.volume_credit for day in all_days), component_total),
-        "completion_share": _ratio(sum(day.completion_credit for day in all_days), component_total),
-        "collection_size_parity": 1.0,
-        "no_fsrs_parity": abs(_total(by_id, "small-collection-week") / 7.0 - 1.0),
-        "low_confidence_parity": 0.0,
-        "session_pattern_delta": 0.0 if by_id["session-invariance"].passed else 1.0,
-        "high_low_retention_parity": 0.0,
-        "backlog_return_viability": float(_total(by_id, "normal-backlog-recovery") > 0),
-        "long_session_baseline_ratio": 1.0,
-        "incremental_exploit_reward": duplicate_replay - duplicate_single,
-        "exploit_gain_ratio": _ratio(duplicate_replay, duplicate_single),
-        "duplicate_amplification": _ratio(duplicate_replay, duplicate_single),
-        "relearning_marginal_reward_after_cap": max(0.0, relearn - relearn_control),
-        "intentional_backlog_advantage": _ratio(backlog - backlog_control, backlog_control),
-        "retention_cycling_advantage": 0.0,
-        "completion_farming_efficiency": _total(by_id, "forced-due-farming") - _total(by_id, "forced-due-control"),
-        "preview_only_permanent_reward": preview,
-        "honest_baseline_suppression_events": 0.0,
-        "non_default_parameter_count": float(changed),
-        "enabled_dynamic_components": float(enabled),
-        "explainability_complexity_score": float(explainability),
+    scenario_ids = tuple(item.scenario_id for item in result.scenario_results)
+    context = _matched_context_deltas(params)
+    suppressed, baseline_samples, baseline_sources = _baseline_suppression_events(
+        result, package_root, params
+    )
+
+    def observed(metric_id: str, value: float, *, unit: str = "ratio", count: int | None = None, method: str = "computed from committed scenario results") -> MetricResult:
+        return measured(
+            metric_id,
+            value,
+            unit=unit,
+            sample_count=len(all_days) if count is None else count,
+            source_ids=scenario_ids,
+            method=method,
+        )
+
+    values = {
+        "golden_mismatch_count": observed("golden_mismatch_count", float(_golden_mismatches(package_root, params)), unit="count", count=31, method="31-case review-v0.1 regression comparison"),
+        "scenario_assertion_failure_count": observed("scenario_assertion_failure_count", float(scenario_failures), unit="count", count=53, method="count of applicable FAILED assertions; NOT_APPLICABLE excluded"),
+        "breakdown_mismatch_count": observed("breakdown_mismatch_count", float(breakdown_mismatches), unit="count"),
+        "median_successful_core_reward": observed("median_successful_core_reward", median(successful_core) if successful_core else 0.0, unit="Review Units", count=len(successful_core)),
+        "p95_successful_core_reward": observed("p95_successful_core_reward", _percentile(successful_core, 0.95), unit="Review Units", count=len(successful_core)),
+        "median_daily_review_units": observed("median_daily_review_units", median(daily) if daily else 0.0, unit="Review Units", count=len(daily)),
+        "p95_daily_review_units": observed("p95_daily_review_units", _percentile(daily, 0.95), unit="Review Units", count=len(daily)),
+        "max_core_episode": observed("max_core_episode", max((episode.total for day in all_days for episode in day.episode_breakdowns), default=0.0), unit="Review Units"),
+        "median_additional_bonus_share": observed("median_additional_bonus_share", median(additional) if additional else 0.0, count=len(additional)),
+        "p95_additional_bonus_share": observed("p95_additional_bonus_share", _percentile(additional, 0.95), count=len(additional)),
+        "median_support_share": observed("median_support_share", median(support) if support else 0.0, count=len(support)),
+        "p95_support_share": observed("p95_support_share", _percentile(support, 0.95), count=len(support)),
+        "max_supplemental_to_baseline_share": observed("max_supplemental_to_baseline_share", max(supplemental, default=0.0), count=len(supplemental)),
+        "support_share": observed("support_share", _ratio(sum(day.capped_support for day in all_days), component_total)),
+        "supplemental_share": observed("supplemental_share", _ratio(sum(day.capped_supplemental for day in all_days), component_total)),
+        "volume_share": observed("volume_share", _ratio(sum(day.volume_credit for day in all_days), component_total)),
+        "completion_share": observed("completion_share", _ratio(sum(day.completion_credit for day in all_days), component_total)),
+        "max_observed_volume_credit": observed("max_observed_volume_credit", max((day.volume_credit for day in all_days), default=0.0), unit="Review Units"),
+        "max_observed_completion_credit": observed("max_observed_completion_credit", max((day.completion_credit for day in all_days), default=0.0), unit="Review Units"),
+        "collection_size_parity": derived("collection_size_parity", 0.0, unit="Review Units delta", sample_count=1, source_ids=("matched-collection-metadata",), method="collection size is absent from ReviewEpisodeInput/ReviewDayInput and a matched identical workload produces zero delta"),
+        "no_fsrs_parity": measured("no_fsrs_parity", abs(context["no_fsrs_total_delta"]), unit="Review Units delta", sample_count=1, source_ids=("matched-fsrs-availability",), method=f"matched episode; baseline_delta={context['no_fsrs_baseline_delta']:.17g}; context_delta={context['no_fsrs_context_delta']:.17g}; total_delta={context['no_fsrs_total_delta']:.17g}"),
+        "low_confidence_parity": measured("low_confidence_parity", abs(context["low_confidence_total_delta"]), unit="Review Units delta", sample_count=1, source_ids=("matched-confidence",), method=f"matched episode; baseline_delta={context['low_confidence_baseline_delta']:.17g}; context_delta={context['low_confidence_context_delta']:.17g}; total_delta={context['low_confidence_total_delta']:.17g}"),
+        "low_confidence_baseline_delta": measured("low_confidence_baseline_delta", context["low_confidence_baseline_delta"], unit="Review Units delta", sample_count=1, source_ids=("matched-confidence",), method="matched high/low-confidence episode"),
+        "low_confidence_context_delta": measured("low_confidence_context_delta", context["low_confidence_context_delta"], unit="Review Units delta", sample_count=1, source_ids=("matched-confidence",), method="matched high/low-confidence episode"),
+        "low_confidence_total_delta": measured("low_confidence_total_delta", context["low_confidence_total_delta"], unit="Review Units delta", sample_count=1, source_ids=("matched-confidence",), method="matched high/low-confidence episode"),
+        "session_pattern_delta": observed("session_pattern_delta", abs(dict(by_id["session-invariance"].day_results[0].metrics)["total_review_units"] - dict(by_id["session-invariance"].day_results[1].metrics)["total_review_units"]), unit="Review Units delta", count=2, method="matched event set in one versus split analytical sessions"),
+        "incremental_exploit_reward": observed("incremental_exploit_reward", duplicate_replay - duplicate_single, unit="Review Units", count=2),
+        "exploit_gain_ratio": observed("exploit_gain_ratio", _ratio(duplicate_replay, duplicate_single), count=2),
+        "duplicate_amplification": observed("duplicate_amplification", _ratio(duplicate_replay, duplicate_single), count=2),
+        "relearning_marginal_reward_after_cap": observed("relearning_marginal_reward_after_cap", max(0.0, relearn - relearn_control), unit="Review Units", count=2),
+        "completion_farming_efficiency": observed("completion_farming_efficiency", _total(by_id, "forced-due-farming") - _total(by_id, "forced-due-control"), unit="Review Units", count=2),
+        "preview_only_permanent_reward": observed("preview_only_permanent_reward", preview, unit="Review Units", count=1),
+        "honest_baseline_suppression_events": measured("honest_baseline_suppression_events", float(suppressed), unit="count", sample_count=baseline_samples, source_ids=baseline_sources, method="episode baseline compared with eligible attempt plus successful-outcome baseline"),
+        "non_default_parameter_count": observed("non_default_parameter_count", float(changed), unit="count", count=1, method="normalized parameter snapshot diff from R-CURRENT"),
+        "enabled_dynamic_components": observed("enabled_dynamic_components", float(enabled), unit="count", count=1, method="count of enabled reward channels"),
+        "explainability_complexity_score": observed("explainability_complexity_score", float(explainability), unit="count", count=1, method="declared structural complexity proxy"),
     }
+    values.update({
+        "high_low_retention_parity": unavailable("high_low_retention_parity", MetricStatus.UNSUPPORTED, unit="Review Units delta", source_ids=("longitudinal-retention-pair",), method="matched longitudinal policy histories", reason="persistent scheduler histories are introduced at gate C3"),
+        "backlog_return_viability": unavailable("backlog_return_viability", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="matched backlog catch-up history", reason="existing scenarios do not provide a full catch-up and stabilization horizon"),
+        "long_session_baseline_ratio": unavailable("long_session_baseline_ratio", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-high-volume",), method="awarded baseline divided by expected eligible baseline", reason="requires the C3 high-volume longitudinal cohort"),
+        "intentional_backlog_advantage": unavailable("intentional_backlog_advantage", MetricStatus.DEFERRED, unit="ratio", source_ids=("longitudinal-backlog-pair",), method="unexplained reward after comparable obligations", reason="requires delayed persistent cards and post-catch-up stabilization"),
+        "retention_cycling_advantage": unavailable("retention_cycling_advantage", MetricStatus.UNSUPPORTED, unit="ratio", source_ids=("longitudinal-retention-cycle",), method="matched cumulative reward minus legitimate extra baseline", reason="retention timelines are not available before gate C3"),
+    })
+    return values
 
 
-def _quantitative_failures(metrics: dict[str, float], params: RewardParameterSet) -> tuple[str, ...]:
-    gates = {
-        "Q01_ORDINARY_MEDIAN": 0.98 <= metrics["median_successful_core_reward"] <= 1.08,
-        "Q02_CORE_CAP": metrics["max_core_episode"] <= 1.32 + 1e-9,
-        "Q03_BASELINE": metrics["honest_baseline_suppression_events"] == 0,
-        "Q04_ADDITIONAL_MEDIAN": metrics["median_additional_bonus_share"] <= 0.12 + 1e-9,
-        "Q05_ADDITIONAL_P95": metrics["p95_additional_bonus_share"] <= 0.18 + 1e-9,
-        "Q06_VOLUME_CAP": True,
-        "Q07_COMPLETION_CAP": True,
-        "Q08_SUPPORT_MEDIAN": metrics["median_support_share"] <= 0.10 + 1e-9,
-        "Q09_SUPPORT_P95": metrics["p95_support_share"] <= 0.15 + 1e-9,
-        "Q10_SUPPLEMENTAL": metrics["max_supplemental_to_baseline_share"] <= 0.03 + 1e-9,
-        "Q11_SESSION": close(metrics["session_pattern_delta"], 0.0),
-        "Q12_DUPLICATE": close(metrics["incremental_exploit_reward"], 0.0),
-        "Q13_PREVIEW": close(metrics["preview_only_permanent_reward"], 0.0),
-        "Q14_RELEARNING": close(metrics["relearning_marginal_reward_after_cap"], 0.0),
-        "Q15_RETENTION_CYCLING": metrics["retention_cycling_advantage"] <= 0.03 + 1e-9,
-        "Q16_INTENTIONAL_BACKLOG": metrics["intentional_backlog_advantage"] <= 0.03 + 1e-9,
+def _metric_value(metrics: dict[str, MetricResult], metric_id: str) -> float:
+    metric = metrics[metric_id]
+    if not metric.supported or metric.value is None:
+        raise ValueError(f"metric {metric_id} is not measured")
+    return metric.value
+
+
+def _quantitative_gate_results(
+    metrics: dict[str, MetricResult],
+    params: RewardParameterSet,
+) -> dict[str, dict[str, object]]:
+    measured_gates = {
+        "Q01_ORDINARY_MEDIAN": 0.98 <= _metric_value(metrics, "median_successful_core_reward") <= 1.08,
+        "Q02_CORE_CAP": _metric_value(metrics, "max_core_episode") <= 1.32 + 1e-9,
+        "Q03_BASELINE": _metric_value(metrics, "honest_baseline_suppression_events") == 0,
+        "Q04_ADDITIONAL_MEDIAN": _metric_value(metrics, "median_additional_bonus_share") <= 0.12 + 1e-9,
+        "Q05_ADDITIONAL_P95": _metric_value(metrics, "p95_additional_bonus_share") <= 0.18 + 1e-9,
+        "Q06_VOLUME_CAP": _metric_value(metrics, "max_observed_volume_credit") <= params.volume_cap + 1e-9,
+        "Q07_COMPLETION_CAP": _metric_value(metrics, "max_observed_completion_credit") <= params.completion_cap + 1e-9,
+        "Q08_SUPPORT_MEDIAN": _metric_value(metrics, "median_support_share") <= 0.10 + 1e-9,
+        "Q09_SUPPORT_P95": _metric_value(metrics, "p95_support_share") <= 0.15 + 1e-9,
+        "Q10_SUPPLEMENTAL": _metric_value(metrics, "max_supplemental_to_baseline_share") <= 0.03 + 1e-9,
+        "Q11_SESSION": close(_metric_value(metrics, "session_pattern_delta"), 0.0),
+        "Q12_DUPLICATE": close(_metric_value(metrics, "incremental_exploit_reward"), 0.0),
+        "Q13_PREVIEW": close(_metric_value(metrics, "preview_only_permanent_reward"), 0.0),
+        "Q14_RELEARNING": close(_metric_value(metrics, "relearning_marginal_reward_after_cap"), 0.0),
     }
-    return tuple(code for code, passed in gates.items() if not passed)
+    results = {
+        code: {"status": MetricStatus.MEASURED.value, "passed": passed}
+        for code, passed in measured_gates.items()
+    }
+    for code, metric_id in (
+        ("Q15_RETENTION_CYCLING", "retention_cycling_advantage"),
+        ("Q16_INTENTIONAL_BACKLOG", "intentional_backlog_advantage"),
+    ):
+        metric = metrics[metric_id]
+        results[code] = {
+            "status": metric.status.value,
+            "passed": (
+                metric.value <= 0.03 + 1e-9
+                if metric.supported and metric.value is not None
+                else None
+            ),
+            "metric_id": metric_id,
+        }
+    return results
+
+
+def _quantitative_failures(metrics: dict[str, MetricResult], params: RewardParameterSet) -> tuple[str, ...]:
+    return tuple(
+        code
+        for code, result in _quantitative_gate_results(metrics, params).items()
+        if result["passed"] is False
+    )
 
 
 def evaluate_candidate(
@@ -453,23 +600,52 @@ def evaluate_candidate(
     if any(not item.passed for item in result.scenario_results):
         reasons.append("SCENARIO_ASSERTION_FAILURE")
     metrics = _metrics(result, package_root, candidate.parameters)
-    if metrics["breakdown_mismatch_count"]:
+    if _metric_value(metrics, "breakdown_mismatch_count"):
         reasons.append("BREAKDOWN_MISMATCH")
+    if (
+        candidate.parameter_set_id == "R-CURRENT"
+        and _metric_value(metrics, "golden_mismatch_count")
+    ):
+        reasons.append("CURRENT_GOLDEN_REGRESSION_MISMATCH")
     if result.manifest.output_digest != repeated.manifest.output_digest:
         reasons.append("NONDETERMINISTIC_DIGEST")
     quantitative = _quantitative_failures(metrics, candidate.parameters)
+    reasons.extend(f"QUANTITATIVE_{code}" for code in quantitative)
+    required_evidence = (
+        "high_low_retention_parity",
+        "backlog_return_viability",
+        "long_session_baseline_ratio",
+        "intentional_backlog_advantage",
+        "retention_cycling_advantage",
+    )
+    incomplete = tuple(
+        f"{metric_id}_{metrics[metric_id].status.value}"
+        for metric_id in required_evidence
+        if not metrics[metric_id].supported
+    )
+    status = (
+        CandidateStatus.REJECT
+        if reasons
+        else CandidateStatus.INCOMPLETE_EVIDENCE
+        if incomplete
+        else CandidateStatus.PASS
+    )
     provisional = {
         "candidate": candidate_payload(candidate),
+        "status": status.value,
         "hard_invariants": dict(invariants),
         "rejection_reason_codes": sorted(set(reasons)),
+        "incomplete_evidence_reason_codes": list(incomplete),
         "quantitative_gate_failures": list(quantitative),
         "metrics": metrics,
         "result_digest": result.manifest.output_digest,
     }
     return CandidateEvaluation(
         candidate=candidate,
+        status=status,
         hard_invariants=invariants,
         rejection_reason_codes=tuple(sorted(set(reasons))),
+        incomplete_evidence_reason_codes=incomplete,
         quantitative_gate_failures=quantitative,
         metrics=tuple(sorted(metrics.items())),
         result_digest=result.manifest.output_digest,
@@ -481,14 +657,22 @@ _PARETO_OBJECTIVES = (
     "scenario_assertion_failure_count",
     "p95_additional_bonus_share",
     "p95_support_share",
-    "intentional_backlog_advantage",
     "non_default_parameter_count",
     "explainability_complexity_score",
 )
 
 
-def pareto_front(evaluations: Iterable[CandidateEvaluation]) -> tuple[CandidateEvaluation, ...]:
-    survivors = [item for item in evaluations if item.hard_gate_pass]
+def pareto_front(
+    evaluations: Iterable[CandidateEvaluation],
+    *,
+    include_incomplete: bool = False,
+) -> tuple[CandidateEvaluation, ...]:
+    survivors = [
+        item
+        for item in evaluations
+        if item.status is CandidateStatus.PASS
+        or (include_incomplete and item.status is CandidateStatus.INCOMPLETE_EVIDENCE)
+    ]
     front: list[CandidateEvaluation] = []
     for candidate in survivors:
         values = dict(candidate.metrics)
@@ -497,8 +681,14 @@ def pareto_front(evaluations: Iterable[CandidateEvaluation]) -> tuple[CandidateE
             if other is candidate:
                 continue
             other_values = dict(other.metrics)
-            no_worse = all(other_values[key] <= values[key] + 1e-12 for key in _PARETO_OBJECTIVES)
-            strictly_better = any(other_values[key] < values[key] - 1e-12 for key in _PARETO_OBJECTIVES)
+            no_worse = all(
+                _metric_value(other_values, key) <= _metric_value(values, key) + 1e-12
+                for key in _PARETO_OBJECTIVES
+            )
+            strictly_better = any(
+                _metric_value(other_values, key) < _metric_value(values, key) - 1e-12
+                for key in _PARETO_OBJECTIVES
+            )
             if no_worse and strictly_better:
                 dominated = True
                 break
@@ -527,7 +717,7 @@ def run_sweep(config: SweepConfig, package_root: Path) -> dict[str, Any]:
             evaluation = evaluate_candidate(candidate, config, package_root)
             evaluated[candidate.parameter_set_id] = evaluation
             stage_evaluations.append(evaluation)
-        front = pareto_front(stage_evaluations)
+        front = pareto_front(stage_evaluations, include_incomplete=True)
         if not front:
             raise ValueError(f"no hard-gate survivor in {stage.family} stage")
         shortlist = tuple(item.candidate for item in front[: config.shortlist_size])
@@ -536,6 +726,8 @@ def run_sweep(config: SweepConfig, package_root: Path) -> dict[str, Any]:
                 "family": stage.family,
                 "evaluated_ids": [item.candidate.parameter_set_id for item in stage_evaluations],
                 "survivor_ids": [item.candidate.parameter_set_id for item in stage_evaluations if item.hard_gate_pass],
+                "pass_ids": [item.candidate.parameter_set_id for item in stage_evaluations if item.status is CandidateStatus.PASS],
+                "incomplete_evidence_ids": [item.candidate.parameter_set_id for item in stage_evaluations if item.status is CandidateStatus.INCOMPLETE_EVIDENCE],
                 "pareto_ids": [item.candidate.parameter_set_id for item in front],
                 "shortlist_ids": [item.parameter_set_id for item in shortlist],
             }
@@ -564,13 +756,24 @@ def run_sweep(config: SweepConfig, package_root: Path) -> dict[str, Any]:
 
 
 def _evaluation_payload(evaluation: CandidateEvaluation) -> dict[str, Any]:
+    metric_map = dict(evaluation.metrics)
     return {
         "parameter_set": candidate_payload(evaluation.candidate),
+        "status": evaluation.status.value,
         "hard_gate_pass": evaluation.hard_gate_pass,
+        "evidence_complete": evaluation.evidence_complete,
         "hard_invariants": dict(evaluation.hard_invariants),
         "rejection_reason_codes": list(evaluation.rejection_reason_codes),
+        "incomplete_evidence_reason_codes": list(evaluation.incomplete_evidence_reason_codes),
         "quantitative_gate_failures": list(evaluation.quantitative_gate_failures),
-        "metrics": dict(evaluation.metrics),
+        "quantitative_gates": _quantitative_gate_results(
+            metric_map,
+            evaluation.candidate.parameters,
+        ),
+        "metrics": {
+            metric_id: metric.payload()
+            for metric_id, metric in evaluation.metrics
+        },
         "result_digest": evaluation.result_digest,
         "evaluation_digest": evaluation.evaluation_digest,
     }
@@ -699,14 +902,14 @@ def run_sensitivity(
                 parameter_set_id=f"SENSITIVITY-{name.upper().replace('_', '-')}-{value:g}",
             )
             metrics = _metrics(result, package_root, params)
-            delta = metrics["median_successful_core_reward"] - base_metrics["median_successful_core_reward"]
+            delta = _metric_value(metrics, "median_successful_core_reward") - _metric_value(base_metrics, "median_successful_core_reward")
             normalized = 0.0 if close(value, base_value) else delta / (value - base_value)
             points.append(
                 {
                     "value": value,
                     "metric_deltas": {
                         "median_successful_core_reward": delta,
-                        "p95_additional_bonus_share": metrics["p95_additional_bonus_share"] - base_metrics["p95_additional_bonus_share"],
+                        "p95_additional_bonus_share": _metric_value(metrics, "p95_additional_bonus_share") - _metric_value(base_metrics, "p95_additional_bonus_share"),
                     },
                     "normalized_local_sensitivity": normalized,
                     "gate_crossings": list(_quantitative_failures(metrics, params)),
@@ -756,6 +959,19 @@ def render_sweep_summary(payload: dict[str, Any]) -> str:
         )
     else:
         lines.append("None.")
+    incomplete = [
+        item for item in payload["candidates"]
+        if item["status"] == CandidateStatus.INCOMPLETE_EVIDENCE.value
+    ]
+    lines.extend(["", "## Incomplete evidence", ""])
+    if incomplete:
+        lines.extend(
+            f"- `{item['parameter_set']['parameter_set_id']}`: "
+            + ", ".join(item["incomplete_evidence_reason_codes"])
+            for item in incomplete
+        )
+    else:
+        lines.append("None.")
     return "\n".join(lines) + "\n"
 
 
@@ -763,11 +979,15 @@ def metrics_csv(payload: dict[str, Any]) -> str:
     keys = sorted(payload["candidates"][0]["metrics"])
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\n")
-    writer.writerow(["parameter_set_id", "hard_gate_pass", *keys])
+    writer.writerow(["parameter_set_id", "status", "hard_gate_pass", *keys])
     for item in payload["candidates"]:
         writer.writerow(
-            [item["parameter_set"]["parameter_set_id"], str(item["hard_gate_pass"]).lower()]
-            + [f"{item['metrics'][key]:.17g}" for key in keys]
+            [item["parameter_set"]["parameter_set_id"], item["status"], str(item["hard_gate_pass"]).lower()]
+            + [
+                "" if item["metrics"][key]["value"] is None
+                else f"{item['metrics'][key]['value']:.17g}"
+                for key in keys
+            ]
         )
     return stream.getvalue()
 

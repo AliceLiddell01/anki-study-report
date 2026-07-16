@@ -12,13 +12,17 @@ from gamification_sim.parameter_catalog import (
     parameter_candidate,
 )
 from gamification_sim.parameters import CURRENT_PARAMETERS
+from gamification_sim.evidence import CandidateStatus, MetricStatus, measured
 from gamification_sim.strict_json import StrictJsonError
 from gamification_sim.sweep import (
     SENSITIVITY_GRIDS,
+    _quantitative_failures,
+    count_baseline_suppressions,
     evaluate_candidate,
     load_sweep_config,
     run_sensitivity,
     run_sweep,
+    pareto_front,
     write_sweep_reports,
 )
 
@@ -101,6 +105,63 @@ def test_current_only_regressions_do_not_reject_alternative_candidate():
     config = load_sweep_config(CONFIG, ROOT)
     evaluation = evaluate_candidate(parameter_candidate("R-NO-GAIN"), config, ROOT)
     assert "SCENARIO_ASSERTION_FAILURE" not in evaluation.rejection_reason_codes
+
+
+def test_placeholder_metrics_are_replaced_with_typed_evidence():
+    evaluation = evaluate_candidate(
+        parameter_candidate("R-CURRENT"),
+        load_sweep_config(CONFIG, ROOT),
+        ROOT,
+    )
+    metrics = dict(evaluation.metrics)
+    assert metrics["collection_size_parity"].status is MetricStatus.DERIVED
+    assert metrics["low_confidence_parity"].status is MetricStatus.MEASURED
+    assert metrics["high_low_retention_parity"].value is None
+    assert metrics["long_session_baseline_ratio"].value is None
+    assert metrics["retention_cycling_advantage"].value is None
+    assert metrics["honest_baseline_suppression_events"].status is MetricStatus.MEASURED
+    assert evaluation.status is CandidateStatus.INCOMPLETE_EVIDENCE
+    assert evaluation.incomplete_evidence_reason_codes
+    assert all(metric.source_ids for metric in metrics.values())
+
+
+def test_measured_volume_and_completion_caps_detect_invalid_observation():
+    candidate = parameter_candidate("R-CURRENT")
+    evaluation = evaluate_candidate(candidate, load_sweep_config(CONFIG, ROOT), ROOT)
+    metrics = dict(evaluation.metrics)
+    metrics["max_observed_volume_credit"] = measured(
+        "max_observed_volume_credit",
+        candidate.parameters.volume_cap + 1,
+        unit="Review Units",
+        sample_count=1,
+        source_ids=("constructed-cap-breach",),
+        method="constructed invalid observation",
+    )
+    metrics["max_observed_completion_credit"] = measured(
+        "max_observed_completion_credit",
+        candidate.parameters.completion_cap + 1,
+        unit="Review Units",
+        sample_count=1,
+        source_ids=("constructed-cap-breach",),
+        method="constructed invalid observation",
+    )
+    failures = _quantitative_failures(metrics, candidate.parameters)
+    assert "Q06_VOLUME_CAP" in failures
+    assert "Q07_COMPLETION_CAP" in failures
+
+
+def test_baseline_suppression_counter_detects_constructed_suppression():
+    assert count_baseline_suppressions(((0.9, 0.9), (0.89, 0.9))) == 1
+
+
+def test_incomplete_candidate_is_not_a_final_pareto_winner():
+    evaluation = evaluate_candidate(
+        parameter_candidate("R-CURRENT"),
+        load_sweep_config(CONFIG, ROOT),
+        ROOT,
+    )
+    assert pareto_front((evaluation,)) == ()
+    assert pareto_front((evaluation,), include_incomplete=True) == (evaluation,)
 
 
 def test_sweep_writes_complete_gitignored_report_set(tmp_path, sweep_payload):
