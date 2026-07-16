@@ -283,10 +283,23 @@ Cartesian product. `review-v0.1` сохранён без числовых изм
 утверждает production-экономику и не заменяет property-based, population,
 cross-language или FSRS-reference gates следующих подэтапов.
 
+### Stage 5B.4 — Property-based invariants and cliffs
+
+Hypothesis добавлен только в research test extra. Reproducible profile отключает
+persistent example database и использует derandomized generation без machine
+time, external state или global random. Properties покрывают H01–H18 для
+`review-v0.1` и финального shortlist overlay, а также invalid `NaN`/infinity,
+negative и bool-as-int values, duplicate JSON keys, unknown enums, unsorted days,
+non-monotonic anchors и negative caps.
+
+`RewardParameterSet` теперь проверяет ranges, enum maps, monotonic anchors и
+volume tiers при создании. Некорректные candidates отклоняются, а не
+исправляются автоматически.
+
 ### Изоляция и CI
 
 ```text
-Stage 5B.1 + Stage 5B.2 + Stage 5B.3
+Stage 5B.1 + Stage 5B.2 + Stage 5B.3 + Stage 5B.4
 → local/manual execution
 → отдельное environment
 → не импортируют production-модули

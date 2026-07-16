@@ -426,3 +426,17 @@ Without `--no-write`, sweep reports are written under the gitignored
 Sensitivity grids use explicit endpoints rather than floating `arange`. Cliff
 probes evaluate `threshold - epsilon`, `threshold`, and `threshold + epsilon`
 for challenge, cap, tier, and contribution-band boundaries.
+
+## Stage 5B.4 property-based invariants
+
+Hypothesis is confined to the `test` extra. The committed property profile uses
+`database=None`, `derandomize=True`, a fixed example budget, no deadlines, no
+machine clock, and no global random state. It exercises H01–H18 for both
+`review-v0.1` and the equivalent final Stage 5B.3 shortlist overlay.
+
+Generated cases cover baseline monotonicity, session partitions, replay, Undo,
+card/day uniqueness, button neutrality, administrative and preview zero,
+component caps, non-negative explainable totals, deterministic serialization,
+canonical digests, and invalid numeric/enum/order/JSON inputs. Invalid parameter
+sets are rejected at `RewardParameterSet` construction; they are never silently
+normalized.

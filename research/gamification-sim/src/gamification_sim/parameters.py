@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .models import CompletionStatus, ConfidenceLevel, SupportKind
+from .validation import require_non_negative, require_range
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +75,71 @@ class RewardParameterSet:
         (CompletionStatus.ZERO_DUE, 0.00),
         (CompletionStatus.SNAPSHOT_UNCERTAIN, 0.00),
     )
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.rule_version, str) or not self.rule_version.strip():
+            raise ValueError("rule_version must be a non-empty string")
+        for name in (
+            "attempt_credit", "outcome_credit", "neutral_context_credit",
+            "core_episode_cap", "low_retrievability_credit", "memory_gain_cap",
+            "support_episode_cap", "support_day_floor", "support_day_rate",
+            "support_day_cap", "supplemental_day_rate", "supplemental_day_cap",
+            "volume_cap", "completion_rate", "completion_cap",
+        ):
+            require_non_negative(name, getattr(self, name))
+        if self.core_episode_cap < self.attempt_credit + self.outcome_credit:
+            raise ValueError("core_episode_cap must preserve the successful core baseline")
+        self._validate_anchors("challenge_anchors", self.challenge_anchors, x_maximum=1.0)
+        self._validate_anchors("delay_credit_anchors", self.delay_credit_anchors, x_maximum=1.0)
+        self._validate_anchors("memory_gain_anchors", self.memory_gain_anchors)
+        self._validate_enum_values("confidence_values", self.confidence_values, ConfidenceLevel, bounded=True)
+        self._validate_enum_values("support_values", self.support_values, SupportKind)
+        self._validate_enum_values("completion_factors", self.completion_factors, CompletionStatus, bounded=True)
+        if not self.volume_tiers:
+            raise ValueError("volume_tiers must not be empty")
+        previous_start = -1.0
+        for index, (start, rate, end) in enumerate(self.volume_tiers):
+            require_non_negative(f"volume_tiers[{index}].start", start)
+            require_non_negative(f"volume_tiers[{index}].rate", rate)
+            if start <= previous_start:
+                raise ValueError("volume_tiers starts must be strictly increasing")
+            if end is not None and end <= start:
+                raise ValueError("volume_tiers end must be greater than start")
+            if index < len(self.volume_tiers) - 1 and end != self.volume_tiers[index + 1][0]:
+                raise ValueError("volume_tiers must be contiguous")
+            if index == len(self.volume_tiers) - 1 and end is not None:
+                raise ValueError("final volume tier must be open-ended")
+            previous_start = start
+
+    @staticmethod
+    def _validate_anchors(
+        name: str,
+        anchors: tuple[tuple[float, float], ...],
+        *,
+        x_maximum: float | None = None,
+    ) -> None:
+        if not anchors:
+            raise ValueError(f"{name} must not be empty")
+        previous = -1.0
+        for index, (point, value) in enumerate(anchors):
+            require_non_negative(f"{name}[{index}].point", point)
+            require_non_negative(f"{name}[{index}].value", value)
+            if x_maximum is not None:
+                require_range(f"{name}[{index}].point", point, 0.0, x_maximum)
+            if point <= previous:
+                raise ValueError(f"{name} points must be strictly increasing")
+            previous = point
+
+    @staticmethod
+    def _validate_enum_values(name, values, enum_type, *, bounded: bool = False) -> None:
+        keys = [key for key, _ in values]
+        if set(keys) != set(enum_type) or len(keys) != len(set(keys)):
+            raise ValueError(f"{name} must contain every {enum_type.__name__} exactly once")
+        for index, (_, value) in enumerate(values):
+            if bounded:
+                require_range(f"{name}[{index}]", value, 0.0, 1.0)
+            else:
+                require_non_negative(f"{name}[{index}]", value)
 
     def confidence(self, level: ConfidenceLevel) -> float:
         return dict(self.confidence_values)[level]
