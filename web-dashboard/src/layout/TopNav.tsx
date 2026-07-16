@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { RoutePath } from "../app/router";
 import { primaryNavItems } from "../app/router";
+import NotificationBell from "../components/NotificationBell";
 
 const BOOSTY_SUPPORT_URL = "https://boosty.to/ankistudyreport";
 
@@ -114,6 +115,8 @@ function TopNav({ activeRoute, onOpenWhatsNew = () => undefined }: { activeRoute
             );
           })}
         </nav>
+
+        <NotificationBell onOpenWhatsNew={onOpenWhatsNew} />
 
         <div className="relative shrink-0" ref={profileMenuRef}>
           <button

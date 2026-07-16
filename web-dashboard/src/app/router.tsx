@@ -17,6 +17,7 @@ import type { StudyReport } from "../types/report";
 const StatisticsPage = lazy(() => import("../pages/StatisticsPage"));
 const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 const PrivacySettingsPage = lazy(() => import("../pages/PrivacySettingsPage"));
+const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPage"));
 
 export type RoutePath =
   | "/home"
@@ -36,6 +37,7 @@ export type RoutePath =
   | "/stats/fsrs/steps"
   | "/stats/fsrs/simulator"
   | "/actions"
+  | "/notifications"
   | "/settings"
   | "/settings/data"
   | "/settings/privacy"
@@ -70,6 +72,7 @@ const routePaths = new Set<RoutePath>([
   "/stats/fsrs/steps",
   "/stats/fsrs/simulator",
   "/actions",
+  "/notifications",
   "/settings",
   "/settings/data",
   "/settings/privacy",
@@ -135,6 +138,8 @@ export function renderRoute(
       return <FsrsStatisticsPage report={report} loadState={loadState} section="simulator" />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
+    case "/notifications":
+      return <NotificationCenterPage onOpenWhatsNew={onOpenWhatsNew} />;
     case "/settings/sources":
       return <SettingsLayout activeRoute={route}><IntegrationsPage /></SettingsLayout>;
     case "/settings/logs":

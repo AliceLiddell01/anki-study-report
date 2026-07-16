@@ -96,6 +96,7 @@ const en = {
       data: "Data",
       privacy: "Privacy",
       systemGroup: "System",
+      notifications: "Notifications",
       server: "Server",
       diagnosticsGroup: "Diagnostics",
       sources: "Data sources",
@@ -108,6 +109,7 @@ const en = {
       title: "Search",
       description: "Find cards or notes with native Anki queries, inspect compact details, and open an explicit selection in Anki Browser.",
       privacy: "The query stays in this browser session and is never added to the URL or page title.",
+      notificationHandoff: "Opened from a repeated-Again signal. Use the local search controls to inspect the card without exposing its ID in the URL.",
       query: {
         formLabel: "Search parameters",
         label: "Native Anki query",
@@ -900,6 +902,20 @@ const en = {
     validation: { desiredRetention: "From 75% to 99%.", horizonDays: "Choose 90, 180, or 365 days.", additionalNewCards: "From 0 to 100,000 cards.", newCardsPerDay: "From 0 to 1,000 cards per day.", maximumReviewsPerDay: "From 1 to 10,000 reviews." },
     scenario: { first_again: "First answer: Again", first_hard: "First answer: Hard", first_good: "First answer: Good", again_then_good: "Again → Good", good_then_again: "Good → Again", relearning: "Relearning" },
     charts: { calibrationAria: "Predicted and actual retention by interval", sampleAria: "Sample size by interval", legend: "Chart legend", predicted: "FSRS prediction", actual: "Actual", ideal: "Perfect match", sparse: "Small sample", day: "Day {{day}}", workloadAria: "Current and hypothetical workload comparison", reviews: "{{count}} reviews", current: "Current target", hypothetical: "Scenario", actualSparse: "Actual, small sample" },
+  },
+  notifications: {
+    bell: "Notifications", panelTitle: "New notifications", empty: "No new notifications.", markAll: "Mark all read", openAll: "Open all notifications", unreadCount: "Unread: {{count}}", title: "Notification Center", subtitle: "Study workload and quality signals remain here after a brief message closes.", loading: "Loading notifications…", unavailable: "Notifications are currently unavailable.", noMatches: "No notifications match this filter.", read: "Read", unread: "Unread", active: "Active", resolved: "Resolved", close: "Close", summaryToast: "There are {{count}} more notifications. They are saved in Notification Center.", tabsLabel: "Notification views", categoryLabel: "Category", paginationLabel: "Notification pages", previousPage: "Previous page", nextPage: "Next page", page: "Page {{page}} of {{count}}",
+    tabs: { all: "All", unread: "Unread", active: "Active" },
+    categories: { all: "All categories", workload: "Workload", retention: "Retention", deck_health: "Deck health", card_problems: "Card problems", product_updates: "Product updates" },
+    settings: { title: "Notifications", description: "Detectors keep running locally. These settings control only the badge and brief messages.", badge: "Show unread badge", badgeDescription: "A count by the bell; records remain in Notification Center.", toasts: "Show in-app toasts", toastsDescription: "At most one message is visible at a time; history always remains in the Center.", minimum: "Minimum severity", critical: "Critical only", warning: "Warning and critical", info: "All", categories: "Toast categories", save: "Save", saved: "Preferences saved.", saveFailed: "Could not save preferences.", saving: "Saving…", sound: "Sound and OS notifications are not used." },
+    signals: {
+      workload: { title: "Review workload increased", evidence: "{{current}} cards are due now versus a typical active-day median of {{baseline}}." },
+      retention: { title: "Recent retention dropped", evidence: "Down {{drop}} percentage points across {{recent}} recent answers." },
+      deck: { title: "Deck health declined", evidence: "Status: {{health}}; {{reviews}} answers in the sample." },
+      card: { title: "A card is repeatedly answered Again", evidence: "Again {{again}} times across {{reviews}} answers in 7 days." },
+      release: { title: "An Anki Study Report update is available", evidence: "Open the existing What's New dialog to review the changes." },
+    },
+    actions: { workload: "Open workload", retention: "Open retention", deck_health: "Open decks", card_problems: "Open search", product_updates: "Open What's New" },
   },
 } satisfies DeepStringShape<typeof ru>;
 

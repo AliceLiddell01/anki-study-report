@@ -20,7 +20,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    void emitTelemetryEvent({ eventCode: "page.opened", pageCode: telemetryPageCode(route), occurredAt: telemetryOccurredAt() });
+    const pageCode = telemetryPageCode(route);
+    if (pageCode) void emitTelemetryEvent({ eventCode: "page.opened", pageCode, occurredAt: telemetryOccurredAt() });
   }, [route]);
 
   useEffect(() => {
@@ -122,7 +123,8 @@ function App() {
 
 export default App;
 
-function telemetryPageCode(route: ReturnType<typeof getRouteFromHash>): string {
+export function telemetryPageCode(route: ReturnType<typeof getRouteFromHash>): string | null {
+  if (route === "/notifications") return null;
   if (route.startsWith("/stats")) return "statistics";
   const pageCodes: Partial<Record<ReturnType<typeof getRouteFromHash>, string>> = {
     "/home": "home",
