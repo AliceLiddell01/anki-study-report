@@ -250,14 +250,46 @@ class TelemetryStore:
             self._set_metadata_locked("lastDeliveryAttemptAt", attempt_at)
             self._set_metadata_locked("lastDeliveryErrorCode", error_code)
 
+    def enrollment_retry_state(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "lastEnrollmentAttemptAt": self._get_metadata_locked("lastEnrollmentAttemptAt"),
+                "lastEnrollmentErrorCode": self._get_metadata_locked("lastEnrollmentErrorCode"),
+                "enrollmentNextAttemptAt": self._get_metadata_locked("enrollmentNextAttemptAt"),
+                "lastEnrollmentSuccessAt": self._get_metadata_locked("lastEnrollmentSuccessAt"),
+                "retryCount": int(self._get_metadata_locked("enrollmentRetryCount") or 0),
+            }
+
+    def record_enrollment_attempt(self, attempt_at: str) -> None:
+        with self._lock, self._require_connection():
+            self._set_metadata_locked("lastEnrollmentAttemptAt", attempt_at)
+
+    def record_enrollment_failure(self, *, error_code: str, next_attempt_at: str, retry_count: int) -> None:
+        with self._lock, self._require_connection():
+            self._set_metadata_locked("lastEnrollmentErrorCode", error_code)
+            self._set_metadata_locked("enrollmentNextAttemptAt", next_attempt_at)
+            self._set_metadata_locked("enrollmentRetryCount", max(1, int(retry_count)))
+
+    def record_enrollment_success(self, success_at: str) -> None:
+        with self._lock, self._require_connection():
+            self._set_metadata_locked("lastEnrollmentSuccessAt", success_at)
+            self._set_metadata_locked("lastEnrollmentErrorCode", None)
+            self._set_metadata_locked("enrollmentNextAttemptAt", None)
+            self._set_metadata_locked("enrollmentRetryCount", 0)
+
     def public_status(self) -> dict[str, Any]:
         with self._lock:
             credentials = self._require_connection().execute("SELECT 1 FROM installation_credentials WHERE id = 1").fetchone()
+            enrollment = self.enrollment_retry_state()
             return {
                 "storeSchemaVersion": TELEMETRY_STORE_SCHEMA_VERSION,
-                "enrollmentState": "enrolled" if credentials else "not_enrolled",
+                "enrollmentState": "enrolled" if credentials else "not_attempted",
                 "pendingEventCount": self.queue_count(),
                 "pendingByPurpose": self.purpose_counts(),
+                "lastEnrollmentAttemptAt": enrollment["lastEnrollmentAttemptAt"],
+                "lastEnrollmentErrorCode": enrollment["lastEnrollmentErrorCode"],
+                "enrollmentNextAttemptAt": enrollment["enrollmentNextAttemptAt"],
+                "lastEnrollmentSuccessAt": enrollment["lastEnrollmentSuccessAt"],
                 "lastSuccessfulDeliveryAt": self._get_metadata_locked("lastSuccessfulDeliveryAt"),
                 "lastDeliveryAttemptAt": self._get_metadata_locked("lastDeliveryAttemptAt"),
                 "lastDeliveryErrorCode": self._get_metadata_locked("lastDeliveryErrorCode"),

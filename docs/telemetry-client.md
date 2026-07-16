@@ -26,12 +26,14 @@ unknown поле, raw exception, произвольный текст или зн
 <profile>/addon_data/<addon_id>/telemetry.sqlite3
 ```
 
-SQLite schema v1 хранит очередь, retry state, bounded delivery metadata и одну
+SQLite schema v1 хранит очередь, retry state, bounded delivery/enrollment metadata и одну
 пару installation credentials. База использует `journal_mode=DELETE`,
 `synchronous=FULL`, `foreign_keys=ON`, migration через `PRAGMA user_version` и
 `quick_check`. Повреждённая база закрывается и переносится в
 `telemetry.sqlite3.corrupt-<UTC>`. Public status никогда не возвращает ID или
-token.
+token. Enrollment metadata включает последнюю попытку, bounded error code,
+время следующей попытки и последний успех; exponential retry counter также
+переживает restart.
 
 Ограничения contract:
 
@@ -61,15 +63,23 @@ DELETE /v1/installations/current
 Production endpoint является reviewable Python constant и не хранится в
 `config.json`; пользователь не может незаметно перенаправить telemetry на
 произвольный host.
-Сетевые операции выполняются в одном daemon worker, не в UI thread. Отправка
+Сетевые операции выполняются в одном daemon worker, не в UI thread. Stable
+timer callback каждый раз разрешает текущий active-profile client, поэтому
+переключение профиля не оставляет bound method старого клиента. Отправка
 запрашивается после consent, при 25 queued events, на старте и bounded timer не
-чаще 15 минут. Один запрос имеет конечный timeout 10 секунд.
+чаще 15 минут. Queue threshold не обходит enrollment/delivery backoff. Один
+запрос имеет конечный timeout 10 секунд.
 
 Успешно подтверждённые IDs удаляются только после ack. 408, 425, 429, 5xx и
 network failures получают exponential backoff с jitter; `Retry-After`
 уважается в пределах суток. Non-retryable 4xx удаляет отклонённый batch, 401
 удаляет недействительные credentials и оставляет события для нового enrollment.
 Ни body, token, URL с token, content или arbitrary exception не логируются.
+
+Enrollment использует отдельный persisted exponential backoff с jitter и
+bounded error codes. Deliberate «Проверить соединение и отправить сейчас» может
+однократно обойти только enrollment wait; повторный click во время работы
+получает `busy`, не запускает второй sender и не создаёт telemetry event.
 
 ## Отзыв и удаление
 
@@ -87,12 +97,19 @@ event sending, пока pending deletion не подтверждено.
 ```text
 GET  /api/telemetry/status
 POST /api/telemetry/events
+POST /api/telemetry/check-send
 POST /api/telemetry/delete
 ```
 
 Status содержит только schema/endpoint/enrollment/sender states, размеры
 очереди, bounded error codes и timestamps. Installation ID и write token не
 являются частью local API.
+
+`check-send` принимает только `{}` и возвращает bounded status: `202 started`,
+`409 busy/deletion_pending`, `400 purposes_disabled` или `503 unavailable`.
+Privacy UI различает queued, enrollment retry/failure, enrolled-but-pending и
+confirmed delivery, локализует только allowlisted error codes и недолго
+обновляет status после ручной попытки.
 
 ## Проверки
 

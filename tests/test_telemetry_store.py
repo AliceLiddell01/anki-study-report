@@ -109,3 +109,33 @@ def test_schema_migration_and_corrupt_database_quarantine(tmp_path):
     recovered = module.TelemetryStore(corrupt)
     assert recovered.queue_count() == 0
     assert len(list(tmp_path.glob("corrupt.sqlite3.corrupt-*"))) == 1
+
+
+def test_enrollment_retry_metadata_is_migration_safe_and_persists(tmp_path):
+    _, module = modules()
+    path = tmp_path / "telemetry.sqlite3"
+    store = module.TelemetryStore(path)
+    store.record_enrollment_attempt("2026-07-15T12:00:00Z")
+    store.record_enrollment_failure(
+        error_code="http_5xx",
+        next_attempt_at="2026-07-15T12:02:00Z",
+        retry_count=2,
+    )
+    expected = {
+        "lastEnrollmentAttemptAt": "2026-07-15T12:00:00Z",
+        "lastEnrollmentErrorCode": "http_5xx",
+        "enrollmentNextAttemptAt": "2026-07-15T12:02:00Z",
+        "lastEnrollmentSuccessAt": None,
+    }
+    status = store.public_status()
+    assert {key: status[key] for key in expected} == expected
+    store.close()
+
+    reopened = module.TelemetryStore(path)
+    assert reopened.enrollment_retry_state()["retryCount"] == 2
+    reopened.record_enrollment_success("2026-07-15T12:03:00Z")
+    status = reopened.public_status()
+    assert status["lastEnrollmentSuccessAt"] == "2026-07-15T12:03:00Z"
+    assert status["lastEnrollmentErrorCode"] is None
+    assert status["enrollmentNextAttemptAt"] is None
+    reopened.close()

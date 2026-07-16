@@ -64,10 +64,14 @@ export type PrivacyResponse = {
     storeSchemaVersion: number;
     telemetrySchemaVersion: number;
     endpointState: "configured" | "not_configured";
-    enrollmentState: "enrolled" | "not_enrolled";
+    enrollmentState: "not_attempted" | "waiting_retry" | "failed" | "enrolled";
     senderState: "idle" | "busy";
     pendingEventCount: number;
     pendingByPurpose: Record<TelemetryPurpose, number>;
+    lastEnrollmentAttemptAt: string | null;
+    lastEnrollmentErrorCode: string | null;
+    enrollmentNextAttemptAt: string | null;
+    lastEnrollmentSuccessAt: string | null;
     lastSuccessfulDeliveryAt: string | null;
     lastDeliveryAttemptAt: string | null;
     lastDeliveryErrorCode: string | null;

@@ -186,7 +186,7 @@ from .product_notices import (
     privacy_response,
     product_notices_response,
 )
-from .telemetry_client import TelemetryClient
+from .telemetry_client import TelemetryClient, request_active_client_send
 from .telemetry_contract import TelemetryValidationError, utc_now
 from .telemetry_store import TelemetryStore
 from .activity_service import build_activity_hub_payload
@@ -336,6 +336,7 @@ def _new_telemetry_client(store: TelemetryStore, privacy_store: PrivacyStore) ->
 
 _TELEMETRY_CLIENT = _new_telemetry_client(_TELEMETRY_STORE, _PRIVACY_STORE)
 _TELEMETRY_TIMER: object | None = None
+_TELEMETRY_STARTED_CLIENT: TelemetryClient | None = None
 try:
     _PRODUCT_NOTICE_STORE.record_started(__version__)
 except Exception:
@@ -1974,6 +1975,7 @@ def _configure_dashboard_cache_handlers() -> None:
         status_provider=_telemetry_status_response,
         event_handler=_queue_telemetry_event,
         delete_handler=_delete_telemetry_data,
+        check_handler=_check_telemetry_connection,
     )
     _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
     _DASHBOARD_SERVER.configure_fsrs_handler(_fsrs_query_response)
@@ -2215,6 +2217,10 @@ def _queue_telemetry_event(payload: dict) -> dict:
 
 def _delete_telemetry_data() -> dict:
     return _TELEMETRY_CLIENT.delete_remote_data()
+
+
+def _check_telemetry_connection() -> dict:
+    return _TELEMETRY_CLIENT.check_connection_and_send_now()
 
 
 def _statistics_query_response(payload: dict) -> dict:
@@ -3381,27 +3387,34 @@ def _setup_menu(main_window) -> None:
 
 
 def _start_telemetry_runtime(main_window) -> None:
-    global _TELEMETRY_TIMER
+    global _TELEMETRY_TIMER, _TELEMETRY_STARTED_CLIENT
     try:
         from aqt.qt import QTimer as _QTimer
 
-        if _TELEMETRY_TIMER is None:
+        if _TELEMETRY_STARTED_CLIENT is not _TELEMETRY_CLIENT:
             _TELEMETRY_CLIENT.queue_semantic_event({"eventCode": "addon.started", "occurredAt": utc_now()})
             _TELEMETRY_CLIENT.request_send(force=True)
+            _TELEMETRY_STARTED_CLIENT = _TELEMETRY_CLIENT
+        if _TELEMETRY_TIMER is None:
             _TELEMETRY_TIMER = _QTimer(main_window)
             _TELEMETRY_TIMER.setInterval(15 * 60 * 1000)
-            _TELEMETRY_TIMER.timeout.connect(_TELEMETRY_CLIENT.request_send)
+            _TELEMETRY_TIMER.timeout.connect(_telemetry_timer_tick)
         _TELEMETRY_TIMER.start()
     except Exception:
         log_exception("telemetry.startup.error", "Telemetry runtime initialization failed")
 
 
+def _telemetry_timer_tick() -> None:
+    request_active_client_send(lambda: _TELEMETRY_CLIENT)
+
+
 def _stop_runtime_services(*args) -> None:
-    global _TELEMETRY_TIMER
+    global _TELEMETRY_TIMER, _TELEMETRY_STARTED_CLIENT
     if _TELEMETRY_TIMER is not None:
         _TELEMETRY_TIMER.stop()
         _TELEMETRY_TIMER = None
     _TELEMETRY_CLIENT.close()
+    _TELEMETRY_STARTED_CLIENT = None
     _stop_web_dashboard_server(*args)
 
 

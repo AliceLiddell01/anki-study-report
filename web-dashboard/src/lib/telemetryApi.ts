@@ -52,6 +52,33 @@ export async function deleteTelemetryData(): Promise<{ ok: boolean; code?: strin
   }
 }
 
+export type TelemetryManualSendResult = {
+  ok: boolean;
+  code?:
+    | "telemetry.manual_send_started"
+    | "telemetry.manual_send_disabled"
+    | "telemetry.manual_send_unavailable"
+    | "telemetry.deletion_pending"
+    | "telemetry.sender_busy";
+  started?: boolean;
+  error?: string;
+};
+
+export async function checkConnectionAndSendNow(): Promise<TelemetryManualSendResult> {
+  try {
+    const response = await fetch(`/api/telemetry/check-send?token=${encodeURIComponent(dashboardToken())}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+      cache: "no-store",
+    });
+    const payload = await response.json() as TelemetryManualSendResult;
+    return payload && typeof payload === "object" ? payload : { ok: false, error: "invalid_response" };
+  } catch {
+    return { ok: false, error: "local_telemetry_unavailable" };
+  }
+}
+
 export function telemetryOccurredAt(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }

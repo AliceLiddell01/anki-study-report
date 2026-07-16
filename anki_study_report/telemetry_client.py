@@ -29,6 +29,18 @@ PRODUCTION_TELEMETRY_ENDPOINT = "https://anki-study-report-telemetry.anki-study-
 CONNECT_TOTAL_TIMEOUT_SECONDS = 10.0
 PERIODIC_MIN_SECONDS = 15 * 60
 QUEUE_SEND_THRESHOLD = 25
+ENROLLMENT_ERROR_CODES = {
+    "network_error",
+    "http_400",
+    "http_401",
+    "http_403",
+    "http_409",
+    "http_429",
+    "http_5xx",
+    "unsupported_contract",
+    "invalid_response",
+    "service_disabled",
+}
 
 
 @dataclass(frozen=True)
@@ -64,6 +76,11 @@ class UrlLibTransport:
                 {str(key).lower(): str(value) for key, value in exc.headers.items()},
                 _decode_json(payload),
             )
+
+
+def request_active_client_send(client_provider: Callable[[], Any]) -> None:
+    """Timer-safe indirection that resolves the current per-profile client."""
+    client_provider().request_send()
 
 
 class TelemetryClient:
@@ -113,7 +130,7 @@ class TelemetryClient:
             return {"ok": False, "code": "telemetry.queue_unavailable", "queued": False, "purpose": purpose}
         count = self.store.queue_count()
         if count >= QUEUE_SEND_THRESHOLD:
-            self.request_send(force=True)
+            self.request_send()
         return {"ok": True, "code": "telemetry.queued", "queued": True, "purpose": purpose}
 
     def apply_privacy_choices(self, purposes: dict[str, bool]) -> dict[str, Any]:
@@ -141,13 +158,21 @@ class TelemetryClient:
         self.privacy_store.decline()
         return self.disable_all_and_delete()
 
-    def request_send(self, *, force: bool = False, deletion_only: bool = False) -> bool:
+    def request_send(
+        self,
+        *,
+        force: bool = False,
+        deletion_only: bool = False,
+        bypass_enrollment_backoff: bool = False,
+    ) -> bool:
         if self.endpoint is None or self._closed:
             if deletion_only and self.store.credentials() is not None:
                 self._mark_deletion_failure("endpoint_not_configured", retry_after_seconds=PERIODIC_MIN_SECONDS)
             return False
         with self._worker_lock:
             if self._worker is not None and self._worker.is_alive():
+                if bypass_enrollment_backoff:
+                    return False
                 self._send_again = self._send_again or force
                 self._deletion_requested = self._deletion_requested or deletion_only
                 return False
@@ -157,21 +182,23 @@ class TelemetryClient:
             self._last_background_start = now
             self._worker = threading.Thread(
                 target=self._background_once,
-                args=(deletion_only,),
+                args=(deletion_only, bypass_enrollment_backoff),
                 name="anki-study-report-telemetry",
                 daemon=True,
             )
             self._worker.start()
             return True
 
-    def _background_once(self, deletion_only: bool) -> None:
+    def _background_once(self, deletion_only: bool, bypass_enrollment_backoff: bool = False) -> None:
         try:
             delete_next = deletion_only
+            bypass_next = bypass_enrollment_backoff
             for _ in range(8):
                 if delete_next or self.privacy_store.read()["telemetry"]["deletionPending"]:
                     result = self.attempt_deletion()
                 else:
-                    result = self.send_once()
+                    result = self.send_once(bypass_enrollment_backoff=bypass_next)
+                bypass_next = False
                 with self._worker_lock:
                     requested = self._send_again or self._deletion_requested
                     if requested:
@@ -197,13 +224,13 @@ class TelemetryClient:
                     self._deletion_requested = False
                     self._worker = threading.Thread(
                         target=self._background_once,
-                        args=(delete_next,),
+                        args=(delete_next, False),
                         name="anki-study-report-telemetry",
                         daemon=True,
                     )
                     self._worker.start()
 
-    def send_once(self) -> dict[str, Any]:
+    def send_once(self, *, bypass_enrollment_backoff: bool = False) -> dict[str, Any]:
         if not self._send_lock.acquire(blocking=False):
             return {"ok": True, "code": "telemetry.sender_busy"}
         try:
@@ -216,7 +243,10 @@ class TelemetryClient:
                 return {"ok": True, "code": "telemetry.endpoint_not_configured"}
             credentials = self.store.credentials()
             if credentials is None:
-                enrollment = self._enroll(privacy["effectivePurposes"])
+                enrollment = self._enroll(
+                    privacy["effectivePurposes"],
+                    bypass_backoff=bypass_enrollment_backoff,
+                )
                 if not enrollment["ok"]:
                     return enrollment
                 credentials = self.store.credentials()
@@ -227,25 +257,76 @@ class TelemetryClient:
         finally:
             self._send_lock.release()
 
-    def _enroll(self, purposes: dict[str, bool]) -> dict[str, Any]:
+    def _enroll(self, purposes: dict[str, bool], *, bypass_backoff: bool = False) -> dict[str, Any]:
+        retry_state = self.store.enrollment_retry_state()
+        next_attempt = retry_state["enrollmentNextAttemptAt"]
+        if not bypass_backoff and isinstance(next_attempt, str) and not _iso_is_due(next_attempt, self._now_provider()):
+            return {
+                "ok": False,
+                "code": "telemetry.enrollment_waiting",
+                "nextAttemptAt": next_attempt,
+            }
         payload = {
             "telemetrySchemaVersion": TELEMETRY_SCHEMA_VERSION,
             "consentSchemaVersion": CONSENT_SCHEMA_VERSION,
             "privacyNoticeVersion": PRIVACY_NOTICE_VERSION,
             "purposes": [purpose for purpose in CONTRACT["purposes"] if purposes.get(purpose) is True],
         }
+        attempt_at = self._now_iso()
+        self.store.record_enrollment_attempt(attempt_at)
         result = self._request_json("POST", "/v1/installations", payload=payload)
         if isinstance(result, Exception):
-            return {"ok": False, "code": "telemetry.enrollment_unavailable"}
+            return self._record_enrollment_failure("network_error", retry_after=None)
         if result.status not in {200, 201}:
-            return {"ok": False, "code": "telemetry.enrollment_rejected", "retryable": _retryable_status(result.status)}
+            error_code = _enrollment_error_code(result)
+            retry_after = _retry_after_seconds(result.headers.get("retry-after"), self._now_provider())
+            return self._record_enrollment_failure(error_code, retry_after=retry_after)
         body = result.body or {}
         installation_id = body.get("installationId")
         write_token = body.get("writeToken")
         if not isinstance(installation_id, str) or not isinstance(write_token, str):
-            return {"ok": False, "code": "telemetry.enrollment_invalid_response"}
-        self.store.save_credentials(installation_id, write_token, created_at=self._now_iso())
+            return self._record_enrollment_failure("invalid_response", retry_after=None)
+        success_at = self._now_iso()
+        self.store.save_credentials(installation_id, write_token, created_at=success_at)
+        self.store.record_enrollment_success(success_at)
         return {"ok": True, "code": "telemetry.enrolled"}
+
+    def _record_enrollment_failure(self, error_code: str, *, retry_after: int | None) -> dict[str, Any]:
+        bounded_code = error_code if error_code in ENROLLMENT_ERROR_CODES else "invalid_response"
+        retry_state = self.store.enrollment_retry_state()
+        retry_count = int(retry_state["retryCount"]) + 1
+        base = min(24 * 60 * 60, 30 * (2 ** min(retry_count - 1, 10)))
+        jittered = int(base * (0.75 + self._random_provider() * 0.5))
+        seconds = max(jittered, int(retry_after or 0))
+        next_attempt = (
+            self._now_provider().astimezone(timezone.utc) + timedelta(seconds=seconds)
+        ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        self.store.record_enrollment_failure(
+            error_code=bounded_code,
+            next_attempt_at=next_attempt,
+            retry_count=retry_count,
+        )
+        return {
+            "ok": False,
+            "code": "telemetry.enrollment_retry",
+            "errorCode": bounded_code,
+            "nextAttemptAt": next_attempt,
+        }
+
+    def check_connection_and_send_now(self) -> dict[str, Any]:
+        privacy = self.privacy_store.read()["telemetry"]
+        if privacy["deletionPending"]:
+            return {"ok": False, "code": "telemetry.deletion_pending", "started": False}
+        if not any(privacy["effectivePurposes"].values()):
+            return {"ok": False, "code": "telemetry.manual_send_disabled", "started": False}
+        if self.public_status()["senderState"] == "busy":
+            return {"ok": False, "code": "telemetry.sender_busy", "started": False}
+        started = self.request_send(force=True, bypass_enrollment_backoff=True)
+        return {
+            "ok": started,
+            "code": "telemetry.manual_send_started" if started else "telemetry.manual_send_unavailable",
+            "started": started,
+        }
 
     def _send_batch(self, batch: list[QueuedEvent], credentials: Any) -> dict[str, Any]:
         ids = [item.event_id for item in batch]
@@ -374,6 +455,12 @@ class TelemetryClient:
 
     def public_status(self) -> dict[str, Any]:
         status = self.store.public_status()
+        if status["enrollmentState"] != "enrolled":
+            next_attempt = status.get("enrollmentNextAttemptAt")
+            if isinstance(next_attempt, str) and not _iso_is_due(next_attempt, self._now_provider()):
+                status["enrollmentState"] = "waiting_retry"
+            elif status.get("lastEnrollmentErrorCode"):
+                status["enrollmentState"] = "failed"
         status.update(
             {
                 "telemetrySchemaVersion": TELEMETRY_SCHEMA_VERSION,
@@ -434,3 +521,24 @@ def _retry_after_seconds(value: str | None, now: datetime) -> int | None:
         return min(24 * 60 * 60, max(0, int((parsed - now.astimezone(timezone.utc)).total_seconds())))
     except (TypeError, ValueError, OverflowError):
         return None
+
+
+def _iso_is_due(value: str, now: datetime) -> bool:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return parsed <= now.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return True
+
+
+def _enrollment_error_code(result: HttpResult) -> str:
+    public_error = (result.body or {}).get("error")
+    if public_error == "service_disabled":
+        return "service_disabled"
+    if public_error == "invalid_enrollment":
+        return "unsupported_contract"
+    if result.status in {400, 401, 403, 409, 429}:
+        return f"http_{result.status}"
+    if 500 <= result.status <= 599:
+        return "http_5xx"
+    return "invalid_response"
