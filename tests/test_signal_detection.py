@@ -91,7 +91,7 @@ def test_detector_failure_isolation_does_not_resolve_existing_signal(tmp_path, m
     assert store.list_notifications(tab="active")["total"] == 1
 
 
-def test_repeated_again_collection_query_is_one_bounded_query():
+def test_repeated_again_collection_query_uses_anki_day_cutoff_and_is_bounded():
     module = fresh_import_addon_module("signal_detection")
 
     class DB:
@@ -102,9 +102,12 @@ def test_repeated_again_collection_query_is_one_bounded_query():
             self.calls.append((sql, cutoff))
             return [(10, 5, 7, 1784282400000)]
 
+    day_cutoff = 2_000_000_000
     db = DB()
-    col = type("Collection", (), {"db": db})()
+    sched = type("Scheduler", (), {"day_cutoff": day_cutoff})()
+    col = type("Collection", (), {"db": db, "sched": sched})()
     result = module.collect_repeated_again_cards(col, TODAY.isoformat())
     assert result == [{"cardId": 10, "againCount": 5, "reviewCount": 7, "lastReviewAt": "2026-07-17T10:00:00Z"}]
     assert len(db.calls) == 1
+    assert db.calls[0][1] == (day_cutoff - 7 * 86400) * 1000
     assert "LIMIT 50" in db.calls[0][0]
