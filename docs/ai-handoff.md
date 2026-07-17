@@ -21,6 +21,18 @@ production code/tests
 → old plans/assumptions
 ```
 
+## Active Core baseline
+
+- active branch: `core`;
+- verified base branch: `master`;
+- verified base SHA: `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e`;
+- C1.0 status: baseline and long-lived branch policy established in the current documentation commit;
+- baseline report: `reports/core/c1-0-baseline.md`;
+- next step: `C1.1 — Product contract`;
+- no pull request, merge, release, deployment or AnkiWeb publication was created.
+
+Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
+
 ## Product state
 
 Anki Study Report — local add-on for Anki 26.05+ with Python runtime, React/TypeScript dashboard and token-protected loopback server. Frontend does not access the collection directly.

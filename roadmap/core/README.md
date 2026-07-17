@@ -6,6 +6,20 @@
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
+## Delivery model
+
+Core разрабатывается в самостоятельной долгоживущей ветке `core`.
+
+- `C1` и `C2` выполняются последовательно в одной ветке;
+- pull request, merge в `master`, release tag, GitHub Release, `.ankiaddon`, deployment и AnkiWeb publication запрещены до отдельного явного одобрения владельца после стабильного Core build;
+- синхронизация с `master` выполняется только осознанно, с зафиксированной причиной и проверкой перенесённых изменений;
+- автоматический merge/rebase несвязанных изменений не выполняется;
+- force-push запрещён без отдельного разрешения владельца;
+- промежуточные commit messages описывают фактическое изменение, а не только номер этапа.
+
+Baseline ветки и ограничения текущего сеанса зафиксированы в
+[`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md).
+
 ## Последовательность
 
 ```text
