@@ -123,127 +123,124 @@ def assert_safe_text(text: str, relative_path: str) -> None:
         raise ValueError(f"Private absolute path remains in {relative_path}")
 
 
-def read_json_file(path: Path) -> dict:
+def read_readiness(source: Path) -> tuple[dict | None, list[str]]:
+    path = source / "runtime" / "dashboard-ready.json"
     if not path.is_file():
-        return {}
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
-    return value if isinstance(value, dict) else {}
-
-
-def write_json_file(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-
-def command_version(command: list[str]) -> str:
-    try:
-        completed = subprocess.run(command, capture_output=True, text=True, check=False, timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return "unavailable"
-    output = (completed.stdout or completed.stderr or "").strip()
-    return output if completed.returncode == 0 and output else "unavailable"
-
-
-def _optional_positive(value: str | int | None) -> int | None:
-    if value in (None, ""):
-        return None
-    parsed = int(value)
-    if parsed < 1:
-        raise ValueError("Expected a positive integer")
-    return parsed
-
-
-def _optional_hash(value: str | None, pattern: re.Pattern[str], name: str) -> str | None:
-    if not value:
-        return None
-    normalized = value.strip().lower()
-    if not pattern.fullmatch(normalized):
-        raise ValueError(f"Invalid {name}")
-    return normalized
-
-
-def _phase_observations(payload: dict) -> dict:
-    observations = {
-        key: {"status": "absent", "durationMs": None, "notes": None}
-        for key in PRODUCT_PHASES
-    }
-    phases = payload.get("phases") if isinstance(payload, dict) else []
-    if not isinstance(phases, list):
-        return observations
-    by_name = {
-        item.get("name"): item
-        for item in phases
-        if isinstance(item, dict) and isinstance(item.get("name"), str)
-    }
-    for key, phase_name in PRODUCT_PHASES.items():
-        item = by_name.get(phase_name)
-        if item:
-            observations[key] = {
-                "status": str(item.get("status") or "unknown"),
-                "durationMs": item.get("durationMs") if isinstance(item.get("durationMs"), (int, float)) else None,
-                "notes": item.get("notes") if isinstance(item.get("notes"), str) else None,
-            }
-    return observations
-
-
-def read_readiness(source: Path) -> tuple[dict, list[str]]:
-    readiness_path = source / "runtime" / "dashboard-ready.json"
-    if not readiness_path.is_file():
-        return {}, []
-    try:
-        readiness = json.loads(readiness_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}, []
-    tokens: list[str] = []
-    if isinstance(readiness, dict):
-        token = readiness.get("token")
-        if isinstance(token, str) and token:
-            tokens.append(token)
-    return readiness if isinstance(readiness, dict) else {}, tokens
+        return None, []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    tokens = [str(payload.get("token") or "")]
+    payload.pop("token", None)
+    for key, value in list(payload.items()):
+        if isinstance(value, str):
+            payload[key] = TOKEN_QUERY.sub("", value)
+    payload["redacted"] = True
+    return payload, tokens
 
 
 def copy_safe_artifacts(source: Path, destination: Path, private_roots: Iterable[str]) -> tuple[str, list[str]]:
+    manifest_status = "missing"
+    manifest: dict | None = None
     manifest_path = source / "artifact-manifest.json"
-    if not manifest_path.is_file():
-        return "missing", []
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    relative_paths = validate_manifest(source, manifest)
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        validate_manifest(source, manifest)
+        manifest_status = str(manifest.get("status") or "unknown")
+
     readiness, known_tokens = read_readiness(source)
     copied: list[str] = []
-    for relative in relative_paths:
-        source_path = source / relative
-        output_relative = relative
-        if relative == "runtime/dashboard-ready.json":
-            output_relative = "runtime/dashboard-ready.redacted.json"
-            safe = {
-                key: redact_json(value, known_tokens=known_tokens, private_roots=private_roots)
-                for key, value in readiness.items()
-                if key not in {"token", "baseUrl", "url"}
-            }
-            safe["redacted"] = True
-            target = destination / output_relative
+    if source.is_dir():
+        for path in sorted(source.rglob("*")):
+            if not path.is_file():
+                continue
+            relative = path.relative_to(source).as_posix()
+            top = relative.split("/", 1)[0]
+            if top not in ALLOWED_TOP_LEVEL or relative == "runtime/dashboard-ready.json":
+                continue
+            target = destination / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(json.dumps(safe, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        elif source_path.suffix.lower() in TEXT_SUFFIXES:
-            text = source_path.read_text(encoding="utf-8", errors="replace")
-            text = redact_text(text, known_tokens=known_tokens, private_roots=private_roots)
-            assert_safe_text(text, output_relative)
-            target = destination / output_relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text, encoding="utf-8")
-        else:
-            target = destination / output_relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source_path, target)
-        copied.append(f"artifacts/{output_relative}")
+            if path.suffix.lower() in TEXT_SUFFIXES or path.name == "artifact-manifest.json":
+                text = path.read_text(encoding="utf-8")
+                if path.suffix.lower() == ".json" or relative == "artifact-manifest.json":
+                    data = json.loads(text)
+                    if relative == "artifact-manifest.json":
+                        runtime = data.get("runtime") or {}
+                        if runtime.get("dashboardReady"):
+                            runtime["dashboardReady"] = "runtime/dashboard-ready.redacted.json"
+                    data = redact_json(data, known_tokens=known_tokens, private_roots=private_roots)
+                    text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+                else:
+                    text = redact_text(text, known_tokens=known_tokens, private_roots=private_roots)
+                assert_safe_text(text, relative)
+                target.write_text(text, encoding="utf-8")
+            else:
+                shutil.copyfile(path, target)
+            copied.append(f"artifacts/{relative}")
 
-    exported_manifest = redact_json(manifest, known_tokens=known_tokens, private_roots=private_roots)
-    runtime = exported_manifest.setdefault("runtime", {})
-    if runtime.get("dashboardReady") == "runtime/dashboard-ready.json":
-        runtime["dashboardReady"] = "runtime/dashboard-ready.redacted.json"
-    write_json_file(destination / "artifact-manifest.json", exported_manifest)
-    copied.append("artifacts/artifact-manifest.json")
-    return str(manifest.get("status") or "unknown"), copied
+    if readiness is not None:
+        relative = "runtime/dashboard-ready.redacted.json"
+        text = json.dumps(readiness, ensure_ascii=False, indent=2) + "\n"
+        assert_safe_text(text, relative)
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        copied.append(f"artifacts/{relative}")
+    return manifest_status, copied
+
+
+def command_version(arguments: list[str]) -> str:
+    try:
+        result = subprocess.run(arguments, check=True, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        return "unavailable"
+    return (result.stdout or result.stderr).strip().splitlines()[0]
+
+
+def read_json_file(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def write_json_file(path: Path, value: dict) -> None:
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _phase_observations(phase_payload: dict) -> dict[str, dict]:
+    rows = phase_payload.get("phases") if isinstance(phase_payload, dict) else []
+    rows = rows if isinstance(rows, list) else []
+    by_name = {
+        item.get("name"): item
+        for item in rows
+        if isinstance(item, dict) and isinstance(item.get("name"), str)
+    }
+    result: dict[str, dict] = {}
+    for key, name in PRODUCT_PHASES.items():
+        row = by_name.get(name)
+        if row is None:
+            result[key] = {"status": "absent", "durationMs": None, "notes": None}
+        else:
+            duration = row.get("durationMs")
+            result[key] = {
+                "status": row.get("status") or "unknown",
+                "durationMs": duration if isinstance(duration, (int, float)) else None,
+                "notes": row.get("notes") or None,
+            }
+    return result
+
+
+def _optional_positive(value: str) -> int | None:
+    if not value:
+        return None
+    parsed = int(value)
+    if parsed <= 0:
+        raise ValueError("source-fast-ci-run-id must be a positive integer")
+    return parsed
+
+
+def _optional_hash(value: str, pattern: re.Pattern[str], label: str) -> str | None:
+    if not value:
+        return None
+    if not pattern.fullmatch(value):
+        raise ValueError(f"{label} has an invalid format")
+    return value
