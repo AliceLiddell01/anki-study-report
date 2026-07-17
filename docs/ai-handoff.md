@@ -65,8 +65,9 @@ Confirmed roadmap status:
 - blocker: cross-horizon retention-cycling evidence gap;
 - Learn XP: not started;
 - Create XP: not started;
-- global conversion and production ledger/API/migrations/UI: not designed;
-- branch contains zero-length implementation/test files and requires `G0` reconciliation.
+- global conversion and production ledger/API/migrations/UI: not designed.
+
+Direct spot-checks confirmed populated simulator implementation and tests, including a scenario test asserting 26 scenarios and 53 assertions. The branch checks were not executed in this roadmap task; `G0` must reconcile the diverged branch with current `master` and reproduce the documented evidence before further authoritative research work.
 
 Research candidates are not production economy. Gamification does not block core.
 
