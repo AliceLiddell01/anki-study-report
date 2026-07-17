@@ -1,5 +1,15 @@
 # Матрица проверок
 
+## Stage 6B GHCR cloud cutover
+
+Focused layer: workflow/release/consumer-lock/package-handoff/artifact-observability
+pytest, YAML/JSON/PowerShell/Bash/static scans and explicit no-match checks for
+cloud BuildKit/GHA tokens. Required cloud order is exact-SHA Fast CI → one
+`standard/settings` GHCR run → one `standard/full` GHCR run → isolated
+release-artifact rehearsal. Manual E2E requires the Fast CI run ID; release uses
+the exact release artifact. Local Docker source-build remains a fallback and is
+not evidence of cloud PASS.
+
 ## Stage 9.3–9.5 signals/notifications
 
 Focused layer: notification store/detectors/integration/dashboard server
@@ -32,8 +42,8 @@ profile lifecycle требуется один финальный `standard/full`
 | E2E artifact paths/screenshots | `node scripts/run_python.mjs -m pytest tests/test_docker_smoke_helpers.py` | `.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture` | Да | Проверяет readers/writers, manifest и synthetic/APKG screenshot hierarchy |
 | Release artifact | `.\build_ankiaddon.ps1` | Fresh install in local Anki + optional Docker E2E | Да для runtime changes | Archive может быть валиден, но installed/runtime behavior важен |
 | `.github/workflows/ci-fast.yml`, `run_full_check.ps1` или Fast CI timing scripts | `pytest tests/test_ci_fast_timing.py tests/test_ci_fast_workflow.py tests/test_full_check_timing.py tests/test_ci_package_metadata.py` + `git diff --check` | `.\scripts\run_full_check.ps1 -SkipDocker`; затем ровно один manual Fast CI dispatch на exact branch для runtime baseline | Нет | Проверяет schema/failure behavior, отдельные canonical phases, неизменные runner/cache/checkout/package contracts и diagnostics timing inventory; Jobs API анализ выполняется после run |
-| `.github/workflows/ci-e2e.yml`, Docker wrapper, Fast-package handoff или public artifact exporter | handoff/workflow/exporter pytest + `git diff --check` | один exact-SHA Fast CI и один targeted `standard/settings` с `fast_ci_run_id`; strict APKG/Perf100 только при их собственном scope | Да для runtime handoff | Проверяет source modes, same-repo run/artifact identity, exact checkout, inner/transport hashes, prebuilt install, redaction и отсутствие token в container/public artifact |
-| E2E scopes/parallel queue/telemetry/BuildKit layers | `pytest tests/test_e2e_performance.py tests/test_docker_smoke_helpers.py tests/test_ci_e2e_artifacts.py` + syntax/YAML checks | exact-SHA `stats` workers 3/4, затем first+warm `full standard` | Да для cloud benchmark | Проверяет deterministic tasks, bounded cleanup, p50/p90/p95, resource aggregation, cache structure и artifact v2 |
+| `.github/workflows/ci-e2e.yml`, Docker wrapper, Fast-package handoff или public artifact exporter | handoff/workflow/exporter pytest + `git diff --check` + GHCR-only no-match scan | exact-SHA Fast CI, targeted `standard/settings`, затем risk-required `standard/full`; release-path change также требует isolated release-artifact rehearsal | Да для runtime handoff | Проверяет GHCR exact digest, отсутствие cloud BuildKit/GHA fallback, same-repo run/artifact identity, exact checkout, inner/transport hashes, prebuilt install, redaction и отсутствие token в container/public artifact |
+| E2E scopes/parallel queue/telemetry/historical BuildKit evidence | `pytest tests/test_e2e_performance.py tests/test_docker_smoke_helpers.py tests/test_ci_e2e_artifacts.py` + syntax/YAML checks | только explicit performance work: exact-SHA `stats` workers 3/4 и обоснованные repeats | Да только для отдельного cloud benchmark | Проверяет deterministic tasks, bounded cleanup, p50/p90/p95, resource aggregation, historical schema parsing и artifact v2; обычный product gate не пишет BuildKit cache |
 | `config.json` / Settings Hub API | `node scripts/run_python.mjs -m pytest tests/test_config_service.py tests/test_dashboard_server.py` | Frontend settings tests + package check | Нет обычно | Defaults, allowlist, partial update и token contract должны совпадать |
 | Profile payload/persistence/UI | `pytest tests/test_profile_service.py tests/test_dashboard_server.py` + `pnpm run test:frontend` | `pnpm run build:addon` + `run_full_check.ps1 -CleanDocker` | Да для final Stage 3 | Проверяет all-collection scope, per-profile atomic storage, dialog/save/reload и light/dark surface |
 | Activity/calendar/feed | `pytest tests/test_activity_feed.py` + `pnpm run test:frontend` | `run_full_check.ps1 -CleanDocker` | Да для final Stage 4 | Scope, date bounds, availability, keyboard, derived events/weeks и real screenshots |
