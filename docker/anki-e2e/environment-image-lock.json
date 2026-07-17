@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "environmentVersion": "env-v1",
+  "imageName": "ghcr.io/aliceliddell01/anki-study-report-e2e",
+  "imageDigest": "sha256:bce7889f4db861c1b539b0747b4bbf0fcc68c38d520090a0836b1fe9a7a2b475",
+  "platform": "linux/amd64",
+  "humanTag": "env-v1-anki26.05-pw1.55.1",
+  "environmentContractSha256": "sha256:8d3c11ccdd9c474c751ea7fe4e845f67f21a388484cc4291c3ea2ee06cba5447",
+  "publishedFromCommitSha": "298be46ffe84bffa612dd6322dc0421b1ff0955e",
+  "publicationRunId": 29561205765,
+  "idempotentVerificationRunId": 29573061110
+}
