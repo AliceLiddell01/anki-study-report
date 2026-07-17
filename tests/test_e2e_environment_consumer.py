@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -38,13 +39,17 @@ def load_consumer_validator():
     return module
 
 
+def canonical_json(validator, value: dict[str, object]) -> str:
+    return validator.load_json_object.__globals__["canonical_json"](value)
+
+
 def test_consumer_lock_is_canonical_exact_and_linked_to_environment_spec() -> None:
     validator = load_consumer_validator()
     raw = LOCK.read_text(encoding="utf-8")
     lock = json.loads(raw)
     spec = validator.read_spec(SPEC)
 
-    assert raw == validator.load_json_object.__globals__["canonical_json"](lock)
+    assert raw == canonical_json(validator, lock)
     assert validator.read_consumer_lock(LOCK, spec) == lock
     assert validator.exact_reference(lock) == EXPECTED_REFERENCE
     assert lock == {
@@ -82,10 +87,7 @@ def test_consumer_lock_rejects_identity_drift(tmp_path: Path, field: str, value:
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     lock[field] = value
     path = tmp_path / "lock.json"
-    path.write_text(
-        validator.load_json_object.__globals__["canonical_json"](lock),
-        encoding="utf-8",
-    )
+    path.write_text(canonical_json(validator, lock), encoding="utf-8")
 
     with pytest.raises(validator.EnvironmentImageError):
         validator.read_consumer_lock(path, validator.read_spec(SPEC))
@@ -96,19 +98,13 @@ def test_consumer_lock_rejects_unknown_sensitive_or_path_fields(tmp_path: Path) 
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     lock["token"] = "ghp_example"
     path = tmp_path / "lock.json"
-    path.write_text(
-        validator.load_json_object.__globals__["canonical_json"](lock),
-        encoding="utf-8",
-    )
+    path.write_text(canonical_json(validator, lock), encoding="utf-8")
     with pytest.raises(validator.EnvironmentImageError):
         validator.read_consumer_lock(path, validator.read_spec(SPEC))
 
     lock.pop("token")
     lock["localPath"] = "C:/Users/example"
-    path.write_text(
-        validator.load_json_object.__globals__["canonical_json"](lock),
-        encoding="utf-8",
-    )
+    path.write_text(canonical_json(validator, lock), encoding="utf-8")
     with pytest.raises(validator.EnvironmentImageError):
         validator.read_consumer_lock(path, validator.read_spec(SPEC))
 
@@ -224,7 +220,8 @@ def test_environment_provenance_is_separate_from_build_duration() -> None:
     ):
         assert field in evidence
     assert "environment-image-provenance.json" in evidence
-    assert "ANKI_E2E_BUILD_DURATION_MS=$duration" not in text[text.index("- name: Pull and verify exact GHCR") : text.index("- name: Validate resolved Compose contract")]
+    pull = text[text.index("- name: Pull and verify exact GHCR") : text.index("- name: Validate resolved Compose contract")]
+    assert "ANKI_E2E_BUILD_DURATION_MS=$duration" not in pull
 
 
 def test_bootstrap_stages_only_current_regular_harness_files() -> None:
@@ -247,7 +244,10 @@ def test_bootstrap_stages_only_current_regular_harness_files() -> None:
     for forbidden in ("curl ", "wget ", "git clone", "pnpm install", "npm install", ".ankiaddon"):
         assert forbidden not in text
 
-    result = subprocess.run(["bash", "-n", str(BOOTSTRAP)], capture_output=True, text=True)
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash is not available on the Windows Fast CI runner")
+    result = subprocess.run([bash, "-n", str(BOOTSTRAP)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
 
