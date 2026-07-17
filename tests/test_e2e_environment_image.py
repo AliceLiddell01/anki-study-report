@@ -371,21 +371,36 @@ def test_metadata_writes_are_atomic_and_leave_no_temporary_files(tmp_path: Path)
     validator.read_published_metadata(output, spec)
 
 
-def test_existing_e2e_consumer_and_cache_contract_remain_current() -> None:
+def test_cloud_e2e_uses_immutable_ghcr_while_local_build_fallback_remains_current() -> None:
     workflow = CURRENT_E2E_WORKFLOW.read_text(encoding="utf-8")
     dockerfile = CURRENT_DOCKERFILE.read_text(encoding="utf-8")
     compose = CURRENT_COMPOSE.read_text(encoding="utf-8")
 
     assert "name: Full Docker / Anki E2E" in workflow
-    assert "file: docker/anki-e2e/Dockerfile" in workflow
-    assert "cache-from: type=gha" in workflow
-    assert "cache-to: type=gha" in workflow
-    assert "default: buildkit" in workflow
-    assert "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in workflow
     assert "registry: ghcr.io" in workflow
+    assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in workflow
+    assert "docker/anki-e2e/docker-compose.ghcr.yml" in workflow
+    assert '"ANKI_E2E_IMAGE_SOURCE=ghcr"' in workflow
+    assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in workflow
+    assert '"ANKI_E2E_CACHE_STATE=ghcr-digest"' in workflow
+
+    for forbidden in (
+        "environment_image_source",
+        "file: docker/anki-e2e/Dockerfile",
+        "cache-from: type=gha",
+        "cache-to: type=gha",
+        "default: buildkit",
+        "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'",
+        "docker/setup-buildx-action@",
+        "docker/build-push-action@",
+    ):
+        assert forbidden not in workflow
+
     assert dockerfile.startswith("FROM mcr.microsoft.com/playwright:v1.55.1-noble\n")
     assert 'ENTRYPOINT ["/e2e/bin/entrypoint.sh"]' in dockerfile
     assert "image: ${ANKI_E2E_IMAGE:-anki-study-report-e2e:local}" in compose
+    assert "build:" in compose
+    assert "dockerfile: docker/anki-e2e/Dockerfile" in compose
     assert "- ../..:/workspace:ro" in compose
     assert "- ./local-input:/e2e/local-input:ro" in compose
     assert "- ../../e2e-artifacts:/e2e/artifacts" in compose
