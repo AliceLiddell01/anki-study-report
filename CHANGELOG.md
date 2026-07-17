@@ -4,9 +4,25 @@ All notable user-facing changes to Anki Study Report are documented here.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-18
+
+### Added
+
+- Added per-profile product notices, an accessible What's New dialog, and bundled bilingual release history.
+- Added Privacy settings with separate opt-in controls for reliability diagnostics and feature-usage statistics.
+- Added local study signals, a Notification Center, notification bell, filters, and per-profile in-app notification preferences.
+
+### Changed
+
+- Consent, release-history, signal, and notification state is now stored separately for each Anki profile.
+
 ### Fixed
 
-- Improved light and dark consent and release-history dialogs, localized dates, and disabled unavailable data actions.
+- Improved consent and release-history themes and localization, active-profile background task binding, and handling of temporary connection failures.
+
+### Safety
+
+- Optional diagnostic data sharing is disabled by default, while study signals and notification preferences remain local.
 
 ## [1.1.0] - 2026-07-15
 
