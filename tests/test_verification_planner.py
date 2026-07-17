@@ -25,6 +25,22 @@ def test_fsrs_statistics_change_targets_stats_and_keeps_final_full():
     assert plan["warmCacheRepeat"] is False
 
 
+def test_notification_feature_targets_notifications_and_keeps_cross_surface_full_gate():
+    plan = planner.plan_for_paths([
+        "anki_study_report/notification_store.py",
+        "anki_study_report/signal_detection.py",
+        "web-dashboard/src/components/NotificationBell.tsx",
+        "web-dashboard/src/pages/NotificationCenterPage.tsx",
+        "web-dashboard/src/pages/DecksPage.tsx",
+        "web-dashboard/src/app/router.tsx",
+    ])
+    assert plan["targetedScope"] == "notifications"
+    assert plan["e2eRequired"] is True
+    assert plan["fullRequired"] is True
+    assert any("notifications product surface" in reason for reason in plan["reasons"])
+    assert "Multiple product scopes changed." in plan["reasons"]
+
+
 def test_shared_server_and_payload_cannot_be_silently_downgraded():
     plan = planner.plan_for_paths(["anki_study_report/dashboard_server.py"])
     assert plan["e2eRequired"] is True
