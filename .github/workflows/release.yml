@@ -159,6 +159,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      packages: read
     with:
       mode: standard
       scope: full
