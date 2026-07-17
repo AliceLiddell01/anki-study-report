@@ -28,25 +28,29 @@ def test_workflow_identity_triggers_inputs_and_job_name_are_preserved() -> None:
     assert "workflow_run:" not in trigger
     assert "pull_request_target:" not in trigger
     assert trigger.count("fast_ci_run_id:") == 2
+    assert trigger.count("environment_image_source:") == 2
     assert "description: Successful Fast CI run ID; empty keeps source-build mode" in trigger
+    assert "description: E2E environment image source" in trigger
     assert "release_artifact_name:" in trigger
     assert "release_artifact_sha256:" in trigger
-    assert "name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }})" in text
+    assert "name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }} / ${{ inputs.environment_image_source || 'buildkit' }})" in text
 
 
-def test_permissions_are_read_only_and_include_cross_run_actions_read() -> None:
+def test_permissions_are_read_only_and_include_cross_run_and_package_read() -> None:
     text = workflow_text()
     permissions = text[text.index("permissions:") : text.index("concurrency:")]
 
-    assert permissions == "permissions:\n  contents: read\n  actions: read\n\n"
+    assert permissions == "permissions:\n  contents: read\n  actions: read\n  packages: read\n\n"
     assert "contents: write" not in text
+    assert "packages: write" not in text
     assert "id-token: write" not in text
+    assert "attestations: write" not in text
     assert "secrets." not in text
     assert "github_pat" not in text.lower()
     assert "ghp_" not in text.lower()
 
 
-def test_package_source_inputs_fail_closed_before_docker_work() -> None:
+def test_package_and_image_source_inputs_fail_closed_before_docker_work() -> None:
     text = workflow_text()
     validation = step(text, "Capture workflow source and validate package source inputs", "Resolve exact successful Fast CI run and artifact IDs")
 
@@ -55,8 +59,12 @@ def test_package_source_inputs_fail_closed_before_docker_work() -> None:
     assert "--release-artifact-sha256" in validation
     assert "--fast-ci-run-id" in validation
     assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" in validation
+    assert "Unsupported environment image source" in validation
+    assert "GHCR environment image source requires a prebuilt" in validation
+    assert "Manual GHCR validation requires fast_ci_run_id" in validation
     assert text.index("Capture workflow source and validate package source inputs") < text.index("Enable containerd image store")
     assert text.index("Capture workflow source and validate package source inputs") < text.index("Build and load cached E2E image")
+    assert text.index("Capture workflow source and validate package source inputs") < text.index("Log in to GHCR")
 
 
 def test_fast_run_is_resolved_by_api_and_artifacts_are_downloaded_by_id() -> None:
@@ -145,10 +153,11 @@ def test_prebuilt_wording_and_phase_semantics_are_generic() -> None:
     assert "exact release add-on validation and extraction" not in shell
 
 
-def test_runner_forwards_only_safe_package_identity_not_github_token() -> None:
+def test_runner_forwards_only_safe_package_and_image_identity_not_github_token() -> None:
     runner = RUNNER.read_text(encoding="utf-8")
 
     for name in (
+        "ANKI_E2E_IMAGE_SOURCE",
         "ANKI_E2E_PREBUILT_ADDON_PATH",
         "ANKI_E2E_PACKAGE_SOURCE",
         "ANKI_E2E_FAST_CI_RUN_ID",
@@ -170,24 +179,38 @@ def test_buildkit_cache_and_artifact_export_contract_remain_structurally_unchang
         "driver: docker",
         "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0",
         "load: true",
+        "tags: anki-study-report-e2e:ci",
         "cache-from: type=gha,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1",
         "cache-to: type=gha,mode=max,compression=zstd,compression-level=3,force-compression=true,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1",
         "compression-level: 0",
     ):
         assert required in text
-    assert "Dockerfile" in text
-    assert "ghcr.io" not in text.lower()
+    assert "file: docker/anki-e2e/Dockerfile" in text
+    for step_name in (
+        "Enable containerd image store",
+        "Set up Docker Buildx",
+        "Start Docker build timing",
+        "Build and load cached E2E image",
+        "Capture Docker build telemetry",
+    ):
+        block = step(text, step_name)
+        assert "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in block.split("      - name:", 1)[0] or "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in block[:300]
 
 
-def test_safe_handoff_evidence_is_exported_without_raw_api_payloads() -> None:
+def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payloads() -> None:
     text = workflow_text()
-    publish = step(text, "Publish sanitized Fast CI handoff evidence", "Capture final Docker state")
+    publish = step(text, "Publish sanitized Fast CI handoff evidence", "Publish sanitized environment image evidence")
+    environment = step(text, "Publish sanitized environment image evidence", "Capture final Docker state")
     export = step(text, "Prepare redacted public E2E artifact", "Start artifact upload timing")
 
     assert "fast-ci-handoff.json" in publish
     assert "e2e-artifacts/reports/fast-ci-handoff.json" in publish
     assert "fast-ci-run.json" not in publish
     assert "fast-ci-artifacts.json" not in publish
+    assert "environment-image-provenance.json" in environment
+    assert "imagePreparationDurationMs" in environment
+    assert "sourcePackageSha256" in environment
+    assert "token" not in environment.lower()
     assert "--package-source" in export
     assert "--source-fast-ci-run-id" in export
     assert "--source-fast-ci-tested-sha" in export
