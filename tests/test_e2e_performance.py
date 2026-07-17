@@ -142,11 +142,16 @@ def test_local_docker_layering_remains_structural_and_cloud_has_no_build_cache()
         "compression=zstd",
         "containerd-snapshotter",
         "driver: docker",
-        "compression-level: 0",
         "docker/setup-buildx-action@",
         "docker/build-push-action@",
     ):
         assert forbidden not in workflow
+
+    upload_start = workflow.index("      - name: Upload redacted E2E diagnostics\n")
+    upload_end = workflow.index("      - name: Report artifact upload telemetry\n", upload_start)
+    artifact_upload = workflow[upload_start:upload_end]
+    assert "actions/upload-artifact@" in artifact_upload
+    assert "compression-level: 0" in artifact_upload
 
     assert "registry: ghcr.io" in workflow
     assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in workflow
