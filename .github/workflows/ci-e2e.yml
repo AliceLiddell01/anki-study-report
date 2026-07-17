@@ -130,7 +130,7 @@ jobs:
           "CI_E2E_ARTIFACT_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_BUILD_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_SIZE_BYTES=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_CACHE_STATE=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_CACHE_STATE=unavailable" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_SOURCE=ghcr" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_REFERENCE=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_DIGEST=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -363,6 +363,24 @@ jobs:
             --github-output $env:GITHUB_OUTPUT
           if ($LASTEXITCODE -ne 0) { throw 'Environment consumer lock validation failed.' }
 
+      - name: Expose exact GHCR environment identity
+        shell: pwsh
+        env:
+          EXACT_REFERENCE: ${{ steps.environment_lock.outputs.image_reference }}
+          EXPECTED_DIGEST: ${{ steps.environment_lock.outputs.image_digest }}
+          EXPECTED_PLATFORM: ${{ steps.environment_lock.outputs.image_platform }}
+          EXPECTED_CONTRACT: ${{ steps.environment_lock.outputs.environment_contract_sha256 }}
+          PUBLICATION_RUN_ID: ${{ steps.environment_lock.outputs.environment_publication_run_id }}
+          REUSE_RUN_ID: ${{ steps.environment_lock.outputs.environment_reuse_verification_run_id }}
+        run: |
+          "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_PLATFORM=$env:EXPECTED_PLATFORM" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID=$env:PUBLICATION_RUN_ID" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=$env:REUSE_RUN_ID" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -401,15 +419,9 @@ jobs:
           if ($revision -and $revision -ne $env:EXPECTED_REVISION) { throw "Environment image revision label mismatch: $revision" }
           $size = docker image inspect $env:EXACT_REFERENCE --format '{{.Size}}'
           $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
-          "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_PLATFORM=$platform" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_PREPARATION_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_SIZE_BYTES=$size" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$contract" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID=$env:PUBLICATION_RUN_ID" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=$env:REUSE_RUN_ID" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_CACHE_STATE=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Validate resolved GHCR Compose contract
