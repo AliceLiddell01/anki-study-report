@@ -1,5 +1,10 @@
 # Правила для Codex/AI-агента
 
+## Documentation structure
+
+Current contracts remain in `docs/`; stage sequencing is in `../roadmap/`;
+historical reports/audits are indexed in `../reports/README.md`.
+
 For runtime work: Fast CI exact SHA before E2E, one targeted scope, one final
 full; no blind, warm-cache or successful same-SHA reruns. See
 `verification-run-policy.md`.
@@ -34,8 +39,8 @@ git ls-files --others --exclude-standard
 - Docker E2E: `docker/anki-e2e/README.md`, E2E scripts/artifacts.
 - Frontend routes: `web-dashboard/src/app/router.tsx`.
 - Config: `config.json`, `manifest.json`, `config_service.py`.
-- Legacy cleanup: `docs/legacy-cleanup-inventory.md`.
-- Card payload aliases: `docs/card-alias-audit.md`.
+- Legacy cleanup: `reports/audits/legacy-cleanup-inventory.md`.
+- Card payload aliases: `reports/audits/card-alias-audit.md`.
 - Fast CI: `.github/workflows/ci-fast.yml`, `scripts/run_full_check.ps1`,
   `docs/ci-cd.md`.
 - Global theme/visual polish: `docs/ui-polish-global-controls.md`,
@@ -57,9 +62,9 @@ git ls-files --others --exclude-standard
 - Не ослаблять sanitizer без точечного теста и причины.
 - Не менять production payload ради устаревшего теста.
 - Не удалять compatibility/fallback/adapter слой без проверки по
-  `docs/legacy-cleanup-inventory.md`.
+  `reports/audits/legacy-cleanup-inventory.md`.
 - Не удалять card payload aliases без проверки по
-  `docs/card-alias-audit.md`.
+  `reports/audits/card-alias-audit.md`.
 - Не открывать dashboard server наружу.
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.

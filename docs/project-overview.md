@@ -1,6 +1,6 @@
 # Обзор проекта
 
-Снимок документации: 2026-07-05.
+Снимок документации: 2026-07-17.
 
 `Anki Study Report` - локальный add-on для Anki, который помогает понять
 качество обучения не только по общим числам, но и по причинам: где провалы,
@@ -21,6 +21,11 @@
   low pass rate, missing audio/image/meaning/example/part of speech.
 - Умеет отдавать безопасные media-preview через `/api/media`.
 - Имеет Docker E2E среду, где add-on запускается внутри реального Anki Desktop.
+- Поддерживает native Cards/Notes Search и allowlisted undoable actions.
+- Хранит локальные per-profile Signals и Notification Center в отдельной SQLite;
+  signal/evidence/entity data не отправляются в remote telemetry.
+- Имеет opt-in technical telemetry через Python client и отдельный Cloudflare
+  Worker + EU D1 service с bounded schema, quotas, retention и deletion.
 
 ## Текущие runtime-границы
 
@@ -29,6 +34,7 @@
 1. Python add-on (`anki_study_report/`)
 2. React dashboard (`web-dashboard/`)
 3. Проверки/сборка/E2E (`tests/`, `scripts/`, `docker/anki-e2e/`)
+4. Отдельный private telemetry service repository (`anki-study-report-telemetry`)
 
 Python add-on является источником данных и серверной логики. Frontend не
 подключается напрямую к Anki: он получает уже опубликованный JSON payload и
@@ -50,6 +56,9 @@ anki_study_report/note_intelligence.py     preview/sanitizer/card intelligence
 anki_study_report/browser_actions.py       безопасные поисковые запросы для Anki Browser
 anki_study_report/dashboard_actions.py     действия dashboard -> Anki
 anki_study_report/config_service.py        config defaults/read/write normalization
+anki_study_report/notification_store.py    durable per-profile signals/notifications
+anki_study_report/signal_detection.py      bounded detector registry/reconciliation
+anki_study_report/telemetry_client.py      opt-in queue/enrollment/delivery/delete
 
 web-dashboard/src/app/                     загрузка report и hash-router
 web-dashboard/src/pages/                   страницы dashboard
@@ -61,6 +70,21 @@ build_ankiaddon.ps1                        релизная сборка с пр
 scripts/run_full_check.ps1                 локальный полный прогон + Docker опционально
 scripts/run_anki_e2e_docker.ps1            запуск Docker E2E
 docker/anki-e2e/README.md                  подробности Docker E2E среды
+```
+
+## Текущее положение roadmap
+
+Продуктовый контур принят до Stage 9.5 включительно. Следующий рекомендуемый
+этап — Stage 10 Cards v2 / Problem Triage поверх Search, Safe Actions и Signals.
+Stage 10.5 harden-ит уже существующие API/migrations/CI/release gates; он не
+создаёт CI/CD заново. Подробности: `roadmap/README.md`.
+
+Документация разделена:
+
+```text
+docs/       актуальные contracts
+roadmap/    completed/future stages
+reports/    historical evidence
 ```
 
 ## Что считается source of truth
