@@ -1,7 +1,7 @@
 # Core product track
 
-**Track:** `C`  
-**Role:** единственный обязательный последовательный путь основного add-on  
+**Track:** `C`
+**Role:** единственный обязательный последовательный путь основного add-on
 **Current status:** `C1` is Next
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
