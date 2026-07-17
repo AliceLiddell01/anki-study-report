@@ -99,6 +99,8 @@ def consumer_outputs(lock: dict[str, Any]) -> dict[str, str]:
         "image_platform": str(lock["platform"]),
         "environment_version": str(lock["environmentVersion"]),
         "environment_contract_sha256": str(lock["environmentContractSha256"]),
+        "published_from_commit_sha": str(lock["publishedFromCommitSha"]),
+        "human_tag": str(lock["humanTag"]),
         "environment_publication_run_id": str(lock["publicationRunId"]),
         "environment_reuse_verification_run_id": str(lock["idempotentVerificationRunId"]),
     }
