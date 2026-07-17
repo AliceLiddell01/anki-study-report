@@ -118,6 +118,7 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Search v1 и Safe Actions](docs/search-v1-and-safe-actions.md)
 - [Матрица проверок](docs/test-matrix.md)
 - [CI и gated release delivery](docs/ci-cd.md)
+- [Stage 6B: GHCR-only cloud E2E](docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
 - [Release automation](docs/release-automation.md)
 - [Готовность репозитория к публикации](docs/public-repository-readiness.md)
 - [Диагностика типовых проблем](docs/troubleshooting.md)
@@ -189,6 +190,10 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 
 Fast CI автоматически проверяет push в `master`/`codex/**` и pull requests.
 Отдельный workflow `Full Docker / Anki E2E` запускается вручную и проверяет
-реальный Anki Desktop в Docker на GitHub-hosted Ubuntu. Доступные режимы:
-`standard`, `strict-apkg` и diagnostic `perf100`. Полный контракт и команды — в
-`docs/ci-cd.md` и `docs/docker-e2e.md`.
+реальный Anki Desktop в Docker на GitHub-hosted Ubuntu. Cloud workflow использует
+только exact digest-pinned GHCR environment: manual run требует exact successful
+Fast CI package, а release gate — exact release artifact. Cloud BuildKit и
+`type=gha` cache больше не используются; локальный Docker build fallback сохранён.
+Доступные режимы: `standard`, `strict-apkg` и diagnostic `perf100`. Полный
+контракт и команды — в `docs/ci-cd.md`, `docs/docker-e2e.md` и
+`docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md`.
