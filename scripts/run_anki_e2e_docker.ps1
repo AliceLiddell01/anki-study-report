@@ -1,18 +1,36 @@
 param(
     [switch]$BuildOnly,
     [switch]$NoBuild,
-    [string]$ArtifactsDir = ""
+    [string]$ArtifactsDir = "",
+    [ValidateSet("buildkit", "ghcr")]
+    [string]$ImageSource = "buildkit"
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$ComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
+$BaseComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
+$GhcrComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.ghcr.yml"
 $LocalInputDir = Join-Path $Root "docker\anki-e2e\local-input"
 $LocalApkgName = "asr-e2e-render-fixtures.apkg"
 $LocalApkgPath = Join-Path $LocalInputDir $LocalApkgName
 
-if (-not (Test-Path $ComposeFile)) {
-    throw "Docker compose file not found: $ComposeFile"
+if (-not $PSBoundParameters.ContainsKey("ImageSource") -and $env:ANKI_E2E_IMAGE_SOURCE) {
+    if ($env:ANKI_E2E_IMAGE_SOURCE -notin @("buildkit", "ghcr")) {
+        throw "Unsupported ANKI_E2E_IMAGE_SOURCE: $env:ANKI_E2E_IMAGE_SOURCE"
+    }
+    $ImageSource = $env:ANKI_E2E_IMAGE_SOURCE
+}
+
+if (-not (Test-Path $BaseComposeFile)) {
+    throw "Docker compose file not found: $BaseComposeFile"
+}
+
+$ComposeFiles = @($BaseComposeFile)
+if ($ImageSource -eq "ghcr") {
+    if (-not (Test-Path $GhcrComposeFile)) {
+        throw "GHCR Docker compose override not found: $GhcrComposeFile"
+    }
+    $ComposeFiles += $GhcrComposeFile
 }
 
 if (-not $ArtifactsDir) {
@@ -37,7 +55,12 @@ if ($env:ANKI_E2E_APKG_FIXTURE) {
 function Invoke-DockerCompose {
     param([string[]]$Arguments)
 
-    & docker compose -f $ComposeFile @Arguments
+    $composeArguments = @("compose")
+    foreach ($composeFile in $ComposeFiles) {
+        $composeArguments += @("-f", $composeFile)
+    }
+    $composeArguments += $Arguments
+    & docker @composeArguments
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose failed: $($Arguments -join ' ')"
     }
@@ -152,6 +175,30 @@ try {
     if ($env:ANKI_E2E_NO_BUILD -eq "1") {
         $NoBuild = $true
     }
+
+    if ($ImageSource -eq "ghcr") {
+        if (-not $NoBuild) {
+            throw "GHCR image source requires -NoBuild or ANKI_E2E_NO_BUILD=1."
+        }
+        if ($BuildOnly) {
+            throw "GHCR image source does not support -BuildOnly."
+        }
+        if (-not $env:ANKI_E2E_IMAGE -or $env:ANKI_E2E_IMAGE -notmatch '^ghcr\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$') {
+            throw "GHCR image source requires an exact digest reference in ANKI_E2E_IMAGE."
+        }
+        if ($env:ANKI_E2E_IMAGE -match ':latest') {
+            throw "GHCR image source does not allow mutable latest references."
+        }
+        if ($env:ANKI_E2E_PACKAGE_SOURCE -notin @("fast-ci-artifact", "release-artifact")) {
+            throw "GHCR image source requires a prebuilt Fast CI or release artifact package."
+        }
+        if (-not $env:ANKI_E2E_PREBUILT_ADDON_PATH) {
+            throw "GHCR image source requires ANKI_E2E_PREBUILT_ADDON_PATH."
+        }
+    }
+
+    Invoke-DockerCompose @("config", "--quiet")
+
     if (-not $NoBuild) {
         Invoke-DockerCompose @("build")
     }
@@ -163,13 +210,14 @@ try {
     $volume = "$($ArtifactsDir):/e2e/artifacts"
     $runArgs = @("run", "--rm", "-v", $volume)
     foreach ($name in @(
+        "ANKI_E2E_IMAGE_SOURCE",
         "ANKI_E2E_PREBUILT_ADDON_PATH",
         "ANKI_E2E_PACKAGE_SOURCE",
         "ANKI_E2E_FAST_CI_RUN_ID",
         "ANKI_E2E_FAST_CI_TESTED_SHA",
         "ANKI_E2E_FAST_CI_PACKAGE_SHA256"
     )) {
-        $value = [Environment]::GetEnvironmentVariable($name)
+        $value = if ($name -eq "ANKI_E2E_IMAGE_SOURCE") { $ImageSource } else { [Environment]::GetEnvironmentVariable($name) }
         if ($value) {
             $runArgs += @("-e", "$name=$value")
         }
