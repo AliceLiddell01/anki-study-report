@@ -124,20 +124,31 @@ def test_resource_summary_accepts_cpu_above_100_and_missing_network(tmp_path: Pa
     assert summary["diskUsedDeltaBytes"] == 200
 
 
-def test_docker_cache_and_layering_contract_is_structural():
+def test_local_docker_layering_remains_structural_and_cloud_has_no_build_cache():
     dockerfile = (ROOT / "docker" / "anki-e2e" / "Dockerfile").read_text(encoding="utf-8")
     workflow = (ROOT / ".github" / "workflows" / "ci-e2e.yml").read_text(encoding="utf-8")
+
     assert dockerfile.index("COPY docker/anki-e2e/install-anki.sh") < dockerfile.index("docker/anki-e2e/*.mjs")
     assert dockerfile.index("web-dashboard/pnpm-lock.yaml") < dockerfile.index("docker/anki-e2e/*.mjs")
     assert "fetch --frozen-lockfile" in dockerfile
     assert "PNPM_STORE_DIR=/e2e/pnpm-store" in dockerfile
     assert '--store-dir "$PNPM_STORE_DIR"' in dockerfile
     assert "install --offline --frozen-lockfile" in (ROOT / "docker" / "anki-e2e" / "run-e2e.sh").read_text(encoding="utf-8")
-    assert "cache-from: type=gha" in workflow
-    assert "cache-to: type=gha" in workflow
-    assert "compression=zstd" in workflow
-    assert "containerd-snapshotter" in workflow
-    assert "driver: docker" in workflow
-    assert "compression-level: 0" in workflow
-    assert "docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0" in workflow
-    assert "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0" in workflow
+
+    for forbidden in (
+        "file: docker/anki-e2e/Dockerfile",
+        "cache-from: type=gha",
+        "cache-to: type=gha",
+        "compression=zstd",
+        "containerd-snapshotter",
+        "driver: docker",
+        "compression-level: 0",
+        "docker/setup-buildx-action@",
+        "docker/build-push-action@",
+    ):
+        assert forbidden not in workflow
+
+    assert "registry: ghcr.io" in workflow
+    assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in workflow
+    assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in workflow
+    assert '"ANKI_E2E_CACHE_STATE=ghcr-digest"' in workflow
