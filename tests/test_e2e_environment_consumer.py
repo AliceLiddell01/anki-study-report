@@ -43,6 +43,16 @@ def canonical_json(validator, value: dict[str, object]) -> str:
     return validator.load_json_object.__globals__["canonical_json"](value)
 
 
+def workflow_text() -> str:
+    return WORKFLOW.read_text(encoding="utf-8")
+
+
+def workflow_step(text: str, name: str, next_name: str | None = None) -> str:
+    start = text.index(f"      - name: {name}\n")
+    end = text.index(f"      - name: {next_name}\n", start) if next_name else len(text)
+    return text[start:end]
+
+
 def test_consumer_lock_is_canonical_exact_and_linked_to_environment_spec() -> None:
     validator = load_consumer_validator()
     raw = LOCK.read_text(encoding="utf-8")
@@ -130,14 +140,17 @@ def test_consumer_outputs_are_bounded_and_render_exact_reference() -> None:
     assert not any("token" in key.lower() or "path" in key.lower() for key in outputs)
 
 
-def test_workflow_inputs_permissions_and_concurrency_are_stage_6a_safe() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+def test_cloud_workflow_is_ghcr_only_with_read_only_permissions() -> None:
+    text = workflow_text()
+    trigger = text[: text.index("permissions:\n")]
     permissions = text[text.index("permissions:\n") : text.index("concurrency:\n")]
 
-    assert text.count("environment_image_source:") == 2
-    assert text.count("default: buildkit") >= 2
-    assert "options:\n          - buildkit\n          - ghcr" in text
-    assert "${{ inputs.environment_image_source || 'buildkit' }}" in text
+    assert "environment_image_source" not in text
+    assert "default: buildkit" not in trigger
+    assert "buildkit" not in text.lower()
+    assert "type=gha" not in text
+    assert "gha-enabled" not in text
+    assert "anki-study-report-e2e:ci" not in text
     assert permissions == (
         "permissions:\n"
         "  contents: read\n"
@@ -148,46 +161,36 @@ def test_workflow_inputs_permissions_and_concurrency_are_stage_6a_safe() -> None
         assert forbidden not in permissions
 
 
-def test_workflow_rejects_ghcr_source_build_before_registry_login() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
-    reject = text.index("GHCR environment image source requires a prebuilt")
+def test_cloud_workflow_rejects_source_build_before_registry_login() -> None:
+    text = workflow_text()
+    validation = workflow_step(
+        text,
+        "Capture workflow source and validate package source inputs",
+        "Resolve exact successful Fast CI run and artifact IDs",
+    )
     login = text.index("- name: Log in to GHCR")
 
-    assert reject < login
-    assert "Manual GHCR validation requires fast_ci_run_id" in text
-    assert "source.packageSource -eq 'source-build'" in text
+    assert "source.packageSource -eq 'source-build'" in validation
+    assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
+    assert "Manual cloud E2E requires fast_ci_run_id" in validation
+    assert text.index("Cloud E2E requires an exact prebuilt") < login
 
 
-def test_workflow_has_disjoint_buildkit_and_ghcr_preparation_contours() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None:
+    text = workflow_text()
+    login = workflow_step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
+    pull = workflow_step(
+        text,
+        "Pull and verify exact GHCR environment image",
+        "Validate resolved GHCR Compose contract",
+    )
 
-    for step in (
-        "Enable containerd image store",
-        "Set up Docker Buildx",
-        "Start Docker build timing",
-        "Build and load cached E2E image",
-        "Capture Docker build telemetry",
-    ):
-        index = text.index(f"- name: {step}")
-        fragment = text[index : index + 260]
-        assert "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in fragment
-
-    assert "cache-from: type=gha" in text
-    assert "cache-to: type=gha" in text
-    assert text.count("- name: Run canonical Docker-only E2E") == 1
-    assert "-ImageSource ghcr" not in text
-    assert "ANKI_E2E_IMAGE_SOURCE" in text
-
-
-def test_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
-    login = text[text.index("- name: Log in to GHCR") : text.index("- name: Pull and verify exact GHCR")]
-    pull = text[text.index("- name: Pull and verify exact GHCR") : text.index("- name: Validate resolved Compose contract")]
-
+    assert "if:" not in login
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "username: ${{ github.actor }}" in login
     assert "password: ${{ github.token }}" in login
     assert "secrets." not in login
+    assert "if:" not in pull.split("shell:", 1)[0]
     assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in pull
     assert "RepoDigests" in pull
     assert "org.opencontainers.image.source" in pull
@@ -198,9 +201,33 @@ def test_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None:
     assert "fallback" not in pull.lower()
 
 
+def test_cloud_workflow_always_uses_base_and_ghcr_compose_files() -> None:
+    text = workflow_text()
+    validate = workflow_step(
+        text,
+        "Validate resolved GHCR Compose contract",
+        "Run canonical Docker-only E2E",
+    )
+    final_state = workflow_step(
+        text,
+        "Capture final Docker state",
+        "Prepare redacted public E2E artifact",
+    )
+    cleanup = workflow_step(text, "Clean Docker E2E state", "Restore canonical result")
+
+    for block in (validate, final_state, cleanup):
+        assert "docker/anki-e2e/docker-compose.yml" in block
+        assert "docker/anki-e2e/docker-compose.ghcr.yml" in block
+        assert "ANKI_E2E_IMAGE_SOURCE" not in block
+
+
 def test_environment_provenance_is_separate_from_build_duration() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
-    evidence = text[text.index("- name: Publish sanitized environment image evidence") : text.index("- name: Capture final Docker state")]
+    text = workflow_text()
+    evidence = workflow_step(
+        text,
+        "Publish sanitized environment image evidence",
+        "Capture final Docker state",
+    )
 
     for field in (
         "imageSource",
@@ -220,8 +247,14 @@ def test_environment_provenance_is_separate_from_build_duration() -> None:
     ):
         assert field in evidence
     assert "environment-image-provenance.json" in evidence
-    pull = text[text.index("- name: Pull and verify exact GHCR") : text.index("- name: Validate resolved Compose contract")]
+    pull = workflow_step(
+        text,
+        "Pull and verify exact GHCR environment image",
+        "Validate resolved GHCR Compose contract",
+    )
     assert "ANKI_E2E_BUILD_DURATION_MS=$duration" not in pull
+    assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in text
+    assert '"ANKI_E2E_CACHE_STATE=ghcr-digest"' in text
 
 
 def test_bootstrap_stages_only_current_regular_harness_files() -> None:
@@ -267,7 +300,7 @@ def test_ghcr_compose_override_preserves_base_security_boundary() -> None:
         assert forbidden not in override
 
 
-def test_wrapper_keeps_buildkit_default_and_fails_closed_for_ghcr() -> None:
+def test_local_wrapper_keeps_build_fallback_and_fails_closed_for_ghcr() -> None:
     text = WRAPPER.read_text(encoding="utf-8")
 
     assert '[ValidateSet("buildkit", "ghcr")]' in text
@@ -284,7 +317,7 @@ def test_wrapper_keeps_buildkit_default_and_fails_closed_for_ghcr() -> None:
     assert "docker pull" not in text
 
 
-def test_release_consumer_remains_implicit_buildkit_with_package_read() -> None:
+def test_release_consumer_uses_ghcr_only_reusable_workflow_with_package_read() -> None:
     text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
     call = text[text.index("  real-anki-gate:") : text.index("  github-draft:")]
 
@@ -298,3 +331,6 @@ def test_release_consumer_remains_implicit_buildkit_with_package_read() -> None:
     ) in call
     assert "packages: write" not in call
     assert "scope: full" in call
+    assert "release_artifact_name: ${{ needs.build.outputs.bundle_name }}" in call
+    assert "release_artifact_sha256: ${{ needs.build.outputs.artifact_sha256 }}" in call
+    assert "fast_ci_run_id:" not in call
