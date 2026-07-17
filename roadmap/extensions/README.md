@@ -1,7 +1,7 @@
 # Extension ecosystem track
 
-**Track:** `E`  
-**Role:** parallel/deferred first-party extension work  
+**Track:** `E`
+**Role:** parallel/deferred first-party extension work
 **Current status:** `E1` is Conditional
 
 The core add-on is complete and releasable without an extension system. This track starts only from a concrete first-party need; it is not the automatic continuation of Statistics or Core 1.0.
