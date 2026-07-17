@@ -284,11 +284,17 @@ def test_wrapper_keeps_buildkit_default_and_fails_closed_for_ghcr() -> None:
     assert "docker pull" not in text
 
 
-def test_release_consumer_remains_implicit_buildkit() -> None:
+def test_release_consumer_remains_implicit_buildkit_with_package_read() -> None:
     text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
     call = text[text.index("  real-anki-gate:") : text.index("  github-draft:")]
 
     assert "uses: ./.github/workflows/ci-e2e.yml" in call
     assert "environment_image_source" not in call
-    assert "packages: read" not in call
+    assert (
+        "permissions:\n"
+        "      contents: read\n"
+        "      actions: read\n"
+        "      packages: read\n"
+    ) in call
+    assert "packages: write" not in call
     assert "scope: full" in call
