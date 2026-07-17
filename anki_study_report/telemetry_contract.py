@@ -93,9 +93,6 @@ def build_queued_event(value: Any, common_dimensions: dict[str, Any]) -> tuple[s
         "eventId": str(uuid4()),
         **event,
         **common,
-        "telemetrySchemaVersion": TELEMETRY_SCHEMA_VERSION,
-        "consentSchemaVersion": CONSENT_SCHEMA_VERSION,
-        "privacyNoticeVersion": PRIVACY_NOTICE_VERSION,
     }
     return purpose, payload
 
