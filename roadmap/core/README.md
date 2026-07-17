@@ -2,7 +2,7 @@
 
 **Track:** `C`
 **Role:** единственный обязательный последовательный путь основного add-on
-**Current status:** `C1` is Next
+**Current status:** `C1.1` Complete; `C1.2` Next
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
@@ -32,7 +32,15 @@ C1 Cards v2 / Problem Triage
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** Next
+**Status:** In progress — `C1.1` Complete; `C1.2` Next
+
+### Current increments
+
+- `C1.0 — Core branch baseline`: Complete — [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md)
+- `C1.1 — Product contract`: Complete — canonical contract [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md), evidence report [`reports/core/c1-1-product-contract.md`](../../reports/core/c1-1-product-contract.md)
+- `C1.2 — Canonical triage model and read API`: Next
+
+`C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.
 
 ### Goal
 
@@ -66,7 +74,7 @@ C1 Cards v2 / Problem Triage
 
 ### Activation criteria
 
-Already met. This is the recommended next core stage.
+Already met. This is the active core stage.
 
 ### Completion criteria
 

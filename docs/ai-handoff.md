@@ -26,12 +26,27 @@ production code/tests
 - active branch: `core`;
 - verified base branch: `master`;
 - verified base SHA: `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e`;
-- C1.0 status: baseline and long-lived branch policy established in the current documentation commit;
-- baseline report: `reports/core/c1-0-baseline.md`;
-- next step: `C1.1 — Product contract`;
+- Core HEAD before C1.1: `2b99b3468de0a46b00ce5be71e7c95da0930fb12`;
+- C1.1 status: complete in the documentation commit containing this handoff;
+- canonical contract: `docs/cards-v2-product-contract.md`;
+- supporting report: `reports/core/c1-1-product-contract.md`;
+- next step: `C1.2 — Canonical triage model and read API`;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
+
+### Cards v2 product invariants
+
+1. Cards is a local problem-triage workspace, not Search, Notification Center or Anki Browser.
+2. The automatic surface is one `Требуют внимания / Requires attention` queue; reason families are filters, not tabs.
+3. Explicit Search selections form a separate session-only `Выбрано в поиске / Selected in Search` workset.
+4. One queue item is card-anchored and can aggregate several reasons; note-level scope and sibling implications are explicit.
+5. Visible priority is categorical (`Высокий / Средний / Низкий`) and is explained by reason/evidence; numerical `riskScore` is not user-facing.
+6. Content-quality issues are authoritative only under a confirmed Inspection Profile; learning-behavior issues remain profile-independent.
+7. Successful actions lead to `Awaiting recheck`; only canonical detector/collector/profile re-evaluation resolves an issue.
+8. The desktop default is a compact bounded queue plus Inspector with the existing sanitized Shadow DOM preview.
+9. Search inspect, Safe Actions, Signals, Notification handoff and preview isolation are reused; no duplicate query/action/signal stack is allowed.
+10. Active item, keyboard focus and bulk selection remain separate interaction states.
 
 ## Product state
 
@@ -63,7 +78,9 @@ Only `C1 → C2` is the mandatory add-on path.
 
 ### Core
 
-`C1 Cards v2 / Problem Triage` remains the recommended next core stage. It must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
+`C1.1 — Product contract` is complete. The next Core increment is `C1.2 — Canonical triage model and read API`. C1.2 must translate the accepted product entity/source/reason/priority/evidence/order contract into a minimal bounded read model without implementing the full workspace UI or the final Inspection Profile schema/editor.
+
+C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 
 ### Gamification
 
@@ -127,7 +144,7 @@ Canonical non-Docker check:
 .\scripts\run_full_check.ps1 -SkipDocker
 ```
 
-Use focused tests first, then exact Fast CI artifact, then only required targeted real-Anki scope. Do not repeat successful same-SHA gates. Docs-only roadmap work does not require Docker E2E.
+Use focused tests first, then exact Fast CI artifact, then only required targeted real-Anki scope. Do not repeat successful same-SHA gates. Docs-only product-contract work does not require Fast CI or Docker E2E.
 
 Before closing work:
 
