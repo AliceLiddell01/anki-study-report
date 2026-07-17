@@ -1,125 +1,94 @@
 # Обзор проекта
 
-Снимок документации: 2026-07-17.
+Снимок: **2026-07-18**.
 
-`Anki Study Report` - локальный add-on для Anki, который помогает понять
-качество обучения не только по общим числам, но и по причинам: где провалы,
-какие колоды проседают, какие карточки требуют внимания, насколько тяжелая
-нагрузка впереди и что может помочь прямо сейчас.
+Anki Study Report — local add-on for Anki 26.05+ that explains study progress, workload and problems through a Markdown/HTML report and a React dashboard.
 
-## Что делает add-on
+## Runtime contours
 
-- Собирает метрики из коллекции Anki: revlog, карточки, колоды, расписание,
-  FSRS, календарную активность.
-- Строит Markdown/HTML-отчет через диалог внутри Anki.
-- Поднимает локальный HTTP dashboard на `127.0.0.1`, по умолчанию на порту
-  `8766`.
-- Публикует временный dashboard payload, который frontend читает через
-  `/api/report?token=...`.
-- Может использовать SQLite cache для быстрых dashboard-отчетов и истории.
-- Показывает карточки, требующие внимания: leech, repeated again, slow answer,
-  low pass rate, missing audio/image/meaning/example/part of speech.
-- Умеет отдавать безопасные media-preview через `/api/media`.
-- Имеет Docker E2E среду, где add-on запускается внутри реального Anki Desktop.
-- Поддерживает native Cards/Notes Search и allowlisted undoable actions.
-- Хранит локальные per-profile Signals и Notification Center в отдельной SQLite;
-  signal/evidence/entity data не отправляются в remote telemetry.
-- Имеет opt-in technical telemetry через Python client и отдельный Cloudflare
-  Worker + EU D1 service с bounded schema, quotas, retention и deletion.
+1. Python add-on: `anki_study_report/`
+2. React/TypeScript dashboard: `web-dashboard/`
+3. tests/build/E2E: `tests/`, `scripts/`, `docker/anki-e2e/`
+4. separate private opt-in telemetry service: `anki-study-report-telemetry`
 
-## Текущие runtime-границы
+Python owns collection access and server-side logic. Frontend receives bounded payloads and invokes allowlisted APIs; it never reads the Anki collection directly. Real-Anki Docker E2E verifies integration risks that unit tests cannot cover.
 
-Проект состоит из трех крупных частей:
+## Current product
 
-1. Python add-on (`anki_study_report/`)
-2. React dashboard (`web-dashboard/`)
-3. Проверки/сборка/E2E (`tests/`, `scripts/`, `docker/anki-e2e/`)
-4. Отдельный private telemetry service repository (`anki-study-report-telemetry`)
+The accepted product contour includes:
 
-Python add-on является источником данных и серверной логики. Frontend не
-подключается напрямую к Anki: он получает уже опубликованный JSON payload и
-вызывает ограниченные API действия. Docker E2E нужен для проверки того, что все
-это работает не только в тестовых заглушках, но и в реальном Anki Desktop.
+- local report/dashboard and cache-backed history;
+- Profile, Activity and Deck hierarchy;
+- Statistics and read-only FSRS analytics;
+- native Cards/Notes Search;
+- allowlisted undoable Safe Actions;
+- isolated/sanitized card preview;
+- local per-profile Signals and Notification Center;
+- opt-in bounded technical telemetry through a separate service.
 
-## Важные файлы
+Current primary navigation:
 
 ```text
-anki_study_report/__init__.py              Anki entrypoint, UI dialogs, orchestration
-anki_study_report/metrics.py               сбор основных метрик из коллекции
-anki_study_report/dashboard_payload.py     чистая сборка JSON payload для dashboard
-anki_study_report/dashboard_server.py      локальный HTTP server и API endpoints
-anki_study_report/stats_cache.py           SQLite cache менеджер
-anki_study_report/statistics_service.py    Statistics v1 queries и current snapshot
-anki_study_report/report_from_cache.py     адаптация cache в report/dashboard parts
-anki_study_report/report_builder.py        Markdown/HTML report builder
-anki_study_report/note_intelligence.py     preview/sanitizer/card intelligence
-anki_study_report/browser_actions.py       безопасные поисковые запросы для Anki Browser
-anki_study_report/dashboard_actions.py     действия dashboard -> Anki
-anki_study_report/config_service.py        config defaults/read/write normalization
-anki_study_report/notification_store.py    durable per-profile signals/notifications
-anki_study_report/signal_detection.py      bounded detector registry/reconciliation
-anki_study_report/telemetry_client.py      opt-in queue/enrollment/delivery/delete
-
-web-dashboard/src/app/                     загрузка report и hash-router
-web-dashboard/src/pages/                   страницы dashboard
-web-dashboard/src/lib/                     frontend normalization/helpers
-web-dashboard/src/types/report.ts          TypeScript контракт dashboard payload
-
-scripts/package_addon.py                   сборка и валидация .ankiaddon
-build_ankiaddon.ps1                        релизная сборка с проверками
-scripts/run_full_check.ps1                 локальный полный прогон + Docker опционально
-scripts/run_anki_e2e_docker.ps1            запуск Docker E2E
-docker/anki-e2e/README.md                  подробности Docker E2E среды
+Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-## Текущее положение roadmap
+## Roadmap
 
-Продуктовый контур принят до Stage 9.5 включительно. Следующий рекомендуемый
-этап — Stage 10 Cards v2 / Problem Triage поверх Search, Safe Actions и Signals.
-Stage 10.5 harden-ит уже существующие API/migrations/CI/release gates; он не
-создаёт CI/CD заново. Подробности: `roadmap/README.md`.
+Completed product work remains recorded as Stage 0–9.5. Future work is multi-track:
 
-Документация разделена:
+- [Core](../roadmap/core/README.md): `C1 Cards v2`, then `C2 Core 1.0`; `C3` only for proven gaps.
+- [Gamification](../roadmap/gamification/README.md): parallel research/product direction, not production-ready.
+- [Telemetry operations](../roadmap/operations/README.md): separate protected internal tooling.
+- [Identity](../roadmap/identity/README.md): conditional continuity gate.
+- [Extensions](../roadmap/extensions/README.md): conditional/deferred first-party ecosystem.
+- [Platform](../roadmap/platform/README.md): independent CI/CD/E2E/release work.
 
-```text
-docs/       актуальные contracts
-roadmap/    completed/future stages
-reports/    historical evidence
-```
+Core does not depend on gamification, accounts, telemetry admin UI or extension packs.
 
-## Что считается source of truth
+## Source-of-truth boundaries
 
-Для dashboard payload source of truth - связка:
+Dashboard payload:
 
 - `anki_study_report/dashboard_payload.py`
 - `web-dashboard/src/types/report.ts`
-- `tests/test_dashboard_payload.py`
-- frontend tests вокруг нормализации карточек и actions API
+- payload/server/frontend tests
+- `docs/dashboard-api.md`
 
-Для упаковки source of truth - `scripts/package_addon.py` и
-`tests/test_package_build.py`.
+Packaging:
 
-Для Docker E2E source of truth - `docker/anki-e2e/README.md`,
-`scripts/run_anki_e2e_docker.ps1`, `scripts/run_full_check.ps1` и артефакты из
-`e2e-artifacts/`.
+- `scripts/package_addon.py`
+- `tests/test_package_build.py`
+- `docs/packaging-release.md`
 
-Дополнительные навигационные документы:
+Real-Anki E2E:
 
-- `docs/test-matrix.md` - какие проверки запускать.
-- `docs/troubleshooting.md` - диагностика типовых проблем.
-- `docs/security-and-safety.md` - token/server/media/rendering safety.
-- `docs/decision-log.md` - почему приняты текущие архитектурные решения.
-- `docs/settings-hub.md` - canonical settings routes, public model и save/runtime boundaries.
-- `docs/profile-mvp.md` - per-Anki-profile identity, lifetime all-collection contract и persistence.
-- `docs/activity-calendar-v2.md` - scoped temporal history, day details и deterministic derived feed.
-- `docs/decks-v2.md` - scoped deck hierarchy, direct/subtree metrics, health/confidence и safe Browser actions.
-- `docs/ui-polish-global-controls.md` - persistent theme utility и presentation-only Activity/Decks polish.
+- `docker/anki-e2e/README.md`
+- `scripts/run_anki_e2e_docker.ps1`
+- `scripts/run_full_check.ps1`
+- reviewed workflow artifacts
 
-## Что не является source of truth
+Signals/notifications:
 
-- Уже собранный `anki_study_report.ankiaddon`, если он не пересобран в текущем
-  checkout.
-- `web-dashboard/dist/` и `anki_study_report/web_dashboard/`, если не выполнен
-  свежий `pnpm run build:addon` или `build_ankiaddon.ps1`.
-- Логи, screenshots и `e2e-artifacts/`: они важны для диагностики, но не должны
-  попадать в git или архив add-on.
+- `anki_study_report/signal_detection.py`
+- `anki_study_report/notification_store.py`
+- `docs/signals-foundation.md`
+- `docs/notification-center.md`
+
+Telemetry:
+
+- local client contracts in this repo;
+- ingestion/retention/deletion/deployment contracts in the separate private telemetry repo.
+
+## Important invariants
+
+- no one-sided payload/public-contract changes;
+- no direct frontend collection access;
+- loopback/token boundary remains;
+- no arbitrary SQL/RPC/action/plugin surface;
+- no weakened sanitizer/media/preview isolation;
+- no generated/runtime artifacts in git/package;
+- local signal evidence is not telemetry;
+- research candidates are not production features;
+- release remains exact-artifact, manual and approval-gated.
+
+For current details use [Architecture](architecture.md), [Security](security-and-safety.md), [Decision log](decision-log.md), [Roadmap](../roadmap/README.md) and [AI handoff](ai-handoff.md).
