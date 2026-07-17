@@ -5,7 +5,7 @@ param(
     [string]$ApkgFixture = "",
     [switch]$RequireApkgFixture,
     [switch]$Perf100,
-    [ValidateSet("full", "global", "stats", "decks", "activity", "cards", "settings")]
+    [ValidateSet("full", "global", "stats", "decks", "activity", "cards", "settings", "notifications")]
     [string]$E2EScope = "full",
     [ValidateSet("auto", "1", "2", "3", "4")]
     [string]$ScreenshotWorkers = "auto",

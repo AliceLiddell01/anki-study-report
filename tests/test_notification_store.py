@@ -184,3 +184,5 @@ def test_toasts_only_follow_new_escalated_and_reactivated_records(tmp_path):
     store.reconcile("workload.review_pressure", [candidate("warning")], source_revision="r6", evaluated_at="2026-07-17T15:00:00Z")
     reactivated = store.toast_candidates(session_started_at=NOW)
     assert [item["kind"] for item in reactivated] == ["signal_reactivated"]
+    assert store.has_notification_source_revision("r6") is True
+    assert store.has_notification_source_revision("missing") is False

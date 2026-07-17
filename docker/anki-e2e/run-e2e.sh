@@ -38,7 +38,7 @@ export ANKI_STUDY_REPORT_E2E=1
 export E2E_MODE ANKI_E2E_SCOPE ANKI_E2E_SCREENSHOT_WORKERS ANKI_E2E_RESOURCE_TELEMETRY ANKI_E2E_VERIFY_RESTART
 export ANKI_E2E_PACKAGE_SOURCE ANKI_E2E_FAST_CI_RUN_ID ANKI_E2E_FAST_CI_TESTED_SHA ANKI_E2E_FAST_CI_PACKAGE_SHA256
 
-case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|settings) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
+case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|settings|notifications) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
 case "$ANKI_E2E_SCREENSHOT_WORKERS" in 1|2|3|4) ;; *) echo "Screenshot workers must be 1..4: $ANKI_E2E_SCREENSHOT_WORKERS" >&2; exit 2;; esac
 case "$ANKI_E2E_RESOURCE_TELEMETRY" in 0|1) ;; *) echo "Resource telemetry must be 0 or 1" >&2; exit 2;; esac
 case "$ANKI_E2E_VERIFY_RESTART" in auto|0|1) ;; *) echo "Restart policy must be auto, 0, or 1" >&2; exit 2;; esac
@@ -253,6 +253,12 @@ fi
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 /e2e/bin/install-addon.sh "$ADDON_INSTALL_SOURCE"
+if [ "$ANKI_E2E_SCOPE" = "full" ] || [ "$ANKI_E2E_SCOPE" = "notifications" ]; then
+  /e2e/bin/seed-notification-lifecycle.py \
+    --addon-dir "${ANKI_BASE}/addons21/anki_study_report_e2e" \
+    --profile-dir "$ANKI_PROFILE_DIR" \
+    --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
+fi
 phase_end "fixture and profile preparation"
 
 section "First Anki start"

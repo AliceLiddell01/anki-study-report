@@ -2293,6 +2293,7 @@ def _notification_toasts_response(payload: dict) -> dict:
     if set(payload) != {"sessionStartedAt"}:
         return {"ok": False, "error": "invalid_notification_request"}
     try:
+        _maybe_seed_e2e_notification_toast(payload["sessionStartedAt"])
         return {
             "ok": True,
             "schemaVersion": 1,
@@ -2300,6 +2301,65 @@ def _notification_toasts_response(payload: dict) -> dict:
         }
     except NotificationValidationError as error:
         return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
+
+
+def _maybe_seed_e2e_notification_toast(session_started_at: str) -> None:
+    if not _is_e2e_mode() or os.environ.get("ANKI_E2E_SCOPE") not in {"full", "notifications"}:
+        return
+    critical_revision = "e2e:toast-critical"
+    warning_revision = "e2e:toast-warning"
+    preferences = _NOTIFICATION_STORE.preferences()
+    if not preferences["showInAppToasts"]:
+        return
+    evidence = {
+        "recentAnswers": 70,
+        "baselineAnswers": 280,
+        "recentRetention": 0.72,
+        "baselineRetention": 0.9,
+        "dropPoints": 18.0,
+    }
+    candidate = {
+        "code": "retention.recent_drop",
+        "category": "retention",
+        "severity": "critical",
+        "dedupeKey": "retention.recent_drop:all",
+        "entityType": "all_collection",
+        "entityId": None,
+        "evidence": evidence,
+        "detectorVersion": "signals-v1.0",
+    }
+    if not _NOTIFICATION_STORE.has_notification_source_revision(critical_revision):
+        _NOTIFICATION_STORE.reconcile(
+            "retention.recent_drop",
+            [candidate],
+            source_revision=critical_revision,
+            evaluated_at=session_started_at,
+        )
+        return
+    if preferences["minimumToastSeverity"] not in {"warning", "info"}:
+        return
+    if _NOTIFICATION_STORE.has_notification_source_revision(warning_revision):
+        return
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [],
+        source_revision="e2e:toast-warning-missing-1",
+        evaluated_at=session_started_at,
+    )
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [],
+        source_revision="e2e:toast-warning-missing-2",
+        evaluated_at=session_started_at,
+    )
+    candidate["severity"] = "warning"
+    candidate["evidence"] = {**evidence, "recentRetention": 0.8, "dropPoints": 10.0}
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [candidate],
+        source_revision=warning_revision,
+        evaluated_at=session_started_at,
+    )
 
 
 def _notification_toast_delivered_response(payload: dict) -> dict:

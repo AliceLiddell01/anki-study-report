@@ -59,6 +59,7 @@ on:
           - activity
           - cards
           - settings
+          - notifications
       screenshot_workers:
         description: Bounded BrowserContext workers
         required: true
@@ -312,7 +313,7 @@ jobs:
           if ($env:E2E_MODE -notin @('standard', 'strict-apkg', 'perf100')) {
             throw "Unsupported E2E mode: $env:E2E_MODE"
           }
-          if ($env:E2E_SCOPE -notin @('full', 'global', 'stats', 'decks', 'activity', 'cards', 'settings')) {
+          if ($env:E2E_SCOPE -notin @('full', 'global', 'stats', 'decks', 'activity', 'cards', 'settings', 'notifications')) {
             throw "Unsupported E2E scope: $env:E2E_SCOPE"
           }
           if ($env:E2E_MODE -in @('strict-apkg', 'perf100') -and $env:E2E_SCOPE -notin @('full', 'cards')) {

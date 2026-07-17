@@ -247,6 +247,15 @@ class NotificationStore:
             value = self._get_metadata_locked(f"detectorRevision:{detector_code}")
         return value if isinstance(value, str) else None
 
+    def has_notification_source_revision(self, source_revision: str) -> bool:
+        revision = _bounded_text(source_revision, 160, "sourceRevision")
+        with self._lock:
+            row = self._require_connection().execute(
+                "SELECT 1 FROM notifications WHERE source_revision = ? LIMIT 1",
+                (revision,),
+            ).fetchone()
+        return row is not None
+
     def summary(self, *, limit: int = 8) -> dict[str, Any]:
         bounded = min(8, max(0, int(limit)))
         with self._lock:

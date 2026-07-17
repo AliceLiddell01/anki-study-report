@@ -23,6 +23,10 @@ PAGE_ROUTES = {
     "settings/server": "#/settings/server",
     "settings/sources": "#/settings/sources",
     "settings/logs": "#/settings/logs",
+    "notifications": "#/notifications",
+    "settings/notifications": "#/settings/notifications",
+    "notification-center": "#/notifications",
+    "notification-settings": "#/settings/notifications",
 }
 
 REQUIRED_SUCCESS_ARTIFACTS = (
