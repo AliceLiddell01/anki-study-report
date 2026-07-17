@@ -9,7 +9,6 @@ import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
-import SearchPage from "../pages/SearchPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import type { StudyReport } from "../types/report";
@@ -19,6 +18,7 @@ const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 const PrivacySettingsPage = lazy(() => import("../pages/PrivacySettingsPage"));
 const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPage"));
 const NotificationSettingsPage = lazy(() => import("../pages/NotificationSettingsPage"));
+const SearchPage = lazy(() => import("../pages/SearchPage"));
 
 export type RoutePath =
   | "/home"
