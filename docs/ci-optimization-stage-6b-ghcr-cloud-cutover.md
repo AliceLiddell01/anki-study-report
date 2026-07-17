@@ -3,51 +3,54 @@
 ## Status
 
 ```text
-Overall Stage 6B status: PARTIAL
+Overall Stage 6B status: COMPLETE
 Implementation: COMPLETE ON FEATURE BRANCH
 Mandatory master precondition: PASS
 Focused/static verification: PASS
 Canonical local non-Docker: PASS
-Exact branch Fast CI: PASS
+Exact final Fast CI: PASS
 GHCR targeted settings: PASS
 GHCR standard/full: PASS
-Release-artifact rehearsal: NOT RUN — GitHub workflow_dispatch default-branch limitation
+Release-artifact rehearsal: PASS
 PR: ABSENT
 master changed: NO
 ```
 
-Stage 6B permanently removes the competing BuildKit/GHA-cache cloud consumer and
-makes the existing immutable GHCR environment image the only cloud environment
-for real-Anki Docker E2E. The implementation and Fast CI package path are fully
-validated. The stage remains `PARTIAL`, rather than `COMPLETE`, because the
-required isolated release-artifact rehearsal cannot be dispatched from a
-branch-only temporary workflow without first placing that workflow on the
-default branch. Modifying `master` for a rehearsal or dispatching the real
-release workflow is outside the authorized scope.
+Stage 6B removes the competing BuildKit/GHA-cache cloud consumer and makes the
+existing immutable GHCR environment image the only cloud environment for
+real-Anki Docker E2E. Both package-source paths are now proven:
+
+```text
+fast-ci-artifact -> exact tested commit -> exact GHCR digest -> real Anki
+release-artifact -> exact SHA-256 -> exact GHCR digest -> real Anki
+```
+
+No production release, tag, draft release, attestation, deployment, GitHub
+Environment request or AnkiWeb publication was created during validation.
 
 ## Repository snapshot
 
 ```text
 repository: AliceLiddell01/anki-study-report
 base branch: master
-actual base SHA: b707edec3e35c266a27dd5ae384cc4213abbbf6c
+base SHA: b707edec3e35c266a27dd5ae384cc4213abbbf6c
 feature branch: chatgpt/ci-optimization-stage-6b-ghcr-cloud-cutover
-validated feature SHA: e679ef840fb8cd802e39bb3775e4a9e6c848f0fd
-branch relative to base after validation fixes: ahead 15 / behind 0
+final validated implementation SHA: 2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244
+rehearsal branch: chatgpt/ci-optimization-stage-6b-release-rehearsal
+rehearsal SHA: 5fe2c9a28f0b8ed7245d93750a6a305e13993476
 PR: absent
 master changed: no
 ```
 
-The base is ten commits ahead of the Stage 6A merge SHA
-`7cb8d1a6facc78cc70821a59de514f7497183432`. The intervening CI-relevant change
-granted `packages: read` to the reusable release caller and aligned its tests.
-Later product, telemetry and signals commits did not change the Docker consumer
-architecture.
+The rehearsal branch differs from the final implementation only by the temporary
+replacement of `.github/workflows/ci-fast.yml` used as an isolated manual caller.
+The production workflow and runtime tested by that rehearsal come from the same
+commit lineage rooted at `2de0bc3...`.
 
-## Mandatory post-merge master precondition
+## Mandatory current-master precondition
 
-The transitional Stage 6A interface was exercised on current `master` before any
-Stage 6B implementation change:
+The transitional Stage 6A interface was exercised on current `master` before the
+Stage 6B implementation:
 
 ```text
 master SHA: b707edec3e35c266a27dd5ae384cc4213abbbf6c
@@ -59,10 +62,9 @@ result: success
 artifact manifest: success
 ```
 
-The run used the exact Fast CI package, exact tested commit and immutable GHCR
-image. Containerd, Buildx, image build/load and GHA cache steps were skipped;
-GHCR login, digest/platform/OCI-label verification, canonical E2E, package hash
-verification, artifact export and cleanup passed.
+The run used the exact Fast CI package and exact immutable GHCR image. Buildx,
+BuildKit build/load, containerd image-store setup and GHA cache steps were
+skipped.
 
 ## Accepted cloud architecture
 
@@ -86,20 +88,27 @@ docker/build-push-action
 cache-from/cache-to type=gha
 BuildKit cache scope
 anki-study-report-e2e:ci mutable runtime alias
-gha-enabled cloud evidence
+gha-enabled current cloud evidence
 ```
 
-The unconditional cloud sequence is:
+The current sequence is:
 
-1. validate the versioned consumer lock;
-2. expose the exact immutable identity before registry work so failure cleanup
-   remains deterministic;
-3. authenticate to `ghcr.io` with `GITHUB_TOKEN`;
-4. pull with `--platform linux/amd64` by exact digest;
-5. verify `RepoDigests`, platform and bounded OCI labels;
-6. validate merged base + GHCR Compose configuration;
-7. run the existing canonical Docker-only real-Anki contour;
-8. verify the exact package hash and export sanitized evidence.
+1. validate exact package-source inputs;
+2. reject source-build before registry work;
+3. validate the versioned environment consumer lock;
+4. expose exact image identity;
+5. authenticate to GHCR with `GITHUB_TOKEN`;
+6. pull the exact digest with `--platform linux/amd64`;
+7. verify digest, platform and bounded OCI labels;
+8. validate merged base + GHCR Compose;
+9. run canonical Docker-only real-Anki E2E;
+10. verify the exact package hash and export sanitized evidence;
+11. collect diagnostics and clean Docker state safely, including early failures.
+
+The final reusable-input validation no longer relies on `github.event_name`.
+GitHub associates the called workflow's `github` context with the caller, so
+package-source validation is performed from the validated input combination
+instead.
 
 ## Exact environment identity
 
@@ -113,20 +122,9 @@ idempotent reuse run: 29573061110
 image size: 3760013645 bytes
 ```
 
-The lock and digest are unchanged. No image build, publication, tag mutation,
-package-visibility change or PAT was introduced.
+The lock, digest, environment image and package visibility were not changed.
 
-## Package identity and release caller
-
-The existing exact-artifact handoff remains fail-closed:
-
-- Fast CI run and artifacts are resolved through exact API identities;
-- artifact transport digests are checked;
-- diagnostics derive the exact tested commit;
-- E2E checks out that commit before staging the package;
-- metadata, size and internal SHA-256 are checked;
-- release artifact SHA-256 is checked before and after real-Anki execution;
-- conflicting, incomplete or invalid inputs never fall back to source-build.
+## Permissions and security boundary
 
 The reusable workflow and release caller use only:
 
@@ -138,222 +136,161 @@ permissions:
 ```
 
 Registry authentication uses `${{ github.token }}`. No PAT, OIDC, package write
-permission, repository secret fallback or automatic visibility change exists.
+permission, repository-secret fallback, mutable tag identity, token-bearing URL
+or automatic package visibility change was introduced.
 
-## Preserved local fallback
-
-The cloud cutover does not remove or rename:
-
-```text
-docker/anki-e2e/Dockerfile
-docker/anki-e2e/docker-compose.yml
-scripts/run_anki_e2e_docker.ps1
-scripts/run_full_check.ps1 local Docker paths
-source-build local behavior
-BuildOnly local behavior
-```
-
-Base Compose still contains the local image build definition and read-only
-workspace/package mounts. The local wrapper may use its existing `buildkit`
-path or fail-closed GHCR diagnostic mode. This is a local development and
-reproduction contour, not an undocumented cloud fallback.
+The existing read-only workspace/package mounts and local Docker fallback remain
+intact. The local BuildKit path is a development/reproduction contour and is not
+a cloud fallback.
 
 ## Local and static verification
 
-The final validated feature SHA passed:
+The implementation and the final reusable-release fix passed:
 
 ```text
-focused Stage 6B tests: 144 passed / 2 skipped
+focused Stage 6B and release-workflow tests: PASS
 canonical run_full_check.ps1 -SkipDocker: PASS
-full Python suite inside canonical gate: 668 passed / 4 skipped
-frontend test files: 48 passed
-frontend tests: 266 passed
-frontend typecheck: PASS
-frontend production build and bundle guard: PASS
-package build and validation: PASS
+frontend typecheck/tests/build/bundle guard: PASS
+full Python suite: PASS
+package build/check: PASS
 YAML parse: PASS
 git diff --check: PASS
-consumer lock and exact identity checks: PASS
+consumer-lock validation: PASS
 release caller permission/call-site checks: PASS
 base and GHCR Compose/security-boundary checks: PASS
 full-SHA Action pin checks: PASS
 secret/private-path checks: PASS
 ```
 
-Required no-match values are absent from current cloud workflow:
+Generated `__pycache__`, `.pyc` and pytest cache outputs were removed or disabled
+before the canonical gate and were not committed.
 
-```text
-type=gha
-cache-from
-cache-to
-setup-buildx-action
-build-push-action
-containerd-snapshotter
-environment_image_source
-anki-study-report-e2e:ci
-gha-enabled
-```
-
-Artifact upload still intentionally uses `compression-level: 0`; that setting is
-scoped to `actions/upload-artifact` and is not Docker BuildKit cache behavior.
-
-## Exact branch Fast CI
-
-```text
-run: 29597756429
-SHA: e679ef840fb8cd802e39bb3775e4a9e6c848f0fd
-package SHA-256: 1ad9004a9492d7175e4ea9537079f3eed354bd3c9e8f8b656a58a11ee39a15fd
-package size: 612878 bytes
-package artifact ID: 8413815728
-package artifact digest: sha256:2f19171f5ee5862af066fc95975d822d070bbf41ff92cb9e4770214259937bca
-diagnostics artifact ID: 8413814951
-diagnostics digest: sha256:88d31130c2aeb3557d0c1a754906e69cfb7fa3c44e8c40a2c492734daf42870f
-result: success
-```
-
-## Cloud validation runs
+## Validation runs
 
 | Purpose | Run ID | SHA | Package source | Scope | Result |
 | --- | ---: | --- | --- | --- | --- |
-| Fast CI package producer | `29597756429` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | producer | n/a | PASS |
-| GHCR targeted gate | `29598022118` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | fast-ci-artifact | settings | PASS |
-| GHCR final integration gate | `29598160051` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | fast-ci-artifact | full | PASS |
+| Current-master precondition Fast CI | `29589429944` | `b707edec3e35c266a27dd5ae384cc4213abbbf6c` | producer | n/a | PASS |
+| Current-master precondition GHCR E2E | `29590681695` | `b707edec3e35c266a27dd5ae384cc4213abbbf6c` | fast-ci-artifact | settings | PASS |
+| Initial Stage 6B Fast CI | `29597756429` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | producer | n/a | PASS |
+| Initial Stage 6B targeted | `29598022118` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | fast-ci-artifact | settings | PASS |
+| Initial Stage 6B full | `29598160051` | `e679ef840fb8cd802e39bb3775e4a9e6c848f0fd` | fast-ci-artifact | full | PASS |
+| Release-artifact rehearsal | `29602512427` | `5fe2c9a28f0b8ed7245d93750a6a305e13993476` | release-artifact | full | PASS |
+| Final exact Fast CI | `29603448342` | `2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244` | producer | n/a | PASS |
+| Final GHCR targeted | `29603659625` | `2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244` | fast-ci-artifact | settings | PASS |
 
-Both E2E runs used the same exact Fast CI package and exact tested checkout.
-Their jobs executed lock validation, `GITHUB_TOKEN` login, exact digest pull,
-Compose validation, canonical real-Anki E2E, package hash verification, public
-artifact preparation/upload and cleanup successfully. The release-artifact
-steps were correctly skipped in these Fast CI package runs.
-
-### Targeted settings evidence
+## Final exact Fast CI evidence
 
 ```text
-run: 29598022118
-artifact ID: 8413869478
-artifact digest: sha256:3d2fbff5b2d655381562c9d824161e4dc8893a77afaf341437c53ff05b1fac30
+run: 29603448342
+tested SHA: 2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244
+package SHA-256: 9509361bb4b6575b11180c514a4aae9bd7420e609e0413128afa768bf0d7f2b1
+package size: 612878 bytes
+package artifact ID: 8415973844
+package artifact digest: sha256:fee4e2e0d5a935d7f6ee789dfb3d563f616ccc5f2153eecc253274c1d4ae2c9e
+diagnostics artifact ID: 8415973287
+diagnostics artifact digest: sha256:a4696a5044a22cd2afecb14cedd4f89da26eeb43b6f19c29f4390a7b9eba117b
+result: success
+```
+
+The metadata, uploaded package bytes, E2E handoff evidence and package preserved
+after real-Anki execution all contain the same SHA-256 and size.
+
+## Final targeted settings evidence
+
+```text
+run: 29603659625
+SHA: 2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244
+Fast CI source run: 29603448342
+package SHA-256: 9509361bb4b6575b11180c514a4aae9bd7420e609e0413128afa768bf0d7f2b1
+artifact ID: 8416021691
+artifact digest: sha256:2511274b98d4ea05e8e9ed3fdb901822a11aba09419a3af986a2ef0828ccc96d
 package source: fast-ci-artifact
-screenshots: 32 (12 page / 19 state / 1 zoom)
-image preparation: 39.151 s
-canonical E2E: 37.935 s
-workflow summary duration: 95 s
+image source: ghcr
+image preparation: 48.367 s
+canonical E2E: 33.471 s
+workflow summary duration: 96 s
 docker build duration: 0 ms
 cache state: ghcr-digest
 artifact manifest: success
 ```
 
-### Final standard/full evidence
+The artifact contains 32 settings screenshots and clean first-start API/browser
+evidence. The release-artifact steps were skipped, while exact Fast CI
+resolution, diagnostics validation, exact checkout, package validation, GHCR
+pull and package hash verification all passed.
+
+## Release-artifact rehearsal evidence
 
 ```text
-run: 29598160051
-artifact ID: 8413996722
-artifact digest: sha256:36520bb57a6cd242d97b70be56969167978779dae703d41f9ec35a76fd969541
-package source: fast-ci-artifact
-screenshots: 124
-page: 48
-state: 52
-cards: 12
-zoom: 10
-navigation: 2
-image preparation: 36.392 s
-canonical E2E: 220.373 s
-workflow summary duration: 276 s
+run: 29602512427
+rehearsal SHA: 5fe2c9a28f0b8ed7245d93750a6a305e13993476
+base implementation SHA: 2de0bc3908a4e6ca8a46ae4fc920fc0ea826b244
+release version/channel: 1.1.0 / stable
+release package SHA-256: 64f604e7dc47994878b0710fb07b0cce893d42b24f710b071560b01d7b243060
+release package size: 612878 bytes
+release bundle artifact ID: 8415609847
+release bundle digest: sha256:a690faee9ed929ce59a1b7384460de0a65195141372854cf056b0b4dcbd4e219
+E2E artifact ID: 8415728329
+E2E artifact digest: sha256:d67f7ed7f18c80d8019228f0d2b3220cd902e9420355c66fb637ab75202713bd
+package source: release-artifact
+scope: full
+image preparation: 46.438 s
+canonical E2E: 207.401 s
+workflow summary duration: 280 s
 docker build duration: 0 ms
 cache state: ghcr-digest
 artifact manifest: success
 ```
 
-The full artifact contains first and restart API evidence, APKG/card preview
-coverage, notification restart persistence, telemetry restart proof, search and
-FSRS reports, redacted runtime data and empty browser/API/security failure
-surfaces required by the manifest contract.
+The exact release package SHA-256 was checked before real-Anki execution and
+again against the package emitted by the E2E artifact. The values matched
+exactly. Fast CI resolution/download steps were correctly skipped.
+
+The full artifact contains 124 screenshots, first/restart API evidence,
+APKG/problematic-card coverage, card preview evidence, notification restart
+persistence, telemetry restart proof, search and FSRS reports, redacted runtime
+evidence and clean browser/API/security failure surfaces.
 
 ## Performance interpretation
 
-Stage 6A GHCR targeted reference:
+The final targeted run reported:
 
 ```text
-run: 29577800196
-image preparation: 36.323 s
-canonical E2E: 38.926 s
+GHCR exact pull/validation: 48.367 s
+canonical settings E2E: 33.471 s
+workflow summary: 96 s
 ```
 
-Stage 6B targeted:
-
-```text
-run: 29598022118
-image preparation: 39.151 s
-canonical E2E: 37.935 s
-```
-
-Observed difference:
-
-```text
-image preparation: +2.828 s (+7.8%)
-canonical E2E: -0.991 s (-2.5%)
-```
-
-These are normal cross-run variations of the same GHCR architecture. They do
-not support a new causal speed claim. The value of Stage 6B is removal of the
-duplicate cloud BuildKit path and termination of GHA BuildKit cache writes.
-
-## Release-artifact rehearsal limitation
-
-The requested rehearsal design requires a new temporary workflow file on a
-branch and a manual `workflow_dispatch` against that branch. GitHub only accepts
-`workflow_dispatch` events when the workflow file exists on the default branch.
-A new branch-only workflow therefore cannot be manually dispatched.
-
-The following alternatives were deliberately rejected:
-
-- temporarily writing the rehearsal workflow to `master`;
-- replacing `release.yml` on a temporary branch to exploit an already registered
-  workflow path;
-- adding a push trigger instead of the required manual-only trigger;
-- dispatching the real release workflow;
-- creating a release, tag, attestation, deployment or AnkiWeb environment request.
-
-No rehearsal branch or temporary workflow was created because it could not be
-executed under the specified contract. Per Stage 6B acceptance rules this makes
-the final result `PARTIAL`, not `COMPLETE`, and does not invalidate the proven
-Fast CI package GHCR-only path.
-
-Official platform references:
-
-- <https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch>
-- <https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatch>
-- <https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow>
-
-## Historical relationship to Stage 6A
-
-Stage 6A was the opt-in validation phase: BuildKit remained the default and GHCR
-proved exact-package functional equivalence. Stage 6B later removed that
-transition switch and made GHCR the only cloud consumer on its feature branch.
-Stage 6A timings and identities remain historical evidence and are not rewritten.
+Stage 6A and earlier Stage 6B targeted timings remain historical reference
+points. Cross-run runner and registry variance is not treated as a causal
+performance claim. The permanent Stage 6B value is the single cloud
+architecture and elimination of GHA BuildKit cache writes.
 
 ## Not performed
 
-- no release-artifact rehearsal because its branch-only manual workflow cannot
-  receive `workflow_dispatch`;
 - no environment image rebuild or republish;
 - no package visibility change;
 - no PAT or new secret;
-- no real release, tag, draft release, attestation or AnkiWeb publication;
+- no real release, tag, draft GitHub Release or attestation;
 - no GitHub Environment/deployment request;
-- no PR, merge, force-push or write to `master`;
-- no strict-APKG, Perf100, warm repeat or second full run;
+- no AnkiWeb publication;
+- no PR or merge;
+- no write to `master`;
+- no strict-APKG, Perf100, warm repeat or unnecessary second full run;
 - no next optimization stage.
 
 ## Decision
 
 ```text
-GHCR-only manual E2E passed; release rehearsal remains unavailable under the
-required branch-only workflow_dispatch contract. Stage 6B status is PARTIAL.
+Stage 6B COMPLETE.
+
+The GHCR-only cloud cutover passed the exact Fast CI package path, the isolated
+release-artifact full rehearsal, exact package/hash handoff, immutable
+environment validation, canonical real-Anki E2E and sanitized evidence export.
 ```
 
-## Recommended next action
+## Next action
 
-Prepare an integration PR only after explicitly deciding whether to accept the
-static release caller proof plus the fully validated Fast CI package path, or to
-add a permanent non-release rehearsal entrypoint on `master` in a separately
-reviewed stage. Do not weaken release safety or run the real release merely to
-obtain rehearsal evidence.
+Delete the temporary rehearsal branch locally and remotely, then prepare the
+Stage 6B integration PR as a separate explicit action. Do not merge or change
+`master` until that PR is reviewed.
