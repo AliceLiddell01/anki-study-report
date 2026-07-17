@@ -91,6 +91,23 @@ def test_detector_failure_isolation_does_not_resolve_existing_signal(tmp_path, m
     assert store.list_notifications(tab="active")["total"] == 1
 
 
+def test_same_source_revision_does_not_duplicate_notification_history(tmp_path):
+    store_module = fresh_import_addon_module("notification_store")
+    module = fresh_import_addon_module("signal_detection")
+    store = store_module.NotificationStore(tmp_path / "notifications.sqlite3")
+    current = {"due": [{"dayOffset": 0, "count": 140}], "deckHub": {"nodes": {}}, "repeatedAgainCards": []}
+    snapshot = {"daily": daily_rows(29, reviews=40)}
+    evaluator = module.SignalEvaluator(store)
+
+    first = evaluator.evaluate(snapshot, current, TODAY.isoformat(), source_revision="same-revision", evaluated_at="2026-07-17T10:00:00Z")
+    assert first["detectors"]["workload.review_pressure"]["created"] == 1
+    history_total = store.list_notifications(page_limit=50)["total"]
+
+    repeated = evaluator.evaluate(snapshot, current, TODAY.isoformat(), source_revision="same-revision", evaluated_at="2026-07-17T11:00:00Z")
+    assert all(result["status"] == "unchanged_revision" for result in repeated["detectors"].values())
+    assert store.list_notifications(page_limit=50)["total"] == history_total
+
+
 def test_repeated_again_collection_query_uses_anki_day_cutoff_and_is_bounded():
     module = fresh_import_addon_module("signal_detection")
 
