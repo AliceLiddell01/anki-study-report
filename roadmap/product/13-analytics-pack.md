@@ -1,35 +1,7 @@
-# Stage 13 — Analytics Pack
+# Compatibility pointer — former Stage 13
 
-**Status:** Planned after Stage 12
+This path is retained so historical links do not break.
 
-## Цель
+The Analytics Pack is now **`E3`**, a conditional stage in the authoritative [Extension ecosystem track](../extensions/README.md).
 
-Создать first-party Analytics Pack как доказательство Extension Pack foundation и место для optional/expensive analytics, которые не должны увеличивать core payload/startup для всех пользователей.
-
-## Принципы
-
-- Pack использует только Stage 12 extension contracts.
-- Core Statistics/FSRS остаются canonical для базовых метрик.
-- Не дублировать существующие панели ради количества функций.
-- Все вычисления локальные по умолчанию.
-- Никаких scheduler mutations без отдельного продукта и explicit user action.
-- Remote telemetry не получает учебные данные pack.
-
-## Scope определяется перед реализацией
-
-Возможные кандидаты должны пройти отдельный evidence review:
-
-- более тяжёлые longitudinal comparisons;
-- optional cohort/period analyses внутри одного профиля;
-- extended scheduling diagnostics;
-- импортируемые first-party analytical modules.
-
-Кандидат без конкретного вопроса, metric definition и performance budget не входит в pack.
-
-## Completion criteria
-
-- Pack устанавливается отдельно и не меняет core package.
-- Typed compatibility/capability contract проходит.
-- Optional computations не ухудшают core startup.
-- Все metrics документированы и тестируются.
-- Removal pack не повреждает core/profile data.
+It activates only after a minimal extension foundation exists and a concrete optional analytical workflow cannot be delivered as a bounded contextual core addition. It is not the automatic continuation of Statistics or FSRS.
