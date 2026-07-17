@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 from typing import Iterable
@@ -20,6 +21,85 @@ from ci_e2e_artifact_common import (
     copy_safe_artifacts, read_json_file, read_readiness, redact_text, utc_now,
     validate_manifest, write_json_file,
 )
+
+
+DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+EXACT_GHCR_REFERENCE_RE = re.compile(r"^ghcr\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$")
+
+
+def _positive_or_none(value: object, label: str) -> int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a positive integer")
+    parsed = int(value)
+    if parsed <= 0:
+        raise ValueError(f"{label} must be a positive integer")
+    return parsed
+
+
+def _image_evidence(output: Path, *, args: argparse.Namespace, success: bool) -> dict:
+    evidence = read_json_file(output / "artifacts" / "reports" / "environment-image-provenance.json")
+    image_source = evidence.get("imageSource") or "buildkit"
+    if image_source not in {"buildkit", "ghcr"}:
+        raise ValueError(f"Unsupported environment image source: {image_source}")
+
+    image_reference = evidence.get("imageReference") or "anki-study-report-e2e:ci"
+    image_digest = evidence.get("imageDigest") or None
+    image_platform = evidence.get("imagePlatform") or "linux/amd64"
+    image_preparation_duration_ms = evidence.get("imagePreparationDurationMs")
+    if not isinstance(image_preparation_duration_ms, int) or isinstance(image_preparation_duration_ms, bool):
+        image_preparation_duration_ms = args.build_duration_ms if image_source == "buildkit" else 0
+    image_size_bytes = evidence.get("imageSizeBytes")
+    if not isinstance(image_size_bytes, int) or isinstance(image_size_bytes, bool):
+        image_size_bytes = args.image_size_bytes
+    environment_contract = evidence.get("environmentContractSha256") or None
+    publication_run_id = _positive_or_none(
+        evidence.get("environmentPublicationRunId"), "environmentPublicationRunId"
+    )
+    reuse_run_id = _positive_or_none(
+        evidence.get("environmentReuseVerificationRunId"), "environmentReuseVerificationRunId"
+    )
+    cache_state = evidence.get("cacheState") or args.cache_state
+
+    if image_platform != "linux/amd64":
+        raise ValueError(f"Unsupported environment image platform: {image_platform}")
+    if image_preparation_duration_ms < 0 or image_size_bytes < 0:
+        raise ValueError("Environment image timing and size must be non-negative")
+
+    if success and image_source == "ghcr":
+        if not isinstance(image_reference, str) or not EXACT_GHCR_REFERENCE_RE.fullmatch(image_reference):
+            raise ValueError("successful GHCR summary requires an exact digest image reference")
+        if not isinstance(image_digest, str) or not DIGEST_RE.fullmatch(image_digest):
+            raise ValueError("successful GHCR summary requires an exact image digest")
+        if not image_reference.endswith("@" + image_digest):
+            raise ValueError("GHCR image reference and digest must agree")
+        if not isinstance(environment_contract, str) or not DIGEST_RE.fullmatch(environment_contract):
+            raise ValueError("successful GHCR summary requires an environment contract digest")
+        if publication_run_id is None or reuse_run_id is None:
+            raise ValueError("successful GHCR summary requires publication and reuse run IDs")
+        if cache_state != "ghcr-digest":
+            raise ValueError("successful GHCR summary requires cacheState=ghcr-digest")
+        if args.build_duration_ms != 0:
+            raise ValueError("GHCR pull duration must not be reported as Docker build duration")
+    elif success and image_source == "buildkit":
+        if image_digest is not None:
+            raise ValueError("BuildKit summary must not claim a GHCR image digest")
+        if cache_state != "gha-enabled":
+            raise ValueError("successful BuildKit summary requires cacheState=gha-enabled")
+
+    return {
+        "imageSource": image_source,
+        "imageReference": image_reference,
+        "imageDigest": image_digest,
+        "imagePlatform": image_platform,
+        "imagePreparationDurationMs": image_preparation_duration_ms,
+        "imageSizeBytes": image_size_bytes,
+        "environmentContractSha256": environment_contract,
+        "environmentPublicationRunId": publication_run_id,
+        "environmentReuseVerificationRunId": reuse_run_id,
+        "cacheState": cache_state,
+    }
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
@@ -54,6 +134,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         source_fast_tested_sha = None
         source_package_sha256 = None
 
+    image = _image_evidence(output, args=args, success=success)
     phase_path = output / "artifacts" / "reports" / "e2e-phase-timings.json"
     phase_payload = read_json_file(phase_path)
     product_phases = _phase_observations(phase_payload)
@@ -78,9 +159,17 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         "scope": args.scope,
         "screenshotWorkers": args.screenshot_workers,
         "screenshotCount": screenshot_count,
-        "cacheState": args.cache_state,
+        "cacheState": image["cacheState"],
         "dockerBuildDurationMs": args.build_duration_ms,
-        "imageSizeBytes": args.image_size_bytes,
+        "imageSource": image["imageSource"],
+        "imageReference": image["imageReference"],
+        "imageDigest": image["imageDigest"],
+        "imagePlatform": image["imagePlatform"],
+        "imagePreparationDurationMs": image["imagePreparationDurationMs"],
+        "imageSizeBytes": image["imageSizeBytes"],
+        "environmentContractSha256": image["environmentContractSha256"],
+        "environmentPublicationRunId": image["environmentPublicationRunId"],
+        "environmentReuseVerificationRunId": image["environmentReuseVerificationRunId"],
         "runnerOs": os.environ.get("RUNNER_OS", os.name),
         "runnerImage": os.environ.get("ImageOS", "local") + ":" + os.environ.get("ImageVersion", "unknown"),
         "powershellVersion": os.environ.get("CI_E2E_PWSH_VERSION", "unknown"),
@@ -110,13 +199,22 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
     if phase_payload:
         phase_rows = phase_payload.setdefault("phases", [])
         existing_names = {item.get("name") for item in phase_rows}
-        external = [
-            ("runner inspection", None, "duration unavailable before summary preparation"),
-            ("Buildx setup", None, "duration available from GitHub job metadata, not container telemetry"),
-            ("Docker cache restore/build/load", args.build_duration_ms, "measured around docker/build-push-action with load=true"),
+        external = [("runner inspection", None, "duration unavailable before summary preparation")]
+        if image["imageSource"] == "buildkit":
+            external.extend([
+                ("Buildx setup", None, "duration available from GitHub job metadata, not container telemetry"),
+                ("Docker cache restore/build/load", image["imagePreparationDurationMs"], "measured around docker/build-push-action with load=true"),
+            ])
+        else:
+            external.append((
+                "GHCR exact pull/validation",
+                image["imagePreparationDurationMs"],
+                "measured around exact digest pull, platform and OCI label validation",
+            ))
+        external.extend([
             ("artifact upload", None, "measured after upload and reported in GitHub Step Summary"),
             ("total workflow", duration * 1000, "from runner preflight start through public artifact preparation"),
-        ]
+        ])
         for name, duration_ms, notes in external:
             if name not in existing_names:
                 phase_rows.append({
@@ -127,7 +225,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
                     "status": "success" if success else "unknown",
                     "scope": args.scope,
                     "mode": args.mode,
-                    "cacheState": args.cache_state if "Docker" in name else None,
+                    "cacheState": image["cacheState"] if name in {"Docker cache restore/build/load", "GHCR exact pull/validation"} else None,
                     "notes": notes,
                 })
         phase_payload["slowest"] = sorted(
@@ -166,7 +264,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "scope": args.scope,
             "workerCount": args.screenshot_workers,
             "workflowDurationSeconds": duration,
-            "cacheState": args.cache_state,
+            "cacheState": image["cacheState"],
             "screenshotCount": screenshot_count,
             "artifactFileCount": composition["fileCount"],
             "artifactBytes": composition["totalBytes"],
@@ -175,10 +273,25 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
             "sourceFastCiTestedSha": source_fast_tested_sha,
             "sourcePackageSha256": source_package_sha256,
             "e2eCheckoutSha": e2e_checkout_sha,
+            "imageSource": image["imageSource"],
+            "imageReference": image["imageReference"],
+            "imageDigest": image["imageDigest"],
+            "imagePlatform": image["imagePlatform"],
+            "imagePreparationDurationMs": image["imagePreparationDurationMs"],
+            "imageSizeBytes": image["imageSizeBytes"],
+            "environmentContractSha256": image["environmentContractSha256"],
+            "environmentPublicationRunId": image["environmentPublicationRunId"],
+            "environmentReuseVerificationRunId": image["environmentReuseVerificationRunId"],
             "productBuildPhases": product_phases,
         })
         cache = performance.setdefault("cache", {})
-        cache.update({"backend": "type=gha", "state": args.cache_state, "buildDurationMs": args.build_duration_ms, "imageSizeBytes": args.image_size_bytes})
+        cache.update({
+            "backend": "type=gha" if image["imageSource"] == "buildkit" else "ghcr-digest",
+            "state": image["cacheState"],
+            "buildDurationMs": args.build_duration_ms,
+            "imagePreparationDurationMs": image["imagePreparationDurationMs"],
+            "imageSizeBytes": image["imageSizeBytes"],
+        })
         baseline_seconds = int((performance.get("baseline") or {}).get("canonicalDurationSeconds") or 183)
         canonical_seconds = current.get("canonicalDurationSeconds")
         improvement = performance.setdefault("improvement", {})
@@ -211,6 +324,10 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
         if direct_baseline_comparison and isinstance(canonical_duration, (int, float))
         else "n/a"
     )
+    digest_display = summary["imageDigest"] or "n/a"
+    contract_display = summary["environmentContractSha256"] or "n/a"
+    build_display = f"{summary['dockerBuildDurationMs']} ms" if summary["imageSource"] == "buildkit" else "n/a (GHCR pull is reported separately)"
+    cache_backend = "type=gha" if summary["imageSource"] == "buildkit" else "ghcr-digest"
     markdown = f"""# Full Docker / Anki E2E summary
 
 | Field | Value |
@@ -226,7 +343,15 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Scope | {summary['scope']} |
 | Screenshot workers | {summary['screenshotWorkers']} |
 | Screenshot count | {summary['screenshotCount']} |
-| Build cache | {summary['cacheState']} (`type=gha`) |
+| Image source | {summary['imageSource']} |
+| Image reference | `{summary['imageReference']}` |
+| Image digest | `{digest_display}` |
+| Image platform | {summary['imagePlatform']} |
+| Image preparation | {summary['imagePreparationDurationMs']} ms |
+| Build cache | {summary['cacheState']} (`{cache_backend}`) |
+| Environment contract | `{contract_display}` |
+| Environment publication run | {summary['environmentPublicationRunId'] if summary['environmentPublicationRunId'] is not None else 'n/a'} |
+| Environment reuse run | {summary['environmentReuseVerificationRunId'] if summary['environmentReuseVerificationRunId'] is not None else 'n/a'} |
 | Runner | {summary['runnerOs']} / {summary['runnerImage']} |
 | Anki | {summary['ankiVersion']} |
 | Manifest | {summary['artifactManifestStatus']} |
@@ -234,7 +359,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 | Canonical E2E duration | {canonical_duration if canonical_duration is not None else 'n/a'} seconds |
 | Baseline canonical | 183 seconds (run 29208090406) |
 | Saved vs canonical baseline | {saved_display} |
-| Docker build/load | {summary['dockerBuildDurationMs']} ms |
+| Docker build/load | {build_display} |
 | Image size | {summary['imageSizeBytes']} bytes |
 
 Raw dashboard readiness data is not uploaded. The safe export contains
@@ -253,7 +378,9 @@ Perf100 measurements are diagnostics, not release thresholds.
             "repository", "commitSha", "ref", "event", "workflow", "runId", "runAttempt",
             "mode", "scope", "screenshotWorkers", "screenshotCount", "cacheState", "runnerOs", "runnerImage", "powershellVersion", "dockerClientVersion",
             "dockerServerVersion", "dockerComposeVersion", "ankiVersion", "packageSource", "sourceFastCiRunId",
-            "sourceFastCiTestedSha", "sourcePackageSha256", "e2eCheckoutSha",
+            "sourceFastCiTestedSha", "sourcePackageSha256", "e2eCheckoutSha", "imageSource", "imageReference",
+            "imageDigest", "imagePlatform", "imagePreparationDurationMs", "imageSizeBytes", "environmentContractSha256",
+            "environmentPublicationRunId", "environmentReuseVerificationRunId",
         )
     }
     (output / "environment.txt").write_text("".join(f"{key}={value}\n" for key, value in environment.items()), encoding="utf-8")
