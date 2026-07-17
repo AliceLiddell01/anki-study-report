@@ -1,0 +1,9 @@
+services:
+  anki-e2e:
+    image: ${ANKI_E2E_IMAGE:?ANKI_E2E_IMAGE must be an exact digest reference}
+    pull_policy: never
+    entrypoint:
+      - /bin/bash
+      - /workspace/docker/anki-e2e/bootstrap-current-harness.sh
+    command:
+      - /e2e/bin/run-e2e.sh
