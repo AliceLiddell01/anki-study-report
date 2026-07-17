@@ -178,6 +178,7 @@ def test_cloud_workflow_rejects_source_build_before_registry_login() -> None:
 
 def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None:
     text = workflow_text()
+    identity = workflow_step(text, "Expose exact GHCR environment identity", "Log in to GHCR")
     login = workflow_step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
     pull = workflow_step(
         text,
@@ -185,6 +186,11 @@ def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None
         "Validate resolved GHCR Compose contract",
     )
 
+    assert "if:" not in identity.split("shell:", 1)[0]
+    assert "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" in identity
+    assert "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" in identity
+    assert "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" in identity
+    assert "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" in identity
     assert "if:" not in login
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "username: ${{ github.actor }}" in login
@@ -254,7 +260,8 @@ def test_environment_provenance_is_separate_from_build_duration() -> None:
     )
     assert "ANKI_E2E_BUILD_DURATION_MS=$duration" not in pull
     assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in text
-    assert '"ANKI_E2E_CACHE_STATE=ghcr-digest"' in text
+    assert '"ANKI_E2E_CACHE_STATE=unavailable"' in text
+    assert '"ANKI_E2E_CACHE_STATE=ghcr-digest"' in pull
 
 
 def test_bootstrap_stages_only_current_regular_harness_files() -> None:
