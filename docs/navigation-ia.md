@@ -1,5 +1,13 @@
 # Navigation / Information Architecture
 
+## Notifications IA
+
+Bell расположен в App Shell, но не добавляет пункт primary navigation. Он
+открывает compact panel и ведёт в `#/notifications`. Полный Center —
+пользовательская history surface; `#/settings/notifications` находится в
+System group Settings shell между Privacy и Server. Context actions ведут в
+существующие Statistics/Decks/Search routes; entity IDs в hash не попадают.
+
 FSRS lives inside Statistics at `#/stats/fsrs` with nested `memory`,
 `calibration`, `steps`, and `simulator`; standalone `#/fsrs` remains invalid.
 

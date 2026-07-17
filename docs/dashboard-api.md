@@ -1,5 +1,24 @@
 # Dashboard API и payload-контракт
 
+## Notification API v1
+
+Все routes требуют текущий dashboard token:
+
+```text
+GET  /api/notifications/summary
+GET  /api/notifications?page=&pageLimit=&tab=&category=
+POST /api/notifications/read
+POST /api/notifications/read-all
+GET  /api/settings/notifications
+PUT  /api/settings/notifications
+POST /api/notifications/toasts
+POST /api/notifications/toast-delivered
+```
+
+`pageLimit` ограничен 50. Mutation bodies используют exact keys; invalid
+category/tab/ID/preferences возвращают bounded JSON error. API не возвращает
+DB path, detector internals, dashboard token или telemetry credentials.
+
 Search v1 добавляет product route поверх bounded query/inspect foundation и
 отдельные strict card/note mutation endpoints. FSRS API остаётся read-only;
 generic search/SQL/method invocation и unknown fields отклоняются.

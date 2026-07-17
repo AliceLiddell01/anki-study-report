@@ -1,5 +1,15 @@
 # Матрица проверок
 
+## Stage 9.3–9.5 signals/notifications
+
+Focused layer: notification store/detectors/integration/dashboard server
+pytest, Notification Bell/Center/Settings/Toasts/API Vitest, bundle build and
+`node --check docker/anki-e2e/smoke-browser.mjs`. Targeted real-Anki scope —
+`standard/notifications` с restart: lifecycle, bell/panel, all/unread/active,
+resolved pagination, settings, warning/critical toast, RU/EN, light/dark,
+read-resolution independence и persistence. Из-за App Shell, local API и
+profile lifecycle требуется один финальный `standard/full`.
+
 Снимок документации: 2026-07-16.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная

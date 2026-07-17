@@ -1,5 +1,19 @@
 # Decision log
 
+## 2026-07-17 — Local signals, Notification Center and toast delivery
+
+- Signal state хранится в отдельной bounded per-profile SQLite и не входит в
+  telemetry taxonomy.
+- Detector v1 thresholds фиксированы кодом; custom rules отложены.
+- Resolution требует двух успешных missing evaluations; detector failure не
+  разрешает signal.
+- Active/resolved и read/unread — независимые оси.
+- Center является durable history, toast — однократной presentation delivery.
+- Default toast threshold — critical; warning polite/8s, critical persistent;
+  sound и OS notifications отсутствуют.
+- Release items переиспользуют What’s New, entity context передаётся bounded
+  session handoff без ID в URL.
+
 ## 2026-07-13 — FSRS analytics and verification gates
 
 - FSRS lives only inside Statistics; `#/fsrs` remains invalid.

@@ -1,5 +1,14 @@
 # Telemetry client
 
+## Product User-Agent и граница signals
+
+Каждый Python request формирует на urllib boundary точный ASCII header
+`User-Agent: AnkiStudyReport/<version>`, где version импортируется из
+`anki_study_report/version.py`; CR/LF и non-ASCII отклоняются. Один helper
+используется для health/schema, enrollment, batch и deletion. Signal codes,
+evidence, entity IDs, notification history и preferences не являются telemetry
+events и в Stage 9.3–9.5 не передаются remote service.
+
 Снимок контракта: 2026-07-15. Python runtime использует проверенный production
 endpoint `https://anki-study-report-telemetry.anki-study-report.workers.dev`.
 Enrollment и отправка всё равно невозможны до актуального affirmative consent
