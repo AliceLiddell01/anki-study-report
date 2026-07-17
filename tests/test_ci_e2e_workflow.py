@@ -18,7 +18,7 @@ def step(text: str, name: str, next_name: str | None = None) -> str:
     return text[start:end]
 
 
-def test_workflow_identity_triggers_inputs_and_job_name_are_preserved() -> None:
+def test_workflow_identity_triggers_inputs_and_job_name_are_ghcr_only() -> None:
     text = workflow_text()
     trigger = text[: text.index("permissions:")]
 
@@ -28,12 +28,13 @@ def test_workflow_identity_triggers_inputs_and_job_name_are_preserved() -> None:
     assert "workflow_run:" not in trigger
     assert "pull_request_target:" not in trigger
     assert trigger.count("fast_ci_run_id:") == 2
-    assert trigger.count("environment_image_source:") == 2
-    assert "description: Successful Fast CI run ID; empty keeps source-build mode" in trigger
-    assert "description: E2E environment image source" in trigger
+    assert "environment_image_source" not in trigger
+    assert "Exact successful Fast CI run ID for this branch commit" in trigger
     assert "release_artifact_name:" in trigger
     assert "release_artifact_sha256:" in trigger
-    assert "name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }} / ${{ inputs.environment_image_source || 'buildkit' }})" in text
+    assert "name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }})" in text
+    concurrency = text[text.index("concurrency:") : text.index("jobs:")]
+    assert "environment" not in concurrency.lower()
 
 
 def test_permissions_are_read_only_and_include_cross_run_and_package_read() -> None:
@@ -50,20 +51,22 @@ def test_permissions_are_read_only_and_include_cross_run_and_package_read() -> N
     assert "ghp_" not in text.lower()
 
 
-def test_package_and_image_source_inputs_fail_closed_before_docker_work() -> None:
+def test_package_source_inputs_fail_closed_before_registry_work() -> None:
     text = workflow_text()
-    validation = step(text, "Capture workflow source and validate package source inputs", "Resolve exact successful Fast CI run and artifact IDs")
+    validation = step(
+        text,
+        "Capture workflow source and validate package source inputs",
+        "Resolve exact successful Fast CI run and artifact IDs",
+    )
 
     assert "validate-inputs" in validation
     assert "--release-artifact-name" in validation
     assert "--release-artifact-sha256" in validation
     assert "--fast-ci-run-id" in validation
     assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" in validation
-    assert "Unsupported environment image source" in validation
-    assert "GHCR environment image source requires a prebuilt" in validation
-    assert "Manual GHCR validation requires fast_ci_run_id" in validation
-    assert text.index("Capture workflow source and validate package source inputs") < text.index("Enable containerd image store")
-    assert text.index("Capture workflow source and validate package source inputs") < text.index("Build and load cached E2E image")
+    assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
+    assert "Manual cloud E2E requires fast_ci_run_id" in validation
+    assert "source.packageSource -eq 'source-build'" in validation
     assert text.index("Capture workflow source and validate package source inputs") < text.index("Log in to GHCR")
 
 
@@ -122,7 +125,7 @@ def test_fast_package_validation_binds_source_head_and_stages_prebuilt_env() -> 
     assert "ANKI_E2E_FAST_CI_PACKAGE_SHA256" in block
 
 
-def test_release_current_run_path_and_source_build_fallback_remain_separate() -> None:
+def test_release_current_run_path_and_local_source_build_remain_separate() -> None:
     text = workflow_text()
     release_download = step(text, "Download exact release artifact", "Stage and verify exact release artifact")
     release_stage = step(text, "Stage and verify exact release artifact", "Capture runner and Docker preflight")
@@ -171,30 +174,45 @@ def test_runner_forwards_only_safe_package_and_image_identity_not_github_token()
     assert "fast-ci-diagnostics" not in runner
 
 
-def test_buildkit_cache_and_artifact_export_contract_remain_structurally_unchanged() -> None:
+def test_cloud_buildkit_and_gha_cache_contour_is_removed() -> None:
     text = workflow_text()
 
-    for required in (
-        "docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0",
-        "driver: docker",
-        "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0",
-        "load: true",
-        "tags: anki-study-report-e2e:ci",
-        "cache-from: type=gha,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1",
-        "cache-to: type=gha,mode=max,compression=zstd,compression-level=3,force-compression=true,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1",
-        "compression-level: 0",
-    ):
-        assert required in text
-    assert "file: docker/anki-e2e/Dockerfile" in text
-    for step_name in (
+    for forbidden in (
+        "environment_image_source",
         "Enable containerd image store",
-        "Set up Docker Buildx",
-        "Start Docker build timing",
-        "Build and load cached E2E image",
-        "Capture Docker build telemetry",
+        "setup-buildx-action",
+        "build-push-action",
+        "cache-from",
+        "cache-to",
+        "type=gha",
+        "containerd-snapshotter",
+        "anki-study-report-e2e:ci",
+        "gha-enabled",
     ):
-        block = step(text, step_name)
-        assert "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in block.split("      - name:", 1)[0] or "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in block[:300]
+        assert forbidden not in text
+    assert "compression-level: 0" in text
+    assert text.count("- name: Run canonical Docker-only E2E") == 1
+    assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in text
+    assert '"ANKI_E2E_IMAGE_SOURCE=ghcr"' in text
+    assert '"ANKI_E2E_CACHE_BACKEND=ghcr-digest"' in text
+
+
+def test_ghcr_preparation_and_compose_are_unconditional() -> None:
+    text = workflow_text()
+    lock = step(text, "Validate environment consumer lock", "Log in to GHCR")
+    login = step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
+    pull = step(text, "Pull and verify exact GHCR environment image", "Validate resolved GHCR Compose contract")
+    compose = step(text, "Validate resolved GHCR Compose contract", "Run canonical Docker-only E2E")
+
+    for block in (lock, login, pull):
+        assert "if: env.ANKI_E2E_IMAGE_SOURCE" not in block
+    assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
+    assert "password: ${{ github.token }}" in login
+    assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in pull
+    assert "RepoDigests" in pull
+    assert "docker-compose.yml" in compose
+    assert "docker-compose.ghcr.yml" in compose
+    assert "if ($env:ANKI_E2E_IMAGE_SOURCE" not in compose
 
 
 def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payloads() -> None:
