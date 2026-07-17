@@ -10,19 +10,19 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 
 The source branch is `chatgpt/gamification-concept-foundation`. At the 2026-07-18 audit it diverged from current `master`: 48 commits ahead, 99 behind, merge base `4d197c1037fd66401735e654c6697791364518a4`.
 
-The branch is a research source, not a merge-ready feature branch:
+The branch is a substantial research source, not a merge-ready production feature branch:
 
-- concept documents describe `Level`, `Streak` and `Momentum` as separate axes;
 - Progression and Anki XP foundations are `DRAFT v0.2`;
-- Review taxonomy, reward, abuse and day aggregation are conceptually developed drafts;
-- Stage 5A and several simulator sub-stages are documented as complete;
+- Review taxonomy, reward, abuse and day aggregation are developed drafts;
+- Stage 5A and multiple simulator sub-stages are documented as complete;
 - Stage 5B.C and overall Review simulation remain `PARTIAL`;
 - cross-horizon retention-cycling evidence is the open blocker;
 - Learn XP and Create XP are not started;
-- global XP conversion and production ledger/API/migrations/UI are not designed;
-- the branch diff contains zero-length simulator modules and zero-length test files, so implementation claims must be reconciled against actual content before any import.
+- global XP conversion and production ledger/API/migrations/UI are not designed.
 
-Do not merge or rebase the branch wholesale. A later research PR may selectively import current documents/code after auditing them against `master`.
+Direct spot-checks confirmed that simulator implementation and tests are populated. For example, the scenario runner is implemented, and its tests assert 26 scenarios and 53 assertions. Those checks establish that the files exist; they do not substitute for executing the full branch test/simulation commands on a current master-based branch.
+
+Do not merge or rebase the historical branch wholesale. A later research PR must selectively reconcile current assets with `master`, rerun the documented checks and separate reproducible current evidence from superseded reports.
 
 ## Evidence baseline
 
@@ -34,7 +34,7 @@ External research supports a cautious, theory-informed direction rather than a p
 - points, badges, competition and leaderboards can also produce motivational or performance harms;
 - short interventions are overrepresented, while long-term effects require longitudinal and matched-control evidence.
 
-Design consequences for this track:
+Design consequences:
 
 - preserve autonomy, competence and relatedness;
 - provide settings and opt-out before production activation;
@@ -72,35 +72,35 @@ G0 Reconcile research branch with current master
 
 ### Goal
 
-Create a new branch from current `master`, selectively recover valid research assets and establish one truthful, executable research baseline.
+Create a new branch from current `master`, selectively recover valid research assets and establish one truthful, reproducible research baseline.
 
 ### Dependencies
 
-None on the core track. Requires read access to the old branch.
+Read access to the historical branch. No dependency on the core track.
 
 ### Scope
 
-- inventory branch documents, contracts, source, scenarios, schemas, tests and generated evidence;
-- resolve zero-length or missing implementation/test files;
-- distinguish current evidence from superseded reports;
+- inventory documents, contracts, source, scenarios, schemas, tests and evidence;
+- resolve drift against current repository structure and policies;
+- rerun and record actual test/scenario/oracle counts;
+- distinguish current results from superseded reports;
 - preserve research package isolation;
-- decide which assets are imported, rewritten, archived or discarded;
-- document reproducible commands and actual passing test/scenario counts.
+- decide which assets are imported, rewritten, archived or discarded.
 
 ### Out of scope
 
 - production add-on integration;
-- changing XP formulas merely to make tests pass;
+- changing XP formulas merely to make checks pass;
 - merging the historical branch wholesale;
 - Fast CI or package inclusion.
 
 ### Activation criteria
 
-Already met: the branch is materially diverged and internally inconsistent.
+Already met: the branch is materially diverged from `master` and must be reconciled before further authoritative research work.
 
 ### Completion criteria
 
-A master-based research branch/PR contains a self-consistent package and docs, actual checks are reproducible, superseded evidence is marked, and no production/runtime/workflow files change.
+A master-based research branch/PR contains a self-consistent package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change.
 
 ## G1 — Close Review XP cross-horizon cycling gap
 
@@ -112,22 +112,15 @@ Resolve the observed 90→365-day retention-cycling advantage without sacrificin
 
 ### Dependencies
 
-- G0 executable baseline;
-- persistent matched-card longitudinal simulator;
-- versioned candidate/evidence contracts.
+G0 executable baseline; persistent matched-card longitudinal simulator; versioned candidate/evidence contracts.
 
 ### Scope
 
-- defensible candidate hypotheses;
-- matched 90/365-day and sensitivity runs;
-- hard gates before Pareto ranking;
-- explicit rejection/defer decision when evidence remains insufficient.
+Defensible candidate hypotheses, matched 90/365-day and sensitivity runs, hard gates before Pareto ranking, and an explicit reject/defer decision when evidence remains insufficient.
 
 ### Out of scope
 
-- declaring a production economy;
-- Learn/Create XP;
-- changing Anki scheduling.
+Production economy, Learn/Create XP and changes to Anki scheduling.
 
 ### Activation criteria
 
@@ -163,7 +156,7 @@ Review evidence no longer blocks cross-domain calibration.
 
 ### Completion criteria
 
-Versioned specification and reproducible simulator evidence exist; candidate values remain research-only.
+A versioned specification and reproducible simulator evidence exist; candidate values remain research-only.
 
 ## G3 — Create XP specification and simulation
 
@@ -183,7 +176,7 @@ Creation/readiness/fix events, delayed confirmation, lifetime reward state, qual
 
 ### Out of scope
 
-Content scoring by remote AI, arbitrary surveillance or production integration.
+Remote AI content scoring, arbitrary surveillance and production integration.
 
 ### Activation criteria
 
@@ -191,7 +184,7 @@ A concrete and auditable notion of useful creation/fix work exists.
 
 ### Completion criteria
 
-Versioned specification and evidence demonstrate bounded reward and resistance to duplicate/reset/import farming.
+A versioned specification and evidence demonstrate bounded reward and resistance to duplicate/reset/import farming.
 
 ## G4 — Cross-domain economy calibration
 
@@ -239,7 +232,7 @@ Event capture, immutable/reconcilable reward ledger, per-profile persistence, mi
 
 ### Out of scope
 
-Accounts by default, remote telemetry of learning history, competitive features and UI expansion.
+Default accounts, remote telemetry of learning history, competitive features and UI expansion.
 
 ### Activation criteria
 
@@ -281,10 +274,54 @@ MVP passes migrations/reconciliation, long-horizon economy, accessibility, priva
 
 **Status:** Conditional
 
-Activation requires evidence that achievements add meaningful feedback without dominating intrinsic motivation. They are not required for G6 or core maturity.
+### Goal
+
+Add durable milestones only when they improve feedback without dominating intrinsic motivation.
+
+### Dependencies
+
+G6 evidence and opt-out/settings contracts.
+
+### Scope
+
+A minimal achievement taxonomy, versioning, explainability and retroactive reconciliation.
+
+### Out of scope
+
+Competitive rankings, loot economies and mandatory engagement loops.
+
+### Activation criteria
+
+Measured MVP usage identifies a concrete feedback gap that achievements solve.
+
+### Completion criteria
+
+Achievement rules are bounded, explainable, optional and tested against retroactive/import/reset behavior.
 
 ## G8 — Skills, quests and domain expansion
 
 **Status:** Deferred / conditional
 
-Activation requires a validated non-Anki domain, a concrete user workflow and a new domain-specific evidence model. No generic life-tracking framework is prebuilt.
+### Goal
+
+Extend progression only to a validated non-Anki domain or a specific quest/skill workflow.
+
+### Dependencies
+
+G6 stable; a domain-specific evidence model and product owner exist.
+
+### Scope
+
+One named domain/workflow at a time with its own event taxonomy, calibration and privacy model.
+
+### Out of scope
+
+A generic life-tracking framework, universal XP conversion and speculative routes/settings.
+
+### Activation criteria
+
+A concrete non-Anki workflow has evidence, maintenance ownership and a reason to share progression.
+
+### Completion criteria
+
+The new domain preserves local-first/privacy boundaries, has reproducible calibration and does not distort the Anki economy.
