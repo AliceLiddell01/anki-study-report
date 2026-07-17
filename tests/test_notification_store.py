@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 
 import pytest
 
@@ -115,6 +116,32 @@ def test_corrupt_database_is_quarantined_and_recreated(tmp_path):
     assert store.summary()["unreadCount"] == 0
     assert list(tmp_path.glob("notifications.sqlite3.corrupt-*"))
     assert json.loads(store._require_connection().execute("SELECT value_json FROM schema_metadata WHERE key = 'schemaVersion'").fetchone()[0]) == 1
+
+
+def test_future_schema_is_rejected_without_quarantine_or_rewrite(tmp_path):
+    module = fresh_import_addon_module("notification_store")
+    path = tmp_path / "notifications.sqlite3"
+    future_version = module.NOTIFICATION_STORE_SCHEMA_VERSION + 1
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE future_sentinel (value TEXT NOT NULL)")
+    connection.execute("INSERT INTO future_sentinel (value) VALUES ('preserve-me')")
+    connection.execute(f"PRAGMA user_version={future_version}")
+    connection.commit()
+    connection.close()
+
+    with pytest.raises(module.UnsupportedNotificationSchemaError):
+        module.NotificationStore(path)
+
+    assert not list(tmp_path.glob("notifications.sqlite3.corrupt-*"))
+    reopened = sqlite3.connect(path)
+    try:
+        assert reopened.execute("PRAGMA user_version").fetchone()[0] == future_version
+        assert reopened.execute("SELECT value FROM future_sentinel").fetchone()[0] == "preserve-me"
+        assert reopened.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_metadata'"
+        ).fetchone() is None
+    finally:
+        reopened.close()
 
 
 def test_preferences_update_preserves_unknown_future_fields(tmp_path):
