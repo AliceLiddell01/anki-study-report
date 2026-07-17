@@ -73,8 +73,11 @@ def test_every_enum_is_exact_and_common_dimensions_are_backend_only(contract_mod
         common,
     )
     assert purpose == "featureUsage"
-    assert queued["telemetrySchemaVersion"] == 1
     assert queued["addonVersion"] == "1.1.0"
     assert len(queued["eventId"]) == 36
+    assert {
+        "telemetrySchemaVersion",
+        "consentSchemaVersion",
+        "privacyNoticeVersion",
+    }.isdisjoint(queued)
     assert "writeToken" not in json.dumps(queued)
-
