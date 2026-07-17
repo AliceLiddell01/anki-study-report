@@ -1,3 +1,6 @@
 docker/anki-e2e/*.sh text eol=lf
 docker/anki-e2e/*.py text eol=lf
 docker/anki-e2e/*.mjs text eol=lf
+docker/anki-e2e/environment-image-spec.json text eol=lf
+docker/anki-e2e/environment.Dockerfile text eol=lf
+docker/anki-e2e/environment.Dockerfile.dockerignore text eol=lf

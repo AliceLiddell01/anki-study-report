@@ -93,6 +93,19 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
 
 
+def read_canonical_contract_bytes(path: Path) -> bytes:
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise EnvironmentImageError(f"{path} must not contain a UTF-8 BOM")
+    if b"\0" in raw:
+        raise EnvironmentImageError(f"{path} must not contain NUL bytes")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise EnvironmentImageError(f"{path} must contain valid UTF-8 text") from exc
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def load_json_object(path: Path, *, require_canonical: bool = True) -> dict[str, Any]:
     raw = path.read_text(encoding="utf-8")
     if raw.startswith("\ufeff"):
@@ -244,7 +257,7 @@ def compute_contract_hash(
     digest = hashlib.sha256()
     digest.update(b"anki-study-report-e2e-environment-contract-v1\0")
     for label, path in inputs:
-        data = path.read_bytes()
+        data = read_canonical_contract_bytes(path)
         digest.update(label.encode("utf-8"))
         digest.update(b"\0")
         digest.update(str(len(data)).encode("ascii"))
