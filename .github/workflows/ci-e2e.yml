@@ -35,10 +35,6 @@ on:
         required: false
         default: ""
         type: string
-      environment_image_source:
-        required: false
-        default: buildkit
-        type: string
   workflow_dispatch:
     inputs:
       mode:
@@ -82,18 +78,10 @@ on:
         type: choice
         options: [auto, "true", "false"]
       fast_ci_run_id:
-        description: Successful Fast CI run ID; empty keeps source-build mode
+        description: Exact successful Fast CI run ID for this branch commit
         required: false
         default: ""
         type: string
-      environment_image_source:
-        description: E2E environment image source
-        required: true
-        default: buildkit
-        type: choice
-        options:
-          - buildkit
-          - ghcr
 
 permissions:
   contents: read
@@ -101,12 +89,12 @@ permissions:
   packages: read
 
 concurrency:
-  group: ci-e2e-${{ github.ref }}-${{ inputs.mode || 'standard' }}-${{ inputs.scope || 'stats' }}-${{ inputs.screenshot_workers || '3' }}-${{ inputs.environment_image_source || 'buildkit' }}
+  group: ci-e2e-${{ github.ref }}-${{ inputs.mode || 'standard' }}-${{ inputs.scope || 'stats' }}-${{ inputs.screenshot_workers || '3' }}
   cancel-in-progress: true
 
 jobs:
   e2e:
-    name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }} / ${{ inputs.environment_image_source || 'buildkit' }})
+    name: Real Anki Desktop (${{ inputs.mode || 'standard' }} / ${{ inputs.scope || 'stats' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -118,8 +106,6 @@ jobs:
       RELEASE_ARTIFACT_NAME_INPUT: ${{ inputs.release_artifact_name || '' }}
       RELEASE_ARTIFACT_SHA256_INPUT: ${{ inputs.release_artifact_sha256 || '' }}
       FAST_CI_RUN_ID_INPUT: ${{ inputs.fast_ci_run_id || '' }}
-      ENVIRONMENT_IMAGE_SOURCE_INPUT: ${{ inputs.environment_image_source || 'buildkit' }}
-      ANKI_E2E_IMAGE: anki-study-report-e2e:ci
       ANKI_VERSION: "26.05"
       # Official GitHub release asset digest for anki-26.05-linux-x86_64.tar.zst.
       ANKI_SHA256: 6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274
@@ -144,9 +130,9 @@ jobs:
           "CI_E2E_ARTIFACT_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_BUILD_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_SIZE_BYTES=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_CACHE_STATE=unavailable" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_SOURCE=$env:ENVIRONMENT_IMAGE_SOURCE_INPUT" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_REFERENCE=anki-study-report-e2e:ci" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_CACHE_STATE=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_SOURCE=ghcr" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_IMAGE_REFERENCE=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_DIGEST=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_PLATFORM=linux/amd64" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_PREPARATION_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -156,9 +142,6 @@ jobs:
           "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "E2E_WORKFLOW_SOURCE_REF=${{ github.ref }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "E2E_CHECKOUT_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          if ($env:ENVIRONMENT_IMAGE_SOURCE_INPUT -notin @('buildkit', 'ghcr')) {
-            throw "Unsupported environment image source: $env:ENVIRONMENT_IMAGE_SOURCE_INPUT"
-          }
           python scripts/verify_fast_ci_e2e_handoff.py validate-inputs `
             --release-artifact-name "$env:RELEASE_ARTIFACT_NAME_INPUT" `
             --release-artifact-sha256 "$env:RELEASE_ARTIFACT_SHA256_INPUT" `
@@ -168,11 +151,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Invalid E2E package source inputs.' }
           $source = Get-Content "$env:RUNNER_TEMP/package-source.json" -Raw | ConvertFrom-Json
           "ANKI_E2E_PACKAGE_SOURCE=$($source.packageSource)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          if ($env:ENVIRONMENT_IMAGE_SOURCE_INPUT -eq 'ghcr' -and $source.packageSource -eq 'source-build') {
-            throw 'GHCR environment image source requires a prebuilt Fast CI or release artifact package.'
+          if ($source.packageSource -eq 'source-build') {
+            throw 'Cloud E2E requires an exact prebuilt Fast CI or release artifact package.'
           }
-          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and $env:ENVIRONMENT_IMAGE_SOURCE_INPUT -eq 'ghcr' -and $source.packageSource -ne 'fast-ci-artifact') {
-            throw 'Manual GHCR validation requires fast_ci_run_id and does not accept release artifact inputs.'
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and $source.packageSource -ne 'fast-ci-artifact') {
+            throw 'Manual cloud E2E requires fast_ci_run_id and does not accept release artifact inputs.'
+          }
+          if ('${{ github.event_name }}' -ne 'workflow_dispatch' -and $source.packageSource -notin @('fast-ci-artifact', 'release-artifact')) {
+            throw "Unsupported reusable cloud package source: $($source.packageSource)"
           }
 
       - name: Resolve exact successful Fast CI run and artifact IDs
@@ -365,74 +351,10 @@ jobs:
           "ANKI_E2E_RESOURCE_TELEMETRY=$telemetry" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_VERIFY_RESTART=$restart" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_NO_BUILD=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          if ($env:ANKI_E2E_IMAGE_SOURCE -eq 'buildkit') {
-            "ANKI_E2E_CACHE_BACKEND=type=gha" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          } else {
-            "ANKI_E2E_CACHE_BACKEND=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-
-      - name: Enable containerd image store
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'
-        shell: pwsh
-        run: |
-          $configPath = '/etc/docker/daemon.json'
-          $config = if (Test-Path $configPath) {
-            Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
-          } else {
-            @{}
-          }
-          if (-not $config.ContainsKey('features')) { $config.features = @{} }
-          $config.features['containerd-snapshotter'] = $true
-          $config | ConvertTo-Json -Depth 10 | sudo tee $configPath | Out-Null
-          sudo systemctl restart docker
-          docker info *> $null
-          if ($LASTEXITCODE -ne 0) { throw 'Docker failed after enabling the containerd image store.' }
-          docker info --format '{{json .DriverStatus}}'
-
-      - name: Set up Docker Buildx
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-        with:
-          driver: docker
-
-      - name: Start Docker build timing
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'
-        shell: pwsh
-        run: |
-          "DOCKER_BUILD_STARTED_MS=$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Build and load cached E2E image
-        id: docker_build
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: .
-          file: docker/anki-e2e/Dockerfile
-          load: true
-          tags: anki-study-report-e2e:ci
-          build-args: |
-            ANKI_VERSION=26.05
-            ANKI_SHA256=6223d705563f71ab40ce072a5d96a3919c546d5dde1e4c49dc27975e70067274
-            ANKI_REQUIRE_SHA256=1
-            ANKI_PYTHON_PACKAGE=anki==26.5
-          cache-from: type=gha,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1
-          cache-to: type=gha,mode=max,compression=zstd,compression-level=3,force-compression=true,scope=anki-e2e-ubuntu24-anki2605-pw1491-zstd-v1
-
-      - name: Capture Docker build telemetry
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'
-        shell: pwsh
-        run: |
-          $finished = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-          $duration = $finished - [long]$env:DOCKER_BUILD_STARTED_MS
-          $size = docker image inspect anki-study-report-e2e:ci --format '{{.Size}}'
-          "ANKI_E2E_BUILD_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_PREPARATION_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_IMAGE_SIZE_BYTES=$size" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "ANKI_E2E_CACHE_STATE=gha-enabled" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_CACHE_BACKEND=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Validate environment consumer lock
         id: environment_lock
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'ghcr'
         shell: pwsh
         run: |
           python scripts/validate_e2e_environment_consumer.py validate-consumer-lock `
@@ -442,7 +364,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Environment consumer lock validation failed.' }
 
       - name: Log in to GHCR
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'ghcr'
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
@@ -450,7 +371,6 @@ jobs:
           password: ${{ github.token }}
 
       - name: Pull and verify exact GHCR environment image
-        if: env.ANKI_E2E_IMAGE_SOURCE == 'ghcr'
         shell: pwsh
         env:
           EXACT_REFERENCE: ${{ steps.environment_lock.outputs.image_reference }}
@@ -492,14 +412,15 @@ jobs:
           "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=$env:REUSE_RUN_ID" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_CACHE_STATE=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Validate resolved Compose contract
+      - name: Validate resolved GHCR Compose contract
         shell: pwsh
         run: |
-          $arguments = @('compose', '-f', 'docker/anki-e2e/docker-compose.yml')
-          if ($env:ANKI_E2E_IMAGE_SOURCE -eq 'ghcr') {
-            $arguments += @('-f', 'docker/anki-e2e/docker-compose.ghcr.yml')
-          }
-          $arguments += 'config'
+          $arguments = @(
+            'compose',
+            '-f', 'docker/anki-e2e/docker-compose.yml',
+            '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+            'config'
+          )
           & docker @arguments *>&1 | Tee-Object -FilePath ci-e2e-raw/docker-compose-config.txt
           if ($LASTEXITCODE -ne 0) { throw 'docker compose config failed.' }
 
@@ -613,11 +534,12 @@ jobs:
         shell: pwsh
         run: |
           "--- docker compose ps ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
-          $arguments = @('compose', '-f', 'docker/anki-e2e/docker-compose.yml')
-          if ($env:ANKI_E2E_IMAGE_SOURCE -eq 'ghcr') {
-            $arguments += @('-f', 'docker/anki-e2e/docker-compose.ghcr.yml')
-          }
-          $arguments += @('ps', '-a')
+          $arguments = @(
+            'compose',
+            '-f', 'docker/anki-e2e/docker-compose.yml',
+            '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+            'ps', '-a'
+          )
           & docker @arguments *>&1 | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
           "--- disk after ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
           df -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
@@ -694,11 +616,12 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $arguments = @('compose', '-f', 'docker/anki-e2e/docker-compose.yml')
-          if ($env:ANKI_E2E_IMAGE_SOURCE -eq 'ghcr') {
-            $arguments += @('-f', 'docker/anki-e2e/docker-compose.ghcr.yml')
-          }
-          $arguments += @('down', '-v', '--remove-orphans')
+          $arguments = @(
+            'compose',
+            '-f', 'docker/anki-e2e/docker-compose.yml',
+            '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+            'down', '-v', '--remove-orphans'
+          )
           & docker @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Docker E2E cleanup failed.' }
 
