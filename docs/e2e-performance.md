@@ -9,6 +9,20 @@ explicit E2E performance work. Product work uses Fast CI → targeted → final 
 не отменяет настоящий Anki, token/security checks, полный screenshot contract,
 Cards/APKG и restart gate финального `full`-прогона.
 
+## Current cloud image preparation contract
+
+После Stage 6B cloud E2E не выполняет Docker build/load и не читает/пишет
+BuildKit `type=gha` cache. Каждый cloud run тянет exact GHCR digest, поэтому
+`dockerBuildDurationMs=0`, `cacheState=ghcr-digest`, а фактическое время pull +
+platform/label validation записывается отдельно как
+`imagePreparationDurationMs`. Старые BuildKit/`gha-enabled` строки остаются
+только историческими evidence/schema fixtures; локальный Docker build fallback
+остаётся доступным и не смешивается с cloud measurement.
+
+Stage 6B targeted следует сравнивать с Stage 6A GHCR targeted run
+`29577800196`, а не с BuildKit control: основная ценность cutover — удаление
+параллельного cloud contour и cache writes, не обещание новой runtime экономии.
+
 ## Авторитетный baseline
 
 Старый checkout повторно не запускается. Единственный baseline — уже готовый
@@ -83,14 +97,12 @@ saved wall = max(0, sum(task duration) - capture phase wall)
 benchmark. Default 3 меняется на 4 только после стабильного `stats` comparison
 без missing/collisions/errors и с приемлемым memory headroom.
 
-## Docker cache и layers
+## Historical BuildKit cache и layers
 
-Workflow использует Buildx + `docker/build-push-action`, default `docker`
-driver с containerd image store, `cache-from` и `cache-to`
-`type=gha,mode=max` с zstd compression. Containerd store позволяет BuildKit загрузить результат
-непосредственно в Docker Engine без отдельного OCI export/import. Cache scope фиксирует Ubuntu/architecture,
-Anki 26.05 и Playwright 1.49.1; Dockerfile, install script, image, versions и
-lockfile естественно участвуют в layer keys.
+До Stage 6B cloud workflow использовал Buildx, containerd image store и
+`cache-from`/`cache-to type=gha,mode=max`. Этот раздел объясняет только старые
+Stage 6.6–7.5 evidence и schema fixtures. Текущий cloud workflow не выполняет
+эти шаги и не создаёт новые GHA BuildKit cache entries.
 
 Layering идёт от стабильного к volatile:
 
@@ -124,10 +136,11 @@ artifacts/reports/e2e-phase-timings.md
 
 Измеряются workspace copy, offline install, frontend build, package,
 fixture/profile preparation, Anki start/readiness/API, browser capture,
-restart phases, manifest validation и canonical total. Workflow отдельно
-добавляет runner/Buildx/build-load/upload wall time, поскольку эти фазы живут
-вне container. Отчёт показывает slowest phases и critical path без fake
-precision.
+restart phases, manifest validation и canonical total. Historical artifacts
+отдельно добавляли runner/Buildx/build-load/upload wall time. Current GHCR-only
+artifacts вместо build/load фиксируют exact image pull и validation как
+`imagePreparationDurationMs`; upload wall time по-прежнему живёт вне container.
+Отчёт показывает slowest phases и critical path без fake precision.
 
 Lightweight one-second cgroup sampler пишет:
 
@@ -156,10 +169,10 @@ ci-e2e-summary.md
 ```
 
 Они связывают baseline/current/improvement, phases, parallel workers,
-resources, BuildKit state и artifact composition. Manifest schema v2 индексирует
-performance reports; resource reports обязательны только при включённой
-telemetry. Все paths relative/unique/sorted, traversal и missing required
-отклоняются. Token и полный dashboard URL не попадают в public export.
+resources, image preparation state и artifact composition. Manifest schema v2
+индексирует performance reports; resource reports обязательны только при
+включённой telemetry. Все paths relative/unique/sorted, traversal и missing
+required отклоняются. Token и полный dashboard URL не попадают в public export.
 
 Сводка сравнивает canonical inner E2E duration только с canonical baseline.
 Полная workflow duration публикуется отдельным полем и не используется для
@@ -174,21 +187,24 @@ bytes и largest files считаются до upload. Duration, artifact ID и 
 ## Запуск и verification
 
 Manual inputs: `mode`, `scope`, `screenshot_workers`, `resource_telemetry`,
-`verify_restart`. Неверные и несовместимые значения отклоняются до build.
+`verify_restart` и обязательный exact `fast_ci_run_id`. Неверные и несовместимые
+значения отклоняются до build.
 
 Development example:
 
 ```powershell
 gh workflow run ci-e2e.yml --ref <branch> `
   -f mode=standard -f scope=stats -f screenshot_workers=3 `
-  -f resource_telemetry=true -f verify_restart=auto
+  -f resource_telemetry=true -f verify_restart=auto `
+  -f fast_ci_run_id=<exact-successful-fast-ci-run-id>
 ```
 
-Final example меняет scope на `full`. Проверка этапа: exact-SHA Fast CI,
-targeted stats с 3 и 4 workers, первый full standard, один повтор того же SHA
-для warm cache, затем ручной review обоих artifacts. Targeted/full не
-сравниваются как apples-to-apples. После fast-forward merge full exact SHA не
-дублируется; master Fast CI обязателен.
+Final example меняет scope на `full`. Обычная проверка изменения cloud E2E:
+exact-SHA Fast CI, один targeted scope и один risk-required full с тем же
+package; release-path изменение дополнительно требует isolated release-artifact
+rehearsal. Worker comparison и warm repeats выполняются только в отдельной
+performance-работе. Targeted/full не сравниваются как apples-to-apples. После
+fast-forward merge full exact SHA не дублируется; master Fast CI обязателен.
 
 Цели — diagnostic, пока variance не изучена: warm canonical 130–145 s,
 workflow 150–170 s, targeted 60–100 s, capture wall reduction не менее 25%,
@@ -200,7 +216,8 @@ second-level gates.
 1. Сверить exact SHA/mode/scope/workers и cache state.
 2. Сравнить `e2e-phase-timings`, slowest screenshots и worker utilization.
 3. Проверить p95, не только peak CPU/memory, и disk/block IO delta.
-4. Отличить cold BuildKit export от warm restore и runtime regression.
+4. Сравнить GHCR pull/validation с historical image preparation и отделить
+   registry/runner variance от runtime regression.
 5. Проверить file count/bytes и upload duration.
 6. При worker failure открыть task ID/route/theme и failure artifacts.
 
@@ -256,12 +273,13 @@ canonical 190 s был на 7 s медленнее baseline. Финальный 
 52–53 s и даёт быстрый real-Anki development feedback; дальнейшая работа может
 уменьшать image-transfer cost, но не урезать full coverage.
 
-## Stage 7.5 observation
+## Historical Stage 7.5 observation
 
-Docker Actions обновлены до Node 24 releases: setup-buildx v4.1.0
-`d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5` и build-push v7.2.0
-`f9f3042f7e2789586610d6e8b85c8f03e5195baf`. Driver, GHA cache, load и
-telemetry contract сохранены; Node 20 annotations в jobs отсутствуют.
+До permanent GHCR cutover Docker Actions были обновлены до Node 24 releases:
+setup-buildx v4.1.0 `d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5` и
+build-push v7.2.0 `f9f3042f7e2789586610d6e8b85c8f03e5195baf`. Driver,
+GHA cache, load и telemetry contract сохранялись; Node 20 annotations в jobs
+отсутствовали.
 
 На functional SHA `2c2ee56` targeted stats run `29238152612` занял 363 s при
 cold build/load 279.4 s и 78 s real-Anki contour. Последующий full run
