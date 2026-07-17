@@ -1,22 +1,77 @@
 {
   "schemaVersion": 1,
   "unreleased": {
-    "sections": [
-      {
-        "type": "fixed",
-        "items": [
-          {
-            "id": "privacy_consent_presentation",
-            "text": {
-              "ru": "Улучшены светлая и тёмная темы окон согласия и истории изменений, локализованы даты и отключены недоступные действия с данными.",
-              "en": "Improved light and dark consent and release-history dialogs, localized dates, and disabled unavailable data actions."
-            }
-          }
-        ]
-      }
-    ]
+    "sections": []
   },
   "releases": [
+    {
+      "version": "1.2.0",
+      "date": "2026-07-18",
+      "sections": [
+        {
+          "type": "added",
+          "items": [
+            {
+              "id": "product_notices_and_whats_new",
+              "text": {
+                "ru": "Добавлены отдельные для каждого профиля уведомления о продукте, доступное окно «Что нового» и встроенная двуязычная история изменений.",
+                "en": "Added per-profile product notices, an accessible What's New dialog, and bundled bilingual release history."
+              }
+            },
+            {
+              "id": "privacy_and_optional_diagnostics",
+              "text": {
+                "ru": "Добавлены настройки конфиденциальности с раздельным добровольным включением технической диагностики и статистики использования функций.",
+                "en": "Added Privacy settings with separate opt-in controls for reliability diagnostics and feature-usage statistics."
+              }
+            },
+            {
+              "id": "local_signals_and_notifications",
+              "text": {
+                "ru": "Добавлены локальные учебные сигналы, Центр уведомлений, колокольчик, фильтры и отдельные для каждого профиля настройки in-app уведомлений.",
+                "en": "Added local study signals, a Notification Center, notification bell, filters, and per-profile in-app notification preferences."
+              }
+            }
+          ]
+        },
+        {
+          "type": "changed",
+          "items": [
+            {
+              "id": "profile_scoped_notice_state",
+              "text": {
+                "ru": "Состояние согласия, истории обновлений, сигналов и уведомлений теперь хранится раздельно для каждого профиля Anki.",
+                "en": "Consent, release-history, signal, and notification state is now stored separately for each Anki profile."
+              }
+            }
+          ]
+        },
+        {
+          "type": "fixed",
+          "items": [
+            {
+              "id": "notice_and_delivery_reliability",
+              "text": {
+                "ru": "Улучшены темы и локализация окон согласия и истории изменений, привязка фоновых задач к активному профилю и обработка временных ошибок соединения.",
+                "en": "Improved consent and release-history themes and localization, active-profile background task binding, and handling of temporary connection failures."
+              }
+            }
+          ]
+        },
+        {
+          "type": "safety",
+          "items": [
+            {
+              "id": "optional_diagnostics_and_local_signals",
+              "text": {
+                "ru": "Отправка необязательных диагностических данных выключена по умолчанию, а учебные сигналы и настройки уведомлений остаются локальными.",
+                "en": "Optional diagnostic data sharing is disabled by default, while study signals and notification preferences remain local."
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "version": "1.1.0",
       "date": "2026-07-15",
