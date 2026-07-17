@@ -13,7 +13,7 @@ from typing import Iterable
 
 SCHEMA_VERSION = 2
 ALLOWED_MODES = {"standard", "strict-apkg", "perf100"}
-ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings"}
+ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings", "notifications"}
 ALLOWED_PACKAGE_SOURCES = {"source-build", "fast-ci-artifact", "release-artifact"}
 ALLOWED_TOP_LEVEL = {
     "artifact-manifest.json",
@@ -244,4 +244,3 @@ def _optional_hash(value: str, pattern: re.Pattern[str], label: str) -> str | No
     if not pattern.fullmatch(value):
         raise ValueError(f"{label} has an invalid format")
     return value
-

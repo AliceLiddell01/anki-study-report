@@ -1,4 +1,4 @@
-export const E2E_SCOPES = Object.freeze(["full", "global", "stats", "decks", "activity", "cards", "settings"]);
+export const E2E_SCOPES = Object.freeze(["full", "global", "stats", "decks", "activity", "cards", "settings", "notifications"]);
 
 const PAGE_SCOPE = Object.freeze({
   today: "global",
@@ -23,6 +23,8 @@ const PAGE_SCOPE = Object.freeze({
   "settings/server": "settings",
   "settings/sources": "settings",
   "settings/logs": "settings",
+  notifications: "notifications",
+  "settings/notifications": "notifications",
 });
 
 export function resolveScope(value = "full") {

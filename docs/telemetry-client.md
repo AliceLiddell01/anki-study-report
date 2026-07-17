@@ -1,5 +1,14 @@
 # Telemetry client
 
+## Product User-Agent и граница signals
+
+Каждый Python request формирует на urllib boundary точный ASCII header
+`User-Agent: AnkiStudyReport/<version>`, где version импортируется из
+`anki_study_report/version.py`; CR/LF и non-ASCII отклоняются. Один helper
+используется для health/schema, enrollment, batch и deletion. Signal codes,
+evidence, entity IDs, notification history и preferences не являются telemetry
+events и в Stage 9.3–9.5 не передаются remote service.
+
 Снимок контракта: 2026-07-15. Python runtime использует проверенный production
 endpoint `https://anki-study-report-telemetry.anki-study-report.workers.dev`.
 Enrollment и отправка всё равно невозможны до актуального affirmative consent
@@ -70,6 +79,13 @@ timer callback каждый раз разрешает текущий active-prof
 чаще 15 минут. Queue threshold не обходит enrollment/delivery backoff. Один
 запрос имеет конечный timeout 10 секунд.
 
+Каждый remote request использует стабильный product User-Agent
+`AnkiStudyReport/<current-addon-semver>`, где версия импортируется из
+канонического `anki_study_report/version.py`. Заголовок содержит только имя и
+версию add-on и нужен для легитимной идентификации клиента Cloudflare. Он не
+содержит профиль, ОС, locale, installation ID, token или collection data.
+Worker не сохраняет User-Agent в D1.
+
 Успешно подтверждённые IDs удаляются только после ack. 408, 425, 429, 5xx и
 network failures получают exponential backoff с jitter; `Retry-After`
 уважается в пределах суток. Non-retryable 4xx удаляет отклонённый batch, 401
@@ -123,3 +139,10 @@ Real-Anki Docker использует только `fake-telemetry-server.py` н
 offline queue, restart persistence, pending/confirmed deletion и отсутствие UI
 freeze. Fake сохраняет лишь агрегированные counts/codes; tokens и bodies не
 попадают в artifacts. CI/E2E не обращается к production telemetry.
+
+Focused Python suite дополнительно поднимает ephemeral loopback HTTP service и
+прогоняет реальный `UrlLibTransport`: enrollment, batch ack, authenticated
+deletion и отклонение старого token. Ручной workflow
+`telemetry-client-smoke.yml` повторяет безопасный synthetic lifecycle для
+staging или явно подтверждённого production и публикует только bounded report
+без endpoint, credentials, request/response bodies или raw errors.

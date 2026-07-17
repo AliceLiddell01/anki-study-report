@@ -9,7 +9,6 @@ import IntegrationsPage from "../pages/IntegrationsPage";
 import LogsPage from "../pages/LogsPage";
 import ProfilePage from "../pages/ProfilePage";
 import ReportSettingsPage from "../pages/ReportSettingsPage";
-import SearchPage from "../pages/SearchPage";
 import ServerSettingsPage from "../pages/ServerSettingsPage";
 import SettingsPage from "../pages/SettingsPage";
 import type { StudyReport } from "../types/report";
@@ -17,6 +16,9 @@ import type { StudyReport } from "../types/report";
 const StatisticsPage = lazy(() => import("../pages/StatisticsPage"));
 const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 const PrivacySettingsPage = lazy(() => import("../pages/PrivacySettingsPage"));
+const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPage"));
+const NotificationSettingsPage = lazy(() => import("../pages/NotificationSettingsPage"));
+const SearchPage = lazy(() => import("../pages/SearchPage"));
 
 export type RoutePath =
   | "/home"
@@ -36,9 +38,11 @@ export type RoutePath =
   | "/stats/fsrs/steps"
   | "/stats/fsrs/simulator"
   | "/actions"
+  | "/notifications"
   | "/settings"
   | "/settings/data"
   | "/settings/privacy"
+  | "/settings/notifications"
   | "/settings/server"
   | "/settings/sources"
   | "/settings/logs";
@@ -70,9 +74,11 @@ const routePaths = new Set<RoutePath>([
   "/stats/fsrs/steps",
   "/stats/fsrs/simulator",
   "/actions",
+  "/notifications",
   "/settings",
   "/settings/data",
   "/settings/privacy",
+  "/settings/notifications",
   "/settings/server",
   "/settings/sources",
   "/settings/logs",
@@ -135,6 +141,8 @@ export function renderRoute(
       return <FsrsStatisticsPage report={report} loadState={loadState} section="simulator" />;
     case "/actions":
       return <ActionsPage report={report} loadState={loadState} />;
+    case "/notifications":
+      return <NotificationCenterPage onOpenWhatsNew={onOpenWhatsNew} />;
     case "/settings/sources":
       return <SettingsLayout activeRoute={route}><IntegrationsPage /></SettingsLayout>;
     case "/settings/logs":
@@ -145,6 +153,8 @@ export function renderRoute(
       return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
     case "/settings/privacy":
       return <SettingsLayout activeRoute={route}><PrivacySettingsPage onOpenWhatsNew={onOpenWhatsNew} /></SettingsLayout>;
+    case "/settings/notifications":
+      return <SettingsLayout activeRoute={route}><NotificationSettingsPage /></SettingsLayout>;
     case "/settings":
       return <SettingsLayout activeRoute={route}><ReportSettingsPage onReportUpdated={onReportUpdated} /></SettingsLayout>;
     case "/home":

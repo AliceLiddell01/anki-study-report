@@ -1,5 +1,15 @@
 # Карта frontend dashboard
 
+## Notification surfaces
+
+`TopNav.tsx` монтирует `NotificationBell`; `AppLayout.tsx` — единственный
+`NotificationToasts`. `NotificationCenterPage.tsx` и
+`NotificationSettingsPage.tsx` загружаются как route-level chunks;
+`SearchPage.tsx` тоже lazy, чтобы entry оставался ниже bundle budget.
+`NotificationItemCard.tsx` владеет copy/actions, `notificationsApi.ts` — exact
+response validation, `notificationHandoff.ts` — bounded session-only context.
+Routes: `#/notifications` и `#/settings/notifications`.
+
 `FsrsStatisticsPage.tsx` owns five nested FSRS views and `fsrsApi.ts` owns the
 typed lazy API/cache identity. `StatisticsPage` and `FsrsStatisticsPage` are
 real route-level dynamic imports; `RouteDeliveryBoundary` owns their loading

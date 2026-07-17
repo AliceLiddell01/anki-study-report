@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import threading
 import time
 
 import pytest
@@ -88,6 +90,18 @@ def test_default_endpoint_is_pinned_and_explicit_empty_endpoint_stays_disabled(t
     assert disabled[6].endpoint is None
 
 
+def test_product_user_agent_uses_canonical_version_and_rejects_header_injection():
+    version_module = fresh_import_addon_module("version")
+    client_module = fresh_import_addon_module("telemetry_client")
+
+    assert client_module.PRODUCT_USER_AGENT == f"AnkiStudyReport/{version_module.__version__}"
+    assert client_module.PRODUCT_USER_AGENT.isascii()
+    assert "\r" not in client_module.PRODUCT_USER_AGENT
+    assert "\n" not in client_module.PRODUCT_USER_AGENT
+    with pytest.raises(ValueError):
+        client_module.product_user_agent("1.1.0\r\nX-Injected: true")
+
+
 def test_one_purpose_only_and_spoofed_dimensions_rejected_before_queue(tmp_path):
     *_, contract, store_module, client_module, privacy, store, client = make_client(
         tmp_path,
@@ -151,6 +165,111 @@ def test_enrollment_batch_ack_and_credential_secrecy(tmp_path):
     assert b"write-secret" not in event_call["body"]
     assert "write-secret" not in json.dumps(client.public_status())
     assert "install-1" not in json.dumps(client.public_status())
+
+
+def test_actual_urllib_transport_completes_fake_service_lifecycle(tmp_path, caplog):
+    calls = []
+    state = {"deleted": False, "eventIds": []}
+    write_token = "fake-service-write-token"
+    installation_id = "fake-service-installation"
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, _format, *_args):
+            return
+
+        def _body(self):
+            length = int(self.headers.get("Content-Length", "0"))
+            return json.loads(self.rfile.read(length) or b"{}")
+
+        def _record(self):
+            calls.append({
+                "method": self.command,
+                "path": self.path,
+                "userAgent": self.headers.get("User-Agent"),
+                "authorization": self.headers.get("Authorization"),
+            })
+
+        def _json(self, status, payload):
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):  # noqa: N802 - stdlib handler contract
+            self._record()
+            body = self._body()
+            if self.path == "/v1/installations":
+                self._json(201, {"installationId": installation_id, "writeToken": write_token})
+                return
+            if self.path == "/v1/events":
+                if state["deleted"] or self.headers.get("Authorization") != f"Bearer {write_token}":
+                    self._json(401, {"error": "unauthorized"})
+                    return
+                state["eventIds"] = [event["eventId"] for event in body["events"]]
+                self._json(202, {"acknowledgedEventIds": state["eventIds"]})
+                return
+            self._json(404, {"error": "not_found"})
+
+        def do_DELETE(self):  # noqa: N802 - stdlib handler contract
+            self._record()
+            if self.path != "/v1/installations/current" or self.headers.get("Authorization") != f"Bearer {write_token}":
+                self._json(401, {"error": "unauthorized"})
+                return
+            state["deleted"] = True
+            self._json(200, {"deleted": True})
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        product, _, store_module, client_module = load_modules()
+        privacy = product.PrivacyStore(tmp_path / "privacy.json")
+        privacy.save_choices(
+            {"purposes": {"reliabilityDiagnostics": False, "featureUsage": True}},
+            now=NOW,
+        )
+        store = store_module.TelemetryStore(tmp_path / "telemetry.sqlite3")
+        transport = client_module.UrlLibTransport()
+        client = client_module.TelemetryClient(
+            store,
+            privacy,
+            common,
+            endpoint=f"http://127.0.0.1:{server.server_port}",
+            transport=transport,
+            allow_http_loopback=True,
+            now_provider=lambda: NOW,
+            random_provider=lambda: 0.5,
+        )
+        assert client.queue_semantic_event(semantic())["queued"] is True
+        assert client.send_once() == {
+            "ok": True,
+            "code": "telemetry.delivered",
+            "acknowledgedCount": 1,
+        }
+
+        assert client.attempt_deletion()["confirmed"] is True
+        rejected = transport.request(
+            "POST",
+            f"http://127.0.0.1:{server.server_port}/v1/events",
+            headers=client_module.telemetry_request_headers(authorization=write_token),
+            body=json.dumps({"telemetrySchemaVersion": 1, "batchId": "old", "events": []}).encode("utf-8"),
+            timeout=2.0,
+        )
+        assert rejected.status == 401
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=2)
+
+    assert [call["method"] for call in calls] == ["POST", "POST", "DELETE", "POST"]
+    assert all(call["userAgent"] == client_module.PRODUCT_USER_AGENT for call in calls)
+    assert calls[0]["authorization"] is None
+    assert "Python-urllib" not in json.dumps(calls)
+    assert write_token not in json.dumps(client.public_status())
+    assert installation_id not in json.dumps(client.public_status())
+    assert write_token not in caplog.text
 
 
 @pytest.mark.parametrize("status", [429, 500, 503])

@@ -1,5 +1,13 @@
 # Справочник настроек и переменных окружения
 
+## Notification preferences
+
+Notification settings не находятся в global `config.json`: это отдельный
+per-profile schema v1 в `notifications.sqlite3`. Public defaults — unread badge
+и in-app toasts включены, minimum severity `critical`, все пять категорий
+включены. `sound` и `osNotifications` фиксированы в `none`. Detector thresholds
+не являются пользовательской конфигурацией.
+
 Снимок документации: 2026-07-12.
 
 Source of truth:

@@ -37,6 +37,9 @@ def main() -> int:
     assert_true(isinstance(report, dict), "report is an object")
     assert_true("token=" not in json.dumps(report, ensure_ascii=False), "token is absent from report payload")
     asset_summary = assert_dashboard_assets(base_url, token, artifacts, args.label)
+    notification_summary = None
+    if os.environ.get("ANKI_E2E_SCOPE", "full") in {"full", "notifications"}:
+        notification_summary = assert_notification_contract(base_url, token, artifacts, args.label)
 
     cards = report_cards(report)
     assert_true(cards, "No attention cards found in canonical attentionCards.")
@@ -77,6 +80,7 @@ def main() -> int:
                 "checkedMedia": ["要.gif", "望.gif", "要望.mp3"],
                 "assets": asset_summary,
                 "apkg": apkg_summary,
+                "notifications": notification_summary,
             },
             ensure_ascii=False,
             indent=2,
@@ -87,11 +91,60 @@ def main() -> int:
     return 0
 
 
-def fetch_json(base_url: str, path: str, token: str) -> dict:
-    status, _content_type, body = fetch_bytes(base_url, path, token)
+def fetch_json(base_url: str, path: str, token: str, params: dict[str, str] | None = None) -> dict:
+    status, _content_type, body = fetch_bytes(base_url, path, token, params)
     if status != 200:
         raise AssertionError(f"{path} returned HTTP {status}: {body[:200]!r}")
     return json.loads(body.decode("utf-8"))
+
+
+def assert_notification_contract(base_url: str, token: str, artifacts: Path, label: str) -> dict[str, Any]:
+    summary = fetch_json(base_url, "/api/notifications/summary", token)
+    all_items = fetch_json(
+        base_url,
+        "/api/notifications",
+        token,
+        {"page": "1", "pageLimit": "50", "tab": "all", "category": "all"},
+    )
+    active = fetch_json(
+        base_url,
+        "/api/notifications",
+        token,
+        {"page": "1", "pageLimit": "50", "tab": "active", "category": "all"},
+    )
+    settings = fetch_json(base_url, "/api/settings/notifications", token)
+    assert_true(summary.get("schemaVersion") == 1, "notification summary schema is current")
+    assert_true(all_items.get("pageLimit") == 50 and all_items.get("total", 0) >= 5, "notification history is bounded and seeded")
+    assert_true(active.get("total", 0) >= 1, "active signal tab has fixture data")
+    assert_true(any(item.get("signalStatus") == "resolved" for item in all_items.get("items", [])), "resolved signal remains in history")
+    assert_true(settings.get("preferences", {}).get("notificationCenterEnabled") is True, "durable notification center remains enabled")
+
+    fixture = read_json_if_exists(artifacts / "notification-fixture-proof.json")
+    assert_true(fixture.get("normalEvaluationWasEmpty") is True, "normal notification fixture starts empty")
+    assert_true(fixture.get("lifecycle", {}).get("severityEscalated") is True, "fixture proves severity escalation")
+    assert_true(fixture.get("lifecycle", {}).get("resolved") is True, "fixture proves two-miss resolution")
+    expected_categories = {"workload", "retention", "deck_health", "card_problems"}
+    assert_true(expected_categories <= set(fixture.get("categoryCounts", {})), "all detector categories are represented")
+
+    result = {
+        "schemaVersion": summary.get("schemaVersion"),
+        "notificationCount": all_items.get("total"),
+        "activeSignalCount": summary.get("activeSignalCount"),
+        "resolvedHistoryPresent": True,
+        "fixtureLifecycle": fixture.get("lifecycle"),
+        "preferencesPersistedAfterRestart": None,
+    }
+    if label == "restart":
+        preferences = settings.get("preferences", {})
+        assert_true(preferences.get("showUnreadBadge") is False, "badge preference persists across Anki restart")
+        assert_true(preferences.get("minimumToastSeverity") == "warning", "toast severity persists across Anki restart")
+        assert_true(summary.get("unreadCount") == 0, "read state persists across Anki restart")
+        result["preferencesPersistedAfterRestart"] = True
+        (artifacts / "notification-restart-proof.json").write_text(
+            json.dumps({"ok": True, "unreadCount": 0, "showUnreadBadge": False, "minimumToastSeverity": "warning"}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return result
 
 
 def fetch_bytes(base_url: str, path: str, token: str, params: dict[str, str] | None = None) -> tuple[int, str, bytes]:

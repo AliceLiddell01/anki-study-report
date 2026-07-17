@@ -189,6 +189,8 @@ from .product_notices import (
 from .telemetry_client import TelemetryClient, request_active_client_send
 from .telemetry_contract import TelemetryValidationError, utc_now
 from .telemetry_store import TelemetryStore
+from .notification_store import NotificationStore, NotificationValidationError
+from .signal_detection import SignalEvaluator, collect_repeated_again_cards, source_revision as signal_source_revision
 from .activity_service import build_activity_hub_payload
 from .deck_hub import collect_deck_catalog
 from .statistics_service import (
@@ -318,6 +320,8 @@ _PROFILE_STORE = ProfilePreferencesStore(_RUNTIME_DATA_DIR / "profile.json")
 _PRODUCT_NOTICE_STORE = ProductNoticeStore(_RUNTIME_DATA_DIR / "product_notices.json")
 _PRIVACY_STORE = PrivacyStore(_RUNTIME_DATA_DIR / "privacy.json")
 _TELEMETRY_STORE = TelemetryStore(_RUNTIME_DATA_DIR / "telemetry.sqlite3")
+_NOTIFICATION_STORE = NotificationStore(_RUNTIME_DATA_DIR / "notifications.sqlite3")
+_SIGNAL_EVALUATOR = SignalEvaluator(_NOTIFICATION_STORE, diagnostic_logger=log_event)
 
 
 def _new_telemetry_client(store: TelemetryStore, privacy_store: PrivacyStore) -> TelemetryClient:
@@ -338,7 +342,10 @@ _TELEMETRY_CLIENT = _new_telemetry_client(_TELEMETRY_STORE, _PRIVACY_STORE)
 _TELEMETRY_TIMER: object | None = None
 _TELEMETRY_STARTED_CLIENT: TelemetryClient | None = None
 try:
-    _PRODUCT_NOTICE_STORE.record_started(__version__)
+    _notice_state = _PRODUCT_NOTICE_STORE.record_started(__version__)
+    _NOTIFICATION_STORE.upsert_release(__version__, source_revision=f"release:{__version__}")
+    if _notice_state.get("lastSeenReleaseVersion") == __version__:
+        _NOTIFICATION_STORE.mark_release_read(__version__)
 except Exception:
     log_exception("product_notices.startup.error", "Could not persist product notice startup state")
 _E2E_BOOTSTRAP_STARTED = False
@@ -1977,6 +1984,16 @@ def _configure_dashboard_cache_handlers() -> None:
         delete_handler=_delete_telemetry_data,
         check_handler=_check_telemetry_connection,
     )
+    _DASHBOARD_SERVER.configure_notification_handlers(
+        summary_provider=_notification_summary_response,
+        list_handler=_notification_list_response,
+        read_handler=_notification_read_response,
+        read_all_handler=_notification_read_all_response,
+        settings_provider=_notification_settings_response,
+        settings_handler=_notification_settings_update_response,
+        toasts_handler=_notification_toasts_response,
+        toast_delivered_handler=_notification_toast_delivered_response,
+    )
     _DASHBOARD_SERVER.configure_statistics_handler(_statistics_query_response)
     _DASHBOARD_SERVER.configure_fsrs_handler(_fsrs_query_response)
     _DASHBOARD_SERVER.configure_search_handlers(
@@ -2161,6 +2178,7 @@ def _product_notices_response() -> dict:
 
 def _mark_current_release_seen() -> dict:
     _PRODUCT_NOTICE_STORE.mark_release_seen(__version__)
+    _NOTIFICATION_STORE.mark_release_read(__version__)
     return _product_notices_response()
 
 
@@ -2221,6 +2239,136 @@ def _delete_telemetry_data() -> dict:
 
 def _check_telemetry_connection() -> dict:
     return _TELEMETRY_CLIENT.check_connection_and_send_now()
+
+
+def _notification_summary_response() -> dict:
+    return {"ok": True, **_NOTIFICATION_STORE.summary()}
+
+
+def _notification_list_response(payload: dict) -> dict:
+    if set(payload) != {"page", "pageLimit", "tab", "category"}:
+        return {"ok": False, "error": "invalid_notification_request"}
+    try:
+        return {
+            "ok": True,
+            **_NOTIFICATION_STORE.list_notifications(
+                page=payload["page"],
+                page_limit=payload["pageLimit"],
+                tab=payload["tab"],
+                category=payload["category"],
+            ),
+        }
+    except NotificationValidationError as error:
+        return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
+
+
+def _notification_read_response(payload: dict) -> dict:
+    if set(payload) != {"notificationIds"} or not isinstance(payload.get("notificationIds"), list):
+        return {"ok": False, "error": "invalid_notification_request"}
+    try:
+        return {"ok": True, "updated": _NOTIFICATION_STORE.mark_read(payload["notificationIds"]), **_NOTIFICATION_STORE.summary()}
+    except NotificationValidationError as error:
+        return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
+
+
+def _notification_read_all_response(payload: dict) -> dict:
+    if payload != {}:
+        return {"ok": False, "error": "invalid_notification_request"}
+    return {"ok": True, "updated": _NOTIFICATION_STORE.mark_all_read(), **_NOTIFICATION_STORE.summary()}
+
+
+def _notification_settings_response() -> dict:
+    return {"ok": True, "schemaVersion": 1, "preferences": _NOTIFICATION_STORE.preferences()}
+
+
+def _notification_settings_update_response(payload: dict) -> dict:
+    try:
+        preferences = _NOTIFICATION_STORE.update_preferences(payload)
+        return {"ok": True, "schemaVersion": 1, "preferences": preferences}
+    except NotificationValidationError as error:
+        return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
+
+
+def _notification_toasts_response(payload: dict) -> dict:
+    if set(payload) != {"sessionStartedAt"}:
+        return {"ok": False, "error": "invalid_notification_request"}
+    try:
+        _maybe_seed_e2e_notification_toast(payload["sessionStartedAt"])
+        return {
+            "ok": True,
+            "schemaVersion": 1,
+            "items": _NOTIFICATION_STORE.toast_candidates(session_started_at=payload["sessionStartedAt"]),
+        }
+    except NotificationValidationError as error:
+        return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
+
+
+def _maybe_seed_e2e_notification_toast(session_started_at: str) -> None:
+    if not _is_e2e_mode() or os.environ.get("ANKI_E2E_SCOPE") not in {"full", "notifications"}:
+        return
+    critical_revision = "e2e:toast-critical"
+    warning_revision = "e2e:toast-warning"
+    preferences = _NOTIFICATION_STORE.preferences()
+    if not preferences["showInAppToasts"]:
+        return
+    evidence = {
+        "recentAnswers": 70,
+        "baselineAnswers": 280,
+        "recentRetention": 0.72,
+        "baselineRetention": 0.9,
+        "dropPoints": 18.0,
+    }
+    candidate = {
+        "code": "retention.recent_drop",
+        "category": "retention",
+        "severity": "critical",
+        "dedupeKey": "retention.recent_drop:all",
+        "entityType": "all_collection",
+        "entityId": None,
+        "evidence": evidence,
+        "detectorVersion": "signals-v1.0",
+    }
+    if not _NOTIFICATION_STORE.has_notification_source_revision(critical_revision):
+        _NOTIFICATION_STORE.reconcile(
+            "retention.recent_drop",
+            [candidate],
+            source_revision=critical_revision,
+            evaluated_at=session_started_at,
+        )
+        return
+    if preferences["minimumToastSeverity"] not in {"warning", "info"}:
+        return
+    if _NOTIFICATION_STORE.has_notification_source_revision(warning_revision):
+        return
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [],
+        source_revision="e2e:toast-warning-missing-1",
+        evaluated_at=session_started_at,
+    )
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [],
+        source_revision="e2e:toast-warning-missing-2",
+        evaluated_at=session_started_at,
+    )
+    candidate["severity"] = "warning"
+    candidate["evidence"] = {**evidence, "recentRetention": 0.8, "dropPoints": 10.0}
+    _NOTIFICATION_STORE.reconcile(
+        "retention.recent_drop",
+        [candidate],
+        source_revision=warning_revision,
+        evaluated_at=session_started_at,
+    )
+
+
+def _notification_toast_delivered_response(payload: dict) -> dict:
+    if set(payload) != {"notificationIds"} or not isinstance(payload.get("notificationIds"), list):
+        return {"ok": False, "error": "invalid_notification_request"}
+    try:
+        return {"ok": True, "updated": _NOTIFICATION_STORE.mark_toast_delivered(payload["notificationIds"])}
+    except NotificationValidationError as error:
+        return {"ok": False, "error": "invalid_notification_request", "fieldErrors": error.field_errors}
 
 
 def _statistics_query_response(payload: dict) -> dict:
@@ -3084,6 +3232,16 @@ def _dashboard_report_payload(metrics: dict, metadata: dict) -> dict:
         today_key,
         display_settings=display_settings,
     )
+    cache_status = snapshot.get("status") if isinstance(snapshot.get("status"), dict) else {}
+    if cache_status.get("status") == "ready":
+        revision = signal_source_revision(snapshot, today_key)
+        signal_inputs = {**current_statistics, "deckHub": report.get("deckHub"), "detectorFailures": []}
+        if _NOTIFICATION_STORE.detector_revision("card.repeated_again") != revision:
+            try:
+                signal_inputs["repeatedAgainCards"] = collect_repeated_again_cards(mw.col, today_key)
+            except Exception:
+                signal_inputs["detectorFailures"].append("card.repeated_again")
+        _SIGNAL_EVALUATOR.evaluate(snapshot, signal_inputs, today_key, source_revision=revision)
     cache_config = {
         **_read_config(),
         "period_start_ts": metadata.get("period_start_ts"),
@@ -3414,6 +3572,7 @@ def _stop_runtime_services(*args) -> None:
         _TELEMETRY_TIMER.stop()
         _TELEMETRY_TIMER = None
     _TELEMETRY_CLIENT.close()
+    _NOTIFICATION_STORE.close()
     _TELEMETRY_STARTED_CLIENT = None
     _stop_web_dashboard_server(*args)
 
@@ -3431,18 +3590,27 @@ def _on_profile_did_open(*_args) -> None:
 
 
 def _rebind_profile_notice_telemetry_runtime() -> None:
-    global _PRODUCT_NOTICE_STORE, _PRIVACY_STORE, _TELEMETRY_STORE, _TELEMETRY_CLIENT
+    global _PRODUCT_NOTICE_STORE, _PRIVACY_STORE, _TELEMETRY_STORE, _TELEMETRY_CLIENT, _NOTIFICATION_STORE, _SIGNAL_EVALUATOR
     data_dir = _addon_runtime_data_dir()
     data_dir.mkdir(parents=True, exist_ok=True)
     try:
         _TELEMETRY_CLIENT.close()
     except Exception:
         pass
+    try:
+        _NOTIFICATION_STORE.close()
+    except Exception:
+        pass
     _PRODUCT_NOTICE_STORE = ProductNoticeStore(data_dir / "product_notices.json")
     _PRIVACY_STORE = PrivacyStore(data_dir / "privacy.json")
     _TELEMETRY_STORE = TelemetryStore(data_dir / "telemetry.sqlite3")
     _TELEMETRY_CLIENT = _new_telemetry_client(_TELEMETRY_STORE, _PRIVACY_STORE)
-    _PRODUCT_NOTICE_STORE.record_started(__version__)
+    _NOTIFICATION_STORE = NotificationStore(data_dir / "notifications.sqlite3")
+    _SIGNAL_EVALUATOR = SignalEvaluator(_NOTIFICATION_STORE, diagnostic_logger=log_event)
+    notice_state = _PRODUCT_NOTICE_STORE.record_started(__version__)
+    _NOTIFICATION_STORE.upsert_release(__version__, source_revision=f"release:{__version__}")
+    if notice_state.get("lastSeenReleaseVersion") == __version__:
+        _NOTIFICATION_STORE.mark_release_read(__version__)
 
 
 if hasattr(gui_hooks, "main_window_did_init"):

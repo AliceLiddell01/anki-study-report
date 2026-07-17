@@ -1,5 +1,15 @@
 # Архитектура
 
+## Локальные signals и notifications
+
+`signal_detection.py` вычисляет четыре bounded detector family из cache
+snapshot, Deck Hub и одного grouped `revlog` query. `notification_store.py`
+владеет отдельной per-profile SQLite schema, reconciliation и preferences.
+`__init__.py` привязывает stores заново при открытии профиля и публикует строгие
+handlers в `dashboard_server.py`. React читает их через `notificationsApi.ts`;
+App Shell монтирует bell/toasts, route pages остаются lazy boundaries. Этот
+поток не соединён с `TelemetryClient`.
+
 Stage 7 adds `fsrs_service.py` as an isolated read-only Anki adapter and pure
 aggregate layer. `statistics_service.py` publishes only lightweight capability;
 `dashboard_server.py` exposes a strict token-protected FSRS operation union.

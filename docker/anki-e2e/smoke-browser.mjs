@@ -57,6 +57,8 @@ const dashboardPageCases = [
   { route: "/settings/server", pageName: "settings/server", heading: "Сервер", settingsHref: "#/settings/server" },
   { route: "/settings/sources", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/settings/sources" },
   { route: "/settings/logs", pageName: "settings/logs", heading: "Логи", settingsHref: "#/settings/logs" },
+  { route: "/notifications", pageName: "notifications", heading: "Центр уведомлений" },
+  { route: "/settings/notifications", pageName: "settings/notifications", heading: "Уведомления", settingsHref: "#/settings/notifications" },
 ];
 const consoleEvents = [];
 const networkEvents = [];
@@ -106,6 +108,7 @@ try {
   const visualStates = [];
   const perf100Enabled = await isPerformance100Enabled();
   const productNoticesDetails = await assertProductNotices(page);
+  const notificationDetails = shouldRunScope(scope, "notifications") ? await assertNotificationCenter(page) : null;
   const telemetryClientDetails = telemetryE2eEndpoint ? await assertTelemetryClient(page) : null;
   const searchQueryContract = shouldRunScope(scope, "global") ? await assertSearchQueryContract() : null;
   let shadowDetails = null;
@@ -211,6 +214,7 @@ try {
     apkg: apkgDetails,
     profile: profileDetails,
     productNotices: productNoticesDetails,
+    notifications: notificationDetails,
     telemetryClient: telemetryClientDetails,
     theme: themeDetails,
     localization: localizationDetails,
@@ -454,6 +458,164 @@ async function captureProductNoticeState(page, modal, stateName, theme) {
   await ensureArtifactParent(filePath);
   await page.screenshot({ path: filePath, fullPage: true });
   return relativeArtifactPath(artifactPaths, filePath);
+}
+
+async function assertNotificationCenter(page) {
+  const screenshots = [];
+  const settingsResponse = await page.request.put(
+    `${ready.baseUrl}/api/settings/notifications?token=${encodeURIComponent(ready.token)}`,
+    {
+      data: {
+        showUnreadBadge: true,
+        showInAppToasts: true,
+        minimumToastSeverity: "critical",
+        toastCategories: { workload: true, retention: true, deck_health: true, card_problems: true, product_updates: true },
+      },
+    },
+  );
+  assertBrowser(settingsResponse.ok(), "Notification E2E resets the isolated profile to documented defaults.");
+  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#/home`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.evaluate(() => {
+    localStorage.setItem("anki-study-report-language", "ru");
+    localStorage.setItem("anki-study-report-theme", "light");
+  });
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+
+  const criticalToast = page.locator('[data-testid="notification-toast-viewport"] [role="alert"]');
+  await criticalToast.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(!await criticalToast.evaluate((element) => element.contains(document.activeElement)), "Critical toast does not steal focus.");
+  await page.waitForTimeout(8500);
+  assertBrowser(await criticalToast.isVisible(), "Critical toast persists beyond the warning timeout.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "toast-critical", "light"));
+  await criticalToast.getByRole("button", { name: "Закрыть", exact: true }).click();
+
+  const bell = page.getByRole("button", { name: "Уведомления", exact: true }).first();
+  const badge = page.getByTestId("notification-badge");
+  await badge.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(/^\d+$|^99\+$/.test((await badge.innerText()).trim()), "Notification bell exposes a bounded unread badge.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "bell-unread", "light"));
+  await bell.click();
+  const panel = page.locator('#notification-panel[role="dialog"][aria-modal="false"]');
+  await panel.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser((await panel.locator('[data-testid="notification-item"]').count()) <= 8, "Compact notification panel is bounded to eight items.");
+  assertBrowser(await panel.evaluate((element) => document.activeElement === element), "Focus enters the notification panel.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "panel", "light"));
+  await page.keyboard.press("Escape");
+  await panel.waitFor({ state: "hidden", timeout: 15000 });
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Уведомления");
+  assertBrowser(await bell.evaluate((element) => document.activeElement === element), "Escape returns focus to the notification bell.");
+
+  await prepareDashboardRoute(page, "/notifications", "light", "Центр уведомлений");
+  const resolvedPage = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    for (let pageNumber = 1; pageNumber <= 10; pageNumber += 1) {
+      const result = await fetch(`/api/notifications?page=${pageNumber}&pageLimit=20&tab=all&category=all&token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json());
+      if (result.items?.some((item) => item.signalStatus === "resolved")) return pageNumber;
+      if (pageNumber >= (result.pageCount || 1)) break;
+    }
+    return 0;
+  });
+  assertBrowser(resolvedPage > 0, "Resolved notifications remain in the bounded durable API history.");
+  for (let pageNumber = 1; pageNumber < resolvedPage; pageNumber += 1) {
+    await page.getByRole("button", { name: "Следующая страница", exact: true }).click();
+  }
+  const resolvedCard = page.getByTestId("notification-item").filter({ hasText: "Завершено" }).first();
+  await resolvedCard.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await resolvedCard.isVisible(), "Resolved notifications remain in durable history.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "resolved-history", "light"));
+  for (let pageNumber = resolvedPage; pageNumber > 1; pageNumber -= 1) {
+    await page.getByRole("button", { name: "Предыдущая страница", exact: true }).click();
+  }
+  await page.getByTestId("notification-item").first().waitFor({ state: "visible", timeout: 15000 });
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "all", "light"));
+  await page.getByRole("tab", { name: "Непрочитанные", exact: true }).click();
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "unread", "light"));
+  await page.getByRole("tab", { name: "Активные", exact: true }).click();
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "active", "light"));
+
+  const independence = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const list = await fetch(`/api/notifications?page=1&pageLimit=50&tab=active&category=all&token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json());
+    const target = list.items?.find((item) => item.readAt === null && item.signalStatus === "active");
+    if (!target) return { checked: false, preserved: false };
+    await fetch(`/api/notifications/read?token=${encodeURIComponent(token)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notificationIds: [target.notificationId] }) });
+    const after = await fetch(`/api/notifications?page=1&pageLimit=50&tab=all&category=all&token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json());
+    const updated = after.items?.find((item) => item.notificationId === target.notificationId);
+    return { checked: true, preserved: updated?.signalStatus === "active" && updated?.readAt !== null };
+  });
+  assertBrowser(independence.checked && independence.preserved, "Read state changes without resolving the active signal.");
+
+  await prepareDashboardRoute(page, "/settings/notifications", "light", "Уведомления");
+  const settingsCheckboxes = page.locator('main input[type="checkbox"]');
+  assertBrowser(await settingsCheckboxes.count() === 7, "Notification settings expose two master controls and five categories.");
+  assertBrowser(await settingsCheckboxes.evaluateAll((items) => items.every((item) => item.checked)), "Notification settings defaults are enabled.");
+  const minimum = page.locator("#minimum-toast-severity");
+  assertBrowser(await minimum.inputValue() === "critical", "Minimum toast severity defaults to critical.");
+  screenshots.push(await saveStateScreenshot(page, "notification-settings", "defaults-ru", "light"));
+  await settingsCheckboxes.nth(0).uncheck();
+  await minimum.selectOption("warning");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByText("Настройки сохранены.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  const warningToast = page.locator('[data-testid="notification-toast-viewport"] [role="status"]');
+  await warningToast.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(!await warningToast.evaluate((element) => element.contains(document.activeElement)), "Warning toast does not steal focus.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "toast-warning", "light"));
+  await warningToast.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.waitForTimeout(1000);
+  assertBrowser(await page.getByTestId("notification-toast-viewport").count() === 0, "Delivered toast does not repeat after reload.");
+  assertBrowser(await page.locator("#minimum-toast-severity").inputValue() === "warning", "Toast severity persists after reload.");
+  assertBrowser(!await page.locator('main input[type="checkbox"]').nth(0).isChecked(), "Unread badge preference persists after reload.");
+
+  await prepareDashboardRoute(page, "/notifications", "light", "Центр уведомлений");
+  await page.getByRole("button", { name: "Отметить всё прочитанным", exact: true }).click();
+  await page.getByText("Непрочитанных: 0", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("tab", { name: "Непрочитанные", exact: true }).click();
+  await page.getByText("Для выбранного фильтра уведомлений нет.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "empty", "light"));
+
+  await page.getByRole("tab", { name: "Все", exact: true }).click();
+  await page.getByTestId("language-selector").click();
+  await page.getByRole("menuitemradio", { name: "English", exact: true }).click();
+  await page.getByRole("heading", { name: "Notification Center", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  await page.getByTestId("theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "all-en", "dark"));
+
+  await page.getByTestId("language-selector").click();
+  await page.getByRole("menuitemradio", { name: "Русский", exact: true }).click();
+  await page.getByTestId("theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "light" && document.documentElement.lang === "ru");
+
+  const finalState = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const [summary, settings] = await Promise.all([
+      fetch(`/api/notifications/summary?token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json()),
+      fetch(`/api/settings/notifications?token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json()),
+    ]);
+    return {
+      unreadCount: summary.unreadCount,
+      activeSignalCount: summary.activeSignalCount,
+      showUnreadBadge: settings.preferences?.showUnreadBadge,
+      minimumToastSeverity: settings.preferences?.minimumToastSeverity,
+    };
+  });
+  assertBrowser(finalState.unreadCount === 0, "Mark all read leaves zero unread notifications.");
+  await writeJson("notification-browser-proof.json", {
+    ok: true,
+    lifecycleVisible: true,
+    readResolutionIndependent: true,
+    focusReturned: true,
+    toastFocusStolen: false,
+    toastRepeatedAfterReload: false,
+    preferences: { showUnreadBadge: finalState.showUnreadBadge, minimumToastSeverity: finalState.minimumToastSeverity },
+    unreadCount: finalState.unreadCount,
+    activeSignalCount: finalState.activeSignalCount,
+    screenshotCount: screenshots.length,
+  });
+  return { ...finalState, readResolutionIndependent: true, focusReturned: true, toastRepeatedAfterReload: false, screenshots };
 }
 
 async function assertTelemetryClient(page) {

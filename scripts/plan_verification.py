@@ -15,6 +15,7 @@ PRODUCT_RULES = {
     "activity": ("anki_study_report/activity_", "web-dashboard/src/pages/activity", "web-dashboard/src/pages/calendar"),
     "settings": ("anki_study_report/config_", "anki_study_report/product_notices", "web-dashboard/src/pages/settings", "web-dashboard/src/pages/privacysettings", "web-dashboard/src/pages/reportsettings", "web-dashboard/src/pages/serversettings", "web-dashboard/src/components/productnotice", "web-dashboard/src/components/telemetryconsent", "web-dashboard/src/components/whatsnew"),
     "cards": ("anki_study_report/note_", "anki_study_report/browser_", "web-dashboard/src/pages/cards", "web-dashboard/src/components/ankicard"),
+    "notifications": ("anki_study_report/notification_", "anki_study_report/signal_", "web-dashboard/src/pages/notification", "web-dashboard/src/components/notification", "web-dashboard/src/lib/notification"),
 }
 DOC_PREFIXES = ("docs/", "readme.md")
 FULL_PREFIXES = (
@@ -57,7 +58,10 @@ def plan_for_paths(paths: list[str]) -> dict:
     if len(product_scopes) > 1:
         full = True
         reasons.append("Multiple product scopes changed.")
-    target = next(iter(product_scopes)) if len(product_scopes) == 1 else ("global" if scopes == {"global"} else None)
+    if "notifications" in product_scopes:
+        target = "notifications"
+    else:
+        target = next(iter(product_scopes)) if len(product_scopes) == 1 else ("global" if scopes == {"global"} else None)
     e2e = bool(target or full)
     if full and target is None:
         target = "full"

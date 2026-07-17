@@ -1,5 +1,13 @@
 # Локализация web dashboard
 
+## Notifications namespace
+
+Namespace `notifications` имеет полную RU/EN parity для bell/panel, Center,
+tabs, categories, signal evidence, context actions, settings, live regions и
+summary toast. Evidence форматируется только из bounded numeric/status fields;
+card/note text не попадает в notification payload. Real-browser evidence
+включает RU light и EN dark surfaces.
+
 Web dashboard поддерживает две встроенные локали: `ru` и `en`. Русский язык —
 детерминированный default и fallback. Browser language detector и сетевые
 translation-сервисы не используются: оба словаря входят во frontend bundle и

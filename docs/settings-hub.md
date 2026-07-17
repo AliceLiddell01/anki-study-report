@@ -1,5 +1,13 @@
 # Settings Hub
 
+## Notification preferences
+
+`#/settings/notifications` — реальный System-group route. Он сохраняет в
+текущем профиле badge, in-app toast, минимальную severity и пять категорий.
+Defaults: badge/toasts/categories включены, threshold `critical`; sound и OS
+notifications всегда `none`. Controls не выключают detectors или durable
+Notification Center.
+
 Статус: **Accepted / Complete**. Stage 2, 2026-07-10.
 
 ## Scope Stage 2

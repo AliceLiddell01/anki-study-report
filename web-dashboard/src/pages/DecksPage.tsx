@@ -13,6 +13,7 @@ import {
   visibleDeckRows,
 } from "../lib/deckTree";
 import { finiteNumber, formatInteger, formatPercent, formatSeconds, safeText } from "../lib/formatters";
+import { consumeNotificationHandoff } from "../lib/notificationHandoff";
 import type { DeckHubMetrics, DeckHubModel, DeckHubNode, DeckPerformance, Status, StudyReport } from "../types/report";
 import type { LoadState } from "./HomePage";
 
@@ -43,6 +44,16 @@ function DecksPage({ report, loadState }: { report: StudyReport | null; loadStat
     }
     setSelectedId((current) => current ?? sortedRootIds(hub, "name")[0] ?? null);
   }, [hub]);
+
+  useEffect(() => {
+    if (loadState !== "ready") return;
+    const handoff = consumeNotificationHandoff("deck_health");
+    if (!handoff) return;
+    const deckId = Number(handoff.entityId);
+    if (!hub.nodes[String(deckId)]) return;
+    setExpandedIds((current) => expandPath(hub, deckId, current));
+    setSelectedId(deckId);
+  }, [hub, loadState]);
 
   useEffect(() => {
     const exact = exactDeckMatch(hub, query);

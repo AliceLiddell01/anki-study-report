@@ -1,5 +1,13 @@
 # Verification run policy
 
+## Stage 9.3–9.5
+
+Порядок: focused tests → `-SkipDocker` → exact-SHA Fast CI → один
+`standard/notifications` с restart → один final `standard/full`. Targeted
+повторяется только после релевантного failure/change; полный прогон не
+повторяется без изменения контракта. Локальный Docker допустим лишь как явно
+зафиксированное исключение владельца и не заменяет Fast CI/CodeQL/cloud proof.
+
 Статус: обязательная политика с 2026-07-13.
 
 Полный real-Anki E2E — финальный integration gate, а не development loop.
