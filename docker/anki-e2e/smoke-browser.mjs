@@ -506,7 +506,27 @@ async function assertNotificationCenter(page) {
   assertBrowser(await bell.evaluate((element) => document.activeElement === element), "Escape returns focus to the notification bell.");
 
   await prepareDashboardRoute(page, "/notifications", "light", "Центр уведомлений");
-  assertBrowser(await page.getByText("Завершено", { exact: true }).count() > 0, "Resolved notifications remain in durable history.");
+  const resolvedPage = await page.evaluate(async () => {
+    const token = new URLSearchParams(location.search).get("token") || "";
+    for (let pageNumber = 1; pageNumber <= 10; pageNumber += 1) {
+      const result = await fetch(`/api/notifications?page=${pageNumber}&pageLimit=20&tab=all&category=all&token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((response) => response.json());
+      if (result.items?.some((item) => item.signalStatus === "resolved")) return pageNumber;
+      if (pageNumber >= (result.pageCount || 1)) break;
+    }
+    return 0;
+  });
+  assertBrowser(resolvedPage > 0, "Resolved notifications remain in the bounded durable API history.");
+  for (let pageNumber = 1; pageNumber < resolvedPage; pageNumber += 1) {
+    await page.getByRole("button", { name: "Следующая страница", exact: true }).click();
+  }
+  const resolvedCard = page.getByTestId("notification-item").filter({ hasText: "Завершено" }).first();
+  await resolvedCard.waitFor({ state: "visible", timeout: 15000 });
+  assertBrowser(await resolvedCard.isVisible(), "Resolved notifications remain in durable history.");
+  screenshots.push(await saveStateScreenshot(page, "notification-center", "resolved-history", "light"));
+  for (let pageNumber = resolvedPage; pageNumber > 1; pageNumber -= 1) {
+    await page.getByRole("button", { name: "Предыдущая страница", exact: true }).click();
+  }
+  await page.getByTestId("notification-item").first().waitFor({ state: "visible", timeout: 15000 });
   screenshots.push(await saveStateScreenshot(page, "notification-center", "all", "light"));
   await page.getByRole("tab", { name: "Непрочитанные", exact: true }).click();
   screenshots.push(await saveStateScreenshot(page, "notification-center", "unread", "light"));
