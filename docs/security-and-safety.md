@@ -1,5 +1,14 @@
 # Security and safety model
 
+## Signal/notification boundary
+
+Signals, evidence, entity IDs, notification history и preferences остаются в
+per-profile SQLite. Они не расширяют remote telemetry taxonomy и не отправляются
+Cloudflare. Evidence имеет per-code allowlist и 2048-byte cap; history — 180
+дней/5000 items; repeated-Again query — максимум 50 cards. Local API требует
+loopback dashboard token, session handoff не пишет ID в hash/localStorage, а
+E2E artifacts исключают DB, Authorization и полные ID lists.
+
 FSRS API is read-only and strict: token required, no arbitrary search/SQL/raw
 protobuf/parameter vector, no raw revlog or card/note content, bounded output,
 revalidated normal-deck/config IDs and no generic RPC or Helper dependency.

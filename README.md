@@ -1,5 +1,14 @@
 # Anki Study Report
 
+## Signals и уведомления
+
+Текущий dashboard содержит полностью локальные study signals: bell и compact
+panel, durable `#/notifications`, per-profile настройки
+`#/settings/notifications` и bounded in-app toasts. Детекторы не изменяют
+коллекцию и не отправляют signal/evidence/entity data в telemetry. Контракты:
+`docs/signals-foundation.md`, `docs/notification-center.md` и
+`docs/notification-preferences-and-toasts.md`.
+
 Документация этого репозитория описывает текущую версию проекта на 2026-07-15.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
