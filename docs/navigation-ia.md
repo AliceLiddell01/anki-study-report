@@ -11,8 +11,9 @@ System group Settings shell между Privacy и Server. Context actions вед
 FSRS lives inside Statistics at `#/stats/fsrs` with nested `memory`,
 `calibration`, `steps`, and `simulator`; standalone `#/fsrs` remains invalid.
 
-Статус решения: **Accepted / Complete through Stage 6**. Базовая IA завершена
-2026-07-10, Statistics v1 добавлена 2026-07-12.
+Статус решения: **Accepted / Complete through Stage 9.5**. Базовая IA завершена
+2026-07-10; Statistics, Search и Notification workflow добавлены последующими
+этапами без возвращения placeholder-routes.
 
 Settings shell расширен в Stage 2. Актуальный settings contract описан в
 `docs/settings-hub.md`; решения Stage 1 по primary navigation и avatar menu
@@ -102,8 +103,10 @@ primary Calendar/Decks/Cards routes и не редактирует dashboard sco
   Отчёт              → #/settings
 Данные
   Данные              → #/settings/data
+  Приватность         → #/settings/privacy
 
 Система
+  Уведомления         → #/settings/notifications
   Сервер              → #/settings/server
 
 Диагностика
@@ -131,11 +134,19 @@ primary Calendar/Decks/Cards routes и не редактирует dashboard sco
 #/stats/progress
 #/stats/decks
 #/actions
+#/notifications
 #/settings
 #/settings/data
+#/settings/privacy
+#/settings/notifications
 #/settings/server
 #/settings/sources
 #/settings/logs
+#/stats/fsrs
+#/stats/fsrs/memory
+#/stats/fsrs/calibration
+#/stats/fsrs/steps
+#/stats/fsrs/simulator
 ```
 
 ## Hidden-but-kept routes
@@ -146,8 +157,11 @@ Routes ниже скрыты из primary navigation, но доступны че
 ```text
 #/profile
 #/actions
+#/notifications
 #/settings
 #/settings/data
+#/settings/privacy
+#/settings/notifications
 #/settings/server
 #/settings/sources
 #/settings/logs
@@ -156,15 +170,15 @@ Routes ниже скрыты из primary navigation, но доступны че
 ## Future routes и правило эволюции
 
 Statistics v1 и Search v1 уже добавлены как полноценные primary routes.
-Будущая IA может добавить «Уведомления»,
-но только вместе с реальными пользовательскими workflows:
+Notifications реализованы как App Shell bell + utility route, а не primary tab.
+Будущая IA меняется только вместе с реальными пользовательскими workflows:
 
 - «Активность» сохраняет route `#/calendar`; отдельный `#/activity` не добавляется;
 - Статистика появилась только вместе с Statistics v1 и содержит пять sections;
 - FSRS живёт внутри Statistics, а не отдельной primary-вкладкой;
 - пользовательский поиск называется «Поиск»; старый Browse не служит его
   alias или placeholder;
-- Уведомления появляются только с реальным notification workflow;
+- Уведомления уже появились с реальным notification workflow и не переносятся в primary navigation без отдельного доказанного решения;
 - Дополнения появляются только после проектирования соответствующей системы.
 
 ## Routes, которые нельзя возвращать как placeholders

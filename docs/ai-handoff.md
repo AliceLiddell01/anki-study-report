@@ -1,414 +1,151 @@
 # Передача контекста новому чату/нейронке
 
-## Signals и notifications
+Снимок документации: **2026-07-17**.
 
-В текущем checkout есть per-profile `notifications.sqlite3`, четыре локальных
-detector families, `#/notifications` и `#/settings/notifications`. Сначала
-читать `signals-foundation.md`, `notification-center.md` и
-`stage-9-3-to-9-5-handoff.md`. Не объединять active/resolved с unread/read, не
-добавлять IDs в URL и не расширять remote telemetry taxonomy. Targeted gate —
-`standard/notifications`; shared App Shell/runtime требует один final
-`standard/full`.
+Этот файл — короткий briefing. Начинать следует с:
 
-Снимок документации: 2026-07-17.
+1. `README.md` — назначение, команды и главные ссылки.
+2. `../roadmap/README.md` — завершённые, следующие и будущие этапы.
+3. `project-overview.md` и `architecture.md` — runtime/source-of-truth boundaries.
+4. Профильный current-contract файл из `docs/`.
+5. `../reports/README.md` — только когда нужна историческая приёмка или audit evidence.
 
-Этот файл написан как короткий briefing для нового чата, агента или человека,
-который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
-читать `README.md` и профильную страницу из `docs/`.
+## Текущее состояние продукта
 
-## Что это за проект
+Anki Study Report — локальный add-on для Anki 26.05+ с Python runtime,
+React/TypeScript dashboard и token-protected HTTP server на `127.0.0.1`.
+Frontend не получает прямой доступ к Anki collection.
 
-Это Anki add-on `Anki Study Report`. Он работает внутри Anki 26.05+, собирает
-статистику обучения, строит Markdown/HTML report и публикует локальный React
-dashboard через token-protected HTTP server.
-
-Проект смешанный:
-
-- Python add-on runtime: `anki_study_report/`
-- React dashboard: `web-dashboard/`
-- Python tests: `tests/`
-- Frontend tests: `web-dashboard/src/**/*.test.ts(x)`
-- Packaging scripts: `scripts/package_addon.py`, `build_ankiaddon.ps1`
-- Real Anki Desktop E2E: `docker/anki-e2e/`
-
-## Что прочитать первым
-
-1. `README.md` - быстрый вход и команды.
-2. `docs/project-overview.md` - карта проекта и source-of-truth.
-3. `docs/architecture.md` - границы модулей.
-4. Если задача про dashboard contract - `docs/dashboard-api.md`.
-5. Если задача про сборку - `docs/packaging-release.md`.
-6. Если задача про реальный Anki/Desktop/rendering - `docs/docker-e2e.md`.
-7. Если задача про диагностику - `docs/troubleshooting.md`.
-8. Если нужно выбрать проверки - `docs/test-matrix.md`.
-9. Если агенту нужны правила поведения - `docs/codex-agent-rules.md`.
-10. Если задача про GitHub Actions/Fast CI - `docs/ci-cd.md`.
-11. Если задача про E2E scopes/cache/telemetry - `docs/e2e-performance.md`.
-12. Если задача про native Cards/Notes query или inspect -
-    `docs/search-query-foundation.md`.
-13. Если задача про `#/search`, selection или mutations —
-    `docs/search-v1-and-safe-actions.md`.
-14. Если задача про What’s New, consent или privacy state —
-    `docs/product-notices-and-consent.md` и `docs/privacy-telemetry.md`.
-15. Если задача про завершение telemetry foundation и Cloudflare acceptance —
-    `docs/stage-9-telemetry-foundation-handoff.md`.
-16. Если задача про enrollment retry, manual check/send, abuse quotas или
-    Stage 9.0.1 acceptance —
-    `docs/stage-9-0-1-telemetry-reliability-handoff.md`.
-17. Если задача про initial GHCR E2E environment publication, contract hash
-    portability или Stage 6 gate —
-    `docs/ci-optimization-stage-5-ghcr-publication-closeout.md`.
-
-Дополнительные справочники:
+Продуктовый roadmap завершён до **Stage 9.5**:
 
 ```text
-docs/security-and-safety.md      server/media/actions/rendering safety
-docs/release-checklist.md        публикация .ankiaddon
-docs/fixtures-and-test-data.md   fixtures, mock data, synthetic E2E data
-docs/frontend-map.md             routes/pages/helpers/tests frontend
-docs/navigation-ia.md            current primary nav, profile menu, settings hierarchy
-docs/settings-hub.md             Stage 2 settings routes, persistence, Today/settings boundary
-docs/profile-mvp.md              Stage 3 all-collection Profile, per-profile persistence/API
-docs/activity-calendar-v2.md     Stage 4 scoped calendar, day details and derived feed
-docs/decks-v2.md                 Stage 5 scoped hierarchy, direct/subtree health and Browser actions
-docs/ui-polish-global-controls.md Stage 5.5 theme dock and Activity/Decks presentation polish
-docs/search-query-foundation.md  native query/inspect foundation
-docs/search-v1-and-safe-actions.md Search route, selection, Browser bridge и undoable mutations
-docs/product-notices-and-consent.md per-profile notices, consent, modal order и changelog
-docs/privacy-telemetry.md         точный privacy/telemetry data contract и shipping status
-docs/config-reference.md         config/env vars/runtime paths
-docs/decision-log.md             архитектурные решения и причины
-docs/legacy-cleanup-inventory.md legacy/compat/fallback cleanup map
-docs/legacy-cleanup-handoff.md   финальное состояние cleanup-линии и старт следующего этапа
-docs/card-alias-audit.md         card payload alias evidence/removal readiness
+Stage 0–5.5  foundation, IA, Settings, Profile, Activity, Decks, UI controls
+Stage 6–7    Statistics, FSRS analytics, RU/EN localization
+Stage 8      native Search and undoable Safe Actions
+Stage 9      notices, consent, telemetry, Signals, Notification Center, toasts
 ```
 
-Search Query Foundation остаётся read-only API, но теперь имеет продуктовый
-`#/search` surface. Его pagination contract использует `pageCount` для числа bounded result pages и `pageLimit`
-для hard-cap предела запроса; пустой результат имеет `page=1`, `pageCount=0`.
-`web-dashboard/src/lib/searchApi.ts` runtime-проверяет все обязательные поля
-Cards/Notes rows и details, вложенные структуры и response metadata. E2E seed и
-APKG import не вызывают deprecated `Collection.save()` в Anki 26.05; отдельный
-deck-manager `col.decks.save(deck)` не является этим API и сохраняется.
-
-## Главные инварианты
-
-Не ломать dashboard payload contract. Backend builder находится в:
+Следующий рекомендуемый продуктовый этап:
 
 ```text
-anki_study_report/dashboard_payload.py
+Stage 10 — Cards v2 / Problem Triage
 ```
 
-Frontend contract находится в:
+Stage 10 должен переиспользовать Search, Safe Actions, Signals и Notification
+Center, а не создавать второй query/action/signal workflow. Stage 10.5 затем
+harden-ит уже существующий core и CI/CD; новую delivery pipeline он не строит.
+
+Платформенная линия завершена до **CI Stage 6B**. Cloud real-Anki E2E использует
+только exact digest-pinned GHCR environment. Manual/reusable path принимает
+exact Fast CI artifact, release caller — exact release artifact. Cloud
+BuildKit/Buildx/containerd build-load и `type=gha` cache удалены; local Docker
+build остаётся development/diagnostic fallback.
+
+## Документационные области
 
 ```text
-web-dashboard/src/types/report.ts
+docs/       актуальные architecture/API/UX/security/operations contracts
+roadmap/    completed/next/planned stages и зависимости
+reports/    historical handoff, audits, measurements и inventories
 ```
 
-Если payload меняется, обновить оба слоя и tests.
-
-Не тащить runtime outputs в git:
+При конфликте использовать приоритет:
 
 ```text
-e2e-artifacts/
-web-dashboard/dist/
-web-dashboard/screenshots/
-anki_study_report/web_dashboard/
-anki_study_report/user_files/
-*.ankiaddon
+production code/tests
+→ current docs
+→ roadmap
+→ reports
+→ старые планы и предположения
 ```
 
-Не импортировать Anki entrypoint в чистых тестах, если это требует `aqt`.
-Использовать существующий test harness в `tests/conftest.py`.
+Новые отчёты не добавляются в `docs/`.
 
-Если production payload корректен, а тест устарел, править точное ожидание
-теста, а не менять рабочий payload ради старого assertion.
+## Что читать по типу задачи
 
-## Как подходить к изменениям
+- Dashboard payload/API: `dashboard-api.md`.
+- Frontend routes/components: `frontend-map.md`, `navigation-ia.md`.
+- Settings: `settings-hub.md`, `config-reference.md`.
+- Search/actions: `search-query-foundation.md`, `search-v1-and-safe-actions.md`.
+- Statistics/FSRS: `statistics-v1.md`, `fsrs-analytics.md`, metric definitions.
+- Signals/notifications: `signals-foundation.md`, `notification-center.md`,
+  `notification-preferences-and-toasts.md`.
+- Notices/privacy/telemetry: `product-notices-and-consent.md`,
+  `privacy-telemetry.md`, `telemetry-client.md`.
+- Security: `security-and-safety.md`.
+- CI/E2E/release: `ci-cd.md`, `verification-run-policy.md`, `test-matrix.md`,
+  `docker-e2e.md`, `release-automation.md`.
+- GHCR environment producer: `ci-optimization-stage-5-ghcr-environment-foundation.md`.
+- Current GHCR-only cloud consumer: `ghcr-e2e-consumer.md`.
+- Stage 6A/6B evidence: `../reports/ci/ci-optimization-stage-6a-ghcr-consumer-validation.md`
+  и `../reports/ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md`.
+- Historical evidence: `../reports/README.md`.
 
-Для узких исправлений:
+## Главные технические инварианты
 
-1. Сначала прочитать текущий код и тест, который задает контракт.
-2. Проверить фактическую форму данных.
-3. Менять минимальный слой.
-4. Запустить релевантную проверку.
-5. Не форматировать и не откатывать несвязанные файлы.
+1. Payload/public behavior меняются синхронно в backend, frontend validators/types,
+   tests и docs.
+2. Frontend не читает Anki collection напрямую.
+3. Dashboard server остаётся loopback-only и token-protected.
+4. Нельзя ослаблять sanitizer, media validation, action allowlists или preview
+   isolation. Cards preview не использует iframe и не исполняет template JS.
+5. Generated assets не редактируются вручную и не коммитятся вместе с runtime
+   files, logs, screenshots, profile DB, tokens или `.ankiaddon`.
+6. Production-код не меняется ради устаревшего теста, если текущий contract
+   доказан правильным.
+7. Signals, evidence, entity references и notification preferences остаются
+   локальными и не входят в remote telemetry taxonomy.
+8. Read/unread, active/resolved и toast-delivered — разные состояния.
+9. Telemetry event objects содержат только Worker-accepted common/event fields;
+   schema/consent/privacy versions принадлежат enrollment/batch envelopes.
+10. Environment image, checkout, tested package и E2E artifacts остаются
+    раздельными identities.
+11. Release остаётся manual/approval-gated; merge или push не публикуют add-on.
 
-Для legacy cleanup сначала открыть `docs/legacy-cleanup-inventory.md` и
-определить, является ли место compatibility bridge, fallback, transitional
-adapter, generated output или настоящим кандидатом на удаление.
-Для удаления card payload aliases дополнительно читать
-`docs/card-alias-audit.md`.
+## Текущая IA
 
-Для dashboard/frontend:
-
-```powershell
-cd web-dashboard
-pnpm run test:frontend
-pnpm run build:addon
-```
-
-Для Python:
-
-```powershell
-node scripts/run_python.mjs -m pytest
-```
-
-Для полной локальной проверки:
-
-```powershell
-.\scripts\run_full_check.ps1 -SkipDocker
-```
-
-Эта же команда используется cloud-primary workflow
-`.github/workflows/ci-fast.yml`. `cd web-dashboard; pnpm run test:all` остаётся
-frontend-oriented aggregate, но не отдельным CI pipeline. Local fallback
-ручной, и его PASS не заменяет GitHub CI PASS.
-
-Для release artifact:
-
-```powershell
-.\build_ankiaddon.ps1
-```
-
-Для real Anki Desktop behavior:
-
-```powershell
-.\scripts\run_full_check.ps1 -CleanDocker
-```
-
-Для финального Cards/APKG/Perf100 release smoke:
-
-```powershell
-.\scripts\run_full_check.ps1 -CleanDocker -RequireApkgFixture -Perf100
-```
-
-## Текущая архитектурная договоренность
-
-`anki_study_report/__init__.py` - adapter/orchestration layer: Anki UI, hooks,
-dialogs, dashboard lifecycle, cache wiring.
-
-Чистая логика должна жить в отдельных модулях:
-
-```text
-dashboard_payload.py
-report_from_cache.py
-stats_cache.py
-metrics.py
-note_intelligence.py
-browser_actions.py
-entity_actions.py
-entity_action_runtime.py
-config_service.py
-profile_service.py
-activity_service.py
-deck_hub.py
-statistics_service.py
-```
-
-Так ее можно импортировать и тестировать без реального Anki.
-
-## Текущая Navigation / IA
-
-Statistics использует отдельный visual contract поверх неизменного Stage 6
-typed API: четыре уровня page identity → query/coverage → insight/KPI →
-analytical panels. Chart type выбирается по вопросу; несопоставимые units не
-делят simple scale. Shared primitives/palette и полный screenshot contract
-описаны в `docs/statistics-visual-design.md`.
-
-Primary navigation сейчас содержит шесть продуктовых пунктов:
+Primary navigation:
 
 ```text
 Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-`#/home` сохраняется и отображается как «Сегодня». Профиль, Настройки,
-Инструменты (`#/actions`) и «Поддержать проект» доступны через avatar menu
-справа. Support ведёт на `https://boosty.to/ankistudyreport` как статическая
-no-referrer ссылка в новой вкладке; `#/support` не существует. Settings Hub
-использует `#/settings`, `#/settings/data`, `#/settings/server`,
-`#/settings/sources`, `#/settings/logs`; старые `#/integrations` и `#/logs`
-redirect-ятся в canonical diagnostics pages. Profile больше не редактирует
-dashboard scope. Home использует отдельный current-day `StudyReport.today`, а
-historical top-level report сохраняется для других pages. Полный contract:
-`docs/settings-hub.md`.
+Notification bell живёт в App Shell, ведёт в `#/notifications` и не является
+primary tab. Notification preferences находятся в `#/settings/notifications`.
+FSRS живёт только внутри Statistics (`#/stats/fsrs/...`); `#/fsrs` и `#/browse`
+не возвращаются как aliases/placeholders.
 
-Profile MVP использует отдельный `StudyReport.profile`, всегда построенный из
-all-collection cache snapshot до dashboard filters. Editable
-`customStudyStartedOn` и `deckOverviewSort` живут в per-profile runtime
-`profile.json` и меняются через token-protected `/api/profile`. Полный contract:
-`docs/profile-mvp.md`.
+## Verification policy
 
-`#/calendar` остаётся route, но nav/heading называется «Активность». Canonical
-`StudyReport.activityHub` содержит максимум год scoped daily/deck-day rows и
-derived feed; Profile остаётся all-collection. Полный contract:
-`docs/activity-calendar-v2.md`.
-
-`#/decks` использует additive normalized `StudyReport.deckHub`: current deck
-catalog, scoped direct rows, bottom-up subtree metrics, отдельные health /
-confidence / descendant issues и typed Browser action по deck ID. Filtered
-decks исключены; legacy `decks` сохранён. Полный contract: `docs/decks-v2.md`.
-
-Stage 5.5 монтирует persistent `GlobalUtilityDock` в `AppLayout`: theme toggle
-использует существующий `anki-study-report-theme`, а Activity/Decks меняют
-только presentation/state. Dock также содержит независимый RU/EN selector с
-browser-local `anki-study-report-language`. Все product-owned строки живут в
-bundled typed resources; русский — default/fallback, пользовательские и
-технические payload values не переводятся. Полный contract:
-`docs/localization.md` и `docs/ui-polish-global-controls.md`.
-
-`#/search` использует native Cards/Notes query, bounded inspector, явную
-selection до 200 IDs, Browser bridge и allowlisted undoable actions. Read и
-mutation разделены между QueryOp и official CollectionOp wrappers; полный
-contract — `docs/search-v1-and-safe-actions.md`.
-
-`#/stats` и четыре nested routes используют additive
-`StudyReport.statisticsHub`, cache schema v3 и token-protected
-`POST /api/statistics/query`. True Retention хранится как first-review
-daily/deck-day aggregate; current states/due остаются bounded live snapshot.
-Полный contract: `docs/statistics-v1.md`.
-
-Stage 7 добавляет read-only FSRS center в Statistics: `#/stats/fsrs` и
-`memory|calibration|steps|simulator`. Lightweight capability находится в
-`statisticsHub.fsrs`, heavy операции — strict token-protected
-`POST /api/statistics/fsrs/query`; source of truth — native Anki 26.05.
-Проверки следуют `docs/verification-run-policy.md`: Fast CI → targeted scope →
-один final full gate.
-
-Не возвращать `#/fsrs`, `#/browse` и не добавлять другие placeholders до
-соответствующего продуктового этапа.
-Stage 1 Navigation / IA завершён. Полный контракт и причины:
-`docs/navigation-ia.md`.
-
-## Docker E2E: что важно не перепутать
-
-Installed add-on path внутри контейнера:
-
-```text
-/e2e/anki-data/addons21/anki_study_report_e2e
-```
-
-Base profile DB:
-
-```text
-/e2e/anki-data/prefs21.db
-```
-
-E2E artifacts:
-
-```text
-e2e-artifacts/runtime/dashboard-ready.json
-e2e-artifacts/runtime/addon-e2e-events.jsonl
-```
-
-Если Docker E2E падает, сначала смотреть layout/profile/readiness artifacts,
-затем `diagnostics/`, `reports/` и `html/`, а не менять production код наугад.
-Полный redacted индекс текущего run — `e2e-artifacts/artifact-manifest.json`;
-page/navigation/Cards matrices находятся под `screenshots/`.
-
-## Cards preview: текущая release truth
-
-- `table` и `tiles` используют `AnkiCardShadowPreview` / Shadow DOM host
-  `data-testid="anki-card-shadow-preview"` и показывают front-only preview.
-- `ankiPreview` тоже использует `AnkiCardShadowPreview`, но как answer-only
-  host: `data-testid="anki-preview-answer"` плюс
-  `data-testid="anki-card-shadow-preview"`,
-  `data-shadow-preview-mode="preview"`, `data-preview-side="answer"`.
-  Source HTML - `renderedPreview.backHtml`; отдельный front не дублируется.
-- Если `backHtml` отсутствует, UI должен показывать диагностический fallback,
-  а не молча подставлять отдельный штатный front preview.
-- Preview не использует iframe, JS templates не исполняются, sanitizer нельзя
-  ослаблять ради визуального совпадения, note CSS остается внутри Shadow DOM
-  preview host.
-- Целевой surface - локальный desktop/laptop dashboard, не mobile-first ширины.
-
-Tracked APKG fixture:
-
-```text
-docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
-```
-
-Fixture содержит 10 notes, 10 cards, 4 note types и 13 media files. Strict APKG
-smoke:
+Каноническая non-Docker проверка:
 
 ```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+.\scripts\run_full_check.ps1 -SkipDocker
 ```
 
-Perf100 smoke использует эту же APKG fixture, клонирует импортированные
-cards/notes внутри Docker collection, не создает новую APKG и не включает UI
-virtualization. Timings являются diagnostic output, а не release thresholds:
+Cloud-primary порядок:
 
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+```text
+focused tests
+→ Fast CI exact package
+→ required targeted real-Anki scope
+→ one final standard/full only when matrix/risk requires it
 ```
 
-APKG является owner-authored, sanitized и owner-authorized regression fixture,
-а не generated synthetic collection. Владелец создал/курировал карточки и все
-13 media и разрешил публичное использование fixture в repository, tests, Docker
-E2E и CI artifacts. Read-only inspection не нашёл противоречащих данных;
-publication finding закрыт. Fixture-specific permission не задаёт лицензию для
-остального репозитория.
+Не повторять успешный same-SHA scope без изменения релевантного contract.
+Локальный Docker используется только по прямому разрешению владельца или когда
+GitHub Actions действительно недоступен и без локального воспроизведения нельзя
+диагностировать конкретный сбой.
 
-## Cloud Full Docker E2E
+Cloud E2E не имеет BuildKit fallback: exact GHCR identity проверяется до запуска
+Anki. Local Docker build и cloud GHCR consumer — разные operational contours.
 
-Cloud E2E разделяет `mode` и `scope`. Targeted scopes поднимают настоящий Anki
-и сохраняют security/core checks, но final gate — `standard/full`. Page capture
-использует один Chromium и bounded pool из 3 BrowserContext по умолчанию.
-Buildx `type=gha` сохраняет только build layers; profile/token/runtime outputs
-не кэшируются. Artifact schema v2 содержит phase, screenshot, resource и
-performance reports. Baseline — готовый run `29208090406`, 183 s; старую
-реализацию повторно не запускать. Полный contract: `docs/e2e-performance.md`.
+## Перед завершением задачи
 
-Fast CI и real-Anki E2E разделены. `.github/workflows/ci-e2e.yml` после
-bootstrap запускается вручную с typed mode/scope/workers/telemetry/restart.
-Основной release proof — `standard/full`; strict APKG и Perf100 нужны только
-при изменении их paths. Workflow использует `ubuntu-24.04`, read-only
-permissions, официальный digest Anki 26.05 и ту же локальную
-`run_full_check.ps1 -DockerOnly` orchestration.
-
-Public artifact — только `ci-e2e/`: raw readiness token исключён,
-`dashboard-ready.redacted.json` безопасен, manifest paths и text exports
-проверяются. `ci-e2e-summary.json` schema v2 содержит exact SHA, mode/scope,
-cache/build/performance и runtime result без token/PII. LOCAL PASS не заменяет
-exact-SHA GitHub PASS; performance goals и Perf100 timings пока не являются
-release thresholds.
-
-## Stage 7.5 delivery truth
-
-Statistics и FSRS — route-level lazy chunks. Их загрузка проходит через
-`RouteDeliveryBoundary`; не возвращать их в eager entry ради обхода package
-ошибки. Production `web_dashboard/manifest.json` обязателен. Общий
-`dashboard_asset_graph.py` проверяет static/dynamic imports, async CSS, path
-safety и non-empty files и используется package validator/runtime health.
-
-FSRS остаётся read-only: calibration и simulator manual, presentation verdicts
-не меняют backend formulas, sparse samples не превращаются в уверенный вывод.
-Canonical closure и bundle baseline/after находятся в
-`docs/stage-7-5-fsrs-visual-delivery-report.md`.
-
-## Перед финальным ответом по задачам
-
-Полезный минимум:
-
-```powershell
-git status --short --branch
-git diff --check
-```
-
-Если были кодовые изменения, добавить релевантные test/build команды из
-`docs/test-matrix.md`. Если проверку нельзя запустить, явно написать почему.
-
-## Release delivery truth
-
-Каноническая версия находится в `anki_study_report/version.py`, release notes —
-в structured `release/changelog.json`; `CHANGELOG.md` генерируется. Публичная стабильная AnkiWeb часть — в
-`release/ankiweb-description.md`. `release.yml` на PR только валидирует и
-строит; production запускается вручную с current `master`.
-
-Exact `.ankiaddon` проходит SHA handoff через standard/full real-Anki E2E,
-draft GitHub Release, approved `ankiweb-production`, один Save существующей
-AnkiWeb `Branch 1` и публичный download verification. Stable финализирует
-GitHub Release после AnkiWeb; prerelease AnkiWeb не трогает. Credentials не
-должны появляться в контексте/аргументах/файлах. Подробности и recovery:
-`docs/release-automation.md`.
+- проверить actual branch/base/head и несвязанные изменения;
+- выполнить `git diff --check`;
+- запустить релевантные tests согласно `test-matrix.md` и
+  `verification-run-policy.md`;
+- не заявлять PASS, merge, deployment или release без просмотренного evidence;
+- обновить current docs и roadmap, если фактический scope этапа изменился;
+- historical run/report сохранять в `reports/`, а не в `docs/`.

@@ -9,7 +9,7 @@ panel, durable `#/notifications`, per-profile настройки
 `docs/signals-foundation.md`, `docs/notification-center.md` и
 `docs/notification-preferences-and-toasts.md`.
 
-Документация этого репозитория описывает текущую версию проекта на 2026-07-15.
+Документация этого репозитория описывает текущую версию проекта на 2026-07-17.
 Ее цель - быть входной точкой для человека или нейронки, которой нужно быстро
 понять, что здесь находится, как это запускать, какие контракты нельзя ломать и
 почему часть решений устроена именно так.
@@ -54,6 +54,26 @@ navigation. Полное решение и правила эволюции route
 KPI, активностью, обзором колод и per-profile настройками даты/сортировки.
 `#/calendar` сохраняет canonical route, но отображается как «Активность» и
 объединяет scoped calendar, day details и derived history feed.
+
+## Roadmap и исторические отчёты
+
+Текущая карта завершённых и будущих этапов вынесена из operational docs:
+
+- [Главный roadmap](roadmap/README.md)
+- [Продуктовые этапы](roadmap/product/README.md)
+- [Платформенные CI/CD/E2E этапы](roadmap/platform/README.md)
+- [Исторические отчёты и audits](reports/README.md)
+
+```text
+docs/       текущее устройство и обязательные контракты
+roadmap/    этапы, зависимости, planned/completed scope
+reports/    исторические handoff, audits и measurements
+```
+
+Текущий продуктовый контур завершён до Stage 9.5. Следующий рекомендуемый
+продуктовый этап — Stage 10 Cards v2 / Problem Triage; отдельная CI-линия не
+смешивается с ним. Платформенный GHCR cloud cutover завершён до CI Stage 6B;
+следующие CI-оптимизации выполняются только по измеримым bottleneck/flake данным.
 
 ## Самые важные команды
 
@@ -110,36 +130,34 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 
 ## Документация
 
+- [Индекс актуальной документации](docs/README.md)
 - [Обзор проекта](docs/project-overview.md)
 - [Архитектура](docs/architecture.md)
 - [Разработка и проверки](docs/development.md)
 - [Dashboard API и payload-контракт](docs/dashboard-api.md)
-- [Search Query Foundation](docs/search-query-foundation.md)
-- [Search v1 и Safe Actions](docs/search-v1-and-safe-actions.md)
-- [Матрица проверок](docs/test-matrix.md)
-- [CI и gated release delivery](docs/ci-cd.md)
-- [Stage 6B: GHCR-only cloud E2E](docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
-- [Release automation](docs/release-automation.md)
-- [Готовность репозитория к публикации](docs/public-repository-readiness.md)
-- [Диагностика типовых проблем](docs/troubleshooting.md)
 - [Frontend map](docs/frontend-map.md)
 - [Navigation / Information Architecture](docs/navigation-ia.md)
 - [Settings Hub](docs/settings-hub.md)
 - [Profile MVP](docs/profile-mvp.md)
 - [Activity / Calendar v2](docs/activity-calendar-v2.md)
 - [Decks v2](docs/decks-v2.md)
+- [Statistics v1](docs/statistics-v1.md)
+- [FSRS analytics](docs/fsrs-analytics.md)
+- [Search Query Foundation](docs/search-query-foundation.md)
+- [Search v1 и Safe Actions](docs/search-v1-and-safe-actions.md)
+- [Signals Foundation](docs/signals-foundation.md)
+- [Notification Center](docs/notification-center.md)
+- [Notification Preferences & Toasts](docs/notification-preferences-and-toasts.md)
 - [UI Polish & Global Controls](docs/ui-polish-global-controls.md)
 - [Локализация RU/EN](docs/localization.md)
 - [Product notices и consent](docs/product-notices-and-consent.md)
 - [Telemetry client](docs/telemetry-client.md)
 - [Privacy и telemetry contract](docs/privacy-telemetry.md)
-- [Stage 9 telemetry foundation handoff](docs/stage-9-telemetry-foundation-handoff.md)
-- [Statistics v1](docs/statistics-v1.md)
-- [FSRS analytics](docs/fsrs-analytics.md)
-- [FSRS metric definitions](docs/fsrs-metric-definitions.md)
+- [CI и gated release delivery](docs/ci-cd.md)
+- [GHCR-only cloud E2E consumer](docs/ghcr-e2e-consumer.md)
+- [Release automation](docs/release-automation.md)
 - [Verification run policy](docs/verification-run-policy.md)
-- [Определения метрик Statistics](docs/statistics-metric-definitions.md)
-- [Inventory аналитических референсов](docs/statistics-reference-inventory.md)
+- [Матрица проверок](docs/test-matrix.md)
 - [Security and safety model](docs/security-and-safety.md)
 - [Config reference](docs/config-reference.md)
 - [Docker E2E](docs/docker-e2e.md)
@@ -148,12 +166,12 @@ node scripts/run_python.mjs scripts/package_addon.py --check-only
 - [Release checklist](docs/release-checklist.md)
 - [Fixtures and test data](docs/fixtures-and-test-data.md)
 - [Decision log](docs/decision-log.md)
-- [Legacy cleanup inventory](docs/legacy-cleanup-inventory.md)
 - [Codex/AI agent rules](docs/codex-agent-rules.md)
 - [Передача контекста новому чату/нейронке](docs/ai-handoff.md)
 
-Если нужно быстро сориентировать новый чат, обычно достаточно дать ему этот
-`README.md` и папку `docs/`.
+Если нужно быстро сориентировать новый чат, дать ему `README.md`,
+`roadmap/README.md`, `docs/ai-handoff.md` и профильный current-contract файл.
+Исторические результаты брать из `reports/`, не из `docs/`.
 
 ## Участие и безопасность
 
@@ -196,4 +214,4 @@ Fast CI package, а release gate — exact release artifact. Cloud BuildKit и
 `type=gha` cache больше не используются; локальный Docker build fallback сохранён.
 Доступные режимы: `standard`, `strict-apkg` и diagnostic `perf100`. Полный
 контракт и команды — в `docs/ci-cd.md`, `docs/docker-e2e.md` и
-`docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md`.
+`docs/ghcr-e2e-consumer.md`.

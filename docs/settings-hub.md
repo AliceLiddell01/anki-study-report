@@ -17,8 +17,10 @@ Settings Hub объединяет реальные настройки add-on и 
 scope из Profile, фиксирует семантику «Сегодня» и сохраняет диагностику как
 read-only surface.
 
-Не реализованы Profile MVP, accounts, achievements, Activity Feed, Statistics,
-Search, Notifications, Cards v2, external integrations и mobile drawer.
+На момент исходного Stage 2 не были реализованы Profile MVP, Activity,
+Statistics, Search и Notifications; последующие этапы добавили реальные routes.
+По-прежнему отсутствуют accounts, achievements, Cards v2, external integrations
+и mobile drawer.
 
 ## Settings IA и canonical routes
 
@@ -27,7 +29,9 @@ Search, Notifications, Cards v2, external integrations и mobile drawer.
   Отчёт             #/settings
 Данные
   Данные            #/settings/data
+  Приватность       #/settings/privacy
 Система
+  Уведомления       #/settings/notifications
   Сервер            #/settings/server
 Диагностика
   Источники данных  #/settings/sources
@@ -167,9 +171,10 @@ Hub и не влияет на Profile. См. `docs/profile-mvp.md`.
 
 ## Future settings not implemented
 
-В Hub нет placeholder controls для Statistics, FSRS page, accounts, cloud sync,
-external services, arbitrary themes или plugin/DLC system. Новые sections
-добавляются только вместе с реальным backend contract и persistence.
+В Hub нет placeholder controls для accounts, cloud sync, external services,
+arbitrary themes, custom signal rules или plugin/DLC system. Privacy и
+Notifications уже являются реальными routes с backend persistence. Новые
+sections добавляются только вместе с реальным contract и persistence.
 
 ## Privacy
 

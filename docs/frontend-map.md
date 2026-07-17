@@ -1,5 +1,10 @@
 # Карта frontend dashboard
 
+## Documentation structure
+
+Current contracts remain in `docs/`; stage sequencing is in `../roadmap/`;
+historical reports/audits are indexed in `../reports/README.md`.
+
 ## Notification surfaces
 
 `TopNav.tsx` монтирует `NotificationBell`; `AppLayout.tsx` — единственный
@@ -216,7 +221,7 @@ sufficiency и read-only workload simulation. Calibration/simulator запрос
 Production build создаёт Vite manifest и восемь JS chunks. Bundle guard
 проверяет, что Statistics и FSRS остаются dynamic entries, а каждый JS chunk
 меньше 500,000 bytes. Текущая архитектура границ описана в
-`docs/stage-7-5-fsrs-visual-delivery-report.md`.
+`reports/product/stage-7-5-fsrs-visual-delivery-report.md`.
 
 - Dev `mockReport` может скрыть real API failure.
 - Media URLs без token в raw payload должны получить token при рендере.
