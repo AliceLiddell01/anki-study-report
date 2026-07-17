@@ -58,6 +58,10 @@ class NotificationValidationError(ValueError):
         self.field_errors = dict(field_errors)
 
 
+class UnsupportedNotificationSchemaError(sqlite3.DatabaseError):
+    """Raised when a newer notification schema must be preserved unchanged."""
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -77,6 +81,9 @@ class NotificationStore:
             if not result or result[0] != "ok":
                 raise sqlite3.DatabaseError("notification quick_check failed")
             self._migrate()
+        except UnsupportedNotificationSchemaError:
+            self._close_locked()
+            raise
         except (sqlite3.DatabaseError, OSError):
             self._close_locked()
             self._quarantine()
@@ -100,7 +107,9 @@ class NotificationStore:
         connection = self._require_connection()
         version = int(connection.execute("PRAGMA user_version").fetchone()[0])
         if version > NOTIFICATION_STORE_SCHEMA_VERSION:
-            raise sqlite3.DatabaseError("unsupported future notification schema")
+            raise UnsupportedNotificationSchemaError(
+                f"unsupported future notification schema: {version}"
+            )
         with connection:
             connection.execute("CREATE TABLE IF NOT EXISTS schema_metadata (key TEXT PRIMARY KEY, value_json TEXT NOT NULL)")
             connection.execute(
