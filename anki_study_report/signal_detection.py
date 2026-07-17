@@ -195,9 +195,7 @@ class SignalEvaluator:
 
 def collect_repeated_again_cards(col: Any, today_key: str) -> list[dict[str, Any]]:
     """One bounded grouped revlog query; returns no card content."""
-    today = date.fromisoformat(today_key)
-    cutoff = datetime.combine(today - timedelta(days=6), datetime_time.min, tzinfo=timezone.utc)
-    cutoff_ms = int(cutoff.timestamp() * 1000)
+    cutoff_ms = _seven_day_review_cutoff_ms(col, today_key)
     rows = col.db.all(
         """
         SELECT cid,
@@ -218,6 +216,18 @@ def collect_repeated_again_cards(col: Any, today_key: str) -> list[dict[str, Any
         last = datetime.fromtimestamp(_int(last_id) / 1000, tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
         result.append({"cardId": _int(card_id), "againCount": _int(again), "reviewCount": _int(reviews), "lastReviewAt": last})
     return result[:CARD_RESULT_LIMIT]
+
+
+def _seven_day_review_cutoff_ms(col: Any, today_key: str) -> int:
+    try:
+        next_day_at = int(col.sched.day_cutoff)
+        if next_day_at > 7 * 86400:
+            return (next_day_at - 7 * 86400) * 1000
+    except (AttributeError, TypeError, ValueError):
+        pass
+    today = date.fromisoformat(today_key)
+    cutoff = datetime.combine(today - timedelta(days=6), datetime_time.min, tzinfo=timezone.utc)
+    return int(cutoff.timestamp() * 1000)
 
 
 def source_revision(snapshot: Any, today_key: str) -> str:
