@@ -1,7 +1,7 @@
 # Gamification track
 
-**Track:** `G`  
-**Role:** parallel research/product direction  
+**Track:** `G`
+**Role:** parallel research/product direction
 **Current status:** `G0` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
