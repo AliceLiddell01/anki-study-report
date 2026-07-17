@@ -4,6 +4,7 @@ from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
+import re
 import sys
 
 import pytest
@@ -26,9 +27,22 @@ def test_canonical_changelog_migrates_existing_releases_with_locale_parity():
 
     document = changelog.load_changelog_document()
     versions = [release["version"] for release in document["releases"]]
+    version_match = re.search(
+        r'^__version__\s*=\s*["\']([^"\']+)["\']\s*$',
+        changelog.CANONICAL_VERSION_FILE.read_text(encoding="utf-8-sig"),
+        re.MULTILINE,
+    )
 
-    assert versions[:2] == ["1.1.0", "1.0.0"]
-    assert {item_id for release in document["releases"] for section in release["sections"] for item_id in [section["items"][0]["id"]]}
+    assert version_match
+    assert versions[0] == version_match.group(1)
+    assert versions == sorted(versions, key=changelog.semver_key, reverse=True)
+    assert {"1.1.0", "1.0.0"}.issubset(versions)
+    assert {
+        item["id"]
+        for release in document["releases"]
+        for section in release["sections"]
+        for item in section["items"]
+    }
     for release in document["releases"]:
         for section in release["sections"]:
             for item in section["items"]:
@@ -75,6 +89,9 @@ def test_release_preparation_moves_unreleased_items_in_structured_source(monkeyp
     load_script("release_common")
     prepare_release = load_script("prepare_release")
     document = changelog.load_changelog_document()
+    current_version = document["releases"][0]["version"]
+    major, minor, _patch = (int(part) for part in current_version.split("."))
+    target_version = f"{major}.{minor + 1}.0"
     document["unreleased"] = {
         "sections": [{
             "type": "added",
@@ -90,10 +107,17 @@ def test_release_preparation_moves_unreleased_items_in_structured_source(monkeyp
     generated: list[dict] = []
     written_versions: list[str] = []
 
-    monkeypatch.setattr(prepare_release, "read_version", lambda: "1.1.0")
+    monkeypatch.setattr(prepare_release, "read_version", lambda: current_version)
     monkeypatch.setattr(prepare_release, "ensure_new_tag", lambda version: None)
     monkeypatch.setattr(prepare_release, "load_changelog_document", lambda: deepcopy(document))
-    monkeypatch.setattr(prepare_release, "parse_changelog", lambda: {"Unreleased": object(), "1.1.0": object(), "1.0.0": object()})
+    monkeypatch.setattr(
+        prepare_release,
+        "parse_changelog",
+        lambda: {
+            "Unreleased": object(),
+            **{release["version"]: object() for release in document["releases"]},
+        },
+    )
     monkeypatch.setattr(prepare_release, "write_version", written_versions.append)
     monkeypatch.setattr(prepare_release, "STRUCTURED_CHANGELOG_FILE", structured_path)
     monkeypatch.setattr(prepare_release, "MANIFEST_FILE", manifest_path)
@@ -104,12 +128,12 @@ def test_release_preparation_moves_unreleased_items_in_structured_source(monkeyp
     )
     monkeypatch.setattr(prepare_release, "prepared_state", lambda version: None)
 
-    changed = prepare_release.prepare("1.2.0", "2026-07-16", 1_752_624_000, dry_run=False)
+    changed = prepare_release.prepare(target_version, "2026-07-19", 1_784_419_200, dry_run=False)
 
     prepared = json.loads(structured_path.read_text(encoding="utf-8"))
     assert prepared["unreleased"] == {"sections": []}
-    assert prepared["releases"][0]["version"] == "1.2.0"
+    assert prepared["releases"][0]["version"] == target_version
     assert prepared["releases"][0]["sections"][0]["items"][0]["id"] == "future_release_fixture"
     assert generated == [prepared]
-    assert written_versions == ["1.2.0"]
+    assert written_versions == [target_version]
     assert "release/changelog.json" in changed
