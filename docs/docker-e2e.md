@@ -11,6 +11,20 @@ light/dark) and full to 40. New FSRS states and 125% proofs remain risk-based.
 
 Для диагностики падений см. `docs/troubleshooting.md`.
 
+## Cloud GHCR-only и локальный build fallback
+
+Cloud workflow `.github/workflows/ci-e2e.yml` всегда использует exact digest из
+`environment-image-lock.json` через base Compose + `docker-compose.ghcr.yml`.
+Cloud run не строит environment image, не использует Buildx или `type=gha` и не
+может переключиться на source-build после registry/package failure. Manual
+workflow dispatch требует `fast_ci_run_id`; reusable release gate требует exact
+release artifact name и SHA-256.
+
+Локальные команды ниже сохраняют прежний Dockerfile/Compose build fallback,
+`BuildOnly` и `source-build`. Это development/diagnostic interface, а не второй
+cloud production contour. Полное решение:
+`docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md`.
+
 ## Назначение
 
 Docker E2E запускает add-on внутри реального Anki Desktop в изолированном Linux
@@ -51,20 +65,23 @@ Docker E2E поддерживает три взаимоисключающих pa
 
 ### `source-build`
 
-Используется, когда не заданы `release_artifact_name` и `fast_ci_run_id`.
-Контейнер выполняет offline frontend dependency install, frontend build, сборку
-`.ankiaddon` и package validation. Это default и локальный fallback mode.
+Это только local/default fallback для `run_full_check.ps1` и
+`run_anki_e2e_docker.ps1`. Контейнер выполняет offline frontend dependency
+install, frontend build, сборку `.ankiaddon` и package validation. Cloud
+workflow отклоняет этот режим до GHCR login/pull.
 
 ### `release-artifact`
 
-Existing reusable release caller передаёт current-run exact release artifact и
+Reusable release caller передаёт current-run exact release artifact и
 обязательный SHA-256. Workflow проверяет hash, stage-ит package и выполняет
-validation/extraction. Release flow остаётся независимым от Fast CI.
+validation/extraction в digest-pinned GHCR environment. Release flow остаётся
+независимым от Fast CI.
 
 ### `fast-ci-artifact`
 
-Optional input `fast_ci_run_id` выбирает successful same-repository `Fast CI`
-run. Workflow разрешает diagnostics и package по exact artifact IDs, проверяет
+Manual cloud E2E требует `fast_ci_run_id`, который выбирает successful
+same-repository `Fast CI` run. Reusable callers также могут явно использовать
+этот source. Workflow разрешает diagnostics и package по exact artifact IDs, проверяет
 transport digests, identities, metadata, внутренний SHA-256 и размер, затем
 checkout-ит exact `testedCommitSha` и stage-ит package через
 `ANKI_E2E_PREBUILT_ADDON_PATH`. Frontend install/build и повторная упаковка в
@@ -74,9 +91,11 @@ checkout-ит exact `testedCommitSha` и stage-ит package через
 Неполный, invalid или неоднозначный explicit input завершает workflow ошибкой и
 не переключается автоматически на `source-build`.
 
-Stage 3 не изменяет Docker image build, BuildKit setup, GHA cache restore/export,
-image load, real-Anki lifecycle, API/browser/screenshots или artifact
-export/upload. Точное ускорение определяется только отдельным cloud measurement.
+Stage 6B удалил BuildKit setup, image build/load и GHA cache из cloud workflow.
+Real-Anki lifecycle, API/browser/screenshots, package identity и redacted artifact
+export/upload сохранены. Historical BuildKit evidence остаётся в старых отчётах;
+текущий cloud artifact всегда сообщает `imageSource=ghcr`,
+`cacheState=ghcr-digest` и `dockerBuildDurationMs=0`.
 
 ## Ключевые пути внутри контейнера
 
