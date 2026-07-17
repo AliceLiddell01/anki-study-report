@@ -88,7 +88,12 @@ def test_real_anki_reusable_caller_has_least_privilege_permissions() -> None:
     assert "if: github.event_name == 'workflow_dispatch'" in gate
     assert "needs:\n      - validate\n      - build" in gate
     assert "uses: ./.github/workflows/ci-e2e.yml" in gate
-    assert permissions == "    permissions:\n      contents: read\n      actions: read\n"
+    assert permissions == (
+        "    permissions:\n"
+        "      contents: read\n"
+        "      actions: read\n"
+        "      packages: read\n"
+    )
     assert "write" not in permissions
     assert "release_artifact_name: ${{ needs.build.outputs.bundle_name }}" in gate
     assert "release_artifact_sha256: ${{ needs.build.outputs.artifact_sha256 }}" in gate
