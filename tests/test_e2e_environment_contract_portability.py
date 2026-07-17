@@ -24,7 +24,10 @@ PRODUCER_RUN_ID = 29561205765
 
 def load_validator():
     path = ROOT / "scripts" / "validate_e2e_environment_image.py"
-    spec = importlib.util.spec_from_file_location("validate_e2e_environment_image_portability", path)
+    spec = importlib.util.spec_from_file_location(
+        "validate_e2e_environment_image_portability",
+        path,
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -41,11 +44,15 @@ def contract_paths() -> dict[str, Path]:
     }
 
 
+def canonical_text(path: Path) -> str:
+    return path.read_bytes().decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def write_variant(directory: Path, ending: str) -> dict[str, Path]:
     directory.mkdir(parents=True, exist_ok=True)
     paths: dict[str, Path] = {}
     for argument, source in contract_paths().items():
-        text = source.read_text(encoding="utf-8")
+        text = canonical_text(source)
         if ending == "lf":
             variant = text
         elif ending == "crlf":
@@ -81,6 +88,25 @@ def reference_hash(inputs: tuple[tuple[str, bytes], ...]) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def add_character(text: str) -> str:
+    return text + "x"
+
+
+def remove_character(text: str) -> str:
+    assert text.endswith("\n")
+    return text[:-2] + text[-1:]
+
+
+def add_trailing_space(text: str) -> str:
+    assert text.endswith("\n")
+    return text[:-1] + " \n"
+
+
+def remove_final_newline(text: str) -> str:
+    assert text.endswith("\n")
+    return text[:-1]
+
+
 @pytest.mark.parametrize("ending", ["lf", "crlf", "mixed", "cr"])
 def test_contract_hash_is_cross_platform_eol_invariant(tmp_path: Path, ending: str) -> None:
     validator = load_validator()
@@ -98,10 +124,10 @@ def test_current_contract_files_match_published_production_hash() -> None:
 @pytest.mark.parametrize(
     ("mutation", "expected_suffix"),
     [
-        (lambda data: data + b"x", "added character"),
-        (lambda data: data[:-1], "removed character"),
-        (lambda data: data[:-1] + b" \n", "trailing space"),
-        (lambda data: data.rstrip(b"\n"), "final newline"),
+        (add_character, "added character"),
+        (remove_character, "removed character"),
+        (add_trailing_space, "trailing space"),
+        (remove_final_newline, "final newline"),
     ],
 )
 def test_meaningful_text_changes_remain_hash_sensitive(
@@ -111,7 +137,7 @@ def test_meaningful_text_changes_remain_hash_sensitive(
 ) -> None:
     validator = load_validator()
     changed = tmp_path / "environment.Dockerfile"
-    changed.write_bytes(mutation(DOCKERFILE.read_bytes()))
+    changed.write_bytes(mutation(canonical_text(DOCKERFILE)).encode("utf-8"))
     paths = contract_paths()
     paths["dockerfile_path"] = changed
 
@@ -123,7 +149,7 @@ def test_dockerfile_instruction_and_spec_identity_changes_affect_hash(tmp_path: 
 
     dockerfile = tmp_path / "environment.Dockerfile"
     dockerfile.write_text(
-        DOCKERFILE.read_text(encoding="utf-8").replace("CMD [\"bash\"]", "CMD [\"sh\"]"),
+        canonical_text(DOCKERFILE).replace('CMD ["bash"]', 'CMD ["sh"]'),
         encoding="utf-8",
         newline="\n",
     )
@@ -134,7 +160,11 @@ def test_dockerfile_instruction_and_spec_identity_changes_affect_hash(tmp_path: 
     spec_document = json.loads(SPEC.read_text(encoding="utf-8"))
     spec_document["pnpmVersion"] = "9.15.8"
     spec = tmp_path / "environment-image-spec.json"
-    spec.write_text(json.dumps(spec_document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    spec.write_text(
+        json.dumps(spec_document, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     spec_paths = contract_paths()
     spec_paths["spec_path"] = spec
     assert validator.compute_contract_hash(**spec_paths) != PRODUCTION_CONTRACT
