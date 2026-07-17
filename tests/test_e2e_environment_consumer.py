@@ -244,9 +244,11 @@ def test_bootstrap_stages_only_current_regular_harness_files() -> None:
     for forbidden in ("curl ", "wget ", "git clone", "pnpm install", "npm install", ".ankiaddon"):
         assert forbidden not in text
 
+    if sys.platform == "win32":
+        pytest.skip("bootstrap Bash syntax is validated on Linux runners")
     bash = shutil.which("bash")
     if bash is None:
-        pytest.skip("bash is not available on the Windows Fast CI runner")
+        pytest.skip("bash is unavailable on this platform")
     result = subprocess.run([bash, "-n", str(BOOTSTRAP)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 

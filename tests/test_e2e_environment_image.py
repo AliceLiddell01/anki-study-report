@@ -380,7 +380,9 @@ def test_existing_e2e_consumer_and_cache_contract_remain_current() -> None:
     assert "file: docker/anki-e2e/Dockerfile" in workflow
     assert "cache-from: type=gha" in workflow
     assert "cache-to: type=gha" in workflow
-    assert "ghcr.io" not in workflow.lower()
+    assert "default: buildkit" in workflow
+    assert "if: env.ANKI_E2E_IMAGE_SOURCE == 'buildkit'" in workflow
+    assert "registry: ghcr.io" in workflow
     assert dockerfile.startswith("FROM mcr.microsoft.com/playwright:v1.55.1-noble\n")
     assert 'ENTRYPOINT ["/e2e/bin/entrypoint.sh"]' in dockerfile
     assert "image: ${ANKI_E2E_IMAGE:-anki-study-report-e2e:local}" in compose
