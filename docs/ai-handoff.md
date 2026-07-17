@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок документации: 2026-07-15.
+Снимок документации: 2026-07-17.
 
 Этот файл написан как короткий briefing для нового чата, агента или человека,
 который впервые видит checkout. Если времени мало, начать нужно отсюда, потом
@@ -45,6 +45,9 @@ dashboard через token-protected HTTP server.
 16. Если задача про enrollment retry, manual check/send, abuse quotas или
     Stage 9.0.1 acceptance —
     `docs/stage-9-0-1-telemetry-reliability-handoff.md`.
+17. Если задача про initial GHCR E2E environment publication, contract hash
+    portability или Stage 6 gate —
+    `docs/ci-optimization-stage-5-ghcr-publication-closeout.md`.
 
 Дополнительные справочники:
 
