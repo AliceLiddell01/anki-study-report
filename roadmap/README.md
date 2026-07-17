@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-Снимок: **2026-07-17**.
+Снимок: **2026-07-18**.
 
 Эта область — единая карта уже выполненных и будущих продуктовых и платформенных этапов. Она не заменяет production code, tests или профильные документы из `docs/`: при конфликте фактический код и тесты имеют приоритет.
 
@@ -15,7 +15,7 @@
 
 Следующий основной продуктовый этап — **Stage 10: Cards v2 / Problem Triage**.
 
-Параллельный платформенный CI/E2E-контур завершён до **CI Stage 6B**: cloud real-Anki E2E permanently использует exact digest-pinned GHCR environment, а локальная Docker build path остаётся development/diagnostic fallback. Следующие CI-изменения относятся к условному Stage 7 и требуют новых измерений; они не смешиваются с Cards v2.
+Параллельный платформенный CI/E2E-контур завершён до **CI Stage 6B**: cloud real-Anki E2E permanently использует exact digest-pinned GHCR environment, а локальная Docker build path остаётся development/diagnostic fallback. Дальняя линия CI 7–12 описывает measurement, Fast CI, E2E, reliability, release reproducibility и возможное масштабирование. Эти этапы активируются только по фактическим данным и не смешиваются с Cards v2.
 
 ## Статусы
 
@@ -65,7 +65,12 @@
 - [CI Stage 5 — stable GHCR environment image](platform/ci-05-ghcr-environment-image.md)
 - [CI Stage 5A/5B — Fast CI observability and dedup](platform/ci-05a-05b-fast-ci-observability.md)
 - [CI Stage 6 — GHCR consumer validation and permanent cloud cutover](platform/ci-06-ghcr-consumer-cutover.md)
-- [CI Stage 7 — post-cutover optimization](platform/ci-07-post-cutover-optimization.md)
+- [CI Stage 7 — post-cutover measurement and optimization budget](platform/ci-07-post-cutover-optimization.md)
+- [CI Stage 8 — Fast CI critical-path optimization](platform/ci-08-fast-ci-critical-path.md)
+- [CI Stage 9 — real-Anki E2E efficiency](platform/ci-09-real-anki-e2e-efficiency.md)
+- [CI Stage 10 — reliability and flake governance](platform/ci-10-reliability-and-flake-governance.md)
+- [CI Stage 11 — release reproducibility](platform/ci-11-release-reproducibility.md)
+- [CI Stage 12 — scale and delivery operations](platform/ci-12-scale-and-delivery-operations.md)
 
 ## Где лежит другая информация
 
@@ -88,3 +93,4 @@ reports/    исторические handoff, audits, measurements и closeout e
 4. Новый этап должен иметь цель, зависимости, scope, out of scope, completion criteria и verification policy.
 5. Historical evidence не возвращается в `docs/`; оно добавляется в `reports/` и связывается из stage-файла.
 6. CI/CD уже существует. Stage 10.5 его harden-ит, но не проектирует заново.
+7. Будущая CI-оптимизация начинается с измерений; runner/cache/retry/splitting не выбираются заранее.
