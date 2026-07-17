@@ -1,7 +1,7 @@
 # Telemetry operations track
 
-**Track:** `O`  
-**Role:** parallel operational tooling, separate from the local add-on  
+**Track:** `O`
+**Role:** parallel operational tooling, separate from the local add-on
 **Current status:** `O1` is Planned
 
 The current telemetry service is an opt-in ingestion Worker with EU D1 and a deliberately narrow public surface. It has no dashboard, generic query API or user account. Operations work does not add a route to the user dashboard and does not place admin credentials in the add-on.
