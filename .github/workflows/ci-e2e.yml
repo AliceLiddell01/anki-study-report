@@ -154,11 +154,8 @@ jobs:
           if ($source.packageSource -eq 'source-build') {
             throw 'Cloud E2E requires an exact prebuilt Fast CI or release artifact package.'
           }
-          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and $source.packageSource -ne 'fast-ci-artifact') {
-            throw 'Manual cloud E2E requires fast_ci_run_id and does not accept release artifact inputs.'
-          }
-          if ('${{ github.event_name }}' -ne 'workflow_dispatch' -and $source.packageSource -notin @('fast-ci-artifact', 'release-artifact')) {
-            throw "Unsupported reusable cloud package source: $($source.packageSource)"
+          if ($source.packageSource -notin @('fast-ci-artifact', 'release-artifact')) {
+            throw "Unsupported cloud package source: $($source.packageSource)"
           }
 
       - name: Resolve exact successful Fast CI run and artifact IDs
@@ -546,13 +543,18 @@ jobs:
         shell: pwsh
         run: |
           "--- docker compose ps ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
-          $arguments = @(
-            'compose',
-            '-f', 'docker/anki-e2e/docker-compose.yml',
-            '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
-            'ps', '-a'
-          )
-          & docker @arguments *>&1 | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          if ($env:ANKI_E2E_IMAGE) {
+            $arguments = @(
+              'compose',
+              '-f', 'docker/anki-e2e/docker-compose.yml',
+              '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+              'ps', '-a'
+            )
+            & docker @arguments *>&1 | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          } else {
+            'Skipped: exact GHCR image identity was not exposed before failure.' |
+              Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
+          }
           "--- disk after ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
           df -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
 
@@ -628,14 +630,18 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $arguments = @(
-            'compose',
-            '-f', 'docker/anki-e2e/docker-compose.yml',
-            '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
-            'down', '-v', '--remove-orphans'
-          )
-          & docker @arguments
-          if ($LASTEXITCODE -ne 0) { throw 'Docker E2E cleanup failed.' }
+          if ($env:ANKI_E2E_IMAGE) {
+            $arguments = @(
+              'compose',
+              '-f', 'docker/anki-e2e/docker-compose.yml',
+              '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+              'down', '-v', '--remove-orphans'
+            )
+            & docker @arguments
+            if ($LASTEXITCODE -ne 0) { throw 'Docker E2E cleanup failed.' }
+          } else {
+            Write-Host 'Skipping Docker E2E cleanup because exact GHCR image identity was not exposed.'
+          }
 
       - name: Restore canonical result
         if: always()

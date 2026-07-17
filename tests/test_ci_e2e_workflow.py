@@ -65,7 +65,8 @@ def test_package_source_inputs_fail_closed_before_registry_work() -> None:
     assert "--fast-ci-run-id" in validation
     assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" in validation
     assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
-    assert "Manual cloud E2E requires fast_ci_run_id" in validation
+    assert "Unsupported cloud package source" in validation
+    assert "github.event_name" not in validation
     assert "source.packageSource -eq 'source-build'" in validation
     assert text.index("Capture workflow source and validate package source inputs") < text.index("Log in to GHCR")
 
@@ -239,6 +240,17 @@ def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payl
     assert "--source-fast-ci-tested-sha" in export
     assert "--source-package-sha256" in export
     assert "--e2e-checkout-sha" in export
+
+
+def test_early_failure_diagnostics_and_cleanup_do_not_require_exact_image_identity() -> None:
+    text = workflow_text()
+    capture = step(text, "Capture final Docker state", "Prepare redacted public E2E artifact")
+    cleanup = step(text, "Clean Docker E2E state", "Restore canonical result")
+
+    assert "if ($env:ANKI_E2E_IMAGE)" in capture
+    assert "exact GHCR image identity was not exposed before failure" in capture
+    assert "if ($env:ANKI_E2E_IMAGE)" in cleanup
+    assert "Skipping Docker E2E cleanup because exact GHCR image identity was not exposed" in cleanup
 
 
 def test_every_external_action_is_pinned_to_a_full_commit() -> None:
