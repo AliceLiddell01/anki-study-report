@@ -23,7 +23,7 @@ from fast_ci_e2e_handoff_contract import (
 
 
 _ALLOWED_MODES = {"standard", "strict-apkg", "perf100"}
-_ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings"}
+_ALLOWED_SCOPES = {"full", "global", "stats", "decks", "activity", "cards", "settings", "notifications"}
 _ALLOWED_SCREENSHOT_WORKERS = {"auto", "1", "2", "3", "4"}
 _ALLOWED_TELEMETRY = {"true", "false"}
 _ALLOWED_RESTART = {"auto", "true", "false"}
