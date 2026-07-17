@@ -172,7 +172,8 @@ def test_cloud_workflow_rejects_source_build_before_registry_login() -> None:
 
     assert "source.packageSource -eq 'source-build'" in validation
     assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
-    assert "Manual cloud E2E requires fast_ci_run_id" in validation
+    assert "Unsupported cloud package source" in validation
+    assert "github.event_name" not in validation
     assert text.index("Cloud E2E requires an exact prebuilt") < login
 
 
