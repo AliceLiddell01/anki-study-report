@@ -199,13 +199,18 @@ def test_cloud_buildkit_and_gha_cache_contour_is_removed() -> None:
 
 def test_ghcr_preparation_and_compose_are_unconditional() -> None:
     text = workflow_text()
-    lock = step(text, "Validate environment consumer lock", "Log in to GHCR")
+    lock = step(text, "Validate environment consumer lock", "Expose exact GHCR environment identity")
+    identity = step(text, "Expose exact GHCR environment identity", "Log in to GHCR")
     login = step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
     pull = step(text, "Pull and verify exact GHCR environment image", "Validate resolved GHCR Compose contract")
     compose = step(text, "Validate resolved GHCR Compose contract", "Run canonical Docker-only E2E")
 
-    for block in (lock, login, pull):
+    for block in (lock, identity, login, pull):
         assert "if: env.ANKI_E2E_IMAGE_SOURCE" not in block
+    assert "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" in identity
+    assert "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" in identity
+    assert "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" in identity
+    assert "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" in identity
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "password: ${{ github.token }}" in login
     assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in pull
