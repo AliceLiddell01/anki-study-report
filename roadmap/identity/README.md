@@ -1,7 +1,7 @@
 # Identity continuity track
 
-**Track:** `I`  
-**Role:** conditional cloud/recovery gate  
+**Track:** `I`
+**Role:** conditional cloud/recovery gate
 **Current status:** `I1` is Conditional, not scheduled
 
 Identity continuity is not a prerequisite for telemetry, Cards v2 or Core 1.0. It must not silently become an account system.
