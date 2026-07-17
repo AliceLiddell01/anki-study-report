@@ -1,8 +1,8 @@
 # Product roadmap index
 
-Продуктовая последовательность описывает пользовательские и core-runtime этапы. Платформенные CI/E2E изменения ведутся отдельно в `roadmap/platform/`.
+`roadmap/product/` preserves the accepted historical Stage 0–9.5 sequence. Future work is now organized by independent tracks instead of one global Stage 10–13 queue.
 
-## Завершённая линия
+## Completed product contour
 
 ```text
 Stage 0   Foundation / Legacy Cleanup
@@ -18,19 +18,17 @@ Stage 8   Search Query / Search v1 / Safe Actions
 Stage 9   Notices / Telemetry / Signals / Notifications
 ```
 
-## Следующая линия
+## Future product tracks
 
-```text
-Stage 10   Cards v2 / Problem Triage
-Stage 10.5 Core 1.0 Hardening
-Stage 11   Contextual Analytics v1.1
-Stage 12   Extension Pack Foundation
-Stage 13   Analytics Pack
-```
+- [Core product track](../core/README.md): `C1 Cards v2 → C2 Core 1.0 → C3? Contextual Additions`.
+- [Gamification track](../gamification/README.md): parallel research/product stages `G0–G8`.
+- [Telemetry operations](../operations/README.md): protected internal `O1`.
+- [Identity continuity](../identity/README.md): conditional `I1`.
+- [Extension ecosystem](../extensions/README.md): conditional/deferred `E1–E4`.
+- [Platform / CI](../platform/README.md): independent CI/CD/E2E line.
 
-## Ненумерованные будущие концепты
+## Compatibility paths
 
-- [Identity continuity and optional account linking](unscheduled-identity-continuity.md) — отдельная opt-in модель `installation_id` / `person_id`, recovery и multi-device continuity без IP/MAC/hardware fingerprinting. Получает номер Stage только после подтверждённой пользовательской необходимости.
-- [Telemetry Admin Analytics Dashboard](unscheduled-telemetry-admin-analytics-dashboard.md) — защищённый read-only web-dashboard поверх telemetry D1 с автоматическим обновлением, инфографикой, performance/error breakdowns, privacy/retention/deletion status и server-side Cloudflare Access. Не встраивается в локальный add-on и не получает номер Stage до стабилизации telemetry backend и появления регулярной operational необходимости.
+The former Stage 10–13 and `unscheduled-*` files remain at their existing paths as short pointers to the new authoritative tracks. This avoids breaking links while preventing two competing roadmaps.
 
-Каждый stage-файл фиксирует разницу между первоначальным планом и фактическим результатом. Canonical implementation details остаются в `docs/`.
+Canonical current behavior remains in `docs/`; historical evidence remains in `reports/`.
