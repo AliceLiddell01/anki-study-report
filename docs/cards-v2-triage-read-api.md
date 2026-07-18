@@ -2,32 +2,43 @@
 
 ## Status
 
-**Schema:** `2`
+**Schema:** `3`
+
 **Endpoint:** `POST /api/triage/query`
-**Stage:** C1.5 canonical read workspace; pre-1.0 until C2 freeze
-**UI:** `#/cards` consumes automatic triage v2 with a bounded 100-item queue
 
-V2 composes bounded learning sources, exact Search worksets and confirmed
-[Inspection Profiles](inspection-profiles-v1.md). It is read-only and does not
-persist triage items, run actions or add Search grammar. C1.5 uses Search inspect
-for the active item's sanitized full preview; triage remains the queue source.
+**Stage:** C1.5R.1 identity correction; focused verification pending
 
-## Transport and request v2
+**UI:** current `#/cards` consumes automatic Triage v3 with a bounded 100-item
+queue. The table/split presentation remains product-rejected historical C1.5 UI
+and is not accepted by this schema change.
 
-- loopback `127.0.0.1` dashboard server;
+Triage v3 is read-only. It composes bounded learning sources, exact Search
+worksets and confirmed Inspection Profiles. Search inspect remains the active
+card preview source. C1.5R.1 changes only compact card identity and schema
+version; it does not redesign candidate sources, preview sides, workspace UI or
+actions.
+
+## Transport and request v3
+
+- loopback `127.0.0.1` server;
 - current dashboard token required;
-- `POST application/json`, 8 KiB body cap;
-- IDs are positive signed-64-bit decimal strings in JSON body;
-- collection reads use serialized `QueryOp`;
-- generic failures contain no exception, path, token, query or content.
+- `POST application/json`, 8 KiB cap;
+- exact keys;
+- positive signed-64-bit decimal IDs;
+- serialized collection reads through `QueryOp`;
+- no query, SQL, content, HTML or action input.
 
 Automatic:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "dataset": "automatic",
-  "scope": {"periodStartMs": 1700000000000, "periodEndMs": 1700604800000, "deckIds": []},
+  "scope": {
+    "periodStartMs": 1700000000000,
+    "periodEndMs": 1700604800000,
+    "deckIds": []
+  },
   "limit": 100
 }
 ```
@@ -36,28 +47,32 @@ Search workset:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "dataset": "search_workset",
   "cardIds": ["123", "456"],
-  "scope": {"periodStartMs": 1700000000000, "periodEndMs": 1700604800000, "deckIds": ["10"]},
+  "scope": {
+    "periodStartMs": 1700000000000,
+    "periodEndMs": 1700604800000,
+    "deckIds": ["10"]
+  },
   "limit": 200
 }
 ```
 
-All keys are exact. Timestamps are explicit non-negative safe-integer
-milliseconds with end greater than start. `deckIds` are 0..200. Automatic
-limit is 1..100. Search `cardIds` are 1..200 and limit is 1..200. Duplicate IDs
-normalize in first-seen order. The request accepts no query, SQL, sort,
-content, HTML or action.
+Timestamps are non-negative safe-integer milliseconds with end greater than
+start. `deckIds` are 0..200. Automatic limit is 1..100. Search workset IDs are
+1..200 and preserve first-seen order after deduplication.
 
-V1 is not accepted as a silent alias because v2 changes reason identity,
-source status and content evidence.
+Schema v2 is rejected; it is not a silent alias because item identity changed.
 
-## Response
+## Response v3
+
+The response keeps the v2 dataset/status/count/source/content-check structure
+and uses `schemaVersion: 3`:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "dataset": "automatic",
   "status": "available",
   "generatedAtMs": 1721000000000,
@@ -66,19 +81,43 @@ source status and content evidence.
   "limit": 100,
   "truncated": false,
   "sourceStatus": {
-    "attention": {"status": "available", "itemCount": 1, "skippedCount": 0, "truncated": false, "errorCode": null},
-    "signals": {"status": "empty", "itemCount": 0, "skippedCount": 0, "truncated": false, "errorCode": null},
-    "searchResolver": {"status": "available", "itemCount": 1, "skippedCount": 0, "truncated": false, "errorCode": null},
-    "profileChecks": {"status": "available", "itemCount": 1, "skippedCount": 0, "truncated": false, "errorCode": null}
+    "attention": {
+      "status": "available",
+      "itemCount": 1,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "signals": {
+      "status": "empty",
+      "itemCount": 0,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "searchResolver": {
+      "status": "available",
+      "itemCount": 1,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "profileChecks": {
+      "status": "empty",
+      "itemCount": 0,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    }
   },
   "contentChecks": {
-    "status": "available",
-    "confirmedProfileCount": 1,
+    "status": "no_confirmed_profiles",
+    "confirmedProfileCount": 0,
     "needsReviewProfileCount": 0,
     "disabledProfileCount": 0,
     "suggestedProfileCount": 0,
-    "evaluatedNoteCount": 1,
-    "failedCheckCount": 1,
+    "evaluatedNoteCount": 0,
+    "failedCheckCount": 0,
     "skippedCount": 0,
     "truncated": false,
     "errorCode": null
@@ -88,49 +127,61 @@ source status and content evidence.
 ```
 
 Response status is `available | partial | unavailable`. Source status is
-`available | empty | partial | unavailable | error`. Empty means a successful
-source with no items, not resolution. `totalCount` is before response limit;
-`returnedCount == items.length`; truncation is exact.
+`available | empty | partial | unavailable | error`. Empty means successful
+source with no items. Counts and truncation remain exact.
 
-Aggregate content status is `available | no_confirmed_profiles |
-profiles_need_review | disabled | partial | unavailable`. No confirmed profile
-is a valid empty configuration. An unavailable profile store/model source
-fails closed.
+## Item model v3
 
-## Item model
+Each item is anchored to `card:<cardId>` and contains availability, exact
+card/note/deck/note-type/template identity, categorical priority, reasons,
+sources, card state, Search inspect identity and the canonical display fragment:
 
-Each item is anchored to `card:<cardId>` and contains availability, card/note/
-deck/note-type/template identity, bounded plain `primaryText`, categorical
-priority, primary reason, at most four reasons, sources, card state and an
-existing Search inspect identity. Missing exact IDs keep the card anchor but
-have nullable resolved fields and no inspect action.
-
-Search workset items always preserve explicit first-seen order and include
-`search_workset` in sources. A selected card with no independently detected
-problem remains neutral (`priority: null`, no reasons); no manual reason is
-invented.
-
-## Reasons and identity
-
-Every reason has:
-
-```text
-reasonId
-code
-family                 learning | content
-scope                  card | note
-priority               high | medium | low
-sources
-evidence               max 4 discriminated objects
-detectedAtMs           timestamp | null
+```json
+{
+  "displayText": "【に】（する）",
+  "displaySource": "reviewer_front",
+  "displayStatus": "available",
+  "displayTruncated": false
+}
 ```
 
-Learning identity is stable per canonical learning code, allowing attention
-and Signal evidence to merge. Content identity is
-`profile:<profileId>:check:<checkId>`, so checks of the same kind remain
-separate.
+`primaryText` is removed from Triage items. The strict frontend parser rejects
+that alias and any other unknown key.
 
-Learning codes:
+For available cards, Triage copies the exact Search v2 card-row display identity.
+It does not re-render or re-extract text. For missing exact card IDs it emits:
+
+```json
+{
+  "displayText": "",
+  "displaySource": "none",
+  "displayStatus": "unavailable",
+  "displayTruncated": false
+}
+```
+
+Legacy attention `frontPreview` is not a fallback. A malformed resolver identity
+also fails closed to the explicit unavailable state.
+
+## Display parity
+
+For one exact card and response generation:
+
+```text
+Search card row
+Search card Inspector heading
+Triage item
+Cards queue item
+Cards Inspector heading
+```
+
+all consume the same backend projection. Queue rows do not load full preview
+HTML or media. Only the active card uses Search inspect for the sanitized preview.
+
+## Reasons and sources
+
+Reason schema, source aggregation and ordering remain unchanged from v2.
+Learning codes are:
 
 ```text
 learning.leech
@@ -139,7 +190,7 @@ learning.low_pass_rate
 learning.slow_answer
 ```
 
-Confirmed-profile content codes:
+Confirmed-profile content codes are:
 
 ```text
 content.required_text_missing
@@ -149,72 +200,44 @@ content.text_too_short
 content.required_group_missing
 ```
 
-Evidence kinds `leech_state`, `review_counts`, `pass_rate`, `answer_time` and
-`signal_evidence` remain from v1. V2 adds `profile_check`: profile/check kind,
-roles, exact field identities, expected condition, optional safe length/
-marker result, profile revision, fingerprint, affected sibling count and
-template scope. It contains no note value, HTML, filename, template source,
-path, token or exception.
+Learning identity merges canonical attention and Signal evidence. Content
+identity remains `profile:<profileId>:check:<checkId>`. Evidence stays bounded
+and contains no raw note value, HTML, filename, template source, path, token or
+exception.
 
-## Sources and candidate bounds
-
-### Attention
-
-Automatic triage uses one bounded shared revlog/card/note query (100 results
-plus truncation sentinel), under the explicit period/deck scope. The legacy
-learning projector consumes the same rows without full rendered previews.
-Only `leech`, repeated Again, low pass rate and slow answer become learning
-reasons.
-
-Legacy heuristic `missing_*` labels remain in legacy `attentionCards` and are
-ignored by canonical triage. A bounded candidate may still receive a
-confirmed-profile content reason even when it has no learning reason.
-
-### Signals
-
-At most 50 active card Signals are read. Only `card.repeated_again` maps in v2.
-Unknown/malformed rows fail closed and increment skipped count. Notification
-history and resolved Signals are not sources.
-
-### Search resolver
-
-Exact target IDs reuse the existing bounded Search card row projection. Search
-worksets separately batch-load at most 200 exact card/note field rows for
-profile evaluation. They do not create a new query grammar or unselected rows.
-
-### Profile checks
-
-Only `confirmed` profiles with current fingerprint and exact refs evaluate.
-Suggested, disabled, needs-review, missing/future/corrupt/unavailable states
-emit no authoritative content reason. Learning reasons remain independent.
-
-## Siblings and ordering
-
-A content failure is note-scoped. Multiple candidate siblings produce one
-content reason on a deterministic representative:
-
-- automatic: smallest applicable candidate card ID;
-- Search workset: first explicitly selected applicable sibling.
-
-Evidence exposes only total affected sibling count. Independent card-level
-learning reasons on other siblings remain on those cards. Search order is not
-re-sorted. Automatic order remains:
+Automatic order remains:
 
 ```text
 priority → canonical reason order → evidence recency → card ID
 ```
 
-Reason ordering is deterministic; no riskScore or frontend inference is used.
+Search workset preserves explicit first-seen order. Neutral workset items do not
+receive invented reasons or priority.
 
-## Compatibility and verification
+## Candidate boundary
 
-Legacy `attentionCards`, existing CardsPage, Search, Safe Actions, Signals,
-Notifications, token behavior and preview isolation remain unchanged. The
-strict TypeScript v2 parser rejects unknown schemas/enums/evidence/check kinds,
-non-finite numbers, invalid IDs, extra fields and count drift.
+C1.5R.1 intentionally preserves the existing candidate-source behavior.
+Period-independent current-content candidates belong to C1.5R.4 and are not
+implemented here.
 
-Focused verification covers backend projection/runtime, sibling dedupe,
-profile lifecycle/content reasons, HTTP boundaries and TypeScript parser/
-client. The risk-matched `standard/cards` real-Anki run confirms live model/
-field reads, Japanese versus Programming profile behavior, fail-closed
-fingerprint drift and same-profile restart persistence.
+## Parser and compatibility
+
+The TypeScript v3 parser requires exact top-level/item/nested keys and validates:
+
+- schema v3 only;
+- ID/count/finite-number bounds;
+- reason/source/card-state enums;
+- display text length up to 240;
+- coherent display status/source/text/truncation;
+- unavailable identity for missing items;
+- absence of `primaryText` and future keys.
+
+Search metadata v1, Search query/inspect v2, Safe Actions, Signals,
+Notifications, token behavior and preview isolation remain separate contracts.
+
+## Verification
+
+Focused backend, HTTP, parser, hook and Cards tests are present but have not been
+executed in the GitHub connector environment. C1.5R.1 remains **Implemented,
+focused verification pending**. Fast CI, Docker and real-Anki E2E are outside
+this stage.
