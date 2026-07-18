@@ -159,7 +159,7 @@ in C1.5R.0:
 - the drawer has an explicit return-to-queue action;
 - compact identity is shared across Search card row/Inspector, Triage, Cards
   queue, and Cards Inspector heading;
-- Inspector( isplays rendered front;
+- Inspector displays rendered front;
 - expanded preview defaults to rendered answer/back;
 - current-content candidates are independent of the selected learning period;
 - Inspection Profiles use a guided Basic workflow, with the strict runtime
