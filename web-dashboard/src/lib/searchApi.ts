@@ -1,4 +1,5 @@
 import type {
+  CardDisplayIdentity,
   SearchCardRow,
   SearchInspectRequest,
   SearchInspectResponse,
@@ -90,7 +91,11 @@ async function postSearch(path: string, request: object, signal?: AbortSignal): 
 }
 
 function isSearchQueryResponse(value: unknown, mode: SearchMode): value is SearchQueryResponse {
-  if (!isRecord(value) || value.schemaVersion !== 1 || value.mode !== mode || !Array.isArray(value.items)) return false;
+  if (!isRecord(value) || !exactKeys(value, [
+    "schemaVersion", "mode", "items", "page", "pageSize", "pageCount", "pageLimit",
+    "returnedCount", "boundedTotal", "hasNext", "truncated", "sort",
+  ], ["requestId"])) return false;
+  if (value.schemaVersion !== 2 || value.mode !== mode || !Array.isArray(value.items)) return false;
   if (!positiveInteger(value.page) || !isPageSize(value.pageSize)) return false;
   if (!nonNegativeInteger(value.pageCount) || !positiveInteger(value.pageLimit)) return false;
   if (!nonNegativeInteger(value.returnedCount) || !nonNegativeInteger(value.boundedTotal)) return false;
@@ -104,7 +109,10 @@ function isSearchQueryResponse(value: unknown, mode: SearchMode): value is Searc
 }
 
 function isSearchMetadataResponse(value: unknown): value is SearchMetadataResponse {
-  if (!isRecord(value) || value.schemaVersion !== 1 || value.kind !== "metadata") return false;
+  if (!isRecord(value) || !exactKeys(value, [
+    "schemaVersion", "kind", "decks", "noteTypes", "decksTruncated", "noteTypesTruncated",
+  ], ["requestId"])) return false;
+  if (value.schemaVersion !== 1 || value.kind !== "metadata") return false;
   if (!Array.isArray(value.decks) || !value.decks.every(isSearchMetadataDeck)) return false;
   if (!Array.isArray(value.noteTypes) || !value.noteTypes.every(isSearchMetadataNoteType)) return false;
   if (value.decks.length > 5000 || value.noteTypes.length > 1000) return false;
@@ -113,13 +121,15 @@ function isSearchMetadataResponse(value: unknown): value is SearchMetadataRespon
 }
 
 function isSearchInspectResponse(value: unknown, mode: SearchMode): value is SearchInspectResponse {
-  if (!isRecord(value) || value.schemaVersion !== 1 || value.mode !== mode || !isRecord(value.details)) return false;
+  if (!isRecord(value) || !exactKeys(value, ["schemaVersion", "mode", "details"], ["requestId"])) return false;
+  if (value.schemaVersion !== 2 || value.mode !== mode || !isRecord(value.details)) return false;
   if (!optionalRequestId(value.requestId)) return false;
   return mode === "cards" ? isSearchCardDetails(value.details) : isSearchNoteDetails(value.details);
 }
 
 function isSearchMetadataDeck(value: unknown): boolean {
   return isRecord(value)
+    && exactKeys(value, ["deckId", "deckName", "filtered"])
     && decimalId(value.deckId)
     && typeof value.deckName === "string"
     && value.deckName.length <= 500
@@ -128,14 +138,19 @@ function isSearchMetadataDeck(value: unknown): boolean {
 
 function isSearchMetadataNoteType(value: unknown): boolean {
   return isRecord(value)
+    && exactKeys(value, ["noteTypeId", "noteTypeName"])
     && decimalId(value.noteTypeId)
     && typeof value.noteTypeName === "string"
     && value.noteTypeName.length <= 500;
 }
 
 function isSearchCardRow(value: unknown): value is SearchCardRow {
-  return isRecord(value)
-    && decimalId(value.cardId)
+  if (!isRecord(value) || !exactKeys(value, [
+    "cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName",
+    "templateOrdinal", "templateName", "displayText", "displaySource", "displayStatus",
+    "displayTruncated", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary",
+  ])) return false;
+  return decimalId(value.cardId)
     && decimalId(value.noteId)
     && decimalId(value.deckId)
     && decimalId(value.noteTypeId)
@@ -143,7 +158,7 @@ function isSearchCardRow(value: unknown): value is SearchCardRow {
     && typeof value.noteTypeName === "string"
     && integer(value.templateOrdinal)
     && typeof value.templateName === "string"
-    && typeof value.primaryText === "string"
+    && isCardDisplayIdentity(value)
     && isCardState(value.state)
     && integer(value.due)
     && integer(value.interval)
@@ -157,6 +172,7 @@ function isSearchCardRow(value: unknown): value is SearchCardRow {
 
 function isSearchNoteRow(value: unknown): value is SearchNoteRow {
   return isRecord(value)
+    && exactKeys(value, ["noteId", "noteTypeId", "noteTypeName", "primaryText", "tagSummary", "cardCount", "deckSummary"])
     && decimalId(value.noteId)
     && decimalId(value.noteTypeId)
     && typeof value.primaryText === "string"
@@ -168,13 +184,20 @@ function isSearchNoteRow(value: unknown): value is SearchNoteRow {
 }
 
 function isSearchCardDetails(value: unknown): boolean {
-  return isSearchCardRow(value)
-    && isRecord(value)
+  if (!isRecord(value) || !exactKeys(value, [
+    "cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName",
+    "templateOrdinal", "templateName", "displayText", "displaySource", "displayStatus",
+    "displayTruncated", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary",
+    "deck", "noteType", "template", "queue", "tags", "renderedPreview",
+  ])) return false;
+  return isSearchCardRow(pick(value, [
+    "cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName",
+    "templateOrdinal", "templateName", "displayText", "displaySource", "displayStatus",
+    "displayTruncated", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary",
+  ]))
     && isSearchDeckSummary(value.deck)
     && isNoteTypeSummary(value.noteType)
-    && isRecord(value.template)
-    && integer(value.template.ordinal)
-    && typeof value.template.name === "string"
+    && isTemplateSummary(value.template)
     && integer(value.queue)
     && stringArray(value.tags)
     && isRenderedPreview(value.renderedPreview);
@@ -197,11 +220,14 @@ function isRenderedPreview(value: unknown): boolean {
 }
 
 function isSearchNoteDetails(value: unknown): boolean {
-  return isSearchNoteRow(value)
-    && isRecord(value)
+  if (!isRecord(value) || !exactKeys(value, [
+    "noteId", "noteTypeId", "noteTypeName", "primaryText", "tagSummary", "cardCount", "deckSummary",
+    "noteType", "fields", "tags", "cardReferences", "cardsTruncated", "fieldsTruncated", "deckSummaries",
+  ])) return false;
+  return isSearchNoteRow(pick(value, ["noteId", "noteTypeId", "noteTypeName", "primaryText", "tagSummary", "cardCount", "deckSummary"]))
     && isNoteTypeSummary(value.noteType)
     && Array.isArray(value.fields)
-    && value.fields.every((field) => isRecord(field) && typeof field.name === "string" && typeof field.value === "string")
+    && value.fields.every((field) => isRecord(field) && exactKeys(field, ["name", "value"]) && typeof field.name === "string" && typeof field.value === "string")
     && stringArray(value.tags)
     && Array.isArray(value.cardReferences)
     && value.cardReferences.every(isCardReference)
@@ -212,19 +238,43 @@ function isSearchNoteDetails(value: unknown): boolean {
 }
 
 function isSearchDeckSummary(value: unknown): boolean {
-  return isRecord(value) && decimalId(value.deckId) && typeof value.deckName === "string";
+  return isRecord(value) && exactKeys(value, ["deckId", "deckName"]) && decimalId(value.deckId) && typeof value.deckName === "string";
 }
 
 function isNoteTypeSummary(value: unknown): boolean {
-  return isRecord(value) && decimalId(value.noteTypeId) && typeof value.noteTypeName === "string";
+  return isRecord(value) && exactKeys(value, ["noteTypeId", "noteTypeName"]) && decimalId(value.noteTypeId) && typeof value.noteTypeName === "string";
+}
+
+function isTemplateSummary(value: unknown): boolean {
+  return isRecord(value) && exactKeys(value, ["ordinal", "name"]) && integer(value.ordinal) && typeof value.name === "string";
 }
 
 function isCardReference(value: unknown): boolean {
-  return isRecord(value) && decimalId(value.cardId) && decimalId(value.deckId) && integer(value.templateOrdinal);
+  return isRecord(value) && exactKeys(value, ["cardId", "deckId", "templateOrdinal"])
+    && decimalId(value.cardId) && decimalId(value.deckId) && integer(value.templateOrdinal);
 }
 
 function isSearchSort(value: unknown): boolean {
-  return isRecord(value) && value.key === "entity_id" && (value.direction === "asc" || value.direction === "desc");
+  return isRecord(value) && exactKeys(value, ["key", "direction"])
+    && value.key === "entity_id" && (value.direction === "asc" || value.direction === "desc");
+}
+
+export function isCardDisplayIdentity(value: unknown): value is CardDisplayIdentity {
+  if (!isRecord(value)) return false;
+  if (typeof value.displayText !== "string" || value.displayText.length > 240 || typeof value.displayTruncated !== "boolean") return false;
+  if (value.displayStatus === "available") {
+    return value.displayText.length > 0
+      && (value.displaySource === "browser_question" || value.displaySource === "reviewer_front");
+  }
+  if (value.displayStatus === "media_only") {
+    return value.displayText === ""
+      && value.displayTruncated === false
+      && (value.displaySource === "browser_question" || value.displaySource === "reviewer_front");
+  }
+  return value.displayStatus === "unavailable"
+    && value.displayText === ""
+    && value.displayTruncated === false
+    && value.displaySource === "none";
 }
 
 function isCardState(value: unknown): boolean {
@@ -245,6 +295,16 @@ function isPageSize(value: unknown): value is 25 | 50 | 100 {
 
 function malformedResponseError(): SearchApiError {
   return new SearchApiError("Search returned an invalid response.", { code: "invalid_search_response", status: 200 });
+}
+
+function exactKeys(value: Record<string, unknown>, required: string[], optional: string[] = []): boolean {
+  const keys = Object.keys(value);
+  return required.every((key) => keys.includes(key))
+    && keys.every((key) => required.includes(key) || optional.includes(key));
+}
+
+function pick(value: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+  return Object.fromEntries(keys.map((key) => [key, value[key]]));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
