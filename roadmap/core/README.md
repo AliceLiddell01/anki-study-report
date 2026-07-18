@@ -2,7 +2,7 @@
 
 **Track:** `C`
 **Role:** единственный обязательный последовательный путь основного add-on
-**Current status:** `C1.2` Complete; `C1.3` implemented, verification pending; `C1.4` blocked
+**Current status:** `C1.3` Complete; `C1.4` Next
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
@@ -32,15 +32,15 @@ C1 Cards v2 / Problem Triage
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — `C1.2` Complete; `C1.3` verification pending
+**Status:** In progress — `C1.3` Complete; `C1.4` Next
 
 ### Current increments
 
 - `C1.0 — Core branch baseline`: Complete — [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md)
 - `C1.1 — Product contract`: Complete — canonical contract [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md), evidence report [`reports/core/c1-1-product-contract.md`](../../reports/core/c1-1-product-contract.md)
 - `C1.2 — Canonical triage model and read API`: Complete — technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md), exact-SHA [Fast CI run 29637594843](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS
-- `C1.3 — Inspection Profiles: contract and runtime`: Implemented; candidate Fast CI passed, targeted `standard/cards` restart acceptance pending after diagnosed harness failures — [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md)
-- `C1.4 — Inspection Profiles: user configuration`: Blocked until C1.3 gates close
+- `C1.3 — Inspection Profiles: contract and runtime`: Complete — contract [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md), evidence report [`reports/core/c1-3-inspection-profiles-runtime.md`](../../reports/core/c1-3-inspection-profiles-runtime.md), accepted `standard/cards` restart [run 29641398848](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641398848) PASS
+- `C1.4 — Inspection Profiles: user configuration`: Next — not started
 
 `C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.
 
@@ -53,9 +53,12 @@ the exact implementation/report candidate `e7c4eded97886dc902499a0f4bdb44e842599
 `C1.3` adds the versioned profile-local store, semantic note-type fingerprint,
 non-authoritative suggestions, confirmed-only allowlisted checks, three
 token-protected runtime endpoints and canonical triage schema v2 with
-note-level sibling-deduplicated content reasons. It adds strict TypeScript
-foundation but no settings/Cards UI. Status remains pending until the exact
-candidate passes Fast CI and the risk-matched `standard/cards` Anki run.
+note-level sibling-deduplicated content reasons. The accepted exact-SHA
+`standard/cards` restart run confirms profile-local persistence, fingerprint
+mismatch detection, fail-closed content checks and isolation between Japanese
+and Programming profiles while preserving profile-independent learning reasons.
+It adds strict TypeScript foundation but no settings/Cards UI. C1 remains in
+progress; C1.4 is next and has not started.
 
 ### Goal
 

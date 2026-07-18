@@ -2,10 +2,9 @@
 
 ## Status
 
-**Current:** Implemented; candidate exact-SHA Fast CI passed. Targeted real-Anki
-`standard/cards` verification remains pending after two diagnosed harness
-failures; the second fix has local evidence only.
-**C1.4:** Blocked; no UI work started.
+**Current:** `C1.3 — Complete`. The exact-SHA Fast CI and targeted real-Anki
+`standard/cards` restart acceptance passed on the accepted implementation HEAD.
+**C1.4:** Not started.
 
 ## Baseline and scope
 
@@ -144,34 +143,62 @@ verified inside the workspace and removed; each immediate full rerun passed.
 
 Canonical `run_full_check.ps1 -SkipDocker`: final PASS in 51.9 s (frontend
 276 PASS; Python 706 PASS/4 expected platform SKIP; package 66 entries).
-Candidate exact-SHA Fast CI: PASS; final post-evidence Fast CI is reported in
-the handoff response.
-Targeted real-Anki: pending.
+Final pre-closeout exact-SHA Fast CI: run `29641074560`, PASS on
+`9e35f361aa786aedb44bbbe4a6224699239ecb0d`.
+Targeted real-Anki: run `29641398848`, PASS on the same exact SHA.
 
-## Targeted real-Anki plan
+## Accepted targeted real-Anki evidence
 
-The actual model/field/profile-local persistence risk requires one
-`Full Docker / Anki E2E` dispatch on `core` after exact-SHA Fast CI:
+Accepted workflow evidence:
 
 ```text
+run=29641398848
+job=Real Anki Desktop (standard / cards)
+sha=9e35f361aa786aedb44bbbe4a6224699239ecb0d
 mode=standard
 scope=cards
 verify_restart=true
-fast_ci_run_id=<exact successful Fast CI run>
+source_fast_ci=29641074560
+result=PASS
+failure=none
 ```
 
-The cards harness now creates `E2E Japanese Vocabulary` and `E2E Programming`
-note types, confirms both profiles through supported API, asserts exactly one
-Japanese missing-audio reason, no Programming audio requirement, independent
-learning reason and value-safe evidence. During the controlled restart fixture
-only, Anki is stopped and a Japanese front-template field reference is added.
-The restart assertion requires persisted revision/profile identity, Japanese
-`needs_review` with content fail-closed, Programming still confirmed and the
-learning reason still present. Product runtime performs no collection mutation.
+Artifact evidence:
 
-No screenshots are required because C1.3 changes no UI. Full/strict-APKG/
-Perf100 are not part of this risk-matched proof unless the verification planner
-escalates based on the final diff.
+```text
+name=ci-e2e-standard-29641398848-1
+id=8428757870
+digest=sha256:279b4d2b9cfa87ca2cb0f2b395acf8b987e429d7b12d373d2e1075bdff30d2c0
+```
+
+Accepted assertions before restart:
+
+- store revision: 2;
+- Japanese profile: `confirmed`;
+- Programming profile: `confirmed`;
+- Japanese audio reasons: 1;
+- Programming audio reasons: 0;
+- learning reason preserved: true;
+- profile evidence value leak: false.
+
+The controlled fixture then added one Japanese front-template field reference.
+Accepted assertions after model mutation and restart:
+
+- store revision: 2;
+- Japanese profile: `needs_review`;
+- Programming profile: `confirmed`;
+- Japanese audio reasons: 0;
+- Programming audio reasons: 0;
+- learning reason preserved: true;
+- profile evidence value leak: false.
+
+This accepts profile-local persistence through restart, revision/profile
+identity preservation, fingerprint mismatch detection, fail-closed Japanese
+content checks, Programming profile isolation and profile-independent learning
+reasons. Both earlier fixture-selection defects are closed by the successful
+run. No additional Docker run is required after the documentation-only closeout
+commit. The final closeout Fast CI ID is reported in the final handoff response
+rather than committed, avoiding a commit/run recording cycle.
 
 ## Security and privacy
 
@@ -195,13 +222,16 @@ Implementation commits:
 - `b8f584f` — `fix: select exact media fixture in cards E2E`;
 - `4d9d693` — `fix: separate cards E2E inspection fixture risk`.
 
-Candidate Fast CI evidence:
+Candidate and final pre-closeout Fast CI evidence:
 
 - run `29640555184`: PASS on `1d20ac2aeaa92a69886628314368954d500863c7`;
   exact package and `ci-fast` diagnostics artifacts present with SHA-256
   digests;
 - run `29640792565`: PASS on `b8f584feb121e228b89cd3c35b24ab08dfd8f5c6`;
-  exact package and diagnostics artifacts present with SHA-256 digests.
+  exact package and diagnostics artifacts present with SHA-256 digests;
+- run `29641074560`: PASS on final implementation HEAD
+  `9e35f361aa786aedb44bbbe4a6224699239ecb0d`; exact package and diagnostics
+  artifacts were consumed by the accepted real-Anki run.
 
 Targeted Docker evidence:
 
@@ -216,21 +246,21 @@ Targeted Docker evidence:
   PASS with the same profile proof, then FAIL before restart because legacy
   CardsPage selected the higher-risk missing-audio fixture for the independent
   synthetic visual contract. The fixture review groups were separated in
-  `4d9d693`; focused and canonical local gates pass. Per the bounded retry
-  policy, no third E2E was dispatched.
+  `4d9d693`; focused and canonical local gates pass;
+- run `29641398848`, `standard/cards`, `verify_restart=true`, source Fast CI
+  `29641074560`: PASS on exact SHA
+  `9e35f361aa786aedb44bbbe4a6224699239ecb0d`. Before restart the store was at
+  revision 2 with Japanese/Programming confirmed, audio reasons 1/0, learning
+  reason preserved and no value leak. After the controlled Japanese structure
+  mutation and restart, revision remained 2, Japanese became `needs_review`,
+  Programming remained confirmed, audio reasons were 0/0, the learning reason
+  remained and evidence still contained no values.
 
-Therefore persistence through restart, post-mutation Japanese `needs_review`
-and Programming-still-confirmed assertions are not yet accepted in cloud.
-Exact rerun required after a new successful Fast CI:
-
-```text
-mode=standard
-scope=cards
-verify_restart=true
-fast_ci_run_id=<exact successful Fast CI for final HEAD>
-```
-
-Docs status commit/final Fast CI: reported in the final handoff response.
+The successful run confirms that both previous failures were fixture-selection
+harness defects rather than product-runtime failures, and that both fixes are
+now accepted in cloud evidence. C1.3 requires no Docker rerun for the subsequent
+documentation-only closeout commit. The closeout commit SHA and final Fast CI
+run are reported in the final handoff response.
 
 ## Limitations and C1.4 prerequisites
 
