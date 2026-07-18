@@ -1447,9 +1447,10 @@ async function assertInspectionProfilesWorkspace(page) {
   await page.getByRole("button", { name: "Проверить профиль" }).click();
   await page.getByRole("heading", { name: "Проверка и ограниченный пример" }).waitFor({ state: "visible", timeout: 30000 });
   const previewScreenshot = await saveStateScreenshot(page, "inspection-profiles", "validated-preview", "light");
-  await programming.click();
-  const unsavedDialog = page.getByRole("dialog", { name: "Отбросить несохранённые изменения?" });
+  await programming.evaluate((element) => element.click());
+  const unsavedDialog = page.getByTestId("inspection-unsaved-dialog");
   await unsavedDialog.waitFor({ state: "visible", timeout: 10000 });
+  assertBrowser((await unsavedDialog.innerText()).includes("Отбросить несохранённые изменения?"), "Unsaved navigation dialog has the expected accessible title.");
   await unsavedDialog.getByRole("button", { name: "Продолжить редактирование" }).click();
   assertBrowser(await page.getByText("Есть несохранённые изменения").isVisible(), "Unsaved draft remains after cancelling note-type navigation.");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

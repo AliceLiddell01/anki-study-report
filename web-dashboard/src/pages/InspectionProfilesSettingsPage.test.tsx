@@ -68,7 +68,10 @@ describe("Inspection Profiles settings workspace", () => {
     await renderPage();
     await click(noteButton("Basic"));
     await settle();
-    await click(button("Начать с пустого"));
+    await click(button("Использовать подсказку"));
+    await click(button("Проверить профиль"));
+    await settle();
+    expect(container.textContent).toContain("Проверка и ограниченный пример");
     await click(noteButton("Cloze"));
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Отбросить несохранённые изменения");
     expect(container.textContent).toContain("Basic");
