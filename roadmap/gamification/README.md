@@ -6,9 +6,19 @@
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
+## Branch policy
+
+- `gamification` is the canonical, independent, long-lived Gamification branch created from an explicitly recorded current `master` baseline.
+- `master → gamification` is allowed for branch creation and later compatibility checkpoints. `gamification → master` is prohibited until a separate explicit decision by the project owner.
+- `chatgpt/gamification-concept-foundation` is a read-only historical source. It must not be merged or rebased into the canonical branch.
+- G0 does not create a Pull Request from `gamification` to `master`.
+- G0.1 establishes only the branch and its baseline documentation: it imports no research assets, Core changes or production changes.
+- Compatibility with later `master` and Core state is evaluated in subsequent G0 checkpoints, beginning with G0.2; it is not assumed by branch creation.
+- Any production integration requires a separate explicit decision by the project owner.
+
 ## Source audit
 
-The source branch is `chatgpt/gamification-concept-foundation`. At the 2026-07-18 audit it diverged from current `master`: 48 commits ahead, 99 behind, merge base `4d197c1037fd66401735e654c6697791364518a4`.
+The source branch is `chatgpt/gamification-concept-foundation`. At the 2026-07-18 G0.1 check it diverged from current `master`: 48 commits ahead, 132 behind, merge base `4d197c1037fd66401735e654c6697791364518a4`.
 
 The branch is a substantial research source, not a merge-ready production feature branch:
 
@@ -22,7 +32,7 @@ The branch is a substantial research source, not a merge-ready production featur
 
 Direct spot-checks confirmed that simulator implementation and tests are populated. For example, the scenario runner is implemented, and its tests assert 26 scenarios and 53 assertions. Those checks establish that the files exist; they do not substitute for executing the full branch test/simulation commands on a current master-based branch.
 
-Do not merge or rebase the historical branch wholesale. A later research PR must selectively reconcile current assets with `master`, rerun the documented checks and separate reproducible current evidence from superseded reports.
+Do not merge or rebase the historical branch wholesale. Later G0 work on the canonical branch must selectively reconcile current assets with `master`, rerun the documented checks and separate reproducible current evidence from superseded reports.
 
 ## Evidence baseline
 
@@ -72,35 +82,39 @@ G0 Reconcile research branch with current master
 
 ### Goal
 
-Create a new branch from current `master`, selectively recover valid research assets and establish one truthful, reproducible research baseline.
+Use the canonical `gamification` branch created from a recorded current `master` baseline, selectively recover valid research assets and establish one truthful, reproducible research baseline without integrating Gamification into `master`.
 
 ### Dependencies
 
-Read access to the historical branch. No dependency on the core track.
+Read access to the historical branch. No dependency on the core track. Core compatibility is recorded separately beginning with G0.2.
 
 ### Scope
 
+- establish and record the canonical branch baseline before importing research assets;
 - inventory documents, contracts, source, scenarios, schemas, tests and evidence;
 - resolve drift against current repository structure and policies;
 - rerun and record actual test/scenario/oracle counts;
 - distinguish current results from superseded reports;
 - preserve research package isolation;
-- decide which assets are imported, rewritten, archived or discarded.
+- decide which assets are imported, rewritten, archived or discarded;
+- record later compatibility checkpoints against `master` and Core without merging Gamification into `master`.
 
 ### Out of scope
 
 - production add-on integration;
+- a Pull Request from `gamification` to `master`;
+- importing research assets, Core changes or production changes during G0.1;
 - changing XP formulas merely to make checks pass;
-- merging the historical branch wholesale;
+- merging or rebasing the historical branch wholesale;
 - Fast CI or package inclusion.
 
 ### Activation criteria
 
-Already met: the branch is materially diverged from `master` and must be reconciled before further authoritative research work.
+Already met: the historical branch is materially diverged from `master` and must be reconciled before further authoritative research work.
 
 ### Completion criteria
 
-A master-based research branch/PR contains a self-consistent package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change.
+The canonical master-based `gamification` branch contains a self-consistent research package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change; no Pull Request to `master` is created; production integration remains prohibited without a separate explicit owner decision.
 
 ## G1 — Close Review XP cross-horizon cycling gap
 
