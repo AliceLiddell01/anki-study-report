@@ -1,200 +1,243 @@
-# Передача контекста новому чату/нейронке
+# AI handoff — Anki Study Report
 
-Снимок: **2026-07-18**.
+Snapshot: **2026-07-19**
 
-## Начать отсюда
+## Start here
 
-1. `README.md`
-2. `roadmap/README.md`
-3. `docs/project-overview.md`
-4. `docs/architecture.md`
-5. профильный current-contract документ
-6. `reports/README.md` только для historical evidence
+Read in this order:
 
-При конфликте:
+1. [`../README.md`](../README.md)
+2. this file
+3. [`../roadmap/README.md`](../roadmap/README.md)
+4. the relevant track README
+5. current production code/tests for the requested scope
+6. the current contract and latest report for that scope
 
-```text
-production code/tests
-→ current docs
-→ roadmap
-→ reports
-→ old plans/assumptions
-```
-
-## Active Core baseline
-
-- active branch: `core`;
-- verified base branch: `master`;
-- verified base SHA: `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e`;
-- Core HEAD before C1.1: `2b99b3468de0a46b00ce5be71e7c95da0930fb12`;
-- C1.2 initial HEAD: `22c6820bee44d25c3d10b871eb008a91cd56da31`;
-- C1.2 implementation commit: `13b1a20` (`feat: add the bounded canonical triage read API`);
-- C1.2 contract/report commit: `e7c4ede` (`docs: document the canonical triage read contract`);
-- C1.2 status: Complete;
-- C1.3 initial HEAD: `e4292d090a79b857b81a987c8e0853656f178e0e`;
-- C1.3 accepted implementation HEAD: `9e35f361aa786aedb44bbbe4a6224699239ecb0d`;
-- C1.3 status: Complete;
-- product contract: `docs/cards-v2-product-contract.md`;
-- technical contract: `docs/cards-v2-triage-read-api.md`;
-- supporting C1.2 report: `reports/core/c1-2-triage-model-read-api.md`;
-- endpoint: token-protected `POST /api/triage/query`;
-- local verification: focused backend/frontend checks and canonical `run_full_check.ps1 -SkipDocker` PASS;
-- C1.2 cloud verification: Fast CI run [`29637594843`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS on exact SHA `e7c4eded97886dc902499a0f4bdb44e842599bde` with exact package and diagnostics artifacts;
-- C1.3 contracts: `docs/inspection-profiles-v1.md`, `schemas/inspection-profile-v1.schema.json`, triage schema v2 in `docs/cards-v2-triage-read-api.md`;
-- C1.3 final pre-closeout Fast CI: run [`29641074560`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641074560) PASS on exact SHA `9e35f361aa786aedb44bbbe4a6224699239ecb0d`;
-- C1.3 real-Anki acceptance: run [`29641398848`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641398848), `standard/cards`, `verify_restart=true`, source Fast CI `29641074560`, PASS on the same exact SHA;
-- accepted restart assertions: revision remained 2; Japanese changed from `confirmed` to `needs_review` after the controlled fingerprint mutation; Programming remained `confirmed`; Japanese/Programming audio reasons changed from 1/0 to 0/0; the learning reason remained; profile evidence leaked no values;
-- documentation closeout commit: the commit containing this handoff; its exact SHA is reported in the final closeout response to avoid a self-referential second commit;
-- C1.4 accepted implementation HEAD: `b2e060d5c9676e6dfdbab7309927b854503d3c66`;
-- C1.4 status: Complete;
-- C1.4 route/contract: `#/settings/inspection-profiles`, `docs/inspection-profiles-ui.md`, report `reports/core/c1-4-inspection-profiles-ui.md`;
-- C1.4 final pre-closeout Fast CI: run [`29644724894`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644724894) PASS on exact accepted implementation HEAD with exact package artifact `8429718439`;
-- C1.4 real-Anki acceptance: run [`29644836731`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731), `standard/cards`, `verify_restart=true`, source Fast CI `29644724894`, PASS on the same exact SHA with redacted artifact `8429751360`;
-- C1.4 accepted browser proof: confirmed lifecycle, dirty suggestion, bounded validate v2 preview, accessible unsaved-navigation guard and no horizontal overflow; restart preserved revision 2, changed Japanese to `needs_review`, kept Programming `confirmed`, preserved the learning reason and leaked no profile values;
-- C1.5 accepted implementation HEAD: `0460afe472cd87029368924bdf5640e90271c03c`;
-- C1.5 historical technical status: exact-SHA CI/E2E passed, but owner product acceptance was subsequently withdrawn;
-- C1.5R status: In progress — Cards and Inspection Profiles UX remediation; C1.6 blocked and not started;
-- C1.5 workspace: `#/cards` reads automatic triage v2 (7 days, limit 100), renders one native table queue plus persistent active-item Inspector, and obtains one sanitized preview through Search inspect;
-- C1.5 local gate: canonical `run_full_check.ps1 -SkipDocker` PASS;
-- C1.5 accepted Fast CI: run [`29648956309`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29648956309) PASS with exact package artifact `8430913583`;
-- C1.5 real-Anki acceptance: run [`29649071545`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29649071545), `standard/cards`, `verify_restart=true`, PASS with redacted artifact `8430943370`;
-- no pull request, merge, release, deployment or AnkiWeb publication was created.
-
-Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
-
-### Cards v2 product invariants
-
-1. Cards is a local problem-triage workspace, not Search, Notification Center or Anki Browser.
-2. The automatic surface is one `Требуют внимания / Requires attention` queue; reason families are filters, not tabs.
-3. Explicit Search selections form a separate session-only `Выбрано в поиске / Selected in Search` workset.
-4. One queue item is card-anchored and can aggregate several reasons; note-level scope and sibling implications are explicit.
-5. Visible priority is categorical (`Высокий / Средний / Низкий`) and is explained by reason/evidence; numerical `riskScore` is not user-facing.
-6. Content-quality issues are authoritative only under a confirmed Inspection Profile; learning-behavior issues remain profile-independent.
-7. Successful actions lead to `Awaiting recheck`; only canonical detector/collector/profile re-evaluation resolves an issue.
-8. The desktop default is a compact bounded queue plus Inspector with the existing sanitized Shadow DOM preview.
-9. Search inspect, Safe Actions, Signals, Notification handoff and preview isolation are reused; no duplicate query/action/signal stack is allowed.
-10. Active item, keyboard focus and bulk selection remain separate interaction states.
-
-## Product state
-
-Anki Study Report — local add-on for Anki 26.05+ with Python runtime, React/TypeScript dashboard and token-protected loopback server. Frontend does not access the collection directly.
-
-Accepted product contour is complete through Stage 9.5:
+When sources disagree, use:
 
 ```text
-Stage 0–5.5  foundation, IA, Settings, Profile, Activity, Decks, UI controls
-Stage 6–7    Statistics, FSRS analytics, RU/EN localization
-Stage 8      Search and undoable Safe Actions
-Stage 9–9.5  notices, opt-in telemetry, Signals, Notification Center, toasts
+current production code and tests
+→ current README and focused docs
+→ fresh reports/artifacts
+→ older plans/messages
+→ assumptions
 ```
 
-## Roadmap model
+Do not claim a file, artifact, or code path was inspected unless it was actually
+opened.
 
-Future work is organized by tracks:
+## Current project state
+
+Anki Study Report is a local add-on for Anki 26.05+ with a Python runtime and a
+React/TypeScript dashboard. The dashboard is loopback-only, token-protected, and
+receives bounded JSON/API projections; the frontend never reads the collection
+directly.
+
+The accepted product contour through Stage 9.5 remains complete. Future work is
+split into tracks; only `C1 → C2` is the mandatory core path.
 
 ```text
-C  Core: C1 Cards v2 → C2 Core 1.0 → C3? contextual additions
-G  Gamification: research reconciliation through optional MVP
-O  Operations: protected telemetry admin dashboard
-I  Identity: conditional continuity/linking gate
-E  Extensions: conditional first-party ecosystem
-CI Platform: delivery/E2E/release
+branch for current core work: core
+Core C1: In progress
+C1.5R.0: Complete
+C1.5R.1: Next, not started
+C1.6: Blocked, not started
 ```
 
-Only `C1 → C2` is the mandatory add-on path.
+Recovery baseline:
+[`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md).
 
-### Core
+## C1 corrective status
 
-`C1.2 — Canonical triage model and read API` is complete. `C1.3 — Inspection
-Profiles: contract and runtime` is also complete after exact-SHA Fast CI
-`29641074560` and accepted real-Anki `standard/cards` restart run `29641398848`
-on implementation HEAD `9e35f361aa786aedb44bbbe4a6224699239ecb0d`.
-The evidence covers profile-local persistence, fingerprint mismatch,
-fail-closed content checks, Programming/Japanese isolation, preserved learning
-reasons and value-safe evidence. `C1.4 — Inspection Profiles: user
-configuration` is complete with the lazy Settings editor, validate
-v2 bounded sample, strict import/export, revision conflict handling, RU/EN and
-real-Anki screenshot assertions. Canonical local checks, exact-SHA Fast CI
-`29644724894` and targeted restart run `29644836731` are accepted on
-`b2e060d5c9676e6dfdbab7309927b854503d3c66`. C1.5's old implementation on
-`0460afe472cd87029368924bdf5640e90271c03c` passed Fast CI `29648956309` and
-targeted `standard/cards` restart `29649071545`, but subsequent owner screenshot
-and real-profile review rejected product acceptance. C1.5R is in progress to
-correct compact identity, native front/answer preview semantics, independent
-current-content candidates, the Cards inbox, and guided Inspection Profiles.
-C1.6 is blocked and has not started.
-
-C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
-
-### Gamification
-
-The source branch `chatgpt/gamification-concept-foundation` is research-only and materially diverged from `master`. Do not merge/rebase it wholesale.
-
-Confirmed roadmap status:
-
-- Progression and Anki XP foundations: `DRAFT v0.2`;
-- Review concept documents: developed drafts;
-- Review simulation closure: `PARTIAL`;
-- blocker: cross-horizon retention-cycling evidence gap;
-- Learn XP: not started;
-- Create XP: not started;
-- global conversion and production ledger/API/migrations/UI: not designed.
-
-Direct spot-checks confirmed populated simulator implementation and tests, including a scenario test asserting 26 scenarios and 53 assertions. The branch checks were not executed in this roadmap task; `G0` must reconcile the diverged branch with current `master` and reproduce the documented evidence before further authoritative research work.
-
-Research candidates are not production economy. Gamification does not block core.
-
-### Telemetry operations
-
-Current telemetry service has only bounded ingestion/schema/deletion endpoints, no dashboard or generic query API. `O1` is a separate Access-protected read-only admin application with Worker-side JWT validation and prepared bounded D1 queries. It never becomes a route or secret-bearing mode in the add-on.
-
-### Identity and extensions
-
-`I1` activates only for a proven cross-installation requirement. `installation_id != person_id`; `person_id` is absent by default and requires explicit opt-in, unlink/revoke/export/delete and a separate threat/privacy migration. Fingerprinting is forbidden.
-
-Extensions are non-critical. `E1` begins only with one concrete first-party reference pack; no marketplace, remote code or placeholders.
-
-## Platform state
-
-CI Stage 6B is Complete:
+### Historical evidence retained
 
 ```text
-cloud environment: exact immutable GHCR digest
-manual E2E: exact Fast CI package
-release E2E: exact release artifact
-local Docker build: diagnostic fallback
-cloud BuildKit/GHA cache: removed
+C1.4 runtime/API foundation — accepted
+C1.4 configuration UX — remediation required
+
+C1.5 accepted implementation SHA:
+0460afe472cd87029368924bdf5640e90271c03c
+
+C1.5 Fast CI:
+29648956309 — PASS
+
+C1.5 real-Anki standard/cards E2E:
+29649071545 — PASS
+
+C1.5 redacted artifact:
+8430943370 — 28 screenshots
+
+C1.5 closeout SHA:
+101103585149aa0a30d411ad538fbcc06641a05b
 ```
 
-CI 7 is a measurement gate. CI 8/9/10 activate only for one proven bottleneck/flake class. Release remains manual and approval-gated.
+These are historical technical proofs. Subsequent owner review withdrew C1.5
+visual/product acceptance. Do not call the successful runs failures, and do not
+use them as evidence that the remediated product is accepted.
+
+### Corrective decomposition
+
+```text
+C1.5R.0 Recovery and corrective baseline — Complete
+C1.5R.1 Canonical card display identity — Next, not started
+C1.5R.2 Declarative compact formatter runtime — Not started
+C1.5R.3 Front/back preview semantics — Not started
+C1.5R.4 Independent triage candidate sources — Not started
+C1.5R.5 Cards attention inbox redesign — Not started
+C1.5R.6 Guided Inspection Profiles UX — Not started
+C1.5R.7 Integrated acceptance and owner review package — Not started
+```
+
+Do not restart the entire C1.5R audit. C1.5R.0 recovered and fixed the baseline;
+continue with the exact next increment.
+
+## Accepted C1.5R decisions
+
+### Card identity
+
+One backend projector must own compact card identity for:
+
+```text
+Search card row
+Search card Inspector identity
+Triage item
+Cards queue
+Cards Inspector heading
+```
+
+Current Search behavior is defective because it starts with the note sort field
+and then scans arbitrary non-empty fields. Triage/Cards repeat that text. No
+unrelated-field fallback is allowed for card identity.
+
+Baseline contract:
+[`card-display-identity.md`](card-display-identity.md).
+
+### Preview semantics
+
+- Inspector renders the native sanitized front.
+- Expanded preview defaults to native sanitized answer/back.
+- Only the active card receives a full preview read.
+- Queue rows do not load media/full HTML.
+- Sanitizer, media validation, token protection, Shadow DOM, and no-iframe/no-JS
+  boundaries remain unchanged.
+
+### Candidate sources and period
+
+- the current seven-day learning period is hidden in the Cards hook and must
+  become explicit product state in the relevant remediation increment;
+- learning candidates remain period-bound;
+- current-content candidates are a separate bounded source and must not vanish
+  merely because the selected learning period has zero reviews;
+- source status must expose unavailable/partial/truncated behavior explicitly.
+
+### Cards Design Gate
+
+Accepted direction:
+
+```text
+Variant A — identity-led dense inbox list
+```
+
+Wide desktop:
+
+```text
+dense inbox queue + persistent Inspector
+```
+
+Around 1024 px:
+
+```text
+full-width queue + non-modal detail drawer
+```
+
+The drawer:
+
+- is not a modal;
+- does not use `inert`;
+- does not trap focus;
+- has an explicit return-to-queue action;
+- does not receive focus automatically when a row is activated.
+
+Do not restore the C1.5 spreadsheet-like table as the default or a hidden mode.
+
+### Inspection Profiles
+
+The normal workflow becomes guided Basic configuration. The strict runtime
+editor remains available behind Advanced.
+
+A deterministic suggestion becomes a ready unsaved draft automatically. Do not
+require a separate `Use suggestion` step before the user can review it.
+
+Do not silently add compact formatter fields to strict Inspection Profile v1.
+The formatter needs its own explicit versioned contract or a separately approved
+schema transition. It remains declarative and cannot execute arbitrary code.
+
+## Exact next stage
+
+```text
+C1.5R.1 — Canonical card display identity
+```
+
+C1.5R.1 should establish and implement the canonical compact identity transition
+with backend/frontend/parser/test/doc parity. It must not absorb the formatter
+runtime, preview-side changes, candidate-source split, Cards redesign, or guided
+Profiles UX unless a narrow prerequisite is unavoidable and documented.
+
+## Verification boundary
+
+Use [`test-matrix.md`](test-matrix.md) and
+[`verification-run-policy.md`](verification-run-policy.md).
+
+For C1.5R.0 no Python/frontend/typecheck/build/Fast CI/Docker gate was run or
+required. Do not retroactively claim those checks.
+
+For future implementation increments:
+
+```text
+focused tests
+→ local non-Docker contour as required
+→ exact-SHA Fast CI
+→ targeted real-Anki scope when the actual diff requires it
+→ owner product review only at C1.5R.7
+```
+
+Full real-Anki Docker E2E is an integration gate, not a development loop. Do not
+run heavy gates blindly or repeat a successful exact-SHA run without a relevant
+change.
 
 ## Technical invariants
 
-1. Payload/public behavior changes synchronize backend, frontend types/validators, tests and docs.
-2. Frontend never reads Anki collection directly.
-3. Server remains loopback-only and token-protected.
-4. Sanitizer, media validation, action allowlists and preview isolation are not weakened.
-5. Generated assets/runtime artifacts/profile data/tokens are not committed.
-6. Signals/evidence/entity refs stay local and outside telemetry taxonomy.
-7. Telemetry/admin/identity/gamification data purposes remain separated.
-8. Research packages do not silently enter Fast CI or `.ankiaddon`.
-9. Release uses exact artifacts and never occurs automatically after merge.
+Do not:
 
-## Verification
+- change a dashboard payload on only one side;
+- give the frontend direct Anki collection access;
+- open the server beyond `127.0.0.1`;
+- weaken dashboard-token validation, sanitizer, media validation, or action
+  allowlists;
+- log the token or full token-bearing URL;
+- create an iframe or JavaScript execution surface for cards;
+- edit generated dashboard assets manually;
+- commit logs, screenshots, cache, profile data, tokens, `.ankiaddon`, or E2E
+  output;
+- change correct production behavior merely to satisfy an obsolete test;
+- start C1.6 before C1.5R and explicit owner product acceptance.
 
-Canonical non-Docker check:
+Public behavior changes require synchronized backend, frontend types/validators,
+tests, and documentation.
 
-```powershell
-.\scripts\run_full_check.ps1 -SkipDocker
-```
+## Other tracks
 
-Use focused tests first, then exact Fast CI artifact, then only required targeted real-Anki scope. Do not repeat successful same-SHA gates. Docs-only product-contract work does not require Fast CI or Docker E2E.
+- Gamification: parallel research/product track; production not approved.
+- Telemetry operations: separate protected admin tooling.
+- Identity continuity: conditional opt-in gate.
+- Extensions: conditional/deferred.
+- Platform/CI: separate delivery and real-Anki verification track.
 
-Before closing work:
+None of these blocks C1.5R or C2 unless a new explicit dependency is recorded.
 
-- confirm branch/base/head and unrelated changes;
-- run `git diff --check` when a checkout is available;
-- validate relative Markdown links;
-- confirm no production/research code, workflow or generated artifact diff;
-- inspect actual CI evidence before claiming PASS;
-- do not merge, deploy or release without explicit authorization.
+## Git boundary for core work
+
+Work only on `core` unless the owner explicitly changes the target. Do not create
+a PR, merge/rebase to `master`, release, deploy, publish `.ankiaddon`, or update
+AnkiWeb as an implicit continuation of a stage. Preserve unrelated changes and
+avoid force-push, destructive reset, clean, or stash deletion.
