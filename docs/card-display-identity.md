@@ -2,208 +2,168 @@
 
 ## Status
 
-**Status:** corrective design contract baseline
-
-**Implementation:** C1.5R.1 and C1.5R.2
+**Stage:** C1.5R.1 — Implemented, focused verification pending
 
 **Branch:** `core`
 
-This document defines the product and architecture boundary for one compact card
-identity across Search, Triage, and Cards. It is not a final API signature,
-storage schema, or production implementation specification.
+**Implementation:** `anki_study_report/card_display_identity.py`
+
+**Public contracts:** Search schema v2, Triage schema v3
+
+C1.5R.1 replaces note-centric card labels with one backend-owned, bounded card
+identity across Search, Triage, and the current Cards surfaces. The implementation
+candidate is committed, but this stage is not Complete until the focused local
+verification contour passes.
 
 Recovery context: [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md).
+Implementation report: [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md).
 
-## Affected surfaces
+## Scope
 
-The same compact identity must be used by:
+The same compact identity is consumed by:
 
 - Search card result row;
-- Search card Inspector identity;
+- Search card Inspector heading;
 - canonical Triage item;
-- Cards attention queue item;
+- Cards queue item;
 - Cards Inspector heading.
 
-Note-mode Search remains a note projection and is not silently converted into a
-card identity.
+Note-mode Search remains a note projection and keeps `primaryText`. C1.5R.1 does
+not implement the declarative formatter, front/back preview correction,
+candidate-source redesign, Cards inbox redesign, 1024 px drawer, Inspection
+Profiles redesign, or C1.6 actions.
 
-## Current defect
+## Authoritative projector
 
-The current card row projector starts with the note sort field and then scans
-other non-empty note fields. This is a note-centric fallback, not card identity.
-It can choose an unrelated field when the rendered card front is media-heavy or
-contains little plain text. Triage and Cards inherit the same incorrect value.
+`project_card_display_identity(card)` owns exact-card compact identity. It does
+not scan the note sort field or arbitrary non-empty note fields.
 
-The corrective implementation must not infer card identity by scanning arbitrary
-note fields.
+Source precedence:
 
-## Compact identity and full preview are different products
+1. native Browser question: `card.question(reload=True, browser=True)`;
+2. native reviewer front: `card.question(reload=True, browser=False)`;
+3. explicit `media_only` or `unavailable` state.
 
-Compact identity is a bounded, stable scan label. It must be cheap enough for
-Search result lists and Cards queues and must not require media loading for each
-row.
+C1.5R.2 may later add an exact declarative formatter above Browser Appearance.
+No formatter storage, schema, runtime, or UI exists in C1.5R.1.
 
-Full preview is the sanitized rendered card surface for one active card. It may
-include card CSS and validated local media through the existing token-protected
-preview boundary.
+The projector never renders `card.answer()`, reads media files, loads remote
+resources, executes template JavaScript, or exposes raw renderer exceptions.
 
-Compact identity must not be produced by shrinking a full preview, and a full
-preview must not be replaced by compact text.
+## Plain-text projection
 
-## Required source precedence
+The compact projection is intentionally not a generic HTML-to-text utility.
+It is line-aware and identity-specific:
 
-The implementation in C1.5R.1/C1.5R.2 must preserve this conceptual precedence:
+- `[sound:...]` and `[anki:play:...]` are removed and count as media;
+- image/audio/video/source/picture elements count as media but contribute no
+  filename or URL;
+- script, style, iframe, object, embed, SVG, MathML, template, form, audio,
+  video, and picture contents are dropped;
+- `<br>` and block boundaries separate candidate lines;
+- inline nodes are concatenated without invented spaces;
+- entities are decoded and whitespace is collapsed inside each line;
+- the first meaningful line wins;
+- output is bounded to 240 characters with one terminal ellipsis;
+- malformed blocked markup fails closed.
 
-1. an exact, valid declarative compact formatter configuration for the current
-   card template, when such a configuration exists;
-2. a safe compact projection derived from the card's native Browser Appearance,
-   when it provides meaningful bounded identity;
-3. a safe compact projection derived from the rendered native front;
-4. a bounded explicit fallback that communicates unavailable or media-only
-   identity without scanning unrelated note fields.
-
-Exact template configuration takes precedence over a note-type default.
-Structure mismatch fails closed; no fuzzy rebinding is allowed.
-
-This precedence is a design requirement. The exact payload field names, request
-shape, persistence document, and migration mechanism remain C1.5R.1/R2 work.
-
-## No unrelated-field fallback
-
-Card identity may use only sources belonging to the exact card/template display
-contract. It must not fall through to:
-
-- the note sort field merely because it is non-empty;
-- the first non-empty field;
-- a part-of-speech field unrelated to the displayed card;
-- tags, deck names, or evidence text as a substitute for card identity.
-
-When no meaningful compact identity can be produced, the UI must show a bounded
-explicit unavailable/media-only state rather than inventing text.
-
-## Search and Cards parity
-
-One backend-owned card-identity projector must be authoritative for Search card
-rows and exact-card resolution used by Triage. Cards must consume that projected
-identity rather than reimplementing extraction in React.
-
-The following values must agree for the same exact card and contract version:
+The exact media-heavy Japanese fixture therefore projects:
 
 ```text
-Search card row
-Search card Inspector identity
-Triage item
-Cards queue item
-Cards Inspector heading
-```
-
-Frontend parsers remain strict. A public shape change requires synchronized
-Python projection, TypeScript types/validators, focused tests, and documentation.
-No silent alias is introduced across a semantic version change.
-
-## Inspector and expanded preview semantics
-
-The compact heading and the full card preview remain separate:
-
-- Cards Inspector: rendered native front;
-- expanded preview: rendered native answer/back by default;
-- Search/card detail may expose both sanitized sides through the existing bounded
-  inspect path;
-- only the active card starts a full preview read;
-- queue rows never load full HTML or media.
-
-The answer/back surface must preserve Anki's answer semantics, including the
-front-side contribution where Anki provides it. An answer-only marker may be
-shown as presentation metadata, but the implementation must not fabricate a
-second renderer.
-
-## Exact Japanese example
-
-For a media-heavy Japanese card whose unrelated note sort field contains
-`「Существительное」`:
-
-```text
-Default compact:
 【に】（する）
-
-Configured compact:
-【に】感謝（する）
-
-Inspector:
-full front
-
-Expanded preview:
-full back/answer
 ```
 
-`「Существительное」` is not a valid fallback identity for this card.
+It never falls through to an unrelated sort-field value such as
+`「Существительное」`.
 
-## Declarative formatter boundary
+## Wire contract
 
-The optional compact formatter belongs to C1.5R.2 and must be:
+Card identity is a flat exact object fragment:
 
-- local and profile-scoped;
-- declarative and bounded;
-- tied to exact note-type/template identity and structure versioning;
-- previewable before confirmation;
-- independent from Inspection Profile v1 unless a separately versioned contract
-  explicitly composes them;
-- fail-closed on unknown or future schema versions.
+```json
+{
+  "displayText": "【に】（する）",
+  "displaySource": "reviewer_front",
+  "displayStatus": "available",
+  "displayTruncated": false
+}
+```
 
-Inspection Profile v1 must not silently gain formatter fields. A version
-transition must reject unknown fields under the old schema and define an explicit
-migration/compatibility boundary.
+`displaySource`:
 
-## No arbitrary executable code
+```text
+browser_question | reviewer_front | none
+```
 
-The formatter cannot accept or execute:
+`displayStatus`:
 
-- Python, JavaScript, SQL, shell, or callbacks;
-- arbitrary regular-expression or query languages;
-- template JavaScript;
-- filesystem or network rules;
-- arbitrary HTML execution;
-- direct collection access from the frontend.
+```text
+available | media_only | unavailable
+```
 
-The existing sanitizer, media validation, action allowlists, Shadow DOM preview,
-loopback server, and dashboard-token boundaries remain unchanged.
+Coherence rules:
 
-## Privacy and security
+- `available`: non-empty text; source is Browser question or reviewer front;
+- `media_only`: empty text, no truncation; rendered source is retained;
+- `unavailable`: empty text, source `none`, no truncation.
 
-Compact identity and formatter configuration remain local. They are not added to
-remote telemetry. Normal logs and public E2E artifacts must not include tokens,
-absolute paths, raw note dumps, private profile documents, or unbounded card
-content.
+No `primaryText` alias remains on card rows, card details, or Triage items.
+Unknown keys, old schemas, aliases, incoherent state/source/text combinations,
+and overlong text fail closed in the TypeScript parsers.
 
-The backend remains responsible for collection reads and sanitization. The
-frontend receives only the bounded versioned projection needed by the current
-surface.
+## Search schema v2
 
-## Schema and versioning requirement
+Search query and inspect requests require exact `schemaVersion: 2`. Query and
+inspect responses also use schema v2.
 
-C1.5R.1/R2 must explicitly decide and document:
+Card rows/details carry the four display fields and do not carry `primaryText`.
+Note rows/details keep `primaryText` and do not gain card display fields. Search
+metadata remains a separate schema v1 variant.
 
-- which public schema owns compact card identity;
-- whether an additive field is sufficient or a new schema version is required;
-- strict unknown-field behavior during transition;
-- exact default/configured/unavailable states;
-- structure fingerprinting and migration rules for formatter configuration;
-- Search/Triage parser parity;
-- rollback and future-schema preservation.
+The same Python `project_card_row()` path serves normal Search, Search inspect,
+and exact-card resolution used by Triage.
 
-No final field name or storage filename is approved by this baseline alone.
+## Triage schema v3
 
-## Deferred implementation details
+Triage requests and responses require exact `schemaVersion: 3`. Triage items
+carry the same four display fields and do not carry `primaryText`.
 
-The following remain for C1.5R.1/R2 and must not be inferred as already accepted:
+Available exact cards copy the Search-owned display projection. Missing cards
+use the explicit unavailable identity. Triage does not reuse legacy
+`attention.frontPreview` or invent another fallback.
 
-- final Python type and function names;
-- final Search/Triage request and response signatures;
-- final formatter storage path and JSON schema;
-- exact tokenization/collapse algorithm and length limits;
-- detailed Browser Appearance fallback rules;
-- configuration UI controls;
-- migration from any experimental local file;
-- final E2E screenshot assertions.
+## UI behavior
 
-C1.5R.0 stops at this contract baseline.
+Search rows, Search Inspector, Cards queue, and Cards Inspector call one shared
+frontend presentation helper. Backend text is shown unchanged for `available`.
+The two explicit fallback states are localized:
+
+| State | RU | EN |
+| --- | --- | --- |
+| `media_only` | Карточка только с медиа | Card with media only |
+| `unavailable` | Текст карточки недоступен | Card text unavailable |
+
+This stage changes identity only. The current Cards table/split workspace remains
+product-rejected historical C1.5 UI and is not accepted by this implementation.
+
+## Security and privacy
+
+The existing loopback/token boundary, sanitizer, validated media API, Shadow DOM
+preview, action allowlists, and frontend collection isolation remain unchanged.
+Compact identity is local and is not added to telemetry or normal logs. Public
+artifacts must not contain raw note dumps, media filenames, absolute paths,
+renderer exceptions, or tokens.
+
+## Verification boundary
+
+Focused commands required before C1.5R.1 can become Complete:
+
+```powershell
+python -m pytest -q tests/test_card_display_identity.py tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_triage_service.py tests/test_triage_runtime.py tests/test_dashboard_server.py
+cd web-dashboard
+pnpm exec vitest run src/lib/cardDisplayText.test.ts src/lib/searchApi.test.ts src/lib/triageApi.test.ts src/hooks/useCardsTriageWorkspace.test.tsx src/pages/SearchPage.test.tsx src/pages/SearchMetadataIntegration.test.tsx src/pages/CardsPage.test.tsx
+pnpm run typecheck
+```
+
+Fast CI, Docker, real-Anki E2E, package validation, PR, merge, and release are not
+part of C1.5R.1 connector-only implementation.
