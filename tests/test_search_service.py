@@ -279,6 +279,28 @@ def test_plain_text_projection_removes_active_markup_media_and_cloze():
     assert result["details"]["fields"][0]["value"] == "Hello world & ok"
 
 
+def test_card_identity_uses_rendered_front_not_unrelated_sort_field():
+    col = FakeCollection([1])
+    front = (
+        '[sound:感謝.mp3]<br>【<span><b>に</b></span>】'
+        '<img src="感.gif"><img src="謝.gif">（<span><b>する</b></span>）'
+        '<br><br>（先生に<span>感謝<b>する</b></span>。）'
+    )
+    col.notes[1].fields = [front, "「Существительное」"]
+    col.notes[1].note_type = lambda: {
+        "id": 7,
+        "name": "Japanese Vocabulary",
+        "sortf": 1,
+        "tmpls": [{"name": "Recognition", "bqfmt": "", "qfmt": "{{Front}}"}],
+    }
+    col.cards[1].question = lambda **_kwargs: front
+
+    row = search.project_card_row(col, col.cards[1])
+
+    assert row["displayText"] == "【に】（する）"
+    assert row["displayText"] != "「Существительное」"
+
+
 def test_card_and_note_inspect_return_separate_bounded_models(monkeypatch):
     col = FakeCollection([1])
     preview_calls = []
