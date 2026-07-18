@@ -29,13 +29,15 @@ production code/tests
 - Core HEAD before C1.1: `2b99b3468de0a46b00ce5be71e7c95da0930fb12`;
 - C1.2 initial HEAD: `22c6820bee44d25c3d10b871eb008a91cd56da31`;
 - C1.2 implementation commit: `13b1a20` (`feat: add the bounded canonical triage read API`);
-- C1.2 status: Implemented — exact Fast CI pending;
+- C1.2 contract/report commit: `e7c4ede` (`docs: document the canonical triage read contract`);
+- C1.2 status: Complete;
 - product contract: `docs/cards-v2-product-contract.md`;
 - technical contract: `docs/cards-v2-triage-read-api.md`;
 - supporting report: `reports/core/c1-2-triage-model-read-api.md`;
 - endpoint: token-protected `POST /api/triage/query`;
 - local verification: focused backend/frontend checks and canonical `run_full_check.ps1 -SkipDocker` PASS;
-- next step: `C1.3 — Inspection Profiles: contract and runtime`, blocked until the C1.2 cloud gate closes;
+- cloud verification: Fast CI run [`29637594843`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS on exact SHA `e7c4eded97886dc902499a0f4bdb44e842599bde` with exact package and diagnostics artifacts;
+- next step: `C1.3 — Inspection Profiles: contract and runtime`;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
@@ -83,11 +85,12 @@ Only `C1 → C2` is the mandatory add-on path.
 
 ### Core
 
-`C1.2 — Canonical triage model and read API` is implemented locally. It
+`C1.2 — Canonical triage model and read API` is complete. It
 translates the accepted entity/source/reason/priority/evidence/order contract
 into a minimal bounded read model without implementing the full workspace UI
-or the final Inspection Profile schema/editor. Exact Fast CI on the final Core
-commit is still required before changing the stage status to Complete.
+or the final Inspection Profile schema/editor. The implementation/report
+candidate passed exact-SHA Fast CI; the final documentation-only closeout
+commit must also pass the standard exact-SHA gate before task handoff.
 
 C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 

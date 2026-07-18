@@ -6,7 +6,7 @@
 
 **Branch:** `core`
 
-**Status at report commit:** Implemented — Fast CI pending
+**Status:** Complete
 
 ## Branch and preflight
 
@@ -16,7 +16,7 @@
 | Verified base SHA | `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e` |
 | Initial Core HEAD | `22c6820bee44d25c3d10b871eb008a91cd56da31` |
 | Initial divergence | 0 behind / 2 ahead |
-| Candidate divergence after this report commit | 0 behind / 5 ahead |
+| Implementation/report candidate divergence | 0 behind / 5 ahead |
 | Initial worktree | clean |
 | Merge/rebase from master | not performed |
 
@@ -128,7 +128,7 @@ Documentation:
 ```text
 ae27a9f — docs: clarify the Cards display-mode contract
 13b1a20 — feat: add the bounded canonical triage read API
-<this report commit> — docs: document the canonical triage read contract
+e7c4ede — docs: document the canonical triage read contract
 ```
 
 ## Focused verification
@@ -206,10 +206,23 @@ or hidden feature flag was added.
 
 ## Fast CI
 
-Status at this report commit: **PENDING**. The final candidate must be pushed
-to `origin/core`, manually dispatched through **Actions → Fast CI → Run
-workflow → Branch: core**, and verified against its exact SHA. C1.2 must not be
-marked Complete until that run passes.
+Implementation/report candidate: **PASS**.
+
+| Item | Evidence |
+| --- | --- |
+| Run | [`29637594843`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) |
+| Trigger / branch | `workflow_dispatch` / `core` |
+| Tested SHA | `e7c4eded97886dc902499a0f4bdb44e842599bde` |
+| Job | `Frontend, Python and package` — PASS in 3m16s |
+| Canonical pipeline | PASS |
+| Exact package artifact | `ci-package-e7c4eded97886dc902499a0f4bdb44e842599bde-29637594843-1`, 620383 bytes |
+| Diagnostics artifact | `ci-fast-29637594843-1`, 8324 bytes |
+
+GitHub metadata was inspected after completion: run conclusion, job conclusion,
+branch and `headSha` all matched the candidate. The documentation-only closure
+commit created after recording this result must independently pass Fast CI on
+its exact SHA before the final task handoff; that final run belongs in the
+task closeout because a commit cannot record its own future run ID.
 
 ## Docker decision
 
@@ -222,10 +235,10 @@ for evidence of a collection-integration gap.
 
 ## Unverified / prerequisites
 
-- exact-SHA Fast CI on the final `core` commit remains pending;
 - no real Anki profile was used; no runtime/UI behavior was changed that would
   justify automatic Docker escalation;
-- C1.3 implementation must not start until the cloud gate closes.
+- the final documentation-only closeout commit requires its own exact-SHA Fast
+  CI run before task handoff.
 
 ## Delivery confirmation
 
@@ -234,7 +247,7 @@ for evidence of a collection-integration gap.
 - merge to `master`: no;
 - force-push: no;
 - release/tag/deployment/AnkiWeb publication: no;
-- C1 declared complete: no.
+- C1.2 declared complete: yes, after exact-SHA Fast CI PASS.
 
 Next step only after C1.2 closure:
 

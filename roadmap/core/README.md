@@ -2,7 +2,7 @@
 
 **Track:** `C`
 **Role:** единственный обязательный последовательный путь основного add-on
-**Current status:** `C1.2` Implemented — Fast CI pending
+**Current status:** `C1.2` Complete; `C1.3` Next
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
@@ -32,22 +32,22 @@ C1 Cards v2 / Problem Triage
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — `C1.2` Implemented; exact Fast CI pending
+**Status:** In progress — `C1.2` Complete; `C1.3` Next
 
 ### Current increments
 
 - `C1.0 — Core branch baseline`: Complete — [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md)
 - `C1.1 — Product contract`: Complete — canonical contract [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md), evidence report [`reports/core/c1-1-product-contract.md`](../../reports/core/c1-1-product-contract.md)
-- `C1.2 — Canonical triage model and read API`: Implemented — Fast CI pending; technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md)
-- `C1.3 — Inspection Profiles: contract and runtime`: next, blocked from implementation until the C1.2 exact-SHA cloud gate closes
+- `C1.2 — Canonical triage model and read API`: Complete — technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md), exact-SHA [Fast CI run 29637594843](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS
+- `C1.3 — Inspection Profiles: contract and runtime`: Next
 
 `C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.
 
 `C1.2` adds the bounded token-protected read foundation only. Current
 CardsPage remains on legacy `attentionCards`; the full workspace, Inspector,
 profiles, handoff UI and mutations remain later C1 increments. Local focused
-and canonical non-Docker gates passed; C1.2 becomes Complete only after Fast CI
-passes on the exact final `core` commit.
+and canonical non-Docker gates passed, and Fast CI run `29637594843` passed on
+the exact implementation/report candidate `e7c4eded97886dc902499a0f4bdb44e842599bde`.
 
 ### Goal
 
