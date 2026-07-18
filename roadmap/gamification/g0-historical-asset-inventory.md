@@ -25,7 +25,8 @@ G0.4 may proceed only from the approved manifest
 | Recorded at | `2026-07-18` |
 | Master | `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e` |
 | Gamification input | `589961da04d740913c33bd47d0497ecfe36e52d5` |
-| Core | `e4292d090a79b857b81a987c8e0853656f178e0e` |
+| Core input | `e4292d090a79b857b81a987c8e0853656f178e0e` |
+| Core final | `b8f584feb121e228b89cd3c35b24ab08dfd8f5c6` |
 | Historical branch tip | `48298d02c6871df0ffa112d862d9b2af629c523f` |
 | Frozen historical source | `48298d02c6871df0ffa112d862d9b2af629c523f` |
 | Historical merge base | `4d197c1037fd66401735e654c6697791364518a4` |
@@ -35,6 +36,11 @@ G0.4 may proceed only from the approved manifest
 
 The floating historical branch still resolves to the frozen source SHA. Inventory
 identity nevertheless uses the exact SHA, never the branch name.
+
+After the G0.3 writes, the independent `core` branch advanced by four C1.3
+commits from the input SHA to the recorded final SHA. G0.3 did not create or
+transfer those commits. The movement does not affect the frozen historical tree,
+manifest completeness or the `NO_IMPORT_REQUIRED` decision for this inventory.
 
 ## Scope and non-scope
 
@@ -66,7 +72,8 @@ Excluded from tracked inventory:
 
 1. Re-resolved `master`, `gamification`, `core`, the historical branch and the
    exact source commit.
-2. Confirmed the canonical branch was still exactly the G0.2 tip before writes.
+2. Confirmed the canonical branch was still exactly the G0.2 tip before writes;
+   recorded `core` at its then-current input SHA.
 3. Compared merge base
    `4d197c1037fd66401735e654c6697791364518a4` with exact source
    `48298d02c6871df0ffa112d862d9b2af629c523f`.
@@ -324,12 +331,16 @@ Only order and prerequisites are defined here; no transfer occurred.
 - G0.4 must not silently change reward semantics while adapting paths/statuses.
 - G0.5/G0.6 may reveal missing environment or import assumptions not detectable
   from path inventory.
+- The independent `core` branch advanced concurrently during G0.3; later
+  compatibility work must use its then-current accepted contracts rather than
+  treating either recorded Core SHA as permanent.
 
 ## Verification
 
 Performed:
 
-- exact ref resolution and frozen-source availability;
+- exact input ref resolution and frozen-source availability;
+- post-write ref verification, including detection of independent Core advancement;
 - no-drift comparison from G0.2 tip to `gamification`;
 - full merge-base→source compare with `too_large` unset;
 - complete 128-path normalization;
@@ -373,7 +384,8 @@ These checks would test executability/evidence, not G0.3 inventory provenance.
 - No non-existent tracked path is intentionally listed.
 - No historical asset was copied or restored.
 - No formula, simulator source, dependency or fixture was modified.
-- `master`, `core` and the historical source remain read-only.
+- G0.3 did not modify `master`, `core` or the historical source; `core` advanced
+  independently during the task and is recorded with separate input/final SHAs.
 - No production, frontend, test, script, workflow, package or release path is
   changed by G0.3.
 - No Pull Request is created.
