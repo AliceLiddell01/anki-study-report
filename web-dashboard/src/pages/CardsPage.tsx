@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
 import { AnkiCardShadowPreview } from "../components/AnkiCardShadowPreview";
 import { useCardsTriageWorkspace } from "../hooks/useCardsTriageWorkspace";
+import { cardDisplayText } from "../lib/cardDisplayText";
 import type { TriageEvidence, TriageItem, TriagePriority, TriageReason } from "../types/triage";
 import type { StudyReport } from "../types/report";
 import type { SearchCardDetails } from "../types/search";
@@ -30,7 +31,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       if (priority !== "all" && item.priority !== priority) return false;
       if (family !== "all" && !item.reasons.some((reason) => reason.family === family)) return false;
       if (deck !== "all" && item.deck.name !== deck) return false;
-      return !needle || `${item.primaryText} ${item.deck.name} ${item.noteType.name}`.toLocaleLowerCase().includes(needle);
+      return !needle || `${cardDisplayText(item)} ${item.deck.name} ${item.noteType.name}`.toLocaleLowerCase().includes(needle);
     });
   }, [allItems, deck, family, priority, textFilter]);
   const highCount = allItems.filter((item) => item.priority === "high").length;
@@ -94,14 +95,14 @@ function QueueState({ workspace, visibleItems, filtersActive, onClear }: { works
 function QueueRow({ item, active, onActivate }: { item: TriageItem; active: boolean; onActivate: () => void }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const reason = item.reasons[0];
-  return <tr className={active ? "is-active" : ""} aria-current={active ? "true" : undefined} data-testid="cards-triage-row"><td><PriorityBadge value={item.priority} /></td><td><button type="button" className="cards-v2-row-activate" onClick={onActivate}><strong>{item.primaryText || t("queue.blank")}</strong><span>{item.noteType.name || t("queue.unknownType")}</span></button></td><td><strong>{reason ? reasonLabel(reason.code, t) : t("reasons.manual")}</strong><span className="cards-v2-secondary">{item.reasons.length > 1 ? t("queue.moreReasons", { count: item.reasons.length - 1 }) : scopeLabel(reason, t)}</span></td><td className="cards-v2-evidence-column">{reason ? evidenceLabel(reason.evidence[0], t) : "—"}</td><td className="cards-v2-deck-column"><span title={item.deck.name}>{item.deck.name || "—"}</span></td><td className="cards-v2-state-column">{stateLabel(item, t)}</td></tr>;
+  return <tr className={active ? "is-active" : ""} aria-current={active ? "true" : undefined} data-testid="cards-triage-row"><td><PriorityBadge value={item.priority} /></td><td><button type="button" className="cards-v2-row-activate" onClick={onActivate}><strong>{cardDisplayText(item)}</strong><span>{item.noteType.name || t("queue.unknownType")}</span></button></td><td><strong>{reason ? reasonLabel(reason.code, t) : t("reasons.manual")}</strong><span className="cards-v2-secondary">{item.reasons.length > 1 ? t("queue.moreReasons", { count: item.reasons.length - 1 }) : scopeLabel(reason, t)}</span></td><td className="cards-v2-evidence-column">{reason ? evidenceLabel(reason.evidence[0], t) : "—"}</td><td className="cards-v2-deck-column"><span title={item.deck.name}>{item.deck.name || "—"}</span></td><td className="cards-v2-state-column">{stateLabel(item, t)}</td></tr>;
 }
 
 function Inspector({ workspace, onExpand }: { workspace: ReturnType<typeof useCardsTriageWorkspace>; onExpand: () => void }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const item = workspace.activeItem;
   const details = workspace.inspectResponse?.details;
-  return <aside className="cards-v2-inspector panel-surface" aria-labelledby="cards-v2-inspector-title" data-testid="cards-inspector"><header><h2 id="cards-v2-inspector-title">{t("inspector.title")}</h2></header>{!item ? <WorkspaceMessage title={t("inspector.emptyTitle")} text={t("inspector.empty")} /> : <div className="cards-v2-inspector-body"><PriorityBadge value={item.priority} /><h3>{item.primaryText || t("queue.blank")}</h3><p className="cards-v2-inspector-meta">{item.deck.name} · {item.noteType.name} · {item.template.name}</p>
+  return <aside className="cards-v2-inspector panel-surface" aria-labelledby="cards-v2-inspector-title" data-testid="cards-inspector"><header><h2 id="cards-v2-inspector-title">{t("inspector.title")}</h2></header>{!item ? <WorkspaceMessage title={t("inspector.emptyTitle")} text={t("inspector.empty")} /> : <div className="cards-v2-inspector-body"><PriorityBadge value={item.priority} /><h3>{cardDisplayText(item)}</h3><p className="cards-v2-inspector-meta">{item.deck.name} · {item.noteType.name} · {item.template.name}</p>
     <section aria-labelledby="cards-preview-title"><h4 id="cards-preview-title">{t("preview.title")}</h4>{workspace.inspectStatus === "loading" ? <div className="cards-v2-preview-state" role="status">{t("preview.loading")}</div> : workspace.inspectStatus === "error" ? <div className="cards-v2-preview-state is-error" role="alert"><span>{workspace.inspectError?.code === "search_entity_not_found" ? t("preview.stale") : t("preview.failed")}</span><button type="button" className="secondary-button" onClick={workspace.retryInspect}>{t("retry")}</button></div> : details ? <><Preview details={details} /><button type="button" className="secondary-button cards-v2-expand" onClick={onExpand} disabled={!hasPreview(details.renderedPreview)}><Maximize2 size={16} aria-hidden="true" />{t("preview.expand")}</button></> : null}</section>
     <section><h4>{t("inspector.reasons")}</h4><div className="cards-v2-reasons">{item.reasons.map((reason) => <ReasonCard key={reason.reasonId} reason={reason} />)}</div></section>
     {details ? <section><h4>{t("inspector.details")}</h4><dl className="cards-v2-details"><Entry label={t("columns.state")} value={stateLabel(item, t)} /><Entry label={t("inspector.noteType")} value={details.noteTypeName} /><Entry label={t("inspector.template")} value={details.templateName} /><Entry label={t("inspector.tags")} value={details.tags.join(" · ") || "—"} /><Entry label={t("inspector.cardId")} value={details.cardId} /><Entry label={t("inspector.noteId")} value={details.noteId} /></dl></section> : null}
@@ -113,7 +114,7 @@ function Preview({ details, expanded = false }: { details: SearchCardDetails; ex
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const preview = details.renderedPreview;
   if (!hasPreview(preview)) return <div className="cards-v2-preview-state" role="status">{t("preview.unavailable")}</div>;
-  return <div className={expanded ? "cards-v2-preview is-expanded" : "cards-v2-preview"}><AnkiCardShadowPreview mode="preview" side="front" html={htmlWithMediaToken(preview.frontHtml || "")} css={preview.css || ""} title={preview.frontPlainText || details.primaryText} cardOrd={preview.cardOrd || details.templateOrdinal} renderSource={preview.renderSource || ""} /></div>;
+  return <div className={expanded ? "cards-v2-preview is-expanded" : "cards-v2-preview"}><AnkiCardShadowPreview mode="preview" side="front" html={htmlWithMediaToken(preview.frontHtml || "")} css={preview.css || ""} title={preview.frontPlainText || cardDisplayText(details)} cardOrd={preview.cardOrd || details.templateOrdinal} renderSource={preview.renderSource || ""} /></div>;
 }
 
 function ReasonCard({ reason }: { reason: TriageReason }) {
@@ -121,7 +122,7 @@ function ReasonCard({ reason }: { reason: TriageReason }) {
   return <article><strong>{reasonLabel(reason.code, t)}</strong><p>{scopeLabel(reason, t)} · {sourceLabel(reason.sources, t)}</p>{reason.evidence.map((evidence, index) => <p key={`${reason.reasonId}-${index}`} className="cards-v2-reason-evidence">{evidenceLabel(evidence, t)}</p>)}</article>;
 }
 
-function PriorityBadge({ value }: { value: TriagePriority | null }) { const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" }); return <span className={`cards-v2-priority is-${value ?? "neutral"}`}>{value ? t(`priorities.${value}`) : t("priorities.neutral")}</span>; }
+function PriorityBadge({ value }: { value: TriagePriority | null }) { const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" }); return <span className={`cards-v2-priority is-${value || "neutral"}`}>{value ? t(`priorities.${value}`) : t("priorities.neutral")}</span>; }
 function Entry({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value || "—"}</dd></div>; }
 function WorkspaceMessage({ title, text, action, alert = false, status = false }: { title: string; text: string; action?: ReactNode; alert?: boolean; status?: boolean }) { return <div className="cards-v2-message" role={alert ? "alert" : status ? "status" : undefined}><strong>{title}</strong><p>{text}</p>{action}</div>; }
 
