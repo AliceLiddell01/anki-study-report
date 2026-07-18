@@ -198,7 +198,7 @@ export interface RenderedCardPreview {
   cardId?: number;
   renderSource?: "anki_native" | "anki_like_fallback" | string;
   renderStatus: "available" | "unavailable" | "sanitized" | "fallback" | "error";
-  fallbackReason?: string;
+  fallbackReason?: string | null;
   reason?: string;
 }
 

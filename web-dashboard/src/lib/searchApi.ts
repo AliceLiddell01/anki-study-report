@@ -182,8 +182,9 @@ function isSearchCardDetails(value: unknown): boolean {
 
 function isRenderedPreview(value: unknown): boolean {
   if (!isRecord(value) || !["available", "unavailable", "sanitized", "fallback", "error"].includes(String(value.renderStatus))) return false;
-  const optionalStrings = ["frontHtml", "backHtml", "frontPlainText", "backPlainText", "css", "renderSource", "fallbackReason", "reason"];
+  const optionalStrings = ["frontHtml", "backHtml", "frontPlainText", "backPlainText", "css", "renderSource", "reason"];
   if (!optionalStrings.every((key) => value[key] === undefined || typeof value[key] === "string")) return false;
+  if (value.fallbackReason !== undefined && value.fallbackReason !== null && typeof value.fallbackReason !== "string") return false;
   if (value.cardOrd !== undefined && (!integer(value.cardOrd) || value.cardOrd < 0)) return false;
   if (value.cardId !== undefined && (!integer(value.cardId) || value.cardId < 0)) return false;
   if (value.mediaRefs !== undefined && (!Array.isArray(value.mediaRefs) || !value.mediaRefs.every((item) =>

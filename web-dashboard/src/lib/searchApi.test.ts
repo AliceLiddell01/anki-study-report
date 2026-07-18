@@ -68,6 +68,7 @@ const cardDetails = {
     cardOrd: 0,
     cardId: 1001,
     renderSource: "anki_native",
+    fallbackReason: null,
   },
 };
 
