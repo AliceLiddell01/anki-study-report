@@ -14,7 +14,7 @@ triage = import_addon_module("triage_service")
 
 def request(dataset="automatic", *, card_ids=None, limit=None):
     value = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataset": dataset,
         "scope": {"periodStartMs": 1_700_000_000_000, "periodEndMs": 1_700_604_800_000, "deckIds": []},
         "limit": limit or (200 if dataset == "search_workset" else 100),
@@ -34,6 +34,15 @@ def source(status="available", *, items=0, skipped=0, truncated=False, error=Non
     }
 
 
+def display(text: str, *, source_name="reviewer_front", status="available", truncated=False):
+    return {
+        "displayText": text,
+        "displaySource": source_name,
+        "displayStatus": status,
+        "displayTruncated": truncated,
+    }
+
+
 def card_row(card_id: int, *, state="review"):
     return {
         "cardId": str(card_id),
@@ -44,7 +53,7 @@ def card_row(card_id: int, *, state="review"):
         "noteTypeName": "Basic",
         "templateOrdinal": 0,
         "templateName": "Card 1",
-        "primaryText": f"Card {card_id}",
+        **display(f"Card {card_id}"),
         "state": state,
         "due": 1,
         "interval": 10,
@@ -61,7 +70,7 @@ def attention_row(card_id: int, issues=None, **overrides):
         "noteId": 10_000 + card_id,
         "noteTypeId": 7,
         "deckName": "Languages::Japanese",
-        "frontPreview": f"<b>Card {card_id}</b>",
+        "frontPreview": f"<b>Legacy {card_id}</b>",
         "cardTemplateName": "Card 1",
         "issues": issues or ["repeated again"],
         "againCount": 4,
@@ -133,7 +142,8 @@ def test_request_contract_is_strict_versioned_bounded_and_deduplicates_workset_i
     assert normalized["cardIds"] == [9, 2]
 
     invalid = [
-        {**request(), "schemaVersion": 1},
+        {**request(), "schemaVersion": 2},
+        {key: value for key, value in request().items() if key != "schemaVersion"},
         {**request(), "rawSql": "select * from revlog"},
         {**request(), "cardIds": ["1"]},
         {**request(), "scope": {**request()["scope"], "query": "deck:*"}},
@@ -147,7 +157,7 @@ def test_request_contract_is_strict_versioned_bounded_and_deduplicates_workset_i
             triage.normalize_triage_query_request(value)
 
 
-def test_projection_merges_reasons_and_signal_provenance_without_legacy_risk_or_content_payload():
+def test_projection_merges_reasons_and_copies_search_display_identity_without_legacy_aliases():
     row = attention_row(
         1,
         ["missing_audio", "leech", "repeated again", "low pass rate", "slow answer"],
@@ -155,12 +165,14 @@ def test_projection_merges_reasons_and_signal_provenance_without_legacy_risk_or_
     )
     response = project(request(), attention=[row, dict(row)], signals=[repeated_signal(1)], resolved=[card_row(1)])
 
+    assert response["schemaVersion"] == 3
     assert response["status"] == "available"
     assert response["contentChecks"] == content_checks()
     assert response["returnedCount"] == response["totalCount"] == 1
     item = response["items"][0]
     assert item["itemId"] == "card:1"
-    assert item["primaryText"] == "Card 1"
+    assert {key: item[key] for key in display("")} == display("Card 1")
+    assert "primaryText" not in item
     assert item["priority"] == "high"
     assert item["primaryReasonCode"] == "learning.leech"
     assert [reason["code"] for reason in item["reasons"]] == [
@@ -177,6 +189,7 @@ def test_projection_merges_reasons_and_signal_provenance_without_legacy_risk_or_
     assert "missing_audio" not in encoded
     assert "renderedPreview" not in encoded
     assert "<script>" not in encoded
+    assert "Legacy 1" not in encoded
 
 
 def test_projection_order_is_deterministic_for_shuffled_duplicate_sources_and_stable_card_ties():
@@ -220,13 +233,14 @@ def test_partial_and_caps_are_explicit_and_malformed_evidence_is_bounded():
     json.dumps(response, allow_nan=False)
 
 
-def test_search_workset_preserves_selection_order_and_marks_missing_without_invented_reasons():
+def test_search_workset_preserves_order_and_missing_card_has_unavailable_identity():
     req = request("search_workset", card_ids=["20", "20", "10"])
     response = project(req, attention=[attention_row(10, ["repeated again"])], resolved=[card_row(20)])
 
     assert [item["cardId"] for item in response["items"]] == ["20", "10"]
     neutral, enriched_missing = response["items"]
     assert neutral["availability"] == "available"
+    assert neutral["displayText"] == "Card 20"
     assert neutral["priority"] is None
     assert neutral["primaryReasonCode"] is None
     assert neutral["reasons"] == []
@@ -235,6 +249,8 @@ def test_search_workset_preserves_selection_order_and_marks_missing_without_inve
     assert enriched_missing["priority"] == "medium"
     assert enriched_missing["inspect"] is None
     assert enriched_missing["sources"] == ["search_workset", "attention"]
+    assert {key: enriched_missing[key] for key in display("")} == display("", source_name="none", status="unavailable")
+    assert "Legacy 10" not in json.dumps(enriched_missing)
 
     degraded = project(
         request("search_workset", card_ids=["20"]),
@@ -243,6 +259,15 @@ def test_search_workset_preserves_selection_order_and_marks_missing_without_inve
     )
     degraded["sourceStatus"]["attention"] = source("unavailable", error="attention_source_unavailable")
     assert triage._response_status("search_workset", degraded["sourceStatus"]) == "partial"
+
+
+def test_invalid_resolver_display_identity_fails_closed_without_attention_preview():
+    malformed = {**card_row(1), "displayText": "", "displayStatus": "available"}
+    response = project(request(), attention=[attention_row(1)], resolved=[malformed])
+    item = response["items"][0]
+    assert item["displayStatus"] == "unavailable"
+    assert item["displaySource"] == "none"
+    assert item["displayText"] == ""
 
 
 def test_execute_reuses_attention_and_search_adapters_without_full_preview(monkeypatch):
@@ -266,3 +291,4 @@ def test_execute_reuses_attention_and_search_adapters_without_full_preview(monke
     assert calls["attention"][-1] == 100
     assert calls["resolve"] == [7]
     assert response["items"][0]["inspect"] == {"mode": "cards", "cardId": "7"}
+    assert response["items"][0]["displayText"] == "Card 7"
