@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-**Status:** Accepted product contract; canonical workspace implemented in `C1.5`
+**Status:** Corrective C1.5R remediation in progress; owner product acceptance pending
 **Branch:** `core`
-**Production status:** `#/cards` consumes canonical triage v2 through a compact queue and persistent Inspector
+**Production status:** the C1.5 table implementation is technically verified but product-rejected; C1.5R replaces its display identity, preview semantics, candidate scope and inbox presentation
 
 Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
 and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).

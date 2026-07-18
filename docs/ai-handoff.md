@@ -52,7 +52,8 @@ production code/tests
 - C1.4 real-Anki acceptance: run [`29644836731`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731), `standard/cards`, `verify_restart=true`, source Fast CI `29644724894`, PASS on the same exact SHA with redacted artifact `8429751360`;
 - C1.4 accepted browser proof: confirmed lifecycle, dirty suggestion, bounded validate v2 preview, accessible unsaved-navigation guard and no horizontal overflow; restart preserved revision 2, changed Japanese to `needs_review`, kept Programming `confirmed`, preserved the learning reason and leaked no profile values;
 - C1.5 accepted implementation HEAD: `0460afe472cd87029368924bdf5640e90271c03c`;
-- C1.5 status: Complete; C1.6 Next, not started;
+- C1.5 historical technical status: exact-SHA CI/E2E passed, but owner product acceptance was subsequently withdrawn;
+- C1.5R status: In progress — Cards and Inspection Profiles UX remediation; C1.6 blocked and not started;
 - C1.5 workspace: `#/cards` reads automatic triage v2 (7 days, limit 100), renders one native table queue plus persistent active-item Inspector, and obtains one sanitized preview through Search inspect;
 - C1.5 local gate: canonical `run_full_check.ps1 -SkipDocker` PASS;
 - C1.5 accepted Fast CI: run [`29648956309`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29648956309) PASS with exact package artifact `8430913583`;
@@ -115,10 +116,13 @@ configuration` is complete with the lazy Settings editor, validate
 v2 bounded sample, strict import/export, revision conflict handling, RU/EN and
 real-Anki screenshot assertions. Canonical local checks, exact-SHA Fast CI
 `29644724894` and targeted restart run `29644836731` are accepted on
-`b2e060d5c9676e6dfdbab7309927b854503d3c66`. C1.5 is complete on
-`0460afe472cd87029368924bdf5640e90271c03c` after Fast CI `29648956309` and
-targeted `standard/cards` restart acceptance `29649071545`. C1.6 is next and
-has not started.
+`b2e060d5c9676e6dfdbab7309927b854503d3c66`. C1.5's old implementation on
+`0460afe472cd87029368924bdf5640e90271c03c` passed Fast CI `29648956309` and
+targeted `standard/cards` restart `29649071545`, but subsequent owner screenshot
+and real-profile review rejected product acceptance. C1.5R is in progress to
+correct compact identity, native front/answer preview semantics, independent
+current-content candidates, the Cards inbox, and guided Inspection Profiles.
+C1.6 is blocked and has not started.
 
 C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 

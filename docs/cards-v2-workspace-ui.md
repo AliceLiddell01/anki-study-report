@@ -2,9 +2,11 @@
 
 ## Status and boundary
 
-This is the accepted C1.5 Design Gate contract for the read-only `#/cards`
-workspace. It replaces the legacy KPI/tabs/display-mode model with one bounded
-canonical triage queue and one active-card Inspector. C1.5 does not add bulk
+This C1.5 contract is retained as historical technical evidence. Owner product
+acceptance was withdrawn after screenshot and real-profile review; C1.5R
+supersedes the native-table Design Gate with a dense structured inbox list,
+correct compact identity, explicit period/source semantics, native front in the
+Inspector, and native answer/back in the expanded modal. C1.5R does not add bulk
 selection, mutation, Safe Actions, recheck/resolution, a card editor, an ARIA
 grid, or a second preview renderer. Those C1.6 concerns must not be implied by
 inactive controls.
@@ -254,4 +256,3 @@ C1.6 may add explicit selection, contextual bounded Safe Actions, recheck and
 resolution state. It must preserve active item separately from selection and
 must earn any additional keyboard model. C1.5 intentionally provides no dead
 checkbox, mutation button, awaiting-recheck state, or hidden rejected mode.
-

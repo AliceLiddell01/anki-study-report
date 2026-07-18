@@ -2,7 +2,7 @@
 
 **Track:** `C`
 **Role:** единственный обязательный последовательный путь основного add-on
-**Current status:** `C1.5` Complete; `C1.6` Next, not started
+**Current status:** `C1.5R` in progress: product remediation; `C1.6` blocked
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
@@ -32,7 +32,7 @@ C1 Cards v2 / Problem Triage
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — `C1.5` Complete; `C1.6` Next, not started
+**Status:** In progress — `C1.5R` product remediation in progress; `C1.6` blocked
 
 ### Current increments
 
@@ -41,8 +41,9 @@ C1 Cards v2 / Problem Triage
 - `C1.2 — Canonical triage model and read API`: Complete — technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md), exact-SHA [Fast CI run 29637594843](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS
 - `C1.3 — Inspection Profiles: contract and runtime`: Complete — contract [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md), evidence report [`reports/core/c1-3-inspection-profiles-runtime.md`](../../reports/core/c1-3-inspection-profiles-runtime.md), accepted `standard/cards` restart [run 29641398848](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641398848) PASS
 - `C1.4 — Inspection Profiles: user configuration`: Complete — UI contract [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md), evidence report [`reports/core/c1-4-inspection-profiles-ui.md`](../../reports/core/c1-4-inspection-profiles-ui.md), accepted `standard/cards` restart [run 29644836731](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731) PASS
-- `C1.5 — Canonical Cards workspace: queue and Inspector`: Complete — UI contract [`docs/cards-v2-workspace-ui.md`](../../docs/cards-v2-workspace-ui.md), evidence report [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md), accepted `standard/cards` restart [run 29649071545](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29649071545) PASS
-- `C1.6 — Handoffs, actions and detector-driven resolution loop`: Next, not started
+- `C1.5 — Canonical Cards workspace: queue and Inspector`: historical technical acceptance only — UI contract [`docs/cards-v2-workspace-ui.md`](../../docs/cards-v2-workspace-ui.md), evidence report [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md), `standard/cards` restart [run 29649071545](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29649071545) PASS; owner product acceptance was withdrawn after screenshot and real-profile review
+- `C1.5R — Cards and Inspection Profiles UX remediation`: In progress — compact identity, native front/answer semantics, independent current-content candidates, Cards inbox redesign, and guided profile setup; owner product acceptance remains a separate gate
+- `C1.6 — Handoffs, actions and detector-driven resolution loop`: Blocked, not started
 
 `C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.
 
@@ -66,7 +67,11 @@ restart run `29644836731` are accepted. C1.5 replaces legacy Cards modes with
 the canonical triage queue and active-item Inspector. Exact-SHA Fast CI
 `29648956309` and targeted real-Anki `standard/cards` restart run
 `29649071545` are accepted on `0460afe472cd87029368924bdf5640e90271c03c`.
-C1.5 is complete; C1.6 is next and has not started.
+C1.5's green runs remain valid technical history for the rejected implementation,
+but do not establish product correctness. C1.5R is now in progress after owner
+review rejected display identity, preview semantics, candidate scope, Cards
+visual design, and the normal Inspection Profiles workflow. C1.6 remains
+blocked and has not started.
 
 ### Goal
 

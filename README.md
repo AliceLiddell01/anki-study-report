@@ -46,6 +46,9 @@ The accepted product contour is complete through **Stage 9.5**. Future work is n
 
 Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI and extension packs do not block core maturity.
 
+Current Core status: `C1.5R` product remediation is in progress after owner
+review withdrew C1.5 product acceptance; `C1.6` is blocked and not started.
+
 Current platform state:
 
 ```text
