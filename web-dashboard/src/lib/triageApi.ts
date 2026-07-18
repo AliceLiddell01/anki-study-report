@@ -1,3 +1,4 @@
+import { isCardDisplayIdentity } from "./searchApi";
 import type {
   TriageCardState,
   TriageDataset,
@@ -83,7 +84,7 @@ function isTriageQueryResponse(value: unknown): value is TriageQueryResponse {
     "limit", "truncated", "sourceStatus", "contentChecks", "items",
   ])) return false;
   const dataset = value.dataset;
-  if (value.schemaVersion !== 2 || !isDataset(dataset)) return false;
+  if (value.schemaVersion !== 3 || !isDataset(dataset)) return false;
   if (!new Set(["available", "partial", "unavailable"]).has(String(value.status))) return false;
   if (!safeTimestamp(value.generatedAtMs) || !count(value.totalCount) || !count(value.returnedCount)) return false;
   const maxLimit = dataset === "automatic" ? 100 : 200;
@@ -96,14 +97,16 @@ function isTriageQueryResponse(value: unknown): value is TriageQueryResponse {
 
 function isTriageItem(value: unknown, dataset: TriageDataset): value is TriageItem {
   if (!isRecord(value) || !exactKeys(value, [
-    "itemId", "availability", "cardId", "noteId", "deck", "noteType", "template", "primaryText",
+    "itemId", "availability", "cardId", "noteId", "deck", "noteType", "template",
+    "displayText", "displaySource", "displayStatus", "displayTruncated",
     "priority", "primaryReasonCode", "reasons", "sources", "cardState", "inspect",
   ])) return false;
   if (!decimalId(value.cardId) || value.itemId !== `card:${value.cardId}`) return false;
   if (value.availability !== "available" && value.availability !== "missing") return false;
   if (value.noteId !== null && !decimalId(value.noteId)) return false;
   if (!isDeck(value.deck) || !isNoteType(value.noteType) || !isTemplate(value.template)) return false;
-  if (typeof value.primaryText !== "string" || value.primaryText.length > 240) return false;
+  if (!isCardDisplayIdentity(value)) return false;
+  if (value.availability === "missing" && !(value.displayStatus === "unavailable" && value.displaySource === "none")) return false;
   if (!Array.isArray(value.reasons) || value.reasons.length > 4 || !value.reasons.every(isTriageReason)) return false;
   if (!sourceArray(value.sources) || !isCardStateSummary(value.cardState)) return false;
   if (dataset === "automatic" && (value.reasons.length === 0 || value.sources.includes("search_workset"))) return false;
