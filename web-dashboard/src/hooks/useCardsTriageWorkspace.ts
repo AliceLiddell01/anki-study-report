@@ -52,7 +52,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setQueryStatus("loading");
     setQueryError(null);
     void fetchTriageQuery({
-      schemaVersion: 2,
+      schemaVersion: 3,
       dataset: "automatic",
       scope: { periodStartMs: periodEndMs - SEVEN_DAYS_MS, periodEndMs, deckIds: stableDeckIds },
       limit: 100,
@@ -92,7 +92,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setInspectStatus("loading");
     setInspectResponse(null);
     setInspectError(null);
-    void fetchSearchInspect({ mode: "cards", cardId, requestId: `cards-${sequence}` }, controller.signal)
+    void fetchSearchInspect({ schemaVersion: 2, mode: "cards", cardId, requestId: `cards-${sequence}` }, controller.signal)
       .then((value) => {
         if (controller.signal.aborted || sequence !== inspectSequence.current) return;
         setInspectResponse(value);
