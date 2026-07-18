@@ -1,0 +1,16 @@
+{
+  "sweep_version": "review-sweep-v0.1",
+  "sweep_id": "review-parameter-foundation",
+  "corpus_path": "scenarios",
+  "max_evaluated_candidates": 48,
+  "shortlist_size": 2,
+  "epsilon": 0.000001,
+  "stages": [
+    {"family": "reward", "candidate_ids": ["R-CURRENT", "R-NO-GAIN", "R-LOW-CHALLENGE", "R-NEUTRAL-CONTEXT"]},
+    {"family": "volume", "candidate_ids": ["V-CURRENT", "V-LOW-CAP", "V-SOFT", "V-NONE"]},
+    {"family": "completion", "candidate_ids": ["C-CURRENT", "C-LOW", "C-SYMBOLIC"]},
+    {"family": "support", "candidate_ids": ["S-CURRENT", "S-LOW", "S-EPISODE-ONLY"]},
+    {"family": "supplemental", "candidate_ids": ["P-CURRENT", "P-LOW", "P-METRIC-ONLY"]}
+  ],
+  "sensitivity_parameter_set_ids": ["R-CURRENT"]
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:anki-study-report:review-persona:v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "persona_id", "version", "horizon_days", "daily_due_distribution",
+    "outcome_weights", "session_pattern", "fsrs_context", "backlog_probability",
+    "filtered_probability", "preview_probability", "support_probability",
+    "zero_due_probability", "duplicate_probability", "seed_policy"
+  ],
+  "properties": {
+    "persona_id": {"type": "string", "pattern": "^P(?:0[1-9]|1[0-6])_[A-Z0-9_]+$"},
+    "version": {"const": "review-persona-v0.1"},
+    "horizon_days": {"type": "integer", "minimum": 30, "maximum": 3650},
+    "daily_due_distribution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum", "mode", "maximum"],
+      "properties": {
+        "minimum": {"type": "integer", "minimum": 0, "maximum": 500},
+        "mode": {"type": "integer", "minimum": 0, "maximum": 500},
+        "maximum": {"type": "integer", "minimum": 0, "maximum": 500}
+      }
+    },
+    "outcome_weights": {
+      "type": "object", "additionalProperties": false,
+      "required": ["again", "hard", "good", "easy"],
+      "properties": {
+        "again": {"type": "number", "minimum": 0, "maximum": 1},
+        "hard": {"type": "number", "minimum": 0, "maximum": 1},
+        "good": {"type": "number", "minimum": 0, "maximum": 1},
+        "easy": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "session_pattern": {"enum": ["single", "split", "irregular"]},
+    "fsrs_context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["available", "confidence", "retrievability"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "confidence": {"enum": ["high", "medium", "low", "unavailable"]},
+        "retrievability": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "backlog_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "filtered_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "preview_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "support_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "zero_due_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "duplicate_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "seed_policy": {"const": "sha256-master-persona-replica-v1"}
+  }
+}

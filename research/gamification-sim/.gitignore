@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+*.log
+*.tmp
+
+outputs/
+rust-oracle/target/
