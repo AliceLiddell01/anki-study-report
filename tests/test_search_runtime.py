@@ -40,6 +40,7 @@ class FakeQueryOp:
 
 def payload():
     return {
+        "schemaVersion": 2,
         "mode": "cards",
         "query": "deck:private",
         "filters": [],
@@ -75,7 +76,7 @@ def test_metadata_request_uses_the_same_read_only_queryop_bridge(monkeypatch):
 def test_invalid_request_never_reaches_anki_task_manager():
     taskman = FakeTaskman()
     mw = SimpleNamespace(col=object(), taskman=taskman)
-    result = runtime.run_search_query_sync(mw, {"mode": "cards", "query": "x", "pageSize": 1000})
+    result = runtime.run_search_query_sync(mw, {"schemaVersion": 2, "mode": "cards", "query": "x", "pageSize": 1000})
     assert result["error"] == "invalid_search_request"
     assert taskman.calls == 0
 
