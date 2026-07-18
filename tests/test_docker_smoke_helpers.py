@@ -73,6 +73,44 @@ def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
     assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
 
 
+def test_inspection_profile_e2e_helpers_build_exact_safe_profile_and_filter_reasons():
+    smoke_api = load_smoke_api_module()
+    item = {
+        "structure": {
+            "noteTypeId": "123",
+            "name": "E2E Programming",
+            "fingerprint": {"algorithm": "sha256", "value": "a" * 64},
+            "fields": [
+                {"ordinal": 0, "name": "Question"},
+                {"ordinal": 1, "name": "Answer"},
+            ],
+        }
+    }
+    definition = {
+        "displayName": "Programming",
+        "mappings": [("question", "Question"), ("answer", "Answer")],
+        "checks": [
+            {"checkId": "question-required", "kind": "non_empty", "roles": ["question"], "mode": "any", "priority": "high"},
+        ],
+    }
+    profile = smoke_api.confirmed_profile(item, definition)
+    assert profile["profileId"] == "note-type-123"
+    assert profile["fieldMappings"] == [
+        {"role": "question", "fields": [{"ordinal": 0, "name": "Question"}]},
+        {"role": "answer", "fields": [{"ordinal": 1, "name": "Answer"}]},
+    ]
+    assert "rawFields" not in json.dumps(profile)
+
+    reasons = smoke_api.reasons_for_note_type(
+        [
+            {"noteType": {"noteTypeId": "123"}, "reasons": [{"code": "learning.leech"}]},
+            {"noteType": {"noteTypeId": "456"}, "reasons": [{"code": "content.audio_missing"}]},
+        ],
+        "123",
+    )
+    assert reasons == [{"code": "learning.leech"}]
+
+
 def test_artifact_paths_create_category_directories(tmp_path: Path):
     artifact_paths = load_e2e_module("artifact_paths.py", "anki_study_report_artifact_paths")
 

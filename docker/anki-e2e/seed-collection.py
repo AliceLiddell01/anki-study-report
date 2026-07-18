@@ -225,6 +225,8 @@ def main() -> int:
         "actionDeckIds": action_decks,
         "notes": [
             "Japanese vocabulary fixture with sound/gif/inline style/class CSS",
+            "Japanese vocabulary fixture without audio for confirmed profile checks",
+            "Programming question/answer fixture without an audio requirement",
             "Generic front/back fixture",
             "Custom CSS fixture",
             "Unsafe sanitizer fixture",
@@ -275,6 +277,14 @@ def create_collection(collection_path: Path) -> tuple[int, int, dict[str, int]]:
             "{{FrontSide}}<hr id=\"answer\">{{Back}}",
             ".card { font-family: Arial, sans-serif; color: #111827; background: white; }",
         )
+        programming_model = create_model(
+            col,
+            "E2E Programming",
+            ["Question", "Answer", "Explanation", "Code"],
+            "<pre>{{Question}}</pre>",
+            '{{FrontSide}}<hr id="answer"><div>{{Answer}}</div><pre>{{Code}}</pre>',
+            ".card { font-family: monospace; color: #111827; background: white; }",
+        )
         custom_model = create_model(
             col,
             "E2E Custom CSS",
@@ -307,6 +317,34 @@ def create_collection(collection_path: Path) -> tuple[int, int, dict[str, int]]:
             },
             deck_id,
             tags=["e2e", "leech"],
+        )
+        add_note(
+            col,
+            japanese_model,
+            {
+                "Слово": "要望（音声なし）",
+                "Значение": "request without audio fixture",
+                "Пример": "改善を要望する。",
+                "Часть речи": "する-verb",
+                "Ударение": "ようぼう",
+                "Похожие слова": "要求",
+                "Аудио": "",
+                "Изображение": "",
+            },
+            deck_id,
+            tags=["e2e", "leech", "inspection-profile"],
+        )
+        add_note(
+            col,
+            programming_model,
+            {
+                "Question": "What does map return?",
+                "Answer": "A transformed iterable.",
+                "Explanation": "Programming profile fixture without audio.",
+                "Code": "map(fn, values)",
+            },
+            deck_id,
+            tags=["e2e", "inspection-profile"],
         )
         add_note(
             col,

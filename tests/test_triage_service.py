@@ -14,7 +14,7 @@ triage = import_addon_module("triage_service")
 
 def request(dataset="automatic", *, card_ids=None, limit=None):
     value = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "dataset": dataset,
         "scope": {"periodStartMs": 1_700_000_000_000, "periodEndMs": 1_700_604_800_000, "deckIds": []},
         "limit": limit or (200 if dataset == "search_workset" else 100),
@@ -93,7 +93,22 @@ def repeated_signal(card_id: int, *, severity="critical", again=5):
     }
 
 
-def project(req, *, attention=None, signals=None, resolved=None, signal_status=None, resolver_status=None):
+def content_checks(status="no_confirmed_profiles"):
+    return {
+        "status": status,
+        "confirmedProfileCount": 0,
+        "needsReviewProfileCount": 0,
+        "disabledProfileCount": 0,
+        "suggestedProfileCount": 0,
+        "evaluatedNoteCount": 0,
+        "failedCheckCount": 0,
+        "skippedCount": 0,
+        "truncated": False,
+        "errorCode": None,
+    }
+
+
+def project(req, *, attention=None, signals=None, resolved=None, signal_status=None, resolver_status=None, profile_reasons=None):
     normalized = triage.normalize_triage_query_request(req)
     attention = attention or []
     signals = signals or []
@@ -106,6 +121,9 @@ def project(req, *, attention=None, signals=None, resolved=None, signal_status=N
         signal_source_status=signal_status or source("available" if signals else "empty", items=len(signals)),
         resolved_card_rows=resolved,
         resolver_source_status=resolver_status or source("available" if resolved else "empty", items=len(resolved)),
+        profile_reasons=profile_reasons or [],
+        profile_source_status=source("empty"),
+        content_checks=content_checks(),
         generated_at_ms=1_721_000_000_000,
     )
 
@@ -115,7 +133,7 @@ def test_request_contract_is_strict_versioned_bounded_and_deduplicates_workset_i
     assert normalized["cardIds"] == [9, 2]
 
     invalid = [
-        {**request(), "schemaVersion": 2},
+        {**request(), "schemaVersion": 1},
         {**request(), "rawSql": "select * from revlog"},
         {**request(), "cardIds": ["1"]},
         {**request(), "scope": {**request()["scope"], "query": "deck:*"}},
@@ -138,7 +156,7 @@ def test_projection_merges_reasons_and_signal_provenance_without_legacy_risk_or_
     response = project(request(), attention=[row, dict(row)], signals=[repeated_signal(1)], resolved=[card_row(1)])
 
     assert response["status"] == "available"
-    assert response["contentChecks"] == {"status": "profiles_not_available"}
+    assert response["contentChecks"] == content_checks()
     assert response["returnedCount"] == response["totalCount"] == 1
     item = response["items"][0]
     assert item["itemId"] == "card:1"
@@ -230,19 +248,21 @@ def test_search_workset_preserves_selection_order_and_marks_missing_without_inve
 def test_execute_reuses_attention_and_search_adapters_without_full_preview(monkeypatch):
     calls = {}
 
-    def collect(_col, start, end, deck_ids, *, max_results, include_rendered_preview):
-        calls["attention"] = (start, end, deck_ids, max_results, include_rendered_preview)
-        return [attention_row(7)], {"status": "available"}
+    def collect(_col, start, end, deck_ids, *, max_results):
+        calls["attention"] = (start, end, deck_ids, max_results)
+        return [attention_row(7)], [{
+            "cardId": 7, "noteId": 10007, "noteTypeId": 7, "templateOrdinal": 0,
+            "rawFields": "", "siblingCount": 1,
+        }], {"status": "available"}
 
     def resolve(_col, card_ids):
         calls["resolve"] = list(card_ids)
         return {"items": [card_row(7)], "missingCardIds": []}
 
-    monkeypatch.setattr(triage, "collect_attention_cards_with_status", collect)
+    monkeypatch.setattr(triage, "collect_triage_candidates_with_status", collect)
     monkeypatch.setattr(triage, "resolve_card_rows", resolve)
     response = triage.execute_triage_query(object(), request(), signal_rows=[], signal_source_status={"status": "empty"})
 
-    assert calls["attention"][-1] is False
-    assert calls["attention"][-2] == 100
+    assert calls["attention"][-1] == 100
     assert calls["resolve"] == [7]
     assert response["items"][0]["inspect"] == {"mode": "cards", "cardId": "7"}

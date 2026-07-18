@@ -13,7 +13,7 @@ const availableSource = {
 };
 
 const automaticResponse = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   dataset: "automatic",
   status: "available",
   generatedAtMs: 1_721_000_000_000,
@@ -25,8 +25,13 @@ const automaticResponse = {
     attention: availableSource,
     signals: availableSource,
     searchResolver: availableSource,
+    profileChecks: availableSource,
   },
-  contentChecks: { status: "profiles_not_available" },
+  contentChecks: {
+    status: "available", confirmedProfileCount: 1, needsReviewProfileCount: 0,
+    disabledProfileCount: 0, suggestedProfileCount: 0, evaluatedNoteCount: 1,
+    failedCheckCount: 0, skippedCount: 0, truncated: false, errorCode: null,
+  },
   items: [{
     itemId: "card:1001",
     availability: "available",
@@ -40,6 +45,7 @@ const automaticResponse = {
     primaryReasonCode: "learning.leech",
     reasons: [
       {
+        reasonId: "learning:learning.leech",
         code: "learning.leech",
         family: "learning",
         scope: "card",
@@ -49,6 +55,7 @@ const automaticResponse = {
         detectedAtMs: 1_721_000_000_000,
       },
       {
+        reasonId: "learning:learning.repeated_again",
         code: "learning.repeated_again",
         family: "learning",
         scope: "card",
@@ -61,6 +68,7 @@ const automaticResponse = {
         detectedAtMs: 1_721_000_000_000,
       },
       {
+        reasonId: "learning:learning.low_pass_rate",
         code: "learning.low_pass_rate",
         family: "learning",
         scope: "card",
@@ -70,6 +78,7 @@ const automaticResponse = {
         detectedAtMs: null,
       },
       {
+        reasonId: "learning:learning.slow_answer",
         code: "learning.slow_answer",
         family: "learning",
         scope: "card",
@@ -86,7 +95,7 @@ const automaticResponse = {
 };
 
 const worksetResponse = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   dataset: "search_workset",
   status: "available",
   generatedAtMs: 1_721_000_000_000,
@@ -98,8 +107,13 @@ const worksetResponse = {
     attention: { ...availableSource, status: "empty", itemCount: 0 },
     signals: { ...availableSource, status: "empty", itemCount: 0 },
     searchResolver: { ...availableSource, status: "empty", itemCount: 0, skippedCount: 1, errorCode: "card_resolution_missing" },
+    profileChecks: { ...availableSource, status: "empty", itemCount: 0 },
   },
-  contentChecks: { status: "profiles_not_available" },
+  contentChecks: {
+    status: "no_confirmed_profiles", confirmedProfileCount: 0, needsReviewProfileCount: 0,
+    disabledProfileCount: 0, suggestedProfileCount: 0, evaluatedNoteCount: 0,
+    failedCheckCount: 0, skippedCount: 0, truncated: false, errorCode: null,
+  },
   items: [{
     itemId: "card:1002",
     availability: "missing",
@@ -131,7 +145,7 @@ describe("triage read API contract", () => {
 
   it("fails closed for schema, enum, ID, finite-number, nested-status, and count drift", () => {
     const invalid = [
-      { ...automaticResponse, schemaVersion: 2 },
+      { ...automaticResponse, schemaVersion: 3 },
       { ...automaticResponse, status: "future" },
       { ...automaticResponse, items: [{ ...automaticResponse.items[0], cardId: "01" }] },
       { ...automaticResponse, generatedAtMs: Number.NaN },
@@ -160,7 +174,7 @@ describe("triage read API contract", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     const request = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       dataset: "search_workset" as const,
       cardIds: ["1002"],
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
@@ -183,7 +197,7 @@ describe("triage read API contract", () => {
       fieldErrors: { limit: "invalid" },
     }), { status: 400 })));
     await expect(fetchTriageQuery({
-      schemaVersion: 1,
+      schemaVersion: 2,
       dataset: "automatic",
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
       limit: 100,
@@ -191,7 +205,7 @@ describe("triage read API contract", () => {
 
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, response: automaticResponse, extra: true }), { status: 200 })));
     await expect(fetchTriageQuery({
-      schemaVersion: 1,
+      schemaVersion: 2,
       dataset: "automatic",
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
       limit: 100,

@@ -40,6 +40,11 @@ def main() -> int:
     notification_summary = None
     if os.environ.get("ANKI_E2E_SCOPE", "full") in {"full", "notifications"}:
         notification_summary = assert_notification_contract(base_url, token, artifacts, args.label)
+    inspection_profiles_summary = None
+    if os.environ.get("ANKI_E2E_SCOPE", "full") == "cards":
+        inspection_profiles_summary = assert_inspection_profiles_contract(
+            base_url, token, artifacts, args.label
+        )
 
     cards = report_cards(report)
     assert_true(cards, "No attention cards found in canonical attentionCards.")
@@ -81,6 +86,7 @@ def main() -> int:
                 "assets": asset_summary,
                 "apkg": apkg_summary,
                 "notifications": notification_summary,
+                "inspectionProfiles": inspection_profiles_summary,
             },
             ensure_ascii=False,
             indent=2,
@@ -96,6 +102,225 @@ def fetch_json(base_url: str, path: str, token: str, params: dict[str, str] | No
     if status != 200:
         raise AssertionError(f"{path} returned HTTP {status}: {body[:200]!r}")
     return json.loads(body.decode("utf-8"))
+
+
+def post_json(base_url: str, path: str, token: str, payload: dict[str, Any]) -> dict[str, Any]:
+    request = Request(
+        f"{base_url}{path}?{urlencode({'token': token})}",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "anki-study-report-e2e"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            status = response.status
+            body = response.read()
+    except HTTPError as error:
+        status = error.code
+        body = error.read()
+    decoded = json.loads(body.decode("utf-8"))
+    if status != 200 or decoded.get("ok") is not True or not isinstance(decoded.get("response"), dict):
+        raise AssertionError(f"{path} returned HTTP {status}: {decoded!r}")
+    return decoded["response"]
+
+
+def assert_inspection_profiles_contract(
+    base_url: str,
+    token: str,
+    artifacts: Path,
+    label: str,
+) -> dict[str, Any]:
+    catalog = post_json(
+        base_url,
+        "/api/inspection-profiles/query",
+        token,
+        {"schemaVersion": 1, "noteTypeIds": [], "limit": 500},
+    )
+    items = catalog.get("items") if isinstance(catalog.get("items"), list) else []
+    japanese = find_structure(items, "E2E Japanese Vocabulary")
+    programming = find_structure(items, "E2E Programming")
+    assert_true(japanese is not None, "Japanese Inspection Profile structure is available")
+    assert_true(programming is not None, "Programming Inspection Profile structure is available")
+
+    if label == "first":
+        revision = int(catalog.get("store", {}).get("revision") or 0)
+        assert_true(revision == 0, "Inspection Profile store starts empty")
+        for structure, definition in (
+            (
+                japanese,
+                {
+                    "displayName": "Japanese vocabulary",
+                    "mappings": [("meaning", "Значение"), ("audio", "Аудио")],
+                    "checks": [
+                        {"checkId": "meaning-required", "kind": "non_empty", "roles": ["meaning"], "mode": "any", "priority": "high"},
+                        {"checkId": "audio-required", "kind": "contains_audio", "roles": ["audio"], "mode": "any", "priority": "medium"},
+                    ],
+                },
+            ),
+            (
+                programming,
+                {
+                    "displayName": "Programming",
+                    "mappings": [("question", "Question"), ("answer", "Answer")],
+                    "checks": [
+                        {"checkId": "question-required", "kind": "non_empty", "roles": ["question"], "mode": "any", "priority": "high"},
+                        {"checkId": "answer-required", "kind": "non_empty", "roles": ["answer"], "mode": "any", "priority": "high"},
+                    ],
+                },
+            ),
+        ):
+            profile = confirmed_profile(structure, definition)
+            updated = post_json(
+                base_url,
+                "/api/inspection-profiles/update",
+                token,
+                {
+                    "schemaVersion": 1,
+                    "action": "save",
+                    "expectedRevision": revision,
+                    "targetState": "confirmed",
+                    "profile": profile,
+                },
+            )
+            revision = int(updated.get("store", {}).get("revision") or 0)
+        assert_true(revision == 2, "two confirmed profiles increment the store revision")
+        catalog = post_json(
+            base_url,
+            "/api/inspection-profiles/query",
+            token,
+            {"schemaVersion": 1, "noteTypeIds": [], "limit": 500},
+        )
+        items = catalog.get("items") if isinstance(catalog.get("items"), list) else []
+        japanese = find_structure(items, "E2E Japanese Vocabulary")
+        programming = find_structure(items, "E2E Programming")
+
+    assert_true(japanese is not None and programming is not None, "Inspection Profile catalog remains complete")
+    expected_japanese_state = "confirmed" if label == "first" else "needs_review"
+    assert_true(japanese.get("effectiveState") == expected_japanese_state, f"Japanese profile state is {expected_japanese_state}")
+    assert_true(programming.get("effectiveState") == "confirmed", "Programming profile remains confirmed")
+    assert_true(int(catalog.get("store", {}).get("revision") or 0) == 2, "Inspection Profile store revision survives restart")
+
+    japanese_cards = search_note_type_cards(base_url, token, japanese["structure"]["noteTypeId"], "japanese")
+    programming_cards = search_note_type_cards(base_url, token, programming["structure"]["noteTypeId"], "programming")
+    card_ids = [item["cardId"] for item in japanese_cards + programming_cards]
+    triage = post_json(
+        base_url,
+        "/api/triage/query",
+        token,
+        {
+            "schemaVersion": 2,
+            "dataset": "search_workset",
+            "cardIds": card_ids,
+            "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+            "limit": min(200, max(1, len(card_ids))),
+        },
+    )
+    assert_true(triage.get("schemaVersion") == 2, "canonical triage v2 is active")
+    triage_items = triage.get("items") if isinstance(triage.get("items"), list) else []
+    japanese_id = japanese["structure"]["noteTypeId"]
+    programming_id = programming["structure"]["noteTypeId"]
+    japanese_reasons = reasons_for_note_type(triage_items, japanese_id)
+    programming_reasons = reasons_for_note_type(triage_items, programming_id)
+    japanese_audio = [reason for reason in japanese_reasons if reason.get("code") == "content.audio_missing"]
+    programming_audio = [reason for reason in programming_reasons if reason.get("code") == "content.audio_missing"]
+    if label == "first":
+        assert_true(len(japanese_audio) == 1, "missing audio is emitted once for the configured Japanese note")
+        assert_true(triage.get("contentChecks", {}).get("status") == "available", "profile checks are available")
+    else:
+        assert_true(not japanese_audio, "stale Japanese profile fails closed after structure change")
+        assert_true(triage.get("contentChecks", {}).get("status") in {"partial", "available"}, "mixed profile lifecycle is explicit")
+    assert_true(not programming_audio, "Programming profile never receives an audio requirement")
+    assert_true(
+        any(str(reason.get("code") or "").startswith("learning.") for reason in japanese_reasons),
+        "learning reasons remain independent of profile lifecycle",
+    )
+    profile_evidence = [
+        evidence
+        for reason in japanese_reasons + programming_reasons
+        for evidence in reason.get("evidence", [])
+        if isinstance(evidence, dict) and evidence.get("kind") == "profile_check"
+    ]
+    encoded_evidence = json.dumps(profile_evidence, ensure_ascii=False)
+    assert_true("rawFields" not in encoded_evidence and ".mp3" not in encoded_evidence, "profile evidence excludes values and media filenames")
+
+    proof = {
+        "ok": True,
+        "label": label,
+        "storeRevision": catalog.get("store", {}).get("revision"),
+        "japaneseState": japanese.get("effectiveState"),
+        "programmingState": programming.get("effectiveState"),
+        "japaneseCardCount": len(japanese_cards),
+        "programmingCardCount": len(programming_cards),
+        "japaneseAudioReasonCount": len(japanese_audio),
+        "programmingAudioReasonCount": len(programming_audio),
+        "learningReasonPreserved": True,
+        "profileEvidenceValueLeak": False,
+    }
+    (artifacts / f"inspection-profiles-{label}.json").write_text(
+        json.dumps(proof, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return proof
+
+
+def find_structure(items: list[Any], name: str) -> dict[str, Any] | None:
+    for item in items:
+        if isinstance(item, dict) and isinstance(item.get("structure"), dict) and item["structure"].get("name") == name:
+            return item
+    return None
+
+
+def confirmed_profile(item: dict[str, Any], definition: dict[str, Any]) -> dict[str, Any]:
+    structure = item["structure"]
+    fields = {field["name"]: field for field in structure["fields"]}
+    mappings = []
+    for role, field_name in definition["mappings"]:
+        assert_true(field_name in fields, f"profile field exists: {field_name}")
+        mappings.append({"role": role, "fields": [fields[field_name]]})
+    now = "2026-07-18T00:00:00Z"
+    return {
+        "profileId": f"note-type-{structure['noteTypeId']}",
+        "noteTypeId": structure["noteTypeId"],
+        "noteTypeName": structure["name"],
+        "storedState": "confirmed",
+        "displayName": definition["displayName"],
+        "expectedFingerprint": structure["fingerprint"],
+        "appliesTo": {"templateOrdinals": []},
+        "fieldMappings": mappings,
+        "checks": definition["checks"],
+        "confirmedAt": now,
+        "updatedAt": now,
+    }
+
+
+def search_note_type_cards(base_url: str, token: str, note_type_id: str, request_id: str) -> list[dict[str, Any]]:
+    response = post_json(
+        base_url,
+        "/api/search/query",
+        token,
+        {
+            "mode": "cards",
+            "query": "",
+            "filters": [{"type": "note_type", "noteTypeId": note_type_id}],
+            "sort": {"key": "entity_id", "direction": "asc"},
+            "page": 1,
+            "pageSize": 50,
+            "requestId": f"inspection-{request_id}",
+        },
+    )
+    items = response.get("items") if isinstance(response.get("items"), list) else []
+    assert_true(items, f"Search returns cards for note type {note_type_id}")
+    return [item for item in items if isinstance(item, dict)]
+
+
+def reasons_for_note_type(items: list[Any], note_type_id: str) -> list[dict[str, Any]]:
+    return [
+        reason
+        for item in items
+        if isinstance(item, dict) and item.get("noteType", {}).get("noteTypeId") == note_type_id
+        for reason in item.get("reasons", [])
+        if isinstance(reason, dict)
+    ]
 
 
 def assert_notification_contract(base_url: str, token: str, artifacts: Path, label: str) -> dict[str, Any]:

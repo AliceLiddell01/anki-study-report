@@ -144,6 +144,26 @@ DEFAULT_NOTE_PROFILE_DIAGNOSTICS = {
 }
 
 
+def test_triage_candidate_collector_uses_one_bounded_internal_raw_field_path():
+    metrics = fresh_import_addon_module("metrics")
+    rows = [(
+        123, 456, 10, 0, 1, 0, "", "Front\x1f", 1, 0, 1_783_036_800_000, 1_783_036_800_000,
+    )]
+    col = FakeCollection(rows, model_with_fields("Front", "Meaning"))
+    attention, candidates, status = metrics.collect_triage_candidates_with_status(
+        col, 1_783_000_000_000, 1_783_100_000_000, max_results=100
+    )
+    assert status == {
+        "status": "available", "itemCount": 1, "skippedCount": 0,
+        "truncated": False, "errorCode": None,
+    }
+    assert candidates == [{
+        "cardId": 123, "noteId": 456, "noteTypeId": 1, "templateOrdinal": 0,
+        "rawFields": "Front\x1f", "siblingCount": 1,
+    }]
+    assert all("rawFields" not in item for item in attention)
+
+
 def test_collect_attention_cards_builds_read_only_payload():
     metrics = fresh_import_addon_module("metrics")
     rows = [

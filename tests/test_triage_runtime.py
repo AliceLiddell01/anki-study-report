@@ -40,7 +40,7 @@ class FakeQueryOp:
 
 def payload():
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "dataset": "automatic",
         "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
         "limit": 100,
@@ -55,16 +55,22 @@ def test_triage_queryop_bridge_schedules_collection_read_and_supplies_signals(mo
     monkeypatch.setattr(
         runtime,
         "execute_triage_query",
-        lambda col, value, **kwargs: calls.append((col, value, kwargs)) or {"schemaVersion": 1, "items": []},
+        lambda col, value, **kwargs: calls.append((col, value, kwargs)) or {"schemaVersion": 2, "items": []},
     )
     FakeQueryOp.behavior = "success"
 
-    result = runtime.run_triage_query_sync(mw, payload(), signal_provider=lambda: [{"code": "card.repeated_again"}])
+    result = runtime.run_triage_query_sync(
+        mw,
+        payload(),
+        signal_provider=lambda: [{"code": "card.repeated_again"}],
+        profile_store_provider=lambda: {"status": "empty", "revision": 0, "profiles": []},
+    )
 
-    assert result == {"ok": True, "response": {"schemaVersion": 1, "items": []}}
+    assert result == {"ok": True, "response": {"schemaVersion": 2, "items": []}}
     assert taskman.calls == 1
     assert calls[0][2]["signal_rows"] == [{"code": "card.repeated_again"}]
     assert calls[0][2]["signal_source_status"]["status"] == "available"
+    assert calls[0][2]["profile_store_snapshot"]["status"] == "empty"
 
 
 def test_invalid_request_never_reaches_task_manager():

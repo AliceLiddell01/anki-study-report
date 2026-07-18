@@ -1,0 +1,83 @@
+{
+  "cases": [
+    {
+      "name": "confirmed-valid",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "revision": 1,
+        "profiles": [
+          {
+            "profileId": "note-type-123",
+            "noteTypeId": "123",
+            "noteTypeName": "Japanese Vocabulary",
+            "storedState": "confirmed",
+            "displayName": "Japanese vocabulary",
+            "expectedFingerprint": {"algorithm": "sha256", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "appliesTo": {"templateOrdinals": []},
+            "fieldMappings": [{"role": "meaning", "fields": [{"ordinal": 1, "name": "Meaning"}]}],
+            "checks": [{"checkId": "meaning-required", "kind": "non_empty", "roles": ["meaning"], "mode": "any", "priority": "high"}],
+            "confirmedAt": "2026-07-18T00:00:00Z",
+            "updatedAt": "2026-07-18T00:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-document-field",
+      "valid": false,
+      "document": {"schemaVersion": 1, "revision": 0, "profiles": [], "rawSql": "forbidden"}
+    },
+    {
+      "name": "future-schema",
+      "valid": false,
+      "document": {"schemaVersion": 2, "revision": 0, "profiles": []}
+    },
+    {
+      "name": "confirmed-without-timestamp",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "revision": 1,
+        "profiles": [
+          {
+            "profileId": "note-type-123",
+            "noteTypeId": "123",
+            "noteTypeName": "Basic",
+            "storedState": "confirmed",
+            "displayName": "Basic",
+            "expectedFingerprint": {"algorithm": "sha256", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "appliesTo": {"templateOrdinals": []},
+            "fieldMappings": [{"role": "meaning", "fields": [{"ordinal": 1, "name": "Meaning"}]}],
+            "checks": [{"checkId": "meaning-required", "kind": "non_empty", "roles": ["meaning"], "mode": "any", "priority": "high"}],
+            "confirmedAt": null,
+            "updatedAt": "2026-07-18T00:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "arbitrary-check-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "revision": 0,
+        "profiles": [
+          {
+            "profileId": "note-type-123",
+            "noteTypeId": "123",
+            "noteTypeName": "Basic",
+            "storedState": "suggested",
+            "displayName": "Basic",
+            "expectedFingerprint": {"algorithm": "sha256", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "appliesTo": {"templateOrdinals": []},
+            "fieldMappings": [{"role": "meaning", "fields": [{"ordinal": 1, "name": "Meaning"}]}],
+            "checks": [{"checkId": "meaning-required", "kind": "non_empty", "roles": ["meaning"], "mode": "any", "priority": "high", "regex": ".*"}],
+            "confirmedAt": null,
+            "updatedAt": "2026-07-18T00:00:00Z"
+          }
+        ]
+      }
+    }
+  ]
+}
