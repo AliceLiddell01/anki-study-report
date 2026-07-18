@@ -147,26 +147,21 @@ def test_search_endpoints_require_token_post_and_preserve_typed_statuses():
         assert status == 405
         assert json.loads(body)["error"] == "method_not_allowed"
 
+        query_body = {"schemaVersion": 2, "mode": "cards", "query": "deck:Japanese"}
         status, content_type, body = fetch(
-            f"{base_url}/api/search/query?token={token}",
-            method="POST",
-            json_body={"mode": "cards", "query": "deck:Japanese"},
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body=query_body
         )
         assert status == 200
         assert "application/json" in content_type
         assert json.loads(body) == {"ok": True, "response": {"mode": "cards", "items": []}}
 
+        inspect_body = {"schemaVersion": 2, "mode": "notes", "noteId": "123"}
         status, _, body = fetch(
-            f"{base_url}/api/search/inspect?token={token}",
-            method="POST",
-            json_body={"mode": "notes", "noteId": "123"},
+            f"{base_url}/api/search/inspect?token={token}", method="POST", json_body=inspect_body
         )
         assert status == 404
         assert json.loads(body)["error"] == "search_entity_not_found"
-        assert calls == [
-            ("query", {"mode": "cards", "query": "deck:Japanese"}),
-            ("inspect", {"mode": "notes", "noteId": "123"}),
-        ]
+        assert calls == [("query", query_body), ("inspect", inspect_body)]
     finally:
         manager.stop()
 
@@ -177,10 +172,9 @@ def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
     state = manager.start(port=0, idle_timeout_seconds=0)
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    request = {"schemaVersion": 2, "mode": "cards"}
     try:
-        status, _, body = fetch(
-            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
-        )
+        status, _, body = fetch(f"{base_url}/api/search/query?token={token}", method="POST", json_body=request)
         assert status == 503
         assert json.loads(body)["error"] == "search_unavailable"
 
@@ -193,9 +187,7 @@ def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
             manager.configure_search_handlers(
                 query_handler=lambda payload, code=code: {"ok": False, "error": code, "message": "Safe failure."}
             )
-            status, _, body = fetch(
-                f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
-            )
+            status, _, body = fetch(f"{base_url}/api/search/query?token={token}", method="POST", json_body=request)
             assert status == expected_status
             assert json.loads(body)["error"] == code
     finally:
@@ -216,7 +208,7 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
         status, _, body = fetch(
             f"{base_url}/api/search/query?token={token}",
             method="POST",
-            json_body={"mode": "cards", "query": "", "rawSql": "secret-select"},
+            json_body={"schemaVersion": 2, "mode": "cards", "query": "", "rawSql": "secret-select"},
         )
         assert status == 400
         assert json.loads(body)["fieldErrors"] == {"rawSql": "Unexpected field."}
@@ -225,7 +217,7 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
             query_handler=lambda payload: (_ for _ in ()).throw(RuntimeError("secret-query token=secret-token"))
         )
         status, _, body = fetch(
-            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"schemaVersion": 2, "mode": "cards"}
         )
         assert status == 503
         response_text = body.decode("utf-8")
@@ -245,7 +237,7 @@ def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
     payload = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataset": "automatic",
         "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
         "limit": 100,
@@ -273,7 +265,7 @@ def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
         assert "application/json" in content_type
         response = json.loads(body)
         assert response["ok"] is True
-        assert response["response"]["schemaVersion"] == 2
+        assert response["response"]["schemaVersion"] == 3
         assert response["response"]["status"] == "partial"
 
         status, _, body = fetch(
@@ -284,9 +276,13 @@ def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
         assert status == 400
         assert json.loads(body)["error"] == "invalid_triage_request"
 
+        old = {**payload, "schemaVersion": 2}
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}", method="POST", json_body=old)
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
         status, _, body = fetch_raw(
-            f"{base_url}/api/triage/query?token={token}",
-            b'{"padding":"' + b"x" * 9000 + b'"}',
+            f"{base_url}/api/triage/query?token={token}", b'{"padding":"' + b"x" * 9000 + b'"}'
         )
         assert status == 400
         assert json.loads(body)["error"] == "invalid_triage_request"
@@ -301,7 +297,7 @@ def test_triage_endpoint_maps_typed_failures_without_exception_leak(monkeypatch)
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
     payload = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataset": "automatic",
         "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
         "limit": 100,
@@ -393,8 +389,7 @@ def test_inspection_profile_endpoints_are_token_protected_json_only_bounded_and_
         assert json.loads(body)["currentRevision"] == 7
 
         status, _, body = fetch_raw(
-            f"{base_url}{path}?token={token}",
-            b'{"padding":"' + b"x" * 65_536 + b'"}',
+            f"{base_url}{path}?token={token}", b'{"padding":"' + b"x" * 65_536 + b'"}'
         )
         assert status == 400
         assert json.loads(body)["error"] == "invalid_inspection_profile_request"
@@ -422,9 +417,7 @@ def test_search_selection_browser_action_remains_token_protected_and_post_only()
         assert fetch(f"{base_url}/api/actions/open-search-selection", method="POST", json_body=body)[0] == 403
         assert fetch(f"{base_url}/api/actions/open-search-selection?token={token}")[0] == 404
         status, _, response = fetch(
-            f"{base_url}/api/actions/open-search-selection?token={token}",
-            method="POST",
-            json_body=body,
+            f"{base_url}/api/actions/open-search-selection?token={token}", method="POST", json_body=body
         )
         assert status == 200
         assert json.loads(response)["resultCode"] == "search.browser_opened"
@@ -625,25 +618,17 @@ def test_dashboard_settings_endpoint_get_post_validation_and_auth():
 
         partial = {"data": {"useStatsCacheForReport": True}}
         status, _, body = fetch(
-            f"{base_url}/api/dashboard/settings?token={token}",
-            method="POST",
-            json_body=partial,
+            f"{base_url}/api/dashboard/settings?token={token}", method="POST", json_body=partial
         )
         assert status == 200
         assert received == [partial]
         assert json.loads(body)["settings"]["data"]["useStatsCacheForReport"] is True
 
-        status, _, _ = fetch(
-            f"{base_url}/api/dashboard/settings",
-            method="POST",
-            json_body=partial,
-        )
+        status, _, _ = fetch(f"{base_url}/api/dashboard/settings", method="POST", json_body=partial)
         assert status == 403
 
         status, _, body = fetch(
-            f"{base_url}/api/dashboard/settings?token={token}",
-            method="POST",
-            json_body=["invalid"],
+            f"{base_url}/api/dashboard/settings?token={token}", method="POST", json_body=["invalid"]
         )
         assert status == 400
         assert json.loads(body)["ok"] is False
@@ -680,9 +665,7 @@ def test_profile_endpoint_get_post_validation_and_auth():
 
         assert fetch(f"{base_url}/api/profile", method="POST", json_body=patch)[0] == 403
         status, _, body = fetch(
-            f"{base_url}/api/profile?token={token}",
-            method="POST",
-            json_body={"customStudyStartedOn": "invalid"},
+            f"{base_url}/api/profile?token={token}", method="POST", json_body={"customStudyStartedOn": "invalid"}
         )
         assert status == 400
         assert "customStudyStartedOn" in json.loads(body)["fieldErrors"]
@@ -703,10 +686,7 @@ def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contra
             "showWhatsNew": True,
         },
         release_seen_handler=lambda: seen_calls.append(True) or {"ok": True, "showWhatsNew": False},
-        privacy_provider=lambda: {
-            "ok": True,
-            "privacy": {"telemetry": {"status": "undecided"}},
-        },
+        privacy_provider=lambda: {"ok": True, "privacy": {"telemetry": {"status": "undecided"}}},
         privacy_handler=lambda payload: privacy_calls.append(payload) or (
             {"ok": False, "error": "invalid_privacy_choices", "fieldErrors": {"purposes": "invalid"}}
             if "purposes" not in payload
@@ -740,9 +720,7 @@ def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contra
 
         assert fetch(f"{base_url}/api/privacy?token={token}", method="POST", json_body={})[0] == 400
         assert fetch(
-            f"{base_url}/api/product-notices/seen?token={token}",
-            method="POST",
-            json_body={"version": "spoofed"},
+            f"{base_url}/api/product-notices/seen?token={token}", method="POST", json_body={"version": "spoofed"}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/product-notices/seen?token={token}", method="POST", json_body={}
@@ -810,9 +788,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
 
         assert fetch(f"{base_url}/api/telemetry/delete?token={token}")[0] == 405
         assert fetch(
-            f"{base_url}/api/telemetry/delete?token={token}",
-            method="POST",
-            json_body={"installationId": "spoofed"},
+            f"{base_url}/api/telemetry/delete?token={token}", method="POST", json_body={"installationId": "spoofed"}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/telemetry/delete?token={token}", method="POST", json_body={}
@@ -824,9 +800,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
 
         assert fetch(f"{base_url}/api/telemetry/check-send?token={token}")[0] == 405
         assert fetch(
-            f"{base_url}/api/telemetry/check-send?token={token}",
-            method="POST",
-            json_body={"force": True},
+            f"{base_url}/api/telemetry/check-send?token={token}", method="POST", json_body={"force": True}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/telemetry/check-send?token={token}", method="POST", json_body={}
@@ -905,22 +879,16 @@ def test_notification_endpoints_are_strict_bounded_and_token_protected():
         assert fetch(f"{base_url}/api/notifications/read?token={token}")[0] == 405
 
         status, _, _ = fetch(
-            f"{base_url}/api/notifications/read?token={token}",
-            method="POST",
-            json_body={"notificationIds": ["n1"]},
+            f"{base_url}/api/notifications/read?token={token}", method="POST", json_body={"notificationIds": ["n1"]}
         )
         assert status == 200
         assert calls[-1] == ("read", {"notificationIds": ["n1"]})
 
         assert fetch(
-            f"{base_url}/api/settings/notifications?token={token}",
-            method="POST",
-            json_body={},
+            f"{base_url}/api/settings/notifications?token={token}", method="POST", json_body={}
         )[0] == 405
         status, _, _ = fetch(
-            f"{base_url}/api/settings/notifications?token={token}",
-            method="PUT",
-            json_body={"showUnreadBadge": False},
+            f"{base_url}/api/settings/notifications?token={token}", method="PUT", json_body={"showUnreadBadge": False}
         )
         assert status == 200
         assert calls[-1] == ("settings", {"showUnreadBadge": False})
