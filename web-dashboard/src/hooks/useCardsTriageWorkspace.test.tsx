@@ -3,9 +3,10 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TriageItem, TriageReason } from "../types/triage";
 import { useCardsTriageWorkspace } from "./useCardsTriageWorkspace";
 
-const triageItems = [item("1001", "First"), item("1002", "Second")];
+const triageItems: TriageItem[] = [item("1001", "First"), item("1002", "Second")];
 
 afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ""; });
 
@@ -41,7 +42,7 @@ describe("useCardsTriageWorkspace", () => {
 });
 
 function Harness() { const workspace = useCardsTriageWorkspace(["3"]); return <div>{workspace.response?.items.map((value) => <button key={value.cardId} data-card-id={value.cardId} onClick={() => workspace.activate(value)}>{value.displayText}</button>)}</div>; }
-function item(cardId: string, displayText: string) { const reason = { reasonId: `learning:${cardId}`, code: "learning.leech", family: "learning", scope: "card", priority: "high", sources: ["attention"], evidence: [{ kind: "leech_state", lapses: 2 }], detectedAtMs: 2 }; return { itemId: `card:${cardId}`, availability: "available", cardId, noteId: `2${cardId}`, deck: { deckId: "3", name: "Deck" }, noteType: { noteTypeId: "7", name: "Basic" }, template: { ordinal: 0, name: "Card 1" }, displayText, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, priority: "high", primaryReasonCode: "learning.leech", reasons: [reason], sources: ["attention"], cardState: { state: "review", suspended: false, buried: false, flag: 0 }, inspect: { mode: "cards", cardId } }; }
-function source(status: string, itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null }; }
+function item(cardId: string, displayText: string): TriageItem { const reason: TriageReason = { reasonId: `learning:${cardId}`, code: "learning.leech", family: "learning", scope: "card", priority: "high", sources: ["attention"], evidence: [{ kind: "leech_state", lapses: 2 }], detectedAtMs: 2 }; return { itemId: `card:${cardId}`, availability: "available", cardId, noteId: `2${cardId}`, deck: { deckId: "3", name: "Deck" }, noteType: { noteTypeId: "7", name: "Basic" }, template: { ordinal: 0, name: "Card 1" }, displayText, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, priority: "high", primaryReasonCode: "learning.leech", reasons: [reason], sources: ["attention"], cardState: { state: "review", suspended: false, buried: false, flag: 0 }, inspect: { mode: "cards", cardId } }; }
+function source(status: "available" | "empty", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null }; }
 function ok(response: unknown) { return new Response(JSON.stringify({ ok: true, response }), { status: 200, headers: { "Content-Type": "application/json" } }); }
 function searchDetails(cardId: string) { return { schemaVersion: 2, mode: "cards", details: { cardId, noteId: `2${cardId}`, deckId: "3", deckName: "Deck", noteTypeId: "7", noteTypeName: "Basic", templateOrdinal: 0, templateName: "Card 1", displayText: cardId, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 1, repetitions: 1, lapses: 0, flag: 0, tagSummary: [], deck: { deckId: "3", deckName: "Deck" }, noteType: { noteTypeId: "7", noteTypeName: "Basic" }, template: { ordinal: 0, name: "Card 1" }, queue: 2, tags: [], renderedPreview: { renderStatus: "sanitized", frontHtml: `<b>${cardId}</b>`, mediaRefs: [] } } }; }
