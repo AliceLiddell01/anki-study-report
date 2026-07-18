@@ -13,6 +13,8 @@ import math
 import re
 from typing import Any
 
+from .note_intelligence import build_rendered_preview_native_first
+
 
 SEARCH_SCHEMA_VERSION = 1
 MAX_QUERY_LENGTH = 4096
@@ -272,6 +274,8 @@ def project_note_row(col: Any, note: Any) -> dict[str, Any]:
 def project_card_details(col: Any, card: Any) -> dict[str, Any]:
     row = project_card_row(col, card)
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
+    note_type = _note_type(note)
+    raw_fields = list(getattr(note, "fields", []) or [])
     return {
         **row,
         "deck": {"deckId": row["deckId"], "deckName": row["deckName"]},
@@ -279,6 +283,13 @@ def project_card_details(col: Any, card: Any) -> dict[str, Any]:
         "template": {"ordinal": row["templateOrdinal"], "name": row["templateName"]},
         "queue": int(getattr(card, "queue", 0)),
         "tags": _tags(note, limit=MAX_TAGS),
+        "renderedPreview": build_rendered_preview_native_first(
+            col,
+            card.id,
+            note_type,
+            raw_fields,
+            int(getattr(card, "ord", 0)),
+        ),
     }
 
 

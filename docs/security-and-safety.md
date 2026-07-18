@@ -216,10 +216,10 @@ sanitizer, лучше добавить точечную safe allowlist с тес
 опасный класс значений.
 
 Cards preview не использует iframe и не исполняет JavaScript templates.
-`table`, `tiles` и текущий `ankiPreview` rendered path используют
+Cards active Inspector и expanded preview используют
 `AnkiCardShadowPreview` / Shadow DOM host, чтобы CSS карточек не протекал в
-document-level dashboard styles. В `ankiPreview` этот host работает как
-answer-only preview из уже sanitized `renderedPreview.backHtml`. Эти
+document-level dashboard styles. Inspector и expanded modal используют уже
+sanitized `renderedPreview`; эти
 ограничения являются частью security contract, а не только визуальной
 реализации.
 

@@ -108,17 +108,16 @@ screenshots; успешный cloud full gate локально не дублир
 если они не касаются startup/rendering/media/server/package layout. Docker E2E
 дорогой и нужен там, где unit tests не видят реальный Anki Desktop.
 
-Для Cards preview финальный Docker browser smoke должен покрывать screenshots
-`table`, `tiles` и `ankiPreview` в light/dark темах; `table`/`tiles` остаются
-front-only через Shadow DOM, а `ankiPreview` проверяет единственный answer-only
-preview host из `renderedPreview.backHtml` через `AnkiCardShadowPreview`
-(`data-shadow-preview-mode="preview"`, `data-preview-side="answer"`). Perf100
+Для Cards workspace финальный Docker browser smoke должен покрывать canonical
+queue/Inspector в light/dark, expanded preview, 1024 px и APKG fixture. Он
+проверяет один active-item Shadow DOM host, cached expanded modal, keyboard row
+activation, отсутствие legacy modes/checkbox/risk score и exact-ID open. Perf100
 использует tracked APKG fixture, клонирует импортированные cards/notes в Docker
 collection до 100 cards, не создает новую APKG и не вводит virtualization;
 timings сохраняются только как diagnostics.
 
-Обычный strict APKG browser smoke также фиксирует 44 page screenshots, 2 avatar
-menu screenshots, 6 synthetic Cards screenshots и 6 APKG Cards screenshots.
+Обычный strict APKG browser smoke также фиксирует page/avatar screenshots и
+пять canonical Cards workspace screenshots.
 `e2e-artifacts/artifact-manifest.json` должен ссылаться только на существующие
 relative paths; canonical add-on log — `diagnostics/anki_study_report.log`.
 

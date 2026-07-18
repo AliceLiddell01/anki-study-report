@@ -51,7 +51,9 @@ production code/tests
 - C1.4 final pre-closeout Fast CI: run [`29644724894`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644724894) PASS on exact accepted implementation HEAD with exact package artifact `8429718439`;
 - C1.4 real-Anki acceptance: run [`29644836731`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731), `standard/cards`, `verify_restart=true`, source Fast CI `29644724894`, PASS on the same exact SHA with redacted artifact `8429751360`;
 - C1.4 accepted browser proof: confirmed lifecycle, dirty suggestion, bounded validate v2 preview, accessible unsaved-navigation guard and no horizontal overflow; restart preserved revision 2, changed Japanese to `needs_review`, kept Programming `confirmed`, preserved the learning reason and leaked no profile values;
-- C1.5 status: Next, not started;
+- C1.5 status: Implemented, exact-SHA Fast CI and targeted real-Anki verification pending;
+- C1.5 workspace: `#/cards` reads automatic triage v2 (7 days, limit 100), renders one native table queue plus persistent active-item Inspector, and obtains one sanitized preview through Search inspect;
+- C1.5 local gate: canonical `run_full_check.ps1 -SkipDocker` PASS; cloud run IDs are pending;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
@@ -110,7 +112,9 @@ configuration` is complete with the lazy Settings editor, validate
 v2 bounded sample, strict import/export, revision conflict handling, RU/EN and
 real-Anki screenshot assertions. Canonical local checks, exact-SHA Fast CI
 `29644724894` and targeted restart run `29644836731` are accepted on
-`b2e060d5c9676e6dfdbab7309927b854503d3c66`; C1.5 is next and has not started.
+`b2e060d5c9676e6dfdbab7309927b854503d3c66`. C1.5 implementation is complete
+locally; exact-SHA Fast CI and targeted `standard/cards` real-Anki acceptance
+remain pending, so C1.6 is blocked and not started.
 
 C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 

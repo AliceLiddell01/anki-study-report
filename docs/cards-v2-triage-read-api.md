@@ -4,13 +4,13 @@
 
 **Schema:** `2`
 **Endpoint:** `POST /api/triage/query`
-**Stage:** C1.3 additive read/runtime foundation; pre-1.0 until C2 freeze
-**UI:** current `#/cards` still consumes legacy `attentionCards`
+**Stage:** C1.5 canonical read workspace; pre-1.0 until C2 freeze
+**UI:** `#/cards` consumes automatic triage v2 with a bounded 100-item queue
 
 V2 composes bounded learning sources, exact Search worksets and confirmed
 [Inspection Profiles](inspection-profiles-v1.md). It is read-only and does not
-persist triage items, run actions, render full previews, add Search grammar or
-change the current CardsPage.
+persist triage items, run actions or add Search grammar. C1.5 uses Search inspect
+for the active item's sanitized full preview; triage remains the queue source.
 
 ## Transport and request v2
 

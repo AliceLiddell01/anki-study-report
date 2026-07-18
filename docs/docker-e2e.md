@@ -159,8 +159,8 @@ e2e-artifacts/
    ├─ navigation/              avatar menu, light/dark
    ├─ pages/                   current non-Cards routes, light/dark
    └─ cards/
-      ├─ synthetic/            table/tiles/anki-preview, light/dark
-      └─ apkg/                 table/tiles/anki-preview, light/dark
+      ├─ synthetic/            workspace light/dark, expanded and 1024 px
+      └─ apkg/                 canonical workspace at 1024 px
 ```
 
 Источник файла в `package/` фиксируется полем `packageSource` и может быть
@@ -212,7 +212,7 @@ readiness_write_done
 add-on. Если есть import/hook, но нет server/readiness, смотреть report build
 или dashboard server. Если нет профиля, сначала проверять `prefs21.db` и layout.
 
-## Browser smoke modes
+## Browser smoke coverage
 
 Statistics screenshot contract:
 
@@ -229,23 +229,19 @@ clipping, no dock overlap, default deck comparison, Russian user labels,
 console/page/request errors и token absence. После cloud run screenshots нужно
 просмотреть содержательно; одного manifest/count недостаточно.
 
-Cards preview smoke mode-specific:
+Cards workspace smoke проверяет одну native table queue и persistent Inspector:
 
-- `table` и `tiles` проверяют Shadow DOM host
-  `data-testid="anki-card-shadow-preview"` и остаются front-only. В этих
-  режимах нет вложенного вертикального table scroll: страница скроллится
-  обычным page scroll.
-- `ankiPreview` проверяет единственную answer-only секцию
-  `data-testid="anki-preview-answer"`, построенную из
-  `renderedPreview.backHtml` и rendered через `AnkiCardShadowPreview` host
-  `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
-  Отдельный front в этом режиме не дублируется; если `backHtml` отсутствует,
-  ожидается диагностический fallback.
-- Preview не использует iframe. Shadow DOM isolation обязателен для всех
-  текущих rendered modes: `table`, `tiles` и `ankiPreview`; sanitizer не
-  ослабляется, JS templates не исполняются.
-- Browser smoke сохраняет screenshots для `table`, `tiles` и `ankiPreview` в
-  light/dark темах отдельно для synthetic и APKG fixtures. Он также сохраняет
+- automatic triage v2 запрашивается с limit 100; Perf100 доказывает 100 строк;
+- row activation работает мышью и клавиатурой, active row сохраняется;
+- обычный workspace содержит ровно один Shadow DOM preview host;
+- expanded modal находится вне inert/`aria-hidden` application shell,
+  удерживает фокус и переиспользует cached inspect detail;
+- legacy tabs, display modes, risk score и checkbox отсутствуют;
+- exact active card открывается через `open-search-selection`;
+- 1024 px layout не имеет document-level horizontal overflow.
+
+Browser smoke сохраняет workspace light/dark, expanded и 1024 px screenshots
+для synthetic fixture и 1024 px workspace для APKG fixture. Он также сохраняет
   light/dark пары десяти текущих non-Cards routes (включая пять Settings Hub
   pages) и открытого avatar menu. Profile smoke отдельно проверяет synthetic
   identity `E2E`, шесть KPI, activity/recent/decks, сохраняет дату и сортировку,

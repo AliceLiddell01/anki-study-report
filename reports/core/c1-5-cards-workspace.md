@@ -139,12 +139,73 @@ The durable UI contract is
 
 ## Implementation
 
-Pending.
+`#/cards` now reads automatic triage schema v2 for the selected deck scope,
+seven-day period and bounded limit 100. The workspace keeps active item state
+across refresh when possible, aborts superseded requests and applies Search
+inspect responses latest-wins.
+
+The production UI is one native table queue plus a persistent Inspector:
+
+- categorical priority, primary text, reason, bounded evidence, deck and state;
+- filters for priority, reason family, deck and visible text;
+- one active row independent of keyboard focus;
+- one sanitized Shadow DOM preview for the active item only;
+- portal-based expanded preview that reuses the inspected detail;
+- exact-card `open-search-selection` handoff to Anki Browser;
+- explicit loading, unavailable, partial, filtered-empty and profile-review
+  states;
+- no legacy tabs, display switch, `riskScore`, duplicated row previews,
+  checkbox, mutation or resolution loop.
+
+Search inspect card details add the existing bounded `renderedPreview` shape.
+The change is additive under Search inspect schema version 1; preview
+sanitization and media validation remain backend responsibilities.
+
+The real-Anki browser harness now captures workspace light/dark, expanded,
+1024 px and APKG-filtered proof. It checks the 100-row performance contour,
+keyboard activation, one preview host, exact-card open action, portal modal,
+no legacy controls and no horizontal document overflow.
 
 ## Verification evidence
 
-Pending. This section will distinguish local checks, exact-SHA Fast CI,
-targeted real-Anki E2E, screenshots, keyboard acceptance and closeout evidence.
+### Local automated checks
+
+- `python -m compileall -q anki_study_report docker/anki-e2e`: PASS;
+- focused frontend Cards/hook/Search API: 37 PASS;
+- focused Python Search/triage/package/E2E helpers: 65 PASS;
+- Search/localization regression contour: 17 PASS;
+- `node --check docker/anki-e2e/smoke-browser.mjs`: PASS;
+- `pnpm run build:addon`: PASS; 17 JS chunks, 457,930-byte largest/entry
+  chunk, add-on asset copy complete;
+- `.\scripts\run_full_check.ps1 -SkipDocker`: PASS; 52 frontend files / 278
+  tests, 708 Python tests PASS, 4 environment-specific symlink/Bash checks
+  skipped, package build and validation PASS.
+
+The Python run emitted only the known local `.pytest_cache` access warning.
+Generated `__pycache__` directories were removed before the canonical gate.
+
+### Local browser Design/implementation proof
+
+Temporary Chromium screenshots covered 1440 light/dark, expanded preview and
+1024 light. The rebuilt 1024 production bundle measured 509 px queue / 376 px
+Inspector, zero document overflow, nine rows, one active row and one preview
+host. Keyboard Enter activated the next row without moving focus to Inspector;
+Escape closed the portal modal and restored the trigger focus. No screenshot or
+local server fixture is committed.
+
+This is local synthetic/manual browser evidence, not real-Anki acceptance.
+
+### Cloud acceptance
+
+Pending on the implementation/report candidate:
+
+- exact-SHA Fast CI;
+- targeted Full Docker / Anki E2E `standard/cards` with exact Fast CI package
+  and restart verification;
+- documentation-only closeout commit and final exact-SHA Fast CI.
+
+Until those gates pass, the truthful state is `C1.5 — Implemented,
+verification pending`; `C1.6 — Blocked`.
 
 ## Scope boundary
 
@@ -152,4 +213,3 @@ C1.5 remains read-only. It does not implement C1.6 selection, Safe Action
 mutation, recheck/resolution, PR/merge/release/deployment, AnkiWeb publication,
 remote telemetry content, a duplicate preview endpoint or a hidden rejected
 display mode.
-

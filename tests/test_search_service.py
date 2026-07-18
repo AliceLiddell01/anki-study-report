@@ -279,13 +279,17 @@ def test_plain_text_projection_removes_active_markup_media_and_cloze():
     assert result["details"]["fields"][0]["value"] == "Hello world & ok"
 
 
-def test_card_and_note_inspect_return_separate_bounded_models():
+def test_card_and_note_inspect_return_separate_bounded_models(monkeypatch):
     col = FakeCollection([1])
+    preview_calls = []
+    monkeypatch.setattr(search, "build_rendered_preview_native_first", lambda collection, card_id, model, fields, card_ord: preview_calls.append((collection, card_id, model["name"], fields, card_ord)) or {"renderStatus": "sanitized", "frontHtml": "<b>safe</b>", "mediaRefs": []})
     card = search.execute_search_inspect(col, {"mode": "cards", "cardId": "1"})
     note = search.execute_search_inspect(col, {"mode": "notes", "noteId": "1"})
     assert card["mode"] == "cards"
     assert card["details"]["cardId"] == "1"
     assert card["details"]["deck"] == {"deckId": "3", "deckName": "Languages::Japanese"}
+    assert card["details"]["renderedPreview"] == {"renderStatus": "sanitized", "frontHtml": "<b>safe</b>", "mediaRefs": []}
+    assert preview_calls == [(col, 1, "Basic", ["Front", "Back"], 0)]
     assert "fields" not in card["details"]
     assert note["mode"] == "notes"
     assert note["details"]["noteId"] == "1"

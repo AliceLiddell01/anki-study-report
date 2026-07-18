@@ -62,6 +62,11 @@ action labels, temporary bury explanation и mappings stable backend result
 codes. Коды `cards.suspended`, `notes.tags_added` и другие не являются готовым
 UI-текстом и всегда преобразуются в RU/EN key.
 
+Canonical Cards workspace использует `pages.cards.workspace.*`: summary,
+filters, queue, Inspector, preview, reason/evidence mappings и read-only action
+status. Имена колод, типов записей, шаблонов, содержимое карточек и IDs всегда
+остаются пользовательскими данными и не переводятся.
+
 ## UI-copy и данные
 
 Переводятся product-owned headings, labels, buttons, hints, empty/error states,

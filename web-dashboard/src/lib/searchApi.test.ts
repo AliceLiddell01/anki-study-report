@@ -57,6 +57,18 @@ const cardDetails = {
   template: { ordinal: 0, name: "Card 1" },
   queue: 2,
   tags: ["jp"],
+  renderedPreview: {
+    renderStatus: "sanitized",
+    frontHtml: "<b>日本語</b>",
+    backHtml: "<b>Japanese</b>",
+    frontPlainText: "日本語",
+    backPlainText: "Japanese",
+    css: "b { font-weight: 700; }",
+    mediaRefs: [],
+    cardOrd: 0,
+    cardId: 1001,
+    renderSource: "anki_native",
+  },
 };
 
 const note = {
@@ -200,6 +212,7 @@ describe("search API foundation", () => {
     ["malformed nested template", { ...cardDetails, template: { ordinal: 0 } }],
     ["fractional queue", { ...cardDetails, queue: 2.5 }],
     ["malformed tags", { ...cardDetails, tags: [1] }],
+    ["malformed rendered preview", { ...cardDetails, renderedPreview: { renderStatus: "raw", frontHtml: "<script>x</script>" } }],
   ])("rejects malformed card details: %s", async (_label, details) => {
     vi.stubGlobal("fetch", successResponse({ schemaVersion: 1, mode: "cards", details }));
     await expect(fetchSearchInspect({ mode: "cards", cardId: "1001" })).rejects.toMatchObject({ code: "invalid_search_response" });

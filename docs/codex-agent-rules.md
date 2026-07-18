@@ -68,9 +68,9 @@ git ls-files --others --exclude-standard
 - Не открывать dashboard server наружу.
 - Не логировать полный token-bearing URL.
 - Не откатывать чужие изменения без прямой просьбы.
-- Не превращать Cards preview в iframe/JS execution surface. `table`/`tiles`
-  проверять как front-only Shadow DOM, `ankiPreview` - как answer-only
-  `AnkiCardShadowPreview` / Shadow DOM host из `renderedPreview.backHtml`.
+- Не превращать Cards preview в iframe/JS execution surface. Проверять один
+  active-item `AnkiCardShadowPreview` / Shadow DOM host; expanded modal должен
+  переиспользовать тот же sanitized Search inspect detail.
 - Не добавлять новый пользовательский UI-текст напрямую в React components или
   helpers вне locale resources. Сначала добавить semantic key с parity во все
   поддерживаемые локали, затем использовать `t()`; payload/user/technical data

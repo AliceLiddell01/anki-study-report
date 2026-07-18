@@ -44,7 +44,8 @@ describe("representative localized pages", () => {
     expect(statistics).toContain("Personal analytics center");
     expect(statistics).toContain("Key metrics");
     expect(cards).toContain("Cards");
-    expect(cards).toContain("Need attention");
+    expect(cards).toContain("Cards needing attention");
+    expect(cards).toContain("Attention queue");
   });
 
   it("renders English copy on Activity, Decks, Profile, Tools, and FSRS", async () => {

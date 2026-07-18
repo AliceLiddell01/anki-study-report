@@ -318,6 +318,10 @@ fields и не публикует raw revlog/card/note data. Secondary empty-bod
 
 ## Card-level contract
 
+Canonical Cards workspace получает bounded queue из `POST /api/triage/query`.
+Legacy `attentionCards` остаётся совместимым report payload для других
+потребителей, но `CardsPage` его не читает.
+
 Карточки внимания приходят в canonical ключе:
 
 ```text
@@ -367,6 +371,11 @@ fallbackReason/reason
 
 HTML/CSS/media должны проходить sanitizer. Нельзя отдавать произвольные
 `file:`, `javascript:` или опасные inline styles в dashboard.
+
+`POST /api/search/inspect` аддитивно возвращает `renderedPreview` в каждом
+`cardDetails` item. Поле использует тот же sanitized preview contract; schema
+version Search inspect остаётся `1`, поэтому старые клиенты могут игнорировать
+добавленное поле. Cards запрашивает detail только для active item.
 
 ## Media preview
 

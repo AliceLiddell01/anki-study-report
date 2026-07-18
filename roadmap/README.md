@@ -35,7 +35,7 @@ C1 Cards v2 / Problem Triage
 
 | Track | Роль | Текущий статус | Не блокирует |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | единственный critical path add-on | `C1` Next | — |
+| [Core `C`](core/README.md) | единственный critical path add-on | `C1.5` verification pending | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |

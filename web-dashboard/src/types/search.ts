@@ -105,6 +105,7 @@ export interface SearchCardDetails extends SearchCardRow {
   template: { ordinal: number; name: string };
   queue: number;
   tags: string[];
+  renderedPreview: RenderedCardPreview;
 }
 
 export interface SearchNoteDetails extends SearchNoteRow {
@@ -123,3 +124,4 @@ export interface SearchInspectResponse<M extends SearchMode = SearchMode> {
   details: M extends "cards" ? SearchCardDetails : SearchNoteDetails;
   requestId?: string;
 }
+import type { RenderedCardPreview } from "./report";

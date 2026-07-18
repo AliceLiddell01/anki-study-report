@@ -115,77 +115,10 @@ try {
   let shadowDetails = null;
   let apkgDetails = null;
   if (shouldRunScope(scope, "cards")) {
-  const tableLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "table", "light");
-  await capture(page, "table", "light", tableLightScreenshot);
-  shadowDetails = await inspectShadowPreview(page, "table");
-  if (!shadowDetails.exists) {
-    throw new Error("Shadow DOM preview host for fixture card was not found.");
-  }
-  const strictSyntheticFixtureIncomplete =
-    !shadowDetails.hasOpenShadowRoot ||
-    !shadowDetails.hasStyle ||
-    !shadowDetails.hasCard ||
-    shadowDetails.imgCount !== 2 ||
-    shadowDetails.audioElementCount < 1 ||
-    !shadowDetails.hasReplayButton ||
-    shadowDetails.hasVisibleNativeAudioControls ||
-    !shadowDetails.imagesLoaded ||
-    shadowDetails.renderSource !== "anki_native" ||
-    shadowDetails.hasRawAnkiPlayMarker ||
-    shadowDetails.hasRawSoundMarker ||
-    !shadowDetails.audioBeforeExample ||
-    !shadowDetails.hasWordFocus ||
-    !shadowDetails.hasMainWord ||
-    !shadowDetails.hasCardContent ||
-    !shadowDetails.wordFocusColorMatchesExpected ||
-    shadowDetails.wordFocusColorIsOldBlue ||
-    !shadowDetails.hasInlineColor;
-  if (!perf100Enabled && strictSyntheticFixtureIncomplete) {
-    throw new Error(`Shadow DOM preview incomplete: ${JSON.stringify(shadowDetails)}`);
-  }
-  if (perf100Enabled) {
-    assertBrowser(shadowDetails.hasOpenShadowRoot, "Perf100 table preview has an open shadow root.");
-    assertBrowser(shadowDetails.hasCard, "Perf100 table preview has a rendered card.");
-    assertBrowser(shadowDetails.renderSource === "anki_native", "Perf100 table preview uses native render.");
-    assertBrowser(!shadowDetails.hasRawAnkiPlayMarker && !shadowDetails.hasRawSoundMarker, "Perf100 table preview has no raw media markers.");
-  }
-  assertFrontOnlyMode(shadowDetails, "table");
-  visualStates.push({ mode: "table", theme: "light", screenshot: relativeArtifactPath(artifactPaths, tableLightScreenshot), details: shadowDetails });
-
-  const shadowDumpPath = artifactPaths.htmlFile("cards", `synthetic-shadow-dom-${label}.html`);
-  await ensureArtifactParent(shadowDumpPath);
-  await fs.writeFile(shadowDumpPath, redactArtifact(shadowDetails.html), "utf8");
-  const tableDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "table", "dark");
-  await capture(page, "table", "dark", tableDarkScreenshot);
-  const tableDarkDetails = await inspectShadowPreview(page, "table");
-  assertFrontOnlyMode(tableDarkDetails, "table");
-  visualStates.push({ mode: "table", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, tableDarkScreenshot), details: tableDarkDetails });
-
-  const tilesLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "tiles", "light");
-  await capture(page, "tiles", "light", tilesLightScreenshot);
-  const tilesLightDetails = await inspectShadowPreview(page, "tile");
-  assertFrontOnlyMode(tilesLightDetails, "tile");
-  visualStates.push({ mode: "tiles", theme: "light", screenshot: relativeArtifactPath(artifactPaths, tilesLightScreenshot), details: tilesLightDetails });
-
-  const tilesDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "tiles", "dark");
-  await capture(page, "tiles", "dark", tilesDarkScreenshot);
-  const tilesDarkDetails = await inspectShadowPreview(page, "tile");
-  assertFrontOnlyMode(tilesDarkDetails, "tile");
-  visualStates.push({ mode: "tiles", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, tilesDarkScreenshot), details: tilesDarkDetails });
-
-  const previewLightScreenshot = artifactPaths.cardsScreenshot("synthetic", "ankiPreview", "light");
-  await capture(page, "ankiPreview", "light", previewLightScreenshot);
-  const ankiPreviewLightDetails = await inspectAnkiPreview(page);
-  assertAnkiPreviewAnswerOnly(ankiPreviewLightDetails, "light");
-  visualStates.push({ mode: "ankiPreview", theme: "light", screenshot: relativeArtifactPath(artifactPaths, previewLightScreenshot), details: ankiPreviewLightDetails });
-
-  const previewDarkScreenshot = artifactPaths.cardsScreenshot("synthetic", "ankiPreview", "dark");
-  await capture(page, "ankiPreview", "dark", previewDarkScreenshot);
-  const ankiPreviewDarkDetails = await inspectAnkiPreview(page);
-  assertAnkiPreviewAnswerOnly(ankiPreviewDarkDetails, "dark");
-  visualStates.push({ mode: "ankiPreview", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, previewDarkScreenshot), details: ankiPreviewDarkDetails });
-
-  apkgDetails = await assertApkgBrowserIfEnabled(page);
+    const cardsV2Details = await assertCardsV2Workspace(page, perf100Enabled);
+    shadowDetails = cardsV2Details.preview;
+    apkgDetails = cardsV2Details.apkg;
+    visualStates.push(...cardsV2Details.visualStates);
   }
   const profileDetails = shouldRunScope(scope, "global") ? await assertProfileMvp(page) : null;
   const themeDetails = await assertGlobalThemeDock(page);
@@ -1877,6 +1810,125 @@ function colorLuminance(value) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
+async function assertCardsV2Workspace(page, perf100Enabled) {
+  const inspectRequests = [];
+  const onInspectRequest = (request) => {
+    if (request.url().includes("/api/search/inspect")) {
+      let cardId = "";
+      try { cardId = JSON.parse(request.postData() || "{}").cardId || ""; } catch {}
+      inspectRequests.push(cardId);
+    }
+  };
+  page.on("request", onInspectRequest);
+  try {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const beforeInitial = inspectRequests.length;
+    await prepareCardsPage(page, "workspace", "light");
+    await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+    const initial = await inspectCardsV2Layout(page);
+    assertBrowser(initial.rowCount > 0, "Cards v2 renders canonical triage rows.");
+    assertBrowser(initial.previewHostCount === 1, "Cards v2 renders one active-card preview only.");
+    assertBrowser(initial.inspectorCount === 1, "Cards v2 renders one persistent Inspector.");
+    assertBrowser(initial.legacyModeControlCount === 0, "Cards v2 removes legacy table/tiles/Anki-preview modes.");
+    assertBrowser(initial.checkboxCount === 0, "Cards v2 does not render a dead C1.5 bulk checkbox.");
+    assertBrowser(initial.riskScoreTextCount === 0, "Cards v2 does not expose legacy numeric risk scores.");
+    assertBrowser(inspectRequests.length - beforeInitial === 1, "Cards v2 requests Search inspect only for the initial active card.");
+    if (perf100Enabled) assertBrowser(initial.rowCount === 100, `Cards v2 bounded performance queue renders 100 rows: ${initial.rowCount}`);
+
+    const lightPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "light");
+    await ensureArtifactParent(lightPath); await page.screenshot({ path: lightPath, fullPage: true });
+    const visualStates = [{ mode: "workspace", theme: "light", screenshot: relativeArtifactPath(artifactPaths, lightPath), details: initial }];
+
+    if (initial.rowCount > 1) {
+      const second = page.locator(".cards-v2-row-activate").nth(1);
+      await second.focus();
+      await second.press("Enter");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length === 1, undefined, { timeout: 60000 });
+      await page.waitForFunction((count) => performance.getEntriesByType("resource").filter((entry) => entry.name.includes("/api/search/inspect")).length >= count, beforeInitial + 2, { timeout: 60000 }).catch(() => undefined);
+      assertBrowser(inspectRequests.length - beforeInitial === 2, "Keyboard row activation requests exactly one new active-card inspect.");
+      const activeRows = await page.locator('tr[aria-current="true"]').count();
+      assertBrowser(activeRows === 1, "Keyboard activation leaves exactly one current row.");
+    }
+
+    const expand = page.getByRole("button", { name: "Развернуть превью" });
+    await expand.click();
+    await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "visible", timeout: 15000 });
+    const modalState = await page.evaluate(() => {
+      const shell = document.getElementById("dashboard-app-shell");
+      const modal = document.querySelector('[data-testid="cards-preview-modal"]');
+      return { shellInert: Boolean(shell?.inert), shellAriaHidden: shell?.getAttribute("aria-hidden") === "true", modalOutsideShell: Boolean(modal && shell && !shell.contains(modal)), dialogCount: document.querySelectorAll('[role="dialog"]').length };
+    });
+    assertBrowser((modalState.shellInert || modalState.shellAriaHidden) && modalState.modalOutsideShell && modalState.dialogCount === 1, "Expanded preview portals outside the inert app shell.");
+    const expandedPath = artifactPaths.cardsScreenshot("synthetic", "expanded", "light");
+    await ensureArtifactParent(expandedPath); await page.screenshot({ path: expandedPath, fullPage: true });
+    visualStates.push({ mode: "expanded", theme: "light", screenshot: relativeArtifactPath(artifactPaths, expandedPath), details: modalState });
+    await page.keyboard.press("Escape");
+    await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "hidden", timeout: 15000 });
+
+    const open = page.getByRole("button", { name: "Открыть в Anki" });
+    await open.focus(); await page.keyboard.press("Enter");
+    await page.getByText("Запрос на открытие Anki Browser принят. Проблема остаётся активной.").waitFor({ state: "visible", timeout: 15000 });
+
+    await prepareCardsPage(page, "workspace", "dark");
+    const darkPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "dark");
+    await ensureArtifactParent(darkPath); await page.screenshot({ path: darkPath, fullPage: true });
+    const dark = await inspectCardsV2Layout(page);
+    visualStates.push({ mode: "workspace", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, darkPath), details: dark });
+
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await prepareCardsPage(page, "workspace-1024", "light");
+    const narrow = await inspectCardsV2Layout(page);
+    assertBrowser(narrow.documentOverflow <= 1, `Cards v2 1024 layout has no horizontal document overflow: ${narrow.documentOverflow}`);
+    assertBrowser(narrow.queueWidth >= 500 && narrow.inspectorWidth >= 300, `Cards v2 1024 split remains readable: queue=${narrow.queueWidth}, inspector=${narrow.inspectorWidth}`);
+    const narrowPath = artifactPaths.cardsScreenshot("synthetic", "workspace-1024", "light");
+    await ensureArtifactParent(narrowPath); await page.screenshot({ path: narrowPath, fullPage: true });
+    visualStates.push({ mode: "workspace-1024", theme: "light", screenshot: relativeArtifactPath(artifactPaths, narrowPath), details: narrow });
+
+    const importSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-import-summary.json"));
+    const apkg = { enabled: Boolean(importSummary.enabled), imported: Boolean(importSummary.imported), cardCount: Number(importSummary.cardCount || 0), activePreviewOnly: narrow.previewHostCount === 1 };
+    if (apkg.enabled) {
+      assertBrowser(apkg.imported && apkg.cardCount > 0, "Cards v2 APKG fixture was imported.");
+      const apkgDeckName = (importSummary.deckNames || [])[0];
+      assertBrowser(Boolean(apkgDeckName), "Cards v2 APKG fixture exposes a deck name.");
+      const deckFilter = page.getByLabel("Колода", { exact: true });
+      await deckFilter.selectOption({ label: apkgDeckName });
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-triage-row"]').length > 0, undefined, { timeout: 60000 });
+      await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+      const apkgLayout = await inspectCardsV2Layout(page);
+      assertBrowser(apkgLayout.previewHostCount === 1, "Cards v2 APKG deck keeps one active preview.");
+      const apkgPath = artifactPaths.cardsScreenshot("apkg", "workspace", "light");
+      await ensureArtifactParent(apkgPath); await page.screenshot({ path: apkgPath, fullPage: true });
+      visualStates.push({ mode: "workspace", theme: "light", fixture: "apkg", deckName: apkgDeckName, screenshot: relativeArtifactPath(artifactPaths, apkgPath), details: apkgLayout });
+    }
+
+    await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+    return { preview: { ...initial, activePreviewOnly: true, inspectRequestCount: inspectRequests.length }, apkg, visualStates };
+  } finally {
+    page.off("request", onInspectRequest);
+  }
+}
+
+async function inspectCardsV2Layout(page) {
+  return page.evaluate(() => {
+    const queue = document.querySelector(".cards-v2-queue")?.getBoundingClientRect();
+    const inspector = document.querySelector(".cards-v2-inspector")?.getBoundingClientRect();
+    const bodyText = document.body.innerText || "";
+    return {
+      rowCount: document.querySelectorAll('[data-testid="cards-triage-row"]').length,
+      inspectorCount: document.querySelectorAll('[data-testid="cards-inspector"]').length,
+      previewHostCount: document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length,
+      checkboxCount: document.querySelectorAll('input[type="checkbox"]').length,
+      legacyModeControlCount: [...document.querySelectorAll("button")].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,
+      riskScoreTextCount: (bodyText.match(/Риск\s+\d+|risk\s+\d+/gi) || []).length,
+      queueWidth: Math.round(queue?.width || 0),
+      inspectorWidth: Math.round(inspector?.width || 0),
+      documentOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      pageHeight: document.documentElement.scrollHeight,
+    };
+  });
+}
+
 async function captureApkg(page, mode, theme, filePath, deckName, deckFilterExpectation) {
   await prepareCardsPage(page, mode, theme);
   await applyApkgDeckFilter(page, deckName, deckFilterExpectation);
@@ -1893,12 +1945,11 @@ async function captureApkg(page, mode, theme, filePath, deckName, deckFilterExpe
 async function prepareCardsPage(page, mode, theme) {
   await page.goto(cardsUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.evaluate(
-    ({ mode: selectedMode, theme: selectedTheme }) => {
-      window.localStorage.setItem("anki-study-report.cards.displayMode", selectedMode);
+    ({ theme: selectedTheme }) => {
       window.localStorage.setItem("anki-study-report-theme", selectedTheme);
       document.documentElement.dataset.theme = selectedTheme;
     },
-    { mode, theme },
+    { theme },
   );
   await page.reload({ waitUntil: "networkidle", timeout: 60000 });
   await waitForCardsPageReady(page);
@@ -1936,20 +1987,14 @@ async function applyApkgDeckFilter(page, deckName, expectation) {
 }
 
 async function waitForCardsPageReady(page) {
-  await page.getByRole("heading", { name: "Карточки" }).waitFor({ timeout: 60000 });
+  await page.getByRole("heading", { name: "Карточки, требующие внимания" }).waitFor({ timeout: 60000 });
   await page.waitForFunction(
-    () => !/Проверяю локальный API дашборда|Отчёт ещё не построен|Локальный API дашборда не вернул отчёт/.test(document.body.innerText),
+    () => !/Загружаем очередь внимания|Не удалось загрузить карточки|Карточки недоступны/.test(document.body.innerText),
     undefined,
     { timeout: 60000 },
   );
-  await page.waitForFunction(
-    () =>
-      document.body.innerText.includes("要望") ||
-      document.documentElement.innerHTML.includes("要望") ||
-      document.documentElement.innerHTML.includes("%E8%A6%81"),
-    undefined,
-    { timeout: 60000 },
-  );
+  await page.locator('[data-testid="cards-triage-table"]').waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="cards-inspector"]').waitFor({ state: "visible", timeout: 60000 });
   const errorText = await visibleErrorText(page);
   if (errorText) {
     throw new Error(`Cards page shows visible error: ${errorText}`);
@@ -3244,9 +3289,10 @@ function assertBoundedSearchResult(result, mode) {
 }
 
 function assertCompleteCardDetails(details) {
-  const required = ["cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName", "templateOrdinal", "templateName", "primaryText", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary", "deck", "noteType", "template", "queue", "tags"];
+  const required = ["cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName", "templateOrdinal", "templateName", "primaryText", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary", "deck", "noteType", "template", "queue", "tags", "renderedPreview"];
   assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Card inspect returns every declared detail field.");
   assertBrowser(details?.deck?.deckId === details?.deckId && details?.noteType?.noteTypeId === details?.noteTypeId, "Card inspect nested identities match the row projection.");
+  assertBrowser(["available", "sanitized", "unavailable", "fallback", "error"].includes(details?.renderedPreview?.renderStatus), "Card inspect returns a bounded safe preview status.");
 }
 
 function assertCompleteNoteDetails(details) {

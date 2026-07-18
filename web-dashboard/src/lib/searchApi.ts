@@ -176,7 +176,23 @@ function isSearchCardDetails(value: unknown): boolean {
     && integer(value.template.ordinal)
     && typeof value.template.name === "string"
     && integer(value.queue)
-    && stringArray(value.tags);
+    && stringArray(value.tags)
+    && isRenderedPreview(value.renderedPreview);
+}
+
+function isRenderedPreview(value: unknown): boolean {
+  if (!isRecord(value) || !["available", "unavailable", "sanitized", "fallback", "error"].includes(String(value.renderStatus))) return false;
+  const optionalStrings = ["frontHtml", "backHtml", "frontPlainText", "backPlainText", "css", "renderSource", "fallbackReason", "reason"];
+  if (!optionalStrings.every((key) => value[key] === undefined || typeof value[key] === "string")) return false;
+  if (value.cardOrd !== undefined && (!integer(value.cardOrd) || value.cardOrd < 0)) return false;
+  if (value.cardId !== undefined && (!integer(value.cardId) || value.cardId < 0)) return false;
+  if (value.mediaRefs !== undefined && (!Array.isArray(value.mediaRefs) || !value.mediaRefs.every((item) =>
+    isRecord(item)
+    && typeof item.name === "string"
+    && (item.type === "image" || item.type === "audio")
+    && typeof item.url === "string"
+  ))) return false;
+  return true;
 }
 
 function isSearchNoteDetails(value: unknown): boolean {

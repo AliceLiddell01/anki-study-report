@@ -375,8 +375,8 @@ ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compos
 11. Run `smoke-api.py`.
 12. Run `smoke-browser.mjs`, execute scope-filtered serial checks and a bounded
     read-only page capture queue, and save deterministic screenshots.
-    `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
-    `AnkiCardShadowPreview` host rendered from `backHtml`.
+    Cards checks one active `AnkiCardShadowPreview`; expanded view reuses the
+    same inspected detail without another request.
 13. For `full` (or explicit restart), stop and start Anki with the same profile.
 14. Wait for restart readiness and rerun API smoke.
 15. Finalize phase/resource/performance reports and validate manifest v2.
@@ -411,7 +411,7 @@ e2e-artifacts/
 
 Each page and Cards leaf contains deterministic `light.png` and `dark.png`
 files. A strict APKG run produces 30 page screenshots, 2 navigation screenshots,
-6 synthetic Cards screenshots and 6 APKG Cards screenshots. Browser failures
+4 synthetic Cards screenshots and 1 APKG Cards screenshot. Browser failures
 write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
 machine-readable summaries under `reports/`, and console logs under
 `diagnostics/`.

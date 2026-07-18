@@ -2,16 +2,16 @@
 
 ## Status and scope
 
-**Status:** Accepted product contract; Inspection Profile runtime completed in `C1.3`
+**Status:** Accepted product contract; canonical workspace implemented in `C1.5`
 **Branch:** `core`
-**Production status:** C1.2 adds an additive read foundation; current CardsPage remains unchanged
+**Production status:** `#/cards` consumes canonical triage v2 through a compact queue and persistent Inspector
 
 Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
 and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
 
-This contract defines the future `#/cards` workflow. Endpoint/payload/database/class design, final ARIA roles, Inspection Profile schema/editor and pixel-perfect UI are deferred. Evidence includes current code/tests/contracts, all 12 original pre-change screenshots in `cards.zip`, official Anki/W3C documentation, and limited queue-to-detail patterns from Linear and Sentry. Assignment, snooze/archive, remote collaboration and manual resolve are not adopted.
+This contract defines the `#/cards` workflow. C1.5 resolves the queue/Inspector layout and accessibility behavior in [`cards-v2-workspace-ui.md`](cards-v2-workspace-ui.md). Assignment, snooze/archive, remote collaboration and manual resolve are not adopted.
 
 ## User problem
 
@@ -29,7 +29,7 @@ Happy path:
 
 1. Open `Требуют внимания / Requires attention`.
 2. Scan priority, primary reason and short evidence.
-3. Activate a row; Inspector opens without changing bulk selection.
+3. Activate a row; Inspector opens without moving keyboard focus.
 4. Inspect safe preview, all reasons and recommended next step.
 5. Run an existing Safe Action or open Anki Browser.
 6. See `Ожидает перепроверки / Awaiting recheck`.
@@ -144,7 +144,9 @@ Always-visible filters: text, reason family, priority, deck, sort. Advanced: exa
 
 ## Queue row
 
-Required: checkbox, compact front/primary text, deck, priority, primary reason, additional-reason count, short evidence, relevant card state, and source when provenance matters.
+Required in C1.5: compact front/primary text, deck, categorical priority,
+primary reason, additional-reason count, short evidence and relevant card state.
+The checkbox is intentionally absent until C1.6 owns bounded bulk actions.
 
 Excluded from scan path: full answer preview, template catalog, opaque score, every metric, repeated query text and several always-visible actions. Row activation opens Inspector; checkbox changes bulk selection only. A quick row action is allowed only after usability/accessibility evidence.
 
@@ -198,9 +200,14 @@ Mutation success does not prove resolution. Native edits make evidence potential
 
 ## Keyboard and accessibility contract
 
-Focus, active Inspector item and bulk selection are independent.
+Focus and the active Inspector item are independent in C1.5. Future C1.6 bulk
+selection must become a third independent state rather than reuse either one.
 
-Tab order covers filters, queue, Inspector and contextual toolbar. Activation and checkbox selection do not silently affect each other. Escape closes narrow drawer and returns focus. Refresh/removal returns focus to same or nearest surviving row. Mutation/recheck results use status/alert announcements. Filters have persistent labels/state; bulk toolbar announces selection count.
+Tab order covers filters, queue and Inspector. Row activation does not move
+focus. Escape closes expanded preview and returns focus. Refresh keeps the
+active item when it survives and otherwise chooses the first inspectable row.
+Filters have persistent labels/state. Mutation, recheck, checkbox selection and
+bulk toolbar semantics are deferred to C1.6.
 
 Do not assume `listbox`: options cannot accessibly contain required links/buttons/checkboxes. Native table, structured list and grid remain prototype alternatives; grid requires a complete composite focus model. Final roles are deferred to keyboard/screen-reader testing.
 

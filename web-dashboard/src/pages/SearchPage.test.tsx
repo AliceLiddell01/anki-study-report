@@ -336,6 +336,7 @@ describe("Search workspace", () => {
         return success({ schemaVersion: 1, mode: "cards", details: {
           ...card, deck: { deckId: "3", deckName: "Japanese" }, noteType: { noteTypeId: "7", noteTypeName: "Basic" },
           template: { ordinal: 0, name: "Card 1" }, queue: 2, tags: ["jp"],
+          renderedPreview: { renderStatus: "available", frontHtml: "<div>日本語</div>", frontPlainText: "日本語", mediaRefs: [] },
         }, requestId: `inspect-${inspectCalls}` });
       }
       if (String(input).includes("/api/entities/cards/actions")) return entitySuccess();
