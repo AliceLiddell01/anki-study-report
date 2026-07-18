@@ -14,6 +14,7 @@ import re
 import time
 from typing import Any
 
+from .card_display_identity import unavailable_card_display_identity
 from .inspection_profile_service import (
     evaluate_profiles_for_triage,
     load_exact_inspection_candidates,
@@ -22,7 +23,7 @@ from .metrics import ATTENTION_CARD_LIMIT, collect_triage_candidates_with_status
 from .search_service import resolve_card_rows, safe_plain_text
 
 
-TRIAGE_SCHEMA_VERSION = 2
+TRIAGE_SCHEMA_VERSION = 3
 AUTOMATIC_RESULT_LIMIT = ATTENTION_CARD_LIMIT
 SEARCH_WORKSET_LIMIT = 200
 SIGNAL_RESULT_LIMIT = 50
@@ -73,7 +74,7 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
     errors = {str(key): "Unexpected field." for key in raw if key not in allowed}
 
     if raw.get("schemaVersion") != TRIAGE_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
-        errors["schemaVersion"] = "Expected schemaVersion 2."
+        errors["schemaVersion"] = "Expected schemaVersion 3."
     if dataset not in DATASETS:
         errors["dataset"] = "Expected automatic or search_workset."
 
@@ -116,7 +117,7 @@ def execute_triage_query(
     profile_store_snapshot: dict[str, Any] | None = None,
     generated_at_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Execute bounded source reads at the collection boundary and project v2."""
+    """Execute bounded source reads at the collection boundary and project v3."""
 
     request = normalize_triage_query_request(raw)
     scope = request["scope"]
@@ -586,6 +587,7 @@ def _triage_item(
         (["search_workset"] if dataset == "search_workset" else [])
         + [source for reason in reasons for source in reason["sources"]]
     )
+    display = _resolved_display_identity(summary)
     return {
         "itemId": f"card:{card_id}",
         "availability": "available" if available else "missing",
@@ -603,7 +605,7 @@ def _triage_item(
             "ordinal": template_ordinal,
             "name": safe_plain_text(summary.get("templateName") or fallback.get("cardTemplateName") or "", max_length=160),
         },
-        "primaryText": safe_plain_text(summary.get("primaryText") or fallback.get("frontPreview") or "", max_length=240),
+        **display,
         "priority": priority,
         "primaryReasonCode": primary_reason,
         "reasons": reasons,
@@ -616,6 +618,31 @@ def _triage_item(
         },
         "inspect": {"mode": "cards", "cardId": str(card_id)} if available else None,
     }
+
+
+def _resolved_display_identity(summary: dict[str, Any]) -> dict[str, object]:
+    text = summary.get("displayText")
+    source = summary.get("displaySource")
+    status = summary.get("displayStatus")
+    truncated = summary.get("displayTruncated")
+    coherent = (
+        isinstance(text, str)
+        and len(text) <= 240
+        and isinstance(truncated, bool)
+        and (
+            (status == "available" and source in {"browser_question", "reviewer_front"} and bool(text))
+            or (status == "media_only" and source in {"browser_question", "reviewer_front"} and text == "" and truncated is False)
+            or (status == "unavailable" and source == "none" and text == "" and truncated is False)
+        )
+    )
+    if coherent:
+        return {
+            "displayText": text,
+            "displaySource": source,
+            "displayStatus": status,
+            "displayTruncated": truncated,
+        }
+    return unavailable_card_display_identity().to_wire()
 
 
 def _response_status(dataset: str, source_status: dict[str, dict[str, Any]]) -> str:
