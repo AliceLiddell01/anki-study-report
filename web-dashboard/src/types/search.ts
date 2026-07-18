@@ -1,6 +1,17 @@
+import type { RenderedCardPreview } from "./report";
+
 export type SearchMode = "cards" | "notes";
 export type SearchSortDirection = "asc" | "desc";
 export type SearchCardState = "new" | "learning" | "review" | "due" | "suspended" | "buried";
+export type CardDisplaySource = "browser_question" | "reviewer_front" | "none";
+export type CardDisplayStatus = "available" | "media_only" | "unavailable";
+
+export interface CardDisplayIdentity {
+  displayText: string;
+  displaySource: CardDisplaySource;
+  displayStatus: CardDisplayStatus;
+  displayTruncated: boolean;
+}
 
 export type SearchFilter =
   | { type: "deck"; deckId: string }
@@ -10,6 +21,7 @@ export type SearchFilter =
   | { type: "flag"; flag: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 };
 
 export interface SearchQueryRequest {
+  schemaVersion: 2;
   mode: SearchMode;
   query: string;
   filters: SearchFilter[];
@@ -20,8 +32,8 @@ export interface SearchQueryRequest {
 }
 
 export type SearchInspectRequest =
-  | { mode: "cards"; cardId: string; noteId?: never; requestId?: string }
-  | { mode: "notes"; noteId: string; cardId?: never; requestId?: string };
+  | { schemaVersion: 2; mode: "cards"; cardId: string; noteId?: never; requestId?: string }
+  | { schemaVersion: 2; mode: "notes"; noteId: string; cardId?: never; requestId?: string };
 
 export interface SearchMetadataRequest {
   kind: "metadata";
@@ -54,7 +66,7 @@ export interface SearchDeckSummary {
   deckName: string;
 }
 
-export interface SearchCardRow {
+export interface SearchCardRow extends CardDisplayIdentity {
   cardId: string;
   noteId: string;
   deckId: string;
@@ -63,7 +75,6 @@ export interface SearchCardRow {
   noteTypeName: string;
   templateOrdinal: number;
   templateName: string;
-  primaryText: string;
   state: SearchCardState;
   due: number;
   interval: number;
@@ -84,7 +95,7 @@ export interface SearchNoteRow {
 }
 
 export interface SearchQueryResponse<M extends SearchMode = SearchMode> {
-  schemaVersion: 1;
+  schemaVersion: 2;
   mode: M;
   items: M extends "cards" ? SearchCardRow[] : SearchNoteRow[];
   page: number;
@@ -119,9 +130,8 @@ export interface SearchNoteDetails extends SearchNoteRow {
 }
 
 export interface SearchInspectResponse<M extends SearchMode = SearchMode> {
-  schemaVersion: 1;
+  schemaVersion: 2;
   mode: M;
   details: M extends "cards" ? SearchCardDetails : SearchNoteDetails;
   requestId?: string;
 }
-import type { RenderedCardPreview } from "./report";
