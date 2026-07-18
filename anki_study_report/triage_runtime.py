@@ -24,6 +24,7 @@ def run_triage_query_sync(
     payload: object,
     *,
     signal_provider: Callable[[], list[dict[str, Any]]] | None = None,
+    profile_store_provider: Callable[[], dict[str, Any]] | None = None,
     timeout_seconds: float = TRIAGE_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     try:
@@ -32,6 +33,7 @@ def run_triage_query_sync(
         return _error("invalid_triage_request", "Check the triage request parameters.", fieldErrors=error.field_errors)
 
     signal_rows, signal_status = _read_signals(signal_provider)
+    profile_snapshot = _read_profile_store(profile_store_provider)
     if mw is None or getattr(mw, "col", None) is None or not hasattr(mw, "taskman"):
         return {
             "ok": True,
@@ -39,6 +41,7 @@ def run_triage_query_sync(
                 payload,
                 signal_rows=signal_rows,
                 signal_source_status=signal_status,
+                profile_store_snapshot=profile_snapshot,
             ),
         }
 
@@ -70,6 +73,7 @@ def run_triage_query_sync(
                     payload,
                     signal_rows=signal_rows,
                     signal_source_status=signal_status,
+                    profile_store_snapshot=profile_snapshot,
                 ),
                 success=success,
             )
@@ -101,6 +105,35 @@ def _read_signals(
     except Exception as error:
         _log_safe_signal_failure(error)
         return [], {"status": "error", "errorCode": "signal_store_failed"}
+
+
+def _read_profile_store(
+    provider: Callable[[], dict[str, Any]] | None,
+) -> dict[str, Any]:
+    if provider is None:
+        return {
+            "status": "unavailable",
+            "revision": 0,
+            "profiles": [],
+            "errorCode": "profile_store_unavailable",
+        }
+    try:
+        value = provider()
+        if not isinstance(value, dict):
+            raise TypeError("profile store provider did not return an object")
+        return value
+    except Exception as error:
+        log_event(
+            "triage.profiles.error",
+            "Inspection Profile source failed",
+            exception_type=type(error).__name__,
+        )
+        return {
+            "status": "unavailable",
+            "revision": 0,
+            "profiles": [],
+            "errorCode": "profile_store_unavailable",
+        }
 
 
 def _query_op_type() -> Any:

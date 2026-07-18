@@ -111,6 +111,9 @@ class DashboardServerManager:
         self._search_query_handler = None
         self._search_inspect_handler = None
         self._triage_query_handler = None
+        self._inspection_profile_query_handler = None
+        self._inspection_profile_validate_handler = None
+        self._inspection_profile_update_handler = None
         self._card_action_handler = None
         self._note_action_handler = None
         self._media_file_provider = None
@@ -361,6 +364,17 @@ class DashboardServerManager:
     def configure_triage_handler(self, query_handler=None) -> None:
         with self._lock:
             self._triage_query_handler = query_handler
+
+    def configure_inspection_profile_handlers(
+        self,
+        query_handler=None,
+        validate_handler=None,
+        update_handler=None,
+    ) -> None:
+        with self._lock:
+            self._inspection_profile_query_handler = query_handler
+            self._inspection_profile_validate_handler = validate_handler
+            self._inspection_profile_update_handler = update_handler
 
     def configure_entity_action_handlers(self, card_handler=None, note_handler=None) -> None:
         with self._lock:
@@ -665,6 +679,30 @@ class DashboardServerManager:
             )
             return {"ok": False, "error": "triage_failed", "message": "The triage request failed."}
 
+    def request_inspection_profiles(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+        attribute = {
+            "query": "_inspection_profile_query_handler",
+            "validate": "_inspection_profile_validate_handler",
+            "update": "_inspection_profile_update_handler",
+        }.get(operation)
+        with self._lock:
+            handler = getattr(self, attribute, None) if attribute else None
+        if handler is None:
+            return {"ok": False, "error": "inspection_profiles_unavailable"}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "inspection_profiles_failed",
+            }
+        except Exception as error:
+            log_event(
+                "inspection_profiles.request.error",
+                "Inspection Profile request handler failed",
+                exception_type=type(error).__name__,
+            )
+            return {"ok": False, "error": "inspection_profiles_failed"}
+
     def _request_search(self, handler_attribute: str, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             handler = getattr(self, handler_attribute)
@@ -886,6 +924,19 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.METHOD_NOT_ALLOWED,
                 )
             return
+        if path in {
+            "/api/inspection-profiles/query",
+            "/api/inspection-profiles/validate",
+            "/api/inspection-profiles/update",
+        }:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for Inspection Profiles."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path in {"/api/entities/cards/actions", "/api/entities/notes/actions"}:
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
@@ -989,6 +1040,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/triage/query":
             self._send_triage_query(_query_token(parsed))
             return
+        if path.startswith("/api/inspection-profiles/"):
+            operation = path.removeprefix("/api/inspection-profiles/").strip("/")
+            if operation in {"query", "validate", "update"}:
+                self._send_inspection_profile_request(_query_token(parsed), operation)
+                return
         if path == "/api/entities/cards/actions":
             self._send_entity_action(_query_token(parsed), "cards")
             return
@@ -1765,6 +1821,40 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.BAD_REQUEST
         self._send_json(result, status)
 
+    def _send_inspection_profile_request(self, token: str | None, operation: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_inspection_profile_request"},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body(max_bytes=65_536)
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_inspection_profile_request"},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.request_inspection_profiles(operation, payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "inspection_profile_revision_conflict":
+            status = HTTPStatus.CONFLICT
+        elif error == "inspection_profile_future_schema":
+            status = HTTPStatus.CONFLICT
+        elif error == "invalid_inspection_profile_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "inspection_profiles_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        else:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        self._send_json(result, status)
+
     def _send_dashboard_action(self, token: str | None, action: str) -> None:
         if not self.manager.token_is_valid(token):
             self._send_forbidden()
@@ -1831,7 +1921,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         status = HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST if result.get("error") == "invalid_notification_request" else HTTPStatus.SERVICE_UNAVAILABLE
         self._send_json(result, status)
 
-    def _read_json_body(self) -> dict[str, Any] | None:
+    def _read_json_body(self, *, max_bytes: int = 8192) -> dict[str, Any] | None:
         length_header = self.headers.get("Content-Length")
         if not length_header:
             return {}
@@ -1839,7 +1929,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             length = int(length_header)
         except ValueError:
             return None
-        if length < 0 or length > 8192:
+        if length < 0 or length > max(1, int(max_bytes)):
             return None
         try:
             raw = self.rfile.read(length)

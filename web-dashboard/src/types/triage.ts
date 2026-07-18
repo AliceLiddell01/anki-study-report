@@ -2,10 +2,10 @@ export type TriageDataset = "automatic" | "search_workset";
 export type TriagePriority = "high" | "medium" | "low";
 export type TriageReasonFamily = "learning" | "content" | "system" | "manual";
 export type TriageReasonScope = "card" | "note";
-export type TriageSource = "attention" | "signals" | "search_workset";
+export type TriageSource = "attention" | "signals" | "search_workset" | "profile_checks";
 export type TriageAvailability = "available" | "missing";
 export type TriageResponseStatus = "available" | "partial" | "unavailable";
-export type TriageSourceAvailability = "available" | "empty" | "unavailable" | "error";
+export type TriageSourceAvailability = "available" | "empty" | "partial" | "unavailable" | "error";
 export type TriageCardState = "new" | "learning" | "review" | "due" | "suspended" | "buried";
 
 export type TriageEvidence =
@@ -20,9 +20,27 @@ export type TriageEvidence =
       reviewCount: number;
       windowDays: number;
       detectorVersion: string;
+    }
+  | {
+      kind: "profile_check";
+      profileId: string;
+      checkId: string;
+      checkKind: "non_empty" | "contains_audio" | "contains_image" | "min_text_length" | "one_of_roles_non_empty" | "all_roles_non_empty";
+      roles: string[];
+      fields: { ordinal: number; name: string }[];
+      expectedCondition: string;
+      actualTextLength: number | null;
+      expectedTextLength: number | null;
+      marker: "audio" | "image" | null;
+      markerPresent: false | null;
+      profileRevision: number;
+      fingerprint: string;
+      affectedSiblingCount: number;
+      templateOrdinals: number[];
     };
 
 export interface TriageReason {
+  reasonId: string;
   code: string;
   family: TriageReasonFamily;
   scope: TriageReasonScope;
@@ -69,11 +87,11 @@ export interface TriageScope {
 }
 
 export type TriageQueryRequest =
-  | { schemaVersion: 1; dataset: "automatic"; scope: TriageScope; limit: number; cardIds?: never }
-  | { schemaVersion: 1; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number };
+  | { schemaVersion: 2; dataset: "automatic"; scope: TriageScope; limit: number; cardIds?: never }
+  | { schemaVersion: 2; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number };
 
 export interface TriageQueryResponse {
-  schemaVersion: 1;
+  schemaVersion: 2;
   dataset: TriageDataset;
   status: TriageResponseStatus;
   generatedAtMs: number;
@@ -85,7 +103,19 @@ export interface TriageQueryResponse {
     attention: TriageSourceStatus;
     signals: TriageSourceStatus;
     searchResolver: TriageSourceStatus;
+    profileChecks: TriageSourceStatus;
   };
-  contentChecks: { status: "profiles_not_available" };
+  contentChecks: {
+    status: "available" | "no_confirmed_profiles" | "profiles_need_review" | "disabled" | "partial" | "unavailable";
+    confirmedProfileCount: number;
+    needsReviewProfileCount: number;
+    disabledProfileCount: number;
+    suggestedProfileCount: number;
+    evaluatedNoteCount: number;
+    failedCheckCount: number;
+    skippedCount: number;
+    truncated: boolean;
+    errorCode: string | null;
+  };
   items: TriageItem[];
 }
