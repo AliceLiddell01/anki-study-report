@@ -73,7 +73,15 @@ describe("Inspection Profiles settings workspace", () => {
     await settle();
     expect(container.textContent).toContain("Проверка и ограниченный пример");
     await click(noteButton("Cloze"));
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Отбросить несохранённые изменения");
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.textContent).toContain("Отбросить несохранённые изменения");
+    expect(container.contains(dialog)).toBe(false);
+    expect(container.inert).toBe(true);
+    const keepEditing = [...dialog!.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Продолжить редактирование");
+    expect(keepEditing).toBeDefined();
+    await click(keepEditing!);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.inert).toBe(false);
     expect(container.textContent).toContain("Basic");
   });
 

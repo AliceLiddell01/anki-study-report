@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 const FOCUSABLE = [
   "a[href]",
@@ -17,6 +18,7 @@ export default function AccessibleModal({
   children,
   footer,
   testId,
+  portal = false,
 }: {
   title: string;
   closeLabel: string;
@@ -24,6 +26,7 @@ export default function AccessibleModal({
   children: ReactNode;
   footer?: ReactNode;
   testId: string;
+  portal?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -79,7 +82,7 @@ export default function AccessibleModal({
     };
   }, [onRequestClose]);
 
-  return (
+  const modal = (
     <div className="product-modal-backdrop" data-testid={`${testId}-backdrop`}>
       <div
         ref={dialogRef}
@@ -100,4 +103,5 @@ export default function AccessibleModal({
       </div>
     </div>
   );
+  return portal ? createPortal(modal, document.body) : modal;
 }
