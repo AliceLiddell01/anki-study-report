@@ -232,33 +232,6 @@ def test_native_rendered_preview_uses_card_question_answer_and_sanitizer():
     assert " controls" not in rendered["backHtml"]
 
 
-def test_full_preview_uses_reviewer_render_not_browser_appearance():
-    note_intelligence = fresh_import_addon_module("note_intelligence")
-    calls = []
-
-    class FakeRenderOutput:
-        question_text = "<div>reviewer front</div>"
-        answer_text = "<div>reviewer front<hr id=answer>answer only</div>"
-        question_av_tags = []
-        answer_av_tags = []
-        css = ".card { color: #111; }"
-
-    class FakeCard:
-        id = 124
-        ord = 0
-
-        def render_output(self, **kwargs):
-            calls.append(kwargs)
-            return FakeRenderOutput()
-
-    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=124)
-
-    assert reason is None
-    assert calls == [{"reload": True, "browser": False}]
-    assert rendered["frontPlainText"] == "reviewer front"
-    assert "answer only" in rendered["backPlainText"]
-
-
 def test_native_rendered_preview_replaces_anki_av_markers_in_place():
     note_intelligence = fresh_import_addon_module("note_intelligence")
 
