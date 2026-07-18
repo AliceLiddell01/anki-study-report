@@ -66,8 +66,9 @@ def test_metadata_returns_sorted_bounded_all_collection_catalogs():
     }
 
 
-def test_normal_query_requests_delegate_raw_contract_without_double_normalization(monkeypatch):
+def test_normal_query_requests_delegate_raw_v2_contract_without_double_normalization(monkeypatch):
     raw = {
+        "schemaVersion": 2,
         "mode": "cards",
         "query": "",
         "filters": [
