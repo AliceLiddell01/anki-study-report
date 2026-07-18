@@ -18,7 +18,7 @@ Foundation / IA / Settings / Profile / Activity / Decks
 → Notices / opt-in Telemetry / Signals / Notifications
 ```
 
-The next mandatory add-on work is:
+The next mandatory add-on work remains inside Core:
 
 ```text
 C1 Cards v2 / Problem Triage
@@ -33,12 +33,14 @@ Current core status:
 C1.5 technical implementation evidence — retained historically
 C1.5 owner product acceptance — withdrawn
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Next, not started
+C1.5R.1 Canonical card display identity — Implemented, focused verification pending
+C1.5R.2 Declarative compact formatter runtime — Blocked
 C1.6 — Blocked, not started
 Core C1 — In progress
 ```
 
-See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md).
+See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md)
+and the [C1.5R.1 implementation report](../reports/core/c1-5r-1-canonical-card-display-identity.md).
 
 Parallel tracks do not block `C1` or `C2`:
 
@@ -52,7 +54,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0` Complete; `C1.5R.1` Next; `C1.6` blocked | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.1` implemented; focused verification pending; later remediation blocked | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -66,7 +68,8 @@ Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
                            │
-                           ├─ C1.5R must finish before C1.6
+                           ├─ C1.5R.1 verification must pass before C1.5R.2
+                           ├─ all C1.5R stages must finish before C1.6
                            ├─ owner product acceptance is a separate C1.5R gate
                            └─ does not wait for G/O/I/E
 
@@ -109,6 +112,9 @@ Previous future-stage paths remain compatibility pointers.
 
 - **Complete** — the named increment's required result exists; product acceptance
   is explicit where it is a separate gate.
+- **Implemented, focused verification pending** — the implementation candidate,
+  synchronized contracts and focused tests exist, but required execution
+  evidence has not yet passed.
 - **Next** — recommended next stage inside its track.
 - **Planned** — sequenced after explicit dependencies.
 - **Conditional** — activates only when named evidence or trigger exists.
