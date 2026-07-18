@@ -9,9 +9,9 @@ Read in this order:
 1. [`../README.md`](../README.md)
 2. this file
 3. [`../roadmap/README.md`](../roadmap/README.md)
-4. the relevant track README
+4. [`../roadmap/core/README.md`](../roadmap/core/README.md)
 5. current production code/tests for the requested scope
-6. the current contract and latest report for that scope
+6. the current focused contract and latest report
 
 When sources disagree, use:
 
@@ -28,28 +28,28 @@ opened.
 
 ## Current project state
 
-Anki Study Report is a local add-on for Anki 26.05+ with a Python runtime and a
-React/TypeScript dashboard. The dashboard is loopback-only, token-protected, and
-receives bounded JSON/API projections; the frontend never reads the collection
-directly.
+Anki Study Report is a local add-on for Anki 26.05+ with Python runtime and a
+React/TypeScript dashboard. The dashboard is loopback-only, token-protected and
+receives bounded JSON/API projections; frontend never reads collection directly.
 
-The accepted product contour through Stage 9.5 remains complete. Future work is
-split into tracks; only `C1 → C2` is the mandatory core path.
+The accepted product contour through Stage 9.5 remains complete. Only `C1 → C2`
+is the mandatory core path.
 
 ```text
 branch for current core work: core
 Core C1: In progress
 C1.5R.0: Complete
-C1.5R.1: Next, not started
+C1.5R.1: Implemented, focused verification pending
+C1.5R.2: Blocked
 C1.6: Blocked, not started
 ```
 
-Recovery baseline:
-[`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md).
+Current reports:
 
-## C1 corrective status
+- [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md)
+- [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md)
 
-### Historical evidence retained
+## Historical C1.5 evidence
 
 ```text
 C1.4 runtime/API foundation — accepted
@@ -71,16 +71,16 @@ C1.5 closeout SHA:
 101103585149aa0a30d411ad538fbcc06641a05b
 ```
 
-These are historical technical proofs. Subsequent owner review withdrew C1.5
-visual/product acceptance. Do not call the successful runs failures, and do not
-use them as evidence that the remediated product is accepted.
+These are historical technical proofs. Owner review later withdrew C1.5
+visual/product acceptance. Do not call the runs failures and do not use them as
+acceptance evidence for C1.5R.
 
-### Corrective decomposition
+## Corrective decomposition
 
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Next, not started
-C1.5R.2 Declarative compact formatter runtime — Not started
+C1.5R.1 Canonical card display identity — Implemented, focused verification pending
+C1.5R.2 Declarative compact formatter runtime — Blocked
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -88,156 +88,149 @@ C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-Do not restart the entire C1.5R audit. C1.5R.0 recovered and fixed the baseline;
-continue with the exact next increment.
+Do not restart the C1.5R audit and do not start C1.5R.2 until the focused R1
+verification contour passes.
 
-## Accepted C1.5R decisions
+## C1.5R.1 implementation
 
-### Card identity
+### Backend
 
-One backend projector must own compact card identity for:
+`anki_study_report/card_display_identity.py` now owns compact identity for one
+exact card. It renders:
+
+```text
+Browser question
+→ reviewer front
+→ explicit media_only or unavailable state
+```
+
+It does not scan arbitrary note fields, render answer/back, read media files or
+expose renderer exceptions. The first meaningful rendered line is bounded to
+240 characters.
+
+Exact wire fields:
+
+```text
+displayText
+displaySource      browser_question | reviewer_front | none
+displayStatus      available | media_only | unavailable
+displayTruncated
+```
+
+### Public schemas
+
+```text
+Search query/inspect: schema v2
+Search metadata: schema v1, unchanged
+Triage query/response: schema v3
+```
+
+Card rows/details and Triage items no longer carry card `primaryText`. Note-mode
+Search keeps note `primaryText`. Old schemas, aliases, unknown keys and
+incoherent display states fail closed in strict TypeScript parsers.
+
+### Shared surfaces
+
+The same backend projection is consumed by:
 
 ```text
 Search card row
-Search card Inspector identity
+Search card Inspector heading
 Triage item
 Cards queue
 Cards Inspector heading
 ```
 
-Current Search behavior is defective because it starts with the note sort field
-and then scans arbitrary non-empty fields. Triage/Cards repeat that text. No
-unrelated-field fallback is allowed for card identity.
-
-Baseline contract:
-[`card-display-identity.md`](card-display-identity.md).
-
-### Preview semantics
-
-- Inspector renders the native sanitized front.
-- Expanded preview defaults to native sanitized answer/back.
-- Only the active card receives a full preview read.
-- Queue rows do not load media/full HTML.
-- Sanitizer, media validation, token protection, Shadow DOM, and no-iframe/no-JS
-  boundaries remain unchanged.
-
-### Candidate sources and period
-
-- the current seven-day learning period is hidden in the Cards hook and must
-  become explicit product state in the relevant remediation increment;
-- learning candidates remain period-bound;
-- current-content candidates are a separate bounded source and must not vanish
-  merely because the selected learning period has zero reviews;
-- source status must expose unavailable/partial/truncated behavior explicitly.
-
-### Cards Design Gate
-
-Accepted direction:
+The frontend helper localizes only explicit fallback states:
 
 ```text
-Variant A — identity-led dense inbox list
+RU: Карточка только с медиа | Текст карточки недоступен
+EN: Card with media only | Card text unavailable
 ```
 
-Wide desktop:
+The current Cards table/split UI remains product-rejected historical C1.5 UI.
+C1.5R.1 did not redesign it.
+
+## Accepted later-stage decisions
+
+### Preview semantics — C1.5R.3
+
+- Inspector: native sanitized front.
+- Expanded preview: native sanitized answer/back by default.
+- Only active card loads full preview.
+- Queue rows load no media/full HTML.
+
+C1.5R.1 does not implement these side changes.
+
+### Candidate sources — C1.5R.4
+
+Learning candidates remain period-bound. Current-content candidates become a
+separate bounded source and must not disappear when a learning period has zero
+reviews. The hidden seven-day period must become explicit product state in that
+stage.
+
+### Cards Design Gate — C1.5R.5
 
 ```text
-dense inbox queue + persistent Inspector
+wide desktop: dense identity-led inbox + persistent Inspector
+around 1024 px: full-width queue + non-modal detail drawer
 ```
 
-Around 1024 px:
+The drawer is non-modal, uses no `inert` or focus trap, has return-to-queue and
+does not steal focus on row activation.
 
-```text
-full-width queue + non-modal detail drawer
+### Inspection Profiles — C1.5R.6
+
+Normal workflow becomes guided Basic configuration. Strict runtime editor moves
+behind Advanced. Deterministic suggestion becomes a ready unsaved draft
+automatically. Inspection Profile v1 must not silently gain formatter fields.
+
+## Exact next action
+
+Run the focused C1.5R.1 verification contour from
+[`card-display-identity.md`](card-display-identity.md):
+
+```powershell
+python -m pytest -q tests/test_card_display_identity.py tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_triage_service.py tests/test_triage_runtime.py tests/test_dashboard_server.py
+cd web-dashboard
+pnpm exec vitest run src/lib/cardDisplayText.test.ts src/lib/searchApi.test.ts src/lib/triageApi.test.ts src/hooks/useCardsTriageWorkspace.test.tsx src/pages/SearchPage.test.tsx src/pages/SearchMetadataIntegration.test.tsx src/pages/CardsPage.test.tsx
+pnpm run typecheck
 ```
 
-The drawer:
-
-- is not a modal;
-- does not use `inert`;
-- does not trap focus;
-- has an explicit return-to-queue action;
-- does not receive focus automatically when a row is activated.
-
-Do not restore the C1.5 spreadsheet-like table as the default or a hidden mode.
-
-### Inspection Profiles
-
-The normal workflow becomes guided Basic configuration. The strict runtime
-editor remains available behind Advanced.
-
-A deterministic suggestion becomes a ready unsaved draft automatically. Do not
-require a separate `Use suggestion` step before the user can review it.
-
-Do not silently add compact formatter fields to strict Inspection Profile v1.
-The formatter needs its own explicit versioned contract or a separately approved
-schema transition. It remains declarative and cannot execute arbitrary code.
-
-## Exact next stage
-
-```text
-C1.5R.1 — Canonical card display identity
-```
-
-C1.5R.1 should establish and implement the canonical compact identity transition
-with backend/frontend/parser/test/doc parity. It must not absorb the formatter
-runtime, preview-side changes, candidate-source split, Cards redesign, or guided
-Profiles UX unless a narrow prerequisite is unavoidable and documented.
+Until those checks pass, do not mark C1.5R.1 Complete and do not begin C1.5R.2.
 
 ## Verification boundary
 
 Use [`test-matrix.md`](test-matrix.md) and
 [`verification-run-policy.md`](verification-run-policy.md).
 
-For C1.5R.0 no Python/frontend/typecheck/build/Fast CI/Docker gate was run or
-required. Do not retroactively claim those checks.
-
-For future implementation increments:
-
-```text
-focused tests
-→ local non-Docker contour as required
-→ exact-SHA Fast CI
-→ targeted real-Anki scope when the actual diff requires it
-→ owner product review only at C1.5R.7
-```
-
-Full real-Anki Docker E2E is an integration gate, not a development loop. Do not
-run heavy gates blindly or repeat a successful exact-SHA run without a relevant
-change.
+Current connector work did not run Fast CI, Docker, real-Anki E2E, package
+validation, full non-Docker check or release verification. Do not claim those
+checks. Heavy real-Anki E2E remains an integration gate, not a development loop.
 
 ## Technical invariants
 
 Do not:
 
-- change a dashboard payload on only one side;
-- give the frontend direct Anki collection access;
-- open the server beyond `127.0.0.1`;
-- weaken dashboard-token validation, sanitizer, media validation, or action
-  allowlists;
-- log the token or full token-bearing URL;
-- create an iframe or JavaScript execution surface for cards;
+- change a public payload on only one side;
+- give frontend direct collection access;
+- open server beyond `127.0.0.1`;
+- weaken token validation, sanitizer, media validation or action allowlists;
+- log token or full token-bearing URL;
+- create iframe/template-JavaScript execution surfaces;
 - edit generated dashboard assets manually;
-- commit logs, screenshots, cache, profile data, tokens, `.ankiaddon`, or E2E
-  output;
-- change correct production behavior merely to satisfy an obsolete test;
-- start C1.6 before C1.5R and explicit owner product acceptance.
-
-Public behavior changes require synchronized backend, frontend types/validators,
-tests, and documentation.
+- commit logs, screenshots, cache, profile data, tokens, `.ankiaddon` or E2E output;
+- change correct production behavior for an obsolete test;
+- start C1.6 before C1.5R and owner acceptance.
 
 ## Other tracks
 
-- Gamification: parallel research/product track; production not approved.
-- Telemetry operations: separate protected admin tooling.
-- Identity continuity: conditional opt-in gate.
-- Extensions: conditional/deferred.
-- Platform/CI: separate delivery and real-Anki verification track.
+Gamification, telemetry operations, identity continuity, extensions and platform
+work remain independent. None blocks C1.5R or C2 without an explicit dependency.
 
-None of these blocks C1.5R or C2 unless a new explicit dependency is recorded.
+## Git boundary
 
-## Git boundary for core work
-
-Work only on `core` unless the owner explicitly changes the target. Do not create
-a PR, merge/rebase to `master`, release, deploy, publish `.ankiaddon`, or update
-AnkiWeb as an implicit continuation of a stage. Preserve unrelated changes and
-avoid force-push, destructive reset, clean, or stash deletion.
+Work only on `core` unless the owner changes the target. Do not create a PR,
+merge/rebase to `master`, release, deploy, publish `.ankiaddon` or update AnkiWeb
+as an implicit continuation. Avoid force-push, destructive reset, clean or stash
+deletion and preserve unrelated changes.
