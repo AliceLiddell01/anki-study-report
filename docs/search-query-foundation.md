@@ -1,47 +1,44 @@
 # Search Query Foundation
 
-Снимок документации: 2026-07-15.
+Снимок документации: 2026-07-19.
 
-Этот слой — read-only основа реализованного Search v1. Он выполняет нативный
-запрос Anki для Cards и Notes, возвращает compact metadata для all-collection
-filter controls и строит компактные данные выбранной Card/Note; route, таблица,
-inspector, selection и отдельный mutation boundary описаны в
-`docs/search-v1-and-safe-actions.md`.
+Этот слой — read-only основа Search. Он выполняет нативный запрос Anki для
+Cards и Notes, возвращает compact metadata для all-collection filter controls и
+строит bounded-данные выбранной Card/Note. C1.5R.1 обновил card identity и
+Search query/inspect до schema v2; metadata остаётся schema v1.
 
 ## Границы модулей
 
-- `search_service.py` валидирует query/inspect контракт, собирает структурные
-  фильтры через `SearchNode`/`build_search_string()`, вызывает
-  `find_cards()`/`find_notes()` и строит безопасные bounded-проекции.
-- `search_metadata.py` владеет строгим metadata request variant и bounded
-  all-collection deck/note-type catalogs; он не выполняет native query.
-- `search_runtime.py` запускает collection read через сериализованный `QueryOp`,
-  возвращает результат HTTP-потоку через finite wait и нормализует ошибки.
+- `search_service.py` валидирует query/inspect, вызывает
+  `find_cards()`/`find_notes()` и строит bounded-проекции.
+- `card_display_identity.py` — единственный backend projector compact card
+  identity для Search, exact-card resolution и Triage.
+- `search_metadata.py` владеет отдельным metadata request/response v1.
+- `search_runtime.py` запускает collection read через serialized `QueryOp`.
 - `dashboard_server.py` владеет token/HTTP/method/body/status contract.
-- `web-dashboard/src/types/search.ts` и `lib/searchApi.ts` — строгие типы и
-  runtime client страницы `#/search`; frontend не получает прямой доступ к collection.
-- `browser_actions.py` остаётся отдельным узким слоем для открытия native
-  Browser и не используется как grammar/service нового read API.
+- `web-dashboard/src/types/search.ts` и `lib/searchApi.ts` содержат строгие v2
+  types и runtime parsers.
+- frontend не получает прямой доступ к collection.
 
-Нативная грамматика остаётся грамматикой Anki: см. официальные справочники
-[Searching](https://docs.ankiweb.net/searching.html) и
-[Browsing](https://docs.ankiweb.net/browsing.html). Background collection read
-следует модели [Background Operations](https://addon-docs.ankiweb.net/background-ops.html).
+Нативная грамматика остаётся грамматикой Anki. Compact card identity использует
+официальный card renderer в двух контекстах: Browser question, затем reviewer
+front. Она не строится из arbitrary note fields.
 
-## API
+## Endpoints
 
-Оба endpoint требуют текущий dashboard token, принимают только `POST`, JSON
-object не больше 8192 байт и не логируют query/token:
+Оба endpoint требуют dashboard token, принимают только `POST`, JSON object не
+больше 8192 байт и не логируют query/token:
 
 ```text
 POST /api/search/query?token=<token>
 POST /api/search/inspect?token=<token>
 ```
 
-Query request:
+Query v2:
 
 ```json
 {
+  "schemaVersion": 2,
   "mode": "cards",
   "query": "deck:Japanese tag:marked",
   "filters": [{"type": "deck", "deckId": "123"}],
@@ -52,112 +49,108 @@ Query request:
 }
 ```
 
-`mode` — `cards|notes`; native `query` — строка до 4096 символов. `filters` —
-AND-список максимум из 12 элементов: `deck`, `note_type`, `tag`, а в Cards
-mode также `state` и `flag`. Deck/note type принимают decimal ID string и
-разрешаются backend-ом в актуальное имя. Единственный sort v1 —
-`entity_id asc|desc`; произвольный SQL/order запрещён. Допустимые `pageSize`:
-25, 50, 100; default — 50.
+Inspect v2:
 
-Успешный HTTP envelope имеет вид `{"ok":true,"response":{...}}`. Query
-response различает `cards`/`notes` и содержит `items`, `page`, `pageSize`,
-`pageCount`, `pageLimit`, `returnedCount`, `boundedTotal`, `hasNext`,
-`truncated`, `sort` и переданный `requestId`. Frontend runtime validator
-проверяет каждый обязательный row/detail field, вложенные summary/reference
-объекты и согласованность всей pagination metadata; неполный success payload
-отклоняется как `invalid_search_response`. Все Anki IDs сериализуются decimal
-strings, чтобы не терять точность в JavaScript.
+```json
+{"schemaVersion":2,"mode":"cards","cardId":"123","requestId":"inspect-1"}
+{"schemaVersion":2,"mode":"notes","noteId":"456","requestId":"inspect-2"}
+```
 
-Metadata request использует тот же token-protected read endpoint, но имеет
-отдельную exact shape без native query:
+Missing/wrong schema and unknown fields are rejected. V1 is not a compatibility
+alias because card row semantics changed.
+
+## Search metadata v1
+
+Metadata intentionally remains a separate v1 variant on the query endpoint:
 
 ```json
 {"kind":"metadata","requestId":"search-metadata-1"}
 ```
 
-Metadata response содержит:
+Response contains schemaVersion 1, bounded deck/note-type catalogs and
+truncation markers. The v2 query schema does not leak into metadata and metadata
+is not accepted as a query alias.
+
+## Query and pagination
+
+`mode` is `cards|notes`; query length is at most 4096. Filters are an AND-list
+of at most 12 `deck`, `note_type`, `tag`, and card-only `state`/`flag` entries.
+Only deterministic `entity_id asc|desc` sort is accepted. Page sizes are
+`25|50|100`, with hard result cap 2000.
+
+`find_cards()`/`find_notes()` first return matching IDs. The service sorts and
+deduplicates IDs, caps the considered set to 2000, and loads Card/Note objects
+only for the requested page. `pageCount` describes actual bounded pages;
+`pageLimit` is derived from the hard cap. This is not a database cursor.
+
+## Card row v2
+
+A card row contains exact card/note/deck/note-type/template identity, scheduling
+state and:
 
 ```text
-schemaVersion=1
-kind=metadata
-decks[]: deckId, deckName, filtered
-noteTypes[]: noteTypeId, noteTypeName
-decksTruncated
-noteTypesTruncated
-requestId?
+displayText
+displaySource      browser_question | reviewer_front | none
+displayStatus      available | media_only | unavailable
+displayTruncated
 ```
 
-Catalog bounds: не больше 5000 колод и 1000 типов записей. Они сортируются по
-имени с ID tie-breaker, deduplicate-ятся по ID и возвращаются тем же `QueryOp`
-read path. Filtered decks присутствуют в Search filter catalog, но frontend
-исключает их из move destination picker; backend всё равно повторно проверяет
-destination.
+The four fields are produced by `project_card_display_identity(card)`. The
+projector:
 
-Inspect request принимает ровно один mode-specific ID:
+1. renders Browser Appearance question;
+2. falls back to native reviewer front;
+3. emits explicit media-only/unavailable state.
 
-```json
-{"mode":"cards","cardId":"123","requestId":"inspect-1"}
-{"mode":"notes","noteId":"456","requestId":"inspect-2"}
+It removes active/embedded content, media markers and filenames; keeps inline
+Japanese nodes adjacent; selects the first meaningful rendered line; and bounds
+the result to 240 characters. It never scans the note sort field or first
+non-empty field, never renders answer/back, and never reads media files.
+
+`primaryText` is not present on card rows or card details in schema v2.
+
+## Note row v2
+
+Note-mode Search remains note-centric. It retains `primaryText` derived from the
+note sort field and subsequent fields, plus tags/card/deck summaries. It does
+not receive `displayText` or card display state because one note may generate
+multiple cards.
+
+## Inspect
+
+Card inspect reuses the same card row projector, so its compact heading equals
+the Search row and Triage/Cards identity for the same exact card. It additionally
+returns bounded metadata and the existing sanitized `renderedPreview`.
+
+Note inspect retains bounded note fields, tags, card references and deck
+summaries. Deleted/stale entities return `404 search_entity_not_found`.
+
+Errors remain typed:
+
+```text
+400 invalid_search_request
+404 search_entity_not_found
+503 search_unavailable | search_failed
+504 search_timeout
 ```
 
-Удалённая/устаревшая сущность возвращает `404 search_entity_not_found`.
-Validation — `400 invalid_search_request`, отсутствие runtime — `503
-search_unavailable`, безопасно нормализованная runtime failure — `503
-search_failed`, finite wait — `504 search_timeout`. Traceback, raw query,
-collection path и token в product response не попадают.
+Tracebacks, raw query, collection path, media filenames and token do not enter
+product responses.
 
-## Bounding и pagination
+## Frontend parser
 
-`find_cards()`/`find_notes()` сначала возвращают matching IDs. Сервис
-детерминированно сортирует уникальные ID, ограничивает рассматриваемый набор
-первыми 2000 и загружает Card/Note objects только для запрошенной страницы.
+The v2 parser validates exact top-level and nested keys, decimal-string IDs,
+counts/pagination, enums and display-state coherence. It rejects:
 
-- hard result cap: 2000;
-- `pageCount = ceil(boundedTotal / pageSize)` — число фактических bounded pages;
-- `pageLimit = ceil(2000 / pageSize)` — предел допустимого номера запроса: 80
-  для 25, 40 для 50, 20 для 100;
-- пустой набор возвращает `page=1`, `pageCount=0` и пустой `items`;
-- допустимая по `pageLimit` страница за текущим `pageCount` возвращается пустой;
-- запрос страницы за `pageLimit` отклоняется validation layer;
-- `truncated=true`: native match содержал больше 2000 IDs;
-- `boundedTotal`: размер capped набора, а не обещание полного collection count;
-- offset/page не является snapshot cursor: если collection изменилась между
-  запросами, состав и смещения следующей страницы могут измениться.
+- schema v1 query/inspect payloads;
+- `primaryText` on a card row/detail;
+- missing or extra display fields;
+- future/unknown keys;
+- available identity with empty text;
+- media-only/unavailable identity with incoherent source/text/truncation.
 
-Оставшееся ограничение: native search всё равно вычисляет полный список
-matching IDs до cap. Поэтому работа вынесена в serialized background operation,
-но стоимость очень широкого запроса на большой collection не становится
-стоимостью настоящего database cursor.
+## Verification
 
-## Безопасный текст и модели
-
-Cards и Notes имеют отдельные row/details модели. `primaryText` берётся из sort
-field текущего note type, затем из первого непустого field. HTML, script/style,
-iframe/object/embed/svg/math, media markers и cloze syntax преобразуются в
-plain text; row ограничен 240 символами. Note inspect ограничен 64 fields,
-2000 символами на value, 50 tags, 100 card references и 20 deck summaries.
-Rich preview HTML, template JavaScript и media files этот API не возвращает и
-не исполняет.
-
-Deck/note-type names в metadata остаются user data, ограничиваются 500
-символами и рендерятся React-ом как escaped text. Raw query, note fields, tags,
-token и full entity ID lists metadata contract не содержит.
-
-## Проверки
-
-Локальный контур:
-
-```powershell
-python -m pytest -q tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_dashboard_server.py
-cd web-dashboard
-pnpm exec vitest run src/lib/searchApi.test.ts src/lib/searchMetadataApi.test.ts src/pages/SearchMetadataIntegration.test.tsx
-pnpm run typecheck
-```
-
-Real-Anki contract расширяет существующий browser smoke для `global`/`full` и
-пишет redacted `reports/search-query-contract.json`: valid/invalid token,
-Cards/Notes native query, live metadata catalogs, `pageCount`/`pageLimit`, оба
-полных inspect, Search UI, Browser bridge, safe action cycles и восстановление
-collection baseline. Seed/APKG scripts полагаются на автоматическое сохранение
-Collection в Anki 26.05; deprecated collection-level `save()` не вызывается, а
-отдельный `col.decks.save(deck)` сохраняется для изменённого deck-manager entity.
+C1.5R.1 is currently **Implemented, focused verification pending**. Required
+focused commands are listed in `docs/card-display-identity.md`. Fast CI, Docker
+and real-Anki E2E are outside this stage.
