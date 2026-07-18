@@ -91,6 +91,14 @@ def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match
     assert smoke_api.find_fixture_card([missing_audio, rich_media]) is rich_media
 
 
+def test_seed_separates_visual_and_inspection_japanese_review_groups():
+    seed = load_e2e_module("seed-collection.py", "anki_study_report_seed_collection")
+
+    assert seed.japanese_fixture_group("要望（音声なし）\x1frequest without audio") == "inspectionJapanese"
+    assert seed.japanese_fixture_group("改善を要望する。\x1f[sound:要望.mp3]") == "japanese"
+    assert seed.japanese_fixture_group("Plain E2E front") is None
+
+
 def test_inspection_profile_e2e_helpers_build_exact_safe_profile_and_filter_reasons():
     smoke_api = load_smoke_api_module()
     item = {

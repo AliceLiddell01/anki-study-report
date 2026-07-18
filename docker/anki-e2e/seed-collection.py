@@ -332,7 +332,7 @@ def create_collection(collection_path: Path) -> tuple[int, int, dict[str, int]]:
                 "Изображение": "",
             },
             deck_id,
-            tags=["e2e", "leech", "inspection-profile"],
+            tags=["e2e", "inspection-profile"],
         )
         add_note(
             col,
@@ -551,6 +551,14 @@ def write_media(media_dir: Path) -> dict[str, Any]:
     return summary
 
 
+def japanese_fixture_group(fields: str) -> str | None:
+    if "要望（音声なし）" in fields:
+        return "inspectionJapanese"
+    if "要望" in fields:
+        return "japanese"
+    return None
+
+
 def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[str, list[int]]:
     conn = sqlite3.connect(collection_path)
     try:
@@ -564,6 +572,7 @@ def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[st
         ).fetchall()
         grouped: dict[str, list[int]] = {
             "japanese": [],
+            "inspectionJapanese": [],
             "generic": [],
             "customCss": [],
             "unsafe": [],
@@ -576,6 +585,7 @@ def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[st
         }
         for card_id, fields in cards:
             text = str(fields or "")
+            japanese_group = japanese_fixture_group(text)
             if "DeckHub Parent Direct" in text:
                 grouped["deckHubParent"].append(int(card_id))
             elif "DeckHub Healthy" in text:
@@ -588,8 +598,8 @@ def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[st
                 grouped["deckHubPreliminary"].append(int(card_id))
             elif "DeckHub " in text:
                 grouped["deckHubOther"].append(int(card_id))
-            elif "要望" in text:
-                grouped["japanese"].append(int(card_id))
+            elif japanese_group:
+                grouped[japanese_group].append(int(card_id))
             elif "Styled prompt" in text:
                 grouped["customCss"].append(int(card_id))
             elif "Unsafe" in text:
@@ -623,6 +633,9 @@ def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[st
         for card_id in grouped["japanese"]:
             conn.execute("update cards set reps = 4, lapses = 8, type = 2, queue = 2 where id = ?", (card_id,))
             add_reviews(card_id, [(1, 16_000), (1, 14_000), (3, 12_000), (1, 18_000)])
+        for card_id in grouped["inspectionJapanese"]:
+            conn.execute("update cards set reps = 1, lapses = 0, type = 2, queue = 2 where id = ?", (card_id,))
+            add_reviews(card_id, [(3, 3_000)])
         for card_id in grouped["generic"]:
             conn.execute("update cards set reps = 1, lapses = 0, type = 2, queue = 2 where id = ?", (card_id,))
             add_reviews(card_id, [(3, 3_000)])
@@ -648,7 +661,7 @@ def seed_review_history(collection_path: Path, review_anchor_ms: int) -> dict[st
 
         history_cards = [
             card_id
-            for key in ("japanese", "generic", "customCss", "unsafe")
+            for key in ("japanese", "inspectionJapanese", "generic", "customCss", "unsafe")
             for card_id in grouped[key]
         ]
         active_day_plans = {
