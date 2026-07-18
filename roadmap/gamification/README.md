@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is In Progress; `G0.3` is Next; production integration is not approved
+**Current status:** `G0` is In Progress; `G0.4` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -20,7 +20,8 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 
 - `G0.1 — Canonical branch baseline`: Complete — [`g0-branch-baseline.md`](g0-branch-baseline.md)
 - `G0.2 — Core compatibility snapshot`: Complete — [`g0-core-compatibility.md`](g0-core-compatibility.md)
-- `G0.3 — Historical asset inventory`: Next
+- `G0.3 — Historical asset inventory`: Complete — [`g0-historical-asset-inventory.md`](g0-historical-asset-inventory.md), [`g0-historical-asset-manifest.md`](g0-historical-asset-manifest.md)
+- `G0.4 — Selective research recovery`: Next
 
 G0.2 confirmed `core` as the active Core line on the same recorded `master`
 baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
@@ -28,6 +29,13 @@ conflict with the G0 documentation and creates no blocker for G0.3. No Core
 import is required; stable Core changes should normally reach Gamification
 through `master`, while C1/C2 contracts remain a watch item for later G3, G5
 and G6 work.
+
+G0.3 identified **128** tracked historical assets: 10 under
+`docs/gamification/` and 118 under `research/gamification-sim/`. The exhaustive
+manifest uses `IMPORT_AS_IS`, `IMPORT_WITH_ADAPTATION`, `REWRITE`,
+`ARCHIVE_SUPERSEDED` and `DEFER`; no completeness issue remains and no asset was
+imported. G0.4 must transfer only approved manifest rows in the recorded batch
+order.
 
 ## Source audit
 
@@ -91,7 +99,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** In Progress — G0.1 and G0.2 Complete; G0.3 Next
+**Status:** In Progress — G0.1–G0.3 Complete; G0.4 Next
 
 ### Goal
 
@@ -130,7 +138,6 @@ Already met: the historical branch is materially diverged from `master` and must
 The canonical master-based `gamification` branch contains a self-consistent research package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change; no Pull Request to `master` is created; production integration remains prohibited without a separate explicit owner decision.
 
 ## G1 — Close Review XP cross-horizon cycling gap
-
 **Status:** Blocked by G0
 
 ### Goal
