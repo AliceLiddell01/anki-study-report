@@ -27,10 +27,15 @@ production code/tests
 - verified base branch: `master`;
 - verified base SHA: `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e`;
 - Core HEAD before C1.1: `2b99b3468de0a46b00ce5be71e7c95da0930fb12`;
-- C1.1 status: complete in the documentation commit containing this handoff;
-- canonical contract: `docs/cards-v2-product-contract.md`;
-- supporting report: `reports/core/c1-1-product-contract.md`;
-- next step: `C1.2 — Canonical triage model and read API`;
+- C1.2 initial HEAD: `22c6820bee44d25c3d10b871eb008a91cd56da31`;
+- C1.2 implementation commit: `13b1a20` (`feat: add the bounded canonical triage read API`);
+- C1.2 status: Implemented — exact Fast CI pending;
+- product contract: `docs/cards-v2-product-contract.md`;
+- technical contract: `docs/cards-v2-triage-read-api.md`;
+- supporting report: `reports/core/c1-2-triage-model-read-api.md`;
+- endpoint: token-protected `POST /api/triage/query`;
+- local verification: focused backend/frontend checks and canonical `run_full_check.ps1 -SkipDocker` PASS;
+- next step: `C1.3 — Inspection Profiles: contract and runtime`, blocked until the C1.2 cloud gate closes;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
@@ -78,7 +83,11 @@ Only `C1 → C2` is the mandatory add-on path.
 
 ### Core
 
-`C1.1 — Product contract` is complete. The next Core increment is `C1.2 — Canonical triage model and read API`. C1.2 must translate the accepted product entity/source/reason/priority/evidence/order contract into a minimal bounded read model without implementing the full workspace UI or the final Inspection Profile schema/editor.
+`C1.2 — Canonical triage model and read API` is implemented locally. It
+translates the accepted entity/source/reason/priority/evidence/order contract
+into a minimal bounded read model without implementing the full workspace UI
+or the final Inspection Profile schema/editor. Exact Fast CI on the final Core
+commit is still required before changing the stage status to Complete.
 
 C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 

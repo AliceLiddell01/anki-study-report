@@ -31,6 +31,9 @@ flowchart TD
     S --> F
     A --> Q["search_service.py / QueryOp"]
     Q --> F
+    A --> T["triage_service.py / QueryOp"]
+    N["NotificationStore active card Signals"] --> T
+    T --> F
     F --> M["entity_actions.py / CollectionOp"]
     B --> H["report_builder.py"]
     H --> I["Markdown/HTML report dialog"]
@@ -157,12 +160,24 @@ statisticsHub (bounded initial 90d Statistics result)
   collection work выполняется сериализованным `QueryOp` через
   `search_runtime.py`, а validation/projection изолированы в
   `search_service.py`.
+- обслуживает additive read-only `POST /api/triage/query`: `triage_runtime.py`
+  сериализует collection read через `QueryOp`, а `triage_service.py`
+  нормализует существующий attention collector, active card Signals и exact
+  Search card rows в bounded deterministic projection без persistence,
+  mutations или full preview rendering;
 - обслуживает отдельные card/note mutation endpoints; strict validation и
   preflight находятся в `entity_actions.py`, а official Anki wrapper bridge —
   в `entity_action_runtime.py`;
 
 Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
 через API server и контролируются Python side.
+
+`triage_service.py` не владеет lifecycle источников. `metrics.py` остаётся
+владельцем legacy attention query, `NotificationStore` — Signals, а
+`search_service.project_card_row()` — compact entity identity. Triage только
+объединяет их по `cardId`, suppress unconfirmed content heuristics, назначает
+categorical priority и публикует typed source availability. Технический
+contract: `docs/cards-v2-triage-read-api.md`.
 
 Security details: `docs/security-and-safety.md`.
 

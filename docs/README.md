@@ -29,6 +29,7 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [Frontend map](frontend-map.md)
 - [Navigation / IA](navigation-ia.md)
 - [Cards v2 product contract](cards-v2-product-contract.md)
+- [Cards v2 triage read API](cards-v2-triage-read-api.md)
 - [Settings Hub](settings-hub.md)
 - [Statistics](statistics-v1.md)
 - [FSRS analytics](fsrs-analytics.md)

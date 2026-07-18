@@ -4,7 +4,9 @@
 
 **Status:** Accepted for `C1.1`
 **Branch:** `core`
-**Production status:** documentation only; current runtime is unchanged
+**Production status:** C1.2 adds an additive read foundation; current CardsPage remains unchanged
+
+Technical read contract: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
 
 Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
 

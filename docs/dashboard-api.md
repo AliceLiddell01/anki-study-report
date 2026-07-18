@@ -76,6 +76,7 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/statistics/query
 /api/search/query
 /api/search/inspect
+/api/triage/query
 /api/entities/cards/actions
 /api/entities/notes/actions
 /api/actions/<action>
@@ -99,6 +100,26 @@ declared row/details contract и всю response metadata до возврата 
 `invalid_search_request`, `search_entity_not_found`, `search_unavailable`,
 `search_failed`, `search_timeout`. Полный request/response и bounding contract:
 `docs/search-query-foundation.md`.
+
+## Canonical triage read API
+
+`POST /api/triage/query` — additive C1.2 read endpoint для будущего Cards v2.
+Он требует текущий dashboard token, JSON body до 8 KiB и exact
+`schemaVersion: 1` contract. `GET` получает `405`, неверный content type —
+`415`, unknown fields/invalid scope/cross-dataset fields — `400`.
+
+`automatic` объединяет текущие learning issues и active card-level Signals;
+heuristic missing-content issues suppress до confirmed Inspection Profiles.
+`search_workset` принимает только `1..200` exact decimal string card IDs и
+сохраняет их first-seen order. Automatic limit — `1..100`, workset limit —
+`1..200`. IDs, raw query и card content не помещаются в URL.
+
+Response различает `available | partial | unavailable`, typed состояние
+`attention`, `signals` и `searchResolver`, explicit
+`profiles_not_available`, counts/truncation и bounded card-anchored items.
+Новый contract не содержит `riskScore`, full preview/media, raw revlog,
+exception, token или runtime path. Полная shape, mapping и ordering:
+[`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
 
 ## Entity actions API
 
