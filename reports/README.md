@@ -1,6 +1,8 @@
 # Historical reports and evidence
 
-Эта папка хранит snapshots, handoff, audits, measurements, inventories и closeout evidence. Эти файлы полезны для воспроизводимости решений, но **не являются source of truth для текущего production behavior**.
+Эта папка хранит snapshots, handoff, audits, measurements, inventories и
+closeout evidence. Эти файлы полезны для воспроизводимости решений, но **не
+являются source of truth для текущего production behavior**.
 
 При конфликте использовать приоритет:
 
@@ -11,6 +13,13 @@ production code/tests
 → reports/
 → old plans/assumptions
 ```
+
+## Core reports
+
+- [c1-0-baseline.md](core/c1-0-baseline.md)
+- [c1-5-cards-workspace.md](core/c1-5-cards-workspace.md)
+- [c1-5r-0-recovery-baseline.md](core/c1-5r-0-recovery-baseline.md)
+- [c1-5r-1-canonical-card-display-identity.md](core/c1-5r-1-canonical-card-display-identity.md)
 
 ## Product reports
 
@@ -43,4 +52,5 @@ production code/tests
 - [fsrs-helper-reference-inventory.md](research/fsrs-helper-reference-inventory.md)
 - [statistics-reference-inventory.md](research/statistics-reference-inventory.md)
 
-Новые отчёты не добавляются в `docs/`. Они получают дату/scope, tested SHA/run identity и честный список непроверенного.
+Новые отчёты не добавляются в `docs/`. Они получают дату/scope, tested SHA/run
+identity и честный список непроверенного.
