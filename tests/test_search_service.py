@@ -55,6 +55,9 @@ class FakeCard:
         self.lapses = 1
         self.flags = 2
         self._note = note
+        self.browser_html = ""
+        self.reviewer_html = note.fields[0]
+        self.question_calls = []
         note._cards.append(self)
 
     def note(self):
@@ -62,6 +65,10 @@ class FakeCard:
 
     def template(self):
         return {"name": "Card 1"}
+
+    def question(self, reload=False, browser=False):
+        self.question_calls.append((reload, browser))
+        return self.browser_html if browser else self.reviewer_html
 
 
 class FakeCollection:
@@ -125,6 +132,7 @@ class FakeSearchNode:
 
 def query(**overrides):
     value = {
+        "schemaVersion": 2,
         "mode": "cards",
         "query": "deck:Japanese",
         "filters": [],
@@ -140,16 +148,18 @@ def query(**overrides):
 @pytest.mark.parametrize(
     ("payload", "field"),
     [
-        ({"mode": "invalid"}, "mode"),
-        ({"mode": "cards", "sql": "select 1"}, "sql"),
-        ({"mode": "cards", "query": "x\x00y"}, "query"),
-        ({"mode": "cards", "query": "x" * (search.MAX_QUERY_LENGTH + 1)}, "query"),
-        ({"mode": "cards", "page": True}, "page"),
-        ({"mode": "cards", "pageSize": 200}, "pageSize"),
-        ({"mode": "cards", "sort": {"key": "due", "direction": "asc"}}, "sort.key"),
-        ({"mode": "notes", "filters": [{"type": "state", "state": "due"}]}, "filters.0"),
-        ({"mode": "cards", "filters": [{"type": "deck", "deckId": "01"}]}, "filters.0.deckId"),
-        ({"mode": "cards", "filters": [{}]}, "filters.0.type"),
+        ({"mode": "cards"}, "schemaVersion"),
+        ({"schemaVersion": 1, "mode": "cards"}, "schemaVersion"),
+        ({"schemaVersion": 2, "mode": "invalid"}, "mode"),
+        ({"schemaVersion": 2, "mode": "cards", "sql": "select 1"}, "sql"),
+        ({"schemaVersion": 2, "mode": "cards", "query": "x\x00y"}, "query"),
+        ({"schemaVersion": 2, "mode": "cards", "query": "x" * (search.MAX_QUERY_LENGTH + 1)}, "query"),
+        ({"schemaVersion": 2, "mode": "cards", "page": True}, "page"),
+        ({"schemaVersion": 2, "mode": "cards", "pageSize": 200}, "pageSize"),
+        ({"schemaVersion": 2, "mode": "cards", "sort": {"key": "due", "direction": "asc"}}, "sort.key"),
+        ({"schemaVersion": 2, "mode": "notes", "filters": [{"type": "state", "state": "due"}]}, "filters.0"),
+        ({"schemaVersion": 2, "mode": "cards", "filters": [{"type": "deck", "deckId": "01"}]}, "filters.0.deckId"),
+        ({"schemaVersion": 2, "mode": "cards", "filters": [{}]}, "filters.0.type"),
     ],
 )
 def test_query_validation_rejects_unbounded_or_ambiguous_inputs(payload, field):
@@ -158,12 +168,15 @@ def test_query_validation_rejects_unbounded_or_ambiguous_inputs(payload, field):
     assert field in error.value.field_errors
 
 
-def test_inspect_validation_keeps_card_and_note_modes_distinct():
-    assert search.normalize_search_inspect_request({"mode": "cards", "cardId": "123"})["cardId"] == 123
-    assert search.normalize_search_inspect_request({"mode": "notes", "noteId": "456"})["noteId"] == 456
+def test_inspect_validation_keeps_card_and_note_modes_distinct_and_versioned():
+    assert search.normalize_search_inspect_request({"schemaVersion": 2, "mode": "cards", "cardId": "123"})["cardId"] == 123
+    assert search.normalize_search_inspect_request({"schemaVersion": 2, "mode": "notes", "noteId": "456"})["noteId"] == 456
     with pytest.raises(search.SearchValidationError) as error:
-        search.normalize_search_inspect_request({"mode": "cards", "noteId": "456"})
+        search.normalize_search_inspect_request({"schemaVersion": 2, "mode": "cards", "noteId": "456"})
     assert {"cardId", "noteId"} <= set(error.value.field_errors)
+    with pytest.raises(search.SearchValidationError) as error:
+        search.normalize_search_inspect_request({"mode": "cards", "cardId": "123"})
+    assert "schemaVersion" in error.value.field_errors
 
 
 def test_native_query_combines_parsable_text_with_structured_filters(monkeypatch):
@@ -206,6 +219,7 @@ def test_malformed_native_query_is_a_typed_validation_error():
 def test_query_caps_results_paginates_and_loads_only_the_requested_page():
     col = FakeCollection(range(1, 2052))
     result = search.execute_search_query(col, query(page=2, pageSize=25))
+    assert result["schemaVersion"] == 2
     assert result["boundedTotal"] == search.RESULT_CAP
     assert result["pageCount"] == 80
     assert result["pageLimit"] == 80
@@ -257,7 +271,7 @@ def test_empty_result_uses_page_one_with_zero_page_count():
     assert result["items"] == []
 
 
-def test_notes_mode_has_a_distinct_bounded_projection():
+def test_notes_mode_has_a_distinct_bounded_projection_and_keeps_primary_text():
     col = FakeCollection(range(1, 3))
     result = search.execute_search_query(col, query(mode="notes", query="tag:one", requestId=None))
     assert result["mode"] == "notes"
@@ -269,12 +283,28 @@ def test_notes_mode_has_a_distinct_bounded_projection():
     }
 
 
+def test_card_projection_uses_exact_display_identity_without_primary_text_alias(monkeypatch):
+    col = FakeCollection([1])
+    card = col.cards[1]
+    card.browser_html = "<b>Browser identity</b>"
+    projected = {"displayText": "Browser identity", "displaySource": "browser_question", "displayStatus": "available", "displayTruncated": False}
+    row = search.project_card_row(col, card)
+    resolution = search.resolve_card_rows(col, [1])
+    monkeypatch.setattr(search, "build_rendered_preview_native_first", lambda *_args: {"renderStatus": "sanitized", "mediaRefs": []})
+    details = search.execute_search_inspect(col, {"schemaVersion": 2, "mode": "cards", "cardId": "1"})["details"]
+    assert {key: row[key] for key in projected} == projected
+    assert {key: resolution["items"][0][key] for key in projected} == projected
+    assert {key: details[key] for key in projected} == projected
+    assert "primaryText" not in row
+    assert "primaryText" not in details
+
+
 def test_plain_text_projection_removes_active_markup_media_and_cloze():
     value = '<script>alert(1)</script><b>Hello</b> [sound:secret.mp3] {{c1::world::hint}} &amp; ok'
     assert search.safe_plain_text(value) == "Hello world & ok"
     col = FakeCollection([1])
     col.notes[1].fields[0] = value
-    result = search.execute_search_inspect(col, {"mode": "notes", "noteId": "1"})
+    result = search.execute_search_inspect(col, {"schemaVersion": 2, "mode": "notes", "noteId": "1"})
     assert result["details"]["primaryText"] == "Hello world & ok"
     assert result["details"]["fields"][0]["value"] == "Hello world & ok"
 
@@ -283,8 +313,8 @@ def test_card_and_note_inspect_return_separate_bounded_models(monkeypatch):
     col = FakeCollection([1])
     preview_calls = []
     monkeypatch.setattr(search, "build_rendered_preview_native_first", lambda collection, card_id, model, fields, card_ord: preview_calls.append((collection, card_id, model["name"], fields, card_ord)) or {"renderStatus": "sanitized", "frontHtml": "<b>safe</b>", "mediaRefs": []})
-    card = search.execute_search_inspect(col, {"mode": "cards", "cardId": "1"})
-    note = search.execute_search_inspect(col, {"mode": "notes", "noteId": "1"})
+    card = search.execute_search_inspect(col, {"schemaVersion": 2, "mode": "cards", "cardId": "1"})
+    note = search.execute_search_inspect(col, {"schemaVersion": 2, "mode": "notes", "noteId": "1"})
     assert card["mode"] == "cards"
     assert card["details"]["cardId"] == "1"
     assert card["details"]["deck"] == {"deckId": "3", "deckName": "Languages::Japanese"}
@@ -301,7 +331,7 @@ def test_card_and_note_inspect_return_separate_bounded_models(monkeypatch):
 def test_inspect_returns_typed_not_found_without_leaking_backend_errors():
     col = FakeCollection([1])
     with pytest.raises(search.SearchEntityNotFoundError) as error:
-        search.execute_search_inspect(col, {"mode": "cards", "cardId": "999"})
+        search.execute_search_inspect(col, {"schemaVersion": 2, "mode": "cards", "cardId": "999"})
     assert error.value.mode == "cards"
     assert "999" not in str(error.value)
 
