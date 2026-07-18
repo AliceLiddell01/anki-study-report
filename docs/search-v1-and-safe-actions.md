@@ -1,56 +1,83 @@
-# Search v1 и Safe Actions
+# Search и Safe Actions
 
-Статус: реализовано для Anki 26.05; снимок 2026-07-15.
+Статус: Search query/inspect schema v2; Safe Actions schema v1; снимок
+2026-07-19.
 
-## Search v1
+## Search
 
-Search доступен на `#/search` между «Колоды» и «Карточки» в primary navigation.
-Запрос запускается только по кнопке/Enter: ввод не создаёт фоновых запросов.
-Нативная строка Anki, выбранный режим, фильтры, сортировка и page size хранятся
-в `sessionStorage`; результаты, selection и inspector после reload не
-восстанавливаются и auto-query не выполняется. Raw query не попадает в URL,
-title, normal logs или публичные E2E-артефакты.
+Search доступен на `#/search` между «Колоды» и «Карточки». Запрос запускается
+только по кнопке/Enter. Query, mode, filters, sort и page size сохраняются в
+`sessionStorage`; результаты, selection и Inspector после reload не
+восстанавливаются. Raw query не попадает в URL, title, normal logs или публичные
+артефакты.
 
-Режим `Cards` показывает primary text, deck, note type, template, state, due,
-interval, reviews, lapses и flag. Режим `Notes` показывает primary text, note
-type, tags, card count и decks. Card-only state/flag filters очищаются при
-переходе в Notes. Структурные deck/note type/tag filters объединяются с native
-query backend-ом через Anki search nodes, а не строковой конкатенацией.
+Query и inspect требуют `schemaVersion: 2`. Metadata catalog остаётся отдельным
+schema v1 request variant.
 
-Deck и note type controls лениво запрашивают all-collection metadata через
-строгий variant `POST /api/search/query`:
+### Cards mode
+
+Cards mode показывает canonical compact card identity, deck, note type,
+template, state, due, interval, reviews, lapses и flag. Card identity содержит:
+
+```text
+displayText
+displaySource
+displayStatus
+displayTruncated
+```
+
+Search row и Search Inspector heading используют один backend projector. Он
+сначала читает native Browser question, затем reviewer front и иначе возвращает
+explicit media-only/unavailable state. Arbitrary note fields больше не являются
+fallback card identity. Старого card `primaryText` alias в schema v2 нет.
+
+### Notes mode
+
+Notes mode остаётся note projection: `primaryText`, note type, tags, card count
+и decks. Card-only state/flag filters очищаются при переходе в Notes. Note mode
+не получает card display fields.
+
+### Metadata and pagination
+
+Deck/note-type controls лениво запрашивают all-collection metadata через strict
+v1 variant:
 
 ```json
 {"kind":"metadata","requestId":"search-metadata-1"}
 ```
 
-Ответ содержит bounded каталоги `decks` (`deckId`, `deckName`, `filtered`) и
-`noteTypes` (`noteTypeId`, `noteTypeName`), а также truncation markers. Пока
-metadata не запрошена или временно недоступна, scoped report catalogs остаются
-только UI fallback. Move picker использует live catalog и исключает filtered
-колоды; backend всё равно повторно разрешает destination по ID непосредственно
-перед native operation.
+Query v2 использует native Anki grammar, bounded structured filters,
+`pageCount`, page sizes `25|50|100` и hard cap 2000. Inspector выполняет
+отдельный bounded v2 inspect только после выбора строки.
 
-Pagination использует `pageCount`, page sizes `25|50|100`, hard cap 2000 и
-не загружает все details заранее. Inspector выполняет отдельный bounded inspect
-только после выбора строки. Текст рендерится React-ом как plain text: template
-JavaScript, iframe, rich preview HTML и external media здесь не исполняются.
+### Selection and Browser handoff
 
-Selection содержит только явные decimal string IDs, сохраняется между
-страницами одного query fingerprint, header checkbox действует только на
-текущую страницу, cap — 200. `Open in Anki Browser` отправляет mode+IDs на
-allowlisted `open-search-selection`; backend заново разрешает каждый ID и
-строит bounded `cid:`/`nid:` query.
+Selection содержит только explicit decimal string IDs, сохраняется между
+страницами одного query fingerprint, header checkbox действует на текущую
+страницу, cap — 200. `Open in Anki Browser` отправляет exact mode+IDs через
+allowlisted `open-search-selection`; display text никогда не становится native
+query.
 
-Ошибки validation, stale entity, unavailable runtime, timeout и malformed
-response показываются локализованно. Новый запрос отменяет предыдущий client
-request и только последний response может заменить state. Truncation и bounded
-total показываются явно. Не реализованы saved searches, arbitrary columns,
-inline note editing, Cards v2, template preview и remote/cloud search.
+### Strict parsing and errors
+
+Frontend parser проверяет exact keys, schema, IDs, nested summaries, pagination
+metadata и display-state coherence. Schema v1 query/inspect, aliases, unknown
+fields and malformed success payloads fail closed as
+`invalid_search_response`.
+
+Backend errors remain:
+
+```text
+invalid_search_request
+search_entity_not_found
+search_unavailable
+search_failed
+search_timeout
+```
 
 ## Safe Actions
 
-Mutation endpoints отделены по типу:
+Mutation endpoints остаются отдельными:
 
 ```text
 POST /api/entities/cards/actions?token=<token>
@@ -58,68 +85,28 @@ POST /api/entities/notes/actions?token=<token>
 ```
 
 Card allowlist: `suspend`, `unsuspend`, `set_flag`, `clear_flag`, `bury`,
-`unbury`, `move_to_deck`. Note allowlist: `add_tags`, `remove_tags`. Toggle,
-reflection, generic method name, raw SQL, note-level bury и move note отсутствуют.
+`unbury`, `move_to_deck`. Note allowlist: `add_tags`, `remove_tags`. Generic
+method invocation, arbitrary SQL, delete, note-level bury and move-note
+отсутствуют.
 
-Пример card request:
+Request validates exact JSON, unique positive decimal IDs, batch `1..200`, body
+up to 8 KiB, bounded tags and server-resolved deck destinations. Any stale ID
+rejects the whole batch. Changing batches use official Anki operation wrappers
+and one native undo step; no-op returns `action.no_changes` without mutation.
 
-```json
-{"action":"set_flag","cardIds":["123"],"flag":3,"requestId":"cards-1"}
-```
+After success frontend repeats the current v2 query, reconciles page/selection
+and repeats active v2 inspect when the exact entity remains. Search identity
+does not affect mutation scope or resolution.
 
-Пример note request:
+## Security and privacy
 
-```json
-{"action":"add_tags","noteIds":["456"],"tags":["Japanese::Grammar"],"requestId":"notes-1"}
-```
+Frontend never reads collection directly. Token protection, loopback binding,
+action allowlists, sanitizer, media validation and preview isolation remain.
+Compact identity, queries, IDs, deck/note/template names, field values and media
+filenames are not added to remote telemetry.
 
-Response находится в `{"ok":true,"response":...}` и содержит
-`schemaVersion`, `entityType`, `action`, `requestedCount`, `affectedCount`,
-`unchangedCount`, `undoable`, `resultCode`, safe `args` и optional `requestId`.
-Stable result codes: `cards.suspended`, `cards.unsuspended`, `cards.flag_set`,
-`cards.flag_cleared`, `cards.buried`, `cards.unburied`, `cards.moved`,
-`notes.tags_added`, `notes.tags_removed`, `action.no_changes`. Frontend
-локализует codes; backend English message остаётся вторичной диагностикой.
-Frontend runtime validator также сверяет action с result code, args, counts и
-undoable marker, поэтому противоречивый success envelope не принимается.
+## Verification status
 
-Полный request валидируется до mutation: только JSON object, unknown fields
-запрещены, ID — уникальные positive decimal strings, batch `1..200`, body не
-больше 8 KiB. Tags: не больше 20 после нативного space parsing, не больше 1000
-символов суммарно, без control characters; case/hierarchy `::` передаются
-нативному Anki tag layer. Любой stale ID отклоняет всю пачку.
-
-Изменяющая пачка выполняется одним официальным Anki wrapper/
-`CollectionOp` и создаёт один native undo step. Используются
-`suspend_cards`, `unsuspend_cards`, `set_card_flag`, `add_tags_to_notes`,
-`remove_tags_from_notes`, `bury_cards`, `unbury_cards`, `set_card_deck`.
-No-op не запускает mutation и возвращает `action.no_changes`, `undoable=false`.
-Finite HTTP wait — 20 секунд; timeout не объявляется успехом.
-
-Bury — явное временное состояние выбранных card IDs без sibling expansion.
-Unbury также явный, не toggle. Move принимает только server-resolved `deckId`:
-destination должна существовать и быть normal deck. Filtered/dynamic
-destination отклоняется. Карточки с `odid > 0` также отклоняются кодом
-`cards.filtered_source_unsupported`: Anki 26.05 `set_card_deck()` извлекает
-такие карточки из filtered deck и очищает FSRS data, поэтому dashboard не
-угадывает семантику домашней колоды.
-
-После подтверждённого действия frontend повторяет текущий query, исправляет
-page к ближайшему допустимому, очищает/reconciles selection и повторно читает
-активный inspector, если entity осталась на странице. Query/mode/filters/sort/
-page size сохраняются. Одновременно запускается не больше одной mutation.
-
-Отложены: delete, reschedule, change note type, field editing, bulk template
-operations, arbitrary tag/deck commands и действия над неявно расширенными
-наборами.
-
-## Проверки
-
-Focused contracts: `tests/test_search_metadata.py`,
-`tests/test_entity_actions.py`, `tests/test_entity_action_runtime.py`,
-`tests/test_dashboard_server.py`, `web-dashboard/src/lib/searchMetadataApi.test.ts`,
-`web-dashboard/src/lib/entityActionsApi.test.ts`, `SearchPage.test.tsx` и
-`SearchMetadataIntegration.test.tsx`. Targeted real-Anki proof входит в
-`standard/global` и пишет redacted `search-query-contract.json`: только
-codes/counts/state summaries, Browser errors и `collectionStable`, без
-token/raw query/tag content/ID lists.
+C1.5R.1 implementation is committed on `core`, but focused Python/Vitest/
+typecheck evidence is pending. Therefore the stage is not Complete and C1.5R.2
+and C1.6 remain blocked.
