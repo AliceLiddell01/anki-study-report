@@ -115,6 +115,16 @@ Suggestion explains required roles and mapped fields; confirmation is explicit. 
 
 ## Main workspace
 
+Три равноправных режима `table`, `tiles` и `Anki preview` больше не являются
+канонической навигацией Cards. Основной workflow строится вокруг одной
+компактной очереди и Inspector выбранной карточки. Сама очередь может быть
+реализована как плотная таблица, структурированный список или гибридный
+интерактивный grid — окончательный вариант определяется прототипированием и
+accessibility-тестами. Anki preview сохраняется для активной карточки и при
+необходимости может разворачиваться. Tiles не входят в обязательный C1
+workflow, но отдельный визуальный режим допустим в будущем только при доказанной
+пользовательской задаче.
+
 Desktop layout:
 
 ```text
@@ -225,7 +235,7 @@ Queue has explicit cap and cap-aware total/truncation. Details/full preview load
 
 - reason-family tabs;
 - mixed automatic/Search queue;
-- equal table/tiles/Anki-preview modes;
+- three equal table/tiles/Anki-preview modes as canonical Cards navigation;
 - preview for every row;
 - visible numeric score;
 - reason-only ordering;
@@ -246,8 +256,8 @@ All files are original pre-change evidence and are not committed.
 | remove four tabs | all modes/themes + code | Gaps/Patterns are presets; Risk/Check overlap |
 | compact summary | all top sections | five KPIs delay first row |
 | queue + Inspector | table/tiles | context useful for one item; repetition harms scanning |
-| remove tiles mode | APKG/synthetic tiles | larger area without separate task |
-| active-only preview | APKG preview 9,877 px; synthetic 18,328–18,329 px | extreme page length |
+| tiles are not required in C1 | APKG/synthetic tiles | larger area without a separate proven task; a future visual mode remains possible |
+| selected-card preview, expandable when needed | APKG preview 9,877 px; synthetic 18,328–18,329 px | full preview for every row creates extreme page length |
 | hide score | risk pills in all modes | exact values do not explain decisions |
 | preserve theme parity | every light/dark pair | same structural findings |
 | profile-aware content | synthetic set | heterogeneous Japanese/programming/fallback content |
@@ -264,6 +274,7 @@ Inventory coverage: `APKG/synthetic × table/tiles/Anki preview × light/dark` =
 | categorical priority | opaque score screenshots | numeric/reason-only/critical | understandable, localizable | mapping per reason |
 | confirmed profiles | arbitrary Anki fields/templates | universal/unconfirmed/code | explainable, fail closed | schema/fingerprint/editor |
 | detector resolution | action ≠ issue gone | Done/Hide/Ignore | preserves truth | recheck scheduling/failures |
+| queue form remains prototype-driven | table/list/grid accessibility trade-offs | freeze table or ban it | preserves the compact queue contract without prematurely fixing semantics | density, roles and focus model |
 | semantics after prototype | listbox conflict; grid complexity | freeze role now | avoids premature inaccessible choice | roles/focus/AT matrix |
 
 ## Open questions
