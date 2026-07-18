@@ -237,6 +237,111 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
         manager.stop()
 
 
+def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
+    dashboard_server = import_addon_module("dashboard_server")
+    triage_runtime = import_addon_module("triage_runtime")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 1,
+        "dataset": "automatic",
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+        "limit": 100,
+    }
+    manager.configure_triage_handler(
+        lambda value: triage_runtime.run_triage_query_sync(None, value, signal_provider=lambda: [])
+    )
+    try:
+        status, _, body = fetch(f"{base_url}/api/triage/query", method="POST", json_body=payload)
+        assert status == 403
+        assert json.loads(body)["error"] == "invalid_dashboard_token"
+
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}", method="POST")
+        assert status == 415
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
+        status, content_type, body = fetch(
+            f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+        )
+        assert status == 200
+        assert "application/json" in content_type
+        response = json.loads(body)
+        assert response["ok"] is True
+        assert response["response"]["schemaVersion"] == 1
+        assert response["response"]["status"] == "partial"
+
+        status, _, body = fetch(
+            f"{base_url}/api/triage/query?token={token}",
+            method="POST",
+            json_body={**payload, "rawSql": "select * from cards"},
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
+        status, _, body = fetch_raw(
+            f"{base_url}/api/triage/query?token={token}",
+            b'{"padding":"' + b"x" * 9000 + b'"}',
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+    finally:
+        manager.stop()
+
+
+def test_triage_endpoint_maps_typed_failures_without_exception_leak(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 1,
+        "dataset": "automatic",
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+        "limit": 100,
+    }
+    logged = []
+    monkeypatch.setattr(dashboard_server, "log_event", lambda *args, **kwargs: logged.append((args, kwargs)))
+    try:
+        for code, expected in [
+            ("invalid_triage_request", 400),
+            ("triage_timeout", 504),
+            ("triage_unavailable", 503),
+            ("triage_failed", 503),
+        ]:
+            manager.configure_triage_handler(lambda _value, code=code: {"ok": False, "error": code, "message": "Safe failure."})
+            status, _, body = fetch(
+                f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+            )
+            assert status == expected
+            assert json.loads(body)["error"] == code
+
+        manager.configure_triage_handler(
+            lambda _value: (_ for _ in ()).throw(RuntimeError("private-path token=secret-token"))
+        )
+        status, _, body = fetch(
+            f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+        )
+        assert status == 503
+        assert json.loads(body) == {
+            "ok": False,
+            "error": "triage_failed",
+            "message": "The triage request failed.",
+        }
+        assert "private-path" not in body.decode("utf-8")
+        assert "secret-token" not in body.decode("utf-8")
+        assert "private-path" not in repr(logged)
+        assert "secret-token" not in repr(logged)
+    finally:
+        manager.stop()
+
+
 def test_search_selection_browser_action_remains_token_protected_and_post_only():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()

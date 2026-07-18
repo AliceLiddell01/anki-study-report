@@ -152,6 +152,7 @@ def collect_attention_cards(
     end_ts: int | float,
     deck_ids: Sequence[int] | None = None,
     max_results: int = ATTENTION_CARD_LIMIT,
+    include_rendered_preview: bool = True,
 ) -> list[dict[str, Any]]:
     """Return read-only card-level attention rows for the dashboard.
 
@@ -166,6 +167,7 @@ def collect_attention_cards(
         end_ts,
         deck_ids,
         max_results=max_results,
+        include_rendered_preview=include_rendered_preview,
     )
     return cards
 
@@ -176,6 +178,7 @@ def collect_attention_cards_with_status(
     end_ts: int | float,
     deck_ids: Sequence[int] | None = None,
     max_results: int = ATTENTION_CARD_LIMIT,
+    include_rendered_preview: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Return card-level attention rows plus collector status metadata."""
 
@@ -242,7 +245,12 @@ def collect_attention_cards_with_status(
         rows = _attention_card_rows(col, start_ms, end_ms, expanded_deck_ids)
         deck_names = _deck_names_by_id(col)
         attention_cards = [
-            _attention_card_payload(col, row, deck_names)
+            _attention_card_payload(
+                col,
+                row,
+                deck_names,
+                include_rendered_preview=include_rendered_preview,
+            )
             for row in rows
         ]
         attention_cards = [card for card in attention_cards if card is not None]
@@ -821,6 +829,8 @@ def _attention_card_payload(
     col: Any,
     row: tuple[Any, ...],
     deck_names: dict[int, str],
+    *,
+    include_rendered_preview: bool = True,
 ) -> dict[str, Any] | None:
     if len(row) >= 12:
         (
@@ -884,14 +894,13 @@ def _attention_card_payload(
         return None
 
     front_preview = preview.get("primary") or _front_preview(fields)
-    return {
+    payload = {
         "cardId": card_id_int,
         "noteId": note_id_int,
         "noteTypeId": _as_int(model_id),
         "deckName": deck_name,
         "frontPreview": front_preview,
         "preview": preview,
-        "renderedPreview": build_rendered_preview_native_first(col, card_id_int, model, raw_fields, card_ord),
         "issues": issues,
         "riskScore": _attention_risk_score(issues, lapses_int),
         "againCount": again_count_int,
@@ -904,7 +913,16 @@ def _attention_card_payload(
         "noteTypeName": preview.get("noteTypeName") or profile.get("noteTypeName") or "",
         "cardTemplateName": preview.get("cardTemplateName") or "",
         "detectedKind": preview.get("detectedKind") or profile.get("detectedKind") or "unknown",
-}
+    }
+    if include_rendered_preview:
+        payload["renderedPreview"] = build_rendered_preview_native_first(
+            col,
+            card_id_int,
+            model,
+            raw_fields,
+            card_ord,
+        )
+    return payload
 
 
 def _rendered_preview_fallback() -> dict[str, Any]:

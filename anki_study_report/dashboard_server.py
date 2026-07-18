@@ -110,6 +110,7 @@ class DashboardServerManager:
         self._fsrs_query_handler = None
         self._search_query_handler = None
         self._search_inspect_handler = None
+        self._triage_query_handler = None
         self._card_action_handler = None
         self._note_action_handler = None
         self._media_file_provider = None
@@ -356,6 +357,10 @@ class DashboardServerManager:
         with self._lock:
             self._search_query_handler = query_handler
             self._search_inspect_handler = inspect_handler
+
+    def configure_triage_handler(self, query_handler=None) -> None:
+        with self._lock:
+            self._triage_query_handler = query_handler
 
     def configure_entity_action_handlers(self, card_handler=None, note_handler=None) -> None:
         with self._lock:
@@ -638,6 +643,28 @@ class DashboardServerManager:
     def inspect_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_search("_search_inspect_handler", payload)
 
+    def query_triage(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._triage_query_handler
+        if handler is None:
+            return {"ok": False, "error": "triage_unavailable", "message": "Triage is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "triage_failed",
+                "message": "The triage request failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "triage.request.error",
+                "Triage request handler failed",
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "triage_failed", "message": "The triage request failed."}
+
     def _request_search(self, handler_attribute: str, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             handler = getattr(self, handler_attribute)
@@ -850,6 +877,15 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.METHOD_NOT_ALLOWED,
                 )
             return
+        if path == "/api/triage/query":
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for triage requests."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path in {"/api/entities/cards/actions", "/api/entities/notes/actions"}:
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
@@ -949,6 +985,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/search/inspect":
             self._send_search_request(_query_token(parsed), inspect=True)
+            return
+        if path == "/api/triage/query":
+            self._send_triage_query(_query_token(parsed))
             return
         if path == "/api/entities/cards/actions":
             self._send_entity_action(_query_token(parsed), "cards")
@@ -1689,6 +1728,38 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         elif error == "search_timeout":
             status = HTTPStatus.GATEWAY_TIMEOUT
         elif error in {"search_unavailable", "search_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_triage_query(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_request", "message": "Use application/json."},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_request", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.query_triage(payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_triage_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "triage_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"triage_unavailable", "triage_failed"}:
             status = HTTPStatus.SERVICE_UNAVAILABLE
         else:
             status = HTTPStatus.BAD_REQUEST

@@ -181,6 +181,22 @@ def execute_search_inspect(col: Any, raw: object) -> dict[str, Any]:
     return response
 
 
+def resolve_card_rows(col: Any, card_ids: list[int]) -> dict[str, Any]:
+    """Resolve bounded exact card IDs through the canonical Search row projector."""
+
+    items: list[dict[str, Any]] = []
+    missing_card_ids: list[str] = []
+    for card_id in card_ids:
+        try:
+            card = col.get_card(card_id)
+            if _coerce_entity_id(getattr(card, "id", 0)) != card_id:
+                raise LookupError
+            items.append(project_card_row(col, card))
+        except Exception:
+            missing_card_ids.append(str(card_id))
+    return {"items": items, "missingCardIds": missing_card_ids}
+
+
 def build_native_query(col: Any, request: dict[str, Any]) -> str:
     nodes: list[Any] = []
     if request["query"]:

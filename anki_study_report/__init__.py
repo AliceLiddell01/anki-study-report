@@ -157,6 +157,7 @@ from .browser_actions import (
     open_browser_search,
 )
 from .search_runtime import run_search_inspect_sync, run_search_query_sync
+from .triage_runtime import run_triage_query_sync
 from .entity_action_runtime import run_card_action_sync, run_note_action_sync
 from .config_service import (
     DEFAULT_ENABLED_METRICS,
@@ -2000,6 +2001,7 @@ def _configure_dashboard_cache_handlers() -> None:
         query_handler=_search_query_response,
         inspect_handler=_search_inspect_response,
     )
+    _DASHBOARD_SERVER.configure_triage_handler(_triage_query_response)
     _DASHBOARD_SERVER.configure_entity_action_handlers(
         card_handler=_card_action_response,
         note_handler=_note_action_response,
@@ -2396,6 +2398,14 @@ def _search_query_response(payload: dict) -> dict:
 
 def _search_inspect_response(payload: dict) -> dict:
     return run_search_inspect_sync(mw, payload)
+
+
+def _triage_query_response(payload: dict) -> dict:
+    return run_triage_query_sync(
+        mw,
+        payload,
+        signal_provider=_NOTIFICATION_STORE.list_active_card_signals,
+    )
 
 
 def _card_action_response(payload: dict) -> dict:
