@@ -13,10 +13,11 @@ import math
 import re
 from typing import Any
 
+from .card_display_identity import project_card_display_identity
 from .note_intelligence import build_rendered_preview_native_first
 
 
-SEARCH_SCHEMA_VERSION = 1
+SEARCH_SCHEMA_VERSION = 2
 MAX_QUERY_LENGTH = 4096
 MAX_FILTERS = 12
 ALLOWED_PAGE_SIZES = (25, 50, 100)
@@ -55,8 +56,10 @@ class SearchEntityNotFoundError(LookupError):
 def normalize_search_query_request(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise SearchValidationError({"request": "Expected a JSON object."})
-    allowed = {"mode", "query", "filters", "sort", "page", "pageSize", "requestId"}
+    allowed = {"schemaVersion", "mode", "query", "filters", "sort", "page", "pageSize", "requestId"}
     errors = {key: "Unexpected field." for key in raw if key not in allowed}
+    if raw.get("schemaVersion") != SEARCH_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
+        errors["schemaVersion"] = "Expected schemaVersion 2."
 
     mode = raw.get("mode")
     if mode not in MODES:
@@ -93,6 +96,7 @@ def normalize_search_query_request(raw: object) -> dict[str, Any]:
     if errors:
         raise SearchValidationError(errors)
     return {
+        "schemaVersion": SEARCH_SCHEMA_VERSION,
         "mode": mode,
         "query": query,
         "filters": filters,
@@ -106,8 +110,10 @@ def normalize_search_query_request(raw: object) -> dict[str, Any]:
 def normalize_search_inspect_request(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise SearchValidationError({"request": "Expected a JSON object."})
-    allowed = {"mode", "cardId", "noteId", "requestId"}
+    allowed = {"schemaVersion", "mode", "cardId", "noteId", "requestId"}
     errors = {key: "Unexpected field." for key in raw if key not in allowed}
+    if raw.get("schemaVersion") != SEARCH_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
+        errors["schemaVersion"] = "Expected schemaVersion 2."
     mode = raw.get("mode")
     if mode not in MODES:
         errors["mode"] = "Expected cards or notes."
@@ -124,7 +130,7 @@ def normalize_search_inspect_request(raw: object) -> dict[str, Any]:
         request_id = None
     if errors:
         raise SearchValidationError(errors)
-    return {"mode": mode, expected_key: entity_id, "requestId": request_id}
+    return {"schemaVersion": SEARCH_SCHEMA_VERSION, "mode": mode, expected_key: entity_id, "requestId": request_id}
 
 
 def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
@@ -236,6 +242,7 @@ def project_card_row(col: Any, card: Any) -> dict[str, Any]:
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
     note_type = _note_type(note)
     deck_id = _card_deck_id(card)
+    display_identity = project_card_display_identity(card).to_wire()
     return {
         "cardId": str(_coerce_entity_id(card.id)),
         "noteId": str(_coerce_entity_id(card.nid)),
@@ -245,7 +252,7 @@ def project_card_row(col: Any, card: Any) -> dict[str, Any]:
         "noteTypeName": str(note_type.get("name") or ""),
         "templateOrdinal": int(getattr(card, "ord", 0)),
         "templateName": _template_name(card, note_type),
-        "primaryText": _primary_text(note, note_type),
+        **display_identity,
         "state": _card_state(card),
         "due": int(getattr(card, "due", 0)),
         "interval": int(getattr(card, "ivl", 0)),
@@ -449,6 +456,8 @@ def _note_items(note: Any) -> list[tuple[str, str]]:
 
 
 def _primary_text(note: Any, note_type: dict[str, Any]) -> str:
+    """Project note-mode text only; card identity must never call this helper."""
+
     fields = list(getattr(note, "fields", []) or [])
     sort_index = note_type.get("sortf", 0)
     if isinstance(sort_index, bool) or not isinstance(sort_index, int) or sort_index < 0:
@@ -493,16 +502,20 @@ def _deck_summary(col: Any, cards: list[Any], limit: int) -> list[dict[str, str]
     return [{"deckId": str(deck_id), "deckName": _deck_name(col, deck_id)} for deck_id in ids[:limit]]
 
 
-def _template_name(card: Any, note_type: dict[str, Any]) -> str:
+def _card_template(card: Any, note_type: dict[str, Any]) -> dict[str, Any]:
     try:
         if callable(getattr(card, "template", None)):
             template = card.template()
         else:
             templates = note_type.get("tmpls") or []
             template = templates[int(getattr(card, "ord", 0))] if templates else {}
-        return str(template.get("name") or "") if isinstance(template, dict) else ""
+        return template if isinstance(template, dict) else {}
     except Exception:
-        return ""
+        return {}
+
+
+def _template_name(card: Any, note_type: dict[str, Any]) -> str:
+    return str(_card_template(card, note_type).get("name") or "")
 
 
 def _card_state(card: Any) -> str:
