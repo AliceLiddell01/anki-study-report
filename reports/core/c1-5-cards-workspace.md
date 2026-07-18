@@ -1,6 +1,6 @@
 # C1.5 — Canonical Cards workspace
 
-**Current status:** `C1.5 — Design Gate complete, implementation in progress`
+**Current status:** `C1.5 — Complete`; `C1.6 — Next, not started`
 
 **Initial branch:** `core`
 
@@ -197,15 +197,71 @@ This is local synthetic/manual browser evidence, not real-Anki acceptance.
 
 ### Cloud acceptance
 
-Pending on the implementation/report candidate:
+Accepted implementation HEAD:
+`0460afe472cd87029368924bdf5640e90271c03c`.
 
-- exact-SHA Fast CI;
-- targeted Full Docker / Anki E2E `standard/cards` with exact Fast CI package
-  and restart verification;
-- documentation-only closeout commit and final exact-SHA Fast CI.
+- Fast CI [`29648956309`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29648956309):
+  PASS on the exact accepted HEAD;
+- exact package artifact `8430913583`, diagnostics artifact `8430913479`;
+- targeted Full Docker / Anki E2E
+  [`29649071545`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29649071545):
+  PASS, `standard/cards`, `verify_restart=true`, exact source Fast CI
+  `29648956309` and exact package hash verified;
+- redacted E2E artifact `8430943370`, digest
+  `sha256:332082fda809c1fed0be902a89065c9232a403fd1f5ba15512a23ca86ea3ea9d`;
+- artifact manifest: SUCCESS; 28 screenshots total, including four synthetic
+  Cards workspace screenshots and one APKG workspace screenshot;
+- browser proof: 12 queue rows, one Inspector, one preview host, no checkbox,
+  legacy mode or risk score, zero document overflow, no actionable request,
+  console or page errors;
+- 1024 proof: 518 px queue / 383 px Inspector, zero overflow;
+- APKG proof: eight filtered rows, one active preview, native media rendering;
+- expanded modal proof: inert and `aria-hidden` app shell, portal outside the
+  shell, one dialog;
+- restart API proof: 23 cards, 10 APKG attention cards, native render source,
+  Japanese profile moved to `needs_review`, Programming stayed `confirmed`,
+  learning reason remained, and profile evidence leaked no values.
 
-Until those gates pass, the truthful state is `C1.5 — Implemented,
-verification pending`; `C1.6 — Blocked`.
+The accepted screenshots were manually reviewed. Light/dark density, active
+row, long text, Inspector balance, preview isolation, expanded modal and 1024
+layout were visually coherent; no screenshot is committed.
+
+Diagnostic runs before acceptance are retained rather than hidden:
+
+- `29647972946`: FAIL because Search parser rejected backend
+  `fallbackReason: null`; fixed by `15fab44`;
+- `29648324031`: FAIL on an over-exact APKG deck label selector; fixed by
+  `46004cb`;
+- `29648565541`: FAIL on legacy exact Cards H1 checks after the product H1
+  changed; fixed by `e8f4b7f`;
+- `29648810472`: browser and restart smokes passed, but wrapper retained legacy
+  6+6 screenshot counts; fixed with a regression test by `0460afe`.
+
+The documentation-only closeout commit is followed by one final exact-SHA Fast
+CI. Its run ID is reported in the final response without a self-referential
+second documentation commit. Per policy, no second Docker run follows docs-only
+closeout.
+
+## Commits
+
+- `0c536f9` — Design Gate contract and prototype decision;
+- `45acab4` — canonical Cards queue/Inspector implementation and coverage;
+- `15fab44` — native preview nullable fallback parity;
+- `46004cb` — APKG deck E2E selector;
+- `e8f4b7f` — canonical Cards heading E2E expectations;
+- `0460afe` — canonical Cards screenshot manifest counts.
+
+## Known limitations and C1.6 prerequisites
+
+- C1.5 is read-only and has no bulk selection, Safe Action mutation, awaiting
+  recheck or detector-driven resolution UI;
+- Search/Notification deep handoffs are not consumed by Cards yet;
+- 100 is a bounded non-virtualized contour, not an unbounded inbox;
+- C1.6 must keep focus, active item and future selection independent, reuse the
+  existing exact-ID actions and make detector re-evaluation authoritative.
+
+No PR, merge, release, deployment, AnkiWeb publication or owner-profile read
+was performed. Core C1 remains in progress; only C1.5 is complete.
 
 ## Scope boundary
 

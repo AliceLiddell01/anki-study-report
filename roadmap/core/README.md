@@ -2,7 +2,7 @@
 
 **Track:** `C`
 **Role:** единственный обязательный последовательный путь основного add-on
-**Current status:** `C1.5` Implemented, verification pending; `C1.6` blocked
+**Current status:** `C1.5` Complete; `C1.6` Next, not started
 
 Core track не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные tracks могут развиваться отдельно, но не меняют критерии готовности core.
 
@@ -32,7 +32,7 @@ C1 Cards v2 / Problem Triage
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — `C1.5` Implemented, verification pending
+**Status:** In progress — `C1.5` Complete; `C1.6` Next, not started
 
 ### Current increments
 
@@ -41,7 +41,8 @@ C1 Cards v2 / Problem Triage
 - `C1.2 — Canonical triage model and read API`: Complete — technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md), exact-SHA [Fast CI run 29637594843](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS
 - `C1.3 — Inspection Profiles: contract and runtime`: Complete — contract [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md), evidence report [`reports/core/c1-3-inspection-profiles-runtime.md`](../../reports/core/c1-3-inspection-profiles-runtime.md), accepted `standard/cards` restart [run 29641398848](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641398848) PASS
 - `C1.4 — Inspection Profiles: user configuration`: Complete — UI contract [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md), evidence report [`reports/core/c1-4-inspection-profiles-ui.md`](../../reports/core/c1-4-inspection-profiles-ui.md), accepted `standard/cards` restart [run 29644836731](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731) PASS
-- `C1.5 — Canonical Cards workspace: queue and Inspector`: Implemented, exact-SHA cloud verification pending — UI contract [`docs/cards-v2-workspace-ui.md`](../../docs/cards-v2-workspace-ui.md), evidence report [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md)
+- `C1.5 — Canonical Cards workspace: queue and Inspector`: Complete — UI contract [`docs/cards-v2-workspace-ui.md`](../../docs/cards-v2-workspace-ui.md), evidence report [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md), accepted `standard/cards` restart [run 29649071545](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29649071545) PASS
+- `C1.6 — Handoffs, actions and detector-driven resolution loop`: Next, not started
 
 `C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.
 
@@ -62,9 +63,10 @@ It adds strict TypeScript foundation but no settings/Cards UI. C1.4 now adds
 the local Settings configuration workspace and bounded sample preview without
 changing CardsPage. Exact-SHA Fast CI `29644724894` and targeted real-Anki
 restart run `29644836731` are accepted. C1.5 replaces legacy Cards modes with
-the canonical triage queue and active-item Inspector; local acceptance is
-complete while exact-SHA Fast CI and targeted real-Anki verification remain
-pending. C1.6 has not started.
+the canonical triage queue and active-item Inspector. Exact-SHA Fast CI
+`29648956309` and targeted real-Anki `standard/cards` restart run
+`29649071545` are accepted on `0460afe472cd87029368924bdf5640e90271c03c`.
+C1.5 is complete; C1.6 is next and has not started.
 
 ### Goal
 
