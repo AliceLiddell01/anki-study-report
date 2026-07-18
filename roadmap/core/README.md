@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0` Complete; `C1.5R.1` Next; `C1.6` blocked
+**Current status:** `C1.5R.0` Complete; `C1.5R.1` Implemented, focused verification pending; `C1.5R.2` and `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -76,8 +76,8 @@ Cards presentation, and the normal Inspection Profiles path.
 
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Next, not started
-C1.5R.2 Declarative compact formatter runtime — Not started
+C1.5R.1 Canonical card display identity — Implemented, focused verification pending
+C1.5R.2 Declarative compact formatter runtime — Blocked
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -95,16 +95,27 @@ changes no production code or public schema and runs no heavy gate.
 
 #### C1.5R.1 — Canonical card display identity
 
-**Status:** Next, not started
+**Status:** Implemented, focused verification pending
 
 Owns one backend-projected compact identity shared by Search card rows/details,
 Triage, Cards queue, and Cards Inspector heading. It removes unrelated-field
-fallback and defines a strictly versioned public transition. It does not yet
-implement the formatter configuration UI or Cards redesign.
+fallback and introduces Search query/inspect schema v2 plus Triage schema v3.
+Search metadata remains v1. Card `primaryText` aliases are removed while note
+mode retains note `primaryText`.
+
+The implementation candidate, strict parsers, RU/EN fallback states, focused
+tests and contract docs are committed. GitHub connector execution did not run
+the focused Python/Vitest/typecheck contour, so this stage is not Complete.
+Implementation report:
+[`reports/core/c1-5r-1-canonical-card-display-identity.md`](../../reports/core/c1-5r-1-canonical-card-display-identity.md).
+
+It does not implement formatter configuration, preview-side correction,
+candidate-source redesign, Cards inbox redesign, 1024 px drawer, Inspection
+Profiles redesign, or C1.6 actions.
 
 #### C1.5R.2 — Declarative compact formatter runtime
 
-**Status:** Not started
+**Status:** Blocked by C1.5R.1 focused verification
 
 Owns a bounded, local, declarative formatter contract and storage/runtime. It
 must not silently extend Inspection Profile v1 and cannot execute arbitrary code.
