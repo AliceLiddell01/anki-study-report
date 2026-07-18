@@ -111,22 +111,51 @@ def normalize_inspection_query_request(raw: object) -> dict[str, Any]:
 
 def normalize_inspection_validate_request(raw: object) -> dict[str, Any]:
     errors: dict[str, str] = {}
-    value = _strict_request(raw, {"schemaVersion", "profile", "cardIds"}, errors)
-    _schema_version(value, errors)
+    schema_version = raw.get("schemaVersion") if isinstance(raw, dict) else None
+    expected = {"schemaVersion", "profile", "cardIds"} if schema_version == 1 else {
+        "schemaVersion", "profile", "preview"
+    }
+    value = _strict_request(raw, expected, errors)
+    if schema_version not in {1, 2} or isinstance(schema_version, bool):
+        errors["schemaVersion"] = "Expected schemaVersion 1 or 2."
     try:
         profile = validate_inspection_profile(value.get("profile"))
     except InspectionProfileValidationError as error:
         errors.update(error.field_errors)
         profile = None
-    card_ids = _decimal_id_array(
-        value.get("cardIds"),
-        "cardIds",
-        errors,
-        maximum=PREVIEW_CARD_LIMIT,
-        allow_empty=True,
-    )
+    card_ids: list[int] = []
+    preview_mode = "exact"
+    preview_limit = 0
+    if schema_version == 1:
+        card_ids = _decimal_id_array(
+            value.get("cardIds"),
+            "cardIds",
+            errors,
+            maximum=PREVIEW_CARD_LIMIT,
+            allow_empty=True,
+        )
+    else:
+        preview = value.get("preview")
+        if not isinstance(preview, dict):
+            errors["preview"] = "Expected an object."
+        else:
+            for key in preview:
+                if key not in {"mode", "limit"}:
+                    errors[f"preview.{key}"] = "Unexpected field."
+            if preview.get("mode") != "sample":
+                errors["preview.mode"] = "Expected sample."
+            preview_limit = _bounded_int(
+                preview.get("limit"), 1, PREVIEW_CARD_LIMIT, "preview.limit", errors
+            )
+            preview_mode = "sample"
     _raise_request_errors(errors)
-    return {"schemaVersion": INSPECTION_API_SCHEMA_VERSION, "profile": profile, "cardIds": card_ids}
+    return {
+        "schemaVersion": schema_version,
+        "profile": profile,
+        "cardIds": card_ids,
+        "previewMode": preview_mode,
+        "previewLimit": preview_limit,
+    }
 
 
 def normalize_inspection_update_request(raw: object) -> dict[str, Any]:
@@ -225,7 +254,12 @@ def execute_inspection_validate(col: Any, raw: object) -> dict[str, Any]:
     structure = structure_for_note_type(col, profile["noteTypeId"])
     lifecycle = effective_profile_state(profile, structure)
     errors = profile_structure_errors(profile, structure, require_checks=profile["storedState"] == "confirmed")
-    candidates = load_exact_inspection_candidates(col, request["cardIds"])
+    if request["previewMode"] == "sample":
+        candidates = load_sample_inspection_candidates(
+            col, int(profile["noteTypeId"]), request["previewLimit"]
+        )
+    else:
+        candidates = load_exact_inspection_candidates(col, request["cardIds"])
     preview_items: list[dict[str, Any]] = []
     if not errors and structure is not None:
         matching = [item for item in candidates["items"] if item["noteTypeId"] == int(profile["noteTypeId"])]
@@ -245,18 +279,26 @@ def execute_inspection_validate(col: Any, raw: object) -> dict[str, Any]:
                 }
             )
     return {
-        "schemaVersion": INSPECTION_API_SCHEMA_VERSION,
+        "schemaVersion": request["schemaVersion"],
         "valid": not errors,
         "effectiveState": lifecycle["state"],
         "stateReason": lifecycle["reason"],
         "fieldErrors": errors,
         "preview": {
-            "status": "available" if not errors else "unavailable",
-            "requestedCount": len(request["cardIds"]),
+            "status": (
+                "available"
+                if not errors and (request["previewMode"] == "exact" or candidates["items"])
+                else "unavailable"
+            ),
+            "requestedCount": (
+                request["previewLimit"]
+                if request["previewMode"] == "sample"
+                else len(request["cardIds"])
+            ),
             "evaluatedCount": len(preview_items),
             "missingCardIds": [str(value) for value in candidates["missingCardIds"]],
             "failureCount": sum(item["failureCount"] for item in preview_items),
-            "truncated": False,
+            "truncated": bool(candidates.get("truncated", False)),
             "items": preview_items,
         },
     }
@@ -572,6 +614,55 @@ def load_exact_inspection_candidates(col: Any, card_ids: list[int]) -> dict[str,
     return {
         "items": [by_card[value] for value in ordered if value in by_card],
         "missingCardIds": [value for value in ordered if value not in by_card],
+    }
+
+
+def load_sample_inspection_candidates(
+    col: Any,
+    note_type_id: int,
+    limit: int,
+) -> dict[str, Any]:
+    """Load a bounded deterministic sample without exposing note values."""
+    bounded_limit = max(1, min(PREVIEW_CARD_LIMIT, int(limit)))
+    model_id = _positive_int(note_type_id)
+    if model_id <= 0 or col is None or getattr(col, "db", None) is None:
+        return {"items": [], "missingCardIds": [], "truncated": False}
+    try:
+        rows = col.db.all(
+            """
+            select c.id, c.nid, n.mid, c.ord, n.flds
+            from cards c
+            join notes n on n.id = c.nid
+            where n.mid = ?
+            order by c.id asc
+            limit ?
+            """,
+            model_id,
+            bounded_limit + 1,
+        )
+    except Exception:
+        return {"items": [], "missingCardIds": [], "truncated": False}
+    items: list[dict[str, Any]] = []
+    for row in rows[:bounded_limit]:
+        if not isinstance(row, (list, tuple)) or len(row) < 5:
+            continue
+        card_id, note_id, current_model_id, template_ordinal, raw_fields = row[:5]
+        card_int = _positive_int(card_id)
+        note_int = _positive_int(note_id)
+        if card_int <= 0 or note_int <= 0 or _positive_int(current_model_id) != model_id:
+            continue
+        items.append({
+            "cardId": card_int,
+            "noteId": note_int,
+            "noteTypeId": model_id,
+            "templateOrdinal": _non_negative_int(template_ordinal),
+            "rawFields": str(raw_fields or ""),
+            "siblingCount": 1,
+        })
+    return {
+        "items": attach_sibling_counts(col, items),
+        "missingCardIds": [],
+        "truncated": len(rows) > bounded_limit,
     }
 
 

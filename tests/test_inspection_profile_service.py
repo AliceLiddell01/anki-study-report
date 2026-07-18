@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from types import SimpleNamespace
 
+import pytest
+
 from conftest import import_addon_module
 
 
@@ -148,6 +150,63 @@ def test_suggestions_are_deterministic_non_authoritative_and_do_not_contain_samp
     assert any(mapping["role"] == "meaning" for mapping in first["fieldMappings"])
     assert "confirmed" not in str(first).lower()
     assert "rawFields" not in str(first)
+
+
+def test_validate_v2_selects_a_bounded_deterministic_note_type_sample_without_values():
+    structure = service.build_note_type_structure(model())
+    profile = confirmed_profile(structure)
+
+    class Models:
+        def all(self):
+            return [model()]
+
+    class Db:
+        def __init__(self):
+            self.sample_limits = []
+
+        def all(self, query, *args):
+            if "where n.mid = ?" in query:
+                self.sample_limits.append(args)
+                return [
+                    (9, 90, 123, 0, "PRIVATE_RAW_A\x1f\x1f\x1f\x1f"),
+                    (10, 100, 123, 1, "PRIVATE_RAW_B\x1fPRIVATE_RAW_C\x1f\x1fPRIVATE_RAW_D\x1f"),
+                    (11, 110, 123, 0, "PRIVATE_RAW_E\x1fPRIVATE_RAW_F\x1f\x1f\x1f"),
+                ]
+            if "count(*)" in query:
+                return [(90, 2), (100, 1)]
+            raise AssertionError(query)
+
+    db = Db()
+    col = SimpleNamespace(models=Models(), db=db)
+    response = service.execute_inspection_validate(col, {
+        "schemaVersion": 2,
+        "profile": profile,
+        "preview": {"mode": "sample", "limit": 2},
+    })
+    assert response["schemaVersion"] == 2
+    assert response["valid"] is True
+    assert response["preview"]["requestedCount"] == 2
+    assert response["preview"]["evaluatedCount"] == 2
+    assert response["preview"]["truncated"] is True
+    assert db.sample_limits == [(123, 3)]
+    encoded = str(response)
+    assert "PRIVATE_RAW" not in encoded
+
+
+def test_validate_v2_rejects_unknown_preview_fields_and_preserves_v1_empty_ids():
+    with pytest.raises(service.InspectionProfileValidationError):
+        service.normalize_inspection_validate_request({
+            "schemaVersion": 2,
+            "profile": confirmed_profile(service.build_note_type_structure(model())),
+            "preview": {"mode": "sample", "limit": 5, "query": "deck:private"},
+        })
+    normalized = service.normalize_inspection_validate_request({
+        "schemaVersion": 1,
+        "profile": confirmed_profile(service.build_note_type_structure(model())),
+        "cardIds": [],
+    })
+    assert normalized["schemaVersion"] == 1
+    assert normalized["cardIds"] == []
 
 
 def test_triage_content_reason_is_note_deduped_and_workset_order_selects_representative():

@@ -15,6 +15,11 @@ Python owns collection access and server-side logic. Frontend receives bounded p
 
 ## Current product
 
+Settings route `#/settings/inspection-profiles` provides local declarative
+per-note-type quality configuration with explicit confirmation, bounded safe
+preview, revision conflicts, and strict import/export. It does not mutate Anki
+objects; the future Cards v2 queue/Inspector remains a separate C1.5 surface.
+
 The accepted product contour includes:
 
 - local report/dashboard and cache-backed history;

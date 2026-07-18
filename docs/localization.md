@@ -32,6 +32,14 @@ focus, Escape закрывает menu и возвращает focus на trigger
 
 ## Resources и ключи
 
+Inspection Profiles UI хранит весь workflow copy в симметричном
+`pages.inspectionProfiles`: route title/description, lifecycle states, filters,
+roles, allowlisted check kinds, modes/priorities, validation/preview,
+save/confirm/disable/delete, import/export, conflicts и unsaved changes.
+Settings label находится в `navigation.settings.inspectionProfiles`:
+`Проверка карточек` / `Card checks`. Unknown runtime/suggestion codes получают
+локализованный безопасный fallback и не становятся основным машинным label.
+
 Ресурсы находятся в `web-dashboard/src/i18n/locales/ru.ts` и `en.ts` и имеют
 одинаковую типизированную форму. Используются namespaces:
 

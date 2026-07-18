@@ -200,6 +200,21 @@ def assert_inspection_profiles_contract(
     assert_true(programming.get("effectiveState") == "confirmed", "Programming profile remains confirmed")
     assert_true(int(catalog.get("store", {}).get("revision") or 0) == 2, "Inspection Profile store revision survives restart")
 
+    programming_preview = post_json(
+        base_url,
+        "/api/inspection-profiles/validate",
+        token,
+        {
+            "schemaVersion": 2,
+            "profile": programming["storedProfile"],
+            "preview": {"mode": "sample", "limit": 10},
+        },
+    )
+    assert_true(programming_preview.get("schemaVersion") == 2, "Inspection Profile sample preview v2 is active")
+    assert_true(programming_preview.get("valid") is True, "current Programming profile validates")
+    assert_true(programming_preview.get("preview", {}).get("evaluatedCount", 0) > 0, "sample preview evaluates bounded live cards")
+    assert_true("rawFields" not in json.dumps(programming_preview, ensure_ascii=False), "sample preview excludes raw note values")
+
     japanese_cards = search_note_type_cards(base_url, token, japanese["structure"]["noteTypeId"], "japanese")
     programming_cards = search_note_type_cards(base_url, token, programming["structure"]["noteTypeId"], "programming")
     card_ids = [item["cardId"] for item in japanese_cards + programming_cards]
@@ -255,6 +270,7 @@ def assert_inspection_profiles_contract(
         "programmingAudioReasonCount": len(programming_audio),
         "learningReasonPreserved": True,
         "profileEvidenceValueLeak": False,
+        "samplePreviewV2": True,
     }
     (artifacts / f"inspection-profiles-{label}.json").write_text(
         json.dumps(proof, ensure_ascii=False, indent=2) + "\n",

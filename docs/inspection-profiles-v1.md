@@ -4,7 +4,7 @@
 
 **Contract version:** 1
 **Runtime stage:** C1.3
-**UI:** deferred to C1.4
+**UI:** implemented in C1.4 at `#/settings/inspection-profiles`
 
 An Inspection Profile is a local, declarative set of content requirements for
 one exact Anki note type. It answers questions such as “Japanese Vocabulary
@@ -188,7 +188,8 @@ Evidence may include expected condition, actual/expected text length or
 
 Evidence never includes raw note content, HTML, audio/image filename, local
 path, token, template source or exception text. Preview accepts at most 20
-explicit card IDs and returns only safe failure evidence.
+explicit card IDs or a bounded exact-note-type sample and returns only safe
+failure evidence.
 
 ## Runtime API
 
@@ -204,7 +205,10 @@ POST /api/inspection-profiles/update
 
 - `query`: `schemaVersion`, `noteTypeIds` (0..200), `limit` (1..500); returns
   structures, effective states, stored profile, suggestions and store revision;
-- `validate`: strict draft plus 0..20 exact card IDs; does not persist;
+- `validate` v1: strict draft plus 0..20 exact card IDs; does not persist;
+- `validate` v2: strict draft plus `{mode: "sample", limit: 1..20}`; selects
+  deterministic smallest card IDs only for `profile.noteTypeId`, reads at most
+  `limit + 1`, reports truncation and does not persist;
 - `update/save`: `expectedRevision`, explicit `targetState`, strict profile and
   current fingerprint/reference validation;
 - `update/disable`: preserves configuration but suppresses authority;
@@ -273,5 +277,6 @@ Logs contain only operation/error codes and exception types, not profile data,
 note values, paths or tokens. Search, Safe Actions, Signals, Notifications,
 preview isolation, existing CardsPage and legacy report payload remain intact.
 
-C1.4 may add user configuration UI and separately designed import/export. C1.3
-adds no route, form, editor, navigation placeholder or collection mutation.
+C1.4 adds the local Settings editor and strict client-side one-profile
+import/export documented in [inspection-profiles-ui.md](inspection-profiles-ui.md).
+It adds no Cards queue/Inspector or collection mutation.

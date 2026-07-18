@@ -136,6 +136,7 @@ export function telemetryPageCode(route: ReturnType<typeof getRouteFromHash>): s
     "/actions": "tools",
     "/settings": "settings_report",
     "/settings/data": "settings_data",
+    "/settings/inspection-profiles": "settings_data",
     "/settings/privacy": "settings_privacy",
     "/settings/server": "settings_server",
     "/settings/sources": "settings_sources",

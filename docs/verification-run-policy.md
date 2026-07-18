@@ -45,6 +45,14 @@ missing-audio reason, independent learning reason, profile-local revision
 change. Это contract/runtime proof без screenshot acceptance; `full`,
 `strict-apkg` и `perf100` не требуются только по причине C1.3.
 
+Для C1.4 сохраняется тот же exact-package `standard/cards` с
+`verify_restart=true`. Дополнительно browser smoke открывает
+`#/settings/inspection-profiles`, подтверждает confirmed/needs-review lifecycle,
+локальный dirty suggestion draft, validate-v2 bounded preview, защиту перехода
+с несохранёнными изменениями, отсутствие горизонтального overflow и сохраняет
+list/editor/dirty/preview screenshots. Ни один browser шаг не сохраняет и не
+подтверждает draft автоматически.
+
 Готовый PR-head SHA должен иметь Fast CI PASS и требуемый real-Anki gate именно
 на этом SHA. Разрешённый repository rebase merge создаёт новые commit SHA даже
 при неизменном patch/tree. После merge сравниваются production tree/patch с

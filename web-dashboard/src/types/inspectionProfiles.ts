@@ -124,14 +124,22 @@ export interface InspectionPreviewResult {
   items: { cardId: string; noteId: string; failureCount: number; failures: InspectionProfileFailure[] }[];
 }
 
-export interface InspectionValidateRequest { schemaVersion: 1; profile: InspectionProfile; cardIds: string[] }
+export type InspectionValidateRequest =
+  | { schemaVersion: 1; profile: InspectionProfile; cardIds: string[] }
+  | { schemaVersion: 2; profile: InspectionProfile; preview: { mode: "sample"; limit: number } };
 export interface InspectionValidateResponse {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   valid: boolean;
   effectiveState: InspectionProfileState;
   stateReason: string | null;
   fieldErrors: Record<string, string>;
   preview: InspectionPreviewResult;
+}
+
+export interface InspectionProfileDocument {
+  schemaVersion: 1;
+  revision: number;
+  profiles: [InspectionProfile];
 }
 
 export type InspectionUpdateRequest =

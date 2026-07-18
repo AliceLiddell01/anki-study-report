@@ -128,12 +128,15 @@ exception, token или runtime path. Полная shape, mapping и ordering:
 
 ## Inspection Profiles API
 
-`POST /api/inspection-profiles/query`, `/validate` и `/update` подготавливают
-C1.4 без добавления UI. Они используют текущий dashboard token, требуют
+`POST /api/inspection-profiles/query`, `/validate` и `/update` обслуживают
+Settings UI C1.4. Они используют текущий dashboard token, требуют
 `application/json`, ограничены 64 KiB и отклоняют unknown fields. Query
 возвращает bounded note-type structures/fingerprints, lifecycle, stored
-profile и non-authoritative suggestion. Validate проверяет draft и максимум
-20 exact card IDs без persistence. Update поддерживает explicit save/confirm,
+profile и non-authoritative suggestion. Validate v1 проверяет draft и максимум
+20 exact card IDs; additive v2 принимает только bounded
+`preview:{mode:"sample",limit:1..20}` и детерминированно выбирает карточки
+exact note type. Оба режима не сохраняют данные и не возвращают raw values.
+Update поддерживает explicit save/confirm,
 disable/delete и optimistic `expectedRevision`; stale revision/fingerprint —
 conflict. Collection reads идут через `QueryOp`; единственная запись — atomic
 profile-local `inspection_profiles.json`, не Anki collection mutation. Полный

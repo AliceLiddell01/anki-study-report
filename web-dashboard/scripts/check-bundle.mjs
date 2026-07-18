@@ -33,7 +33,7 @@ const visit = (key) => {
 };
 visit(entry[0]);
 
-for (const expected of ["StatisticsPage.tsx", "FsrsStatisticsPage.tsx"]) {
+for (const expected of ["StatisticsPage.tsx", "FsrsStatisticsPage.tsx", "InspectionProfilesSettingsPage.tsx"]) {
   const chunk = entries.find(([key, value]) => key.endsWith(expected) || value.src?.endsWith(expected));
   if (!chunk) fail(`Expected lazy route is missing from manifest: ${expected}`);
   if (!reachableKeys.has(chunk[0])) fail(`Expected lazy route is not reachable from the entry: ${expected}`);

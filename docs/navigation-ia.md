@@ -103,6 +103,7 @@ primary Calendar/Decks/Cards routes и не редактирует dashboard sco
   Отчёт              → #/settings
 Данные
   Данные              → #/settings/data
+  Проверка карточек   → #/settings/inspection-profiles
   Приватность         → #/settings/privacy
 
 Система
@@ -137,6 +138,7 @@ primary Calendar/Decks/Cards routes и не редактирует dashboard sco
 #/notifications
 #/settings
 #/settings/data
+#/settings/inspection-profiles
 #/settings/privacy
 #/settings/notifications
 #/settings/server
@@ -160,6 +162,7 @@ Routes ниже скрыты из primary navigation, но доступны че
 #/notifications
 #/settings
 #/settings/data
+#/settings/inspection-profiles
 #/settings/privacy
 #/settings/notifications
 #/settings/server

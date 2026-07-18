@@ -5,6 +5,7 @@ import type {
   InspectionNoteTypeStructure,
   InspectionProfile,
   InspectionProfileFailure,
+  InspectionProfileDocument,
   InspectionProfileSummary,
   InspectionProfilesQueryRequest,
   InspectionProfilesQueryResponse,
@@ -111,7 +112,7 @@ export function parseInspectionProfilesQueryResponse(value: unknown): Inspection
 
 export function parseInspectionValidateResponse(value: unknown): InspectionValidateResponse {
   if (!isRecord(value) || !exactKeys(value, ["schemaVersion", "valid", "effectiveState", "stateReason", "fieldErrors", "preview"])) throw invalidResponse();
-  if (value.schemaVersion !== 1 || typeof value.valid !== "boolean" || !isState(value.effectiveState)) throw invalidResponse();
+  if ((value.schemaVersion !== 1 && value.schemaVersion !== 2) || typeof value.valid !== "boolean" || !isState(value.effectiveState)) throw invalidResponse();
   if (!isNullableReason(value.stateReason) || !isStringRecord(value.fieldErrors) || !isPreview(value.preview)) throw invalidResponse();
   if (value.valid !== (Object.keys(value.fieldErrors).length === 0)) throw invalidResponse();
   return {
@@ -122,6 +123,13 @@ export function parseInspectionValidateResponse(value: unknown): InspectionValid
     fieldErrors: value.fieldErrors,
     preview: value.preview,
   };
+}
+
+export function parseInspectionProfileDocument(value: unknown): InspectionProfileDocument {
+  if (!isRecord(value) || !exactKeys(value, ["schemaVersion", "revision", "profiles"])) throw invalidResponse();
+  if (value.schemaVersion !== 1 || !count(value.revision) || !Array.isArray(value.profiles) || value.profiles.length !== 1) throw invalidResponse();
+  if (!isProfile(value.profiles[0])) throw invalidResponse();
+  return { schemaVersion: 1, revision: value.revision, profiles: [value.profiles[0]] };
 }
 
 export function parseInspectionUpdateResponse(value: unknown): InspectionUpdateResponse {

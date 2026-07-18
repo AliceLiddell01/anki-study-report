@@ -18,6 +18,7 @@ const FsrsStatisticsPage = lazy(() => import("../pages/FsrsStatisticsPage"));
 const PrivacySettingsPage = lazy(() => import("../pages/PrivacySettingsPage"));
 const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPage"));
 const NotificationSettingsPage = lazy(() => import("../pages/NotificationSettingsPage"));
+const InspectionProfilesSettingsPage = lazy(() => import("../pages/InspectionProfilesSettingsPage"));
 const SearchPage = lazy(() => import("../pages/SearchPage"));
 
 export type RoutePath =
@@ -41,6 +42,7 @@ export type RoutePath =
   | "/notifications"
   | "/settings"
   | "/settings/data"
+  | "/settings/inspection-profiles"
   | "/settings/privacy"
   | "/settings/notifications"
   | "/settings/server"
@@ -77,6 +79,7 @@ const routePaths = new Set<RoutePath>([
   "/notifications",
   "/settings",
   "/settings/data",
+  "/settings/inspection-profiles",
   "/settings/privacy",
   "/settings/notifications",
   "/settings/server",
@@ -151,6 +154,8 @@ export function renderRoute(
       return <SettingsLayout activeRoute={route}><ServerSettingsPage /></SettingsLayout>;
     case "/settings/data":
       return <SettingsLayout activeRoute={route}><SettingsPage report={report} /></SettingsLayout>;
+    case "/settings/inspection-profiles":
+      return <SettingsLayout activeRoute={route}><InspectionProfilesSettingsPage /></SettingsLayout>;
     case "/settings/privacy":
       return <SettingsLayout activeRoute={route}><PrivacySettingsPage onOpenWhatsNew={onOpenWhatsNew} /></SettingsLayout>;
     case "/settings/notifications":

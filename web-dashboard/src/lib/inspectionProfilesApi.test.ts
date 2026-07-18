@@ -5,6 +5,7 @@ import {
   fetchInspectionProfiles,
   InspectionProfilesApiError,
   parseInspectionProfilesQueryResponse,
+  parseInspectionProfileDocument,
   parseInspectionUpdateResponse,
   parseInspectionValidateResponse,
 } from "./inspectionProfilesApi";
@@ -126,6 +127,21 @@ describe("Inspection Profiles API contract", () => {
     expect(parseInspectionUpdateResponse({ schemaVersion: 1, action: "save", store, profile })).toEqual({
       schemaVersion: 1, action: "save", store, profile,
     });
+  });
+
+  it("parses validate v2 samples and strict single-profile import documents", () => {
+    const response = {
+      schemaVersion: 2,
+      valid: true,
+      effectiveState: "confirmed",
+      stateReason: null,
+      fieldErrors: {},
+      preview: { status: "unavailable", requestedCount: 10, evaluatedCount: 0, missingCardIds: [], failureCount: 0, truncated: false, items: [] },
+    };
+    expect(parseInspectionValidateResponse(response)).toEqual(response);
+    expect(parseInspectionProfileDocument({ schemaVersion: 1, revision: 999, profiles: [profile] })).toEqual({ schemaVersion: 1, revision: 999, profiles: [profile] });
+    expect(() => parseInspectionProfileDocument({ schemaVersion: 1, revision: 0, profiles: [profile, profile] })).toThrowError(InspectionProfilesApiError);
+    expect(() => parseInspectionProfileDocument({ schemaVersion: 2, revision: 0, profiles: [profile] })).toThrowError(InspectionProfilesApiError);
   });
 
   it("posts JSON with token and rejects extra envelope fields", async () => {

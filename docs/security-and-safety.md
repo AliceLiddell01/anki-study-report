@@ -115,7 +115,12 @@ limits, string IDs, safe text и generic runtime errors описаны в
 или E2E public artifact.
 
 Inspection Profiles используют три token-protected POST-only JSON endpoint с
-отдельным 64 KiB body cap. Store path вычисляется только из active Anki
+отдельным 64 KiB body cap и strict unknown-field parsing. C1.4 validate v2 разрешает только bounded
+`sample` для exact `noteTypeId`; произвольный Anki query отсутствует, raw note
+values не покидают QueryOp. Import ограничен 1 MiB, строго разбирается как один
+declarative v1 profile и никогда не выполняется как код. Export выполняется
+клиентом и не пишет на серверный filesystem. Profile contents не входят в
+remote telemetry. Store path вычисляется только из active Anki
 profile/add-on ID; пользовательский path не принимается. Документ ограничен 1
 MiB, пишется atomically с optimistic revision, corrupt data quarantine,
 future-schema preserve/fail-closed. Rules — только hard-coded declarative

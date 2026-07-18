@@ -4,6 +4,9 @@
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
+Settings также содержит локальный Inspection Profiles workspace для явной
+настройки декларативных проверок exact note types; он не изменяет коллекцию.
+
 Signals, evidence, entity references и notification preferences остаются per-profile/local и не отправляются в remote telemetry. Отдельный private telemetry service принимает только opt-in bounded technical events.
 
 ## Быстрый вход

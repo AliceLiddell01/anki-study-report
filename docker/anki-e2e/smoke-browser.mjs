@@ -53,6 +53,7 @@ const dashboardPageCases = [
   { route: "/actions", pageName: "tools", heading: "Инструменты" },
   { route: "/settings", pageName: "settings/report", heading: "Отчёт", settingsHref: "#/settings" },
   { route: "/settings/data", pageName: "settings/data", heading: "Данные", settingsHref: "#/settings/data" },
+  { route: "/settings/inspection-profiles", pageName: "settings/inspection-profiles", heading: "Профили проверки", settingsHref: "#/settings/inspection-profiles" },
   { route: "/settings/privacy", pageName: "settings/privacy", heading: "Приватность", settingsHref: "#/settings/privacy" },
   { route: "/settings/server", pageName: "settings/server", heading: "Сервер", settingsHref: "#/settings/server" },
   { route: "/settings/sources", pageName: "settings/sources", heading: "Источники данных", settingsHref: "#/settings/sources" },
@@ -192,6 +193,7 @@ try {
   const activityDetails = shouldRunScope(scope, "activity") ? await assertActivityHub(page) : null;
   const deckDetails = shouldRunScope(scope, "decks") ? await assertDeckHub(page) : null;
   const statisticsDetails = shouldRunScope(scope, "stats") ? await assertStatisticsHub(page) : null;
+  const inspectionProfilesDetails = shouldRunScope(scope, "cards") ? await assertInspectionProfilesWorkspace(page) : null;
   const polishStateScreenshots = await capturePolishStates(page, scope);
   const zoomDetails = await captureZoomProof(scope);
   const pageCapture = await captureDashboardPages();
@@ -221,6 +223,7 @@ try {
     activity: activityDetails,
     decks: deckDetails,
     statistics: statisticsDetails,
+    inspectionProfiles: inspectionProfilesDetails,
     polishStateScreenshots,
     zoom125: zoomDetails,
     pageScreenshots,
@@ -1423,6 +1426,42 @@ async function saveStateScreenshot(page, pageName, stateName, theme = "light") {
   await ensureArtifactParent(filePath);
   await page.screenshot({ path: filePath, fullPage: true });
   return { page: pageName, state: stateName, theme, screenshot: relativeArtifactPath(artifactPaths, filePath) };
+}
+
+async function assertInspectionProfilesWorkspace(page) {
+  await prepareDashboardRoute(page, "/settings/inspection-profiles", "light", "Профили проверки");
+  const japanese = page.getByRole("button", { name: /E2E Japanese Vocabulary/ });
+  const programming = page.getByRole("button", { name: /E2E Programming/ });
+  await japanese.waitFor({ state: "visible", timeout: 30000 });
+  await programming.waitFor({ state: "visible", timeout: 30000 });
+  const listScreenshot = await saveStateScreenshot(page, "inspection-profiles", "list", "light");
+  await japanese.click();
+  await page.getByRole("heading", { name: "E2E Japanese Vocabulary" }).waitFor({ state: "visible", timeout: 30000 });
+  const lifecycleText = await page.locator(".inspection-editor-header").innerText();
+  const expectedState = label === "first" ? "Подтверждён" : "Нужна проверка";
+  assertBrowser(lifecycleText.includes(expectedState), `Inspection Profiles editor shows ${expectedState}.`);
+  const editorScreenshot = await saveStateScreenshot(page, "inspection-profiles", label === "first" ? "confirmed-editor" : "needs-review", "light");
+  await page.getByRole("button", { name: "Использовать подсказку" }).click();
+  await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
+  const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
+  await page.getByRole("button", { name: "Проверить профиль" }).click();
+  await page.getByRole("heading", { name: "Проверка и ограниченный пример" }).waitFor({ state: "visible", timeout: 30000 });
+  const previewScreenshot = await saveStateScreenshot(page, "inspection-profiles", "validated-preview", "light");
+  await programming.click();
+  const unsavedDialog = page.getByRole("dialog", { name: "Отбросить несохранённые изменения?" });
+  await unsavedDialog.waitFor({ state: "visible", timeout: 10000 });
+  await unsavedDialog.getByRole("button", { name: "Продолжить редактирование" }).click();
+  assertBrowser(await page.getByText("Есть несохранённые изменения").isVisible(), "Unsaved draft remains after cancelling note-type navigation.");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  assertBrowser(overflow <= 2, "Inspection Profiles workspace has no horizontal page overflow.");
+  return {
+    expectedState,
+    suggestionCreatesDirtyDraft: true,
+    validateV2PreviewVisible: true,
+    unsavedNavigationProtected: true,
+    noHorizontalOverflow: true,
+    screenshots: [listScreenshot, editorScreenshot, dirtyScreenshot, previewScreenshot],
+  };
 }
 
 async function captureZoomProof(selectedScope) {
