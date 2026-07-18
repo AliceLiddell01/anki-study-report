@@ -1,0 +1,281 @@
+{
+  "generatedAtUtc": "2026-07-18T19:40:12Z",
+  "limitations": [
+    "recorded Windows host only",
+    "compilation not verified",
+    "runtime parity not verified"
+  ],
+  "resolution": {
+    "locked": true,
+    "offlineReplay": true,
+    "packageCount": 48,
+    "packages": [
+      {
+        "name": "autocfg",
+        "sourceKind": "registry",
+        "version": "1.5.1"
+      },
+      {
+        "name": "cfg-if",
+        "sourceKind": "registry",
+        "version": "1.0.4"
+      },
+      {
+        "name": "chacha20",
+        "sourceKind": "registry",
+        "version": "0.10.1"
+      },
+      {
+        "name": "cpufeatures",
+        "sourceKind": "registry",
+        "version": "0.3.0"
+      },
+      {
+        "name": "crossbeam-deque",
+        "sourceKind": "registry",
+        "version": "0.8.7"
+      },
+      {
+        "name": "crossbeam-epoch",
+        "sourceKind": "registry",
+        "version": "0.9.20"
+      },
+      {
+        "name": "crossbeam-utils",
+        "sourceKind": "registry",
+        "version": "0.8.22"
+      },
+      {
+        "name": "either",
+        "sourceKind": "registry",
+        "version": "1.16.0"
+      },
+      {
+        "name": "equivalent",
+        "sourceKind": "registry",
+        "version": "1.0.2"
+      },
+      {
+        "name": "fsrs",
+        "sourceKind": "registry",
+        "version": "6.6.1"
+      },
+      {
+        "name": "getrandom",
+        "sourceKind": "registry",
+        "version": "0.4.3"
+      },
+      {
+        "name": "hashbrown",
+        "sourceKind": "registry",
+        "version": "0.17.1"
+      },
+      {
+        "name": "heck",
+        "sourceKind": "registry",
+        "version": "0.5.0"
+      },
+      {
+        "name": "indexmap",
+        "sourceKind": "registry",
+        "version": "2.14.0"
+      },
+      {
+        "name": "itertools",
+        "sourceKind": "registry",
+        "version": "0.14.0"
+      },
+      {
+        "name": "itoa",
+        "sourceKind": "registry",
+        "version": "1.0.18"
+      },
+      {
+        "name": "libc",
+        "sourceKind": "registry",
+        "version": "0.2.186"
+      },
+      {
+        "name": "log",
+        "sourceKind": "registry",
+        "version": "0.4.33"
+      },
+      {
+        "name": "matrixmultiply",
+        "sourceKind": "registry",
+        "version": "0.3.11"
+      },
+      {
+        "name": "memchr",
+        "sourceKind": "registry",
+        "version": "2.8.3"
+      },
+      {
+        "name": "ndarray",
+        "sourceKind": "registry",
+        "version": "0.17.2"
+      },
+      {
+        "name": "num-complex",
+        "sourceKind": "registry",
+        "version": "0.4.6"
+      },
+      {
+        "name": "num-integer",
+        "sourceKind": "registry",
+        "version": "0.1.46"
+      },
+      {
+        "name": "num-traits",
+        "sourceKind": "registry",
+        "version": "0.2.19"
+      },
+      {
+        "name": "portable-atomic",
+        "sourceKind": "registry",
+        "version": "1.13.1"
+      },
+      {
+        "name": "portable-atomic-util",
+        "sourceKind": "registry",
+        "version": "0.2.7"
+      },
+      {
+        "name": "priority-queue",
+        "sourceKind": "registry",
+        "version": "2.7.0"
+      },
+      {
+        "name": "proc-macro2",
+        "sourceKind": "registry",
+        "version": "1.0.106"
+      },
+      {
+        "name": "quote",
+        "sourceKind": "registry",
+        "version": "1.0.46"
+      },
+      {
+        "name": "r-efi",
+        "sourceKind": "registry",
+        "version": "6.0.0"
+      },
+      {
+        "name": "rand",
+        "sourceKind": "registry",
+        "version": "0.10.2"
+      },
+      {
+        "name": "rand_core",
+        "sourceKind": "registry",
+        "version": "0.10.1"
+      },
+      {
+        "name": "rawpointer",
+        "sourceKind": "registry",
+        "version": "0.2.1"
+      },
+      {
+        "name": "rayon",
+        "sourceKind": "registry",
+        "version": "1.12.0"
+      },
+      {
+        "name": "rayon-core",
+        "sourceKind": "registry",
+        "version": "1.13.0"
+      },
+      {
+        "name": "serde",
+        "sourceKind": "registry",
+        "version": "1.0.228"
+      },
+      {
+        "name": "serde_core",
+        "sourceKind": "registry",
+        "version": "1.0.228"
+      },
+      {
+        "name": "serde_derive",
+        "sourceKind": "registry",
+        "version": "1.0.228"
+      },
+      {
+        "name": "serde_json",
+        "sourceKind": "registry",
+        "version": "1.0.150"
+      },
+      {
+        "name": "snafu",
+        "sourceKind": "registry",
+        "version": "0.9.1"
+      },
+      {
+        "name": "snafu-derive",
+        "sourceKind": "registry",
+        "version": "0.9.1"
+      },
+      {
+        "name": "strum",
+        "sourceKind": "registry",
+        "version": "0.28.0"
+      },
+      {
+        "name": "strum_macros",
+        "sourceKind": "registry",
+        "version": "0.28.0"
+      },
+      {
+        "name": "syn",
+        "sourceKind": "registry",
+        "version": "2.0.119"
+      },
+      {
+        "name": "thiserror",
+        "sourceKind": "registry",
+        "version": "2.0.18"
+      },
+      {
+        "name": "thiserror-impl",
+        "sourceKind": "registry",
+        "version": "2.0.18"
+      },
+      {
+        "name": "unicode-ident",
+        "sourceKind": "registry",
+        "version": "1.0.24"
+      },
+      {
+        "name": "zmij",
+        "sourceKind": "registry",
+        "version": "1.0.23"
+      }
+    ]
+  },
+  "schemaVersion": 1,
+  "source": {
+    "branch": "gamification",
+    "cargoLockBlob": "bd020e5a3b0dddb8202d567fcbeb87e9103e7cca",
+    "cargoLockSha256": "73d610449ec39eba62cabdb4dbc0ad9e6f2f97afed4f83d2e60539c69536aaa1",
+    "cargoTomlBlob": "2d579b19be54073cef44288084a138e32a1557c2",
+    "cargoTomlSha256": "83be93249db480bc5c23d022904ca4ce546a8bf9e0c3b5947839b89ffd3e1956",
+    "commit": "c7f7bd964825a5277cc9dc886dc7775f5f9eaac6"
+  },
+  "status": "REPRODUCIBLE_ENVIRONMENT_ESTABLISHED",
+  "toolchain": {
+    "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "channel": "1.97.1",
+    "edition": "2024",
+    "host": "x86_64-pc-windows-msvc",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+  },
+  "verification": {
+    "buildExecuted": false,
+    "cargoFetchLocked": "PASS",
+    "cargoLockChanged": false,
+    "cargoMetadataLocked": "PASS",
+    "cargoMetadataLockedOffline": "PASS",
+    "oracleExecuted": false,
+    "testsExecuted": false
+  }
+}

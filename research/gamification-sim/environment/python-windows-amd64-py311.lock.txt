@@ -1,0 +1,28 @@
+# G0.5 canonical Python environment lock
+# Python: CPython 3.11.9 (cpython-311)
+# Platform: Windows AMD64
+# Generated-at UTC: 2026-07-18T19:06:51Z
+# pyproject.toml Git blob: 1bf09169f1dd8b2c298474a862cac23783ef4eb6
+# pyproject.toml SHA-256: 6ebf649657263df846eb924af3004b4e67c753f96713e1a987900e0a3707d39c
+# Resolver pip: 24.0
+# Profile: runtime+test+fsrs
+# Limitation: platform-specific Windows AMD64 / CPython 3.11 resolution.
+# All entries are exact-pinned and restricted to the recorded wheel SHA-256.
+
+attrs==26.1.0 --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+colorama==0.4.6 --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+fsrs==6.3.1 --hash=sha256:ac1bf9939573592d8c9bc1e11a00bd17e04146dc9f2c913127e2bcc431b9040b
+hypothesis==6.156.7 --hash=sha256:f9b1679aa75ab8452767cd8af1a91de0b8615b2057134079f78628faf9f49bfb
+iniconfig==2.3.0 --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
+jsonschema==4.26.0 --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
+jsonschema-specifications==2025.9.1 --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe
+packaging==26.2 --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+pip==24.0 --hash=sha256:ba0d021a166865d2265246961bec0152ff124de910c5cc39f1156ce3fa7c69dc
+pluggy==1.6.0 --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+pygments==2.20.0 --hash=sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176
+pytest==9.1.1 --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
+referencing==0.37.0 --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231
+rpds-py==2026.6.3 --hash=sha256:2c54a076ca4d370980ab57bc0e31df57bbe8d41340436a90ef8b1219a3cbb127
+setuptools==83.0.0 --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+sortedcontainers==2.4.0 --hash=sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0
+typing-extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

@@ -2,7 +2,7 @@
 
 ## Status
 
-`RECOVERED_UNVERIFIED`
+`ENVIRONMENT_ESTABLISHED_FUNCTIONAL_NOT_VERIFIED`
 
 The canonical Gamification branch contains selectively recovered Review XP
 specifications and an isolated historical research package. Recovery in G0.4
@@ -41,7 +41,10 @@ qualify historical status and execution. G0.4 changed no reward semantics.
 The isolated package is documented in
 [`../../research/gamification-sim/README.md`](../../research/gamification-sim/README.md).
 Source, tests, scenarios, fixtures, schemas, configs, contracts and the Rust
-oracle are recovered, but were not executed in G0.4.
+oracle are recovered. G0.5 established a Windows AMD64 / CPython 3.11 and exact
+Rust 1.97.1 environment baseline, documented in
+[`../../research/gamification-sim/environment/README.md`](../../research/gamification-sim/environment/README.md).
+Imports, tests, simulations and oracle execution remain pending G0.6.
 
 ## Historical evidence
 
@@ -72,8 +75,8 @@ regression reference, not an approved production candidate.
 
 ## G0.5–G0.7 gates
 
-1. G0.5 — establish a reproducible environment without dependency upgrades.
-2. G0.6 — verify functional behavior, tests, scenarios and oracles.
+1. G0.5 — Complete: Windows AMD64 / CPython 3.11.9, hash-locked offline replay and exact Rust toolchain; declarations unchanged.
+2. G0.6 — Next: verify functional behavior, tests, scenarios and oracles.
 3. G0.7 — reproduce evidence and distinguish current results from historical claims.
 
 G1 cannot begin authoritatively until these gates provide a trustworthy

@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is In Progress; `G0.5` is Next; production integration is not approved
+**Current status:** `G0` is In Progress; `G0.6` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -22,7 +22,8 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - `G0.2 — Core compatibility snapshot`: Complete — [`g0-core-compatibility.md`](g0-core-compatibility.md)
 - `G0.3 — Historical asset inventory`: Complete — [`g0-historical-asset-inventory.md`](g0-historical-asset-inventory.md), [`g0-historical-asset-manifest.md`](g0-historical-asset-manifest.md)
 - `G0.4 — Selective research recovery`: Complete — [`g0-selective-research-recovery.md`](g0-selective-research-recovery.md), [`g0-recovery-ledger.md`](g0-recovery-ledger.md)
-- `G0.5 — Reproducible environment`: Next
+- `G0.5 — Reproducible environment`: Complete — [`g0-reproducible-environment.md`](g0-reproducible-environment.md)
+- `G0.6 — Functional baseline verification`: Next
 
 G0.2 confirmed `core` as the active Core line on the same recorded `master`
 baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
@@ -44,6 +45,14 @@ approved adaptations add provenance/status prefixes without changing historical
 bodies or reward semantics. The package remains `RECOVERED_UNVERIFIED`: tests,
 oracles, simulations and evidence were not executed, and production integration
 remains prohibited.
+
+G0.5 established one canonical Windows AMD64 / CPython 3.11.9
+environment with an exact SHA-256 Python lock, clean offline wheelhouse replay,
+regular local package installation, `pip check`, exact stable Rust 1.97.1
+on `x86_64-pc-windows-msvc`, and locked online/offline Cargo metadata replay. Python and
+Cargo declarations remained unchanged. Functional tests, simulations, oracle
+execution and evidence reproduction remain pending; production integration is
+still prohibited.
 
 ## Source audit
 
@@ -107,7 +116,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** In Progress — G0.1–G0.4 Complete; G0.5 Next
+**Status:** In Progress — G0.1–G0.5 Complete; G0.6 Next
 
 ### Goal
 

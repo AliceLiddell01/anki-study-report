@@ -2,7 +2,9 @@
 
     ## Status
 
-    `RECOVERED_UNVERIFIED`
+    `REPRODUCIBLE_ENVIRONMENT_ESTABLISHED`
+
+    G0.5 established one Windows AMD64 / CPython 3.11 environment baseline. Functional behavior and evidence remain unverified.
 
     The package was selectively recovered from the frozen historical source. G0.4
     verifies source/target content relationships and isolation only. It does not
@@ -80,10 +82,11 @@
     - FSRS reference behavior;
     - historical PASS statements, numerical results or digests.
 
-    ## Environment status — G0.5 pending
+    ## Environment status — G0.5 Complete
 
-    G0.5 must establish a reproducible environment using the recovered historical
-    declarations without silently upgrading dependencies.
+    The canonical baseline is Windows AMD64, CPython 3.11.9 and exact stable Rust 1.97.1 on `x86_64-pc-windows-msvc`. Python dependencies are exact-pinned and SHA-256 locked; a second clean venv completed offline replay, regular local installation and `pip check`. Cargo completed locked online/offline metadata replay without changing `Cargo.lock`.
+
+    See [environment baseline](environment/README.md). This does not claim that CLI commands, tests, simulations or the Rust oracle work.
 
     ## Functional status — G0.6 pending
 
