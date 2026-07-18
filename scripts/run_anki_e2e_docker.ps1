@@ -159,12 +159,12 @@ function Assert-E2EArtifactManifest {
     if ($navigationScreenshots.Count -ne $expectedNavigation) {
         throw "Expected $expectedNavigation avatar menu screenshots for scope=$scope, found $($navigationScreenshots.Count)."
     }
-    $expectedCards = if ($scope -in @("full", "cards")) { 6 } else { 0 }
+    $expectedCards = if ($scope -in @("full", "cards")) { 4 } else { 0 }
     if ($syntheticCards.Count -ne $expectedCards) {
         throw "Expected $expectedCards synthetic Cards screenshots for scope=$scope, found $($syntheticCards.Count)."
     }
-    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $scope -in @("full", "cards") -and $apkgCards.Count -ne 6) {
-        throw "Expected 6 APKG Cards screenshots, found $($apkgCards.Count)."
+    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $scope -in @("full", "cards") -and $apkgCards.Count -ne 1) {
+        throw "Expected 1 APKG Cards screenshot, found $($apkgCards.Count)."
     }
 
     Write-Host "Verified structured E2E artifacts: pages=$($pageScreenshots.Count), navigation=$($navigationScreenshots.Count), syntheticCards=$($syntheticCards.Count), apkgCards=$($apkgCards.Count)"

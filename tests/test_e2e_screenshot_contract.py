@@ -46,6 +46,16 @@ def test_manifest_page_counts_follow_the_capture_contract() -> None:
     assert expected == calculated
 
 
+def test_cards_screenshot_counts_follow_the_canonical_workspace_contract() -> None:
+    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+
+    assert '$expectedCards = if ($scope -in @("full", "cards")) { 4 } else { 0 }' in runner
+    assert '$apkgCards.Count -ne 1' in runner
+    assert smoke.count('artifactPaths.cardsScreenshot("synthetic",') == 4
+    assert smoke.count('artifactPaths.cardsScreenshot("apkg", "workspace", "light")') == 1
+
+
 def _primary_nav_label_keys() -> list[str]:
     text = ROUTER.read_text(encoding="utf-8")
     block = text.split("export const primaryNavItems", 1)[1].split("];", 1)[0]
