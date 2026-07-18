@@ -9,8 +9,8 @@ import SearchPage from "./SearchPage";
 
 const card = {
   cardId: "1001", noteId: "2001", deckId: "3", deckName: "Japanese", noteTypeId: "7", noteTypeName: "Basic",
-  templateOrdinal: 0, templateName: "Card 1", primaryText: "日本語", state: "review", due: 1, interval: 10,
-  repetitions: 5, lapses: 0, flag: 0, tagSummary: ["jp"],
+  templateOrdinal: 0, templateName: "Card 1", displayText: "日本語", displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false,
+  state: "review", due: 1, interval: 10, repetitions: 5, lapses: 0, flag: 0, tagSummary: ["jp"],
 };
 
 describe("Search live metadata", () => {
@@ -33,7 +33,7 @@ describe("Search live metadata", () => {
     container.remove();
   });
 
-  it("loads all-collection filter choices and excludes filtered move destinations", async () => {
+  it("loads v1 metadata choices and uses a v2 card query", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body || "{}"));
       if (body.kind === "metadata") {
@@ -50,8 +50,9 @@ describe("Search live metadata", () => {
           requestId: body.requestId,
         });
       }
+      expect(body.schemaVersion).toBe(2);
       return success({
-        schemaVersion: 1, mode: "cards", items: [card], page: 1, pageSize: 50, pageCount: 1, pageLimit: 40,
+        schemaVersion: 2, mode: "cards", items: [card], page: 1, pageSize: 50, pageCount: 1, pageLimit: 40,
         returnedCount: 1, boundedTotal: 1, hasNext: false, truncated: false,
         sort: { key: "entity_id", direction: "asc" }, requestId: body.requestId,
       });
@@ -70,6 +71,7 @@ describe("Search live metadata", () => {
 
     await act(async () => Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Найти")!.click());
     await settle();
+    expect(container.textContent).toContain("日本語");
     await act(async () => container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!.click());
     const destination = Array.from(container.querySelectorAll<HTMLSelectElement>(".search-action-bar select"))
       .find((select) => select.textContent?.includes("Outside Scope"))!;
