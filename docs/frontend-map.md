@@ -1,28 +1,11 @@
 # Карта frontend dashboard
 
-## Documentation structure
+Снимок документации: 2026-07-19.
 
-Current contracts remain in `docs/`; stage sequencing is in `../roadmap/`;
-historical reports/audits are indexed in `../reports/README.md`.
+Current contracts live in `docs/`; sequencing lives in `roadmap/`; historical
+reports and audits live in `reports/`.
 
-## Notification surfaces
-
-`TopNav.tsx` монтирует `NotificationBell`; `AppLayout.tsx` — единственный
-`NotificationToasts`. `NotificationCenterPage.tsx` и
-`NotificationSettingsPage.tsx` загружаются как route-level chunks;
-`SearchPage.tsx` тоже lazy, чтобы entry оставался ниже bundle budget.
-`NotificationItemCard.tsx` владеет copy/actions, `notificationsApi.ts` — exact
-response validation, `notificationHandoff.ts` — bounded session-only context.
-Routes: `#/notifications` и `#/settings/notifications`.
-
-`FsrsStatisticsPage.tsx` owns five nested FSRS views and `fsrsApi.ts` owns the
-typed lazy API/cache identity. `StatisticsPage` and `FsrsStatisticsPage` are
-real route-level dynamic imports; `RouteDeliveryBoundary` owns their loading
-and chunk-failure UI. Canonical routes start with `#/stats/fsrs`.
-
-Снимок документации: 2026-07-12.
-
-Source of truth:
+## Source of truth
 
 ```text
 web-dashboard/src/app/router.tsx
@@ -31,224 +14,191 @@ web-dashboard/src/layout/TopNav.tsx
 web-dashboard/src/layout/SettingsLayout.tsx
 web-dashboard/src/layout/GlobalUtilityDock.tsx
 web-dashboard/src/pages/
+web-dashboard/src/components/
+web-dashboard/src/hooks/
 web-dashboard/src/lib/
-web-dashboard/src/types/report.ts
-web-dashboard/src/types/settings.ts
+web-dashboard/src/types/
+web-dashboard/src/i18n/
 ```
 
-## Загрузка данных
+`App.tsx` reads the token from `window.location.search` and loads
+`/api/report?token=<token>`. The frontend never reads Anki collection directly.
+Theme and RU/EN language preferences remain independent local preferences.
 
-`App.tsx` берет token из `window.location.search` и загружает:
+## Primary routes
 
 ```text
-/api/report?token=<token>
+Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-В dev mode при non-403 ошибке используется `web-dashboard/src/data/mockReport.ts`.
-Это удобно для UI-разработки, но не является проверкой реального API.
+Profile, Settings, Tools and Support are outside primary study navigation.
+Diagnostics remain inside Settings. Unknown hashes resolve safely to Home.
 
-`AppLayout` монтирует один `GlobalUtilityDock` для всех routes. Theme toggle
-переиспользует `lib/theme.ts` и storage key `anki-study-report-theme`.
-Language selector рядом с ним использует `i18n/language.ts`, storage key
-`anki-study-report-language` и переключает bundled RU/EN resources без reload.
-Оба preference независимы; подробнее — `docs/localization.md`.
+| Route | Component | Primary data/API | Main risk |
+| --- | --- | --- | --- |
+| `#/home` | `HomePage` | `StudyReport.today` | current-day slice vs historical report |
+| `#/profile` | `ProfilePage` | `StudyReport.profile`, `/api/profile` | all-collection lifetime semantics |
+| `#/calendar` | `CalendarPage` | `activityHub` | date/scope availability |
+| `#/stats` and nested routes | `StatisticsPage`, `FsrsStatisticsPage` | statistics/FSRS query APIs | bounded queries, stale/latest-wins |
+| `#/decks` | `DecksPage` | `deckHub`, Browser action | direct/subtree semantics |
+| `#/search` | `SearchPage` | Search v2, metadata v1, Safe Actions | strict parsing, selection, exact IDs |
+| `#/cards` | `CardsPage` | Triage v3, Search inspect v2 | identity parity, active preview, rejected C1.5 UI |
+| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | Inspection Profiles APIs | exact refs, lifecycle, local drafts |
+| settings/diagnostics routes | settings pages | narrow settings/status APIs | token and lifecycle safety |
 
-## Routes/pages
+## Canonical card display identity
 
-Primary navigation содержит `Сегодня`, `Активность`, `Статистика`, `Колоды`,
-`Поиск` и `Карточки` в этом порядке. Profile/Settings/Tools и внешний Boosty support link
-открываются через avatar dropdown. Support — безопасная статическая ссылка, а
-не SPA route. Технические settings pages связаны отдельной навигацией и не
-являются primary-вкладками. Полный IA contract: `docs/navigation-ia.md`.
-
-| Route | Component | Данные/API | Тесты | Риски |
-| --- | --- | --- | --- | --- |
-| `#/home` | `HomePage` («Сегодня») | `StudyReport.today` + historical forecast/fsrs | `HomePage.test.tsx`, `router.test.tsx` | Today slice должен оставаться current-day; top-level report сохраняется для других pages |
-| `#/profile` | `ProfilePage` | `StudyReport.profile`, POST `/api/profile` | `ProfilePage.test.tsx`, `profileApi.test.ts`, `TopNav.test.tsx` | All-collection lifetime view; preferences per Anki profile, не dashboard scope |
-| `#/decks` | `DecksPage` | `report.deckHub`, legacy `report.decks` fallback, typed Browser action | `DecksPage.test.tsx`, `deckTree.test.ts` | Не смешивать direct/subtree, не flatten hierarchy при filter/sort |
-| `#/search` | `SearchPage` | Search query/inspect, entity actions, `deckHub` picker | `SearchPage.test.tsx`, `searchApi.test.ts`, `entityActionsApi.test.ts` | Latest-wins reads, explicit selection cap, serialized mutations и refresh/reconciliation |
-| `#/cards` | `CardsPage` | triage v2 query, Search inspect, exact-ID open action, media URLs | `CardsPage.test.tsx`, `useCardsTriageWorkspace.test.tsx`, `searchApi.test.ts` | Самая рискованная зона: active-item lifecycle, sanitizer, Shadow DOM, media |
-| `#/calendar` | `CalendarPage` («Активность») | `StudyReport.activityHub`, `activityHub` helpers | `ActivityPage.test.tsx`, `calendarStats.test.ts` | Scope/date availability, keyboard и derived weekly/feed contracts |
-| `#/stats` + four nested routes | `StatisticsPage` | `statisticsHub.initialResult`, POST `/api/statistics/query`, native Stats action | `StatisticsPage.test.tsx`, `statisticsApi.test.ts` | Bounded query, stale response, current snapshot vs history |
-| `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
-| `#/settings` | `ReportSettingsPage` | GET/POST `/api/dashboard/settings` | `SettingsHub.test.tsx`, `settingsApi.test.ts` | Dashboard scope и report defaults разделены; Home period не редактируется |
-| `#/settings/data` | `SettingsPage` («Данные») | settings API + cache status/actions | `SettingsHub.test.tsx`, backend cache tests | Form save и cache operations являются разными actions |
-| `#/settings/inspection-profiles` | lazy `InspectionProfilesSettingsPage` | strict Inspection Profiles query/validate v2/update API | `InspectionProfilesSettingsPage.test.tsx`, profile API/backend/E2E tests | Detached draft, no autosave, exact refs, revision conflict, strict import/export |
-| `#/settings/server` | `ServerSettingsPage` | settings API + server status/actions | `SettingsHub.test.tsx`, server tests | restart/stop меняют token/lifecycle |
-| `#/settings/sources` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Read-only diagnostics; старый `#/integrations` redirect-ится сюда |
-| `#/settings/logs` | `LogsPage` | logs endpoints/download | `router.test.tsx`, typecheck | Token redaction; старый `#/logs` redirect-ится сюда |
-
-Stage 15 удалил placeholder `#/stats`, `#/fsrs` и `#/browse`. Stage 6 вернул
-`#/stats` только как five-section live product; FSRS/Browse не возвращались.
-Неизвестные hashes безопасно разрешаются в `#/home`.
-
-## Важные helpers/normalizers
+C1.5R.1 introduces one card-display flow:
 
 ```text
-web-dashboard/src/lib/actionsApi.ts       token extraction and action response normalization
-web-dashboard/src/lib/cardAttention.ts    card-level payload normalization
-web-dashboard/src/lib/calendarStats.ts    calendar/heatmap model
-web-dashboard/src/lib/activityHub.ts      bounded Activity period/metric/feed selectors
-web-dashboard/src/lib/deckHealth.ts       deck status model
-web-dashboard/src/lib/deckTree.ts         Decks v2 search/filter/sibling sort/visible rows
-web-dashboard/src/lib/dateUtils.ts        date formatting
-web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
-web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
-web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
-web-dashboard/src/lib/searchApi.ts        strict Search query/inspect client
-web-dashboard/src/lib/triageApi.ts        strict triage v2 parser/read client
-web-dashboard/src/lib/inspectionProfilesApi.ts strict profile parser/client and one-profile import parser
-web-dashboard/src/hooks/useInspectionProfilesWorkspace.ts latest-wins catalog, detached draft, validation and serialized mutations
-web-dashboard/src/lib/entityActionsApi.ts strict card/note mutation client
-web-dashboard/src/hooks/useSearchWorkspace.ts query, selection, inspect and mutation orchestration
-web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
-web-dashboard/src/lib/theme.ts            theme localStorage
-web-dashboard/src/i18n/index.ts           i18next initialization and bundled resources
-web-dashboard/src/i18n/language.ts        language normalization/storage/document sync
-web-dashboard/src/i18n/locales/           RU/EN namespace resources
+Python exact-card projector
+  → Search card row v2
+  → Search card inspect v2
+  → Triage exact-card resolution v3
+  → Search row / Search Inspector / Cards queue / Cards Inspector
 ```
 
-`types/search.ts` различает Cards/Notes row/details и хранит IDs строками.
-Search v1 использует отдельный `#/search`; Cards page и его preview contract не
-переименованы в Cards v2. Полный contract: `docs/search-v1-and-safe-actions.md`.
-
-`types/triage.ts` содержит v2 request/response, item/reason/evidence и
-partial-source types. `triageApi.ts` отправляет token-consistent JSON POST и
-fail-closed проверяет exact response/nested shapes, decimal IDs, enums, bounds,
-counts и finite evidence. `useCardsTriageWorkspace.ts` подключает automatic
-dataset к `#/cards` с лимитом 100 и семидневным окном, сохраняет активную
-карточку при refresh, обеспечивает latest-wins Search inspect и открывает
-только exact ID через `open-search-selection`. `types/inspectionProfiles.ts` и
-`inspectionProfilesApi.ts` строго проверяют lifecycle, structures,
-discriminated check union, validate v1/v2 previews, revision-bearing updates и
-single-profile import document. C1.4 добавляет lazy Settings route, workspace
-hook и редактор. Полные contracts:
-`docs/cards-v2-triage-read-api.md` and `docs/inspection-profiles-v1.md`.
-
-## Cards queue and Inspector
-
-`CardsPage.tsx` использует одну native semantic table и persistent Inspector:
+Backend module:
 
 ```text
-compact summary + filters
-bounded canonical queue | active-card Inspector
+anki_study_report/card_display_identity.py
 ```
 
-Legacy tabs, `riskScore`, `table/tiles/ankiPreview` switch и full preview в
-каждой строке удалены. В C1.5 нет checkbox/bulk/Safe Action mutation.
+Frontend model and validation:
 
-Queue rows содержат categorical priority, primary text, primary reason,
-bounded evidence, deck/state и note-scope hint. Активация строки не переносит
-фокус в Inspector. При пустом/отфильтрованном наборе Inspector очищается.
+```text
+web-dashboard/src/types/search.ts
+web-dashboard/src/lib/searchApi.ts
+web-dashboard/src/types/triage.ts
+web-dashboard/src/lib/triageApi.ts
+```
 
-Полный preview загружается только для active item через:
+Frontend presentation fallback:
+
+```text
+web-dashboard/src/lib/cardDisplayText.ts
+```
+
+The flat identity fragment is:
+
+```text
+displayText
+displaySource      browser_question | reviewer_front | none
+displayStatus      available | media_only | unavailable
+displayTruncated
+```
+
+`cardDisplayText()` returns backend text for `available` and only localizes the
+two explicit fallback states. It does not extract or transform card content.
+
+Card rows/details and Triage items do not contain `primaryText`. Note rows and
+note details retain note-mode `primaryText`.
+
+## Search page
+
+`useSearchWorkspace.ts` owns query/session/selection/inspect/action state.
+Normal query and inspect requests send exact `schemaVersion: 2`. Metadata remains
+an independent v1 request.
+
+```text
+SearchResultsTable.tsx  card row uses cardDisplayText(row)
+SearchInspector.tsx     card heading uses cardDisplayText(details)
+```
+
+Notes continue to display `primaryText`. Selection remains explicit decimal IDs
+and `open-search-selection` never derives a query from display text.
+
+`searchApi.ts` rejects unknown keys, old schemas, card `primaryText` aliases and
+incoherent display states. Search card row and Search card details require the
+same display fields.
+
+## Cards page
+
+`useCardsTriageWorkspace.ts` sends automatic Triage schema v3 and loads active
+card details through Search inspect schema v2. It preserves latest-wins and
+exact-ID Browser handoff.
+
+`CardsPage.tsx` uses `cardDisplayText(item)` for:
+
+- client-side visible-text filtering;
+- queue row identity;
+- Inspector heading.
+
+The active `SearchCardDetails` identity is also available to preview metadata.
+Queue rows never fetch full HTML or media.
+
+The current native table + persistent Inspector remains historical C1.5 UI and
+is still product-rejected. C1.5R.1 changes identity only; dense inbox redesign,
+1024 px drawer and acceptance package remain later C1.5R stages.
+
+## Preview boundary
+
+Only the active card calls:
 
 ```text
 POST /api/search/inspect
-web-dashboard/src/components/AnkiCardShadowPreview.tsx
-data-testid="anki-card-shadow-preview"
+AnkiCardShadowPreview
 ```
 
-Search card details аддитивно содержат sanitized `renderedPreview`. Front HTML
-и CSS остаются в Shadow DOM; media URL получает dashboard token. Неактивные
-строки не запускают Search inspect/media reads.
+Compact identity and full preview are separate. C1.5R.1 does not change
+Inspector-front or expanded-preview side behavior. Shadow DOM, sanitizer,
+validated token-protected media and no-iframe/no-template-JS boundaries remain.
 
-Expanded preview использует тот же cached detail и `AccessibleModal portal`:
+## Important helpers
 
 ```text
-data-testid="cards-preview-modal"
+lib/actionsApi.ts                    dashboard action transport
+lib/cardDisplayText.ts               RU/EN display-state fallback only
+lib/searchApi.ts                     strict Search v2 + metadata v1 client
+lib/triageApi.ts                     strict Triage v3 client
+lib/entityActionsApi.ts              strict card/note Safe Actions
+hooks/useSearchWorkspace.ts          Search orchestration
+hooks/useCardsTriageWorkspace.ts     Triage/active inspect orchestration
+lib/inspectionProfilesApi.ts         strict profile client/import parser
+lib/statisticsApi.ts                 typed statistics query client
+lib/theme.ts                         theme preference
+ i18n/index.ts                       bundled RU/EN initialization
 ```
 
-Modal находится вне inert/`aria-hidden` application shell, удерживает фокус,
-закрывается Escape и возвращает фокус trigger. Preview не исполняет JS
-templates и не использует iframe; sanitizer остается backend barrier.
+## Payload and API ownership
 
-При smoke failure сначала проверить active row и `/api/search/inspect`, потом
-единственный Shadow DOM host Inspector. Expanded preview должен переиспользовать
-тот же detail и не создавать второй inspect request.
-
-## Payload keys по страницам
-
-| Payload key | Основные потребители |
+| Data | Owner/consumer |
 | --- | --- |
-| `metadata` | Home, Cards, Settings |
-| `profile` | Profile identity, lifetime KPI, activity, deck overview/preferences |
-| `summary` | Home |
-| `kpis` | Home |
-| `answerDistribution` | Home |
-| `activity` | Home and legacy calendar compatibility |
-| `activityHub` | Activity calendar, selected-day details, derived daily/weekly feed |
-| `comparison` | Home |
-| `decks` | Home, Decks, Cards filters/actions |
-| `deckHub` | Decks v2 scoped hierarchy and detail; additive, normalized |
-| `statisticsHub` | Statistics layout, common controls and all five sections |
-| `attentionCards` | Cards; canonical card-level payload key |
-| `attentionCardsStatus` | Cards, Settings |
-| `noteTypeCatalog` | Cards diagnostics |
-| `forecast` | Home only; Activity не показывает placeholder forecast metric |
-| `fsrs` | Home |
-| `recommendations` | Home, Actions context |
-| `cache` | Settings, ServerSettings |
+| `StudyReport.today` | Home |
+| `profile` | Profile |
+| `activityHub` | Activity |
+| `deckHub` | Decks and scoped selectors |
+| `statisticsHub` | Statistics |
+| Search metadata v1 | Search controls |
+| Search query/inspect v2 | Search rows/details and active Cards preview |
+| Triage v3 | Cards queue/reasons/source state |
+| `attentionCards` | legacy report consumers, not canonical Cards queue |
 
-## Важные тесты
+## Focused tests for C1.5R.1
 
 ```text
-web-dashboard/src/lib/actionsApi.test.ts
-web-dashboard/src/lib/calendarStats.test.ts
-web-dashboard/src/lib/cardAttention.test.ts
-web-dashboard/src/lib/dateUtils.test.ts
-web-dashboard/src/lib/formatters.test.ts
+web-dashboard/src/lib/cardDisplayText.test.ts
+web-dashboard/src/lib/searchApi.test.ts
+web-dashboard/src/lib/triageApi.test.ts
+web-dashboard/src/hooks/useCardsTriageWorkspace.test.tsx
+web-dashboard/src/pages/SearchPage.test.tsx
+web-dashboard/src/pages/SearchMetadataIntegration.test.tsx
 web-dashboard/src/pages/CardsPage.test.tsx
-web-dashboard/src/pages/StatisticsPage.test.tsx
-web-dashboard/src/components/statistics/statisticsPresentation.test.ts
-web-dashboard/src/app/router.test.tsx
-web-dashboard/src/layout/TopNav.test.tsx
-web-dashboard/src/layout/GlobalUtilityDock.test.tsx
-web-dashboard/src/i18n/language.test.ts
-web-dashboard/src/i18n/resources.test.ts
-web-dashboard/src/pages/LocalizationSmoke.test.tsx
-web-dashboard/src/lib/formatters.localization.test.ts
 ```
 
-## Visual/runtime risks
+These tests are committed but not executed in the GitHub connector environment.
+Typecheck evidence is also pending.
 
-Statistics presentation layer:
+## Current status
 
-- `pages/StatisticsPage.tsx` — route composition, query state, KPI/insight and
-  route-specific panels;
-- `components/statistics/StatisticsCharts.tsx` — line/bar/stacked primitives,
-  tooltip, legend, summary and associated data table;
-- `components/statistics/statisticsPresentation.ts` — semantic palette mapping,
-  comparison display, sparse summaries and deterministic deck selection;
-- `styles.css` — centralized light/dark `--stats-color-*` tokens and panel
-  hierarchy.
+```text
+C1.5R.0 — Complete
+C1.5R.1 — Implemented, focused verification pending
+C1.5R.2 — Blocked
+C1.6 — Blocked
+Core C1 — In progress
+```
 
-Statistics не должна возвращаться к shared grouped scale для count/seconds,
-percent/count или cards/percentage. Backend series не следует расширять ради
-presentation без доказанного semantic blocker.
-
-FSRS presentation использует shared shell, но сохраняет разные задачи routes:
-overview conclusion, snapshot distributions, manual calibration, learning-step
-sufficiency и read-only workload simulation. Calibration/simulator запросы
-остаются manual. Chart output всегда имеет summary и table alternative.
-
-Production build создаёт Vite manifest и восемь JS chunks. Bundle guard
-проверяет, что Statistics и FSRS остаются dynamic entries, а каждый JS chunk
-меньше 500,000 bytes. Текущая архитектура границ описана в
-`reports/product/stage-7-5-fsrs-visual-delivery-report.md`.
-
-- Dev `mockReport` может скрыть real API failure.
-- Media URLs без token в raw payload должны получить token при рендере.
-- External `http:`, `file:` и token-bearing media URLs нормализуются frontend
-  side, но backend sanitizer остается главным барьером.
-- Note CSS должен оставаться внутри preview, а не протекать в документ.
-- Cards page требует browser/live smoke после изменений rendering/media.
-
-## Product notices
-
-`ProductNoticeCoordinator.tsx` монтируется рядом с `#dashboard-app-shell` и
-владеет единственным активным modal. `AccessibleModal.tsx` реализует focus
-trap/inert/return focus; `TelemetryConsentDialog.tsx` и `WhatsNewDialog.tsx`
-остаются разными решениями. `PrivacySettingsPage.tsx` обслуживает
-`#/settings/privacy`. Local API client находится в `lib/productNoticesApi.ts`,
-а bundled fallback — в `data/changelog.generated.ts`.
+No frontend formatter runtime, preview-side correction, candidate-source
+redesign, Cards inbox redesign or Inspection Profiles redesign is implied by
+this map.
