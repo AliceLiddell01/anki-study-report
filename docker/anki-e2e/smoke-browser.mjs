@@ -818,7 +818,7 @@ async function assertGlobalThemeDock(page) {
 
   for (const routeCase of [
     ["/decks", "Колоды"],
-    ["/cards", "Карточки"],
+    ["/cards", "Карточки, требующие внимания"],
     ["/profile", "E2E"],
     ["/actions", "Инструменты"],
     ["/settings", "Отчёт"],
@@ -1629,7 +1629,7 @@ async function assertApkgBrowserIfEnabled(page) {
 async function assertCssDiagnostics(page) {
   const diagnostics = {};
 
-  await prepareDashboardRoute(page, "/cards", "light", "Карточки");
+  await prepareDashboardRoute(page, "/cards", "light", "Карточки, требующие внимания");
   await waitForCardsPageReady(page);
   diagnostics.cardsLight = await inspectDashboardCss(page, "cards-light");
   assertDashboardCss(diagnostics.cardsLight, { theme: "light", page: "Cards" });
@@ -1642,7 +1642,7 @@ async function assertCssDiagnostics(page) {
   diagnostics.settingsDark = await inspectDashboardCss(page, "settings-dark");
   assertDashboardCss(diagnostics.settingsDark, { theme: "dark", page: "Settings" });
 
-  await prepareDashboardRoute(page, "/cards", "light", "Карточки");
+  await prepareDashboardRoute(page, "/cards", "light", "Карточки, требующие внимания");
   await waitForCardsPageReady(page);
   diagnostics.cardsAfterSettingsLight = await inspectDashboardCss(page, "cards-after-settings-light");
   assertDashboardCss(diagnostics.cardsAfterSettingsLight, { theme: "light", page: "Cards after Settings" });
