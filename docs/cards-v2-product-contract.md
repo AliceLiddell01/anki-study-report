@@ -2,11 +2,12 @@
 
 ## Status and scope
 
-**Status:** Accepted for `C1.1`
+**Status:** Accepted product contract; Inspection Profile runtime completed in `C1.3`
 **Branch:** `core`
 **Production status:** C1.2 adds an additive read foundation; current CardsPage remains unchanged
 
-Technical read contract: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
+Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
+and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
 
@@ -83,7 +84,8 @@ Reason families:
 | System/profile state | confidence/configuration incomplete | profile not configured/needs review, stale/unavailable source |
 | Manual context | explicit user workset | selected in Search |
 
-Machine codes are deferred; user meaning/scope are fixed.
+Canonical learning/content codes, stable reason identity and safe evidence are
+defined in triage schema v2; user meaning/scope remain fixed here.
 
 ## Priority and evidence
 
@@ -113,7 +115,7 @@ Profiles are local, declarative, per-note-type requirements for content checks; 
 | Needs review | note-type structure changed incompatibly | no; fail closed |
 | Disabled | user disabled content checks | no |
 
-Suggestion explains required roles and mapped fields; confirmation is explicit. Incompatible rename/add/remove/reorder/template change moves to Needs review. Cards explains suppression and links to settings. Disabling content checks does not disable learning issues. Final schema/fingerprint/storage/editor belongs to C1.3.
+Suggestion explains required roles and mapped fields; confirmation is explicit. Incompatible rename/add/remove/reorder/template-reference change moves to Needs review. Cards explains suppression and links to settings. Disabling content checks does not disable learning issues. C1.3 owns the versioned schema, fingerprint, profile-local store, allowlisted runtime and API; the final editor belongs to C1.4.
 
 ## Main workspace
 
@@ -279,28 +281,24 @@ Inventory coverage: `APKG/synthetic × table/tiles/Anki preview × light/dark` =
 | queue form remains prototype-driven | table/list/grid accessibility trade-offs | freeze table or ban it | preserves the compact queue contract without prematurely fixing semantics | density, roles and focus model |
 | semantics after prototype | listbox conflict; grid complexity | freeze role now | avoids premature inaccessible choice | roles/focus/AT matrix |
 
-## Open questions
+## Remaining open questions after C1.3
 
-1. minimal C1.2 read operation and composition with existing payload/Signals;
-2. exact cap, paging/windowing and totals;
-3. source precedence across evidence freshness;
-4. representative card for note-level-only reason;
-5. Search TTL/return token without persistent IDs;
-6. reason-to-priority mapping;
-7. optional quick row action;
-8. final list/table/grid semantics after tests;
-9. profile fingerprint/migration in C1.3;
-10. non-blocking recheck after Browser edits.
+1. Search TTL/return token without persistent IDs;
+2. optional quick row action;
+3. final list/table/grid semantics after accessibility tests;
+4. non-blocking recheck after Browser edits;
+5. C1.4 profile configuration UX and separately scoped import/export policy.
 
 ## Acceptance criteria
 
 Accepted: one clear job/boundaries; automatic queue vs Search workset; aggregation/reason/priority/evidence/order; compact queue + Inspector; profile lifecycle/fail-closed checks; handoffs; detector-driven resolution; state/accessibility/security/boundedness contracts; 12/12 screenshot evidence; no production/test/workflow/release/E2E change.
 
-## Handoff to C1.2
+## Increment closure
 
-C1.2 receives: one bounded automatic queue; separate session Search workset; card-anchored multi-reason items; note/sibling rules; reason families; High/Medium/Low + evidence; deterministic ordering; row/Inspector requirements; cap-aware filters/summary; Notification/Search handoffs; recheck lifecycle; profile states; reuse/security/background invariants; and backend/frontend/types/validators/tests/docs parity.
-
-C1.2 proposes the minimal read model/API and resolves technical open questions. It does not implement full workspace UI, final profile schema/editor, new mutations or manual resolution.
+C1.2 established the bounded card-anchored read model. C1.3 completed the
+profile schema/store/fingerprint/runtime and triage v2 content source. C1.4 may
+build configuration UI on those APIs; it must not change authority, sibling,
+fail-closed or arbitrary-code boundaries without a versioned contract change.
 
 ## External references
 

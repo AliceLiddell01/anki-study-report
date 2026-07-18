@@ -31,13 +31,16 @@ production code/tests
 - C1.2 implementation commit: `13b1a20` (`feat: add the bounded canonical triage read API`);
 - C1.2 contract/report commit: `e7c4ede` (`docs: document the canonical triage read contract`);
 - C1.2 status: Complete;
+- C1.3 initial HEAD: `e4292d090a79b857b81a987c8e0853656f178e0e`;
+- C1.3 implementation status: local implementation complete; exact-SHA Fast CI and targeted real-Anki `standard/cards` pending;
 - product contract: `docs/cards-v2-product-contract.md`;
 - technical contract: `docs/cards-v2-triage-read-api.md`;
 - supporting report: `reports/core/c1-2-triage-model-read-api.md`;
 - endpoint: token-protected `POST /api/triage/query`;
 - local verification: focused backend/frontend checks and canonical `run_full_check.ps1 -SkipDocker` PASS;
 - cloud verification: Fast CI run [`29637594843`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS on exact SHA `e7c4eded97886dc902499a0f4bdb44e842599bde` with exact package and diagnostics artifacts;
-- next step: `C1.3 — Inspection Profiles: contract and runtime`;
+- C1.3 contracts: `docs/inspection-profiles-v1.md`, `schemas/inspection-profile-v1.schema.json`, triage schema v2 in `docs/cards-v2-triage-read-api.md`;
+- C1.4 is blocked; do not start its UI until C1.3 cloud/real-Anki closure;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.

@@ -95,7 +95,8 @@ web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
 web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
 web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
 web-dashboard/src/lib/searchApi.ts        strict Search query/inspect client
-web-dashboard/src/lib/triageApi.ts        strict C1.2 triage parser/read client
+web-dashboard/src/lib/triageApi.ts        strict triage v2 parser/read client
+web-dashboard/src/lib/inspectionProfilesApi.ts strict C1.3 profile parser/client foundation
 web-dashboard/src/lib/entityActionsApi.ts strict card/note mutation client
 web-dashboard/src/hooks/useSearchWorkspace.ts query, selection, inspect and mutation orchestration
 web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
@@ -109,13 +110,16 @@ web-dashboard/src/i18n/locales/           RU/EN namespace resources
 Search v1 использует отдельный `#/search`; Cards page и его preview contract не
 переименованы в Cards v2. Полный contract: `docs/search-v1-and-safe-actions.md`.
 
-`types/triage.ts` содержит versioned request/response, item/reason/evidence и
+`types/triage.ts` содержит v2 request/response, item/reason/evidence и
 partial-source types. `triageApi.ts` отправляет token-consistent JSON POST и
 fail-closed проверяет exact response/nested shapes, decimal IDs, enums, bounds,
 counts и finite evidence. Эта foundation намеренно не подключена к CardsPage:
 `#/cards` всё ещё читает legacy `attentionCards`; hook/state machine/визуальный
-режим C1.2 не добавляет. Полный contract:
-`docs/cards-v2-triage-read-api.md`.
+режим C1.3 не добавляет. `types/inspectionProfiles.ts` и
+`inspectionProfilesApi.ts` строго проверяют lifecycle, structures,
+discriminated check union, previews and revision-bearing updates для C1.4, но
+route/page/form/navigation не добавляют. Полные contracts:
+`docs/cards-v2-triage-read-api.md` and `docs/inspection-profiles-v1.md`.
 
 ## Cards preview modes
 

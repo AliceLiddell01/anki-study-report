@@ -37,6 +37,14 @@ dashboard server, mutation runtime и E2E fixture эскалируют final gat
 `standard/full`; strict APKG и Perf100 не нужны, если Cards rendering/APKG/
 performance contracts не менялись.
 
+Для Inspection Profiles/triage v2 targeted gate — `standard/cards` с exact
+Fast CI package и `verify_restart=true`. Harness подтверждает live Japanese и
+Programming structures, save/confirm через supported API, Japanese-only
+missing-audio reason, independent learning reason, profile-local revision
+после restart и fail-closed `needs_review` после fixture template-reference
+change. Это contract/runtime proof без screenshot acceptance; `full`,
+`strict-apkg` и `perf100` не требуются только по причине C1.3.
+
 Готовый PR-head SHA должен иметь Fast CI PASS и требуемый real-Anki gate именно
 на этом SHA. Разрешённый repository rebase merge создаёт новые commit SHA даже
 при неизменном patch/tree. После merge сравниваются production tree/patch с

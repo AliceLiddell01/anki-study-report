@@ -114,6 +114,17 @@ limits, string IDs, safe text и generic runtime errors описаны в
 `docs/search-query-foundation.md`. Raw query и token не попадают в normal logs
 или E2E public artifact.
 
+Inspection Profiles используют три token-protected POST-only JSON endpoint с
+отдельным 64 KiB body cap. Store path вычисляется только из active Anki
+profile/add-on ID; пользовательский path не принимается. Документ ограничен 1
+MiB, пишется atomically с optimistic revision, corrupt data quarantine,
+future-schema preserve/fail-closed. Rules — только hard-coded declarative
+union; arbitrary regex/code/SQL/shell/network/filesystem/media-existence
+запрещены. Profile/check/mapping data и note samples не отправляются в
+telemetry и не логируются. Preview/profile evidence исключает raw values,
+HTML, filenames, template source, paths, tokens and exceptions. Подробно:
+`docs/inspection-profiles-v1.md`.
+
 Mutation surface отделён от generic dashboard actions:
 `POST /api/entities/cards/actions` и `/api/entities/notes/actions`. Оба
 token-protected, POST-only, ограничены 8 KiB и принимают только hard-coded

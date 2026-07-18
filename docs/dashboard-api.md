@@ -77,6 +77,9 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/search/query
 /api/search/inspect
 /api/triage/query
+/api/inspection-profiles/query
+/api/inspection-profiles/validate
+/api/inspection-profiles/update
 /api/entities/cards/actions
 /api/entities/notes/actions
 /api/actions/<action>
@@ -103,9 +106,9 @@ declared row/details contract и всю response metadata до возврата 
 
 ## Canonical triage read API
 
-`POST /api/triage/query` — additive C1.2 read endpoint для будущего Cards v2.
+`POST /api/triage/query` — additive C1.3 read endpoint для будущего Cards v2.
 Он требует текущий dashboard token, JSON body до 8 KiB и exact
-`schemaVersion: 1` contract. `GET` получает `405`, неверный content type —
+`schemaVersion: 2` contract. `GET` получает `405`, неверный content type —
 `415`, unknown fields/invalid scope/cross-dataset fields — `400`.
 
 `automatic` объединяет текущие learning issues и active card-level Signals;
@@ -115,11 +118,26 @@ heuristic missing-content issues suppress до confirmed Inspection Profiles.
 `1..200`. IDs, raw query и card content не помещаются в URL.
 
 Response различает `available | partial | unavailable`, typed состояние
-`attention`, `signals` и `searchResolver`, explicit
-`profiles_not_available`, counts/truncation и bounded card-anchored items.
+`attention`, `signals`, `searchResolver` и `profileChecks`, aggregate
+`contentChecks`, counts/truncation и bounded card-anchored items. Только
+confirmed/current Inspection Profiles создают note-level content reasons со
+stable `reasonId`; profile evidence не содержит значений полей.
 Новый contract не содержит `riskScore`, full preview/media, raw revlog,
 exception, token или runtime path. Полная shape, mapping и ordering:
 [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
+
+## Inspection Profiles API
+
+`POST /api/inspection-profiles/query`, `/validate` и `/update` подготавливают
+C1.4 без добавления UI. Они используют текущий dashboard token, требуют
+`application/json`, ограничены 64 KiB и отклоняют unknown fields. Query
+возвращает bounded note-type structures/fingerprints, lifecycle, stored
+profile и non-authoritative suggestion. Validate проверяет draft и максимум
+20 exact card IDs без persistence. Update поддерживает explicit save/confirm,
+disable/delete и optimistic `expectedRevision`; stale revision/fingerprint —
+conflict. Collection reads идут через `QueryOp`; единственная запись — atomic
+profile-local `inspection_profiles.json`, не Anki collection mutation. Полный
+контракт: [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 ## Entity actions API
 

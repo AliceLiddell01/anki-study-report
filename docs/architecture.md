@@ -163,8 +163,13 @@ statisticsHub (bounded initial 90d Statistics result)
 - обслуживает additive read-only `POST /api/triage/query`: `triage_runtime.py`
   сериализует collection read через `QueryOp`, а `triage_service.py`
   нормализует существующий attention collector, active card Signals и exact
-  Search card rows в bounded deterministic projection без persistence,
-  mutations или full preview rendering;
+  Search card rows и confirmed-profile content checks в bounded deterministic
+  projection без triage persistence, collection mutations или full preview;
+- обслуживает `POST /api/inspection-profiles/query|validate|update`:
+  `inspection_profile_runtime.py` сериализует model/card reads через `QueryOp`,
+  `inspection_profile_service.py` владеет structures/fingerprint/lifecycle/
+  allowlisted evaluation, а `inspection_profile_store.py` — только strict
+  validation, revision, atomic profile-local persistence and recovery;
 - обслуживает отдельные card/note mutation endpoints; strict validation и
   preflight находятся в `entity_actions.py`, а official Anki wrapper bridge —
   в `entity_action_runtime.py`;
@@ -172,12 +177,13 @@ statisticsHub (bounded initial 90d Statistics result)
 Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
 через API server и контролируются Python side.
 
-`triage_service.py` не владеет lifecycle источников. `metrics.py` остаётся
-владельцем legacy attention query, `NotificationStore` — Signals, а
-`search_service.project_card_row()` — compact entity identity. Triage только
-объединяет их по `cardId`, suppress unconfirmed content heuristics, назначает
-categorical priority и публикует typed source availability. Технический
-contract: `docs/cards-v2-triage-read-api.md`.
+`metrics.py` сохраняет legacy attention behavior и отдельно предоставляет
+один bounded internal candidate DTO для triage. `NotificationStore` владеет
+Signals, `search_service.project_card_row()` — compact identity, а
+`InspectionProfileStore` — per-profile configuration. Triage объединяет их,
+сохраняет learning reasons независимо от profile lifecycle и принимает только
+confirmed/current content failures. Contracts:
+`docs/cards-v2-triage-read-api.md`, `docs/inspection-profiles-v1.md`.
 
 Security details: `docs/security-and-safety.md`.
 
