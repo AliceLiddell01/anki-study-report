@@ -1891,7 +1891,8 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
       assertBrowser(apkg.imported && apkg.cardCount > 0, "Cards v2 APKG fixture was imported.");
       const apkgDeckName = (importSummary.deckNames || [])[0];
       assertBrowser(Boolean(apkgDeckName), "Cards v2 APKG fixture exposes a deck name.");
-      const deckFilter = page.getByLabel("Колода", { exact: true });
+      const deckFilter = page.locator(".cards-v2-filter-row select").nth(2);
+      assertBrowser(await deckFilter.count() === 1, "Cards v2 exposes one structural deck filter.");
       await deckFilter.selectOption({ label: apkgDeckName });
       await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-triage-row"]').length > 0, undefined, { timeout: 60000 });
       await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
