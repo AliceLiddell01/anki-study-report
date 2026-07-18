@@ -1,0 +1,198 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "small-collection-week",
+  "title": "Small collection week",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "Small collection week",
+  "tags": [
+    "ordinary"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-06-10",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-0-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-11",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-1-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-12",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-2-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-13",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-3-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-14",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-4-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-15",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-5-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    },
+    {
+      "anki_day": "2026-06-16",
+      "sessions": [
+        {
+          "session_id": "daily",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 3,
+              "prefix": "small-6-",
+              "template": {}
+            }
+          ]
+        }
+      ],
+      "workload": {
+        "status": "collection_cleared",
+        "natural_due_at_start": 3,
+        "due_visible_under_limits": 3,
+        "due_hidden_by_limits": 0,
+        "snapshot_confident": true
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 21.567,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "completion_credit",
+      "expected": 0.567,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}

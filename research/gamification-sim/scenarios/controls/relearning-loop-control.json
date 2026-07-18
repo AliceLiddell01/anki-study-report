@@ -1,0 +1,60 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "relearning-loop-control",
+  "title": "Normal relearning sequence control",
+  "category": "control",
+  "rule_version": "review-v0.1",
+  "description": "Normal relearning sequence control",
+  "tags": [
+    "control",
+    "matched"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-02",
+      "sessions": [
+        {
+          "session_id": "review",
+          "episodes": [
+            {
+              "source_event_key": "lapse-control",
+              "card_lineage": "lapse-card",
+              "anki_day": "2026-01-02",
+              "outcome": "again"
+            }
+          ]
+        }
+      ],
+      "support_events": [
+        {
+          "source_event_key": "ctrl-s1",
+          "parent_episode_key": "lapse-control",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "ctrl-s2",
+          "parent_episode_key": "lapse-control",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "ctrl-s3",
+          "parent_episode_key": "lapse-control",
+          "kind": "completion"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0.37,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}

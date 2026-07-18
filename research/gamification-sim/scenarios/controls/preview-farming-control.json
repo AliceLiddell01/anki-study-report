@@ -1,0 +1,43 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "preview-farming-control",
+  "title": "Natural review control for preview comparison",
+  "category": "control",
+  "rule_version": "review-v0.1",
+  "description": "Natural review control for preview comparison",
+  "tags": [
+    "control",
+    "matched"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-03",
+      "sessions": [
+        {
+          "session_id": "review",
+          "episodes": [
+            {
+              "source_event_key": "preview-control",
+              "card_lineage": "preview-card",
+              "anki_day": "2026-01-03",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}

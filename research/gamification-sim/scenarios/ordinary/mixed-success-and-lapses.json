@@ -1,0 +1,116 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "mixed-success-and-lapses",
+  "title": "Mixed successful reviews and lapses",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "Mixed successful reviews and lapses",
+  "tags": [
+    "ordinary"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-07-16",
+      "sessions": [
+        {
+          "session_id": "mixed",
+          "episodes": [
+            {
+              "source_event_key": "lapse-a",
+              "card_lineage": "card-lapse-a",
+              "anki_day": "2026-07-16",
+              "outcome": "again"
+            },
+            {
+              "source_event_key": "lapse-b",
+              "card_lineage": "card-lapse-b",
+              "anki_day": "2026-07-16",
+              "outcome": "again"
+            }
+          ],
+          "repeat_episodes": [
+            {
+              "count": 8,
+              "prefix": "mixed-good-",
+              "template": {
+                "outcome": "good"
+              }
+            }
+          ]
+        }
+      ],
+      "support_events": [
+        {
+          "source_event_key": "lapse-a-s1",
+          "parent_episode_key": "lapse-a",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "lapse-a-s2",
+          "parent_episode_key": "lapse-a",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "lapse-a-s3",
+          "parent_episode_key": "lapse-a",
+          "kind": "completion"
+        },
+        {
+          "source_event_key": "lapse-b-s1",
+          "parent_episode_key": "lapse-b",
+          "kind": "first_step"
+        },
+        {
+          "source_event_key": "lapse-b-s2",
+          "parent_episode_key": "lapse-b",
+          "kind": "second_step"
+        },
+        {
+          "source_event_key": "lapse-b-s3",
+          "parent_episode_key": "lapse-b",
+          "kind": "completion"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "successful_core_episodes",
+      "expected": 8
+    },
+    {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "failed_core_episodes",
+      "expected": 2
+    },
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "support",
+      "expected": 0.24,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 8.74,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}

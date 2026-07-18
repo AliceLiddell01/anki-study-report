@@ -1,0 +1,52 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "preview-only-farming",
+  "title": "Preview-only activity earns no permanent review reward",
+  "category": "abuse",
+  "rule_version": "review-v0.1",
+  "description": "Preview-only activity earns no permanent review reward",
+  "tags": [
+    "abuse",
+    "matched-control"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-03",
+      "sessions": [
+        {
+          "session_id": "preview",
+          "episodes": [
+            {
+              "source_event_key": "preview-abuse",
+              "card_lineage": "preview-card",
+              "anki_day": "2026-01-03",
+              "outcome": "good",
+              "source": "filtered_preview",
+              "preview_without_rescheduling": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "invariant",
+      "rationale": "Matched abuse/control safety bound is independent of the candidate coefficient values.",
+      "type": "ratio_to_control_lte",
+      "scope": "comparison",
+      "metric": "total_review_units",
+      "expected": 0
+    },
+    {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0
+    }
+  ],
+  "control_scenario_id": "preview-farming-control",
+  "comparison_basis": "same-core-opportunities"
+}

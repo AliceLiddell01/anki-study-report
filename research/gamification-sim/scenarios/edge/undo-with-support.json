@@ -1,0 +1,57 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "undo-with-support",
+  "title": "Undo reverses core and linked support",
+  "category": "edge",
+  "rule_version": "review-v0.1",
+  "description": "Undo reverses core and linked support",
+  "tags": [
+    "edge"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-02-03",
+      "sessions": [
+        {
+          "session_id": "review",
+          "episodes": [
+            {
+              "source_event_key": "undo-parent",
+              "card_lineage": "card-undo-parent",
+              "anki_day": "2026-02-03",
+              "outcome": "good"
+            }
+          ]
+        }
+      ],
+      "support_events": [
+        {
+          "source_event_key": "undo-support",
+          "parent_episode_key": "undo-parent",
+          "kind": "interday_recovery"
+        }
+      ],
+      "undone_source_event_keys": [
+        "undo-parent"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 0
+    },
+    {
+      "class": "invariant",
+      "rationale": "The forbidden, undone, preview, or suppressed reward channel must remain zero for every candidate.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "support",
+      "expected": 0
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "normal-backlog-recovery",
+  "title": "Normal backlog recovery over three days",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "Normal backlog recovery over three days",
+  "tags": [
+    "ordinary"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-05-10",
+      "sessions": [
+        {
+          "session_id": "recovery",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 5,
+              "prefix": "recovery-0-",
+              "template": {
+                "outcome": "good",
+                "due_relation": "overdue"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-05-11",
+      "sessions": [
+        {
+          "session_id": "recovery",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 5,
+              "prefix": "recovery-1-",
+              "template": {
+                "outcome": "good",
+                "due_relation": "overdue"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "anki_day": "2026-05-12",
+      "sessions": [
+        {
+          "session_id": "recovery",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 5,
+              "prefix": "recovery-2-",
+              "template": {
+                "outcome": "good",
+                "due_relation": "overdue"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 15,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "unique_core_episodes",
+      "expected": 15
+    }
+  ]
+}

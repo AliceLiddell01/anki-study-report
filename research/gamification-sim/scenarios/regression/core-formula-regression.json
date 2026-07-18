@@ -1,0 +1,71 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "core-formula-regression",
+  "title": "Core formula regression smoke",
+  "category": "regression",
+  "rule_version": "review-v0.1",
+  "description": "Core formula regression smoke",
+  "tags": [
+    "regression",
+    "core"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-07",
+      "sessions": [
+        {
+          "session_id": "smoke",
+          "episodes": [
+            {
+              "source_event_key": "reg-good",
+              "card_lineage": "card-reg-good",
+              "anki_day": "2026-01-07",
+              "outcome": "good"
+            },
+            {
+              "source_event_key": "reg-again",
+              "card_lineage": "card-reg-again",
+              "anki_day": "2026-01-07",
+              "outcome": "again"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "core_baseline",
+      "expected": 1.15,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "core_context",
+      "expected": 0.1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1.25,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}

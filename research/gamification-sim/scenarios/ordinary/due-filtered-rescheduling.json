@@ -1,0 +1,52 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "due-filtered-rescheduling",
+  "title": "Due filtered-deck reviews with rescheduling",
+  "category": "ordinary",
+  "rule_version": "review-v0.1",
+  "description": "Due filtered-deck reviews with rescheduling",
+  "tags": [
+    "ordinary"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-07-16",
+      "sessions": [
+        {
+          "session_id": "filtered",
+          "episodes": [],
+          "repeat_episodes": [
+            {
+              "count": 10,
+              "prefix": "filtered-",
+              "template": {
+                "source": "filtered_rescheduling"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 10,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    },
+    {
+      "class": "invariant",
+      "rationale": "Event-count identity is determined by normalized inputs, not reward coefficients.",
+      "type": "equals",
+      "scope": "scenario",
+      "metric": "unique_core_episodes",
+      "expected": 10
+    }
+  ]
+}

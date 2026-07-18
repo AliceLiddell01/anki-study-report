@@ -1,0 +1,43 @@
+{
+  "scenario_version": "review-scenario-v0.2",
+  "scenario_id": "duplicate-replay-control",
+  "title": "Single honest review control",
+  "category": "control",
+  "rule_version": "review-v0.1",
+  "description": "Single honest review control",
+  "tags": [
+    "control",
+    "matched"
+  ],
+  "days": [
+    {
+      "anki_day": "2026-01-01",
+      "sessions": [
+        {
+          "session_id": "review",
+          "episodes": [
+            {
+              "source_event_key": "dup-control",
+              "card_lineage": "dup-card",
+              "anki_day": "2026-01-01",
+              "outcome": "good"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "class": "regression",
+      "rationale": "Exact review-v0.1 numeric regression; it is evidence only for the R-CURRENT parameter set.",
+      "type": "approximately_equals",
+      "scope": "scenario",
+      "metric": "total_review_units",
+      "expected": 1,
+      "applies_to_parameter_set_ids": [
+        "R-CURRENT"
+      ]
+    }
+  ]
+}
