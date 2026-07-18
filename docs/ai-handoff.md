@@ -32,7 +32,7 @@ production code/tests
 - C1.2 contract/report commit: `e7c4ede` (`docs: document the canonical triage read contract`);
 - C1.2 status: Complete;
 - C1.3 initial HEAD: `e4292d090a79b857b81a987c8e0853656f178e0e`;
-- C1.3 implementation status: local implementation complete; exact-SHA Fast CI and targeted real-Anki `standard/cards` pending;
+- C1.3 implementation status: implementation and candidate exact-SHA Fast CI complete; targeted real-Anki `standard/cards` pending after two diagnosed fixture-selection failures;
 - product contract: `docs/cards-v2-product-contract.md`;
 - technical contract: `docs/cards-v2-triage-read-api.md`;
 - supporting report: `reports/core/c1-2-triage-model-read-api.md`;
@@ -40,6 +40,7 @@ production code/tests
 - local verification: focused backend/frontend checks and canonical `run_full_check.ps1 -SkipDocker` PASS;
 - cloud verification: Fast CI run [`29637594843`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS on exact SHA `e7c4eded97886dc902499a0f4bdb44e842599bde` with exact package and diagnostics artifacts;
 - C1.3 contracts: `docs/inspection-profiles-v1.md`, `schemas/inspection-profile-v1.schema.json`, triage schema v2 in `docs/cards-v2-triage-read-api.md`;
+- C1.3 cloud evidence: Fast CI `29640555184` and `29640792565` PASS; E2E `29640654092` and retry `29640871856` FAIL before restart after the profile API assertions passed; fixes `b8f584f` and `4d9d693` are local/candidate evidence and one exact `standard/cards` rerun is still required;
 - C1.4 is blocked; do not start its UI until C1.3 cloud/real-Anki closure;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 

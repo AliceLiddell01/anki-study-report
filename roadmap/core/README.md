@@ -39,7 +39,7 @@ C1 Cards v2 / Problem Triage
 - `C1.0 — Core branch baseline`: Complete — [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md)
 - `C1.1 — Product contract`: Complete — canonical contract [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md), evidence report [`reports/core/c1-1-product-contract.md`](../../reports/core/c1-1-product-contract.md)
 - `C1.2 — Canonical triage model and read API`: Complete — technical contract [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md), evidence report [`reports/core/c1-2-triage-model-read-api.md`](../../reports/core/c1-2-triage-model-read-api.md), exact-SHA [Fast CI run 29637594843](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29637594843) PASS
-- `C1.3 — Inspection Profiles: contract and runtime`: Implemented; exact-SHA Fast CI and targeted `standard/cards` closeout pending — [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md)
+- `C1.3 — Inspection Profiles: contract and runtime`: Implemented; candidate Fast CI passed, targeted `standard/cards` restart acceptance pending after diagnosed harness failures — [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md)
 - `C1.4 — Inspection Profiles: user configuration`: Blocked until C1.3 gates close
 
 `C1.1` completes only the product/IA contract. It does not complete C1 and does not implement the queue, API, Inspection Profiles, bulk action results or migrations.

@@ -2,8 +2,9 @@
 
 ## Status
 
-**Current:** Implemented locally; exact-SHA Fast CI and targeted real-Anki
-`standard/cards` verification pending.
+**Current:** Implemented; candidate exact-SHA Fast CI passed. Targeted real-Anki
+`standard/cards` verification remains pending after two diagnosed harness
+failures; the second fix has local evidence only.
 **C1.4:** Blocked; no UI work started.
 
 ## Baseline and scope
@@ -130,9 +131,9 @@ Focused results before canonical closeout:
 - profile/triage/runtime/dashboard integration slice: 42 PASS;
 - frontend profile + triage Vitest: 10 PASS;
 - frontend TypeScript `tsc --noEmit`: PASS;
-- E2E harness syntax/workflow helper slice: 34 PASS;
-- full Python suite with JSON Schema parity: 704 PASS, 4 expected platform
-  SKIP, 25.83 s;
+- final E2E/attention helper slice after diagnosed fixes: 35 PASS;
+- final full Python suite with JSON Schema parity: 706 PASS, 4 expected
+  platform SKIP, 25.74 s;
 - `node scripts/run_python.mjs -m compileall -q anki_study_report`: PASS;
 - `git diff --check`: PASS at the local closeout checkpoint.
 
@@ -141,9 +142,10 @@ earlier explicit compilation/test run had created
 `anki_study_report/__pycache__`. In each case the exact generated directory was
 verified inside the workspace and removed; each immediate full rerun passed.
 
-Canonical `run_full_check.ps1 -SkipDocker`: final PASS in 57.7 s (frontend
-276 PASS; Python 704 PASS/4 expected platform SKIP; package 66 entries).
-Exact-SHA Fast CI: pending.
+Canonical `run_full_check.ps1 -SkipDocker`: final PASS in 51.9 s (frontend
+276 PASS; Python 706 PASS/4 expected platform SKIP; package 66 entries).
+Candidate exact-SHA Fast CI: PASS; final post-evidence Fast CI is reported in
+the handoff response.
 Targeted real-Anki: pending.
 
 ## Targeted real-Anki plan
@@ -188,11 +190,47 @@ escalates based on the final diff.
 Implementation commits:
 
 - `d82c0ca` — `feat: add confirmed inspection profile runtime`;
-- `d549ed4` — `test: cover inspection profile lifecycle and restart`.
+- `d549ed4` — `test: cover inspection profile lifecycle and restart`;
+- `1d20ac2` — `docs: document inspection profile runtime boundaries`;
+- `b8f584f` — `fix: select exact media fixture in cards E2E`;
+- `4d9d693` — `fix: separate cards E2E inspection fixture risk`.
 
-Fast CI run/tested SHA/artifacts: pending.
-Targeted Docker run/source Fast CI/assertions: pending.
-Docs-only closeout commit/final Fast CI: pending.
+Candidate Fast CI evidence:
+
+- run `29640555184`: PASS on `1d20ac2aeaa92a69886628314368954d500863c7`;
+  exact package and `ci-fast` diagnostics artifacts present with SHA-256
+  digests;
+- run `29640792565`: PASS on `b8f584feb121e228b89cd3c35b24ab08dfd8f5c6`;
+  exact package and diagnostics artifacts present with SHA-256 digests.
+
+Targeted Docker evidence:
+
+- run `29640654092`, `standard/cards`, `verify_restart=true`, source Fast CI
+  `29640555184`: FAIL before restart because the API smoke helper selected the
+  new missing-audio Japanese card as the rich media preview fixture. The
+  profile proof had already passed: revision 2, Japanese/Programming confirmed,
+  exactly one Japanese audio reason, zero Programming audio reasons, learning
+  reason preserved and no value leak. Fixed in `b8f584f` with a regression
+  test;
+- run `29640871856`, same inputs with source Fast CI `29640792565`: API smoke
+  PASS with the same profile proof, then FAIL before restart because legacy
+  CardsPage selected the higher-risk missing-audio fixture for the independent
+  synthetic visual contract. The fixture review groups were separated in
+  `4d9d693`; focused and canonical local gates pass. Per the bounded retry
+  policy, no third E2E was dispatched.
+
+Therefore persistence through restart, post-mutation Japanese `needs_review`
+and Programming-still-confirmed assertions are not yet accepted in cloud.
+Exact rerun required after a new successful Fast CI:
+
+```text
+mode=standard
+scope=cards
+verify_restart=true
+fast_ci_run_id=<exact successful Fast CI for final HEAD>
+```
+
+Docs status commit/final Fast CI: reported in the final handoff response.
 
 ## Limitations and C1.4 prerequisites
 
