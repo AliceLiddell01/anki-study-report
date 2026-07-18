@@ -483,7 +483,9 @@ def find_fixture_card(cards: list[dict[str, Any]]) -> dict[str, Any] | None:
     for card in cards:
         rendered = card.get("renderedPreview") if isinstance(card.get("renderedPreview"), dict) else {}
         front_html = str(rendered.get("frontHtml") or "")
-        if "要望" in json.dumps(card, ensure_ascii=False) and 'class="card-content"' in front_html:
+        rendered_dump = json.dumps(rendered, ensure_ascii=False)
+        has_fixture_media = "要.gif" in rendered_dump or "%E8%A6%81.gif" in rendered_dump
+        if has_fixture_media and 'class="card-content"' in front_html:
             return card
     return None
 

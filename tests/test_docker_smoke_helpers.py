@@ -73,6 +73,24 @@ def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
     assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
 
 
+def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
+    smoke_api = load_smoke_api_module()
+    missing_audio = {
+        "renderedPreview": {
+            "frontHtml": '<div class="card-content">要望（音声なし）</div>',
+            "mediaRefs": [],
+        }
+    }
+    rich_media = {
+        "renderedPreview": {
+            "frontHtml": '<div class="card-content"><span class="word-focus">要望</span></div>',
+            "mediaRefs": [{"name": "要.gif"}],
+        }
+    }
+
+    assert smoke_api.find_fixture_card([missing_audio, rich_media]) is rich_media
+
+
 def test_inspection_profile_e2e_helpers_build_exact_safe_profile_and_filter_reasons():
     smoke_api = load_smoke_api_module()
     item = {
