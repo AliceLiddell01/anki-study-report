@@ -1,10 +1,15 @@
 # C1.4 — Inspection Profiles: user configuration
 
-**Status:** `C1.4 — Implemented, verification pending`
+**Status:** `C1.4 — Complete`
 
 **Initial HEAD:** `d66b899ab36ce9cc0e60a0b352b268b124aa0d18`
 
 **Initial divergence:** `0 behind / 13 ahead` of `origin/master`
+
+**Accepted implementation HEAD:** `b2e060d5c9676e6dfdbab7309927b854503d3c66`
+
+**Accepted implementation divergence:** `0 behind / 16 ahead` of
+`origin/master`
 
 ## Delivered capabilities
 
@@ -101,15 +106,50 @@ Focused checks completed before the canonical gate:
   and 706 Python PASS because the earlier direct `compileall` left
   `anki_study_report/__pycache__`; the generated cache directories were
   removed explicitly inside the workspace;
-- repeated `.\scripts\run_full_check.ps1 -SkipDocker`: PASS in 54.7 s — 51
-  frontend files / 280 tests, 707 Python tests with 5 documented platform/
-  artifact skips, split production bundle, copied asset graph, package build
-  and package verification.
+- repeated `.\scripts\run_full_check.ps1 -SkipDocker`: PASS after explicit
+  cache cleanup — 51 frontend files / 280 tests, 708 Python tests with 4
+  documented platform/artifact skips, split production bundle, copied asset
+  graph, package build and package verification.
 
-The exact-SHA Fast CI, targeted real-Anki run, artifact
-inventory, screenshot inventory, implementation commits, final HEAD/
-divergence, and documentation closeout are intentionally PENDING here until
-those gates actually complete.
+Cloud and real-Anki evidence:
+
+- implementation commit `441fe92c0b84e46a1f74f014da557af0a0d0bc21`
+  (`feat: add inspection profile settings workspace`);
+- Fast CI [`29644045993`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644045993):
+  PASS on exact implementation SHA with diagnostics and exact package;
+- first targeted E2E [`29644150035`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644150035):
+  FAIL because the full-page editor proof timed out on the native catalog
+  click before the unsaved dialog assertion; the deterministic interaction
+  proof and post-validation unit regression were committed as `3f8714c`;
+- Fast CI [`29644393562`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644393562):
+  PASS on exact `3f8714cd8cc6d54be2214eb12818687b552e1a4c`;
+- second targeted E2E [`29644506542`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644506542):
+  FAIL after opening the dialog because the dialog was still inside its own
+  inert app shell, exposing a real accessibility defect; portal rendering and
+  regression coverage were committed as `b2e060d`;
+- final pre-closeout Fast CI [`29644724894`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644724894):
+  PASS on exact accepted HEAD; job `88080953453`; diagnostics artifact
+  `8429718322`; exact package artifact `8429718439`;
+- accepted real-Anki E2E [`29644836731`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731):
+  PASS, job `88081241726`, `standard/cards`, `verify_restart=true`, exact
+  source Fast CI `29644724894`, exact SHA/checkout `b2e060d5c9676e6dfdbab7309927b854503d3c66`,
+  package SHA-256 `e158151f22dc099623dd72386f06f647532fc63dbab8ad2fe23526cb2b7290ed`,
+  redacted artifact `8429751360`, successful artifact manifest, 35 screenshots;
+- accepted Inspection Profiles screenshots:
+  `list/light.png`, `confirmed-editor/light.png`,
+  `dirty-suggestion/dark.png`, and `validated-preview/light.png` under
+  `screenshots/states/inspection-profiles/`;
+- browser proof: confirmed lifecycle, suggestion-only dirty draft, validate v2
+  bounded preview, accessible unsaved-navigation cancellation, and no
+  horizontal overflow all PASS;
+- restart proof: store revision remained 2; Japanese changed from `confirmed`
+  to `needs_review` after the controlled front-template fingerprint mutation;
+  Programming remained `confirmed`; sample preview v2 remained available;
+  learning reason remained preserved and profile evidence leaked no values.
+
+The documentation closeout commit contains this report and handoff update. Its
+exact SHA and a final exact-SHA Fast CI run are reported in the completion
+response to avoid a self-referential follow-up commit.
 
 ## Security, privacy, compatibility, and limitations
 
@@ -123,7 +163,7 @@ those gates actually complete.
 - no PR, merge, release, deployment, `.ankiaddon` publication, or AnkiWeb
   update is part of C1.4;
 - automation verifies semantics and screenshot production but does not claim
-  complete WCAG conformance; accepted real-Anki visual evidence remains a
-  required completion gate;
+  complete WCAG conformance; the required real-Anki visual/runtime gate is
+  accepted for this increment;
 - C1.5 must consume the confirmed/current profile state and canonical triage
   model without reimplementing this editor or profile runtime.

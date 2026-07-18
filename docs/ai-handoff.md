@@ -45,9 +45,13 @@ production code/tests
 - C1.3 real-Anki acceptance: run [`29641398848`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29641398848), `standard/cards`, `verify_restart=true`, source Fast CI `29641074560`, PASS on the same exact SHA;
 - accepted restart assertions: revision remained 2; Japanese changed from `confirmed` to `needs_review` after the controlled fingerprint mutation; Programming remained `confirmed`; Japanese/Programming audio reasons changed from 1/0 to 0/0; the learning reason remained; profile evidence leaked no values;
 - documentation closeout commit: the commit containing this handoff; its exact SHA is reported in the final closeout response to avoid a self-referential second commit;
-- C1.4 status: Implemented, local/cloud verification pending;
+- C1.4 accepted implementation HEAD: `b2e060d5c9676e6dfdbab7309927b854503d3c66`;
+- C1.4 status: Complete;
 - C1.4 route/contract: `#/settings/inspection-profiles`, `docs/inspection-profiles-ui.md`, report `reports/core/c1-4-inspection-profiles-ui.md`;
-- C1.5 status: Blocked, not started until C1.4 exact-SHA Fast CI and targeted real-Anki acceptance;
+- C1.4 final pre-closeout Fast CI: run [`29644724894`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644724894) PASS on exact accepted implementation HEAD with exact package artifact `8429718439`;
+- C1.4 real-Anki acceptance: run [`29644836731`](https://github.com/AliceLiddell01/anki-study-report/actions/runs/29644836731), `standard/cards`, `verify_restart=true`, source Fast CI `29644724894`, PASS on the same exact SHA with redacted artifact `8429751360`;
+- C1.4 accepted browser proof: confirmed lifecycle, dirty suggestion, bounded validate v2 preview, accessible unsaved-navigation guard and no horizontal overflow; restart preserved revision 2, changed Japanese to `needs_review`, kept Programming `confirmed`, preserved the learning reason and leaked no profile values;
+- C1.5 status: Next, not started;
 - no pull request, merge, release, deployment or AnkiWeb publication was created.
 
 Core remains an independent long-lived branch through C1 and C2. Do not merge or release it without a separate explicit owner decision after a stable Core build.
@@ -102,10 +106,11 @@ on implementation HEAD `9e35f361aa786aedb44bbbe4a6224699239ecb0d`.
 The evidence covers profile-local persistence, fingerprint mismatch,
 fail-closed content checks, Programming/Japanese isolation, preserved learning
 reasons and value-safe evidence. `C1.4 — Inspection Profiles: user
-configuration` is implemented locally with the lazy Settings editor, validate
+configuration` is complete with the lazy Settings editor, validate
 v2 bounded sample, strict import/export, revision conflict handling, RU/EN and
-real-Anki screenshot assertions. Its canonical local, exact-SHA Fast CI and
-targeted `standard/cards` gates are pending; C1.5 has not started.
+real-Anki screenshot assertions. Canonical local checks, exact-SHA Fast CI
+`29644724894` and targeted restart run `29644836731` are accepted on
+`b2e060d5c9676e6dfdbab7309927b854503d3c66`; C1.5 is next and has not started.
 
 C1 must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 
