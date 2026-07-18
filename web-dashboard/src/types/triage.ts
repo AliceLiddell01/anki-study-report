@@ -1,3 +1,5 @@
+import type { CardDisplayIdentity } from "./search";
+
 export type TriageDataset = "automatic" | "search_workset";
 export type TriagePriority = "high" | "medium" | "low";
 export type TriageReasonFamily = "learning" | "content" | "system" | "manual";
@@ -58,7 +60,7 @@ export interface TriageSourceStatus {
   errorCode: string | null;
 }
 
-export interface TriageItem {
+export interface TriageItem extends CardDisplayIdentity {
   itemId: string;
   availability: TriageAvailability;
   cardId: string;
@@ -66,7 +68,6 @@ export interface TriageItem {
   deck: { deckId: string | null; name: string };
   noteType: { noteTypeId: string | null; name: string };
   template: { ordinal: number | null; name: string };
-  primaryText: string;
   priority: TriagePriority | null;
   primaryReasonCode: string | null;
   reasons: TriageReason[];
@@ -87,11 +88,11 @@ export interface TriageScope {
 }
 
 export type TriageQueryRequest =
-  | { schemaVersion: 2; dataset: "automatic"; scope: TriageScope; limit: number; cardIds?: never }
-  | { schemaVersion: 2; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number };
+  | { schemaVersion: 3; dataset: "automatic"; scope: TriageScope; limit: number; cardIds?: never }
+  | { schemaVersion: 3; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number };
 
 export interface TriageQueryResponse {
-  schemaVersion: 2;
+  schemaVersion: 3;
   dataset: TriageDataset;
   status: TriageResponseStatus;
   generatedAtMs: number;
