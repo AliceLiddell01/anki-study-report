@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is Next; production integration is not approved
+**Current status:** `G0` is In Progress; `G0.3` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -15,6 +15,19 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - G0.1 establishes only the branch and its baseline documentation: it imports no research assets, Core changes or production changes.
 - Compatibility with later `master` and Core state is evaluated in subsequent G0 checkpoints, beginning with G0.2; it is not assumed by branch creation.
 - Any production integration requires a separate explicit decision by the project owner.
+
+## G0 checkpoints
+
+- `G0.1 — Canonical branch baseline`: Complete — [`g0-branch-baseline.md`](g0-branch-baseline.md)
+- `G0.2 — Core compatibility snapshot`: Complete — [`g0-core-compatibility.md`](g0-core-compatibility.md)
+- `G0.3 — Historical asset inventory`: Next
+
+G0.2 confirmed `core` as the active Core line on the same recorded `master`
+baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
+conflict with the G0 documentation and creates no blocker for G0.3. No Core
+import is required; stable Core changes should normally reach Gamification
+through `master`, while C1/C2 contracts remain a watch item for later G3, G5
+and G6 work.
 
 ## Source audit
 
@@ -78,7 +91,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** Next
+**Status:** In Progress — G0.1 and G0.2 Complete; G0.3 Next
 
 ### Goal
 
