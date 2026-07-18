@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { SearchWorkspaceState } from "../../hooks/useSearchWorkspace";
+import { cardDisplayText } from "../../lib/cardDisplayText";
 import type { SearchCardRow, SearchNoteRow } from "../../types/search";
 
 export default function SearchResultsTable({ workspace }: { workspace: SearchWorkspaceState }) {
@@ -46,9 +47,10 @@ function NoteHeaders() { const { t } = useTranslation("pages", { keyPrefix: "sea
 function CardRow({ row, workspace }: { row: SearchCardRow; workspace: SearchWorkspaceState }) {
   const { t } = useTranslation("pages", { keyPrefix: "search" });
   const active = workspace.activeId === row.cardId;
+  const identity = cardDisplayText(row);
   return <tr className={`${active ? "is-active " : ""}${workspace.selectedIds.has(row.cardId) ? "is-selected" : ""}`} onClick={(event) => { if (!(event.target as HTMLElement).closest("input,button")) void workspace.inspect(row.cardId); }}>
     <td className="search-checkbox-cell"><input type="checkbox" aria-label={t("selection.selectCard", { id: row.cardId })} checked={workspace.selectedIds.has(row.cardId)} onChange={(event) => workspace.toggleSelection(row.cardId, event.target.checked)} /></td>
-    <th scope="row"><button type="button" className="search-row-button" aria-pressed={active} onClick={() => workspace.inspect(row.cardId)} title={row.primaryText}>{row.primaryText || t("results.blank")}</button></th>
+    <th scope="row"><button type="button" className="search-row-button" aria-pressed={active} onClick={() => workspace.inspect(row.cardId)} title={identity}>{identity}</button></th>
     <td title={row.deckName}>{row.deckName}</td><td>{row.noteTypeName}</td><td>{row.templateName}</td><td>{t(`states.${row.state}`)}</td><td>{row.due}</td><td>{row.interval}</td><td>{row.repetitions}</td><td>{row.lapses}</td><td>{t(`flags.${row.flag}`)}</td>
   </tr>;
 }
