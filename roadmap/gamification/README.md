@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is In Progress; `G0.4` is Next; production integration is not approved
+**Current status:** `G0` is In Progress; `G0.5` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -21,7 +21,8 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - `G0.1 — Canonical branch baseline`: Complete — [`g0-branch-baseline.md`](g0-branch-baseline.md)
 - `G0.2 — Core compatibility snapshot`: Complete — [`g0-core-compatibility.md`](g0-core-compatibility.md)
 - `G0.3 — Historical asset inventory`: Complete — [`g0-historical-asset-inventory.md`](g0-historical-asset-inventory.md), [`g0-historical-asset-manifest.md`](g0-historical-asset-manifest.md)
-- `G0.4 — Selective research recovery`: Next
+- `G0.4 — Selective research recovery`: Complete — [`g0-selective-research-recovery.md`](g0-selective-research-recovery.md), [`g0-recovery-ledger.md`](g0-recovery-ledger.md)
+- `G0.5 — Reproducible environment`: Next
 
 G0.2 confirmed `core` as the active Core line on the same recorded `master`
 baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
@@ -36,6 +37,13 @@ manifest uses `IMPORT_AS_IS`, `IMPORT_WITH_ADAPTATION`, `REWRITE`,
 `ARCHIVE_SUPERSEDED` and `DEFER`; no completeness issue remains and no asset was
 imported. G0.4 must transfer only approved manifest rows in the recorded batch
 order.
+
+G0.4 recovered **127** historical-derived targets and deferred one global
+progression foundation to G4. Exact imports retain frozen Git blob identity;
+approved adaptations add provenance/status prefixes without changing historical
+bodies or reward semantics. The package remains `RECOVERED_UNVERIFIED`: tests,
+oracles, simulations and evidence were not executed, and production integration
+remains prohibited.
 
 ## Source audit
 
@@ -99,7 +107,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** In Progress — G0.1–G0.3 Complete; G0.4 Next
+**Status:** In Progress — G0.1–G0.4 Complete; G0.5 Next
 
 ### Goal
 
