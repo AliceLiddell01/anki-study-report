@@ -1,0 +1,937 @@
+{
+  "$defs": {
+    "cell": {
+      "additionalProperties": false,
+      "properties": {
+        "advantage_365": {
+          "type": "number"
+        },
+        "advantage_90": {
+          "type": "number"
+        },
+        "comparison": {
+          "enum": [
+            "intentional-backlog",
+            "retention-high-cycle",
+            "retention-low-cycle"
+          ]
+        },
+        "delta_365_minus_90": {
+          "type": "number"
+        },
+        "endpoint_pass": {
+          "type": "boolean"
+        },
+        "grew": {
+          "type": "boolean"
+        },
+        "replica": {
+          "enum": [
+            0,
+            1
+          ]
+        }
+      },
+      "required": [
+        "comparison",
+        "replica",
+        "advantage_90",
+        "advantage_365",
+        "delta_365_minus_90",
+        "endpoint_pass",
+        "grew"
+      ],
+      "type": "object"
+    },
+    "crossCell": {
+      "additionalProperties": false,
+      "properties": {
+        "advantage_365": {
+          "type": "number"
+        },
+        "advantage_90": {
+          "type": "number"
+        },
+        "baseline_delta_365": {
+          "type": "number"
+        },
+        "baseline_delta_90": {
+          "type": "number"
+        },
+        "classification": {
+          "const": "EXPLORATORY_NON_DECISION"
+        },
+        "comparison": {
+          "enum": [
+            "intentional-backlog",
+            "retention-high-cycle",
+            "retention-low-cycle"
+          ]
+        },
+        "component_contributions": {
+          "additionalProperties": false,
+          "properties": {
+            "challenge_main": {
+              "type": "number"
+            },
+            "completion_credit": {
+              "type": "number"
+            },
+            "interaction": {
+              "type": "number"
+            },
+            "memory_main": {
+              "type": "number"
+            },
+            "neutral_context": {
+              "type": "number"
+            },
+            "supplemental": {
+              "type": "number"
+            },
+            "support": {
+              "type": "number"
+            },
+            "volume_credit": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "challenge_main",
+            "completion_credit",
+            "interaction",
+            "memory_main",
+            "neutral_context",
+            "supplemental",
+            "support",
+            "volume_credit"
+          ],
+          "type": "object"
+        },
+        "delta_365_minus_90": {
+          "type": "number"
+        },
+        "lineage_positive_top_20_share_365": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "lineage_positive_top_20_share_90": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "replica": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "residual": {
+          "maximum": 1e-09,
+          "minimum": -1e-09,
+          "type": "number"
+        },
+        "review_count_difference_365": {
+          "type": "integer"
+        },
+        "review_count_difference_90": {
+          "type": "integer"
+        },
+        "window_contributions": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "pre_transition",
+              "day_30_transition",
+              "between_transitions",
+              "day_60_transition",
+              "post_transition",
+              "backlog_return_window"
+            ]
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "comparison",
+        "replica",
+        "advantage_90",
+        "advantage_365",
+        "delta_365_minus_90",
+        "review_count_difference_90",
+        "review_count_difference_365",
+        "baseline_delta_90",
+        "baseline_delta_365",
+        "component_contributions",
+        "window_contributions",
+        "lineage_positive_top_20_share_90",
+        "lineage_positive_top_20_share_365",
+        "residual",
+        "classification"
+      ],
+      "type": "object"
+    },
+    "determinismEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "PASS"
+        },
+        "trace_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "tree_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "status",
+        "tree_digest",
+        "trace_digest"
+      ],
+      "type": "object"
+    },
+    "finite": {
+      "type": "number"
+    },
+    "group": {
+      "additionalProperties": false,
+      "properties": {
+        "comparison": {
+          "enum": [
+            "intentional-backlog",
+            "retention-high-cycle",
+            "retention-low-cycle"
+          ]
+        },
+        "endpoint_pass": {
+          "type": "boolean"
+        },
+        "growth_semantics": {
+          "enum": [
+            "NOT_APPLIED_TO_NON_RETENTION_GROUP",
+            "ALL_MATCHED_REPLICAS_GREW"
+          ]
+        },
+        "replicas": {
+          "const": 2
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        },
+        "systematic_growth": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "comparison",
+        "replicas",
+        "endpoint_pass",
+        "systematic_growth",
+        "status",
+        "growth_semantics"
+      ],
+      "type": "object"
+    },
+    "path": {
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "type": "string"
+    },
+    "policySummary": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "rootAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "classification": {
+          "const": "EXPLORATORY_NON_DECISION"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z0-9_]+$",
+          "type": "string"
+        },
+        "question": {
+          "maximum": 14,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "question",
+        "id",
+        "answer",
+        "evidence",
+        "classification"
+      ],
+      "type": "object"
+    },
+    "sha1": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ],
+      "type": "string"
+    },
+    "stringList": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "$id": "https://anki-study-report.local/schemas/review-cycling-attribution-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "../schemas/review-cycling-attribution-v1.schema.json"
+    },
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "job_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "workflow_run_id": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "digest",
+        "manifest_digest",
+        "size_bytes",
+        "expires_at",
+        "workflow_run_id",
+        "job_id"
+      ],
+      "type": "object"
+    },
+    "attribution": {
+      "additionalProperties": false,
+      "properties": {
+        "control_summary": {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "development"
+            },
+            "policies": {
+              "items": {
+                "$ref": "#/$defs/policySummary"
+              },
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "mode",
+            "policies"
+          ],
+          "type": "object"
+        },
+        "cross_horizon_cells": {
+          "items": {
+            "$ref": "#/$defs/crossCell"
+          },
+          "maxItems": 6,
+          "minItems": 6,
+          "type": "array"
+        },
+        "summary": {
+          "additionalProperties": false,
+          "properties": {
+            "classification": {
+              "enum": [
+                "ROOT_CAUSE_LOCALIZED",
+                "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+                "ROOT_CAUSE_UNRESOLVED"
+              ]
+            },
+            "confidence": {
+              "enum": [
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+              ]
+            },
+            "dominant_component": {
+              "type": "string"
+            },
+            "dominant_component_share_of_absolute_contributions": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "dominant_component_value": {
+              "type": "number"
+            },
+            "dominant_window": {
+              "type": "string"
+            },
+            "dominant_window_share_of_absolute_contributions": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "dominant_window_value": {
+              "type": "number"
+            },
+            "max_abs_residual": {
+              "maximum": 1e-09,
+              "minimum": 0,
+              "type": "number"
+            },
+            "rationale": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "retention_groups_replica_direction_consistent": {
+              "additionalProperties": false,
+              "properties": {
+                "retention-high-cycle": {
+                  "type": "boolean"
+                },
+                "retention-low-cycle": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "retention-high-cycle",
+                "retention-low-cycle"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "classification",
+            "confidence",
+            "dominant_component",
+            "dominant_component_value",
+            "dominant_component_share_of_absolute_contributions",
+            "dominant_window",
+            "dominant_window_value",
+            "dominant_window_share_of_absolute_contributions",
+            "retention_groups_replica_direction_consistent",
+            "max_abs_residual",
+            "rationale"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "cross_horizon_cells",
+        "summary",
+        "control_summary"
+      ],
+      "type": "object"
+    },
+    "classification": {
+      "enum": [
+        "ROOT_CAUSE_LOCALIZED",
+        "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+        "ROOT_CAUSE_UNRESOLVED"
+      ]
+    },
+    "cleanup": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted_refs": {
+          "const": [
+            "temp/g1-2-root-cause-attribution",
+            "temp/g1-2-root-cause-attribution-execution"
+          ]
+        },
+        "disposable_runs_deleted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "preserved_artifact_ids": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 2,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "preserved_run_ids": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 4,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "const": "COMPLETE_EXCEPT_CANONICAL_EVIDENCE_RUN"
+        }
+      },
+      "required": [
+        "status",
+        "deleted_refs",
+        "preserved_run_ids",
+        "preserved_artifact_ids",
+        "disposable_runs_deleted"
+      ],
+      "type": "object"
+    },
+    "confidence": {
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "decision_boundary": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_selected": {
+          "const": false
+        },
+        "g1_3_started": {
+          "const": false
+        },
+        "human_learning_effectiveness_proven": {
+          "const": false
+        },
+        "production_approved": {
+          "const": false
+        },
+        "reward_formula_changed": {
+          "const": false
+        }
+      },
+      "required": [
+        "candidate_selected",
+        "reward_formula_changed",
+        "production_approved",
+        "human_learning_effectiveness_proven",
+        "g1_3_started"
+      ],
+      "type": "object"
+    },
+    "determinism": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_365_same_seed": {
+          "$ref": "#/$defs/determinismEntry"
+        },
+        "canonical_90_same_seed": {
+          "$ref": "#/$defs/determinismEntry"
+        },
+        "secondary_seed_trajectory_differs": {
+          "const": true
+        },
+        "tracing_disabled_equivalence": {
+          "const": "VERIFIED_BY_TEST"
+        }
+      },
+      "required": [
+        "canonical_90_same_seed",
+        "canonical_365_same_seed",
+        "secondary_seed_trajectory_differs",
+        "tracing_disabled_equivalence"
+      ],
+      "type": "object"
+    },
+    "environment": {
+      "additionalProperties": false,
+      "properties": {
+        "dependency_resolution": {
+          "const": "EXACT_HASH_LOCK_REPLAY"
+        },
+        "platform": {
+          "const": "Windows AMD64"
+        },
+        "python": {
+          "const": "CPython 3.11.9 x64"
+        },
+        "python_lock": {
+          "$ref": "#/$defs/path"
+        },
+        "rust": {
+          "const": "1.97.1-x86_64-pc-windows-msvc"
+        }
+      },
+      "required": [
+        "platform",
+        "python",
+        "rust",
+        "python_lock",
+        "dependency_resolution"
+      ],
+      "type": "object"
+    },
+    "grain_counts": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregate_comparison": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "day_window": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "horizon": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "policy": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "replica": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "review_episode": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "run": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "synthetic_card_lineage": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run",
+        "policy",
+        "replica",
+        "horizon",
+        "day_window",
+        "synthetic_card_lineage",
+        "review_episode",
+        "aggregate_comparison"
+      ],
+      "type": "object"
+    },
+    "limitations": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_branch": {
+          "const": "gamification"
+        },
+        "canonical_input_commit": {
+          "$ref": "#/$defs/sha1"
+        },
+        "frozen_contract_blob_sha1": {
+          "$ref": "#/$defs/sha1"
+        },
+        "frozen_contract_path": {
+          "$ref": "#/$defs/path"
+        },
+        "frozen_schema_blob_sha1": {
+          "$ref": "#/$defs/sha1"
+        },
+        "frozen_schema_path": {
+          "$ref": "#/$defs/path"
+        },
+        "g0_7_evidence_blob_sha1": {
+          "$ref": "#/$defs/sha1"
+        },
+        "g0_7_evidence_path": {
+          "$ref": "#/$defs/path"
+        },
+        "longitudinal_config_blob_sha1": {
+          "$ref": "#/$defs/sha1"
+        },
+        "longitudinal_config_path": {
+          "$ref": "#/$defs/path"
+        },
+        "master_seed": {
+          "const": 20260716
+        },
+        "parameter_set_id": {
+          "const": "R-CURRENT"
+        },
+        "secondary_seed": {
+          "const": 20260717
+        }
+      },
+      "required": [
+        "canonical_branch",
+        "canonical_input_commit",
+        "frozen_contract_path",
+        "frozen_contract_blob_sha1",
+        "frozen_schema_path",
+        "frozen_schema_blob_sha1",
+        "g0_7_evidence_path",
+        "g0_7_evidence_blob_sha1",
+        "longitudinal_config_path",
+        "longitudinal_config_blob_sha1",
+        "parameter_set_id",
+        "master_seed",
+        "secondary_seed"
+      ],
+      "type": "object"
+    },
+    "publication": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_branch": {
+          "const": "gamification"
+        },
+        "canonical_input_commit": {
+          "$ref": "#/$defs/sha1"
+        },
+        "changed_paths": {
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "maxItems": 7,
+          "minItems": 7,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "development_branch": {
+          "const": "temp/g1-2-root-cause-attribution"
+        },
+        "execution_branch": {
+          "const": "temp/g1-2-root-cause-attribution-execution"
+        },
+        "fast_forward": {
+          "const": true
+        },
+        "result_commit": {
+          "const": "THIS_COMMIT"
+        },
+        "workflow_run_id": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "execution_branch",
+        "development_branch",
+        "canonical_branch",
+        "canonical_input_commit",
+        "result_commit",
+        "workflow_run_id",
+        "fast_forward",
+        "changed_paths"
+      ],
+      "type": "object"
+    },
+    "reconciliation": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_cells": {
+          "items": {
+            "$ref": "#/$defs/cell"
+          },
+          "maxItems": 6,
+          "minItems": 6,
+          "type": "array"
+        },
+        "canonical_groups": {
+          "items": {
+            "$ref": "#/$defs/group"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "max_abs_residual": {
+          "maximum": 1e-09,
+          "minimum": 0,
+          "type": "number"
+        },
+        "overall_status": {
+          "const": "FAIL"
+        },
+        "policy_result_count_365": {
+          "const": 14
+        },
+        "policy_result_count_90": {
+          "const": 14
+        },
+        "tolerance": {
+          "const": 1e-09
+        }
+      },
+      "required": [
+        "tolerance",
+        "max_abs_residual",
+        "canonical_cells",
+        "canonical_groups",
+        "overall_status",
+        "policy_result_count_90",
+        "policy_result_count_365"
+      ],
+      "type": "object"
+    },
+    "root_cause_answers": {
+      "items": {
+        "$ref": "#/$defs/rootAnswer"
+      },
+      "maxItems": 14,
+      "minItems": 14,
+      "type": "array"
+    },
+    "safety": {
+      "additionalProperties": false,
+      "properties": {
+        "all_numbers_finite": {
+          "const": true
+        },
+        "duplicate_keys_rejected": {
+          "const": true
+        },
+        "forbidden_data_scan": {
+          "const": "PASS"
+        },
+        "synthetic_ids_only": {
+          "const": true
+        }
+      },
+      "required": [
+        "synthetic_ids_only",
+        "forbidden_data_scan",
+        "all_numbers_finite",
+        "duplicate_keys_rejected"
+      ],
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "COMPLETE",
+        "INCOMPLETE",
+        "BLOCKED"
+      ]
+    },
+    "verification": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_audit": {
+          "const": "PASS"
+        },
+        "exact_seven_path_diff": {
+          "const": "PASS"
+        },
+        "focused_command": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "focused_passed": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "frozen_blob_audit": {
+          "const": "PASS"
+        },
+        "full_command": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "full_passed": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_validation": {
+          "const": "PASS"
+        }
+      },
+      "required": [
+        "focused_command",
+        "focused_passed",
+        "full_command",
+        "full_passed",
+        "schema_validation",
+        "artifact_audit",
+        "frozen_blob_audit",
+        "exact_seven_path_diff"
+      ],
+      "type": "object"
+    },
+    "version": {
+      "const": "review-cycling-attribution-v1"
+    }
+  },
+  "required": [
+    "$schema",
+    "version",
+    "status",
+    "classification",
+    "confidence",
+    "provenance",
+    "environment",
+    "artifact",
+    "grain_counts",
+    "determinism",
+    "safety",
+    "reconciliation",
+    "attribution",
+    "root_cause_answers",
+    "verification",
+    "publication",
+    "cleanup",
+    "decision_boundary",
+    "limitations"
+  ],
+  "type": "object"
+}

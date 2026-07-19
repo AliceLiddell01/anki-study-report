@@ -8,7 +8,7 @@ import math
 import statistics
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 from pathlib import Path
 
 from .canonical_json import canonical_digest
@@ -230,6 +230,7 @@ def run_policy(
     mode_id: str,
     replica: int,
     params_override: RewardParameterSet | None = None,
+    diagnostic_observer: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     mode = config.mode(mode_id)
     if params_override is None:
@@ -326,6 +327,42 @@ def run_policy(
         )
         breakdown = aggregate_day(day_input, params)
         by_key = {item.source_event_key: item for item in breakdown.episode_breakdowns}
+        if diagnostic_observer is not None:
+            episode_observations = []
+            for diagnostic_episode in episodes:
+                diagnostic_updated, diagnostic_outcome, diagnostic_retrievability, diagnostic_relation = transitions[
+                    diagnostic_episode.source_event_key
+                ]
+                episode_observations.append(
+                    {
+                        "episode": diagnostic_episode,
+                        "previous_state": states[diagnostic_updated.card_lineage_id],
+                        "updated_state": diagnostic_updated,
+                        "outcome": diagnostic_outcome,
+                        "retrievability": diagnostic_retrievability,
+                        "due_relation": diagnostic_relation,
+                        "breakdown": by_key[diagnostic_episode.source_event_key],
+                    }
+                )
+            diagnostic_observer(
+                {
+                    "kind": "day",
+                    "config": config,
+                    "policy": policy,
+                    "parameter_set_id": normalized_id,
+                    "params": params,
+                    "master_seed": master_seed,
+                    "mode_id": mode_id,
+                    "replica": replica,
+                    "horizon_days": mode.horizon_days,
+                    "day": day,
+                    "due_count": len(due),
+                    "selected_count": len(selected),
+                    "day_input": day_input,
+                    "day_breakdown": breakdown,
+                    "episode_observations": tuple(episode_observations),
+                }
+            )
         for episode in episodes:
             updated, outcome, retrievability, relation = transitions[episode.source_event_key]
             previous = states[updated.card_lineage_id]
@@ -391,7 +428,7 @@ def run_policy(
         "lineages_with_multiple_reviews": sum(count > 1 for count in lineage_counts.values()),
     }
     events_payload = [dataclass_to_dict(item) for item in reviews]
-    return {
+    result = {
         "policy_id": policy.policy_id,
         "scheduler": policy.scheduler,
         "parameter_set_id": normalized_id,
@@ -416,6 +453,9 @@ def run_policy(
             "next_due_max": max(item.next_due_day for item in final_cards),
         },
     }
+    if diagnostic_observer is not None:
+        diagnostic_observer({"kind": "policy_result", "result": result})
+    return result
 
 
 def run_longitudinal(
@@ -427,6 +467,7 @@ def run_longitudinal(
     policy_ids: tuple[str, ...] | None = None,
     parameter_overrides: dict[str, RewardParameterSet] | None = None,
     workspace: ResearchWorkspace | Path | None = None,
+    diagnostic_observer: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     if type(master_seed) is not int or master_seed < 0:
         raise ValueError("longitudinal seed must be a non-negative integer")
@@ -452,6 +493,7 @@ def run_longitudinal(
                         mode_id=mode_id,
                         replica=replica,
                         params_override=(parameter_overrides or {}).get(parameter_set_id),
+                        diagnostic_observer=diagnostic_observer,
                     )
                 )
     payload = {

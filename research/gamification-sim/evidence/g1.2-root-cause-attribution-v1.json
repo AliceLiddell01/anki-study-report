@@ -1,0 +1,962 @@
+{
+  "$schema": "../schemas/review-cycling-attribution-v1.schema.json",
+  "artifact": {
+    "digest": "sha256:f18f22d5adc9c5e2cca9314a874ca7de83c1182aa1580dcecda766d64b9a42e9",
+    "expires_at": "2026-08-02T21:59:39Z",
+    "id": 8447755442,
+    "job_id": 88241257488,
+    "manifest_digest": "60011077cc4301ef479ffe8f268926d02deece592159c1bf2e1fc398f91fe8b4",
+    "name": "g1-2-root-cause-attribution-f85e773eeb2f0fa1dfb0d13267c4ee34cf15e447",
+    "size_bytes": 2250160,
+    "workflow_run_id": 29705334586
+  },
+  "attribution": {
+    "control_summary": {
+      "mode": "development",
+      "policies": [
+        {
+          "again_count": 25,
+          "challenge_main": 0.0,
+          "comparison_id": "interval-neutral-control",
+          "completion_credit": 2.0774999999999997,
+          "core_baseline": 69.25000000000001,
+          "core_context": 6.999999999999997,
+          "f_00": 6.999999999999991,
+          "f_0m": 6.999999999999991,
+          "f_c0": 6.999999999999991,
+          "f_cm": 6.999999999999991,
+          "final_cohort_digest": "4e1153a4f92aaf453e02895536ef9fd2dbce90f42775c00ca7e666fae1d5597d",
+          "grain": "policy",
+          "honest_baseline_suppression_events": 0,
+          "horizon_days": 30,
+          "initial_cohort_digest": "50b0d4ea6b96f5d4e736ce321fc352a886f908160ded90a6eb3a5778f63b74b2",
+          "interaction": 0.0,
+          "latent_stream_id": "c848ec1b4fc273ed1cf62103d8286f36ee6c40a5c32265716156dd67e01870ae",
+          "memory_main": 0.0,
+          "parameter_set_id": "R-CURRENT",
+          "policy_id": "no-fsrs-neutral",
+          "replica": 0,
+          "review_count": 95,
+          "run_id": "g12-development-20260716",
+          "successful_review_count": 70,
+          "supplemental": 0.0,
+          "support": 1.2500000000000002,
+          "total_review_units": 79.57750000000001,
+          "trajectory_digest": "9858d1bc78d7a8f6eb7932679c5f17dcb1b455af4aae3369bc98a0a852a483c0",
+          "volume_credit": 0.0
+        },
+        {
+          "again_count": 4,
+          "challenge_main": 1.5125116681099842,
+          "comparison_id": "interval-neutral-control",
+          "completion_credit": 0.8670000000000002,
+          "core_baseline": 28.89999999999999,
+          "core_context": 4.718802621037307,
+          "f_00": 0.0,
+          "f_0m": 3.206290952927322,
+          "f_c0": 1.5125116681099842,
+          "f_cm": 4.718802621037306,
+          "final_cohort_digest": "9fefaeea4c9765ae07bb0ee38de01bfb3f920ede3990215f9b20082a1976ae25",
+          "grain": "policy",
+          "honest_baseline_suppression_events": 0,
+          "horizon_days": 30,
+          "initial_cohort_digest": "50b0d4ea6b96f5d4e736ce321fc352a886f908160ded90a6eb3a5778f63b74b2",
+          "interaction": -2.7755575615628914e-17,
+          "latent_stream_id": "c848ec1b4fc273ed1cf62103d8286f36ee6c40a5c32265716156dd67e01870ae",
+          "memory_main": 3.206290952927322,
+          "parameter_set_id": "R-CURRENT",
+          "policy_id": "stable-default",
+          "replica": 0,
+          "review_count": 35,
+          "run_id": "g12-development-20260716",
+          "successful_review_count": 31,
+          "supplemental": 0.0,
+          "support": 0.2,
+          "total_review_units": 34.685802621037304,
+          "trajectory_digest": "05f72192a45a68b9fccb139879be24efbcd574ece5457fe2f9a5ebd28e8d3118",
+          "volume_credit": 0.0
+        }
+      ]
+    },
+    "cross_horizon_cells": [
+      {
+        "advantage_365": 0.0005632323390294677,
+        "advantage_90": -0.00787729417762993,
+        "baseline_delta_365": -0.9000000000000199,
+        "baseline_delta_90": -8.600000000000051,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "intentional-backlog",
+        "component_contributions": {
+          "challenge_main": 0.0020764909632750095,
+          "completion_credit": 0.002108506995134529,
+          "interaction": -5.858174874919893e-19,
+          "memory_main": 0.003368538927528995,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0008869896307213478,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": 0.008440526516659398,
+        "lineage_positive_top_20_share_365": 0.8837747638392969,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 0,
+        "residual": -4.822531263215524e-16,
+        "review_count_difference_365": -1,
+        "review_count_difference_90": -11,
+        "window_contributions": {
+          "backlog_return_window": -0.008181505877282084,
+          "between_transitions": 0.007824252640665203,
+          "day_30_transition": 0.001240817779508291,
+          "day_60_transition": 0.0,
+          "post_transition": 0.0075569619737684175,
+          "pre_transition": 0.0
+        }
+      },
+      {
+        "advantage_365": -0.015674928856293055,
+        "advantage_90": -0.00044346058049055326,
+        "baseline_delta_365": -13.850000000000051,
+        "baseline_delta_90": -0.9000000000000057,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "intentional-backlog",
+        "component_contributions": {
+          "challenge_main": -0.005531834011115549,
+          "completion_credit": -0.002748984031771902,
+          "interaction": -3.5999958866333655e-19,
+          "memory_main": -0.005097742789078105,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": -0.0018529074438374106,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": -0.015231468275802502,
+        "lineage_positive_top_20_share_365": 1.0,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 1,
+        "residual": 4.649058915617843e-16,
+        "review_count_difference_365": -19,
+        "review_count_difference_90": -1,
+        "window_contributions": {
+          "backlog_return_window": -0.00931000847586542,
+          "between_transitions": 0.008734684584899653,
+          "day_30_transition": 0.0,
+          "day_60_transition": 0.0,
+          "post_transition": -0.014656144384837193,
+          "pre_transition": 0.0
+        }
+      },
+      {
+        "advantage_365": 0.01740169409234382,
+        "advantage_90": -0.0037743285774081313,
+        "baseline_delta_365": 32.10000000000019,
+        "baseline_delta_90": -12.350000000000051,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "retention-high-cycle",
+        "component_contributions": {
+          "challenge_main": 0.0032225348656895916,
+          "completion_credit": 0.007191773877535059,
+          "interaction": -7.69869496923204e-20,
+          "memory_main": 0.00959591491826807,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0011657990082606662,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": 0.02117602266975195,
+        "lineage_positive_top_20_share_365": 0.7223387877620143,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 0,
+        "residual": -1.4363510381087963e-15,
+        "review_count_difference_365": 40,
+        "review_count_difference_90": -13,
+        "window_contributions": {
+          "between_transitions": 0.0009555294173270844,
+          "day_30_transition": 0.0,
+          "day_60_transition": -0.000798414653522264,
+          "post_transition": 0.021018907905948545,
+          "pre_transition": 0.0
+        }
+      },
+      {
+        "advantage_365": 0.0015438826586415418,
+        "advantage_90": -0.010044592850379412,
+        "baseline_delta_365": -15.549999999999955,
+        "baseline_delta_90": -24.55000000000004,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "retention-high-cycle",
+        "component_contributions": {
+          "challenge_main": 0.0019705706650461592,
+          "completion_credit": 0.0029395810605423855,
+          "interaction": 1.2215146550587418e-19,
+          "memory_main": 0.006547432971448047,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0001308908119840621,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": 0.011588475509020955,
+        "lineage_positive_top_20_share_365": 0.4942997393358144,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 1,
+        "residual": 3.0184188481996443e-16,
+        "review_count_difference_365": -18,
+        "review_count_difference_90": -28,
+        "window_contributions": {
+          "between_transitions": 0.002347284909204166,
+          "day_30_transition": 0.0,
+          "day_60_transition": 0.00021613334321488335,
+          "post_transition": 0.009025057256601675,
+          "pre_transition": 0.0
+        }
+      },
+      {
+        "advantage_365": 0.011623868729051332,
+        "advantage_90": 0.010980579297321715,
+        "baseline_delta_365": 12.200000000000088,
+        "baseline_delta_90": 7.199999999999989,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "retention-low-cycle",
+        "component_contributions": {
+          "challenge_main": -0.0023669402173962595,
+          "completion_credit": 0.0011768362581655485,
+          "interaction": 4.922543063086763e-19,
+          "memory_main": 0.0007258120592410922,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0011075813317201271,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": 0.0006432894317296173,
+        "lineage_positive_top_20_share_365": 0.9302218813305764,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 0,
+        "residual": -8.914310262175817e-16,
+        "review_count_difference_365": 15,
+        "review_count_difference_90": 8,
+        "window_contributions": {
+          "between_transitions": -0.002152815460962034,
+          "day_30_transition": 0.0,
+          "day_60_transition": -0.0007658444741480691,
+          "post_transition": 0.0035619493668405324,
+          "pre_transition": 0.0
+        }
+      },
+      {
+        "advantage_365": 0.013604965651852367,
+        "advantage_90": 0.004017396619023545,
+        "baseline_delta_365": 7.850000000000051,
+        "baseline_delta_90": 1.7999999999999972,
+        "classification": "EXPLORATORY_NON_DECISION",
+        "comparison": "retention-low-cycle",
+        "component_contributions": {
+          "challenge_main": 0.002937150233610502,
+          "completion_credit": 0.0018445843957161378,
+          "interaction": 1.4478681841360047e-19,
+          "memory_main": 0.005391585125228471,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": -0.0005857507217258837,
+          "volume_credit": 0.0
+        },
+        "delta_365_minus_90": 0.009587569032828822,
+        "lineage_positive_top_20_share_365": 0.7561270258333207,
+        "lineage_positive_top_20_share_90": 1.0,
+        "replica": 1,
+        "residual": -4.0419056990259605e-16,
+        "review_count_difference_365": 8,
+        "review_count_difference_90": 2,
+        "window_contributions": {
+          "between_transitions": 0.0,
+          "day_30_transition": 0.0,
+          "day_60_transition": 0.0,
+          "post_transition": 0.009587569032829165,
+          "pre_transition": 0.0
+        }
+      }
+    ],
+    "summary": {
+      "classification": "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+      "confidence": "MEDIUM",
+      "dominant_component": "memory_main",
+      "dominant_component_share_of_absolute_contributions": 0.5177476549118729,
+      "dominant_component_value": 0.022260745074185677,
+      "dominant_window": "post_transition",
+      "dominant_window_share_of_absolute_contributions": 0.9453264013290912,
+      "dominant_window_value": 0.04319348356221992,
+      "max_abs_residual": 1.4363510381087963e-15,
+      "rationale": "The fixed-trajectory decomposition fully reconciles the observed cross-horizon growth and identifies the dominant component and timing window without selecting a coefficient or candidate.",
+      "retention_groups_replica_direction_consistent": {
+        "retention-high-cycle": true,
+        "retention-low-cycle": true
+      }
+    }
+  },
+  "classification": "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+  "cleanup": {
+    "deleted_refs": [
+      "temp/g1-2-root-cause-attribution",
+      "temp/g1-2-root-cause-attribution-execution"
+    ],
+    "disposable_runs_deleted": 0,
+    "preserved_artifact_ids": [
+      8444920908,
+      8447755442
+    ],
+    "preserved_run_ids": [
+      29695312258,
+      29697258461,
+      29691295919,
+      29705334586
+    ],
+    "status": "COMPLETE_EXCEPT_CANONICAL_EVIDENCE_RUN"
+  },
+  "confidence": "MEDIUM",
+  "decision_boundary": {
+    "candidate_selected": false,
+    "g1_3_started": false,
+    "human_learning_effectiveness_proven": false,
+    "production_approved": false,
+    "reward_formula_changed": false
+  },
+  "determinism": {
+    "canonical_365_same_seed": {
+      "status": "PASS",
+      "trace_digest": "9926568217f250d8b9151181772084ed0e14415b27f1272df9adac0114b83730",
+      "tree_digest": "c4ba0c5a0df559f63034da5a6b83fb379621650f135447ddcb5b39a056814111"
+    },
+    "canonical_90_same_seed": {
+      "status": "PASS",
+      "trace_digest": "b592c5dbf4cc06cc757ff5c091bad2ba9b61ce68c5adfd187b26c2403b9fb718",
+      "tree_digest": "f47106bf8e727036c4776c1578dfc4979901c33cb8c856d387d8efc247327fd7"
+    },
+    "secondary_seed_trajectory_differs": true,
+    "tracing_disabled_equivalence": "VERIFIED_BY_TEST"
+  },
+  "environment": {
+    "dependency_resolution": "EXACT_HASH_LOCK_REPLAY",
+    "platform": "Windows AMD64",
+    "python": "CPython 3.11.9 x64",
+    "python_lock": "research/gamification-sim/environment/python-windows-amd64-py311.lock.txt",
+    "rust": "1.97.1-x86_64-pc-windows-msvc"
+  },
+  "grain_counts": {
+    "aggregate_comparison": 30,
+    "day_window": 13760,
+    "horizon": 6,
+    "policy": 72,
+    "replica": 11,
+    "review_episode": 9159,
+    "run": 6,
+    "synthetic_card_lineage": 236
+  },
+  "limitations": [
+    "Synthetic trajectories do not establish human learning effectiveness or real-user reward gaming.",
+    "Counterfactuals are reward-only post-hoc evaluations on fixed scheduler trajectories.",
+    "This stage localizes mechanism classes and does not select coefficients or candidates."
+  ],
+  "provenance": {
+    "canonical_branch": "gamification",
+    "canonical_input_commit": "f8374c58578d3a492dffa3e5b758e78b4049cdbf",
+    "frozen_contract_blob_sha1": "8f5c3526cd1c98440ad513d9773f145c1971f995",
+    "frozen_contract_path": "research/gamification-sim/contracts/review-cycling-diagnostic-v1.json",
+    "frozen_schema_blob_sha1": "d64070f68e9b96f54dba4941b85fa7a770c8e8cf",
+    "frozen_schema_path": "research/gamification-sim/schemas/review-cycling-diagnostic-v1.schema.json",
+    "g0_7_evidence_blob_sha1": "6d08e6d701d6b57b5e24992223185764bc29e66e",
+    "g0_7_evidence_path": "research/gamification-sim/evidence/g0.7-windows-amd64-py311-rust-1.97.1.json",
+    "longitudinal_config_blob_sha1": "e8b30247b83f8d466cacaec93e9842f9ff23e257",
+    "longitudinal_config_path": "research/gamification-sim/configs/review-longitudinal-v0.1.json",
+    "master_seed": 20260716,
+    "parameter_set_id": "R-CURRENT",
+    "secondary_seed": 20260717
+  },
+  "publication": {
+    "canonical_branch": "gamification",
+    "canonical_input_commit": "f8374c58578d3a492dffa3e5b758e78b4049cdbf",
+    "changed_paths": [
+      "research/gamification-sim/src/gamification_sim/diagnostic_attribution.py",
+      "research/gamification-sim/src/gamification_sim/longitudinal_runner.py",
+      "research/gamification-sim/tests/test_diagnostic_attribution.py",
+      "research/gamification-sim/schemas/review-cycling-attribution-v1.schema.json",
+      "research/gamification-sim/evidence/g1.2-root-cause-attribution-v1.json",
+      "roadmap/gamification/g1-root-cause-attribution.md",
+      "roadmap/gamification/README.md"
+    ],
+    "development_branch": "temp/g1-2-root-cause-attribution",
+    "execution_branch": "temp/g1-2-root-cause-attribution-execution",
+    "fast_forward": true,
+    "result_commit": "THIS_COMMIT",
+    "workflow_run_id": 29705334586
+  },
+  "reconciliation": {
+    "canonical_cells": [
+      {
+        "advantage_365": 0.0005632323390294677,
+        "advantage_90": -0.00787729417762993,
+        "comparison": "intentional-backlog",
+        "delta_365_minus_90": 0.008440526516659398,
+        "endpoint_pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage_365": -0.015674928856293055,
+        "advantage_90": -0.00044346058049055326,
+        "comparison": "intentional-backlog",
+        "delta_365_minus_90": -0.015231468275802502,
+        "endpoint_pass": true,
+        "grew": false,
+        "replica": 1
+      },
+      {
+        "advantage_365": 0.01740169409234382,
+        "advantage_90": -0.0037743285774081313,
+        "comparison": "retention-high-cycle",
+        "delta_365_minus_90": 0.02117602266975195,
+        "endpoint_pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage_365": 0.0015438826586415418,
+        "advantage_90": -0.010044592850379412,
+        "comparison": "retention-high-cycle",
+        "delta_365_minus_90": 0.011588475509020955,
+        "endpoint_pass": true,
+        "grew": true,
+        "replica": 1
+      },
+      {
+        "advantage_365": 0.011623868729051332,
+        "advantage_90": 0.010980579297321715,
+        "comparison": "retention-low-cycle",
+        "delta_365_minus_90": 0.0006432894317296173,
+        "endpoint_pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage_365": 0.013604965651852367,
+        "advantage_90": 0.004017396619023545,
+        "comparison": "retention-low-cycle",
+        "delta_365_minus_90": 0.009587569032828822,
+        "endpoint_pass": true,
+        "grew": true,
+        "replica": 1
+      }
+    ],
+    "canonical_groups": [
+      {
+        "comparison": "intentional-backlog",
+        "endpoint_pass": true,
+        "growth_semantics": "NOT_APPLIED_TO_NON_RETENTION_GROUP",
+        "replicas": 2,
+        "status": "PASS",
+        "systematic_growth": false
+      },
+      {
+        "comparison": "retention-high-cycle",
+        "endpoint_pass": true,
+        "growth_semantics": "ALL_MATCHED_REPLICAS_GREW",
+        "replicas": 2,
+        "status": "FAIL",
+        "systematic_growth": true
+      },
+      {
+        "comparison": "retention-low-cycle",
+        "endpoint_pass": true,
+        "growth_semantics": "ALL_MATCHED_REPLICAS_GREW",
+        "replicas": 2,
+        "status": "FAIL",
+        "systematic_growth": true
+      }
+    ],
+    "max_abs_residual": 1.4363510381087963e-15,
+    "overall_status": "FAIL",
+    "policy_result_count_365": 14,
+    "policy_result_count_90": 14,
+    "tolerance": 1e-09
+  },
+  "root_cause_answers": [
+    {
+      "answer": "Review-count differences produce baseline deltas, but the frozen unexplained-advantage formula subtracts baseline_delta exactly; their direct share of unexplained advantage is therefore zero.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "cells": [
+          {
+            "baseline_delta_365": -0.9000000000000199,
+            "baseline_delta_90": -8.600000000000051,
+            "comparison": "intentional-backlog",
+            "replica": 0,
+            "review_count_difference_365": -1,
+            "review_count_difference_90": -11
+          },
+          {
+            "baseline_delta_365": -13.850000000000051,
+            "baseline_delta_90": -0.9000000000000057,
+            "comparison": "intentional-backlog",
+            "replica": 1,
+            "review_count_difference_365": -19,
+            "review_count_difference_90": -1
+          },
+          {
+            "baseline_delta_365": 32.10000000000019,
+            "baseline_delta_90": -12.350000000000051,
+            "comparison": "retention-high-cycle",
+            "replica": 0,
+            "review_count_difference_365": 40,
+            "review_count_difference_90": -13
+          },
+          {
+            "baseline_delta_365": -15.549999999999955,
+            "baseline_delta_90": -24.55000000000004,
+            "comparison": "retention-high-cycle",
+            "replica": 1,
+            "review_count_difference_365": -18,
+            "review_count_difference_90": -28
+          },
+          {
+            "baseline_delta_365": 12.200000000000088,
+            "baseline_delta_90": 7.199999999999989,
+            "comparison": "retention-low-cycle",
+            "replica": 0,
+            "review_count_difference_365": 15,
+            "review_count_difference_90": 8
+          },
+          {
+            "baseline_delta_365": 7.850000000000051,
+            "baseline_delta_90": 1.7999999999999972,
+            "comparison": "retention-low-cycle",
+            "replica": 1,
+            "review_count_difference_365": 8,
+            "review_count_difference_90": 2
+          }
+        ]
+      },
+      "id": "review_count_share",
+      "question": 1
+    },
+    {
+      "answer": "All unexplained advantage is reconciled by contextual and day-level credits after baseline removal.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "aggregate_components": {
+          "challenge_main": 0.005763315546949993,
+          "completion_credit": 0.013152775591959131,
+          "interaction": 6.822056405358306e-19,
+          "memory_main": 0.022260745074185677,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0018185204302389713,
+          "volume_credit": 0.0
+        }
+      },
+      "id": "per_review_context",
+      "question": 2
+    },
+    {
+      "answer": "The dominant cross-horizon component is memory_main.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "aggregate_components": {
+          "challenge_main": 0.005763315546949993,
+          "completion_credit": 0.013152775591959131,
+          "interaction": 6.822056405358306e-19,
+          "memory_main": 0.022260745074185677,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.0018185204302389713,
+          "volume_credit": 0.0
+        }
+      },
+      "id": "component_distribution",
+      "question": 3
+    },
+    {
+      "answer": "The dominant timing window is post_transition.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "windows": {
+          "retention-high-cycle:0": {
+            "between_transitions": 0.0009555294173270844,
+            "day_30_transition": 0.0,
+            "day_60_transition": -0.000798414653522264,
+            "post_transition": 0.021018907905948545,
+            "pre_transition": 0.0
+          },
+          "retention-high-cycle:1": {
+            "between_transitions": 0.002347284909204166,
+            "day_30_transition": 0.0,
+            "day_60_transition": 0.00021613334321488335,
+            "post_transition": 0.009025057256601675,
+            "pre_transition": 0.0
+          },
+          "retention-low-cycle:0": {
+            "between_transitions": -0.002152815460962034,
+            "day_30_transition": 0.0,
+            "day_60_transition": -0.0007658444741480691,
+            "post_transition": 0.0035619493668405324,
+            "pre_transition": 0.0
+          },
+          "retention-low-cycle:1": {
+            "between_transitions": 0.0,
+            "day_30_transition": 0.0,
+            "day_60_transition": 0.0,
+            "post_transition": 0.009587569032829165,
+            "pre_transition": 0.0
+          }
+        }
+      },
+      "id": "divergence_timing",
+      "question": 4
+    },
+    {
+      "answer": "High- and low-retention cycling are compared through the same decomposition; consistency is reported per group rather than assumed.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "replica_direction_consistent": {
+          "retention-high-cycle": true,
+          "retention-low-cycle": true
+        }
+      },
+      "id": "shared_mechanism",
+      "question": 5
+    },
+    {
+      "answer": "Replica-specific deltas remain visible and are not averaged away.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "cells": [
+          {
+            "advantage_365": 0.01740169409234382,
+            "advantage_90": -0.0037743285774081313,
+            "baseline_delta_365": 32.10000000000019,
+            "baseline_delta_90": -12.350000000000051,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "retention-high-cycle",
+            "component_contributions": {
+              "challenge_main": 0.0032225348656895916,
+              "completion_credit": 0.007191773877535059,
+              "interaction": -7.69869496923204e-20,
+              "memory_main": 0.00959591491826807,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": 0.0011657990082606662,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": 0.02117602266975195,
+            "lineage_positive_top_20_share_365": 0.7223387877620143,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 0,
+            "residual": -1.4363510381087963e-15,
+            "review_count_difference_365": 40,
+            "review_count_difference_90": -13,
+            "window_contributions": {
+              "between_transitions": 0.0009555294173270844,
+              "day_30_transition": 0.0,
+              "day_60_transition": -0.000798414653522264,
+              "post_transition": 0.021018907905948545,
+              "pre_transition": 0.0
+            }
+          },
+          {
+            "advantage_365": 0.0015438826586415418,
+            "advantage_90": -0.010044592850379412,
+            "baseline_delta_365": -15.549999999999955,
+            "baseline_delta_90": -24.55000000000004,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "retention-high-cycle",
+            "component_contributions": {
+              "challenge_main": 0.0019705706650461592,
+              "completion_credit": 0.0029395810605423855,
+              "interaction": 1.2215146550587418e-19,
+              "memory_main": 0.006547432971448047,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": 0.0001308908119840621,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": 0.011588475509020955,
+            "lineage_positive_top_20_share_365": 0.4942997393358144,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 1,
+            "residual": 3.0184188481996443e-16,
+            "review_count_difference_365": -18,
+            "review_count_difference_90": -28,
+            "window_contributions": {
+              "between_transitions": 0.002347284909204166,
+              "day_30_transition": 0.0,
+              "day_60_transition": 0.00021613334321488335,
+              "post_transition": 0.009025057256601675,
+              "pre_transition": 0.0
+            }
+          },
+          {
+            "advantage_365": 0.011623868729051332,
+            "advantage_90": 0.010980579297321715,
+            "baseline_delta_365": 12.200000000000088,
+            "baseline_delta_90": 7.199999999999989,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "retention-low-cycle",
+            "component_contributions": {
+              "challenge_main": -0.0023669402173962595,
+              "completion_credit": 0.0011768362581655485,
+              "interaction": 4.922543063086763e-19,
+              "memory_main": 0.0007258120592410922,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": 0.0011075813317201271,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": 0.0006432894317296173,
+            "lineage_positive_top_20_share_365": 0.9302218813305764,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 0,
+            "residual": -8.914310262175817e-16,
+            "review_count_difference_365": 15,
+            "review_count_difference_90": 8,
+            "window_contributions": {
+              "between_transitions": -0.002152815460962034,
+              "day_30_transition": 0.0,
+              "day_60_transition": -0.0007658444741480691,
+              "post_transition": 0.0035619493668405324,
+              "pre_transition": 0.0
+            }
+          },
+          {
+            "advantage_365": 0.013604965651852367,
+            "advantage_90": 0.004017396619023545,
+            "baseline_delta_365": 7.850000000000051,
+            "baseline_delta_90": 1.7999999999999972,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "retention-low-cycle",
+            "component_contributions": {
+              "challenge_main": 0.002937150233610502,
+              "completion_credit": 0.0018445843957161378,
+              "interaction": 1.4478681841360047e-19,
+              "memory_main": 0.005391585125228471,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": -0.0005857507217258837,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": 0.009587569032828822,
+            "lineage_positive_top_20_share_365": 0.7561270258333207,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 1,
+            "residual": -4.0419056990259605e-16,
+            "review_count_difference_365": 8,
+            "review_count_difference_90": 2,
+            "window_contributions": {
+              "between_transitions": 0.0,
+              "day_30_transition": 0.0,
+              "day_60_transition": 0.0,
+              "post_transition": 0.009587569032829165,
+              "pre_transition": 0.0
+            }
+          }
+        ]
+      },
+      "id": "replica_difference",
+      "question": 6
+    },
+    {
+      "answer": "Positive contextual contribution concentration is measured as the top 20% lineage share.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "shares": [
+          {
+            "comparison": "retention-high-cycle",
+            "replica": 0,
+            "share_365": 0.7223387877620143,
+            "share_90": 1.0
+          },
+          {
+            "comparison": "retention-high-cycle",
+            "replica": 1,
+            "share_365": 0.4942997393358144,
+            "share_90": 1.0
+          },
+          {
+            "comparison": "retention-low-cycle",
+            "replica": 0,
+            "share_365": 0.9302218813305764,
+            "share_90": 1.0
+          },
+          {
+            "comparison": "retention-low-cycle",
+            "replica": 1,
+            "share_365": 0.7561270258333207,
+            "share_90": 1.0
+          }
+        ]
+      },
+      "id": "lineage_concentration",
+      "question": 7
+    },
+    {
+      "answer": "Challenge attribution explicitly separates actual and natural-due retrievability through adjusted challenge and delay credit.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "dominant_component": "memory_main"
+      },
+      "id": "actual_vs_natural_due",
+      "question": 8
+    },
+    {
+      "answer": "MemoryGain is isolated with fixed-trajectory f(0,M)-f(0,0) main effects.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "memory_main": 0.022260745074185677
+      },
+      "id": "memory_gain_counterfactual",
+      "question": 9
+    },
+    {
+      "answer": "Cells with negative 90-day advantage and positive 365-day advantage are explicitly identified.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "cells": [
+          {
+            "comparison": "intentional-backlog",
+            "replica": 0
+          },
+          {
+            "comparison": "retention-high-cycle",
+            "replica": 0
+          },
+          {
+            "comparison": "retention-high-cycle",
+            "replica": 1
+          }
+        ]
+      },
+      "id": "endpoint_cancellation",
+      "question": 10
+    },
+    {
+      "answer": "A bounded development control traces stable-default and no-fsrs-neutral without changing canonical cells.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "core_context": {
+          "no-fsrs-neutral": 6.999999999999997,
+          "stable-default": 4.718802621037307
+        }
+      },
+      "id": "interval_neutral_control",
+      "question": 11
+    },
+    {
+      "answer": "Cap/blend nonlinearity is isolated in interaction; baseline suppression remains zero.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "interaction": 6.822056405358306e-19
+      },
+      "id": "cap_suppression",
+      "question": 12
+    },
+    {
+      "answer": "Intentional backlog remains separately reported and is not generalized from the retention-cycle mechanism.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "cells": [
+          {
+            "advantage_365": 0.0005632323390294677,
+            "advantage_90": -0.00787729417762993,
+            "baseline_delta_365": -0.9000000000000199,
+            "baseline_delta_90": -8.600000000000051,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "intentional-backlog",
+            "component_contributions": {
+              "challenge_main": 0.0020764909632750095,
+              "completion_credit": 0.002108506995134529,
+              "interaction": -5.858174874919893e-19,
+              "memory_main": 0.003368538927528995,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": 0.0008869896307213478,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": 0.008440526516659398,
+            "lineage_positive_top_20_share_365": 0.8837747638392969,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 0,
+            "residual": -4.822531263215524e-16,
+            "review_count_difference_365": -1,
+            "review_count_difference_90": -11,
+            "window_contributions": {
+              "backlog_return_window": -0.008181505877282084,
+              "between_transitions": 0.007824252640665203,
+              "day_30_transition": 0.001240817779508291,
+              "day_60_transition": 0.0,
+              "post_transition": 0.0075569619737684175,
+              "pre_transition": 0.0
+            }
+          },
+          {
+            "advantage_365": -0.015674928856293055,
+            "advantage_90": -0.00044346058049055326,
+            "baseline_delta_365": -13.850000000000051,
+            "baseline_delta_90": -0.9000000000000057,
+            "classification": "EXPLORATORY_NON_DECISION",
+            "comparison": "intentional-backlog",
+            "component_contributions": {
+              "challenge_main": -0.005531834011115549,
+              "completion_credit": -0.002748984031771902,
+              "interaction": -3.5999958866333655e-19,
+              "memory_main": -0.005097742789078105,
+              "neutral_context": 0.0,
+              "supplemental": 0.0,
+              "support": -0.0018529074438374106,
+              "volume_credit": 0.0
+            },
+            "delta_365_minus_90": -0.015231468275802502,
+            "lineage_positive_top_20_share_365": 1.0,
+            "lineage_positive_top_20_share_90": 1.0,
+            "replica": 1,
+            "residual": 4.649058915617843e-16,
+            "review_count_difference_365": -19,
+            "review_count_difference_90": -1,
+            "window_contributions": {
+              "backlog_return_window": -0.00931000847586542,
+              "between_transitions": 0.008734684584899653,
+              "day_30_transition": 0.0,
+              "day_60_transition": 0.0,
+              "post_transition": -0.014656144384837193,
+              "pre_transition": 0.0
+            }
+          }
+        ]
+      },
+      "id": "intentional_backlog",
+      "question": 13
+    },
+    {
+      "answer": "The mechanism class is localized only to the level supported by the deterministic decomposition; no coefficient or candidate is selected.",
+      "classification": "EXPLORATORY_NON_DECISION",
+      "evidence": {
+        "classification": "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+        "confidence": "MEDIUM"
+      },
+      "id": "mechanism_class",
+      "question": 14
+    }
+  ],
+  "safety": {
+    "all_numbers_finite": true,
+    "duplicate_keys_rejected": true,
+    "forbidden_data_scan": "PASS",
+    "synthetic_ids_only": true
+  },
+  "status": "COMPLETE",
+  "verification": {
+    "artifact_audit": "PASS",
+    "exact_seven_path_diff": "PASS",
+    "focused_command": "python -m pytest research/gamification-sim/tests/test_diagnostic_attribution.py research/gamification-sim/tests/test_episode_reward.py research/gamification-sim/tests/test_day_aggregation.py research/gamification-sim/tests/test_longitudinal_runner.py research/gamification-sim/tests/test_matched_analysis.py",
+    "focused_passed": 110,
+    "frozen_blob_audit": "PASS",
+    "full_command": "python -m pytest research/gamification-sim/tests",
+    "full_passed": 839,
+    "schema_validation": "PASS"
+  },
+  "version": "review-cycling-attribution-v1"
+}
