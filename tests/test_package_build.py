@@ -285,3 +285,7 @@ def test_package_validation_rejects_unsafe_archive_paths(tmp_path, unsafe_name):
 
     assert validation.ok is False
     assert unsafe_name in validation.forbidden
+
+
+def test_package_includes_independent_triage_candidates():
+    assert (ROOT / "anki_study_report" / "triage_candidates.py").is_file()

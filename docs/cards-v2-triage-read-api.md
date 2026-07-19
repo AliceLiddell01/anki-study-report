@@ -241,3 +241,7 @@ Focused backend, HTTP, parser, hook and Cards tests are present but have not bee
 executed in the GitHub connector environment. C1.5R.1 remains **Implemented,
 focused verification pending**. Fast CI, Docker and real-Anki E2E are outside
 this stage.
+
+## C1.5R.4 independent candidate sources
+
+See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.

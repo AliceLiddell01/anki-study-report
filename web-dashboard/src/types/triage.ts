@@ -7,7 +7,7 @@ export type TriageReasonScope = "card" | "note";
 export type TriageSource = "attention" | "signals" | "search_workset" | "profile_checks";
 export type TriageAvailability = "available" | "missing";
 export type TriageResponseStatus = "available" | "partial" | "unavailable";
-export type TriageSourceAvailability = "available" | "empty" | "partial" | "unavailable" | "error";
+export type TriageSourceAvailability = "available" | "empty" | "partial" | "unavailable" | "error" | "not_applicable";
 export type TriageCardState = "new" | "learning" | "review" | "due" | "suspended" | "buried";
 
 export type TriageEvidence =
@@ -15,14 +15,7 @@ export type TriageEvidence =
   | { kind: "review_counts"; againCount: number; periodStartMs: number; periodEndMs: number }
   | { kind: "pass_rate"; passRate: number; periodStartMs: number; periodEndMs: number }
   | { kind: "answer_time"; averageAnswerSeconds: number; periodStartMs: number; periodEndMs: number }
-  | {
-      kind: "signal_evidence";
-      severity: "warning" | "critical";
-      againCount: number;
-      reviewCount: number;
-      windowDays: number;
-      detectorVersion: string;
-    }
+  | { kind: "signal_evidence"; severity: "warning" | "critical"; againCount: number; reviewCount: number; windowDays: number; detectorVersion: string }
   | {
       kind: "profile_check";
       profileId: string;
@@ -60,6 +53,11 @@ export interface TriageSourceStatus {
   errorCode: string | null;
 }
 
+export interface TriageContentSourceStatus extends TriageSourceStatus {
+  scannedNoteCount: number;
+  nextCursor: string | null;
+}
+
 export interface TriageItem extends CardDisplayIdentity {
   itemId: string;
   availability: TriageAvailability;
@@ -88,11 +86,11 @@ export interface TriageScope {
 }
 
 export type TriageQueryRequest =
-  | { schemaVersion: 3; dataset: "automatic"; scope: TriageScope; limit: number; cardIds?: never }
-  | { schemaVersion: 3; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number };
+  | { schemaVersion: 4; dataset: "automatic"; scope: TriageScope; limit: number; contentCursor: string | null; cardIds?: never }
+  | { schemaVersion: 4; dataset: "search_workset"; cardIds: string[]; scope: TriageScope; limit: number; contentCursor?: never };
 
 export interface TriageQueryResponse {
-  schemaVersion: 3;
+  schemaVersion: 4;
   dataset: TriageDataset;
   status: TriageResponseStatus;
   generatedAtMs: number;
@@ -101,7 +99,8 @@ export interface TriageQueryResponse {
   limit: number;
   truncated: boolean;
   sourceStatus: {
-    attention: TriageSourceStatus;
+    learningCandidates: TriageSourceStatus;
+    contentCandidates: TriageContentSourceStatus;
     signals: TriageSourceStatus;
     searchResolver: TriageSourceStatus;
     profileChecks: TriageSourceStatus;
@@ -112,10 +111,12 @@ export interface TriageQueryResponse {
     needsReviewProfileCount: number;
     disabledProfileCount: number;
     suggestedProfileCount: number;
+    scannedNoteCount: number;
     evaluatedNoteCount: number;
     failedCheckCount: number;
     skippedCount: number;
     truncated: boolean;
+    nextCursor: string | null;
     errorCode: string | null;
   };
   items: TriageItem[];

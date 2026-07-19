@@ -14,11 +14,13 @@ triage = import_addon_module("triage_service")
 
 def request(dataset="automatic", *, card_ids=None, limit=None):
     value = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "dataset": dataset,
         "scope": {"periodStartMs": 1_700_000_000_000, "periodEndMs": 1_700_604_800_000, "deckIds": []},
         "limit": limit or (200 if dataset == "search_workset" else 100),
     }
+    if dataset == "automatic":
+        value["contentCursor"] = None
     if dataset == "search_workset":
         value["cardIds"] = card_ids or ["1"]
     return value
@@ -109,10 +111,12 @@ def content_checks(status="no_confirmed_profiles"):
         "needsReviewProfileCount": 0,
         "disabledProfileCount": 0,
         "suggestedProfileCount": 0,
+        "scannedNoteCount": 0,
         "evaluatedNoteCount": 0,
         "failedCheckCount": 0,
         "skippedCount": 0,
         "truncated": False,
+        "nextCursor": None,
         "errorCode": None,
     }
 
@@ -125,7 +129,8 @@ def project(req, *, attention=None, signals=None, resolved=None, signal_status=N
     return triage.build_triage_projection(
         normalized,
         attention_rows=attention,
-        attention_source_status=source("available" if attention else "empty", items=len(attention)),
+        learning_source_status=source("available" if attention else "empty", items=len(attention)),
+        content_candidate_source_status={**source("empty"), "scannedNoteCount": 0, "nextCursor": None},
         signal_rows=signals,
         signal_source_status=signal_status or source("available" if signals else "empty", items=len(signals)),
         resolved_card_rows=resolved,
@@ -142,7 +147,7 @@ def test_request_contract_is_strict_versioned_bounded_and_deduplicates_workset_i
     assert normalized["cardIds"] == [9, 2]
 
     invalid = [
-        {**request(), "schemaVersion": 2},
+        {**request(), "schemaVersion": 3},
         {key: value for key, value in request().items() if key != "schemaVersion"},
         {**request(), "rawSql": "select * from revlog"},
         {**request(), "cardIds": ["1"]},
@@ -165,7 +170,7 @@ def test_projection_merges_reasons_and_copies_search_display_identity_without_le
     )
     response = project(request(), attention=[row, dict(row)], signals=[repeated_signal(1)], resolved=[card_row(1)])
 
-    assert response["schemaVersion"] == 3
+    assert response["schemaVersion"] == 4
     assert response["status"] == "available"
     assert response["contentChecks"] == content_checks()
     assert response["returnedCount"] == response["totalCount"] == 1
@@ -257,7 +262,7 @@ def test_search_workset_preserves_order_and_missing_card_has_unavailable_identit
         resolved=[card_row(20)],
         signal_status=source("error", error="signal_store_failed"),
     )
-    degraded["sourceStatus"]["attention"] = source("unavailable", error="attention_source_unavailable")
+    degraded["sourceStatus"]["learningCandidates"] = source("unavailable", error="attention_source_unavailable")
     assert triage._response_status("search_workset", degraded["sourceStatus"]) == "partial"
 
 
@@ -273,18 +278,21 @@ def test_invalid_resolver_display_identity_fails_closed_without_attention_previe
 def test_execute_reuses_attention_and_search_adapters_without_full_preview(monkeypatch):
     calls = {}
 
-    def collect(_col, start, end, deck_ids, *, max_results):
+    def collect_learning(_col, start, end, deck_ids, *, max_results):
         calls["attention"] = (start, end, deck_ids, max_results)
-        return [attention_row(7)], [{
-            "cardId": 7, "noteId": 10007, "noteTypeId": 7, "templateOrdinal": 0,
-            "rawFields": "", "siblingCount": 1,
-        }], {"status": "available"}
+        return [attention_row(7)], {"status": "available"}
 
     def resolve(_col, card_ids):
         calls["resolve"] = list(card_ids)
         return {"items": [card_row(7)], "missingCardIds": []}
 
-    monkeypatch.setattr(triage, "collect_triage_candidates_with_status", collect)
+    monkeypatch.setattr(triage, "collect_learning_triage_candidates_with_status", collect_learning)
+    monkeypatch.setattr(triage, "collect_current_content_candidates", lambda *_args, **_kwargs: {
+        "reasons": [],
+        "sourceStatus": {"status": "empty", "scannedNoteCount": 0, "nextCursor": None},
+        "profileSourceStatus": {"status": "empty"},
+        "contentChecks": {"status": "no_confirmed_profiles", "errorCode": "no_confirmed_profiles"},
+    })
     monkeypatch.setattr(triage, "resolve_card_rows", resolve)
     response = triage.execute_triage_query(object(), request(), signal_rows=[], signal_source_status={"status": "empty"})
 
@@ -294,7 +302,7 @@ def test_execute_reuses_attention_and_search_adapters_without_full_preview(monke
     assert response["items"][0]["displayText"] == "Card 7"
 
 
-def test_triage_reuses_search_formatter_resolver_and_keeps_v3_wire_shape(monkeypatch):
+def test_triage_reuses_search_formatter_resolver_and_keeps_v4_wire_shape(monkeypatch):
     formatter_service = import_addon_module("card_display_formatter_service")
     formatter = {
         "noteTypeId": "7", "noteTypeName": "Japanese", "templateOrdinal": None,
@@ -308,9 +316,15 @@ def test_triage_reuses_search_formatter_resolver_and_keeps_v3_wire_shape(monkeyp
     )
     monkeypatch.setattr(
         triage,
-        "collect_triage_candidates_with_status",
-        lambda *_args, **_kwargs: ([attention_row(7)], [], {"status": "available"}),
+        "collect_learning_triage_candidates_with_status",
+        lambda *_args, **_kwargs: ([attention_row(7)], {"status": "available"}),
     )
+    monkeypatch.setattr(triage, "collect_current_content_candidates", lambda *_args, **_kwargs: {
+        "reasons": [],
+        "sourceStatus": {"status": "empty", "scannedNoteCount": 0, "nextCursor": None},
+        "profileSourceStatus": {"status": "empty"},
+        "contentChecks": {"status": "no_confirmed_profiles", "errorCode": "no_confirmed_profiles"},
+    })
     seen = []
     custom = card_row(7)
     custom["displayText"] = "【に】感謝（する）"
@@ -322,7 +336,7 @@ def test_triage_reuses_search_formatter_resolver_and_keeps_v3_wire_shape(monkeyp
     response = triage.execute_triage_query(
         object(), request(), signal_rows=[], signal_source_status={"status": "empty"}, formatter_resolver=resolver
     )
-    assert response["schemaVersion"] == 3
+    assert response["schemaVersion"] == 4
     assert response["items"][0]["displayText"] == "【に】感謝（する）"
     assert seen == [([7], resolver)]
     assert "formatterApplied" not in response["items"][0]

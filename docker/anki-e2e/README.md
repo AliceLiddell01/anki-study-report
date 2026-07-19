@@ -480,3 +480,7 @@ required manifest entries.
   environment.
 - The root container setup and Qt WebEngine sandbox override are not production
   or runtime recommendations.
+
+## C1.5R.4 independent candidate sources
+
+See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.

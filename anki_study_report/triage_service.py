@@ -19,11 +19,17 @@ from .inspection_profile_service import (
     evaluate_profiles_for_triage,
     load_exact_inspection_candidates,
 )
-from .metrics import ATTENTION_CARD_LIMIT, collect_triage_candidates_with_status
+from .metrics import ATTENTION_CARD_LIMIT
+from .triage_candidates import (
+    collect_current_content_candidates,
+    collect_learning_triage_candidates_with_status,
+    content_source_status,
+    source_status,
+)
 from .search_service import resolve_card_rows, safe_plain_text
 
 
-TRIAGE_SCHEMA_VERSION = 3
+TRIAGE_SCHEMA_VERSION = 4
 AUTOMATIC_RESULT_LIMIT = ATTENTION_CARD_LIMIT
 SEARCH_WORKSET_LIMIT = 200
 SIGNAL_RESULT_LIMIT = 50
@@ -71,10 +77,12 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
     allowed = {"schemaVersion", "dataset", "scope", "limit"}
     if dataset == "search_workset":
         allowed.add("cardIds")
+    elif dataset == "automatic":
+        allowed.add("contentCursor")
     errors = {str(key): "Unexpected field." for key in raw if key not in allowed}
 
     if raw.get("schemaVersion") != TRIAGE_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
-        errors["schemaVersion"] = "Expected schemaVersion 3."
+        errors["schemaVersion"] = "Expected schemaVersion 4."
     if dataset not in DATASETS:
         errors["dataset"] = "Expected automatic or search_workset."
 
@@ -86,6 +94,7 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
         limit = maximum
 
     card_ids: list[int] = []
+    content_cursor: int | None = None
     if dataset == "search_workset":
         card_ids = _normalize_ids(
             raw.get("cardIds"),
@@ -94,8 +103,21 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
             maximum=SEARCH_WORKSET_LIMIT,
             allow_empty=False,
         )
-    elif "cardIds" in raw:
-        errors["cardIds"] = "cardIds is only valid for search_workset."
+        if "contentCursor" in raw:
+            errors["contentCursor"] = "contentCursor is not valid for search_workset."
+    else:
+        if "cardIds" in raw:
+            errors["cardIds"] = "cardIds is only valid for search_workset."
+        if "contentCursor" not in raw:
+            errors["contentCursor"] = "Required field."
+        elif raw.get("contentCursor") is not None:
+            value = raw.get("contentCursor")
+            if not isinstance(value, str) or not DECIMAL_ID.fullmatch(value):
+                errors["contentCursor"] = "Expected null or a positive signed-64 decimal string."
+            elif int(value) > MAX_ID:
+                errors["contentCursor"] = "Expected null or a positive signed-64 decimal string."
+            else:
+                content_cursor = int(value)
 
     if errors:
         raise TriageValidationError(errors)
@@ -105,6 +127,7 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
         "scope": scope,
         "limit": limit,
         "cardIds": card_ids,
+        "contentCursor": content_cursor,
     }
 
 
@@ -118,49 +141,58 @@ def execute_triage_query(
     formatter_resolver: Any = None,
     generated_at_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Execute bounded source reads at the collection boundary and project v3."""
+    """Execute independent bounded source reads and project strict Triage v4."""
 
     request = normalize_triage_query_request(raw)
     scope = request["scope"]
-    try:
-        attention_rows, automatic_candidates, raw_attention_status = collect_triage_candidates_with_status(
+    snapshot = profile_store_snapshot or {
+        "status": "unavailable",
+        "revision": 0,
+        "profiles": [],
+        "errorCode": "profile_store_unavailable",
+    }
+
+    if request["dataset"] == "automatic":
+        learning_rows, learning_status = collect_learning_triage_candidates_with_status(
             col,
             scope["periodStartMs"],
             scope["periodEndMs"],
             scope["deckIds"],
             max_results=AUTOMATIC_RESULT_LIMIT,
         )
-        attention_status = _attention_source_status(raw_attention_status, attention_rows)
-    except Exception:
-        attention_rows = []
-        automatic_candidates = []
-        attention_status = _source_status("error", error_code="attention_source_failed")
+        content_result = collect_current_content_candidates(
+            col,
+            scope["deckIds"],
+            request["contentCursor"],
+            snapshot,
+        )
+        content_status = content_result["sourceStatus"]
+        profile_result = {
+            "reasons": content_result["reasons"],
+            "sourceStatus": content_result["profileSourceStatus"],
+            "contentChecks": content_result["contentChecks"],
+        }
+    else:
+        learning_rows = []
+        learning_status = source_status("not_applicable")
+        content_status = content_source_status("not_applicable")
+        profile_candidates = load_exact_inspection_candidates(col, request["cardIds"])["items"]
+        profile_result = evaluate_profiles_for_triage(
+            col,
+            profile_candidates,
+            snapshot,
+            dataset=request["dataset"],
+        )
 
     signals = signal_rows if isinstance(signal_rows, list) else []
     supported_signal_ids, signal_skipped = _supported_signal_ids(signals)
     signals_status = _signal_source_status(signal_source_status, signals, signal_skipped)
 
     if request["dataset"] == "search_workset":
-        profile_candidates = load_exact_inspection_candidates(col, request["cardIds"])["items"]
-    else:
-        profile_candidates = automatic_candidates
-    profile_result = evaluate_profiles_for_triage(
-        col,
-        profile_candidates,
-        profile_store_snapshot or {
-            "status": "unavailable",
-            "revision": 0,
-            "profiles": [],
-            "errorCode": "profile_store_unavailable",
-        },
-        dataset=request["dataset"],
-    )
-
-    if request["dataset"] == "search_workset":
         target_ids = list(request["cardIds"])
     else:
         target_ids = _dedupe_ints(
-            [_positive_int(row.get("cardId")) for row in attention_rows if isinstance(row, dict)]
+            [_positive_int(row.get("cardId")) for row in learning_rows if isinstance(row, dict)]
             + supported_signal_ids
             + [_positive_int(row.get("cardId")) for row in profile_result["reasons"]]
         )
@@ -185,15 +217,16 @@ def execute_triage_query(
 
     return build_triage_projection(
         request,
-        attention_rows=attention_rows,
-        attention_source_status=attention_status,
+        attention_rows=learning_rows,
+        learning_source_status=learning_status,
+        content_candidate_source_status=content_status,
         signal_rows=signals,
         signal_source_status=signals_status,
         resolved_card_rows=resolved_rows,
         resolver_source_status=resolver_status,
         profile_reasons=profile_result["reasons"],
         profile_source_status=profile_result["sourceStatus"],
-        content_checks=profile_result["contentChecks"],
+        content_checks=_normalize_content_checks(profile_result["contentChecks"]),
         generated_at_ms=generated_at_ms,
     )
 
@@ -209,10 +242,18 @@ def build_unavailable_triage_projection(
     request = normalize_triage_query_request(raw)
     signals = signal_rows if isinstance(signal_rows, list) else []
     _ids, skipped = _supported_signal_ids(signals)
+    automatic = request["dataset"] == "automatic"
     return build_triage_projection(
         request,
         attention_rows=[],
-        attention_source_status=_source_status("unavailable", error_code="collection_unavailable"),
+        learning_source_status=_source_status(
+            "unavailable" if automatic else "not_applicable",
+            error_code="collection_unavailable" if automatic else None,
+        ),
+        content_candidate_source_status=content_source_status(
+            "unavailable" if automatic else "not_applicable",
+            error_code="collection_unavailable" if automatic else None,
+        ),
         signal_rows=signals,
         signal_source_status=_signal_source_status(signal_source_status, signals, skipped),
         resolved_card_rows=[],
@@ -225,10 +266,12 @@ def build_unavailable_triage_projection(
             "needsReviewProfileCount": 0,
             "disabledProfileCount": 0,
             "suggestedProfileCount": 0,
+            "scannedNoteCount": 0,
             "evaluatedNoteCount": 0,
             "failedCheckCount": 0,
             "skippedCount": 0,
             "truncated": False,
+            "nextCursor": None,
             "errorCode": "collection_unavailable",
         },
         generated_at_ms=generated_at_ms,
@@ -239,7 +282,8 @@ def build_triage_projection(
     request: dict[str, Any],
     *,
     attention_rows: list[dict[str, Any]],
-    attention_source_status: dict[str, Any],
+    learning_source_status: dict[str, Any],
+    content_candidate_source_status: dict[str, Any],
     signal_rows: list[dict[str, Any]],
     signal_source_status: dict[str, Any],
     resolved_card_rows: list[dict[str, Any]],
@@ -284,11 +328,7 @@ def build_triage_projection(
         if isinstance(row, dict) and _positive_int(row.get("cardId")) > 0
     }
 
-    if request["dataset"] == "search_workset":
-        target_ids = list(request["cardIds"])
-    else:
-        target_ids = sorted(reasons_by_card)
-
+    target_ids = list(request["cardIds"]) if request["dataset"] == "search_workset" else sorted(reasons_by_card)
     items = [
         _triage_item(
             card_id,
@@ -306,7 +346,8 @@ def build_triage_projection(
     limit = request["limit"]
     returned = items[:limit]
     source_status = {
-        "attention": _normalize_source_status(attention_source_status),
+        "learningCandidates": _normalize_source_status(learning_source_status),
+        "contentCandidates": _normalize_content_source_status(content_candidate_source_status),
         "signals": _normalize_source_status(signal_source_status),
         "searchResolver": _normalize_source_status(resolver_source_status),
         "profileChecks": _normalize_source_status(profile_source_status),
@@ -321,19 +362,28 @@ def build_triage_projection(
         "limit": limit,
         "truncated": total_count > len(returned),
         "sourceStatus": source_status,
-        "contentChecks": content_checks or {
-            "status": "unavailable",
-            "confirmedProfileCount": 0,
-            "needsReviewProfileCount": 0,
-            "disabledProfileCount": 0,
-            "suggestedProfileCount": 0,
-            "evaluatedNoteCount": 0,
-            "failedCheckCount": 0,
-            "skippedCount": 0,
-            "truncated": False,
-            "errorCode": "profile_store_unavailable",
-        },
+        "contentChecks": _normalize_content_checks(content_checks),
         "items": returned,
+    }
+
+
+def _normalize_content_checks(value: object) -> dict[str, Any]:
+    raw = value if isinstance(value, dict) else {}
+    truncated = bool(raw.get("truncated"))
+    cursor = raw.get("nextCursor") if isinstance(raw.get("nextCursor"), str) else None
+    return {
+        "status": str(raw.get("status") or "unavailable"),
+        "confirmedProfileCount": _non_negative_int(raw.get("confirmedProfileCount")),
+        "needsReviewProfileCount": _non_negative_int(raw.get("needsReviewProfileCount")),
+        "disabledProfileCount": _non_negative_int(raw.get("disabledProfileCount")),
+        "suggestedProfileCount": _non_negative_int(raw.get("suggestedProfileCount")),
+        "scannedNoteCount": _non_negative_int(raw.get("scannedNoteCount")),
+        "evaluatedNoteCount": _non_negative_int(raw.get("evaluatedNoteCount")),
+        "failedCheckCount": _non_negative_int(raw.get("failedCheckCount")),
+        "skippedCount": _non_negative_int(raw.get("skippedCount")),
+        "truncated": truncated,
+        "nextCursor": cursor if truncated else None,
+        "errorCode": raw.get("errorCode") if isinstance(raw.get("errorCode"), str) else None,
     }
 
 
@@ -436,13 +486,13 @@ def _source_status(
     truncated: bool = False,
     error_code: str | None = None,
 ) -> dict[str, Any]:
-    return {
-        "status": status if status in {"available", "empty", "partial", "unavailable", "error"} else "error",
-        "itemCount": max(0, int(item_count)),
-        "skippedCount": max(0, int(skipped_count)),
-        "truncated": bool(truncated),
-        "errorCode": str(error_code)[:80] if error_code else None,
-    }
+    return source_status(
+        status,
+        item_count=item_count,
+        skipped_count=skipped_count,
+        truncated=truncated,
+        error_code=error_code,
+    )
 
 
 def _normalize_source_status(value: object) -> dict[str, Any]:
@@ -454,6 +504,16 @@ def _normalize_source_status(value: object) -> dict[str, Any]:
         truncated=bool(raw.get("truncated")),
         error_code=raw.get("errorCode") if isinstance(raw.get("errorCode"), str) else None,
     )
+
+
+def _normalize_content_source_status(value: object) -> dict[str, Any]:
+    raw = value if isinstance(value, dict) else {}
+    truncated = bool(raw.get("truncated"))
+    cursor = raw.get("nextCursor") if isinstance(raw.get("nextCursor"), str) else None
+    result = _normalize_source_status(raw)
+    result["scannedNoteCount"] = _non_negative_int(raw.get("scannedNoteCount"))
+    result["nextCursor"] = cursor if truncated else None
+    return result
 
 
 def _supported_signal_ids(rows: list[dict[str, Any]]) -> tuple[list[int], int]:
@@ -651,12 +711,21 @@ def _resolved_display_identity(summary: dict[str, Any]) -> dict[str, object]:
 
 
 def _response_status(dataset: str, source_status: dict[str, dict[str, Any]]) -> str:
-    failing = {key for key, value in source_status.items() if value["status"] in {"partial", "unavailable", "error"}}
+    failing = {
+        key for key, value in source_status.items()
+        if value["status"] in {"partial", "unavailable", "error"}
+    }
     if dataset == "search_workset":
-        if "searchResolver" in failing:
+        if source_status["searchResolver"]["status"] in {"unavailable", "error"}:
             return "unavailable"
         return "partial" if failing else "available"
-    if {"attention", "signals"}.issubset(failing):
+
+    candidate_keys = ("learningCandidates", "contentCandidates", "signals")
+    trustworthy = any(
+        source_status[key]["status"] in {"available", "empty", "partial"}
+        for key in candidate_keys
+    )
+    if not trustworthy:
         return "unavailable"
     return "partial" if failing else "available"
 

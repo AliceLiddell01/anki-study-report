@@ -237,10 +237,11 @@ def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
     payload = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "dataset": "automatic",
         "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
         "limit": 100,
+        "contentCursor": None,
     }
     manager.configure_triage_handler(
         lambda value: triage_runtime.run_triage_query_sync(None, value, signal_provider=lambda: [])
@@ -265,7 +266,7 @@ def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
         assert "application/json" in content_type
         response = json.loads(body)
         assert response["ok"] is True
-        assert response["response"]["schemaVersion"] == 3
+        assert response["response"]["schemaVersion"] == 4
         assert response["response"]["status"] == "partial"
 
         status, _, body = fetch(
@@ -297,7 +298,7 @@ def test_triage_endpoint_maps_typed_failures_without_exception_leak(monkeypatch)
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
     payload = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "dataset": "automatic",
         "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
         "limit": 100,

@@ -52,10 +52,11 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setQueryStatus("loading");
     setQueryError(null);
     void fetchTriageQuery({
-      schemaVersion: 3,
+      schemaVersion: 4,
       dataset: "automatic",
       scope: { periodStartMs: periodEndMs - SEVEN_DAYS_MS, periodEndMs, deckIds: stableDeckIds },
       limit: 100,
+      contentCursor: null,
     }, controller.signal).then((value) => {
       if (controller.signal.aborted || sequence !== querySequence.current) return;
       setResponse(value);

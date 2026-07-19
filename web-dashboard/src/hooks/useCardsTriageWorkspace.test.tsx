@@ -11,12 +11,12 @@ const triageItems: TriageItem[] = [item("1001", "First"), item("1002", "Second")
 afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ""; });
 
 describe("useCardsTriageWorkspace", () => {
-  it("queries automatic v3 once and inspects only the active item through Search v2", async () => {
+  it("queries automatic v4 once and inspects only the active item through Search v2", async () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input); const body = JSON.parse(String(init?.body || "{}")); calls.push({ url, body });
-      if (url.includes("/api/triage/query")) return ok({ schemaVersion: 3, dataset: "automatic", status: "available", generatedAtMs: Date.now(), totalCount: 2, returnedCount: 2, limit: 100, truncated: false, sourceStatus: { attention: source("available", 2), signals: source("empty", 0), searchResolver: source("empty", 0), profileChecks: source("empty", 0) }, contentChecks: { status: "no_confirmed_profiles", confirmedProfileCount: 0, needsReviewProfileCount: 0, disabledProfileCount: 0, suggestedProfileCount: 0, evaluatedNoteCount: 0, failedCheckCount: 0, skippedCount: 0, truncated: false, errorCode: null }, items: triageItems });
+      if (url.includes("/api/triage/query")) return ok({ schemaVersion: 4, dataset: "automatic", status: "available", generatedAtMs: Date.now(), totalCount: 2, returnedCount: 2, limit: 100, truncated: false, sourceStatus: { learningCandidates: source("available", 2), contentCandidates: { ...source("empty", 0), scannedNoteCount: 0, nextCursor: null }, signals: source("empty", 0), searchResolver: source("empty", 0), profileChecks: source("empty", 0) }, contentChecks: { status: "no_confirmed_profiles", confirmedProfileCount: 0, needsReviewProfileCount: 0, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 0, evaluatedNoteCount: 0, failedCheckCount: 0, skippedCount: 0, truncated: false, nextCursor: null, errorCode: null }, items: triageItems });
       if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
       throw new Error(`unexpected ${url}`);
     }));
@@ -25,7 +25,8 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => root.render(<Harness />));
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     const triageCall = calls.find((call) => call.url.includes("/api/triage/query"))!;
-    expect(triageCall.body.schemaVersion).toBe(3);
+    expect(triageCall.body.schemaVersion).toBe(4);
+    expect(triageCall.body.contentCursor).toBeNull();
     expect(triageCall.body.dataset).toBe("automatic");
     const scope = triageCall.body.scope as { deckIds: string[]; periodStartMs: number; periodEndMs: number };
     expect(scope.deckIds).toEqual(["3"]);

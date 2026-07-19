@@ -152,3 +152,7 @@ Python/Vitest, telemetry service `pnpm check`, затем только
 один `standard/settings` с exact package handoff; shared dashboard server и E2E
 smoke в actual diff требуют один final `standard/full`. Локальный Docker,
 повтор targeted run, strict APKG, Perf100 и release не запускаются.
+
+## C1.5R.4 independent candidate sources
+
+See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.

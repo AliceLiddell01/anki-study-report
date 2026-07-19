@@ -41,7 +41,7 @@ const item = {
 };
 
 const automaticResponse = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   dataset: "automatic",
   status: "available",
   generatedAtMs: 1_721_000_000_000,
@@ -50,7 +50,14 @@ const automaticResponse = {
   limit: 100,
   truncated: false,
   sourceStatus: {
-    attention: availableSource,
+    learningCandidates: availableSource,
+    contentCandidates: {
+      ...availableSource,
+      status: "empty",
+      itemCount: 0,
+      scannedNoteCount: 0,
+      nextCursor: null,
+    },
     signals: { ...availableSource, status: "empty", itemCount: 0 },
     searchResolver: availableSource,
     profileChecks: { ...availableSource, status: "empty", itemCount: 0 },
@@ -61,10 +68,12 @@ const automaticResponse = {
     needsReviewProfileCount: 0,
     disabledProfileCount: 0,
     suggestedProfileCount: 0,
+    scannedNoteCount: 0,
     evaluatedNoteCount: 0,
     failedCheckCount: 0,
     skippedCount: 0,
     truncated: false,
+    nextCursor: null,
     errorCode: null,
   },
   items: [item],
@@ -97,7 +106,14 @@ const worksetResponse = {
   returnedCount: 1,
   limit: 200,
   sourceStatus: {
-    attention: { ...availableSource, status: "empty", itemCount: 0 },
+    learningCandidates: { ...availableSource, status: "not_applicable", itemCount: 0 },
+    contentCandidates: {
+      ...availableSource,
+      status: "not_applicable",
+      itemCount: 0,
+      scannedNoteCount: 0,
+      nextCursor: null,
+    },
     signals: { ...availableSource, status: "empty", itemCount: 0 },
     searchResolver: { ...availableSource, status: "empty", itemCount: 0, skippedCount: 1, errorCode: "card_resolution_missing" },
     profileChecks: { ...availableSource, status: "empty", itemCount: 0 },
@@ -107,7 +123,7 @@ const worksetResponse = {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Triage v3 read API contract", () => {
+describe("Triage v4 read API contract", () => {
   it("parses canonical display identity and structured evidence", () => {
     expect(parseTriageQueryResponse(automaticResponse)).toEqual(automaticResponse);
   });
@@ -117,7 +133,7 @@ describe("Triage v3 read API contract", () => {
   });
 
   it.each([
-    ["v2 schema", { ...automaticResponse, schemaVersion: 2 }],
+    ["v3 schema", { ...automaticResponse, schemaVersion: 3 }],
     ["unknown response key", { ...automaticResponse, future: true }],
     ["old primaryText alias", { ...automaticResponse, items: [{ ...item, primaryText: "legacy" }] }],
     ["unknown item key", { ...automaticResponse, items: [{ ...item, future: true }] }],
@@ -126,11 +142,11 @@ describe("Triage v3 read API contract", () => {
     ["missing with available identity", { ...worksetResponse, items: [{ ...missingItem, displayText: "legacy", displayStatus: "available", displaySource: "reviewer_front" }] }],
     ["count drift", { ...automaticResponse, returnedCount: 0 }],
     ["invalid enum", { ...automaticResponse, items: [{ ...item, displaySource: "formatter" }] }],
-  ])("fails closed for malformed v3 payloads: %s", (_label, value) => {
+  ])("fails closed for malformed v4 payloads: %s", (_label, value) => {
     expect(() => parseTriageQueryResponse(value)).toThrowError(TriageApiError);
   });
 
-  it("posts schemaVersion 3 in JSON and keeps card IDs out of the URL", async () => {
+  it("posts schemaVersion 4 in JSON and keeps card IDs out of the URL", async () => {
     window.history.replaceState(null, "", "/?token=secret-token#/cards");
     const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true, response: worksetResponse }), {
       status: 200,
@@ -138,7 +154,7 @@ describe("Triage v3 read API contract", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     const request = {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       dataset: "search_workset" as const,
       cardIds: ["1002"],
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
@@ -157,19 +173,21 @@ describe("Triage v3 read API contract", () => {
       ok: false,
       error: "invalid_triage_request",
       message: "Check request.",
-      fieldErrors: { schemaVersion: "Expected schemaVersion 3." },
+      fieldErrors: { schemaVersion: "Expected schemaVersion 4." },
     }), { status: 400 })));
     await expect(fetchTriageQuery({
-      schemaVersion: 3,
+      schemaVersion: 4,
       dataset: "automatic",
+      contentCursor: null,
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
       limit: 100,
     })).rejects.toMatchObject({ code: "invalid_triage_request", status: 400 });
 
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, response: automaticResponse, extra: true }), { status: 200 })));
     await expect(fetchTriageQuery({
-      schemaVersion: 3,
+      schemaVersion: 4,
       dataset: "automatic",
+      contentCursor: null,
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
       limit: 100,
     })).rejects.toMatchObject({ code: "invalid_triage_response" });

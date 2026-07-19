@@ -10,6 +10,7 @@ import type {
   TriageReason,
   TriageSource,
   TriageSourceStatus,
+  TriageContentSourceStatus,
 } from "../types/triage";
 
 const SOURCES: TriageSource[] = ["attention", "signals", "search_workset", "profile_checks"];
@@ -84,14 +85,14 @@ function isTriageQueryResponse(value: unknown): value is TriageQueryResponse {
     "limit", "truncated", "sourceStatus", "contentChecks", "items",
   ])) return false;
   const dataset = value.dataset;
-  if (value.schemaVersion !== 3 || !isDataset(dataset)) return false;
+  if (value.schemaVersion !== 4 || !isDataset(dataset)) return false;
   if (!new Set(["available", "partial", "unavailable"]).has(String(value.status))) return false;
   if (!safeTimestamp(value.generatedAtMs) || !count(value.totalCount) || !count(value.returnedCount)) return false;
   const maxLimit = dataset === "automatic" ? 100 : 200;
   if (!positiveInteger(value.limit) || value.limit > maxLimit || !Array.isArray(value.items)) return false;
   if (value.returnedCount !== value.items.length || value.returnedCount > value.limit || value.totalCount < value.returnedCount) return false;
   if (typeof value.truncated !== "boolean" || value.truncated !== (value.totalCount > value.returnedCount)) return false;
-  if (!isSourceStatusMap(value.sourceStatus) || !isContentChecks(value.contentChecks)) return false;
+  if (!isSourceStatusMap(value.sourceStatus, dataset) || !isContentChecks(value.contentChecks)) return false;
   return value.items.every((item) => isTriageItem(item, dataset));
 }
 
@@ -181,23 +182,51 @@ function isTriageEvidence(value: unknown): value is TriageEvidence {
   return false;
 }
 
-function isSourceStatusMap(value: unknown): boolean {
-  return isRecord(value)
-    && exactKeys(value, ["attention", "signals", "searchResolver", "profileChecks"])
-    && isSourceStatus(value.attention)
-    && isSourceStatus(value.signals)
-    && isSourceStatus(value.searchResolver)
-    && isSourceStatus(value.profileChecks);
+function isSourceStatusMap(value: unknown, dataset?: TriageDataset): boolean {
+  if (!isRecord(value) || !exactKeys(value, [
+    "learningCandidates", "contentCandidates", "signals", "searchResolver", "profileChecks",
+  ])) return false;
+  if (!isSourceStatus(value.learningCandidates)
+    || !isContentSourceStatus(value.contentCandidates)
+    || !isSourceStatus(value.signals)
+    || !isSourceStatus(value.searchResolver)
+    || !isSourceStatus(value.profileChecks)) return false;
+  if (dataset === "automatic") {
+    return value.learningCandidates.status !== "not_applicable"
+      && value.contentCandidates.status !== "not_applicable";
+  }
+  if (dataset === "search_workset") {
+    return value.learningCandidates.status === "not_applicable"
+      && value.contentCandidates.status === "not_applicable";
+  }
+  return true;
 }
 
 function isSourceStatus(value: unknown): value is TriageSourceStatus {
   return isRecord(value)
     && exactKeys(value, ["status", "itemCount", "skippedCount", "truncated", "errorCode"])
-    && new Set(["available", "empty", "partial", "unavailable", "error"]).has(String(value.status))
+    && new Set(["available", "empty", "partial", "unavailable", "error", "not_applicable"]).has(String(value.status))
     && count(value.itemCount) && value.itemCount <= 6400
     && count(value.skippedCount) && value.skippedCount <= 6400
     && typeof value.truncated === "boolean"
     && (value.errorCode === null || (typeof value.errorCode === "string" && /^[a-z0-9_]{1,80}$/.test(value.errorCode)));
+}
+
+function isContentSourceStatus(value: unknown): value is TriageContentSourceStatus {
+  if (!isRecord(value) || !exactKeys(value, [
+    "status", "itemCount", "skippedCount", "truncated", "errorCode", "scannedNoteCount", "nextCursor",
+  ])) return false;
+  const base = {
+    status: value.status,
+    itemCount: value.itemCount,
+    skippedCount: value.skippedCount,
+    truncated: value.truncated,
+    errorCode: value.errorCode,
+  };
+  return isSourceStatus(base)
+    && count(value.scannedNoteCount) && value.scannedNoteCount <= 500
+    && (value.nextCursor === null || decimalId(value.nextCursor))
+    && (value.truncated ? value.nextCursor !== null : value.nextCursor === null);
 }
 
 function isDeck(value: unknown): boolean {
@@ -232,17 +261,19 @@ function isInspect(value: unknown, cardId: string): boolean {
 }
 
 function isContentChecks(value: unknown): boolean {
-  return isRecord(value)
-    && exactKeys(value, [
-      "status", "confirmedProfileCount", "needsReviewProfileCount", "disabledProfileCount",
-      "suggestedProfileCount", "evaluatedNoteCount", "failedCheckCount", "skippedCount",
-      "truncated", "errorCode",
-    ])
-    && new Set(["available", "no_confirmed_profiles", "profiles_need_review", "disabled", "partial", "unavailable"]).has(String(value.status))
+  if (!isRecord(value) || !exactKeys(value, [
+    "status", "confirmedProfileCount", "needsReviewProfileCount", "disabledProfileCount",
+    "suggestedProfileCount", "scannedNoteCount", "evaluatedNoteCount", "failedCheckCount",
+    "skippedCount", "truncated", "nextCursor", "errorCode",
+  ])) return false;
+  return new Set(["available", "no_confirmed_profiles", "profiles_need_review", "disabled", "partial", "unavailable"]).has(String(value.status))
     && count(value.confirmedProfileCount) && count(value.needsReviewProfileCount)
     && count(value.disabledProfileCount) && count(value.suggestedProfileCount)
+    && count(value.scannedNoteCount) && value.scannedNoteCount <= 500
     && count(value.evaluatedNoteCount) && count(value.failedCheckCount) && count(value.skippedCount)
     && typeof value.truncated === "boolean"
+    && (value.nextCursor === null || decimalId(value.nextCursor))
+    && (value.truncated ? value.nextCursor !== null : value.nextCursor === null)
     && (value.errorCode === null || (typeof value.errorCode === "string" && /^[a-z0-9_]{1,80}$/.test(value.errorCode)));
 }
 
