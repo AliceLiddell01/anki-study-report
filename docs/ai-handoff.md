@@ -1,6 +1,6 @@
 # AI handoff — Anki Study Report
 
-Snapshot: **2026-07-19**
+Snapshot: **2026-07-20**
 
 ## Start here
 
@@ -41,7 +41,9 @@ Core C1: In progress
 C1.5R.0: Complete
 C1.5R.1: Complete
 C1.5R.2: Complete
-C1.5R.3: Next, not started
+C1.5R.3: Complete
+C1.5R.4: Complete
+C1.5R.5: Next, not started
 C1.6: Blocked, not started
 ```
 
@@ -50,6 +52,8 @@ Current reports:
 - [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md)
 - [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md)
 - [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md)
+- [`../reports/core/c1-5r-3-front-back-preview-semantics.md`](../reports/core/c1-5r-3-front-back-preview-semantics.md)
+- [`../reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../reports/core/c1-5r-4-independent-triage-candidate-sources.md)
 
 ## Historical C1.5 evidence
 
@@ -83,17 +87,19 @@ acceptance evidence for C1.5R.
 C1.5R.0 Recovery and corrective baseline — Complete
 C1.5R.1 Canonical card display identity — Complete
 C1.5R.2 Declarative compact formatter runtime — Complete
-C1.5R.3 Front/back preview semantics — Next, not started
-C1.5R.4 Independent triage candidate sources — Not started
-C1.5R.5 Cards attention inbox redesign — Not started
+C1.5R.3 Front/back preview semantics — Complete
+C1.5R.4 Independent triage candidate sources — Complete
+C1.5R.5 Cards attention inbox redesign — Next, not started
 C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-C1.5R.1 and C1.5R.2 are closed. R2 owner-checkout focused, package and
-canonical non-Docker verification passed for the implementation tree committed
-and pushed as `edad09e8ffae443b94e192b266084abb66c37adf`. C1.5R.3 is now Next, not started. Do not
-begin C1.6 before the remaining C1.5R stages and separate owner product acceptance.
+C1.5R.1–R.4 are closed. R4 exact implementation
+`31b3b795e055f6be963c129b3edc1afdfc9dcd57` passed focused backend/frontend,
+typecheck, production build, package/API verification and the canonical
+non-Docker gate in run `29701478622`; post-transfer run `29701642665` passed on
+the exact `core` tree. C1.5R.5 is Next, not started. Do not begin C1.6 before
+the remaining C1.5R stages and separate owner product acceptance.
 
 ## C1.5R.1 implementation
 
@@ -126,7 +132,7 @@ displayTruncated
 ```text
 Search query/inspect: schema v2
 Search metadata: schema v1, unchanged
-Triage query/response: schema v3
+Triage query/response: schema v4
 ```
 
 Card rows/details and Triage items no longer carry card `primaryText`. Note-mode
@@ -245,10 +251,11 @@ C1.5R.1 does not implement these side changes.
 
 ### Candidate sources — C1.5R.4
 
-Learning candidates remain period-bound. Current-content candidates become a
-separate bounded source and must not disappear when a learning period has zero
-reviews. The hidden seven-day period must become explicit product state in that
-stage.
+Implemented and verified. Learning candidates remain period-bound.
+Current-content candidates are a separate confirmed-profile-driven source with
+a 500-note keyset bound, explicit continuation/source state, deterministic
+representative cards, and no preview/media reads. The Cards hook sends
+`contentCursor: null` once; automatic continuation remains deferred to R5.
 
 ### Cards Design Gate — C1.5R.5
 
@@ -308,21 +315,10 @@ Programming: unchanged
 
 ## Exact next action
 
-Apply the reviewed R2 patch to the owner's clean tracked `core` checkout, run the
-focused Python/Vitest/typecheck/package checks and
-`run_full_check.ps1 -SkipDocker`, then record exact evidence, commit logical
-changes and push only to `origin/core`.
-
-Until every required gate passes:
-
-```text
-C1.5R.2 — Complete
-C1.5R.3 — Next, not started
-C1.6 — Blocked
-```
-
-Do not absorb preview semantics, candidate-source redesign, Cards inbox
-redesign, guided Profiles UX, integrated C1.5R acceptance or C1.6 into R2.
+C1.5R.5 — Cards attention inbox redesign is Next, not started. Begin it only
+with a separate explicit task. Preserve Triage schema v4, Search schema v2,
+current source bounds, R1 compact identity, and R3 preview semantics. Do not
+start C1.6 in parallel.
 
 ## Verification boundary
 
@@ -359,6 +355,6 @@ merge/rebase to `master`, release, deploy, publish `.ankiaddon` or update AnkiWe
 as an implicit continuation. Avoid force-push, destructive reset, clean or stash
 deletion and preserve unrelated changes.
 
-## C1.5R.3 complete
+## C1.5R.4 complete
 
-C1.5R.3 is complete: reviewer `Card.render_output(reload=True, browser=False)` supplies front and answer, Cards Inspector shows front, the expanded dialog shows answer, active-card-only reads are preserved, and fit-width/scroll behavior is deterministic. C1.5R.4 is next and not started; C1.6 remains blocked.
+C1.5R.4 is complete: learning and current-content candidate sources are independent; only authoritative confirmed profiles scan current content; Triage schema v4 is strict; focused, build, package, API and canonical non-Docker verification passed; the exact implementation was fast-forwarded to `core`; temporary R4/R4V refs were neutralized to a clean tree. C1.5R.5 is next and not started; C1.6 remains blocked.

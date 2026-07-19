@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.2` Complete; `C1.5R.3` Next, not started; `C1.6` blocked
+**Current status:** `C1.5R.0–R.4` Complete; `C1.5R.5` Next, not started; `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -78,9 +78,9 @@ Cards presentation, and the normal Inspection Profiles path.
 C1.5R.0 Recovery and corrective baseline — Complete
 C1.5R.1 Canonical card display identity — Complete
 C1.5R.2 Declarative compact formatter runtime — Complete
-C1.5R.3 Front/back preview semantics — Next, not started
-C1.5R.4 Independent triage candidate sources — Not started
-C1.5R.5 Cards attention inbox redesign — Not started
+C1.5R.3 Front/back preview semantics — Complete
+C1.5R.4 Independent triage candidate sources — Complete
+C1.5R.5 Cards attention inbox redesign — Next, not started
 C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
@@ -133,22 +133,27 @@ were not required for R2. C1.5R.3 is now Next, not started.
 
 #### C1.5R.3 — Front/back preview semantics
 
-**Status:** Next, not started
+**Status:** Complete
 
 Owns native rendered front in the Inspector and answer/back in expanded preview,
 while preserving sanitizer, media validation, Shadow DOM, modal focus, and
-single-active-card reads.
+single-active-card reads. Verification and transfer evidence is recorded in
+[`reports/core/c1-5r-3-front-back-preview-semantics.md`](../../reports/core/c1-5r-3-front-back-preview-semantics.md).
 
 #### C1.5R.4 — Independent triage candidate sources
 
-**Status:** Not started
+**Status:** Complete
 
 Separates period-bound learning candidates from bounded current-content
-candidates and exposes explicit available/partial/truncated source state.
+candidates, scans only authoritative confirmed Inspection Profiles, exposes
+strict schema v4 continuation/source state, and keeps Search schema v2 and the
+R1–R3 identity/preview contracts unchanged. Exact implementation and cleanup
+evidence is recorded in
+[`reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../../reports/core/c1-5r-4-independent-triage-candidate-sources.md).
 
 #### C1.5R.5 — Cards attention inbox redesign
 
-**Status:** Not started
+**Status:** Next, not started
 
 Implements Variant A: dense identity-led inbox list plus persistent Inspector on
 wide desktop, and a full-width queue plus non-modal detail drawer around 1024 px.
@@ -255,6 +260,6 @@ the user decision, data availability, bounded query, placement, interpretation,
 and verification scope. If no justified gap exists, C3 closes without feature
 expansion.
 
-## C1.5R.3 complete
+## C1.5R.4 complete
 
-C1.5R.3 is complete after focused, build, browser-smoke and canonical non-Docker verification. C1.5R.4 is next and not started; C1.6 remains blocked.
+C1.5R.4 is complete after clean reconstruction, focused backend/frontend verification, typecheck, production build, package validation, API smoke, canonical non-Docker verification, exact fast-forward transfer to `core`, post-transfer checks, and temporary-ref neutralization. C1.5R.5 is next and not started; C1.6 remains blocked.

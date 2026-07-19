@@ -49,3 +49,16 @@ SQL, paths and exception text are not exposed.
 
 R4 types and validates continuation state but does not add a visible load-more
 control or redesign the Cards inbox. That product work belongs to C1.5R.5.
+
+
+## Verification closeout
+
+The exact implementation commit is
+`31b3b795e055f6be963c129b3edc1afdfc9dcd57`. Isolated run
+`29701478622` passed focused backend and frontend tests, typecheck, production
+build, package build/validation, API smoke, the canonical non-Docker gate, and
+Git hygiene. Post-transfer run `29701642665` repeated the affected focused
+checks on the exact `core` commit and passed.
+
+Fast CI and Docker/real-Anki E2E were not required. C1.5R.5 remains separate
+product work and is not started by this closeout.
