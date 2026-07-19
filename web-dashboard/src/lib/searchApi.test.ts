@@ -101,7 +101,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("Search v2 API contract", () => {
   it("posts the versioned native query in JSON and keeps it out of the URL", async () => {
     window.history.replaceState(null, "", "/?token=secret-token#/search");
-    const fetchMock = vi.fn(async () => success(queryResponse));
+    const fetchMock = vi.fn<typeof fetch>(async () => success(queryResponse));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(fetchSearchQuery(query)).resolves.toEqual(queryResponse);
@@ -127,7 +127,7 @@ describe("Search v2 API contract", () => {
 
   it("uses Search inspect v2 and accepts the same card display identity", async () => {
     const response = { schemaVersion: 2, mode: "cards", details: cardDetails, requestId: "inspect-1" };
-    const fetchMock = vi.fn(async () => success(response));
+    const fetchMock = vi.fn<typeof fetch>(async () => success(response));
     vi.stubGlobal("fetch", fetchMock);
     await expect(fetchSearchInspect({ schemaVersion: 2, mode: "cards", cardId: "1001", requestId: "inspect-1" })).resolves.toEqual(response);
     expect(JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))).toMatchObject({ schemaVersion: 2, cardId: "1001" });

@@ -132,7 +132,7 @@ describe("Triage v3 read API contract", () => {
 
   it("posts schemaVersion 3 in JSON and keeps card IDs out of the URL", async () => {
     window.history.replaceState(null, "", "/?token=secret-token#/cards");
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, response: worksetResponse }), {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true, response: worksetResponse }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     }));

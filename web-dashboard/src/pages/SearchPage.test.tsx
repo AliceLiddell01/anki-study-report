@@ -67,7 +67,7 @@ describe("Search workspace", () => {
   });
 
   it("renders canonical card identity in the row and matching Inspector heading", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
       if (String(input).includes("/inspect")) return success(cardInspect(card));
       return success(queryResponse("cards", [card]));
     });
@@ -84,7 +84,7 @@ describe("Search workspace", () => {
   });
 
   it("keeps note-mode primaryText and clears card-only filters", async () => {
-    const fetchMock = vi.fn(async () => success(queryResponse("notes", [note])));
+    const fetchMock = vi.fn<typeof fetch>(async () => success(queryResponse("notes", [note])));
     vi.stubGlobal("fetch", fetchMock);
     await renderPage();
     const selects = Array.from(container.querySelectorAll<HTMLSelectElement>(".search-controls-row select"));
@@ -147,7 +147,7 @@ describe("Search workspace", () => {
   it("refreshes active v2 inspect details after an entity action", async () => {
     let inspectCalls = 0;
     let queryCalls = 0;
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
       if (String(input).includes("/api/search/inspect")) { inspectCalls += 1; return success(cardInspect(card, `inspect-${inspectCalls}`)); }
       if (String(input).includes("/api/entities/cards/actions")) return entitySuccess();
       queryCalls += 1;
