@@ -8,6 +8,7 @@ import traceback
 from typing import Any
 
 from .extension_logging import log_event
+from .card_display_formatter_service import CardDisplayFormatterResolver
 from .triage_service import (
     TriageValidationError,
     build_unavailable_triage_projection,
@@ -25,6 +26,7 @@ def run_triage_query_sync(
     *,
     signal_provider: Callable[[], list[dict[str, Any]]] | None = None,
     profile_store_provider: Callable[[], dict[str, Any]] | None = None,
+    formatter_store_provider: Callable[[], dict[str, Any]] | None = None,
     timeout_seconds: float = TRIAGE_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     try:
@@ -34,6 +36,7 @@ def run_triage_query_sync(
 
     signal_rows, signal_status = _read_signals(signal_provider)
     profile_snapshot = _read_profile_store(profile_store_provider)
+    formatter_resolver = _read_formatter_resolver(formatter_store_provider)
     if mw is None or getattr(mw, "col", None) is None or not hasattr(mw, "taskman"):
         return {
             "ok": True,
@@ -74,6 +77,7 @@ def run_triage_query_sync(
                     signal_rows=signal_rows,
                     signal_source_status=signal_status,
                     profile_store_snapshot=profile_snapshot,
+                    formatter_resolver=formatter_resolver,
                 ),
                 success=success,
             )
@@ -134,6 +138,27 @@ def _read_profile_store(
             "profiles": [],
             "errorCode": "profile_store_unavailable",
         }
+
+
+def _read_formatter_resolver(
+    provider: Callable[[], dict[str, Any]] | None,
+) -> CardDisplayFormatterResolver:
+    if provider is None:
+        return CardDisplayFormatterResolver.from_snapshot({"status": "empty", "formatters": []})
+    try:
+        value = provider()
+        if not isinstance(value, dict):
+            raise TypeError("formatter store provider did not return an object")
+        return CardDisplayFormatterResolver.from_snapshot(value)
+    except Exception as error:
+        log_event(
+            "triage.formatters.error",
+            "Card display formatter source failed",
+            exception_type=type(error).__name__,
+        )
+        return CardDisplayFormatterResolver.from_snapshot(
+            {"status": "unavailable", "formatters": []}
+        )
 
 
 def _query_op_type() -> Any:

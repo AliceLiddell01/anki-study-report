@@ -63,6 +63,9 @@ normal logs, DOM dumps, public artifacts или telemetry.
 /api/inspection-profiles/query
 /api/inspection-profiles/validate
 /api/inspection-profiles/update
+/api/card-display-formatters/query
+/api/card-display-formatters/validate
+/api/card-display-formatters/update
 /api/entities/cards/actions
 /api/entities/notes/actions
 /api/actions/<action>
@@ -134,6 +137,44 @@ not silently upgraded to v2 and v2 query requests are not accepted as metadata.
 ```
 
 Full contract: [`search-query-foundation.md`](search-query-foundation.md).
+
+## Card display formatter API
+
+C1.5R.2 adds three token-protected, POST-only, `application/json` endpoints with
+a 64 KiB body cap:
+
+```text
+/api/card-display-formatters/query
+/api/card-display-formatters/validate
+/api/card-display-formatters/update
+```
+
+All requests use exact `schemaVersion: 1` and reject unknown keys.
+
+`query` accepts only:
+
+```json
+{"schemaVersion":1}
+```
+
+Its response contains the independent store status, revision, strict formatter
+entries, generic `errorCode`, and `quarantined` flag. Allowed status values are:
+
+```text
+empty | available | corrupt | future_schema | unavailable
+```
+
+`validate` accepts one strict formatter and performs no collection read or
+persistence. `update` accepts only exact `save` or `delete` actions with
+`expectedRevision`; deletion identifies one `(noteTypeId, templateOrdinal)` key.
+A stale revision returns the current revision with HTTP 409.
+
+The API exposes no raw HTML, note values, media contents, filesystem paths,
+renderer exceptions, arbitrary expression language, or live card preview.
+Search remains schema v2 and Triage remains schema v3; formatter configuration is
+not added to either payload.
+
+Full contract: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
 
 ## Canonical triage read API
 
@@ -277,18 +318,16 @@ Backend filename validation, sanitizer, Shadow DOM isolation and token checks
 remain mandatory. Arbitrary `file:`, `javascript:`, iframe or template
 JavaScript execution is prohibited.
 
-## C1.5R.1 verification state
-
-Search v2, Triage v3 and the shared card display projector are implemented on
-`core`, but focused Python/Vitest/typecheck evidence is pending. Therefore:
+## C1.5R verification state
 
 ```text
-C1.5R.0 — Complete
-C1.5R.1 — Implemented, focused verification pending
-C1.5R.2 — Blocked
+C1.5R.1 — Complete
+C1.5R.2 — Implemented, canonical non-Docker verification pending
+C1.5R.3–R.7 — Not started
 C1.6 — Blocked
-Core C1 — In progress
 ```
 
-Fast CI, Docker, real-Anki E2E, package validation, PR, merge and release are not
-part of this connector-only C1.5R.1 implementation.
+R2 keeps Search v2 and Triage v3 unchanged. Focused backend checks pass in the
+tracked-snapshot reconstruction; focused frontend, package validation and the
+canonical non-Docker gate remain required on the owner's local checkout before
+R2 can become Complete.

@@ -115,6 +115,7 @@ def execute_triage_query(
     signal_rows: list[dict[str, Any]] | None = None,
     signal_source_status: dict[str, Any] | None = None,
     profile_store_snapshot: dict[str, Any] | None = None,
+    formatter_resolver: Any = None,
     generated_at_ms: int | None = None,
 ) -> dict[str, Any]:
     """Execute bounded source reads at the collection boundary and project v3."""
@@ -165,7 +166,11 @@ def execute_triage_query(
         )
 
     try:
-        resolution = resolve_card_rows(col, target_ids)
+        resolution = (
+            resolve_card_rows(col, target_ids)
+            if formatter_resolver is None
+            else resolve_card_rows(col, target_ids, formatter_resolver)
+        )
         resolved_rows = resolution.get("items") if isinstance(resolution.get("items"), list) else []
         missing = resolution.get("missingCardIds") if isinstance(resolution.get("missingCardIds"), list) else []
         resolver_status = _source_status(

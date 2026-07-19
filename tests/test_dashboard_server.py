@@ -980,3 +980,74 @@ def test_fsrs_query_endpoint_is_post_only_bounded_and_token_protected():
         assert status == 400
     finally:
         manager.stop()
+
+
+def test_card_display_formatter_endpoints_are_token_protected_json_only_bounded_and_typed():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    calls = []
+    manager.configure_card_display_formatter_handlers(
+        query_handler=lambda value: calls.append(("query", value)) or {
+            "ok": True,
+            "response": {
+                "schemaVersion": 1,
+                "status": "empty",
+                "revision": 0,
+                "formatters": [],
+                "errorCode": None,
+                "quarantined": False,
+            },
+        },
+        validate_handler=lambda value: calls.append(("validate", value)) or {
+            "ok": False,
+            "error": "invalid_card_display_formatter_request",
+            "fieldErrors": {"formatter": "invalid"},
+        },
+        update_handler=lambda value: calls.append(("update", value)) or {
+            "ok": False,
+            "error": "card_display_formatter_revision_conflict",
+            "currentRevision": 7,
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        path = "/api/card-display-formatters/query"
+        assert fetch(f"{base_url}{path}", method="POST", json_body={"schemaVersion": 1})[0] == 403
+        assert fetch(f"{base_url}{path}?token={token}")[0] == 405
+        assert fetch(f"{base_url}{path}?token={token}", method="POST")[0] == 415
+
+        status, _, body = fetch(
+            f"{base_url}{path}?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 200
+        assert json.loads(body)["response"]["status"] == "empty"
+        assert calls[-1] == ("query", {"schemaVersion": 1})
+        assert token not in body.decode("utf-8")
+
+        status, _, body = fetch(
+            f"{base_url}/api/card-display-formatters/validate?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 400
+        assert json.loads(body)["fieldErrors"] == {"formatter": "invalid"}
+
+        status, _, body = fetch(
+            f"{base_url}/api/card-display-formatters/update?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 409
+        assert json.loads(body)["currentRevision"] == 7
+
+        status, _, body = fetch_raw(
+            f"{base_url}{path}?token={token}", b'{"padding":"' + b"x" * 65_536 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_card_display_formatter_request"
+    finally:
+        manager.stop()

@@ -15,27 +15,42 @@ from .search_service import (
     normalize_search_inspect_request,
 )
 from .extension_logging import log_event
+from .card_display_formatter_service import CardDisplayFormatterResolver
 
 
 SEARCH_TIMEOUT_SECONDS = 20.0
 
 
-def run_search_query_sync(mw: Any, payload: object, *, timeout_seconds: float = SEARCH_TIMEOUT_SECONDS) -> dict[str, Any]:
+def run_search_query_sync(
+    mw: Any,
+    payload: object,
+    *,
+    formatter_store_provider: Callable[[], dict[str, Any]] | None = None,
+    timeout_seconds: float = SEARCH_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
     return _run_search_sync(
         mw,
         payload,
         validator=normalize_search_request,
         executor=execute_search_request,
+        formatter_store_provider=formatter_store_provider,
         timeout_seconds=timeout_seconds,
     )
 
 
-def run_search_inspect_sync(mw: Any, payload: object, *, timeout_seconds: float = SEARCH_TIMEOUT_SECONDS) -> dict[str, Any]:
+def run_search_inspect_sync(
+    mw: Any,
+    payload: object,
+    *,
+    formatter_store_provider: Callable[[], dict[str, Any]] | None = None,
+    timeout_seconds: float = SEARCH_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
     return _run_search_sync(
         mw,
         payload,
         validator=normalize_search_inspect_request,
         executor=execute_search_inspect,
+        formatter_store_provider=formatter_store_provider,
         timeout_seconds=timeout_seconds,
     )
 
@@ -45,7 +60,8 @@ def _run_search_sync(
     payload: object,
     *,
     validator: Callable[[object], dict[str, Any]],
-    executor: Callable[[Any, object], dict[str, Any]],
+    executor: Callable[[Any, object, Any], dict[str, Any]],
+    formatter_store_provider: Callable[[], dict[str, Any]] | None,
     timeout_seconds: float,
 ) -> dict[str, Any]:
     request_id = payload.get("requestId") if isinstance(payload, dict) else None
@@ -54,6 +70,7 @@ def _run_search_sync(
     except SearchValidationError as error:
         return _error("invalid_search_request", "Check the search request parameters.", request_id, fieldErrors=error.field_errors)
 
+    formatter_resolver = _read_formatter_resolver(formatter_store_provider)
     if mw is None or getattr(mw, "col", None) is None or not hasattr(mw, "taskman"):
         return _error("search_unavailable", "The Anki collection is unavailable.", request_id)
 
@@ -84,7 +101,11 @@ def _run_search_sync(
             QueryOp = _query_op_type()
             operation = QueryOp(
                 parent=mw,
-                op=lambda col: executor(col, payload),
+                op=lambda col: (
+                    executor(col, payload)
+                    if formatter_resolver is None
+                    else executor(col, payload, formatter_resolver)
+                ),
                 success=success,
             )
             operation.failure(failure).run_in_background()
@@ -100,6 +121,27 @@ def _run_search_sync(
         return _error("search_timeout", "The search request did not finish in time.", request_id)
     response = holder.get("response")
     return response if isinstance(response, dict) else _error("search_failed", "The search request failed.", request_id)
+
+
+def _read_formatter_resolver(
+    provider: Callable[[], dict[str, Any]] | None,
+) -> CardDisplayFormatterResolver | None:
+    if provider is None:
+        return None
+    try:
+        snapshot = provider()
+        if not isinstance(snapshot, dict):
+            raise TypeError("formatter store provider did not return an object")
+        return CardDisplayFormatterResolver.from_snapshot(snapshot)
+    except Exception as error:
+        log_event(
+            "search.formatters.error",
+            "Card display formatter source failed",
+            exception_type=type(error).__name__,
+        )
+        return CardDisplayFormatterResolver.from_snapshot(
+            {"status": "unavailable", "formatters": []}
+        )
 
 
 def _query_op_type() -> Any:

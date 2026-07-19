@@ -133,7 +133,11 @@ def normalize_search_inspect_request(raw: object) -> dict[str, Any]:
     return {"schemaVersion": SEARCH_SCHEMA_VERSION, "mode": mode, expected_key: entity_id, "requestId": request_id}
 
 
-def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
+def execute_search_query(
+    col: Any,
+    raw: object,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     # Always revalidate at the collection boundary. This keeps the public
     # helpers safe even when they are called outside the HTTP bridge.
     request = normalize_search_query_request(raw)
@@ -149,7 +153,10 @@ def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
     offset = (page - 1) * page_size
     page_ids = bounded_ids[offset:offset + page_size]
     if request["mode"] == "cards":
-        items = [project_card_row(col, col.get_card(card_id)) for card_id in page_ids]
+        items = [
+            project_card_row(col, col.get_card(card_id), formatter_resolver)
+            for card_id in page_ids
+        ]
     else:
         items = [project_note_row(col, col.get_note(note_id)) for note_id in page_ids]
     response: dict[str, Any] = {
@@ -171,12 +178,18 @@ def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
     return response
 
 
-def execute_search_inspect(col: Any, raw: object) -> dict[str, Any]:
+def execute_search_inspect(
+    col: Any,
+    raw: object,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     request = normalize_search_inspect_request(raw)
     mode = request["mode"]
     try:
         if mode == "cards":
-            details = project_card_details(col, col.get_card(request["cardId"]))
+            details = project_card_details(
+                col, col.get_card(request["cardId"]), formatter_resolver
+            )
         else:
             details = project_note_details(col, col.get_note(request["noteId"]))
     except SearchEntityNotFoundError:
@@ -189,7 +202,11 @@ def execute_search_inspect(col: Any, raw: object) -> dict[str, Any]:
     return response
 
 
-def resolve_card_rows(col: Any, card_ids: list[int]) -> dict[str, Any]:
+def resolve_card_rows(
+    col: Any,
+    card_ids: list[int],
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     """Resolve bounded exact card IDs through the canonical Search row projector."""
 
     items: list[dict[str, Any]] = []
@@ -199,7 +216,7 @@ def resolve_card_rows(col: Any, card_ids: list[int]) -> dict[str, Any]:
             card = col.get_card(card_id)
             if _coerce_entity_id(getattr(card, "id", 0)) != card_id:
                 raise LookupError
-            items.append(project_card_row(col, card))
+            items.append(project_card_row(col, card, formatter_resolver))
         except Exception:
             missing_card_ids.append(str(card_id))
     return {"items": items, "missingCardIds": missing_card_ids}
@@ -238,19 +255,30 @@ def safe_plain_text(value: object, *, max_length: int = MAX_PRIMARY_TEXT_LENGTH)
     return text[: max(0, max_length - 1)].rstrip() + "…"
 
 
-def project_card_row(col: Any, card: Any) -> dict[str, Any]:
+def project_card_row(
+    col: Any,
+    card: Any,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
     note_type = _note_type(note)
     deck_id = _card_deck_id(card)
-    display_identity = project_card_display_identity(card).to_wire()
+    note_type_id = str(_coerce_entity_id(getattr(note, "mid", note_type.get("id", 0))))
+    template_ordinal = int(getattr(card, "ord", 0))
+    formatter = (
+        formatter_resolver.resolve(note_type_id, template_ordinal)
+        if formatter_resolver is not None and callable(getattr(formatter_resolver, "resolve", None))
+        else None
+    )
+    display_identity = project_card_display_identity(card, formatter).to_wire()
     return {
         "cardId": str(_coerce_entity_id(card.id)),
         "noteId": str(_coerce_entity_id(card.nid)),
         "deckId": str(deck_id),
         "deckName": _deck_name(col, deck_id),
-        "noteTypeId": str(_coerce_entity_id(getattr(note, "mid", note_type.get("id", 0)))),
+        "noteTypeId": note_type_id,
         "noteTypeName": str(note_type.get("name") or ""),
-        "templateOrdinal": int(getattr(card, "ord", 0)),
+        "templateOrdinal": template_ordinal,
         "templateName": _template_name(card, note_type),
         **display_identity,
         "state": _card_state(card),
@@ -278,8 +306,12 @@ def project_note_row(col: Any, note: Any) -> dict[str, Any]:
     }
 
 
-def project_card_details(col: Any, card: Any) -> dict[str, Any]:
-    row = project_card_row(col, card)
+def project_card_details(
+    col: Any,
+    card: Any,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
+    row = project_card_row(col, card, formatter_resolver)
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
     note_type = _note_type(note)
     raw_fields = list(getattr(note, "fields", []) or [])

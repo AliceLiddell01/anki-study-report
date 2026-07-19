@@ -6,7 +6,7 @@
 
 **Endpoint:** `POST /api/triage/query`
 
-**Stage:** C1.5R.1 identity correction; focused verification pending
+**Stage:** C1.5R.1 identity correction Complete; C1.5R.2 formatter integration pending canonical verification
 
 **UI:** current `#/cards` consumes automatic Triage v3 with a bounded 100-item
 queue. The table/split presentation remains product-rejected historical C1.5 UI
@@ -14,9 +14,9 @@ and is not accepted by this schema change.
 
 Triage v3 is read-only. It composes bounded learning sources, exact Search
 worksets and confirmed Inspection Profiles. Search inspect remains the active
-card preview source. C1.5R.1 changes only compact card identity and schema
-version; it does not redesign candidate sources, preview sides, workspace UI or
-actions.
+card preview source. C1.5R.1 established compact identity and schema v3. C1.5R.2 optionally
+formats the same Search-owned identity without changing Triage v3. Neither stage
+redesigns candidate sources, preview sides, workspace UI or actions.
 
 ## Transport and request v3
 

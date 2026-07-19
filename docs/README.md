@@ -32,6 +32,7 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [Cards v2 triage read API](cards-v2-triage-read-api.md)
 - [Cards v2 workspace UI](cards-v2-workspace-ui.md)
 - [Canonical card display identity](card-display-identity.md)
+- [Declarative card display formatter v1](card-display-formatter-v1.md)
 - [Inspection Profiles v1](inspection-profiles-v1.md)
 - [Inspection Profiles settings UI](inspection-profiles-ui.md)
 - [Settings Hub](settings-hub.md)

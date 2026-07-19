@@ -94,6 +94,25 @@ two explicit fallback states. It does not extract or transform card content.
 Card rows/details and Triage items do not contain `primaryText`. Note rows and
 note details retain note-mode `primaryText`.
 
+
+## Formatter contract client without UI
+
+C1.5R.2 adds only strict contract code:
+
+```text
+types/cardDisplayFormatters.ts          formatter/store/API types
+lib/cardDisplayFormattersApi.ts         query/validate/update client and parsers
+lib/cardDisplayFormattersApi.test.ts    strict response/request regression
+```
+
+The parser rejects old/future schemas, unknown keys, malformed IDs and dates,
+duplicate formatter keys, invalid enums/limits, nullable template mismatch,
+coherence drift and unexpected error envelopes. It sends exact JSON bodies to
+token-protected local endpoints.
+
+There is deliberately no route, page, hook, Settings item, form control, live
+preview, import/export UI or formatter-applied wire flag in R2.
+
 ## Search page
 
 `useSearchWorkspace.ts` owns query/session/selection/inspect/action state.
@@ -193,12 +212,12 @@ Typecheck evidence is also pending.
 
 ```text
 C1.5R.0 — Complete
-C1.5R.1 — Implemented, focused verification pending
-C1.5R.2 — Blocked
+C1.5R.1 — Complete
+C1.5R.2 — Implemented, canonical non-Docker verification pending
 C1.6 — Blocked
 Core C1 — In progress
 ```
 
-No frontend formatter runtime, preview-side correction, candidate-source
-redesign, Cards inbox redesign or Inspection Profiles redesign is implied by
+No formatter UI, preview-side correction, candidate-source redesign, Cards
+inbox redesign or Inspection Profiles redesign is implied by
 this map.

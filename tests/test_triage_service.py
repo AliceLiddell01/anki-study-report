@@ -292,3 +292,37 @@ def test_execute_reuses_attention_and_search_adapters_without_full_preview(monke
     assert calls["resolve"] == [7]
     assert response["items"][0]["inspect"] == {"mode": "cards", "cardId": "7"}
     assert response["items"][0]["displayText"] == "Card 7"
+
+
+def test_triage_reuses_search_formatter_resolver_and_keeps_v3_wire_shape(monkeypatch):
+    formatter_service = import_addon_module("card_display_formatter_service")
+    formatter = {
+        "noteTypeId": "7", "noteTypeName": "Japanese", "templateOrdinal": None,
+        "templateName": None, "storedState": "enabled", "inputSource": "reviewer_front",
+        "textMode": "preserve", "imageMode": "stem", "audioMode": "omit",
+        "maxLines": 1, "lineSeparator": " ", "maxCharacters": 240,
+        "updatedAt": "2026-07-19T00:00:00Z",
+    }
+    resolver = formatter_service.CardDisplayFormatterResolver.from_snapshot(
+        {"status": "available", "revision": 1, "formatters": [formatter]}
+    )
+    monkeypatch.setattr(
+        triage,
+        "collect_triage_candidates_with_status",
+        lambda *_args, **_kwargs: ([attention_row(7)], [], {"status": "available"}),
+    )
+    seen = []
+    custom = card_row(7)
+    custom["displayText"] = "【に】感謝（する）"
+    monkeypatch.setattr(
+        triage,
+        "resolve_card_rows",
+        lambda _col, ids, value: seen.append((ids, value)) or {"items": [custom], "missingCardIds": []},
+    )
+    response = triage.execute_triage_query(
+        object(), request(), signal_rows=[], signal_source_status={"status": "empty"}, formatter_resolver=resolver
+    )
+    assert response["schemaVersion"] == 3
+    assert response["items"][0]["displayText"] == "【に】感謝（する）"
+    assert seen == [([7], resolver)]
+    assert "formatterApplied" not in response["items"][0]

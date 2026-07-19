@@ -281,3 +281,31 @@ sender. Отдельный Python client валидирует semantic events, �
 per-profile SQLite queue и выполняет consent-gated background delivery; React
 не знает remote endpoint/credentials. Контракты:
 `docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.
+## Declarative compact formatter runtime
+
+C1.5R.2 introduces an independent per-profile configuration path:
+
+```text
+<profile>/addon_data/<addon-id>/card_display_formatters.json
+```
+
+Architecture flow:
+
+```text
+DashboardServerManager handlers
+→ CardDisplayFormatterStore read once per Search/Triage request
+→ immutable CardDisplayFormatterResolver
+→ Search exact-card projector
+→ Triage reuses Search-owned card rows
+→ canonical R1 fallback on every formatter/store failure
+```
+
+The store is separate from `inspection_profiles.json`, global add-on config,
+collection data, note types and templates. It uses strict schema v1,
+deterministic atomic JSON writes, optimistic revision conflicts, corruption
+quarantine and future-schema preserve/fail-closed behavior.
+
+The formatter parser emits bounded ordered text/line/image/audio tokens only. It
+executes no user program, reads no media file, loads no remote resource and does
+not alter Inspector/expanded preview. Search v2 and Triage v3 payloads remain
+unchanged.

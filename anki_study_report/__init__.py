@@ -164,6 +164,12 @@ from .inspection_profile_runtime import (
     run_inspection_profile_validate_sync,
 )
 from .inspection_profile_store import InspectionProfileStore
+from .card_display_formatter_runtime import (
+    run_card_display_formatter_query_sync,
+    run_card_display_formatter_update_sync,
+    run_card_display_formatter_validate_sync,
+)
+from .card_display_formatter_store import CardDisplayFormatterStore
 from .entity_action_runtime import run_card_action_sync, run_note_action_sync
 from .config_service import (
     DEFAULT_ENABLED_METRICS,
@@ -325,6 +331,9 @@ _DASHBOARD_SERVER = DashboardServerManager()
 _STATS_CACHE = StatsCacheManager(_RUNTIME_DATA_DIR / "study_report_cache.sqlite3")
 _PROFILE_STORE = ProfilePreferencesStore(_RUNTIME_DATA_DIR / "profile.json")
 _INSPECTION_PROFILE_STORE = InspectionProfileStore(_RUNTIME_DATA_DIR / "inspection_profiles.json")
+_CARD_DISPLAY_FORMATTER_STORE = CardDisplayFormatterStore(
+    _RUNTIME_DATA_DIR / "card_display_formatters.json"
+)
 _PRODUCT_NOTICE_STORE = ProductNoticeStore(_RUNTIME_DATA_DIR / "product_notices.json")
 _PRIVACY_STORE = PrivacyStore(_RUNTIME_DATA_DIR / "privacy.json")
 _TELEMETRY_STORE = TelemetryStore(_RUNTIME_DATA_DIR / "telemetry.sqlite3")
@@ -2014,6 +2023,11 @@ def _configure_dashboard_cache_handlers() -> None:
         validate_handler=_inspection_profile_validate_response,
         update_handler=_inspection_profile_update_response,
     )
+    _DASHBOARD_SERVER.configure_card_display_formatter_handlers(
+        query_handler=_card_display_formatter_query_response,
+        validate_handler=_card_display_formatter_validate_response,
+        update_handler=_card_display_formatter_update_response,
+    )
     _DASHBOARD_SERVER.configure_entity_action_handlers(
         card_handler=_card_action_response,
         note_handler=_note_action_response,
@@ -2405,11 +2419,15 @@ def _statistics_query_response(payload: dict) -> dict:
 
 
 def _search_query_response(payload: dict) -> dict:
-    return run_search_query_sync(mw, payload)
+    return run_search_query_sync(
+        mw, payload, formatter_store_provider=_CARD_DISPLAY_FORMATTER_STORE.read
+    )
 
 
 def _search_inspect_response(payload: dict) -> dict:
-    return run_search_inspect_sync(mw, payload)
+    return run_search_inspect_sync(
+        mw, payload, formatter_store_provider=_CARD_DISPLAY_FORMATTER_STORE.read
+    )
 
 
 def _triage_query_response(payload: dict) -> dict:
@@ -2418,6 +2436,7 @@ def _triage_query_response(payload: dict) -> dict:
         payload,
         signal_provider=_NOTIFICATION_STORE.list_active_card_signals,
         profile_store_provider=_INSPECTION_PROFILE_STORE.read,
+        formatter_store_provider=_CARD_DISPLAY_FORMATTER_STORE.read,
     )
 
 
@@ -2431,6 +2450,18 @@ def _inspection_profile_validate_response(payload: dict) -> dict:
 
 def _inspection_profile_update_response(payload: dict) -> dict:
     return run_inspection_profile_update_sync(mw, payload, _INSPECTION_PROFILE_STORE)
+
+
+def _card_display_formatter_query_response(payload: dict) -> dict:
+    return run_card_display_formatter_query_sync(payload, _CARD_DISPLAY_FORMATTER_STORE)
+
+
+def _card_display_formatter_validate_response(payload: dict) -> dict:
+    return run_card_display_formatter_validate_sync(payload, _CARD_DISPLAY_FORMATTER_STORE)
+
+
+def _card_display_formatter_update_response(payload: dict) -> dict:
+    return run_card_display_formatter_update_sync(payload, _CARD_DISPLAY_FORMATTER_STORE)
 
 
 def _card_action_response(payload: dict) -> dict:

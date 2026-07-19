@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0` Complete; `C1.5R.1` Complete; `C1.5R.2` Next, not started; `C1.6` blocked
+**Current status:** `C1.5R.0` Complete; `C1.5R.1` Complete; `C1.5R.2` Implemented, canonical non-Docker verification pending; `C1.5R.3` blocked; `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -77,7 +77,7 @@ Cards presentation, and the normal Inspection Profiles path.
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
 C1.5R.1 Canonical card display identity — Complete
-C1.5R.2 Declarative compact formatter runtime — Next, not started
+C1.5R.2 Declarative compact formatter runtime — Implemented, canonical non-Docker verification pending
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -117,10 +117,17 @@ Profiles redesign, or C1.6 actions.
 
 #### C1.5R.2 — Declarative compact formatter runtime
 
-**Status:** Next, not started
+**Status:** Implemented, canonical non-Docker verification pending
 
-Owns a bounded, local, declarative formatter contract and storage/runtime. It
-must not silently extend Inspection Profile v1 and cannot execute arbitrary code.
+Owns the independent strict schema v1, profile-local atomic store, exact/default/
+disabled resolver, safe ordered formatter token runtime, Search/Triage identity
+integration, token-protected query/validate/update API, strict TypeScript client,
+package entries and focused documentation/tests. Inspection Profile v1 remains
+unchanged and no arbitrary code or formatter UI is introduced.
+
+Completion still requires focused frontend, typecheck, package validation, the
+canonical non-Docker gate, clean tracked tree and push to `origin/core`. Until
+then C1.5R.3 is blocked.
 
 #### C1.5R.3 — Front/back preview semantics
 

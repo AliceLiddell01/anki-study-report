@@ -342,3 +342,48 @@ def test_execute_revalidates_even_payloads_with_the_complete_key_set():
     payload["filters"] = [{"type": "deck", "deckId": 3}]
     with pytest.raises(search.SearchValidationError):
         search.execute_search_query(col, payload)
+
+
+def test_formatter_resolver_changes_card_row_and_inspect_identity_without_wire_keys():
+    formatter_service = import_addon_module("card_display_formatter_service")
+    col = FakeCollection(ids=[1])
+    card = col.cards[1]
+    card.reviewer_html = '【<b>に</b>】<img src="感.gif"><img src="謝.gif">（<b>する</b>）'
+    formatter = {
+        "noteTypeId": "7", "noteTypeName": "Basic", "templateOrdinal": None,
+        "templateName": None, "storedState": "enabled", "inputSource": "reviewer_front",
+        "textMode": "preserve", "imageMode": "stem", "audioMode": "omit",
+        "maxLines": 1, "lineSeparator": " ", "maxCharacters": 240,
+        "updatedAt": "2026-07-19T00:00:00Z",
+    }
+    resolver = formatter_service.CardDisplayFormatterResolver.from_snapshot(
+        {"status": "available", "revision": 1, "formatters": [formatter]}
+    )
+    row = search.project_card_row(col, card, resolver)
+    details = search.project_card_details(col, card, resolver)
+    assert row["displayText"] == "【に】感謝（する）"
+    assert details["displayText"] == row["displayText"]
+    assert row["displaySource"] == "reviewer_front"
+    assert "formatterApplied" not in row
+    assert "formatterId" not in row
+    assert "primaryText" not in row
+
+
+def test_exact_disabled_formatter_preserves_canonical_identity():
+    formatter_service = import_addon_module("card_display_formatter_service")
+    col = FakeCollection(ids=[1])
+    card = col.cards[1]
+    card.reviewer_html = '【<b>に</b>】<img src="感.gif">（<b>する</b>）'
+    default = {
+        "noteTypeId": "7", "noteTypeName": "Basic", "templateOrdinal": None,
+        "templateName": None, "storedState": "enabled", "inputSource": "reviewer_front",
+        "textMode": "preserve", "imageMode": "stem", "audioMode": "omit",
+        "maxLines": 1, "lineSeparator": " ", "maxCharacters": 240,
+        "updatedAt": "2026-07-19T00:00:00Z",
+    }
+    disabled = {**default, "templateOrdinal": 0, "templateName": "Card 1", "storedState": "disabled"}
+    resolver = formatter_service.CardDisplayFormatterResolver.from_snapshot(
+        {"status": "available", "revision": 1, "formatters": [default, disabled]}
+    )
+    row = search.project_card_row(col, card, resolver)
+    assert row["displayText"] == "【に】（する）"

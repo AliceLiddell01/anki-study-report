@@ -79,5 +79,16 @@ def test_normal_query_requests_delegate_raw_v2_contract_without_double_normaliza
         "page": 1,
         "pageSize": 25,
     }
-    monkeypatch.setattr(metadata, "execute_search_query", lambda col, request: {"delegated": request})
-    assert metadata.execute_search_request(object(), raw) == {"delegated": raw}
+    formatter_resolver = object()
+    monkeypatch.setattr(
+        metadata,
+        "execute_search_query",
+        lambda col, request, resolver: {
+            "delegated": request,
+            "formatterResolver": resolver,
+        },
+    )
+    assert metadata.execute_search_request(object(), raw, formatter_resolver) == {
+        "delegated": raw,
+        "formatterResolver": formatter_resolver,
+    }

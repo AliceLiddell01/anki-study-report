@@ -2,23 +2,35 @@
 
 ## Status
 
-**Stage:** C1.5R.1 — Implemented, focused verification pending
+**Canonical baseline:** `C1.5R.1 — Complete`
+
+**Optional formatter layer:** `C1.5R.2 — Implemented, canonical non-Docker verification pending`
 
 **Branch:** `core`
 
-**Implementation:** `anki_study_report/card_display_identity.py`
+**Implementations:**
 
-**Public contracts:** Search schema v2, Triage schema v3
+```text
+anki_study_report/card_display_identity.py
+anki_study_report/card_display_formatter_store.py
+anki_study_report/card_display_formatter_service.py
+anki_study_report/card_display_formatter_runtime.py
+```
 
-C1.5R.1 replaces note-centric card labels with one backend-owned, bounded card
-identity across Search, Triage, and the current Cards surfaces. The implementation
-candidate is committed, but this stage is not Complete until the focused local
-verification contour passes.
+**Public contracts:** Search schema v2, Triage schema v3 — unchanged by R2.
 
-Recovery context: [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md).
-Implementation report: [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md).
+C1.5R.1 established one backend-owned exact-card identity across Search, Triage,
+and current Cards surfaces. C1.5R.2 adds an optional bounded declarative formatter
+above that projector. Missing, disabled, corrupt, unsupported, unavailable, or
+empty formatter output always returns to the completed R1 semantics.
 
-## Scope
+Contracts:
+
+- [`card-display-formatter-v1.md`](card-display-formatter-v1.md)
+- [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md)
+- [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md)
+
+## Shared exact-card identity
 
 The same compact identity is consumed by:
 
@@ -28,61 +40,68 @@ The same compact identity is consumed by:
 - Cards queue item;
 - Cards Inspector heading.
 
-Note-mode Search remains a note projection and keeps `primaryText`. C1.5R.1 does
-not implement the declarative formatter, front/back preview correction,
-candidate-source redesign, Cards inbox redesign, 1024 px drawer, Inspection
-Profiles redesign, or C1.6 actions.
+Note-mode Search remains a note projection and keeps `primaryText`. Card rows,
+card details, and Triage items have no card `primaryText` alias.
 
 ## Authoritative projector
 
-`project_card_display_identity(card)` owns exact-card compact identity. It does
-not scan the note sort field or arbitrary non-empty note fields.
-
-Source precedence:
+`project_card_display_identity(card, formatter=None)` owns one exact card.
+Without an active formatter it uses:
 
 1. native Browser question: `card.question(reload=True, browser=True)`;
 2. native reviewer front: `card.question(reload=True, browser=False)`;
 3. explicit `media_only` or `unavailable` state.
 
-C1.5R.2 may later add an exact declarative formatter above Browser Appearance.
-No formatter storage, schema, runtime, or UI exists in C1.5R.1.
+With an active formatter, only its declared `inputSource` is attempted first.
+A request-local resolver selects by exact `(noteTypeId, templateOrdinal)` with
+note-type default inheritance and exact disabled opt-out. Names, decks, fields,
+and fuzzy similarity never participate in binding.
 
-The projector never renders `card.answer()`, reads media files, loads remote
-resources, executes template JavaScript, or exposes raw renderer exceptions.
+A configured failure reuses already-rendered values and returns to the sequence
+above. Each source is rendered at most once per card projection. The projector
+never renders `card.answer()`.
 
-## Plain-text projection
+## Ordered compact tokenization
 
-The compact projection is intentionally not a generic HTML-to-text utility.
-It is line-aware and identity-specific:
+The parser emits only:
 
-- `[sound:...]` and `[anki:play:...]` are removed and count as media;
-- image/audio/video/source/picture elements count as media but contribute no
-  filename or URL;
-- script, style, iframe, object, embed, SVG, MathML, template, form, audio,
-  video, and picture contents are dropped;
-- `<br>` and block boundaries separate candidate lines;
-- inline nodes are concatenated without invented spaces;
-- entities are decoded and whitespace is collapsed inside each line;
-- the first meaningful line wins;
-- output is bounded to 240 characters with one terminal ellipsis;
-- malformed blocked markup fails closed.
+```text
+text
+line_break
+image
+audio
+```
 
-The exact media-heavy Japanese fixture therefore projects:
+Text and media token order is retained. Inline nodes concatenate without an
+invented separator; `<br>` and block boundaries create lines; entities are
+decoded; whitespace is collapsed only inside final lines. Script/style/iframe,
+object/embed, SVG/MathML, template/form and unsafe media container contents are
+dropped. Malformed blocked nesting fails closed.
+
+Canonical R1 projection omits media tokens and selects the first meaningful line.
+The exact media-heavy Japanese fixture therefore remains:
 
 ```text
 【に】（する）
 ```
 
-It never falls through to an unrelated sort-field value such as
-`「Существительное」`.
+An enabled reviewer-front formatter with `imageMode: stem` may produce:
+
+```text
+【に】感謝（する）
+```
+
+Safe media handling, policy enums, line selection and exact truncation are
+specified in [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
+No media file is opened or checked for existence.
 
 ## Wire contract
 
-Card identity is a flat exact object fragment:
+Card identity remains the same flat exact fragment:
 
 ```json
 {
-  "displayText": "【に】（する）",
+  "displayText": "【に】感謝（する）",
   "displaySource": "reviewer_front",
   "displayStatus": "available",
   "displayTruncated": false
@@ -103,67 +122,65 @@ available | media_only | unavailable
 
 Coherence rules:
 
-- `available`: non-empty text; source is Browser question or reviewer front;
-- `media_only`: empty text, no truncation; rendered source is retained;
+- `available`: non-empty bounded text and a rendered Browser/reviewer source;
+- `media_only`: empty text, no truncation, rendered source retained;
 - `unavailable`: empty text, source `none`, no truncation.
 
-No `primaryText` alias remains on card rows, card details, or Triage items.
-Unknown keys, old schemas, aliases, incoherent state/source/text combinations,
-and overlong text fail closed in the TypeScript parsers.
+Formatter state and configuration are not copied into Search/Triage wire data.
+There is no public `formatterApplied`, `formatterId`, alias, HTML, or filename
+metadata field.
 
-## Search schema v2
+## Search and Triage schemas
 
-Search query and inspect requests require exact `schemaVersion: 2`. Query and
-inspect responses also use schema v2.
+Search query and inspect remain exact schema v2. Search metadata remains its
+independent schema v1 variant. Triage remains exact schema v3.
 
-Card rows/details carry the four display fields and do not carry `primaryText`.
-Note rows/details keep `primaryText` and do not gain card display fields. Search
-metadata remains a separate schema v1 variant.
+`project_card_row()` serves normal Search, Search inspect, and exact-card
+resolution reused by Triage. Therefore one resolver and one backend identity path
+serve all card surfaces; Triage has no second formatter implementation.
 
-The same Python `project_card_row()` path serves normal Search, Search inspect,
-and exact-card resolution used by Triage.
-
-## Triage schema v3
-
-Triage requests and responses require exact `schemaVersion: 3`. Triage items
-carry the same four display fields and do not carry `primaryText`.
-
-Available exact cards copy the Search-owned display projection. Missing cards
-use the explicit unavailable identity. Triage does not reuse legacy
-`attention.frontPreview` or invent another fallback.
+Strict TypeScript parsers continue to reject old schemas, unknown keys, card
+aliases, malformed IDs, overlong text, and incoherent display state/source/text.
 
 ## UI behavior
 
-Search rows, Search Inspector, Cards queue, and Cards Inspector call one shared
-frontend presentation helper. Backend text is shown unchanged for `available`.
-The two explicit fallback states are localized:
+Backend text is displayed unchanged for `available`. The frontend localizes only
+explicit fallback states:
 
 | State | RU | EN |
 | --- | --- | --- |
 | `media_only` | Карточка только с медиа | Card with media only |
 | `unavailable` | Текст карточки недоступен | Card text unavailable |
 
-This stage changes identity only. The current Cards table/split workspace remains
-product-rejected historical C1.5 UI and is not accepted by this implementation.
+R2 adds no formatter route, page, hook, Settings navigation, form, live preview,
+or Cards redesign. Guided configuration belongs to C1.5R.6; preview semantics
+belong to C1.5R.3.
 
 ## Security and privacy
 
-The existing loopback/token boundary, sanitizer, validated media API, Shadow DOM
-preview, action allowlists, and frontend collection isolation remain unchanged.
-Compact identity is local and is not added to telemetry or normal logs. Public
-artifacts must not contain raw note dumps, media filenames, absolute paths,
-renderer exceptions, or tokens.
+The dashboard remains loopback-only and token-protected. Frontend never reads
+the collection. Compact identity and formatter configuration stay local and are
+not copied to telemetry or normal logs. Runtime executes no JavaScript, Python,
+SQL, shell, regex, selector, expression, callback, dynamic import, or subprocess.
 
-## Verification boundary
+No raw HTML, note field values, media contents, absolute paths, renderer
+exceptions, formatter filenames, generated `displayText`, or tokens are logged.
 
-Focused commands required before C1.5R.1 can become Complete:
+## Verification state
 
-```powershell
-python -m pytest -q tests/test_card_display_identity.py tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_triage_service.py tests/test_triage_runtime.py tests/test_dashboard_server.py
-cd web-dashboard
-pnpm exec vitest run src/lib/cardDisplayText.test.ts src/lib/searchApi.test.ts src/lib/triageApi.test.ts src/hooks/useCardsTriageWorkspace.test.tsx src/pages/SearchPage.test.tsx src/pages/SearchMetadataIntegration.test.tsx src/pages/CardsPage.test.tsx
-pnpm run typecheck
+C1.5R.1 focused verification is complete at its recorded tested implementation
+HEAD. R2 focused backend and isolated TypeScript production checks pass in the
+exact tracked-snapshot reconstruction, but completion still requires execution
+on the owner's local `core` checkout:
+
+```text
+focused Python
+focused Vitest
+pnpm typecheck
+canonical run_full_check.ps1 -SkipDocker
+package validation
+Git hygiene and push to origin/core
 ```
 
-Fast CI, Docker, real-Anki E2E, package validation, PR, merge, and release are not
-part of C1.5R.1 connector-only implementation.
+Until all required local gates pass, R2 remains `Implemented, canonical
+non-Docker verification pending`; R3 and C1.6 remain blocked.

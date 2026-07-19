@@ -44,7 +44,11 @@ def normalize_search_request(raw: object) -> dict[str, Any]:
     return {"kind": "metadata", "requestId": request_id}
 
 
-def execute_search_request(col: Any, raw: object) -> dict[str, Any]:
+def execute_search_request(
+    col: Any,
+    raw: object,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     """Execute metadata or delegate an untouched query to its owning validator."""
 
     if isinstance(raw, dict) and raw.get("kind") == "metadata":
@@ -52,7 +56,7 @@ def execute_search_request(col: Any, raw: object) -> dict[str, Any]:
     # execute_search_query owns query normalization. Passing its already-normalized
     # result back through the validator would turn decimal-string deck/note-type IDs
     # into integers and then reject them on the second pass.
-    return execute_search_query(col, raw)
+    return execute_search_query(col, raw, formatter_resolver)
 
 
 def execute_search_metadata(col: Any, request: dict[str, Any]) -> dict[str, Any]:

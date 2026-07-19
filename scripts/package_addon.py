@@ -37,6 +37,10 @@ REQUIRED_FILES = {
     "changelog.json",
     "telemetry_contract.json",
     "dashboard_server.py",
+    "card_display_formatter_store.py",
+    "card_display_formatter_service.py",
+    "card_display_formatter_runtime.py",
+    "schemas/card-display-formatter-v1.schema.json",
     "web_dashboard/index.html",
     "web_dashboard/manifest.json",
 }
@@ -160,6 +164,8 @@ def build_archive(output: Path = DEFAULT_OUTPUT) -> Path:
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         for path in files:
             archive.write(path, path.relative_to(ADDON_DIR).as_posix())
+        formatter_schema = ROOT / "schemas" / "card-display-formatter-v1.schema.json"
+        archive.write(formatter_schema, "schemas/card-display-formatter-v1.schema.json")
     return output
 
 

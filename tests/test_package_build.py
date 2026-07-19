@@ -19,6 +19,10 @@ REQUIRED_ARCHIVE_FILES = {
     "config.json",
     "changelog.json",
     "telemetry_contract.json",
+    "card_display_formatter_store.py",
+    "card_display_formatter_service.py",
+    "card_display_formatter_runtime.py",
+    "schemas/card-display-formatter-v1.schema.json",
     "web_dashboard/index.html",
 }
 
@@ -56,6 +60,10 @@ def write_minimal_archive(
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
         archive.writestr("dashboard_server.py", "")
+        archive.writestr("card_display_formatter_store.py", "")
+        archive.writestr("card_display_formatter_service.py", "")
+        archive.writestr("card_display_formatter_runtime.py", "")
+        archive.writestr("schemas/card-display-formatter-v1.schema.json", "{}")
         archive.writestr(
             "web_dashboard/index.html",
             '<!doctype html><html><head><link rel="stylesheet" href="/assets/app.css"></head>'
@@ -172,6 +180,10 @@ def write_split_archive(
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
         archive.writestr("dashboard_server.py", "")
+        archive.writestr("card_display_formatter_store.py", "")
+        archive.writestr("card_display_formatter_service.py", "")
+        archive.writestr("card_display_formatter_runtime.py", "")
+        archive.writestr("schemas/card-display-formatter-v1.schema.json", "{}")
         archive.writestr(
             "web_dashboard/index.html",
             '<!doctype html><link rel="stylesheet" href="/assets/app.css">'

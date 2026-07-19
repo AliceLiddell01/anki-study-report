@@ -151,6 +151,7 @@ counts/pagination, enums and display-state coherence. It rejects:
 
 ## Verification
 
-C1.5R.1 is currently **Implemented, focused verification pending**. Required
-focused commands are listed in `docs/card-display-identity.md`. Fast CI, Docker
-and real-Anki E2E are outside this stage.
+C1.5R.1 is **Complete**. C1.5R.2 adds an optional request-local declarative
+formatter resolver while Search query/inspect remains exact schema v2 and
+metadata remains v1. R2 completion still requires the owner-checkout focused
+frontend, package, canonical non-Docker and Git hygiene gates.

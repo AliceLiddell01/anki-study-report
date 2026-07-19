@@ -20,6 +20,7 @@ production code/tests
 - [c1-5-cards-workspace.md](core/c1-5-cards-workspace.md)
 - [c1-5r-0-recovery-baseline.md](core/c1-5r-0-recovery-baseline.md)
 - [c1-5r-1-canonical-card-display-identity.md](core/c1-5r-1-canonical-card-display-identity.md)
+- [c1-5r-2-declarative-compact-formatter-runtime.md](core/c1-5r-2-declarative-compact-formatter-runtime.md)
 
 ## Product reports
 

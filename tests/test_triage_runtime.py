@@ -116,3 +116,27 @@ def test_failure_and_timeout_are_generic_and_typed(monkeypatch):
     FakeQueryOp.behavior = "timeout"
     result = runtime.run_triage_query_sync(mw, payload(), signal_provider=lambda: [], timeout_seconds=0.001)
     assert result == {"ok": False, "error": "triage_timeout", "message": "The triage request did not finish in time."}
+
+
+def test_formatter_store_is_read_once_and_passed_to_triage(monkeypatch):
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
+    reads = []
+    seen = []
+    monkeypatch.setattr(
+        runtime,
+        "execute_triage_query",
+        lambda col, value, **kwargs: seen.append(kwargs["formatter_resolver"]) or {"schemaVersion": 3, "items": []},
+    )
+    FakeQueryOp.behavior = "success"
+    result = runtime.run_triage_query_sync(
+        mw,
+        payload(),
+        signal_provider=lambda: [],
+        profile_store_provider=lambda: {"status": "empty", "revision": 0, "profiles": []},
+        formatter_store_provider=lambda: reads.append(True) or {"status": "empty", "revision": 0, "formatters": []},
+    )
+    assert result["ok"] is True
+    assert reads == [True]
+    assert len(seen) == 1

@@ -335,3 +335,22 @@ names, IDs, queries, secrets и raw diagnostics описан в
 token, принимает только `{}` и возвращает bounded codes без remote endpoint,
 credential или arbitrary exception. Timer разрешает active-profile client в
 момент tick; enrollment retry metadata хранится только в per-profile SQLite.
+
+## Declarative card display formatter boundary
+
+The formatter document is independent profile-local data under `addon_data`.
+Root and nested objects reject unknown keys; future schemas are preserved and
+writes fail closed; corrupt v1 documents are quarantined. Query/validate/update
+are loopback/token-protected, POST-only, JSON-only and capped at 64 KiB.
+
+Allowlisted policy fields select only Browser question or reviewer front and
+fixed text/image/audio modes. There is no JavaScript, Python, SQL, shell, regex,
+selector, expression, callback, import, module, path, URL, template HTML/CSS,
+remote endpoint, `eval`, `exec`, subprocess or plugin callback capability.
+
+Media handling accepts only bounded flat local filename tokens after entity
+decoding. Runtime never opens media, checks existence, resolves a filesystem
+path, or performs a remote load. Unsafe references become unnamed tokens; only
+a fixed marker may be emitted. Store/API errors and normal logs contain generic
+operation/error codes and exception type, not paths, formatter content,
+filenames, generated display text, raw note data, or dashboard token.

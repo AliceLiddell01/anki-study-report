@@ -40,7 +40,7 @@ branch for current core work: core
 Core C1: In progress
 C1.5R.0: Complete
 C1.5R.1: Complete
-C1.5R.2: Next, not started
+C1.5R.2: Implemented, canonical non-Docker verification pending
 C1.6: Blocked, not started
 ```
 
@@ -80,7 +80,7 @@ acceptance evidence for C1.5R.
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
 C1.5R.1 Canonical card display identity — Complete
-C1.5R.2 Declarative compact formatter runtime — Next, not started
+C1.5R.2 Declarative compact formatter runtime — Implemented, canonical non-Docker verification pending
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -88,8 +88,9 @@ C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-C1.5R.1 is closed. Do not restart its audit without new evidence. The next
-Core increment is C1.5R.2, which remains not started.
+C1.5R.1 is closed. R2 implementation exists on the current candidate patch, but
+its owner-checkout frontend/package/canonical gates and push remain pending. Do
+not begin R3 or C1.6 before that closeout.
 
 ## C1.5R.1 implementation
 
@@ -223,16 +224,60 @@ Normal workflow becomes guided Basic configuration. Strict runtime editor moves
 behind Advanced. Deterministic suggestion becomes a ready unsaved draft
 automatically. Inspection Profile v1 must not silently gain formatter fields.
 
-## Exact next action
+## C1.5R.2 implementation candidate
+
+Independent local contract:
 
 ```text
-C1.5R.2 — Declarative compact formatter runtime
+schemas/card-display-formatter-v1.schema.json
+anki_study_report/card_display_formatter_store.py
+anki_study_report/card_display_formatter_service.py
+anki_study_report/card_display_formatter_runtime.py
+web-dashboard/src/types/cardDisplayFormatters.ts
+web-dashboard/src/lib/cardDisplayFormattersApi.ts
 ```
 
-C1.5R.2 is next but not started. It owns a bounded local declarative formatter
-contract and storage/runtime. It must not execute arbitrary code, must not
-silently extend Inspection Profile v1, and must preserve the canonical compact
-identity fallback implemented in C1.5R.1.
+The profile-local `card_display_formatters.json` store is separate from
+Inspection Profile v1. It is strict/atomic/revisioned, quarantines corrupt v1,
+preserves future schemas, and resolves exact template → note-type default → R1
+fallback. Exact disabled entries suppress inheritance.
+
+The compact parser preserves ordered text/line/image/audio tokens and supports
+only fixed allowlisted modes. Safe flat media filename/stem extraction never
+reads files or performs remote loads. Search reads one snapshot per request;
+Triage reads one snapshot and reuses Search card resolution. Search v2 and
+Triage v3 wire shapes remain unchanged.
+
+Local API:
+
+```text
+POST /api/card-display-formatters/query
+POST /api/card-display-formatters/validate
+POST /api/card-display-formatters/update
+```
+
+R2 includes strict frontend types/parser/client but no UI. Exact expected output:
+
+```text
+default:    【に】（する）
+configured: 【に】感謝（する）
+Programming: unchanged
+```
+
+## Exact next action
+
+Apply the reviewed R2 patch to the owner's clean tracked `core` checkout, run the
+focused Python/Vitest/typecheck/package checks and
+`run_full_check.ps1 -SkipDocker`, then record exact evidence, commit logical
+changes and push only to `origin/core`.
+
+Until every required gate passes:
+
+```text
+C1.5R.2 — Implemented, canonical non-Docker verification pending
+C1.5R.3 — Blocked
+C1.6 — Blocked
+```
 
 Do not absorb preview semantics, candidate-source redesign, Cards inbox
 redesign, guided Profiles UX, integrated C1.5R acceptance or C1.6 into R2.

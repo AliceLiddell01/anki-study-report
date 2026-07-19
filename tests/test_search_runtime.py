@@ -109,3 +109,46 @@ def test_unavailable_and_timeout_paths_are_typed(monkeypatch):
     result = runtime.run_search_query_sync(mw, payload(), timeout_seconds=0.001)
     assert result["error"] == "search_timeout"
     assert result["requestId"] == "runtime-1"
+
+
+def test_formatter_store_is_read_once_and_resolver_is_passed(monkeypatch):
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
+    reads = []
+    seen = []
+    snapshot = {"status": "available", "revision": 1, "formatters": []}
+    monkeypatch.setattr(
+        runtime,
+        "execute_search_request",
+        lambda col, value, resolver: seen.append(resolver) or {"mode": value["mode"], "items": []},
+    )
+    FakeQueryOp.behavior = "success"
+    result = runtime.run_search_query_sync(
+        mw,
+        payload(),
+        formatter_store_provider=lambda: reads.append(True) or snapshot,
+    )
+    assert result["ok"] is True
+    assert reads == [True]
+    assert len(seen) == 1
+
+
+def test_formatter_store_failure_is_generic_and_does_not_break_search(monkeypatch):
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
+    logged = []
+    monkeypatch.setattr(runtime, "log_event", lambda *args, **kwargs: logged.append((args, kwargs)))
+    monkeypatch.setattr(
+        runtime,
+        "execute_search_request",
+        lambda col, value, resolver: {"mode": value["mode"], "items": []},
+    )
+    result = runtime.run_search_query_sync(
+        mw,
+        payload(),
+        formatter_store_provider=lambda: (_ for _ in ()).throw(RuntimeError("private path")),
+    )
+    assert result["ok"] is True
+    assert "private" not in repr(logged)

@@ -75,9 +75,17 @@ version.py
 manifest.json
 config.json
 dashboard_server.py
+card_display_formatter_store.py
+card_display_formatter_service.py
+card_display_formatter_runtime.py
+schemas/card-display-formatter-v1.schema.json
 web_dashboard/index.html
 web_dashboard/manifest.json
 ```
+
+Formatter schema lives at repository root during development and is copied into
+the flat add-on archive as `schemas/card-display-formatter-v1.schema.json`.
+Production modules remain under the flat add-on root.
 
 Также должны быть JS и CSS assets под:
 
