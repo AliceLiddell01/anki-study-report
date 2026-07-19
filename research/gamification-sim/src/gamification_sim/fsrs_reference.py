@@ -11,7 +11,12 @@ from typing import Any
 from .canonical_json import canonical_digest
 from .episode_reward import evaluate_episode
 from .models import ConfidenceLevel, MemoryContext, Outcome, ReviewEpisodeInput
-from .workspace import cargo_environment, cargo_run_command
+from .workspace import (
+    ResearchWorkspace,
+    cargo_environment,
+    cargo_run_command,
+    resolve_research_workspace,
+)
 from .strict_json import load_strict_json, loads_strict
 
 
@@ -55,6 +60,30 @@ def _validate_contract(payload: Any, path: Path) -> None:
             previous = review["day"]
         if trajectory["mode"] == "no_fsrs" and trajectory["reviews"]:
             raise ValueError(f"{path}: no_fsrs fallback must not invent FSRS reviews")
+
+
+def _resolve_contract_path(contract_path: Path, workspace: ResearchWorkspace) -> Path:
+    candidate = contract_path.expanduser()
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    candidate = candidate.absolute()
+    try:
+        relative = candidate.relative_to(workspace.root)
+    except ValueError as exc:
+        raise ValueError(
+            f"FSRS contract must be inside the research workspace: {contract_path}"
+        ) from exc
+
+    resolved = workspace.path(relative)
+    if not resolved.is_file():
+        raise ValueError(f"FSRS contract does not exist: {resolved}")
+
+    contracts_root = workspace.contracts.resolve(strict=True)
+    if resolved != contracts_root and contracts_root not in resolved.parents:
+        raise ValueError(
+            f"FSRS contract must be inside the workspace contracts directory: {resolved}"
+        )
+    return resolved
 
 
 def _python_reference(payload: dict[str, Any]) -> dict[str, Any]:
@@ -129,6 +158,8 @@ def _python_reference(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _rust_reference(package_root: Path, contract_path: Path) -> dict[str, Any]:
+    if not contract_path.is_absolute():
+        raise ValueError("FSRS contract path must be absolute before Rust handoff")
     command = cargo_run_command(package_root, "fsrs-reference", str(contract_path))
     process = subprocess.run(
         command, cwd=package_root, text=True, capture_output=True, check=False,
@@ -235,10 +266,12 @@ def _reward_integration() -> dict[str, Any]:
 
 
 def verify_fsrs_reference(contract_path: Path, package_root: Path) -> dict[str, Any]:
-    payload = load_strict_json(contract_path)
-    _validate_contract(payload, contract_path)
+    workspace = resolve_research_workspace(package_root)
+    resolved_contract = _resolve_contract_path(contract_path, workspace)
+    payload = load_strict_json(resolved_contract)
+    _validate_contract(payload, resolved_contract)
     python = _python_reference(payload)
-    rust = _rust_reference(package_root, contract_path)
+    rust = _rust_reference(workspace.root, resolved_contract)
     comparison = _compare_references(python, rust)
     if comparison["state_mismatches"]:
         raise ValueError(f"FSRS state mismatch: {comparison['state_mismatches'][0]}")
