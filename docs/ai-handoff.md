@@ -39,8 +39,8 @@ is the mandatory core path.
 branch for current core work: core
 Core C1: In progress
 C1.5R.0: Complete
-C1.5R.1: Implemented, focused verification pending
-C1.5R.2: Blocked
+C1.5R.1: Complete
+C1.5R.2: Next, not started
 C1.6: Blocked, not started
 ```
 
@@ -79,8 +79,8 @@ acceptance evidence for C1.5R.
 
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Implemented, focused verification pending
-C1.5R.2 Declarative compact formatter runtime — Blocked
+C1.5R.1 Canonical card display identity — Complete
+C1.5R.2 Declarative compact formatter runtime — Next, not started
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -88,8 +88,8 @@ C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-Do not restart the C1.5R audit and do not start C1.5R.2 until the focused R1
-verification contour passes.
+C1.5R.1 is closed. Do not restart its audit without new evidence. The next
+Core increment is C1.5R.2, which remains not started.
 
 ## C1.5R.1 implementation
 
@@ -151,6 +151,44 @@ EN: Card with media only | Card text unavailable
 The current Cards table/split UI remains product-rejected historical C1.5 UI.
 C1.5R.1 did not redesign it.
 
+## C1.5R.1 focused verification closeout
+
+```text
+tested implementation HEAD:
+a46116e43756eceb3820f4eca76b28645a54a3ff
+
+branch:
+core
+
+origin/core synchronization:
+0 behind / 0 ahead
+
+origin/master divergence:
+0 behind / 71 ahead
+```
+
+Exact-HEAD evidence:
+
+```text
+Python compile: PASS
+Focused Python: 85 passed, 1 environment-only cache warning
+Focused Vitest: 8 files, 54 tests passed
+TypeScript typecheck: PASS
+Search Safe Actions regression contour: PASS
+Git hygiene: PASS
+```
+
+The first typecheck found a test-only fetch-mock typing defect. No production
+code changed during verification. The correction touched three frontend test
+files and was committed as:
+
+```text
+a46116e43756eceb3820f4eca76b28645a54a3ff — test: type fetch mocks for strict contract checks
+```
+
+Fast CI, Docker, real-Anki E2E, package/build verification and owner product
+acceptance were not run in C1.5R.1V.
+
 ## Accepted later-stage decisions
 
 ### Preview semantics — C1.5R.3
@@ -187,26 +225,25 @@ automatically. Inspection Profile v1 must not silently gain formatter fields.
 
 ## Exact next action
 
-Run the focused C1.5R.1 verification contour from
-[`card-display-identity.md`](card-display-identity.md):
-
-```powershell
-python -m pytest -q tests/test_card_display_identity.py tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_triage_service.py tests/test_triage_runtime.py tests/test_dashboard_server.py
-cd web-dashboard
-pnpm exec vitest run src/lib/cardDisplayText.test.ts src/lib/searchApi.test.ts src/lib/triageApi.test.ts src/hooks/useCardsTriageWorkspace.test.tsx src/pages/SearchPage.test.tsx src/pages/SearchMetadataIntegration.test.tsx src/pages/CardsPage.test.tsx
-pnpm run typecheck
+```text
+C1.5R.2 — Declarative compact formatter runtime
 ```
 
-Until those checks pass, do not mark C1.5R.1 Complete and do not begin C1.5R.2.
+C1.5R.2 is next but not started. It owns a bounded local declarative formatter
+contract and storage/runtime. It must not execute arbitrary code, must not
+silently extend Inspection Profile v1, and must preserve the canonical compact
+identity fallback implemented in C1.5R.1.
+
+Do not absorb preview semantics, candidate-source redesign, Cards inbox
+redesign, guided Profiles UX, integrated C1.5R acceptance or C1.6 into R2.
 
 ## Verification boundary
 
 Use [`test-matrix.md`](test-matrix.md) and
 [`verification-run-policy.md`](verification-run-policy.md).
 
-Current connector work did not run Fast CI, Docker, real-Anki E2E, package
-validation, full non-Docker check or release verification. Do not claim those
-checks. Heavy real-Anki E2E remains an integration gate, not a development loop.
+C1.5R.1V did not run Fast CI, Docker, real-Anki E2E, package validation,
+full non-Docker check or release verification. Do not claim those checks. Heavy real-Anki E2E remains an integration gate, not a development loop.
 
 ## Technical invariants
 

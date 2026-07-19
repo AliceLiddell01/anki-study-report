@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0` Complete; `C1.5R.1` Implemented, focused verification pending; `C1.5R.2` and `C1.6` blocked
+**Current status:** `C1.5R.0` Complete; `C1.5R.1` Complete; `C1.5R.2` Next, not started; `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -76,8 +76,8 @@ Cards presentation, and the normal Inspection Profiles path.
 
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Implemented, focused verification pending
-C1.5R.2 Declarative compact formatter runtime — Blocked
+C1.5R.1 Canonical card display identity — Complete
+C1.5R.2 Declarative compact formatter runtime — Next, not started
 C1.5R.3 Front/back preview semantics — Not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
@@ -95,7 +95,7 @@ changes no production code or public schema and runs no heavy gate.
 
 #### C1.5R.1 — Canonical card display identity
 
-**Status:** Implemented, focused verification pending
+**Status:** Complete
 
 Owns one backend-projected compact identity shared by Search card rows/details,
 Triage, Cards queue, and Cards Inspector heading. It removes unrelated-field
@@ -103,9 +103,11 @@ fallback and introduces Search query/inspect schema v2 plus Triage schema v3.
 Search metadata remains v1. Card `primaryText` aliases are removed while note
 mode retains note `primaryText`.
 
-The implementation candidate, strict parsers, RU/EN fallback states, focused
-tests and contract docs are committed. GitHub connector execution did not run
-the focused Python/Vitest/typecheck contour, so this stage is not Complete.
+The implementation, strict parsers, RU/EN fallback states, focused tests and
+contract docs are committed. Exact-HEAD verification passed: Python compile,
+85 focused Python tests, 54 focused Vitest tests and TypeScript typecheck.
+The only discovered defect was test-only fetch-mock typing and was corrected
+in `a46116e43756eceb3820f4eca76b28645a54a3ff`.
 Implementation report:
 [`reports/core/c1-5r-1-canonical-card-display-identity.md`](../../reports/core/c1-5r-1-canonical-card-display-identity.md).
 
@@ -115,7 +117,7 @@ Profiles redesign, or C1.6 actions.
 
 #### C1.5R.2 — Declarative compact formatter runtime
 
-**Status:** Blocked by C1.5R.1 focused verification
+**Status:** Next, not started
 
 Owns a bounded, local, declarative formatter contract and storage/runtime. It
 must not silently extend Inspection Profile v1 and cannot execute arbitrary code.

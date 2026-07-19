@@ -6,9 +6,11 @@
 
 **Baseline:** `219fe515ef58e55bc3b8866b4ec4832148126df3`
 
-**Implementation/docs head before this report:** `a3f5b515ebc8c313d0806d7e7bcedb8bad16b2c3`
+**Tested implementation HEAD:** `a46116e43756eceb3820f4eca76b28645a54a3ff`
 
-**Status:** Implemented, focused verification pending
+**Documentation closeout HEAD:** recorded by the Markdown-only closeout commit
+
+**Status:** Complete
 
 ## Purpose
 
@@ -17,8 +19,8 @@ stages. One exact-card backend projector now supplies Search, Triage and current
 Cards surfaces. Arbitrary note sort/first-non-empty fields are no longer used as
 card identity.
 
-This report is implementation evidence, not stage completion or owner product
-acceptance.
+This report is the focused verification closeout for C1.5R.1. It does not
+constitute owner product acceptance for the complete C1.5R remediation.
 
 ## Scope completed
 
@@ -160,6 +162,7 @@ web-dashboard/src/hooks/useCardsTriageWorkspace.test.tsx
 web-dashboard/src/pages/SearchPage.test.tsx
 web-dashboard/src/pages/SearchMetadataIntegration.test.tsx
 web-dashboard/src/pages/CardsPage.test.tsx
+web-dashboard/src/pages/SearchPageActions.test.tsx
 ```
 
 Covered behavior includes Browser/reviewer precedence, media-only/unavailable
@@ -183,57 +186,175 @@ roadmap/core/README.md
 
 ## Verification performed
 
-### Repository review
-
-- branch baseline confirmed before implementation;
-- changes restricted to `core`;
-- backend, frontend types/parsers, focused tests and docs updated together;
-- Search metadata remains v1;
-- current Cards layout was not redesigned;
-- no formatter, preview-side, candidate-source, Profiles or C1.6 implementation
-  was added;
-- compare against the C1.5R.0 baseline showed the branch ahead with no rebase or
-  merge from `master`.
-
-### Preliminary isolated check
-
-An isolated local reconstruction of the Python projector/Search/Triage focused
-subset reported:
+### Tested implementation
 
 ```text
-74 passed
+branch: core
+tested implementation HEAD: a46116e43756eceb3820f4eca76b28645a54a3ff
+origin/core synchronization: 0 behind / 0 ahead
+origin/master divergence: 0 behind / 71 ahead
+open pull requests from core: none
 ```
 
-This was not an exact-final-branch verification run and does not include the
-final HTTP file, frontend tests or typecheck. It is therefore not accepted as
-the C1.5R.1 completion gate.
+The focused contour was executed on the exact tested implementation HEAD after
+the only verification defect had been corrected and pushed.
 
-## Required verification still pending
-
-Exact final branch checks:
+### Python compile
 
 ```powershell
-python -m pytest -q tests/test_card_display_identity.py tests/test_search_service.py tests/test_search_metadata.py tests/test_search_runtime.py tests/test_triage_service.py tests/test_triage_runtime.py tests/test_dashboard_server.py
-cd web-dashboard
-pnpm exec vitest run src/lib/cardDisplayText.test.ts src/lib/searchApi.test.ts src/lib/triageApi.test.ts src/hooks/useCardsTriageWorkspace.test.tsx src/pages/SearchPage.test.tsx src/pages/SearchMetadataIntegration.test.tsx src/pages/CardsPage.test.tsx
+node scripts/run_python.mjs -m compileall -q anki_study_report
+```
+
+Result:
+
+```text
+exit code: 0
+duration: 2.75 s
+remaining __pycache__ / .pyc / .pyo: 0
+```
+
+### Focused Python
+
+```powershell
+node scripts/run_python.mjs -m pytest -q `
+  tests/test_card_display_identity.py `
+  tests/test_search_service.py `
+  tests/test_search_metadata.py `
+  tests/test_search_runtime.py `
+  tests/test_triage_service.py `
+  tests/test_triage_runtime.py `
+  tests/test_dashboard_server.py
+```
+
+Result on the tested implementation HEAD:
+
+```text
+85 passed
+0 failed
+1 warning
+pytest duration: 10.83 s
+command duration: 12.69 s
+exit code: 0
+```
+
+The warning was an environment-only `PytestCacheWarning`: Windows denied
+creation of `.pytest_cache`. Test execution and exit status were unaffected,
+and no cache artifact entered Git.
+
+### Focused frontend Vitest
+
+```powershell
+pnpm exec vitest run `
+  src/lib/cardDisplayText.test.ts `
+  src/lib/searchApi.test.ts `
+  src/lib/triageApi.test.ts `
+  src/hooks/useCardsTriageWorkspace.test.tsx `
+  src/pages/SearchPage.test.tsx `
+  src/pages/SearchMetadataIntegration.test.tsx `
+  src/pages/CardsPage.test.tsx `
+  src/pages/SearchPageActions.test.tsx
+```
+
+Result on the tested implementation HEAD:
+
+```text
+8 test files passed
+54 tests passed
+0 failed
+Vitest duration: 3.60 s
+command duration: 7.29 s
+exit code: 0
+```
+
+`SearchPageActions.test.tsx` passed and retained pagination, cross-page
+selection, the 200-item cap, action refresh, duplicate-submit protection and
+the remaining Search Safe Actions regressions required by this closeout.
+
+### TypeScript typecheck
+
+```powershell
 pnpm run typecheck
 ```
 
-Not run or not accepted as evidence:
+Result on the tested implementation HEAD:
 
 ```text
-exact-final-HEAD focused Python contour
-focused Vitest contour
-TypeScript typecheck
-Fast CI
-full non-Docker check
+tsc --noEmit
+0 errors
+duration: 10.60 s
+exit code: 0
+```
+
+### Verification defect and fix
+
+The first typecheck on implementation candidate
+`52c03c340c7a98b72d869ea42d6a9a46d56233e7` found 12 TypeScript errors in
+three test files. Runtime tests were green; the mocks had inferred zero- or
+one-argument tuples while the assertions inspected the optional second
+`RequestInit` argument.
+
+The fix changed no production behavior. It typed the affected mocks as
+`typeof fetch` in:
+
+```text
+web-dashboard/src/lib/searchApi.test.ts
+web-dashboard/src/lib/triageApi.test.ts
+web-dashboard/src/pages/SearchPage.test.tsx
+```
+
+Fix commit:
+
+```text
+a46116e43756eceb3820f4eca76b28645a54a3ff — test: type fetch mocks for strict contract checks
+```
+
+After the fix:
+
+```text
+affected narrow Vitest: 3 files / 39 tests passed
+full focused Python: 85 passed
+full focused Vitest: 8 files / 54 tests passed
+typecheck: passed
+```
+
+No further verification defects were found.
+
+### Git hygiene
+
+```text
+tracked working-tree changes before closeout: 0
+staged changes before closeout: 0
+prohibited tracked artifacts: 0
+git diff --check: passed
+merge in progress: no
+rebase in progress: no
+cherry-pick in progress: no
+```
+
+Two unrelated untracked Gamification helper files were preserved and excluded:
+
+```text
+g0_6a_run.ps1
+g0_6a_tool.py
+```
+
+### Deliberately not run
+
+```text
+full Python suite
+full frontend suite
+frontend build
 package validation/build
+run_full_check.ps1 -SkipDocker
+Fast CI
 Docker
 real-Anki E2E
-PR/merge/rebase
-release/deployment/AnkiWeb publication
+release verification
 owner product acceptance
 ```
+
+These were outside the focused C1.5R.1V verification policy. Heavy integrated
+verification remains C1.5R.7 work.
 
 ## Scope explicitly not implemented
 
@@ -257,10 +378,12 @@ profile data, tokens and E2E outputs were not committed.
 
 ```text
 C1.5R.0 — Complete
-C1.5R.1 — Implemented, focused verification pending
-C1.5R.2 — Blocked
+C1.5R.1 — Complete
+C1.5R.2 — Next, not started
+C1.5R.3–R.7 — Not started
 C1.6 — Blocked
 Core C1 — In progress
 ```
 
-The exact next action is focused C1.5R.1 verification, not C1.5R.2.
+The exact next Core increment is C1.5R.2. It was not started during this
+closeout.

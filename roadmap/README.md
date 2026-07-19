@@ -33,8 +33,8 @@ Current core status:
 C1.5 technical implementation evidence — retained historically
 C1.5 owner product acceptance — withdrawn
 C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Implemented, focused verification pending
-C1.5R.2 Declarative compact formatter runtime — Blocked
+C1.5R.1 Canonical card display identity — Complete
+C1.5R.2 Declarative compact formatter runtime — Next, not started
 C1.6 — Blocked, not started
 Core C1 — In progress
 ```
@@ -54,7 +54,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.1` implemented; focused verification pending; later remediation blocked | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.1` Complete; `C1.5R.2` Next, not started; `C1.6` blocked | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -68,7 +68,7 @@ Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
                            │
-                           ├─ C1.5R.1 verification must pass before C1.5R.2
+                           ├─ C1.5R.2 is the next Core increment
                            ├─ all C1.5R stages must finish before C1.6
                            ├─ owner product acceptance is a separate C1.5R gate
                            └─ does not wait for G/O/I/E
