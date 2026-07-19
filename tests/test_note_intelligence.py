@@ -106,7 +106,7 @@ def test_preview_uses_qfmt_for_front_and_does_not_mix_afmt_only_fields():
     assert "глагол" not in preview["frontText"]
 
 
-def test_rendered_preview_uses_front_template_and_front_media_only():
+def test_rendered_preview_uses_front_and_answer_templates_and_media_union():
     note_intelligence = fresh_import_addon_module("note_intelligence")
     rendered = note_intelligence.build_rendered_preview(
         model(
@@ -138,6 +138,7 @@ def test_rendered_preview_uses_front_template_and_front_media_only():
     assert rendered["mediaRefs"] == [
         {"name": "front.gif", "type": "image", "url": "/api/media?name=front.gif"},
         {"name": "front.mp3", "type": "audio", "url": "/api/media?name=front.mp3"},
+        {"name": "answer.mp3", "type": "audio", "url": "/api/media?name=answer.mp3"},
     ]
 
 
@@ -207,10 +208,12 @@ def test_native_rendered_preview_uses_card_question_answer_and_sanitizer():
         id = 123
         ord = 1
 
-        def question(self, **_kwargs):
+        def question(self, *, reload=False, browser=True):
+            assert reload is True
+            assert browser is False
             return '<script>alert(1)</script><span class="word-focus" style="color: red; position:absolute">要望</span><img src="要.gif">'
 
-        def answer(self, **_kwargs):
+        def answer(self):
             return '[sound:要望.mp3]<span onclick="bad()">answer</span>'
 
     rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=123, card_ord=1)
@@ -254,7 +257,9 @@ def test_native_rendered_preview_replaces_anki_av_markers_in_place():
         id = 456
         ord = 0
 
-        def render_output(self, **_kwargs):
+        def render_output(self, *, reload=False, browser=True):
+            assert reload is True
+            assert browser is False
             return FakeRenderOutput()
 
     rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=456)
@@ -291,7 +296,9 @@ def test_native_rendered_preview_removes_unmatched_anki_av_markers():
             return "[anki:play:a:0]<span>back</span>"
 
     class FakeCard:
-        def render_output(self, **_kwargs):
+        def render_output(self, *, reload=False, browser=True):
+            assert reload is True
+            assert browser is False
             return FakeRenderOutput()
 
     rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=789)
@@ -342,3 +349,76 @@ def test_missing_pitch_and_example_require_existing_role_fields():
     assert "missing_example" not in note_intelligence.missing_fields_for_profile(without_pitch, "\x1f".join(["語", "word"]))
     assert note_intelligence.missing_fields_for_profile(with_pitch, "\x1f".join(["語", "word", "", ""])) == ["missing_example", "missing_pitch"]
     assert note_intelligence.missing_fields_for_profile(programming, "\x1f".join(["Q", "A"])) == []
+
+def test_native_full_preview_uses_reviewer_context_once():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    calls = []
+
+    class FakeOutput:
+        question_text = "<div>front-only</div>"
+        answer_text = "<div>front-only</div><hr><div>answer-only</div>"
+        question_av_tags = []
+        answer_av_tags = []
+        css = ".card { color: red; }"
+
+    class FakeCard:
+        id = 901
+        ord = 0
+
+        def render_output(self, *, reload=False, browser=True):
+            calls.append({"reload": reload, "browser": browser})
+            if browser:
+                raise AssertionError("full preview must not use Browser Appearance")
+            return FakeOutput()
+
+    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=901)
+
+    assert reason is None
+    assert calls == [{"reload": True, "browser": False}]
+    assert "front-only" in rendered["frontHtml"]
+    assert "answer-only" not in rendered["frontHtml"]
+    assert "front-only" in rendered["backHtml"]
+    assert "answer-only" in rendered["backHtml"]
+    assert rendered["css"] == ".card { color: red; }"
+
+
+def test_native_question_answer_fallback_uses_reviewer_signatures():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    calls = []
+
+    class FakeCard:
+        def question(self, *, reload=False, browser=True):
+            calls.append(("question", reload, browser))
+            if browser:
+                raise AssertionError("reviewer question expected")
+            return "<div>front</div>"
+
+        def answer(self):
+            calls.append(("answer",))
+            return "<div>back</div>"
+
+    rendered, reason = note_intelligence.render_card_preview_native(FakeCard(), card_id=902)
+
+    assert reason is None
+    assert calls == [("question", True, False), ("answer",)]
+    assert rendered["frontHtml"] == "<div>front</div>"
+    assert rendered["backHtml"] == "<div>back</div>"
+
+
+def test_template_fallback_collects_front_and_answer_media_once():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    rendered = note_intelligence.build_rendered_preview(
+        model(
+            "Basic",
+            ["Front", "Back"],
+            [{"ord": 0, "name": "Card", "qfmt": '<img src="shared.gif">[sound:q.mp3]{{Front}}', "afmt": '{{FrontSide}}<hr><img src="answer.gif">[sound:a.mp3]{{Back}}'}],
+        ),
+        "\x1f".join(["front", "back"]),
+    )
+
+    assert rendered["mediaRefs"] == [
+        {"name": "shared.gif", "type": "image", "url": "/api/media?name=shared.gif"},
+        {"name": "q.mp3", "type": "audio", "url": "/api/media?name=q.mp3"},
+        {"name": "answer.gif", "type": "image", "url": "/api/media?name=answer.gif"},
+        {"name": "a.mp3", "type": "audio", "url": "/api/media?name=a.mp3"},
+    ]

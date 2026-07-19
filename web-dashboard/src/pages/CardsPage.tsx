@@ -23,6 +23,10 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   const [textFilter, setTextFilter] = useState("");
   const [expanded, setExpanded] = useState(false);
 
+  useEffect(() => {
+    setExpanded(false);
+  }, [workspace.activeId]);
+
   const allItems = workspace.response?.items ?? [];
   const decks = useMemo(() => [...new Set(allItems.map((item) => item.deck.name).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [allItems]);
   const visibleItems = useMemo(() => {
@@ -79,7 +83,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       <Inspector workspace={workspace} onExpand={() => setExpanded(true)} />
     </div>
 
-    {expanded && workspace.inspectResponse ? <AccessibleModal title={t("preview.expandedTitle")} closeLabel={t("preview.close")} onRequestClose={() => setExpanded(false)} testId="cards-preview-modal" portal footer={<button type="button" className="secondary-button" onClick={() => setExpanded(false)}>{t("preview.close")}</button>}><Preview details={workspace.inspectResponse.details} expanded /></AccessibleModal> : null}
+    {expanded && workspace.inspectResponse && hasUsableBackPreview(workspace.inspectResponse.details.renderedPreview) ? <AccessibleModal title={t("preview.expandedTitle")} closeLabel={t("preview.close")} onRequestClose={() => setExpanded(false)} testId="cards-preview-modal" portal className="cards-answer-modal" footer={<button type="button" className="secondary-button" onClick={() => setExpanded(false)}>{t("preview.close")}</button>}><Preview details={workspace.inspectResponse.details} side="back" /></AccessibleModal> : null}
   </div>;
 }
 
@@ -103,18 +107,25 @@ function Inspector({ workspace, onExpand }: { workspace: ReturnType<typeof useCa
   const item = workspace.activeItem;
   const details = workspace.inspectResponse?.details;
   return <aside className="cards-v2-inspector panel-surface" aria-labelledby="cards-v2-inspector-title" data-testid="cards-inspector"><header><h2 id="cards-v2-inspector-title">{t("inspector.title")}</h2></header>{!item ? <WorkspaceMessage title={t("inspector.emptyTitle")} text={t("inspector.empty")} /> : <div className="cards-v2-inspector-body"><PriorityBadge value={item.priority} /><h3>{cardDisplayText(item)}</h3><p className="cards-v2-inspector-meta">{item.deck.name} · {item.noteType.name} · {item.template.name}</p>
-    <section aria-labelledby="cards-preview-title"><h4 id="cards-preview-title">{t("preview.title")}</h4>{workspace.inspectStatus === "loading" ? <div className="cards-v2-preview-state" role="status">{t("preview.loading")}</div> : workspace.inspectStatus === "error" ? <div className="cards-v2-preview-state is-error" role="alert"><span>{workspace.inspectError?.code === "search_entity_not_found" ? t("preview.stale") : t("preview.failed")}</span><button type="button" className="secondary-button" onClick={workspace.retryInspect}>{t("retry")}</button></div> : details ? <><Preview details={details} /><button type="button" className="secondary-button cards-v2-expand" onClick={onExpand} disabled={!hasPreview(details.renderedPreview)}><Maximize2 size={16} aria-hidden="true" />{t("preview.expand")}</button></> : null}</section>
+    <section aria-labelledby="cards-preview-title"><h4 id="cards-preview-title">{t("preview.frontTitle")}</h4>{workspace.inspectStatus === "loading" ? <div className="cards-v2-preview-state" role="status">{t("preview.loading")}</div> : workspace.inspectStatus === "error" ? <div className="cards-v2-preview-state is-error" role="alert"><span>{workspace.inspectError?.code === "search_entity_not_found" ? t("preview.stale") : t("preview.failed")}</span><button type="button" className="secondary-button" onClick={workspace.retryInspect}>{t("retry")}</button></div> : details ? <><Preview details={details} side="front" /><button type="button" className="secondary-button cards-v2-expand" onClick={onExpand} disabled={!hasUsableBackPreview(details.renderedPreview)}><Maximize2 size={16} aria-hidden="true" />{t("preview.expand")}</button>{!hasUsableBackPreview(details.renderedPreview) ? <p className="cards-v2-preview-hint" role="status">{t("preview.answerUnavailable")}</p> : null}</> : null}</section>
     <section><h4>{t("inspector.reasons")}</h4><div className="cards-v2-reasons">{item.reasons.map((reason) => <ReasonCard key={reason.reasonId} reason={reason} />)}</div></section>
     {details ? <section><h4>{t("inspector.details")}</h4><dl className="cards-v2-details"><Entry label={t("columns.state")} value={stateLabel(item, t)} /><Entry label={t("inspector.noteType")} value={details.noteTypeName} /><Entry label={t("inspector.template")} value={details.templateName} /><Entry label={t("inspector.tags")} value={details.tags.join(" · ") || "—"} /><Entry label={t("inspector.cardId")} value={details.cardId} /><Entry label={t("inspector.noteId")} value={details.noteId} /></dl></section> : null}
     <section><h4>{t("inspector.next")}</h4><p>{recommendedStep(item, t)}</p><div className="cards-v2-actions"><button type="button" className="primary-button" onClick={() => void workspace.openInAnki()} disabled={workspace.openPending}><ExternalLink size={16} aria-hidden="true" />{workspace.openPending ? t("actions.opening") : t("actions.open")}</button>{item.reasons.some((reason) => reason.family === "content") ? <a className="secondary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a> : null}</div>{workspace.openResult ? <p className={workspace.openResult.ok ? "cards-v2-action-status" : "cards-v2-action-status is-error"} role="status">{workspace.openResult.ok ? t("actions.opened") : t("actions.failed")}</p> : null}</section>
   </div>}</aside>;
 }
 
-function Preview({ details, expanded = false }: { details: SearchCardDetails; expanded?: boolean }) {
+function Preview({ details, side }: { details: SearchCardDetails; side: "front" | "back" }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const preview = details.renderedPreview;
-  if (!hasPreview(preview)) return <div className="cards-v2-preview-state" role="status">{t("preview.unavailable")}</div>;
-  return <div className={expanded ? "cards-v2-preview is-expanded" : "cards-v2-preview"}><AnkiCardShadowPreview mode="preview" side="front" html={htmlWithMediaToken(preview.frontHtml || "")} css={preview.css || ""} title={preview.frontPlainText || cardDisplayText(details)} cardOrd={preview.cardOrd || details.templateOrdinal} renderSource={preview.renderSource || ""} /></div>;
+  const usable = side === "front" ? hasUsableFrontPreview(preview) : hasUsableBackPreview(preview);
+  if (!usable) return <div className="cards-v2-preview-state" role="status">{t(side === "front" ? "preview.frontUnavailable" : "preview.answerUnavailable")}</div>;
+  const html = side === "front"
+    ? preview.frontHtml || plainTextHtml(preview.frontPlainText || "")
+    : preview.backHtml || plainTextHtml(preview.backPlainText || "");
+  const title = side === "front"
+    ? preview.frontPlainText || cardDisplayText(details)
+    : preview.backPlainText || t("preview.answerTitle");
+  return <div className={side === "back" ? "cards-v2-preview is-expanded" : "cards-v2-preview"}><AnkiCardShadowPreview mode={side === "back" ? "expanded" : "preview"} side={side} html={htmlWithMediaToken(html)} css={preview.css || ""} title={title} cardOrd={preview.cardOrd || details.templateOrdinal} renderSource={preview.renderSource || ""} /></div>;
 }
 
 function ReasonCard({ reason }: { reason: TriageReason }) {
@@ -143,6 +154,10 @@ function evidenceLabel(evidence: TriageEvidence | undefined, t: Translate): stri
 }
 function stateLabel(item: TriageItem, t: Translate): string { const state = item.cardState.state; const base = state ? t(`states.card.${state}`) : t("states.card.unknown"); return item.cardState.flag ? `${base} · ${t("states.flag", { value: item.cardState.flag })}` : base; }
 function recommendedStep(item: TriageItem, t: Translate): string { return item.reasons.some((reason) => reason.family === "content") ? t("inspector.recommendProfile") : t("inspector.recommendAnki"); }
-function hasPreview(preview: { renderStatus: string; frontHtml?: string }): boolean { return (preview.renderStatus === "available" || preview.renderStatus === "sanitized") && !!preview.frontHtml; }
+type PreviewPayload = { renderStatus: string; frontHtml?: string; backHtml?: string; frontPlainText?: string; backPlainText?: string };
+function hasUsablePreviewStatus(status: string): boolean { return status === "available" || status === "sanitized" || status === "fallback"; }
+function hasUsableFrontPreview(preview: PreviewPayload): boolean { return hasUsablePreviewStatus(preview.renderStatus) && !!(preview.frontHtml || preview.frontPlainText); }
+function hasUsableBackPreview(preview: PreviewPayload): boolean { return hasUsablePreviewStatus(preview.renderStatus) && !!(preview.backHtml || preview.backPlainText); }
+function plainTextHtml(value: string): string { return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/\n/g, "<br>"); }
 function htmlWithMediaToken(html: string): string { return html.replace(/(\/api\/media\?name=[^"'&<>]+)(?![^"'<>]*token=)/g, (url) => appendToken(url)); }
 function appendToken(url: string): string { const token = new URLSearchParams(window.location.search).get("token") || ""; return !token || /(?:^https?:|^file:|token=)/i.test(url) ? url : `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`; }

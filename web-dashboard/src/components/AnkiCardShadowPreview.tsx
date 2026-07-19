@@ -1,6 +1,6 @@
 import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
-export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
+export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview" | "expanded";
 export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
 
 export interface AnkiPreviewModeConfig {
@@ -9,7 +9,6 @@ export interface AnkiPreviewModeConfig {
   targetWidth: number;
   targetHeight: number;
   scale: number;
-  minScale: number;
   maxScale: number;
   minHeight: number;
   maxHeight?: number;
@@ -25,7 +24,6 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 320,
     targetHeight: 170,
     scale: 0.5,
-    minScale: 0.32,
     maxScale: 0.5,
     minHeight: 118,
     maxHeight: 190,
@@ -39,7 +37,6 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 500,
     targetHeight: 268,
     scale: 0.78,
-    minScale: 0.48,
     maxScale: 0.82,
     minHeight: 190,
     maxHeight: 340,
@@ -53,11 +50,23 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 720,
     targetHeight: 390,
     scale: 0.88,
-    minScale: 0.58,
     maxScale: 1,
-    minHeight: 260,
+    minHeight: 220,
+    maxHeight: 440,
+    allowAutoHeight: false,
+    verticalPadding: 24,
+    audioButtonSize: 40,
+  },
+  expanded: {
+    baseWidth: 900,
+    baseHeight: 1,
+    targetWidth: 980,
+    targetHeight: 1,
+    scale: 1,
+    maxScale: 1,
+    minHeight: 1,
     allowAutoHeight: true,
-    verticalPadding: 36,
+    verticalPadding: 0,
     audioButtonSize: 40,
   },
 };
@@ -127,20 +136,33 @@ const SHADOW_BASE_CSS = `
 
 .asr-shadow-card-shell--preview {
   align-items: flex-start;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 10px;
 }
 
-.asr-shadow-card-viewport {
-  flex: 0 0 var(--asr-preview-base-width);
-  width: var(--asr-preview-base-width);
-  min-height: var(--asr-preview-base-height);
-  transform: scale(var(--asr-preview-scale));
-  transform-origin: center center;
+.asr-shadow-card-shell--expanded {
+  align-items: flex-start;
+  height: auto;
+  overflow: visible;
+  padding: 0;
 }
 
-.asr-shadow-card-viewport--preview {
-  transform-origin: top center;
+.asr-shadow-card-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--asr-preview-scaled-width);
+  height: var(--asr-preview-scaled-height);
+}
+
+.asr-shadow-card-viewport {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: var(--asr-preview-content-width);
+  min-height: var(--asr-preview-content-height);
+  transform: scale(var(--asr-preview-scale));
+  transform-origin: top left;
 }
 
 .card {
@@ -168,10 +190,17 @@ const SHADOW_BASE_CSS = `
   line-height: 1.4;
 }
 
-.asr-shadow-card-viewport--preview .card {
+.asr-shadow-card-viewport--preview .card,
+.asr-shadow-card-viewport--expanded .card {
   padding: 28px;
   font-size: 28px;
   line-height: 1.5;
+}
+
+.card pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre;
 }
 
 .nightMode .card,
@@ -180,10 +209,6 @@ const SHADOW_BASE_CSS = `
   color: #f8fafc;
 }
 `;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 function measuredNumber(value: number, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
@@ -201,11 +226,11 @@ export function calculateAdaptivePreviewLayout({
   const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
   const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
   const widthScale = targetWidth / measuredContentWidth;
-  let scale = clamp(widthScale, config.minScale, config.maxScale);
+  let scale = Math.max(Number.EPSILON, Math.min(widthScale, config.maxScale));
 
-  if (!config.allowAutoHeight && config.maxHeight) {
-    const heightScale = Math.max(config.minScale, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
-    scale = clamp(Math.min(scale, heightScale), config.minScale, config.maxScale);
+  if (mode !== "preview" && !config.allowAutoHeight && config.maxHeight) {
+    const heightScale = Math.max(Number.EPSILON, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
+    scale = Math.max(Number.EPSILON, Math.min(scale, heightScale, config.maxScale));
   }
 
   const scaledHeight = Math.ceil(measuredContentHeight * scale + config.verticalPadding);
@@ -326,6 +351,10 @@ function previewModeStyle(mode: AnkiCardShadowPreviewMode, layout: AdaptivePrevi
   return {
     "--asr-preview-base-width": `${config.baseWidth}px`,
     "--asr-preview-base-height": `${config.baseHeight}px`,
+    "--asr-preview-content-width": `${layout.contentWidth}px`,
+    "--asr-preview-content-height": `${layout.contentHeight}px`,
+    "--asr-preview-scaled-width": `${Math.max(1, Math.ceil(layout.contentWidth * layout.scale))}px`,
+    "--asr-preview-scaled-height": `${Math.max(1, Math.ceil(layout.contentHeight * layout.scale))}px`,
     "--asr-preview-target-width": `${layout.targetWidth}px`,
     "--asr-preview-target-height": `${layout.hostHeight}px`,
     "--asr-preview-scale": layout.scale,
@@ -401,8 +430,13 @@ function AnkiCardShadowPreviewComponent({
     card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
 
+    const frame = document.createElement("div");
+    frame.className = "asr-shadow-card-frame";
+    frame.setAttribute("data-testid", "asr-shadow-card-frame");
+
     viewport.appendChild(card);
-    shell.appendChild(viewport);
+    frame.appendChild(viewport);
+    shell.appendChild(frame);
     shadowRoot.append(style, shell);
 
     const handleReplayClick = (event: Event) => {

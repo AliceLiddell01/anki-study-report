@@ -19,6 +19,7 @@ export default function AccessibleModal({
   footer,
   testId,
   portal = false,
+  className = "",
 }: {
   title: string;
   closeLabel: string;
@@ -27,6 +28,7 @@ export default function AccessibleModal({
   footer?: ReactNode;
   testId: string;
   portal?: boolean;
+  className?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -86,7 +88,7 @@ export default function AccessibleModal({
     <div className="product-modal-backdrop" data-testid={`${testId}-backdrop`}>
       <div
         ref={dialogRef}
-        className="product-modal"
+        className={`product-modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

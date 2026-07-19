@@ -293,8 +293,8 @@ def build_rendered_preview(
     front_raw = _render_template(qfmt, fields, front_side="")
     back_raw = _render_template(afmt, fields, front_side=front_raw)
     front_html, front_media = sanitize_rendered_html(front_raw)
-    back_html, _back_media = sanitize_rendered_html(back_raw)
-    media_refs = _unique_media_refs(front_media)
+    back_html, back_media = sanitize_rendered_html(back_raw)
+    media_refs = _unique_media_refs(front_media + back_media)
     front_plain = safe_plain_text(front_raw, 240)
     back_plain = safe_plain_text(back_raw, 320)
     reason = "template renderer"
@@ -675,41 +675,41 @@ def _native_render_output(card: Any) -> dict[str, Any] | None:
 
 
 def _native_question_answer(card: Any) -> dict[str, Any] | None:
-    question = _call_native_card_method(getattr(card, "question", None))
-    answer = _call_native_card_method(getattr(card, "answer", None))
+    question = _call_native_question(getattr(card, "question", None))
+    answer = _call_native_answer(getattr(card, "answer", None))
     if question is None and answer is None:
         return None
     return {"frontHtml": question or "", "backHtml": answer or "", "css": ""}
 
 
 def _call_native_render_output(render_output: Any) -> Any:
-    for kwargs in (
-        {"reload": True, "browser": True},
-        {"browser": True},
-        {"reload": True},
-        {},
-    ):
-        try:
-            return render_output(**kwargs)
-        except TypeError:
-            continue
-    return None
+    # Anki 26.05+ reviewer context. Browser Appearance is compact identity only.
+    if not callable(render_output):
+        return None
+    try:
+        return render_output(reload=True, browser=False)
+    except TypeError:
+        return None
 
 
-def _call_native_card_method(method: Any) -> str | None:
+def _call_native_question(method: Any) -> str | None:
+    # Explicit compatibility fallback for the supported reviewer question API.
     if not callable(method):
         return None
-    for kwargs in (
-        {"reload": True, "browser": True},
-        {"browser": True},
-        {"reload": True},
-        {},
-    ):
-        try:
-            return str(method(**kwargs) or "")
-        except TypeError:
-            continue
-    return None
+    try:
+        return str(method(reload=True, browser=False) or "")
+    except TypeError:
+        return None
+
+
+def _call_native_answer(method: Any) -> str | None:
+    # Anki 26.05 Card.answer() has no browser/reload arguments.
+    if not callable(method):
+        return None
+    try:
+        return str(method() or "")
+    except TypeError:
+        return None
 
 
 def _native_output_text(output: Any, attrs: tuple[str, ...], method_name: str) -> str:

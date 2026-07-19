@@ -1502,7 +1502,15 @@ main.app-content-safe-inset {
 
 .anki-card-shadow-preview--preview {
   width: 100%;
-  min-height: var(--asr-shadow-host-height, 23rem);
+  height: var(--asr-shadow-host-height, 23rem);
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0.45rem;
+}
+
+.anki-card-shadow-preview--expanded {
+  width: 100%;
+  min-height: 1px;
   overflow: visible;
   border-radius: 0.45rem;
 }
@@ -1517,7 +1525,7 @@ main.app-content-safe-inset {
   background: linear-gradient(180deg, transparent, rgb(var(--color-bg-elevated) / 0.9));
 }
 
-.anki-card-shadow-preview--preview[data-preview-overflow="true"]::after {
+.anki-card-shadow-preview--expanded[data-preview-overflow="true"]::after {
   display: none;
 }
 
@@ -1728,8 +1736,10 @@ main.app-content-safe-inset {
 .cards-v2-inspector-meta { margin-top: -.65rem; overflow-wrap: anywhere; color: var(--text-muted); font-size: .7rem; }
 .cards-v2-inspector-body section { display: grid; gap: .55rem; }
 .cards-v2-inspector-body h4 { color: var(--text-muted); font-size: .63rem; font-weight: 740; text-transform: uppercase; letter-spacing: .045em; }
-.cards-v2-preview { max-height: 260px; overflow: auto; border: 1px solid var(--border-subtle); border-radius: .7rem; background: var(--surface-1); padding: .6rem; }
-.cards-v2-preview.is-expanded { max-height: min(68vh, 760px); min-height: min(58vh, 540px); }
+.cards-v2-preview { max-height: 440px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: .7rem; background: var(--surface-1); padding: .6rem; }
+.cards-v2-preview.is-expanded { max-height: none; min-height: 0; overflow: visible; padding: .8rem; }
+.cards-v2-preview-hint { margin: -.2rem 0 0; color: var(--text-muted); font-size: .68rem; line-height: 1.45; }
+.product-modal.cards-answer-modal { width: min(1100px, 100%); }
 .cards-v2-preview-state { display: grid; min-height: 150px; place-items: center; gap: .7rem; border: 1px dashed var(--border-subtle); border-radius: .7rem; background: var(--surface-1); padding: 1rem; color: var(--text-muted); text-align: center; font-size: .72rem; }
 .cards-v2-preview-state.is-error { color: var(--status-danger); }
 .cards-v2-expand { width: fit-content; }

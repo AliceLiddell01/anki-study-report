@@ -72,13 +72,19 @@ describe("Cards v2 queue and Inspector", () => {
     const rootNode = document.getElementById("root")!;
     const root = createRoot(rootNode);
     await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
-    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть превью"));
+    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть ответ"));
     expect(expand).toBeTruthy();
     await act(async () => expand!.click());
     const modal = document.querySelector('[data-testid="cards-preview-modal"]');
     expect(modal).toBeTruthy();
     expect(document.getElementById("dashboard-app-shell")!.contains(modal)).toBe(false);
     expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
+    expect(modal?.textContent).toContain("Развёрнутое превью ответа");
+    const modalPreview = modal?.querySelector('[data-preview-side="back"]');
+    expect(modalPreview).toBeTruthy();
+    expect(modalPreview?.getAttribute("data-preview-mode")).toBe("expanded");
+    expect(modalPreview?.innerHTML).toContain("remember");
+    expect(modalPreview?.innerHTML).not.toContain("覚える");
     await act(async () => root.unmount());
   });
 });
@@ -88,3 +94,32 @@ function readyWorkspace(): CardsTriageWorkspace {
 }
 
 function source(status: "available" | "empty" | "unavailable", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null }; }
+
+describe("Cards preview side availability", () => {
+  it("renders front in Inspector without answer-only content", () => {
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Лицевая сторона");
+    expect(html).toContain('data-preview-side="front"');
+    expect(html).toContain("覚える");
+    expect(html).not.toContain("remember");
+  });
+
+  it("keeps reasons and actions when front is unavailable", () => {
+    const missingFront = { ...inspectResponse, details: { ...inspectResponse.details, renderedPreview: { ...inspectResponse.details.renderedPreview, frontHtml: "", frontPlainText: "" } } };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), inspectResponse: missingFront });
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Лицевая сторона недоступна");
+    expect(html).toContain("Частые ответы «Снова»");
+    expect(html).toContain("Открыть в Anki");
+  });
+
+  it("does not present front as answer when back is unavailable", () => {
+    const missingBack = { ...inspectResponse, details: { ...inspectResponse.details, renderedPreview: { ...inspectResponse.details.renderedPreview, backHtml: "", backPlainText: "" } } };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), inspectResponse: missingBack });
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Превью ответа недоступно");
+    expect(html).toContain("覚える");
+    expect(html).not.toContain('data-preview-side="back"');
+    expect(html).toContain('disabled=""');
+  });
+});
