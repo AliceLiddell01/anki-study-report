@@ -38,8 +38,10 @@ qualify historical status and execution. G0.4 changed no reward semantics.
 
 ## G1 diagnostic protocol
 
-`G1: IN_PROGRESS`  
-`G1.1: COMPLETE`  
+`G1: IN_PROGRESS`
+
+`G1.1: COMPLETE`
+
 `G1.2: NEXT`
 
 - [Review XP cross-horizon cycling problem](review-xp-cycling-problem.md)
