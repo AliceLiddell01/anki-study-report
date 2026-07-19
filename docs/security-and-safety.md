@@ -354,3 +354,7 @@ path, or performs a remote load. Unsafe references become unnamed tokens; only
 a fixed marker may be emitted. Store/API errors and normal logs contain generic
 operation/error codes and exception type, not paths, formatter content,
 filenames, generated display text, raw note data, or dashboard token.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

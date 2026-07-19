@@ -321,3 +321,7 @@ fail-closed or arbitrary-code boundaries without a versioned contract change.
 - [Linear Docs — Triage](https://linear.app/docs/triage)
 - [Linear Docs — Inbox](https://linear.app/docs/inbox)
 - [Sentry Docs — Issue Details](https://docs.sentry.io/product/issues/issue-details/)
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

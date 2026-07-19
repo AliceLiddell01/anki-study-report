@@ -331,3 +331,7 @@ C1.6 — Blocked
 R2 keeps Search v2 and Triage v3 unchanged. Owner-checkout focused frontend,
 package validation and the canonical non-Docker gate passed for the implementation
 tree committed as `edad09e8ffae443b94e192b266084abb66c37adf`. R3 is now Next, not started.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

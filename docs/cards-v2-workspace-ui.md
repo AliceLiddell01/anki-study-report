@@ -256,3 +256,7 @@ C1.6 may add explicit selection, contextual bounded Safe Actions, recheck and
 resolution state. It must preserve active item separately from selection and
 must earn any additional keyboard model. C1.5 intentionally provides no dead
 checkbox, mutation button, awaiting-recheck state, or hidden rejected mode.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

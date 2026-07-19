@@ -358,3 +358,7 @@ Work only on `core` unless the owner changes the target. Do not create a PR,
 merge/rebase to `master`, release, deploy, publish `.ankiaddon` or update AnkiWeb
 as an implicit continuation. Avoid force-push, destructive reset, clean or stash
 deletion and preserve unrelated changes.
+
+## C1.5R.3 complete
+
+C1.5R.3 is complete: reviewer `Card.render_output(reload=True, browser=False)` supplies front and answer, Cards Inspector shows front, the expanded dialog shows answer, active-card-only reads are preserved, and fit-width/scroll behavior is deterministic. C1.5R.4 is next and not started; C1.6 remains blocked.

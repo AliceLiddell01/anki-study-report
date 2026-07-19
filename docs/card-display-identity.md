@@ -183,3 +183,7 @@ Git hygiene and origin/core synchronization: PASS
 
 R3 is now Next, not started. C1.6 remains blocked until the complete C1.5R
 remediation and separate owner product acceptance are finished.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

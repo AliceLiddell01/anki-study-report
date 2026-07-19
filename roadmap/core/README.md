@@ -254,3 +254,7 @@ that current Statistics, FSRS, and Search cannot answer. Each addition must name
 the user decision, data availability, bounded query, placement, interpretation,
 and verification scope. If no justified gap exists, C3 closes without feature
 expansion.
+
+## C1.5R.3 complete
+
+C1.5R.3 is complete after focused, build, browser-smoke and canonical non-Docker verification. C1.5R.4 is next and not started; C1.6 remains blocked.

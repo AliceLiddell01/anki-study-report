@@ -155,3 +155,7 @@ C1.5R.1 is **Complete**. C1.5R.2 adds an optional request-local declarative
 formatter resolver while Search query/inspect remains exact schema v2 and
 metadata remains v1. R2 completion still requires the owner-checkout focused
 frontend, package, canonical non-Docker and Git hygiene gates.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

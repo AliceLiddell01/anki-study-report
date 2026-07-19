@@ -223,3 +223,7 @@ Core C1 — In progress
 No formatter UI, preview-side correction, candidate-source redesign, Cards
 inbox redesign or Inspection Profiles redesign is implied by
 this map.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

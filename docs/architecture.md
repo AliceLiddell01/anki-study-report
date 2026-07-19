@@ -309,3 +309,7 @@ The formatter parser emits bounded ordered text/line/image/audio tokens only. It
 executes no user program, reads no media file, loads no remote resource and does
 not alter Inspector/expanded preview. Search v2 and Triage v3 payloads remain
 unchanged.
+
+## C1.5R.3 preview semantics
+
+See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.

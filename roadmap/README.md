@@ -152,3 +152,7 @@ reports/    historical handoff, audits, measurements and closeout evidence
    not enter git.
 8. Verification follows `docs/test-matrix.md` and
    `docs/verification-run-policy.md`; docs-only work does not justify Docker E2E.
+
+## C1.5R.3 complete
+
+Core C1 remains in progress. C1.5R.3 is complete; C1.5R.4 is next and not started; C1.6 remains blocked.
