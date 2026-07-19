@@ -107,6 +107,21 @@ See [`evidence/README.md`](evidence/README.md) and
 The canonical raw artifact is retained in GitHub Actions; only normalized records
 are committed.
 
+## G1 diagnostic contract — G1.1 Complete
+
+- problem specification:
+  [`../../docs/gamification/review-xp-cycling-problem.md`](../../docs/gamification/review-xp-cycling-problem.md);
+- frozen contract:
+  [`contracts/review-cycling-diagnostic-v1.json`](contracts/review-cycling-diagnostic-v1.json);
+- Draft 2020-12 schema:
+  [`schemas/review-cycling-diagnostic-v1.schema.json`](schemas/review-cycling-diagnostic-v1.schema.json);
+- stage report:
+  [`../../roadmap/gamification/g1-problem-gate-freeze.md`](../../roadmap/gamification/g1-problem-gate-freeze.md).
+
+G1.1 performed no new simulation and changed no executable research input.
+G0.7 remains the current evidence baseline. Diagnostic tracing is not yet
+implemented; `G1.2 — Root-cause attribution` is Next.
+
     ## Historical reports
 
     Archived reports:

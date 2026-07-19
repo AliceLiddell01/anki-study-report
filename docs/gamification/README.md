@@ -36,6 +36,20 @@ deferred domains and future verification gates.
 These documents are recovered research candidates. Their provenance headers
 qualify historical status and execution. G0.4 changed no reward semantics.
 
+## G1 diagnostic protocol
+
+`G1: IN_PROGRESS`  
+`G1.1: COMPLETE`  
+`G1.2: NEXT`
+
+- [Review XP cross-horizon cycling problem](review-xp-cycling-problem.md)
+- [G1.1 problem and gate freeze](../../roadmap/gamification/g1-problem-gate-freeze.md)
+- [Machine-readable diagnostic contract](../../research/gamification-sim/contracts/review-cycling-diagnostic-v1.json)
+- [Diagnostic contract schema](../../research/gamification-sim/schemas/review-cycling-diagnostic-v1.schema.json)
+
+G1.1 froze the observed problem and analysis contract before new diagnostics.
+It changed no reward semantics and implemented no tracing.
+
 ## Recovered package
 
 The isolated package is documented in
@@ -81,7 +95,7 @@ regression reference, not an approved production candidate.
 2. G0.6 — Complete: installed package, CLI, full tests, deterministic corpus, Rust parity and FSRS reference verified.
 3. G0.7 — Complete: canonical current evidence reproduced and reconciled.
 
-G1 is next and receives the exact reproduced cross-horizon cycling gate.
+G1 is In Progress. G1.1 froze the problem and diagnostic contract; G1.2 root-cause attribution is Next.
 
 ## Production integration boundary
 
