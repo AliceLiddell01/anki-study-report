@@ -122,6 +122,15 @@ G1.1 performed no new simulation and changed no executable research input.
 G0.7 remains the current evidence baseline. Diagnostic tracing is not yet
 implemented; `G1.2 — Root-cause attribution` is Next.
 
+### G1.1 contract correction — Complete
+
+The v1 contract now represents predicate outputs as `boolean/boolean`, the
+overall gate as `status/status`, and attribution completeness as
+`NORMATIVE_NOT_YET_EXECUTABLE`. Requirements remain frozen, but tracing remains
+unimplemented until G1.2. No source, test, config or evidence file changed and no
+simulation was rerun. G1.2 now has a consistent input contract. See the
+[correction report](../../roadmap/gamification/g1-contract-correction.md).
+
     ## Historical reports
 
     Archived reports:

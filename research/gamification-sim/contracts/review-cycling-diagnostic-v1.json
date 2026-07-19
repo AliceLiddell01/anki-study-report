@@ -309,7 +309,7 @@
       }
     },
     "technical_completeness": {
-      "attribution_fields": "EXECUTABLE",
+      "attribution_fields": "NORMATIVE_NOT_YET_EXECUTABLE",
       "finite_numbers": "EXECUTABLE",
       "matched_inputs": "EXECUTABLE",
       "required_horizons": "EXECUTABLE",
@@ -329,6 +329,7 @@
       "representation": "fraction",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
       "tolerance": 0,
+      "tolerance_semantics": "value",
       "unit": "ratio"
     },
     "advantage_90": {
@@ -341,6 +342,7 @@
       "representation": "fraction",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
       "tolerance": 0,
+      "tolerance_semantics": "value",
       "unit": "ratio"
     },
     "baseline_ratio": {
@@ -353,6 +355,7 @@
       "representation": "fraction",
       "source": "research/gamification-sim/src/gamification_sim/longitudinal_runner.py",
       "tolerance": 1e-09,
+      "tolerance_semantics": "value",
       "unit": "ratio"
     },
     "delta_365_minus_90": {
@@ -365,55 +368,60 @@
       "representation": "fraction",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
       "tolerance": 1e-09,
+      "tolerance_semantics": "value",
       "unit": "ratio"
     },
     "endpoint_pass": {
       "aggregation_level": "replica",
-      "definition": "advantage_365 <= 0.03 + 1e-9",
-      "direction": "true",
+      "definition": "boolean result of advantage_365 <= 0.03 + 1e-9; tolerance applies to the ratio predicate input",
+      "direction": "true when the endpoint predicate passes",
       "missing_data_policy": "FAIL",
       "name": "endpoint_pass",
       "non_finite_policy": "REJECT",
-      "representation": "fraction",
+      "representation": "boolean",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
       "tolerance": 1e-09,
-      "unit": "ratio"
+      "tolerance_semantics": "predicate_input",
+      "unit": "boolean"
     },
     "group_systematic_growth": {
       "aggregation_level": "group",
-      "definition": "retention group: every matched replica grew",
+      "definition": "boolean result: every matched replica grew for a retention group",
       "direction": "false",
       "missing_data_policy": "FAIL",
       "name": "group_systematic_growth",
       "non_finite_policy": "REJECT",
-      "representation": "fraction",
+      "representation": "boolean",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
-      "tolerance": 1e-09,
-      "unit": "ratio"
+      "tolerance": 0,
+      "tolerance_semantics": "not_applicable",
+      "unit": "boolean"
     },
     "overall_research_gate": {
       "aggregation_level": "all groups",
-      "definition": "all groups pass",
+      "definition": "status PASS only when every required group passes",
       "direction": "PASS",
       "missing_data_policy": "FAIL",
       "name": "overall_research_gate",
       "non_finite_policy": "REJECT",
-      "representation": "fraction",
+      "representation": "status",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
-      "tolerance": 1e-09,
-      "unit": "ratio"
+      "tolerance": 0,
+      "tolerance_semantics": "not_applicable",
+      "unit": "status"
     },
     "replica_grew": {
       "aggregation_level": "replica",
-      "definition": "delta_365_minus_90 > 1e-9",
+      "definition": "boolean result of delta_365_minus_90 > 1e-9; tolerance is the ratio predicate threshold",
       "direction": "false",
       "missing_data_policy": "FAIL",
       "name": "replica_grew",
       "non_finite_policy": "REJECT",
-      "representation": "fraction",
+      "representation": "boolean",
       "source": "research/gamification-sim/src/gamification_sim/matched_analysis.py",
       "tolerance": 1e-09,
-      "unit": "ratio"
+      "tolerance_semantics": "predicate_input",
+      "unit": "boolean"
     },
     "suppression_events": {
       "aggregation_level": "policy/replica/horizon",
@@ -425,6 +433,7 @@
       "representation": "integer",
       "source": "research/gamification-sim/src/gamification_sim/longitudinal_runner.py",
       "tolerance": 0,
+      "tolerance_semantics": "value",
       "unit": "count"
     }
   },

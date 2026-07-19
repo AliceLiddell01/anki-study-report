@@ -264,6 +264,26 @@ change rationale, field-level diff, impact analysis, rerun matrix and roadmap
 decision. A prose typo cannot rewrite numerical baselines or gate semantics in
 place.
 
+## G1.1 contract correction
+
+The explicit-correction rule was used to repair two metadata defects without
+changing the frozen decision protocol. First, attribution requirements remain
+frozen and mandatory for G1.2, but their current completeness gate is now
+`NORMATIVE_NOT_YET_EXECUTABLE` because G1.1 implemented no trace. Second, metric
+value kinds now match their actual outputs:
+
+| Metric | Representation | Unit | Tolerance semantics |
+|---|---|---|---|
+| `endpoint_pass` | `boolean` | `boolean` | `1e-9` applies to the ratio predicate input |
+| `replica_grew` | `boolean` | `boolean` | `1e-9` is the ratio predicate threshold |
+| `group_systematic_growth` | `boolean` | `boolean` | not applicable to the aggregate boolean |
+| `overall_research_gate` | `status` | `status` | not applicable to the aggregate status |
+
+No evidence cell, group result, formula, threshold, tolerance, policy pair,
+horizon, replica, invariant or decision outcome changed. The protocol remains
+`review-cycling-diagnostic-v1` because decision semantics are unchanged. G1.2
+may begin only from the corrected and validated contract/schema pair.
+
 ## Methodological references and caveats
 
 - [OSF Registrations](https://help.osf.io/article/330-welcome-to-registrations)

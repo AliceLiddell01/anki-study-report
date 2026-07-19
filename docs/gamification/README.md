@@ -52,6 +52,18 @@ qualify historical status and execution. G0.4 changed no reward semantics.
 G1.1 froze the observed problem and analysis contract before new diagnostics.
 It changed no reward semantics and implemented no tracing.
 
+### G1.1 contract correction
+
+`G1.1 contract correction: COMPLETE`
+
+`machine contract/schema: CORRECTED_AND_VALIDATED`
+
+`G1.2: NEXT / READY`
+
+The correction aligns attribution executability and metric value kinds without
+changing evidence or decision semantics. See the
+[corrective checkpoint](../../roadmap/gamification/g1-contract-correction.md).
+
 ## Recovered package
 
 The isolated package is documented in
