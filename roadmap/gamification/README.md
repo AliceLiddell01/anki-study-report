@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is In Progress; `G0.6` is Partial — corrective complete, full rerun required; production integration is not approved
+**Current status:** `G0` is In Progress; `G0.7` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -23,7 +23,8 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - `G0.3 — Historical asset inventory`: Complete — [`g0-historical-asset-inventory.md`](g0-historical-asset-inventory.md), [`g0-historical-asset-manifest.md`](g0-historical-asset-manifest.md)
 - `G0.4 — Selective research recovery`: Complete — [`g0-selective-research-recovery.md`](g0-selective-research-recovery.md), [`g0-recovery-ledger.md`](g0-recovery-ledger.md)
 - `G0.5 — Reproducible environment`: Complete — [`g0-reproducible-environment.md`](g0-reproducible-environment.md)
-- `G0.6 — Functional baseline verification`: Partial — installed execution boundary corrective complete; full rerun required — [`g0-installed-execution-boundary-correction.md`](g0-installed-execution-boundary-correction.md)
+- `G0.6 — Functional baseline verification`: Complete — [`g0-functional-baseline.md`](g0-functional-baseline.md), corrective audit: [`g0-installed-execution-boundary-correction.md`](g0-installed-execution-boundary-correction.md)
+- `G0.7 — Evidence reproduction`: Next
 
 G0.2 confirmed `core` as the active Core line on the same recorded `master`
 baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
@@ -55,14 +56,18 @@ execution and evidence reproduction remain pending; production integration is
 still prohibited.
 
 G0.6a corrected the regular installed-package execution boundary discovered by
-the first G0.6 pytest collection. A central validated research workspace now
-owns schemas, fixtures, scenarios, personas, configs, contracts and the Rust
-oracle; generated artifacts default outside the source tree; Cargo uses the
-tracked exact MSVC toolchain with locked/offline execution. Fresh
-regular-install focused verification passed 8 corrective tests, collected 816
-test items and validated the bounded CLI/config surfaces. This is not G0.6
-completion: the full checkpoint sequence must be rerun on the corrective
-commit, while G0.7 and G1 remain blocked.
+the first G0.6 pytest collection. A central validated research workspace owns
+schemas, fixtures, scenarios, personas, configs, contracts and the Rust oracle;
+generated artifacts default outside the source tree; Cargo uses the tracked
+exact MSVC toolchain with locked/offline execution.
+
+G0.6 then reran the complete checkpoint sequence on the corrective commit. The
+regular installed package and CLI, full recovered Python suite, deterministic
+corpus, exact-toolchain Rust check/build/tests, every recovered parameter
+candidate against the Rust oracle, and the FSRS reference contract passed.
+Source, tests, fixtures, schemas, declarations and `Cargo.lock` remained
+unchanged. Evidence reproduction remains pending G0.7; production integration
+is still prohibited.
 
 ## Source audit
 
@@ -126,7 +131,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** In Progress — G0.1–G0.5 Complete; G0.6 Partial after corrective completion; full G0.6 rerun required
+**Status:** In Progress — G0.1–G0.6 Complete; G0.7 Next
 
 ### Goal
 

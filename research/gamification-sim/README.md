@@ -2,9 +2,9 @@
 
     ## Status
 
-    `CORRECTIVE_COMPLETE_G0_6_RERUN_REQUIRED`
+    `FUNCTIONAL_BASELINE_VERIFIED`
 
-    G0.5 established the canonical Windows AMD64 / CPython 3.11 environment baseline. G0.6a corrected and focused-verified the regular installed-package execution boundary; the full G0.6 functional baseline must still be rerun from the corrective commit, and evidence remains unverified.
+    G0.6 verified the bounded functional baseline in the canonical G0.5 environment after the installed-execution-boundary correction. Historical evidence remains unreproduced.
 
     The package was selectively recovered from the frozen historical source. G0.4
     verifies source/target content relationships and isolation only. It does not
@@ -37,7 +37,7 @@
 
     ## Available commands
 
-    The regular installed package exposes the following 17 command surfaces. Console and module help were focused-verified during G0.6a; only bounded validation probes were executed, while sweep, sensitivity, population and longitudinal runs remain out of scope.
+    The regular installed package exposes the following 17 command surfaces. G0.6 verified console/module entry points and the bounded functional commands; sweep, sensitivity, population and longitudinal runs remain outside the executed baseline.
 
 - `gamification-sim compare-scenarios ...` / `py -m gamification_sim compare-scenarios ...`
 - `gamification-sim evaluate ...` / `py -m gamification_sim evaluate ...`
@@ -86,28 +86,17 @@
 
     See [environment baseline](environment/README.md). This does not claim that CLI commands, tests, simulations or the Rust oracle work.
 
-    ## Installed execution boundary — G0.6a corrective complete
+## Functional status — G0.6 Complete
 
-The regular installed package no longer derives the research root from
-`__file__` ancestry. Schemas, fixtures, scenarios, personas, configs, contracts
-and the Rust oracle remain external canonical workspace assets. Generated
-outputs default outside the source tree. The tracked `rust-toolchain.toml`
-selects exact Rust 1.97.1 on MSVC; deterministic Cargo commands use
-`--locked --offline` and respect caller-provided environment, including
-`CARGO_TARGET_DIR`.
+The installed package, CLI surface, full recovered Python suite, deterministic
+corpus, Rust check/build/tests, Python/Rust parity and FSRS reference passed in
+the exact G0.5 environment after the G0.6a correction.
 
-Focused verification passed for regular non-editable installation, all 17 CLI
-subcommands, 31 golden examples, 26 scenarios, 16 personas,
-sweep/longitudinal config validation, 8 corrective tests, 816-item pytest
-collection and locked/offline Cargo metadata. The complete Python suite, Rust
-build/tests/oracle, parity and evidence were not executed.
+See [functional baseline](functional/README.md) and the
+[installed execution boundary correction](../../roadmap/gamification/g0-installed-execution-boundary-correction.md).
 
-See [`../../roadmap/gamification/g0-installed-execution-boundary-correction.md`](../../roadmap/gamification/g0-installed-execution-boundary-correction.md).
-
-## Functional status — G0.6 partial
-
-G0.6 must be rerun from `preflight` on the corrective commit. No
-pre-correction PASS checkpoint is inherited.
+The corrective checkpoint remains part of the audit trail, but no
+pre-correction PASS state was inherited.
 
 ## Evidence status — G0.7 pending
 

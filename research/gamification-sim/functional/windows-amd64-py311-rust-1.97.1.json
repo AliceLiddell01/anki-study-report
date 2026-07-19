@@ -1,0 +1,251 @@
+{
+  "cli": {
+    "console_help": "PASS",
+    "invalid_invocation": "EXPECTED_USAGE_ERROR",
+    "module_help": "PASS",
+    "out_of_scope_commands_present": [
+      "run-longitudinal",
+      "run-population",
+      "run-sensitivity",
+      "run-sweep"
+    ],
+    "subcommand_count": 17
+  },
+  "configs": {
+    "count": 2,
+    "validated": [
+      {
+        "command": "validate-longitudinal-config",
+        "path": "research/gamification-sim/configs/review-longitudinal-v0.1.json",
+        "result": "VALID review-longitudinal-v0.1 review-calibration-correction 9 policies"
+      },
+      {
+        "command": "validate-sweep",
+        "path": "research/gamification-sim/configs/review-sweep-v0.1.json",
+        "result": "VALID review-sweep-v0.1 review-parameter-foundation"
+      }
+    ]
+  },
+  "crossRuntimeParity": {
+    "deterministic": true,
+    "digests": {
+      "C-CURRENT": "051d8c5d3562dcc997840494ebef3bb9c0c6e904e93b27f4463c745918bc67d6",
+      "C-LOW": "065cbb89dca642bc39c5be2632ef2fa8f3a3fe569680a91548c499606262e4a5",
+      "C-SYMBOLIC": "9a602967d16a8f0c9dd1cf062fb0023433c0e49add680993470141a15130da1e",
+      "P-CURRENT": "1e127a566ed33f0f319f113133a37a0a3932f2a3788d0f4eb41c6db853b04a37",
+      "P-LOW": "98496324d08c2c52c6a28e59e6f59cfb36fb3d6a1396528a5cee9a98acefce2f",
+      "P-METRIC-ONLY": "1a74a64ad2b4b7a99e8eabaf98af14b16bb7c79053134557a4129484dcac47c5",
+      "R-CURRENT": "1a1c3e2d92335c2b3cb6eeddeaf545c18400dfd1cbe0d28b77b99f0dd88b874d",
+      "R-LOW-CHALLENGE": "89cba5a0518fdccbfbf7fc5fcfb4ee9fbea8f4c6c5c2b70f0328d5ff4303ac6c",
+      "R-NEUTRAL-CONTEXT": "7b6c0438c6b2b60d65d552ff3303ad8fd2841cd802efaed9ef8ae05a47634ee5",
+      "R-NO-GAIN": "ec0ac762a0c0f63d1bde8f9e9bcc2fb931d51574b1d5b48035e17d0c5ad97876",
+      "S-CURRENT": "bc2b0914c4c2dbf46de902bc132252c8e84811bf34a7e7fc7d2623f7296a0865",
+      "S-EPISODE-ONLY": "f48adff450dd60b59fa26259d5ab0b1193ce583c381a54de20ead09b7b06eae0",
+      "S-LOW": "0f81db24284a6a4a0dac9177692c183a09c93264723713d77d00a08210673720",
+      "V-CURRENT": "9bd7a18c3b0dd99c21ad646d2b3f3b1d32c6caa45b0eb3c0640a667b25380fa6",
+      "V-LOW-CAP": "9ad70a032b03b9de15189abe918e1862727094b2b43e068cf0f55fa5a056dd41",
+      "V-NONE": "e32467718cd87cba9ae102d8d0638774a242f288ec13fe846dfb7de9371742aa",
+      "V-SOFT": "69803957467698c6bf0ab3d8790fa8ae76c56e36b9736a449871a140d526dbf6"
+    },
+    "parameterSetIds": [
+      "R-CURRENT",
+      "R-NO-GAIN",
+      "R-LOW-CHALLENGE",
+      "R-NEUTRAL-CONTEXT",
+      "V-CURRENT",
+      "V-LOW-CAP",
+      "V-SOFT",
+      "V-NONE",
+      "C-CURRENT",
+      "C-LOW",
+      "C-SYMBOLIC",
+      "S-CURRENT",
+      "S-LOW",
+      "S-EPISODE-ONLY",
+      "P-CURRENT",
+      "P-LOW",
+      "P-METRIC-ONLY"
+    ],
+    "status": "PASS"
+  },
+  "determinism": {
+    "boundedCommands": "PASS",
+    "digests": {
+      "golden": "a084cc4d98d40d1bcefdbad68d6d7f8a1c0842eb21ffe6e2493ab50a081d3c74",
+      "parameters": "fc05bc95d1a30c2366766f94a4b3eac8c6eb7f4eeb7acbe0953107aaeda06f12",
+      "scenario_run": "d6325c8fba8c3c20e68f8c724f736883f269892c6a2aba532d7ea1221f125de5",
+      "scenario_validation": "9ee3a6e06b5eef915fc1a0ed90f6cb6ba6256342f04bfbe9aac90d6510d73396"
+    }
+  },
+  "environment": {
+    "python": {
+      "abi": "cpython-311",
+      "distributionCount": 17,
+      "implementation": "CPython",
+      "machine": "AMD64",
+      "platform": "Windows",
+      "version": "3.11.9"
+    },
+    "pythonRecord": "python-windows-amd64-py311.json",
+    "pythonRecordSha256": "fd25251d8648ce324d70f93a0d53d7d9986bb241e7dcc4353396867a14aca8c0",
+    "rust": {
+      "host": "x86_64-pc-windows-msvc",
+      "toolchain": "1.97.1-x86_64-pc-windows-msvc"
+    },
+    "rustRecord": "rust-windows-host.json",
+    "rustRecordSha256": "6bbab09ccb8861b9e3f60f9ab52219158c2b63265b0db0590380f5fa02a8a966"
+  },
+  "fsrsReference": {
+    "deterministic": true,
+    "digest": "0fe7ab7bdbda2fe8d03df486f874cce5dfadd5227e6cac45e6e677fb34bbc933",
+    "outputDigest": "9486d9b43b2b0c2050614540a7ab777da9c680e5af702e61778c773ce721601e",
+    "status": "PASS"
+  },
+  "generatedAtUtc": "2026-07-19T12:29:37Z",
+  "goldenExamples": {
+    "count": 31,
+    "digest": "a084cc4d98d40d1bcefdbad68d6d7f8a1c0842eb21ffe6e2493ab50a081d3c74"
+  },
+  "inventory": {
+    "configs": {
+      "count": 2,
+      "digest": "01c0dcc8870225ee73a32dc54da7e91acbbb9f5f9cbaf579bf5b6218538854bf"
+    },
+    "contracts": {
+      "count": 2,
+      "digest": "857aa9e8d7a45a2a360084f3857bd338ad5add5ab4bc832fb1339873b74ae1ee"
+    },
+    "fixtures": {
+      "count": 1,
+      "digest": "d15a57db7cb1096d70cf352421bd3c8988fe5671c79ba3d692bab5cf94df0855"
+    },
+    "personas": {
+      "count": 16,
+      "digest": "118b4ac9515e42cc7bfc658811f374639da0b3a6fd2bacc1fac4904936ae5f72"
+    },
+    "scenarios": {
+      "count": 26,
+      "digest": "fea627a16da7e514c22efc43ce2901161ae642b307bcb5acdd195d95fe145a6c"
+    },
+    "schemas": {
+      "count": 4,
+      "digest": "e16d1fae6a79824d47c6f87b3c9d4283684c2a7cee3197cfe4170b947bde6af4"
+    },
+    "tests": {
+      "count": 27,
+      "digest": "b807acd5a5d0cf77ea7c707654f748d9424611d5398a1fd229fd3df2d97e8e19"
+    }
+  },
+  "limitations": [
+    "Windows AMD64 and CPython 3.11.9 reference baseline only",
+    "Rust 1.97.1 x86_64-pc-windows-msvc reference toolchain only",
+    "functional verification does not validate learning effectiveness",
+    "historical calibration evidence remains unreproduced",
+    "the cross-horizon retention-cycling gap remains open"
+  ],
+  "notExecuted": [
+    "Fast CI",
+    "Docker E2E",
+    "real-Anki E2E",
+    "production Python/frontend tests",
+    "run-sweep",
+    "run-sensitivity",
+    "run-population",
+    "run-longitudinal",
+    "90/365-day calibration",
+    "historical evidence reproduction",
+    "production integration"
+  ],
+  "package": {
+    "distribution": {
+      "name": "gamification-sim",
+      "version": "0.1.0"
+    },
+    "entrypoint": "gamification_sim.cli:main",
+    "import": "PASS",
+    "origin": "replay-site-packages"
+  },
+  "personas": {
+    "count": 16
+  },
+  "pytest": {
+    "assertion_mode": "plain",
+    "bytecode_mode": "command-line-B",
+    "collected": 819,
+    "errors": 0,
+    "exit": 0,
+    "expected_platform_skips": [
+      {
+        "classname": "tests.test_longitudinal_config",
+        "detail": "research/gamification-sim/tests/test_longitudinal_config.py:60: symlinks are unavailable",
+        "message": "symlinks are unavailable",
+        "test": "test_longitudinal_config_rejects_symlink"
+      },
+      {
+        "classname": "tests.test_scenario_loader",
+        "detail": "research/gamification-sim/tests/test_scenario_loader.py:157: symlinks are unavailable",
+        "message": "symlinks are unavailable",
+        "test": "test_symlink_scenario_file_rejected"
+      }
+    ],
+    "failed": 0,
+    "import_mode": "importlib",
+    "junit_sha256": "e5a71c0d30f2fee5242b3e9087e88db179b97e9667cb070df2f1dd98cf789060",
+    "passed": 817,
+    "skip_classification": "EXPECTED_WINDOWS_SYMLINK_CAPABILITY_UNAVAILABLE",
+    "skipped": 2,
+    "source_injection": false,
+    "xfail": 0,
+    "xpass": 0
+  },
+  "repository": {
+    "declarationsUnchanged": true,
+    "generatedArtifactsCommitted": false,
+    "pollution": false,
+    "testsAndFixturesUnchanged": true
+  },
+  "rust": {
+    "cargo_build": "PASS",
+    "cargo_check": "PASS",
+    "cargo_lock_changed": false,
+    "cargo_test": "PASS",
+    "cargo_toml_changed": false,
+    "target_dir": ".git/g0_6_functional/rust-target",
+    "tests": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 2
+    },
+    "toolchain": "1.97.1-x86_64-pc-windows-msvc"
+  },
+  "scenarioCorpus": {
+    "assertions": {
+      "FAILED": 0,
+      "NOT_APPLICABLE": 0,
+      "PASSED": 53
+    },
+    "count": 26,
+    "distribution": {
+      "abuse": 6,
+      "controls": 6,
+      "edge": 7,
+      "ordinary": 6,
+      "regression": 1
+    },
+    "runDigest": "d6325c8fba8c3c20e68f8c724f736883f269892c6a2aba532d7ea1221f125de5",
+    "validationDigest": "9ee3a6e06b5eef915fc1a0ed90f6cb6ba6256342f04bfbe9aac90d6510d73396"
+  },
+  "schemaVersion": 1,
+  "scope": "windows-amd64-cpython-3.11-rust-1.97.1-review-simulator",
+  "source": {
+    "branch": "gamification",
+    "cargoLockBlob": "bd020e5a3b0dddb8202d567fcbeb87e9103e7cca",
+    "cargoLockSha256": "64f537866854574ee7c8a67c08bd9f7e554d4a0bd39c5fb0af66a3eab5a146fa",
+    "cargoTomlBlob": "2d579b19be54073cef44288084a138e32a1557c2",
+    "cargoTomlSha256": "ef3c5e9ced7651325017e6375733357cb4d95a4b5014fc808624930e74ea4b25",
+    "inputCommit": "13bc3f3c616459ab0ba7a2ec3be53e7dd3158e64",
+    "pyprojectBlob": "1bf09169f1dd8b2c298474a862cac23783ef4eb6",
+    "pyprojectSha256": "ad0aa47dda1cd9d957ecc1b6019b2c5d1db632df78ba2bd4ab04759b3c3d555d"
+  },
+  "status": "FUNCTIONAL_BASELINE_VERIFIED"
+}

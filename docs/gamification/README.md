@@ -2,7 +2,7 @@
 
 ## Status
 
-`ENVIRONMENT_ESTABLISHED_FUNCTIONAL_NOT_VERIFIED`
+`FUNCTIONAL_BASELINE_VERIFIED_EVIDENCE_NOT_REPRODUCED`
 
 The canonical Gamification branch contains selectively recovered Review XP
 specifications and an isolated historical research package. Recovery in G0.4
@@ -44,7 +44,7 @@ Source, tests, scenarios, fixtures, schemas, configs, contracts and the Rust
 oracle are recovered. G0.5 established a Windows AMD64 / CPython 3.11 and exact
 Rust 1.97.1 environment baseline, documented in
 [`../../research/gamification-sim/environment/README.md`](../../research/gamification-sim/environment/README.md).
-Imports, tests, simulations and oracle execution remain pending G0.6.
+G0.6 verified the installed package, CLI, full Python suite, deterministic corpus, exact-toolchain Rust checks/tests, Python/Rust parity and FSRS reference. Evidence reproduction remains pending G0.7.
 
 ## Historical evidence
 
@@ -66,7 +66,7 @@ calibration correction has precedence over conflicting COMPLETE-era claims.
 `NOT_REPRODUCED`
 
 Historical PASS statements, digests and numerical tables were not reproduced.
-Code and commands are present but remain unexecuted.
+Historical evidence remains unreproduced. The bounded current functional commands were executed and recorded by G0.6.
 
 ## Open cross-horizon cycling gap
 
@@ -76,8 +76,8 @@ regression reference, not an approved production candidate.
 ## G0.5–G0.7 gates
 
 1. G0.5 — Complete: Windows AMD64 / CPython 3.11.9, hash-locked offline replay and exact Rust toolchain; declarations unchanged.
-2. G0.6 — Next: verify functional behavior, tests, scenarios and oracles.
-3. G0.7 — reproduce evidence and distinguish current results from historical claims.
+2. G0.6 — Complete: installed package, CLI, full tests, deterministic corpus, Rust parity and FSRS reference verified.
+3. G0.7 — Next: reproduce evidence and distinguish current results from historical claims.
 
 G1 cannot begin authoritatively until these gates provide a trustworthy
 executable and evidence baseline.
