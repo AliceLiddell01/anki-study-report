@@ -322,12 +322,12 @@ JavaScript execution is prohibited.
 
 ```text
 C1.5R.1 — Complete
-C1.5R.2 — Implemented, canonical non-Docker verification pending
-C1.5R.3–R.7 — Not started
+C1.5R.2 — Complete
+C1.5R.3 — Next, not started
+C1.5R.4–R.7 — Not started
 C1.6 — Blocked
 ```
 
-R2 keeps Search v2 and Triage v3 unchanged. Focused backend checks pass in the
-tracked-snapshot reconstruction; focused frontend, package validation and the
-canonical non-Docker gate remain required on the owner's local checkout before
-R2 can become Complete.
+R2 keeps Search v2 and Triage v3 unchanged. Owner-checkout focused frontend,
+package validation and the canonical non-Docker gate passed for the implementation
+tree committed as `edad09e8ffae443b94e192b266084abb66c37adf`. R3 is now Next, not started.

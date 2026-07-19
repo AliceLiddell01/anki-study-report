@@ -40,7 +40,8 @@ branch for current core work: core
 Core C1: In progress
 C1.5R.0: Complete
 C1.5R.1: Complete
-C1.5R.2: Implemented, canonical non-Docker verification pending
+C1.5R.2: Complete
+C1.5R.3: Next, not started
 C1.6: Blocked, not started
 ```
 
@@ -48,6 +49,7 @@ Current reports:
 
 - [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md)
 - [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md)
+- [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md)
 
 ## Historical C1.5 evidence
 
@@ -80,17 +82,18 @@ acceptance evidence for C1.5R.
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
 C1.5R.1 Canonical card display identity — Complete
-C1.5R.2 Declarative compact formatter runtime — Implemented, canonical non-Docker verification pending
-C1.5R.3 Front/back preview semantics — Not started
+C1.5R.2 Declarative compact formatter runtime — Complete
+C1.5R.3 Front/back preview semantics — Next, not started
 C1.5R.4 Independent triage candidate sources — Not started
 C1.5R.5 Cards attention inbox redesign — Not started
 C1.5R.6 Guided Inspection Profiles UX — Not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-C1.5R.1 is closed. R2 implementation exists on the current candidate patch, but
-its owner-checkout frontend/package/canonical gates and push remain pending. Do
-not begin R3 or C1.6 before that closeout.
+C1.5R.1 and C1.5R.2 are closed. R2 owner-checkout focused, package and
+canonical non-Docker verification passed for the implementation tree committed
+and pushed as `edad09e8ffae443b94e192b266084abb66c37adf`. C1.5R.3 is now Next, not started. Do not
+begin C1.6 before the remaining C1.5R stages and separate owner product acceptance.
 
 ## C1.5R.1 implementation
 
@@ -190,6 +193,45 @@ a46116e43756eceb3820f4eca76b28645a54a3ff — test: type fetch mocks for strict c
 Fast CI, Docker, real-Anki E2E, package/build verification and owner product
 acceptance were not run in C1.5R.1V.
 
+## C1.5R.2 verification closeout
+
+```text
+verified implementation commit:
+edad09e8ffae443b94e192b266084abb66c37adf
+
+branch:
+core
+
+origin/core synchronization after push:
+0 behind / 0 ahead
+
+origin/master divergence at verified implementation commit:
+0 behind / 73 ahead
+
+focused backend:
+142 passed
+
+focused frontend:
+6 files, 49 tests passed
+
+TypeScript typecheck:
+PASS
+
+package build and validation:
+PASS — 72 entries, canonical version 1.2.0
+
+canonical run_full_check.ps1 -SkipDocker:
+PASS — 279 frontend tests; 772 Python tests passed, 5 skipped
+
+Git hygiene:
+PASS
+```
+
+The first canonical attempt found only generated `anki_study_report/__pycache__`
+left by the explicit compile step. It was removed and the clean canonical rerun
+passed. Fast CI, Docker, real-Anki E2E and owner product acceptance were not
+required for R2.
+
 ## Accepted later-stage decisions
 
 ### Preview semantics — C1.5R.3
@@ -274,8 +316,8 @@ changes and push only to `origin/core`.
 Until every required gate passes:
 
 ```text
-C1.5R.2 — Implemented, canonical non-Docker verification pending
-C1.5R.3 — Blocked
+C1.5R.2 — Complete
+C1.5R.3 — Next, not started
 C1.6 — Blocked
 ```
 

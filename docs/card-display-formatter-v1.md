@@ -2,7 +2,7 @@
 
 ## Status
 
-**Stage:** `C1.5R.2 — Implemented, canonical non-Docker verification pending`
+**Stage:** `C1.5R.2 — Complete`
 
 **Branch:** `core`
 

@@ -4,7 +4,7 @@
 
 **Canonical baseline:** `C1.5R.1 — Complete`
 
-**Optional formatter layer:** `C1.5R.2 — Implemented, canonical non-Docker verification pending`
+**Optional formatter layer:** `C1.5R.2 — Complete`
 
 **Branch:** `core`
 
@@ -168,19 +168,18 @@ exceptions, formatter filenames, generated `displayText`, or tokens are logged.
 
 ## Verification state
 
-C1.5R.1 focused verification is complete at its recorded tested implementation
-HEAD. R2 focused backend and isolated TypeScript production checks pass in the
-exact tracked-snapshot reconstruction, but completion still requires execution
-on the owner's local `core` checkout:
+C1.5R.1 remains complete at its recorded tested implementation HEAD. C1.5R.2
+owner-checkout verification is complete for the tree committed and pushed as
+`edad09e8ffae443b94e192b266084abb66c37adf`:
 
 ```text
-focused Python
-focused Vitest
-pnpm typecheck
-canonical run_full_check.ps1 -SkipDocker
-package validation
-Git hygiene and push to origin/core
+focused backend: 142 passed
+focused frontend: 49 passed
+TypeScript typecheck: PASS
+package build and validation: PASS
+canonical run_full_check.ps1 -SkipDocker: PASS
+Git hygiene and origin/core synchronization: PASS
 ```
 
-Until all required local gates pass, R2 remains `Implemented, canonical
-non-Docker verification pending`; R3 and C1.6 remain blocked.
+R3 is now Next, not started. C1.6 remains blocked until the complete C1.5R
+remediation and separate owner product acceptance are finished.

@@ -205,15 +205,17 @@ web-dashboard/src/pages/SearchMetadataIntegration.test.tsx
 web-dashboard/src/pages/CardsPage.test.tsx
 ```
 
-These tests are committed but not executed in the GitHub connector environment.
-Typecheck evidence is also pending.
+The owner-checkout focused frontend contour passed 49 tests, the complete
+frontend suite passed 279 tests, and TypeScript typecheck passed. The canonical
+non-Docker gate rebuilt and synchronized the production dashboard assets.
 
 ## Current status
 
 ```text
 C1.5R.0 — Complete
 C1.5R.1 — Complete
-C1.5R.2 — Implemented, canonical non-Docker verification pending
+C1.5R.2 — Complete
+C1.5R.3 — Next, not started
 C1.6 — Blocked
 Core C1 — In progress
 ```
