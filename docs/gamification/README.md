@@ -2,7 +2,7 @@
 
 ## Status
 
-`FUNCTIONAL_BASELINE_VERIFIED_EVIDENCE_NOT_REPRODUCED`
+`COMPLETE_CURRENT_EVIDENCE_REPRODUCED_WITH_OPEN_GAP`
 
 The canonical Gamification branch contains selectively recovered Review XP
 specifications and an isolated historical research package. Recovery in G0.4
@@ -44,7 +44,7 @@ Source, tests, scenarios, fixtures, schemas, configs, contracts and the Rust
 oracle are recovered. G0.5 established a Windows AMD64 / CPython 3.11 and exact
 Rust 1.97.1 environment baseline, documented in
 [`../../research/gamification-sim/environment/README.md`](../../research/gamification-sim/environment/README.md).
-G0.6 verified the installed package, CLI, full Python suite, deterministic corpus, exact-toolchain Rust checks/tests, Python/Rust parity and FSRS reference. Evidence reproduction remains pending G0.7.
+G0.6 verified the functional baseline. G0.7 reproduced the canonical current evidence on Windows AMD64, independently verified the raw artifact and reconciled the historical and Linux supporting claims.
 
 ## Historical evidence
 
@@ -63,10 +63,12 @@ calibration correction has precedence over conflicting COMPLETE-era claims.
 
 ## Evidence and execution status
 
-`NOT_REPRODUCED`
+`CURRENT_EVIDENCE_REPRODUCED`
 
-Historical PASS statements, digests and numerical tables were not reproduced.
-Historical evidence remains unreproduced. The bounded current functional commands were executed and recorded by G0.6.
+The normalized canonical record is
+[`../../research/gamification-sim/evidence/g0.7-windows-amd64-py311-rust-1.97.1.json`](../../research/gamification-sim/evidence/g0.7-windows-amd64-py311-rust-1.97.1.json).
+The raw artifact remains in GitHub Actions and passed independent integrity
+verification.
 
 ## Open cross-horizon cycling gap
 
@@ -77,10 +79,9 @@ regression reference, not an approved production candidate.
 
 1. G0.5 — Complete: Windows AMD64 / CPython 3.11.9, hash-locked offline replay and exact Rust toolchain; declarations unchanged.
 2. G0.6 — Complete: installed package, CLI, full tests, deterministic corpus, Rust parity and FSRS reference verified.
-3. G0.7 — Next: reproduce evidence and distinguish current results from historical claims.
+3. G0.7 — Complete: canonical current evidence reproduced and reconciled.
 
-G1 cannot begin authoritatively until these gates provide a trustworthy
-executable and evidence baseline.
+G1 is next and receives the exact reproduced cross-horizon cycling gate.
 
 ## Production integration boundary
 

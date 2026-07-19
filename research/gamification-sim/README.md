@@ -2,9 +2,9 @@
 
     ## Status
 
-    `FUNCTIONAL_BASELINE_VERIFIED`
+    `COMPLETE_CURRENT_EVIDENCE_REPRODUCED_WITH_OPEN_GAP`
 
-    G0.6 verified the bounded functional baseline in the canonical G0.5 environment after the installed-execution-boundary correction. Historical evidence remains unreproduced.
+    G0.7 reproduced the canonical current evidence on Windows AMD64, preserved and independently verified the raw artifact, and handed the reproduced cycling gap to G1.
 
     The package was selectively recovered from the frozen historical source. G0.4
     verifies source/target content relationships and isolation only. It does not
@@ -37,7 +37,7 @@
 
     ## Available commands
 
-    The regular installed package exposes the following 17 command surfaces. G0.6 verified console/module entry points and the bounded functional commands; sweep, sensitivity, population and longitudinal runs remain outside the executed baseline.
+    The regular installed package exposes the following 17 command surfaces. G0.6 verified the functional commands; G0.7 executed the canonical sweep, sensitivity, bounded population and persistent-card longitudinal evidence contours.
 
 - `gamification-sim compare-scenarios ...` / `py -m gamification_sim compare-scenarios ...`
 - `gamification-sim evaluate ...` / `py -m gamification_sim evaluate ...`
@@ -98,10 +98,14 @@ See [functional baseline](functional/README.md) and the
 The corrective checkpoint remains part of the audit trail, but no
 pre-correction PASS state was inherited.
 
-## Evidence status — G0.7 pending
+## Evidence status — G0.7 Complete
 
-    G0.7 owns evidence reproduction and the separation of current results from
-    historical claims.
+`CURRENT_EVIDENCE_REPRODUCED`
+
+See [`evidence/README.md`](evidence/README.md) and
+[`../../roadmap/gamification/g0-evidence-reproduction.md`](../../roadmap/gamification/g0-evidence-reproduction.md).
+The canonical raw artifact is retained in GitHub Actions; only normalized records
+are committed.
 
     ## Historical reports
 

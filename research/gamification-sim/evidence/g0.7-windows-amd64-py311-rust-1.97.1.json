@@ -1,0 +1,882 @@
+{
+  "artifact": {
+    "apiDigest": "sha256:0530a2d63d37cfc00c946b85b17edf05e38d6e1bcb4f13fa2825282b702687ae",
+    "archiveMemberCount": 140,
+    "artifactId": 8444920908,
+    "compressedBytes": 507574,
+    "downloadedZipSha256": "0530a2d63d37cfc00c946b85b17edf05e38d6e1bcb4f13fa2825282b702687ae",
+    "effectiveExpiresAtUtc": "2026-08-02T16:40:11Z",
+    "independentVerification": {
+      "crossHorizonRecomputed": "PASS",
+      "csvFilesParsed": 16,
+      "hashAndSizeMismatches": 0,
+      "inputBeforeAfterEquality": "PASS",
+      "manifestRowsVerified": 138,
+      "pathTraversal": "PASS",
+      "requiredRawPaths": "PASS",
+      "sameSeedRawByteEquality": "PASS",
+      "secondarySeedDifference": "PASS",
+      "securityScan": "PASS",
+      "status": "PASS",
+      "strictJsonFilesParsed": 70
+    },
+    "jobId": 88214940938,
+    "manifestSha256": "33f3bfb145ba6dfe1252cb68612ffcb4f63dfae2a1f18553474da0e5246f5150",
+    "name": "g0-7-windows-evidence-eea4c24b178259bf611a317e115bf6d8f6ed9577",
+    "payloadBytes": 5893935,
+    "payloadFileCount": 138,
+    "requestedRetentionDays": 90,
+    "url": "https://github.com/AliceLiddell01/anki-study-report/actions/runs/29695312258/artifacts/8444920908",
+    "workflowRunId": 29695312258
+  },
+  "crossHorizon": {
+    "cells": [
+      {
+        "advantage365": 0.0005632323390294677,
+        "advantage90": -0.00787729417762993,
+        "comparison": "intentional-backlog",
+        "delta365Minus90": 0.008440526516659398,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage365": -0.015674928856293055,
+        "advantage90": -0.00044346058049055326,
+        "comparison": "intentional-backlog",
+        "delta365Minus90": -0.015231468275802502,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": false,
+        "replica": 1
+      },
+      {
+        "advantage365": 0.01740169409234382,
+        "advantage90": -0.0037743285774081313,
+        "comparison": "retention-high-cycle",
+        "delta365Minus90": 0.02117602266975195,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage365": 0.0015438826586415418,
+        "advantage90": -0.010044592850379412,
+        "comparison": "retention-high-cycle",
+        "delta365Minus90": 0.011588475509020955,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": true,
+        "replica": 1
+      },
+      {
+        "advantage365": 0.011623868729051332,
+        "advantage90": 0.010980579297321715,
+        "comparison": "retention-low-cycle",
+        "delta365Minus90": 0.0006432894317296173,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": true,
+        "replica": 0
+      },
+      {
+        "advantage365": 0.013604965651852367,
+        "advantage90": 0.004017396619023545,
+        "comparison": "retention-low-cycle",
+        "delta365Minus90": 0.009587569032828822,
+        "endpoint365Pass": true,
+        "endpoint90Pass": true,
+        "grew": true,
+        "replica": 1
+      }
+    ],
+    "groups": [
+      {
+        "comparison": "intentional-backlog",
+        "endpoint365Pass": true,
+        "replicas": 2,
+        "status": "PASS",
+        "systematicGrowth": false
+      },
+      {
+        "comparison": "retention-high-cycle",
+        "endpoint365Pass": true,
+        "replicas": 2,
+        "status": "FAIL",
+        "systematicGrowth": true
+      },
+      {
+        "comparison": "retention-low-cycle",
+        "endpoint365Pass": true,
+        "replicas": 2,
+        "status": "FAIL",
+        "systematicGrowth": true
+      }
+    ],
+    "method": "365-day unexplained advantage must remain <=3%; retention cycling must not increase in every matched replica",
+    "status": "FAIL"
+  },
+  "decision": {
+    "g1Handoff": "Close the reproduced 90→365 retention-cycling growth gap.",
+    "learningEffectivenessProven": false,
+    "productionIntegration": "PROHIBITED",
+    "rCurrentStatus": "REGRESSION_REFERENCE",
+    "recommendedReviewCandidate": null
+  },
+  "environment": {
+    "architecture": "AMD64",
+    "operatingSystem": "Microsoft Windows Server 2025 Datacenter",
+    "osBuild": "10.0.26100",
+    "python": {
+      "architecture": "x64",
+      "implementation": "CPython",
+      "installation": "regular non-editable installation from a temporary immutable source copy",
+      "installedSetMatchesG0_5": true,
+      "lockedDistributionCount": 17,
+      "package": "gamification-sim 0.1.0",
+      "pipCheck": "PASS",
+      "version": "3.11.9"
+    },
+    "runnerImage": "windows-2025-vs2026",
+    "runnerImageVersion": "20260714.173.1",
+    "runnerLabel": "windows-2025",
+    "rust": {
+      "cargo": "1.97.1",
+      "cargoFetchLocked": "PASS",
+      "cargoLockChanged": false,
+      "cargoMetadataLocked": "PASS",
+      "cargoMetadataLockedOffline": "PASS",
+      "host": "x86_64-pc-windows-msvc",
+      "rustc": "1.97.1",
+      "toolchain": "1.97.1-x86_64-pc-windows-msvc"
+    }
+  },
+  "historicalReconciliation": {
+    "classes": [
+      "EXACT_MATCH",
+      "SEMANTIC_MATCH_DIGEST_DRIFT",
+      "MATERIAL_DRIFT",
+      "NOT_COMPARABLE"
+    ],
+    "materialDrift": [],
+    "rows": [
+      {
+        "claim": "Corrected sweep semantic result",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "Confirms the current sweep selection used for calibration-90.",
+        "explanation": "Counts, status distribution and the fourteen normalized Pareto IDs match.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": {
+          "evaluated": 30,
+          "paretoCount": 14,
+          "pass": 30
+        },
+        "linuxValue": {
+          "evaluated": 30,
+          "paretoCount": 14,
+          "pass": 30
+        },
+        "windowsValue": {
+          "evaluated": 30,
+          "paretoCount": 14,
+          "pass": 30
+        }
+      },
+      {
+        "claim": "Corrected sweep historical digest",
+        "comparisonClass": "NOT_COMPARABLE",
+        "decisionImpact": "No semantic drift inferred; historical digest identity is not claimed.",
+        "explanation": "Current Windows replay is internally deterministic, but the historical raw bundle is unavailable and exact serialization/provenance drift cannot be isolated.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "16ce6388691f4645fd77ead50f548c3f0985224fa0813f2f1fd6ebee99eeeeb1",
+        "linuxValue": "9327de27502e22198e9b876f950f233fba19d4f6b1635e040b8a7bf9017e785c",
+        "windowsValue": "1a691b15c813088af0779eff4979e2052c9b86096484051131d9ea2a7d946db3"
+      },
+      {
+        "claim": "Sensitivity semantic result",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "No sensitivity evidence gap was introduced by recovery.",
+        "explanation": "All sensitivity counts and expected crossings match.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": {
+          "complete": 63,
+          "crossings": 10,
+          "grids": 13,
+          "invariantPass": 63,
+          "points": 63,
+          "quantitativePass": 53
+        },
+        "linuxValue": {
+          "complete": 63,
+          "crossings": 10,
+          "grids": 13,
+          "invariantPass": 63,
+          "points": 63,
+          "quantitativePass": 53
+        },
+        "windowsValue": {
+          "complete": 63,
+          "crossings": 10,
+          "grids": 13,
+          "invariantPass": 63,
+          "points": 63,
+          "quantitativePass": 53
+        }
+      },
+      {
+        "claim": "Sensitivity historical digest",
+        "comparisonClass": "NOT_COMPARABLE",
+        "decisionImpact": "Current reproducibility is established without claiming historical digest equivalence.",
+        "explanation": "The historical raw bundle is unavailable; current Windows run1/run2 are identical and semantic counts match.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "2ebc1c182fb6075f441a473e842ad198d80977e6128c82ce9427d0a72c4dd682",
+        "linuxValue": "78f4c31b69166c59eb49f4beaab67bde7bb684ac0686ba7cf30b115b887f49e0",
+        "windowsValue": "f092ad834d4996f5d79f2cb1f30057b409c8df66821cedcdba653dc02a4d6639"
+      },
+      {
+        "claim": "Population counts",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "Population workload coverage is reproduced.",
+        "explanation": "All bounded independent-day population counts match.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": {
+          "development": 480,
+          "longSmoke": 112,
+          "standard": 584000
+        },
+        "linuxValue": {
+          "development": 480,
+          "longSmoke": 112,
+          "standard": 584000
+        },
+        "windowsValue": {
+          "development": 480,
+          "longSmoke": 112,
+          "standard": 584000
+        }
+      },
+      {
+        "claim": "Population historical standard digest",
+        "comparisonClass": "NOT_COMPARABLE",
+        "decisionImpact": "Cross-platform current behavior agrees; historical digest identity is not claimed.",
+        "explanation": "Current Windows and Linux standard digests agree, but the archived historical raw output is unavailable.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "a7823e39eb85c5b39f37266ad4b7057d12febe54d4c7478e06d9c911425703c4",
+        "linuxValue": "95cdfce9b84b46afd4e47849b6f52a62e7fae4211dabf116a217beb6cf611b92",
+        "windowsValue": "95cdfce9b84b46afd4e47849b6f52a62e7fae4211dabf116a217beb6cf611b92"
+      },
+      {
+        "claim": "Longitudinal semantic counts",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "The persistent-card evidence contour is reproduced.",
+        "explanation": "Result and review counts match at all required horizons.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": {
+          "calibration365": [
+            14,
+            2189
+          ],
+          "calibration90": [
+            252,
+            31892
+          ],
+          "development": [
+            36,
+            1484
+          ]
+        },
+        "linuxValue": {
+          "calibration365": [
+            14,
+            2189
+          ],
+          "calibration90": [
+            252,
+            31892
+          ],
+          "development": [
+            36,
+            1484
+          ]
+        },
+        "windowsValue": {
+          "calibration365": [
+            14,
+            2189
+          ],
+          "calibration90": [
+            252,
+            31892
+          ],
+          "development": [
+            36,
+            1484
+          ]
+        }
+      },
+      {
+        "claim": "Longitudinal historical digests",
+        "comparisonClass": "NOT_COMPARABLE",
+        "decisionImpact": "Semantic claims are compared separately from digest identity.",
+        "explanation": "The current Windows runs are deterministic, but historical raw outputs and complete historical digests are unavailable.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "Only truncated historical trajectory/final/report digests are available.",
+        "linuxValue": "Linux trajectory/final/report digests differ from current Windows for persistent-card runs.",
+        "windowsValue": {
+          "calibration365": {
+            "candidateCount": 1,
+            "finalCohortDigest": "daedc0f96737836a6d575599d7f030cd00dff9817c5d831c32309914f54441c9",
+            "horizonDays": 365,
+            "policyCount": 7,
+            "repeat": "IDENTICAL",
+            "reportDigest": "355f883d1fd183ca4cec6cba153731365d24332779b1d43aeb82a8f6b01ff64f",
+            "resultCount": 14,
+            "reviewCount": 2189,
+            "trajectoryDigest": "4b38ee3dc2922c2dea92d3b099d81274c173e36dec906ab98c725679ed5ac48a"
+          },
+          "calibration90": {
+            "candidateCount": 14,
+            "finalCohortDigest": "4ad6d255e3260767ad527a4038c79bcc6fef8cf454959abc502fc0f11c2c893d",
+            "horizonDays": 90,
+            "policyCount": 9,
+            "repeat": "IDENTICAL",
+            "reportDigest": "b2ce8e805dbc9a5fc765dbc57c064ed076951238c5fad2f52294aa264823438c",
+            "resultCount": 252,
+            "reviewCount": 31892,
+            "trajectoryDigest": "3f3d70e60a31ecef39da0db3803a9a7b0c5ac70a3f919bfe88fe901d3dda5997"
+          },
+          "development": {
+            "candidateCount": 4,
+            "finalCohortDigest": "b6ef5f16de626f73a160f2c637e26a081db119343cde43f6844eab7685d26ed0",
+            "horizonDays": 30,
+            "policyCount": 9,
+            "repeat": "IDENTICAL",
+            "reportDigest": "2c45fea0f6281dbcb3d90c3702478b0a0b56bc33990ace78b41256a87b137b72",
+            "resultCount": 36,
+            "reviewCount": 1484,
+            "trajectoryDigest": "472dbff99545a9881c7dff3538a1ff486959de838a1943e8df44c51ff033957c"
+          }
+        }
+      },
+      {
+        "claim": "Same-seed replay",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "Current deterministic evidence baseline established.",
+        "explanation": "All canonical same-seed pairs are identical.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "Repeated fixed-config/seed digests identical.",
+        "linuxValue": "PASS in the normalized supporting run.",
+        "windowsValue": "PASS for sweep, sensitivity, every population mode and every longitudinal mode; raw files are byte-identical within each required pair."
+      },
+      {
+        "claim": "Secondary-seed behavior",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "The simulator is deterministic by seed rather than seed-insensitive.",
+        "explanation": "Both bounded secondary-seed checks completed and produced different valid digests.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "Different seed changes trajectory under the same contract.",
+        "linuxValue": {
+          "longitudinalDevelopment": "DIFFERENT",
+          "populationDevelopment": "DIFFERENT"
+        },
+        "windowsValue": {
+          "longitudinalDevelopment": "DIFFERENT",
+          "populationDevelopment": "DIFFERENT"
+        }
+      },
+      {
+        "claim": "Baseline preservation",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "The open cycling result is not caused by honest baseline suppression.",
+        "explanation": "Independent audit of policy-metrics.csv confirmed every ratio within 1e-9 and zero suppression events.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "Baseline ratio 1.0 within floating tolerance; zero suppression events.",
+        "linuxValue": "PASS in supporting normalized evidence.",
+        "windowsValue": "PASS across all 302 policy-result rows; zero suppression events."
+      },
+      {
+        "claim": "Cross-horizon per-replica values and group gates",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "The open cycling gap is reproduced and handed to G1.",
+        "explanation": "All six current Windows values match the archived and Linux values at recorded precision; independent recomputation from raw abuse matrices produced the same groups.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": {
+          "intentionalBacklog": {
+            "endpoint": "PASS",
+            "growth": "PASS"
+          },
+          "retentionHigh": {
+            "endpoint": "PASS",
+            "growth": "FAIL"
+          },
+          "retentionLow": {
+            "endpoint": "PASS",
+            "growth": "FAIL"
+          }
+        },
+        "linuxValue": {
+          "intentionalBacklog": {
+            "endpoint": "PASS",
+            "growth": "PASS"
+          },
+          "retentionHigh": {
+            "endpoint": "PASS",
+            "growth": "FAIL"
+          },
+          "retentionLow": {
+            "endpoint": "PASS",
+            "growth": "FAIL"
+          }
+        },
+        "windowsValue": {
+          "cells": [
+            {
+              "advantage365": 0.0005632323390294677,
+              "advantage90": -0.00787729417762993,
+              "comparison": "intentional-backlog",
+              "delta365Minus90": 0.008440526516659398,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": true,
+              "replica": 0
+            },
+            {
+              "advantage365": -0.015674928856293055,
+              "advantage90": -0.00044346058049055326,
+              "comparison": "intentional-backlog",
+              "delta365Minus90": -0.015231468275802502,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": false,
+              "replica": 1
+            },
+            {
+              "advantage365": 0.01740169409234382,
+              "advantage90": -0.0037743285774081313,
+              "comparison": "retention-high-cycle",
+              "delta365Minus90": 0.02117602266975195,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": true,
+              "replica": 0
+            },
+            {
+              "advantage365": 0.0015438826586415418,
+              "advantage90": -0.010044592850379412,
+              "comparison": "retention-high-cycle",
+              "delta365Minus90": 0.011588475509020955,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": true,
+              "replica": 1
+            },
+            {
+              "advantage365": 0.011623868729051332,
+              "advantage90": 0.010980579297321715,
+              "comparison": "retention-low-cycle",
+              "delta365Minus90": 0.0006432894317296173,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": true,
+              "replica": 0
+            },
+            {
+              "advantage365": 0.013604965651852367,
+              "advantage90": 0.004017396619023545,
+              "comparison": "retention-low-cycle",
+              "delta365Minus90": 0.009587569032828822,
+              "endpoint365Pass": true,
+              "endpoint90Pass": true,
+              "grew": true,
+              "replica": 1
+            }
+          ],
+          "groups": [
+            {
+              "comparison": "intentional-backlog",
+              "endpoint365Pass": true,
+              "replicas": 2,
+              "status": "PASS",
+              "systematicGrowth": false
+            },
+            {
+              "comparison": "retention-high-cycle",
+              "endpoint365Pass": true,
+              "replicas": 2,
+              "status": "FAIL",
+              "systematicGrowth": true
+            },
+            {
+              "comparison": "retention-low-cycle",
+              "endpoint365Pass": true,
+              "replicas": 2,
+              "status": "FAIL",
+              "systematicGrowth": true
+            }
+          ],
+          "method": "365-day unexplained advantage must remain <=3%; retention cycling must not increase in every matched replica",
+          "status": "FAIL"
+        }
+      },
+      {
+        "claim": "Candidate decision",
+        "comparisonClass": "EXACT_MATCH",
+        "decisionImpact": "G1 starts from an open measured problem, not a production choice.",
+        "explanation": "G0.7 records evidence and does not select coefficients.",
+        "historicalSource": "reports/gamification/historical-source/stage-5-calibration-correction.md",
+        "historicalValue": "No recommended candidate; R-CURRENT remains a regression reference.",
+        "linuxValue": "No recommended candidate; R-CURRENT remains a regression reference.",
+        "windowsValue": "No recommended candidate; R-CURRENT remains a regression reference."
+      }
+    ],
+    "status": "COMPLETE"
+  },
+  "inputs": {
+    "after": {
+      "cargoLock": {
+        "bytes": 11606,
+        "count": 1,
+        "digest": "e563ff1eea35f4cdbc0534863448bb9b2a342a69ffb2cecc498aa36f792e2b54"
+      },
+      "cargoToml": {
+        "bytes": 240,
+        "count": 1,
+        "digest": "ab98e18272dd5b8f93476819b49fc84cfb847234625ce5f405c954412604c77e"
+      },
+      "configs": {
+        "bytes": 3285,
+        "count": 2,
+        "digest": "27c26151fbdad94f0e13a463a928192d704c07fdef5e965f097230834319d887"
+      },
+      "contracts": {
+        "bytes": 3514,
+        "count": 2,
+        "digest": "2b72bb96a4776145d3781eafb796581356cf36f6bddad8da3c58570e0511dbec"
+      },
+      "environmentRecord": {
+        "bytes": 5651,
+        "count": 1,
+        "digest": "df824491aab9c78b7602ac6e1dbcb435baf4982fd6ef92ad1f8631e824fb2158"
+      },
+      "fixtures": {
+        "bytes": 24622,
+        "count": 1,
+        "digest": "a4862f99e31d05b4ab1cb50e19216e014be132ddf681dcbb8ecdf67e6b00223b"
+      },
+      "functionalRecord": {
+        "bytes": 8985,
+        "count": 1,
+        "digest": "f74635e48def2f90deb54f6775867bf280c05d903990dc3f6760089df5eb4ca5"
+      },
+      "historicalCalibration": {
+        "bytes": 14000,
+        "count": 1,
+        "digest": "32c2a4e81ffef838e053bd687023ef11d275ab535695ecb92d970a57ba64b0ce"
+      },
+      "historicalClosure": {
+        "bytes": 11082,
+        "count": 1,
+        "digest": "d6569dbee3d97042aca87eb9518a45961097300e9243a547102b4e5059e89d8b"
+      },
+      "personas": {
+        "bytes": 8638,
+        "count": 16,
+        "digest": "1f62421e408e4fdb3051d4c509316732d5a34ddda148e0dd4243bad58dadb459"
+      },
+      "pyproject": {
+        "bytes": 1077,
+        "count": 1,
+        "digest": "0fa2555746359e147f91ab6c6d39e05babbe125639f17c4d52052abbfd2e7a0f"
+      },
+      "pythonLock": {
+        "bytes": 2190,
+        "count": 1,
+        "digest": "bc1f32660fd87a6def7c3f09a6d3df3c5a178e16693d3711afd5e1edd746155e"
+      },
+      "rustRecord": {
+        "bytes": 6692,
+        "count": 1,
+        "digest": "f9372be4ebcf1cf6ffd2b62240328a421ab5e1020d3b98f3a794dff6ee44fceb"
+      },
+      "scenarios": {
+        "bytes": 50745,
+        "count": 26,
+        "digest": "0a0eeddc82aa85976ff256f982b76c4e1293a750a36fdf36dff735c60b939ae8"
+      },
+      "schemas": {
+        "bytes": 22774,
+        "count": 4,
+        "digest": "ac743d3c651e7bae28c13383ca856863f67cf06b99738400573e25bc597b8e02"
+      },
+      "source": {
+        "bytes": 278665,
+        "count": 34,
+        "digest": "ae20a7f39a035f896ed4193570387a4180ae623fc36bc71c5cea2df5a374fa4f"
+      },
+      "tests": {
+        "bytes": 113848,
+        "count": 27,
+        "digest": "85d9f2c3f38acbe4bf2904eed40835edef50c9e0983977c61e50e162cb33f7f3"
+      }
+    },
+    "before": {
+      "cargoLock": {
+        "bytes": 11606,
+        "count": 1,
+        "digest": "e563ff1eea35f4cdbc0534863448bb9b2a342a69ffb2cecc498aa36f792e2b54"
+      },
+      "cargoToml": {
+        "bytes": 240,
+        "count": 1,
+        "digest": "ab98e18272dd5b8f93476819b49fc84cfb847234625ce5f405c954412604c77e"
+      },
+      "configs": {
+        "bytes": 3285,
+        "count": 2,
+        "digest": "27c26151fbdad94f0e13a463a928192d704c07fdef5e965f097230834319d887"
+      },
+      "contracts": {
+        "bytes": 3514,
+        "count": 2,
+        "digest": "2b72bb96a4776145d3781eafb796581356cf36f6bddad8da3c58570e0511dbec"
+      },
+      "environmentRecord": {
+        "bytes": 5651,
+        "count": 1,
+        "digest": "df824491aab9c78b7602ac6e1dbcb435baf4982fd6ef92ad1f8631e824fb2158"
+      },
+      "fixtures": {
+        "bytes": 24622,
+        "count": 1,
+        "digest": "a4862f99e31d05b4ab1cb50e19216e014be132ddf681dcbb8ecdf67e6b00223b"
+      },
+      "functionalRecord": {
+        "bytes": 8985,
+        "count": 1,
+        "digest": "f74635e48def2f90deb54f6775867bf280c05d903990dc3f6760089df5eb4ca5"
+      },
+      "historicalCalibration": {
+        "bytes": 14000,
+        "count": 1,
+        "digest": "32c2a4e81ffef838e053bd687023ef11d275ab535695ecb92d970a57ba64b0ce"
+      },
+      "historicalClosure": {
+        "bytes": 11082,
+        "count": 1,
+        "digest": "d6569dbee3d97042aca87eb9518a45961097300e9243a547102b4e5059e89d8b"
+      },
+      "personas": {
+        "bytes": 8638,
+        "count": 16,
+        "digest": "1f62421e408e4fdb3051d4c509316732d5a34ddda148e0dd4243bad58dadb459"
+      },
+      "pyproject": {
+        "bytes": 1077,
+        "count": 1,
+        "digest": "0fa2555746359e147f91ab6c6d39e05babbe125639f17c4d52052abbfd2e7a0f"
+      },
+      "pythonLock": {
+        "bytes": 2190,
+        "count": 1,
+        "digest": "bc1f32660fd87a6def7c3f09a6d3df3c5a178e16693d3711afd5e1edd746155e"
+      },
+      "rustRecord": {
+        "bytes": 6692,
+        "count": 1,
+        "digest": "f9372be4ebcf1cf6ffd2b62240328a421ab5e1020d3b98f3a794dff6ee44fceb"
+      },
+      "scenarios": {
+        "bytes": 50745,
+        "count": 26,
+        "digest": "0a0eeddc82aa85976ff256f982b76c4e1293a750a36fdf36dff735c60b939ae8"
+      },
+      "schemas": {
+        "bytes": 22774,
+        "count": 4,
+        "digest": "ac743d3c651e7bae28c13383ca856863f67cf06b99738400573e25bc597b8e02"
+      },
+      "source": {
+        "bytes": 278665,
+        "count": 34,
+        "digest": "ae20a7f39a035f896ed4193570387a4180ae623fc36bc71c5cea2df5a374fa4f"
+      },
+      "tests": {
+        "bytes": 113848,
+        "count": 27,
+        "digest": "85d9f2c3f38acbe4bf2904eed40835edef50c9e0983977c61e50e162cb33f7f3"
+      }
+    },
+    "immutable": true
+  },
+  "limitations": [
+    "Synthetic simulator evidence does not prove human learning effectiveness or motivation.",
+    "The 365-day calibration is bounded to R-CURRENT, 20 cards and two replicas.",
+    "Historical raw evidence bundles are unavailable, so historical digest equivalence is not claimed where current digests differ.",
+    "The artifact was requested for 90 days but the repository's effective expiry is 2026-08-02T16:40:11Z.",
+    "The exact Rust environment provenance and locked metadata replay were checked; the complete G0.6 Rust functional suite was not repeated."
+  ],
+  "longitudinal": {
+    "calibration365": {
+      "candidateCount": 1,
+      "finalCohortDigest": "daedc0f96737836a6d575599d7f030cd00dff9817c5d831c32309914f54441c9",
+      "horizonDays": 365,
+      "policyCount": 7,
+      "repeat": "IDENTICAL",
+      "reportDigest": "355f883d1fd183ca4cec6cba153731365d24332779b1d43aeb82a8f6b01ff64f",
+      "resultCount": 14,
+      "reviewCount": 2189,
+      "trajectoryDigest": "4b38ee3dc2922c2dea92d3b099d81274c173e36dec906ab98c725679ed5ac48a"
+    },
+    "calibration90": {
+      "candidateCount": 14,
+      "finalCohortDigest": "4ad6d255e3260767ad527a4038c79bcc6fef8cf454959abc502fc0f11c2c893d",
+      "horizonDays": 90,
+      "policyCount": 9,
+      "repeat": "IDENTICAL",
+      "reportDigest": "b2ce8e805dbc9a5fc765dbc57c064ed076951238c5fad2f52294aa264823438c",
+      "resultCount": 252,
+      "reviewCount": 31892,
+      "trajectoryDigest": "3f3d70e60a31ecef39da0db3803a9a7b0c5ac70a3f919bfe88fe901d3dda5997"
+    },
+    "development": {
+      "candidateCount": 4,
+      "finalCohortDigest": "b6ef5f16de626f73a160f2c637e26a081db119343cde43f6844eab7685d26ed0",
+      "horizonDays": 30,
+      "policyCount": 9,
+      "repeat": "IDENTICAL",
+      "reportDigest": "2c45fea0f6281dbcb3d90c3702478b0a0b56bc33990ace78b41256a87b137b72",
+      "resultCount": 36,
+      "reviewCount": 1484,
+      "trajectoryDigest": "472dbff99545a9881c7dff3538a1ff486959de838a1943e8df44c51ff033957c"
+    },
+    "developmentSecondary": {
+      "finalCohortDigest": "b90e04306a13d548f2b2a1a0666062cd1be6fc149b414cdb11b84ce2dc8d4406",
+      "reportDigest": "0f28b779aeac125947fb307b02d181e37996118f2ab32973088caec078e0e674",
+      "resultCount": 36,
+      "reviewCount": 2220,
+      "seed": 20260717,
+      "trajectoryDigest": "80d8ec5547d83df4549b1924cb7664f5ba609edd398125d28ad9f09bf24bfdf9"
+    }
+  },
+  "notExecuted": [
+    "Fast CI",
+    "Docker E2E",
+    "real-Anki E2E",
+    "production runtime/frontend tests",
+    "full population long mode",
+    "real Anki history replay",
+    "human learning evaluation",
+    "production integration tests",
+    "full G0.6 functional suite replay"
+  ],
+  "population": {
+    "development": {
+      "personaDays": 480,
+      "run1Digest": "e533ee5d53093594982acdfddeac2522e6f5cf02ac4bedbce535addbe0afeddd",
+      "run2Digest": "e533ee5d53093594982acdfddeac2522e6f5cf02ac4bedbce535addbe0afeddd"
+    },
+    "developmentSecondary": {
+      "digest": "c05f34296cc52d72210dce602a8182865fcd422aa1e7983a088e4b4a496c2a24",
+      "personaDays": 480,
+      "seed": 20260717
+    },
+    "longSmoke": {
+      "personaDays": 112,
+      "run1Digest": "1d2d8c5a12c68232e1c53092bbabb3ced4f92d083c5989720c1232bd2956cd9d",
+      "run2Digest": "1d2d8c5a12c68232e1c53092bbabb3ced4f92d083c5989720c1232bd2956cd9d"
+    },
+    "standard": {
+      "personaDays": 584000,
+      "run1Digest": "95cdfce9b84b46afd4e47849b6f52a62e7fae4211dabf116a217beb6cf611b92",
+      "run2Digest": "95cdfce9b84b46afd4e47849b6f52a62e7fae4211dabf116a217beb6cf611b92"
+    }
+  },
+  "repository": {
+    "allowedFinalPaths": [
+      "docs/gamification/README.md",
+      "research/gamification-sim/README.md",
+      "research/gamification-sim/evidence/README.md",
+      "research/gamification-sim/evidence/g0.7-windows-amd64-py311-rust-1.97.1.json",
+      "roadmap/gamification/README.md",
+      "roadmap/gamification/g0-evidence-reproduction.md",
+      "roadmap/gamification/g0-reconciliation-closure.md"
+    ],
+    "coreChanged": false,
+    "masterChanged": false,
+    "productionChanged": false,
+    "pullRequestCreated": false,
+    "rawArtifactsCommitted": false,
+    "workflowOrToolHistoryInResultBranch": false
+  },
+  "schemaVersion": 1,
+  "scope": "canonical-windows-amd64-cpython-3.11.9-rust-1.97.1-review-evidence",
+  "seedContract": {
+    "masterSeed": 20260716,
+    "sameSeedReplay": "PASS",
+    "secondaryLongitudinalDevelopment": "PASS_DIFFERENT",
+    "secondaryPopulationDevelopment": "PASS_DIFFERENT",
+    "secondarySeed": 20260717
+  },
+  "sensitivity": {
+    "completeEvidence": 63,
+    "expectedGateCrossings": 10,
+    "grids": 13,
+    "invariantPass": 63,
+    "parameterSetId": "R-CURRENT",
+    "points": 63,
+    "quantitativePass": 53,
+    "run1Digest": "f092ad834d4996f5d79f2cb1f30057b409c8df66821cedcdba653dc02a4d6639",
+    "run2Digest": "f092ad834d4996f5d79f2cb1f30057b409c8df66821cedcdba653dc02a4d6639"
+  },
+  "source": {
+    "canonicalBranch": "gamification",
+    "executionBranch": "temp/g0-7-windows-execution",
+    "executionCommit": "eea4c24b178259bf611a317e115bf6d8f6ed9577",
+    "repository": "AliceLiddell01/anki-study-report",
+    "resultBranch": "temp/g0-7-windows-result",
+    "sourceCommit": "9716b3f98bc4a975031a078f42e38a7d8fb109a6"
+  },
+  "status": "COMPLETE_CURRENT_EVIDENCE_REPRODUCED_WITH_OPEN_GAP",
+  "supportingRuns": [
+    {
+      "branch": "temp/g0-7-linux-reproduction",
+      "branchHead": "6ba7e431544795649335db00658526331e2fd975",
+      "canonicalEquivalence": "NOT_CLAIMED",
+      "classification": "NON_CANONICAL_LINUX_REPRODUCTION",
+      "crossHorizonGap": "REPRODUCED",
+      "jobId": 88204419057,
+      "rawArtifact": "UNAVAILABLE",
+      "semanticResult": "MATCH",
+      "sourceCommit": "9716b3f98bc4a975031a078f42e38a7d8fb109a6",
+      "summaryBlob": "156f0d370f1a44c28246eb1fae2246b695e12887",
+      "workflowRunId": 29691295919
+    }
+  ],
+  "sweep": {
+    "evaluated": 30,
+    "paretoCount": 14,
+    "paretoIds": [
+      "R-CURRENT",
+      "R-CURRENT+V-CURRENT+C-CURRENT+S-EPISODE-ONLY",
+      "R-CURRENT+V-CURRENT+C-LOW",
+      "R-CURRENT+V-CURRENT+C-LOW+S-EPISODE-ONLY",
+      "R-CURRENT+V-CURRENT+C-SYMBOLIC",
+      "R-CURRENT+V-NONE",
+      "R-CURRENT+V-NONE+C-LOW",
+      "R-CURRENT+V-NONE+C-SYMBOLIC",
+      "R-CURRENT+V-SOFT",
+      "R-LOW-CHALLENGE",
+      "R-LOW-CHALLENGE+V-NONE",
+      "R-LOW-CHALLENGE+V-SOFT",
+      "R-NEUTRAL-CONTEXT",
+      "R-NO-GAIN"
+    ],
+    "run1Digest": "1a691b15c813088af0779eff4979e2052c9b86096484051131d9ea2a7d946db3",
+    "run2Digest": "1a691b15c813088af0779eff4979e2052c9b86096484051131d9ea2a7d946db3",
+    "statuses": {
+      "PASS": 30
+    }
+  }
+}

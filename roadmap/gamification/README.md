@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is In Progress; `G0.7` is Next; production integration is not approved
+**Current status:** `G0` is Complete; `G1` is Next; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -24,7 +24,7 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - `G0.4 — Selective research recovery`: Complete — [`g0-selective-research-recovery.md`](g0-selective-research-recovery.md), [`g0-recovery-ledger.md`](g0-recovery-ledger.md)
 - `G0.5 — Reproducible environment`: Complete — [`g0-reproducible-environment.md`](g0-reproducible-environment.md)
 - `G0.6 — Functional baseline verification`: Complete — [`g0-functional-baseline.md`](g0-functional-baseline.md), corrective audit: [`g0-installed-execution-boundary-correction.md`](g0-installed-execution-boundary-correction.md)
-- `G0.7 — Evidence reproduction`: Next
+- `G0.7 — Evidence reproduction`: Complete — [`g0-evidence-reproduction.md`](g0-evidence-reproduction.md), closure: [`g0-reconciliation-closure.md`](g0-reconciliation-closure.md)
 
 G0.2 confirmed `core` as the active Core line on the same recorded `master`
 baseline. It is six commits ahead with C1.0–C1.2 work, but has no same-path
@@ -66,8 +66,13 @@ regular installed package and CLI, full recovered Python suite, deterministic
 corpus, exact-toolchain Rust check/build/tests, every recovered parameter
 candidate against the Rust oracle, and the FSRS reference contract passed.
 Source, tests, fixtures, schemas, declarations and `Cargo.lock` remained
-unchanged. Evidence reproduction remains pending G0.7; production integration
-is still prohibited.
+unchanged.
+
+G0.7 reproduced the canonical corrected sweep, sensitivity, bounded population
+and persistent-card 30/90/365-day evidence twice on Windows AMD64. The raw
+artifact passed independent verification; historical and Linux supporting
+claims were reconciled. The retention-cycling growth gap remains open for G1,
+no candidate is recommended and production integration remains prohibited.
 
 ## Source audit
 
@@ -131,7 +136,7 @@ G0 Reconcile research branch with current master
 
 ## G0 — Research reconciliation
 
-**Status:** In Progress — G0.1–G0.6 Complete; G0.7 Next
+**Status:** Complete — G0.1–G0.7 Complete; G1 Next
 
 ### Goal
 
@@ -170,7 +175,7 @@ Already met: the historical branch is materially diverged from `master` and must
 The canonical master-based `gamification` branch contains a self-consistent research package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change; no Pull Request to `master` is created; production integration remains prohibited without a separate explicit owner decision.
 
 ## G1 — Close Review XP cross-horizon cycling gap
-**Status:** Blocked by G0
+**Status:** Next
 
 ### Goal
 
