@@ -6,8 +6,9 @@
 - strategy: isolated task branch and disposable GitHub Actions runner; no PR
 - tested implementation HEAD: `3b1b363a675d2b182d0a4ce04e482b1742333368`
 - documentation closeout HEAD: this Markdown-only commit
-- transfer: fast-forward `core` to this closeout commit after final connector checks
-- expected final synchronization: `origin/core...c1-5r-3-preview-semantics = 0/0`
+- final `core` HEAD: this Markdown-only commit
+- transfer: fast-forward to `core` completed without force-push
+- final synchronization: `origin/core...c1-5r-3-preview-semantics = 0/0`
 - open PR from `core`: none
 - evidence: GitHub Actions artifact retained outside Git; screenshots are not repository files
 - exact Anki source inspected: tag `26.05`, `pylib/anki/cards.py` and `pylib/anki/template.py`
