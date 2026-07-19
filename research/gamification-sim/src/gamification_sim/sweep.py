@@ -53,6 +53,7 @@ from .scenario_runner import run_corpus
 from .scenario_schema import format_json_path
 from .strict_json import load_strict_json
 from .validation import close, dataclass_to_dict
+from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
 SWEEP_VERSION = "review-sweep-v0.1"
@@ -104,12 +105,18 @@ class CandidateEvaluation:
         return self.status is CandidateStatus.PASS
 
 
-def default_sweep_schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "schemas" / "review-sweep-v0.1.schema.json"
+def default_sweep_schema_path(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Path:
+    return resolve_research_workspace(workspace).path(
+        "schemas/review-sweep-v0.1.schema.json"
+    )
 
 
-def _validator() -> Draft202012Validator:
-    schema = load_strict_json(default_sweep_schema_path())
+def _validator(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Draft202012Validator:
+    schema = load_strict_json(default_sweep_schema_path(workspace))
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 
@@ -132,10 +139,14 @@ def _safe_package_path(package_root: Path, relative_path: str) -> Path:
     return resolved
 
 
-def load_sweep_config(path: Path, package_root: Path) -> SweepConfig:
+def load_sweep_config(
+    path: Path,
+    package_root: ResearchWorkspace | Path | None = None,
+) -> SweepConfig:
+    workspace = resolve_research_workspace(package_root, anchors=(path,))
     payload = load_strict_json(path)
     errors = sorted(
-        _validator().iter_errors(payload),
+        _validator(workspace).iter_errors(payload),
         key=lambda item: (tuple(str(part) for part in item.absolute_path), item.message),
     )
     if errors:
@@ -168,7 +179,7 @@ def load_sweep_config(path: Path, package_root: Path) -> SweepConfig:
         raise ValueError(
             "max_evaluated_candidates cannot cover the configured sequential sweep"
         )
-    corpus_root = _safe_package_path(package_root, payload["corpus_path"])
+    corpus_root = _safe_package_path(workspace.root, payload["corpus_path"])
     return SweepConfig(
         sweep_version=payload["sweep_version"],
         sweep_id=payload["sweep_id"],
@@ -615,8 +626,10 @@ def _longitudinal_evidence(
     cached = _LONGITUDINAL_EVIDENCE_CACHE.get(cache_key)
     if cached is not None:
         return cached
+    workspace = resolve_research_workspace(package_root)
     longitudinal_config = load_longitudinal_config(
-        package_root / "configs" / "review-longitudinal-v0.1.json"
+        workspace.path("configs/review-longitudinal-v0.1.json"),
+        workspace=workspace,
     )
     result = run_longitudinal(
         longitudinal_config,
@@ -624,6 +637,7 @@ def _longitudinal_evidence(
         master_seed=20260716,
         parameter_set_ids=(parameter_set_id,),
         parameter_overrides={parameter_set_id: params},
+        workspace=workspace,
     )
     _LONGITUDINAL_EVIDENCE_CACHE[cache_key] = result
     return result

@@ -23,6 +23,7 @@ from .parameter_catalog import (
 from .scenario_loader import load_corpus
 from .strict_json import loads_strict, load_strict_json
 from .validation import close, dataclass_to_dict
+from .workspace import cargo_environment, cargo_run_command, resolve_research_workspace
 
 
 ORACLE_CONTRACT_VERSION = "rust-oracle-jsonl-v0.1"
@@ -59,6 +60,7 @@ def _case(
 
 
 def build_differential_cases(package_root: Path, parameter_set_id: str) -> list[dict[str, Any]]:
+    package_root = resolve_research_workspace(package_root).root
     parts = tuple(parameter_candidate(item) for item in parameter_set_id.split("+"))
     selected = parts[0] if len(parts) == 1 else compose_parameter_candidates(parts)
     cases: list[dict[str, Any]] = []
@@ -134,26 +136,7 @@ def build_differential_cases(package_root: Path, parameter_set_id: str) -> list[
 
 
 def _cargo_command(package_root: Path) -> list[str]:
-    cargo = Path.home() / ".cargo" / "bin" / "cargo.exe"
-    executable = str(cargo if cargo.is_file() else "cargo")
-    return [
-        executable,
-        "+stable-x86_64-pc-windows-gnu",
-        "run",
-        "--quiet",
-        "--manifest-path",
-        str(package_root / "rust-oracle" / "Cargo.toml"),
-        "--",
-        "evaluate-jsonl",
-    ]
-
-
-def cargo_environment() -> dict[str, str]:
-    environment = os.environ.copy()
-    mingw = Path("C:/msys64/mingw64/bin")
-    if mingw.is_dir():
-        environment["PATH"] = str(mingw) + os.pathsep + environment.get("PATH", "")
-    return environment
+    return cargo_run_command(package_root, "evaluate-jsonl")
 
 
 def _compare(expected: Any, actual: Any, path: str = "$") -> tuple[str, list[str]]:

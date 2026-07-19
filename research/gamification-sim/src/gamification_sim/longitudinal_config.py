@@ -15,6 +15,7 @@ from .longitudinal_models import (
 from .parameter_catalog import parameter_candidate
 from .scenario_schema import format_json_path
 from .strict_json import load_strict_json
+from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
 CONFIG_VERSION = "review-longitudinal-v0.1"
@@ -33,15 +34,24 @@ REQUIRED_POLICY_IDS = frozenset(
 )
 
 
-def default_longitudinal_schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "schemas" / "review-longitudinal-v0.1.schema.json"
+def default_longitudinal_schema_path(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Path:
+    return resolve_research_workspace(workspace).path(
+        "schemas/review-longitudinal-v0.1.schema.json"
+    )
 
 
-def load_longitudinal_config(path: Path) -> LongitudinalConfig:
+def load_longitudinal_config(
+    path: Path,
+    *,
+    workspace: ResearchWorkspace | Path | None = None,
+) -> LongitudinalConfig:
     if path.is_symlink():
         raise ValueError("longitudinal config must not be a symlink")
     payload = load_strict_json(path)
-    schema = load_strict_json(default_longitudinal_schema_path())
+    resolved_workspace = resolve_research_workspace(workspace, anchors=(path,))
+    schema = load_strict_json(default_longitudinal_schema_path(resolved_workspace))
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
     errors = sorted(

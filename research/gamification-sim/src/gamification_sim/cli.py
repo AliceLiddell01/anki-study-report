@@ -45,9 +45,7 @@ from .longitudinal_runner import (
     write_longitudinal_reports,
 )
 from .validation import close
-
-
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+from .workspace import ResearchWorkspace, default_output_root, resolve_research_workspace
 
 
 def evaluate_cases(path: Path) -> tuple[int, list[dict[str, Any]]]:
@@ -78,12 +76,17 @@ def evaluate_cases(path: Path) -> tuple[int, list[dict[str, Any]]]:
 
 def _add_run_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true", dest="as_json")
-    parser.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--no-write", action="store_true")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Deterministic Review XP research simulator")
+    parser.add_argument(
+        "--research-root",
+        type=Path,
+        help="validated research/gamification-sim workspace root",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     verify = subparsers.add_parser("verify-examples", help="verify bundled golden cases")
@@ -123,13 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sweep = subparsers.add_parser("run-sweep", help="run a bounded sequential parameter sweep")
     sweep.add_argument("config", type=Path)
-    sweep.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    sweep.add_argument("--output-dir", type=Path)
     sweep.add_argument("--no-write", action="store_true")
 
     sensitivity = subparsers.add_parser("run-sensitivity", help="run deterministic OAT sensitivity")
     sensitivity.add_argument("config", type=Path)
     sensitivity.add_argument("--parameter-set", required=True)
-    sensitivity.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    sensitivity.add_argument("--output-dir", type=Path)
     sensitivity.add_argument("--no-write", action="store_true")
 
     personas = subparsers.add_parser("validate-personas", help="validate the synthetic persona catalog")
@@ -139,8 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
     population.add_argument("--mode", choices=("development", "standard", "long"), required=True)
     population.add_argument("--parameter-set", required=True)
     population.add_argument("--seed", type=int, required=True)
-    population.add_argument("--persona-dir", type=Path, default=PACKAGE_ROOT / "personas")
-    population.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    population.add_argument("--persona-dir", type=Path)
+    population.add_argument("--output-dir", type=Path)
     population.add_argument("--smoke", action="store_true", help="bounded smoke for long mode")
     population.add_argument("--no-write", action="store_true")
 
@@ -163,18 +166,18 @@ def build_parser() -> argparse.ArgumentParser:
     longitudinal.add_argument("--seed", type=int, required=True)
     longitudinal.add_argument("--parameter-set", action="append", dest="parameter_sets")
     longitudinal.add_argument("--policy", action="append", dest="policies")
-    longitudinal.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    longitudinal.add_argument("--output-dir", type=Path)
     longitudinal.add_argument("--no-write", action="store_true")
 
     rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
     rust.add_argument("--parameter-set", required=True)
-    rust.add_argument("--corpus", type=Path, default=PACKAGE_ROOT / "scenarios")
-    rust.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    rust.add_argument("--corpus", type=Path)
+    rust.add_argument("--output-dir", type=Path)
     rust.add_argument("--no-write", action="store_true")
 
     fsrs = subparsers.add_parser("verify-fsrs-reference", help="compare official Python/Rust FSRS state references")
     fsrs.add_argument("contract", type=Path)
-    fsrs.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "outputs")
+    fsrs.add_argument("--output-dir", type=Path)
     fsrs.add_argument("--no-write", action="store_true")
     return parser
 
@@ -185,6 +188,15 @@ def _scenario_root(path: Path) -> Path:
         if parent.name == "scenarios":
             return parent
     return resolved.parent
+
+
+def _apply_workspace_defaults(args, workspace: ResearchWorkspace) -> None:
+    if hasattr(args, "output_dir") and args.output_dir is None:
+        args.output_dir = default_output_root()
+    if args.command == "run-population" and args.persona_dir is None:
+        args.persona_dir = workspace.personas
+    if args.command == "verify-rust-oracle" and args.corpus is None:
+        args.corpus = workspace.scenarios
 
 
 def _emit_run(result, args) -> int:
@@ -198,22 +210,23 @@ def _emit_run(result, args) -> int:
     return 0 if result.passed else 1
 
 
-def _run_new_command(args) -> int:
+def _run_new_command(args, workspace: ResearchWorkspace) -> int:
     if args.command == "validate-longitudinal-config":
-        config = load_longitudinal_config(args.config)
+        config = load_longitudinal_config(args.config, workspace=workspace)
         print(
             f"VALID {config.version} {config.config_id} "
             f"{len(config.policies)} policies"
         )
         return 0
     if args.command == "run-longitudinal":
-        config = load_longitudinal_config(args.config)
+        config = load_longitudinal_config(args.config, workspace=workspace)
         payload = run_longitudinal(
             config,
             mode_id=args.mode,
             master_seed=args.seed,
             parameter_set_ids=tuple(args.parameter_sets) if args.parameter_sets else None,
             policy_ids=tuple(args.policies) if args.policies else None,
+            workspace=workspace,
         )
         validate_longitudinal_result(payload)
         print(render_longitudinal_summary(payload), end="")
@@ -222,7 +235,7 @@ def _run_new_command(args) -> int:
             print(f"reports: {run_dir}", file=sys.stderr)
         return 0
     if args.command == "verify-fsrs-reference":
-        payload = verify_fsrs_reference(args.contract, PACKAGE_ROOT)
+        payload = verify_fsrs_reference(args.contract, workspace.root)
         print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         if not args.no_write:
             output_dir = args.output_dir.resolve() / "fsrs-reference"
@@ -232,9 +245,9 @@ def _run_new_command(args) -> int:
             print(f"report: {path}", file=sys.stderr)
         return 0
     if args.command == "verify-rust-oracle":
-        if args.corpus.resolve() != (PACKAGE_ROOT / "scenarios").resolve():
+        if args.corpus.resolve() != workspace.scenarios.resolve():
             raise ValueError("verify-rust-oracle currently requires the committed scenarios corpus")
-        payload = verify_rust_oracle(PACKAGE_ROOT, args.parameter_set)
+        payload = verify_rust_oracle(workspace.root, args.parameter_set)
         print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         if not args.no_write:
             output_dir = args.output_dir.resolve() / "rust-oracle"
@@ -244,14 +257,14 @@ def _run_new_command(args) -> int:
             print(f"report: {path}", file=sys.stderr)
         return 0
     if args.command == "validate-personas":
-        personas = load_personas(args.persona_dir)
+        personas = load_personas(args.persona_dir, workspace=workspace)
         print(f"VALID {len(personas)} personas {personas[0].version}")
         return 0
     if args.command == "run-population":
-        personas = load_personas(args.persona_dir)
+        personas = load_personas(args.persona_dir, workspace=workspace)
         payload = run_population(
             personas,
-            PACKAGE_ROOT,
+            workspace.root,
             mode=args.mode,
             parameter_set_id=args.parameter_set,
             master_seed=args.seed,
@@ -266,20 +279,20 @@ def _run_new_command(args) -> int:
         print(json.dumps([candidate_payload(item) for item in PARAMETER_CANDIDATES], indent=2, sort_keys=True, allow_nan=False))
         return 0
     if args.command == "validate-sweep":
-        config = load_sweep_config(args.config, PACKAGE_ROOT)
+        config = load_sweep_config(args.config, workspace)
         print(f"VALID {config.sweep_version} {config.sweep_id}")
         return 0
     if args.command == "run-sweep":
-        config = load_sweep_config(args.config, PACKAGE_ROOT)
-        payload = run_sweep(config, PACKAGE_ROOT)
+        config = load_sweep_config(args.config, workspace)
+        payload = run_sweep(config, workspace.root)
         print(render_sweep_summary(payload), end="")
         if not args.no_write:
             run_dir = write_sweep_reports(payload, args.output_dir)
             print(f"reports: {run_dir}", file=sys.stderr)
         return 0
     if args.command == "run-sensitivity":
-        config = load_sweep_config(args.config, PACKAGE_ROOT)
-        payload = run_sensitivity(config, PACKAGE_ROOT, args.parameter_set)
+        config = load_sweep_config(args.config, workspace)
+        payload = run_sensitivity(config, workspace.root, args.parameter_set)
         print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         if not args.no_write:
             output_root = args.output_dir.resolve() / "sensitivity"
@@ -332,9 +345,11 @@ def _run_new_command(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        workspace = resolve_research_workspace(args.research_root)
+        _apply_workspace_defaults(args, workspace)
         if args.command in {"verify-examples", "evaluate"}:
             fixture = (
-                PACKAGE_ROOT / "fixtures" / "golden_cases.json"
+                workspace.path("fixtures/golden_cases.json")
                 if args.command == "verify-examples"
                 else args.fixture
             )
@@ -349,7 +364,7 @@ def main(argv: list[str] | None = None) -> int:
                         print(f"  {mismatch}")
                 print(f"{len(results) - failures}/{len(results)} cases passed")
             return 1 if failures else 0
-        return _run_new_command(args)
+        return _run_new_command(args, workspace)
     except (StrictJsonError, ScenarioSchemaError, ScenarioDomainError, ValueError, KeyError) as exc:
         print(f"INVALID: {exc}", file=sys.stderr)
         return 2

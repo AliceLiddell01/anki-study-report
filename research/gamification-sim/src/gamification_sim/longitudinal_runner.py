@@ -35,6 +35,7 @@ from .models import (
 from .population import resolve_parameter_set
 from .validation import close, dataclass_to_dict
 from .parameters import RewardParameterSet
+from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
 GENERATOR_VERSION = "longitudinal-review-cards-v0.1"
@@ -425,6 +426,7 @@ def run_longitudinal(
     parameter_set_ids: tuple[str, ...] | None = None,
     policy_ids: tuple[str, ...] | None = None,
     parameter_overrides: dict[str, RewardParameterSet] | None = None,
+    workspace: ResearchWorkspace | Path | None = None,
 ) -> dict[str, Any]:
     if type(master_seed) is not int or master_seed < 0:
         raise ValueError("longitudinal seed must be a non-negative integer")
@@ -477,7 +479,7 @@ def run_longitudinal(
     deterministic_abuse: list[dict[str, Any]] = []
     for parameter_set_id in selected_parameters:
         fair_items, abuse_items = deterministic_matched_matrices(
-            Path(__file__).resolve().parents[2],
+            resolve_research_workspace(workspace).root,
             parameter_set_id,
             params_override=(parameter_overrides or {}).get(parameter_set_id),
         )

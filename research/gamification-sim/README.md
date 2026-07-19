@@ -2,9 +2,9 @@
 
     ## Status
 
-    `REPRODUCIBLE_ENVIRONMENT_ESTABLISHED`
+    `CORRECTIVE_COMPLETE_G0_6_RERUN_REQUIRED`
 
-    G0.5 established one Windows AMD64 / CPython 3.11 environment baseline. Functional behavior and evidence remain unverified.
+    G0.5 established the canonical Windows AMD64 / CPython 3.11 environment baseline. G0.6a corrected and focused-verified the regular installed-package execution boundary; the full G0.6 functional baseline must still be rerun from the corrective commit, and evidence remains unverified.
 
     The package was selectively recovered from the frozen historical source. G0.4
     verifies source/target content relationships and isolation only. It does not
@@ -37,10 +37,9 @@
 
     ## Available commands
 
-    The following command surfaces were inferred statically from the recovered
-    `pyproject.toml`, `cli.py` and `__main__.py`. They were not executed:
+    The regular installed package exposes the following 17 command surfaces. Console and module help were focused-verified during G0.6a; only bounded validation probes were executed, while sweep, sensitivity, population and longitudinal runs remain out of scope.
 
-    - `gamification-sim compare-scenarios ...` / `py -m gamification_sim compare-scenarios ...`
+- `gamification-sim compare-scenarios ...` / `py -m gamification_sim compare-scenarios ...`
 - `gamification-sim evaluate ...` / `py -m gamification_sim evaluate ...`
 - `gamification-sim list-parameter-sets ...` / `py -m gamification_sim list-parameter-sets ...`
 - `gamification-sim run-longitudinal ...` / `py -m gamification_sim run-longitudinal ...`
@@ -58,10 +57,9 @@
 - `gamification-sim verify-report ...` / `py -m gamification_sim verify-report ...`
 - `gamification-sim verify-rust-oracle ...` / `py -m gamification_sim verify-rust-oracle ...`
 
-    Exact options and required arguments must be checked with the recovered CLI
-    only after G0.5 establishes the environment.
+    The installed CLI resolves repository-only assets through a validated research workspace supplied by `--research-root`, `GAMIFICATION_SIM_RESEARCH_ROOT` or bounded checkout discovery.
 
-    ## Historical source
+## Historical source
 
     `48298d02c6871df0ffa112d862d9b2af629c523f:research/gamification-sim/`
 
@@ -88,12 +86,30 @@
 
     See [environment baseline](environment/README.md). This does not claim that CLI commands, tests, simulations or the Rust oracle work.
 
-    ## Functional status — G0.6 pending
+    ## Installed execution boundary — G0.6a corrective complete
 
-    G0.6 owns parse/import checks, Python tests, corpus validation, Rust oracle and
-    focused functional verification.
+The regular installed package no longer derives the research root from
+`__file__` ancestry. Schemas, fixtures, scenarios, personas, configs, contracts
+and the Rust oracle remain external canonical workspace assets. Generated
+outputs default outside the source tree. The tracked `rust-toolchain.toml`
+selects exact Rust 1.97.1 on MSVC; deterministic Cargo commands use
+`--locked --offline` and respect caller-provided environment, including
+`CARGO_TARGET_DIR`.
 
-    ## Evidence status — G0.7 pending
+Focused verification passed for regular non-editable installation, all 17 CLI
+subcommands, 31 golden examples, 26 scenarios, 16 personas,
+sweep/longitudinal config validation, 8 corrective tests, 816-item pytest
+collection and locked/offline Cargo metadata. The complete Python suite, Rust
+build/tests/oracle, parity and evidence were not executed.
+
+See [`../../roadmap/gamification/g0-installed-execution-boundary-correction.md`](../../roadmap/gamification/g0-installed-execution-boundary-correction.md).
+
+## Functional status — G0.6 partial
+
+G0.6 must be rerun from `preflight` on the corrective commit. No
+pre-correction PASS checkpoint is inherited.
+
+## Evidence status — G0.7 pending
 
     G0.7 owns evidence reproduction and the separation of current results from
     historical claims.

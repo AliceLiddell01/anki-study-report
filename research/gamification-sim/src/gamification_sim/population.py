@@ -36,6 +36,7 @@ from .scenario_runner import run_corpus
 from .scenario_schema import format_json_path
 from .strict_json import load_strict_json
 from .validation import close
+from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
 PERSONA_VERSION = "review-persona-v0.1"
@@ -78,12 +79,18 @@ class Persona:
     digest: str
 
 
-def default_persona_schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "schemas" / "review-persona-v0.1.schema.json"
+def default_persona_schema_path(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Path:
+    return resolve_research_workspace(workspace).path(
+        "schemas/review-persona-v0.1.schema.json"
+    )
 
 
-def _validator() -> Draft202012Validator:
-    schema = load_strict_json(default_persona_schema_path())
+def _validator(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Draft202012Validator:
+    schema = load_strict_json(default_persona_schema_path(workspace))
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 
@@ -135,11 +142,16 @@ def _load_persona(path: Path, validator: Draft202012Validator) -> Persona:
     )
 
 
-def load_personas(root: Path) -> tuple[Persona, ...]:
+def load_personas(
+    root: Path,
+    *,
+    workspace: ResearchWorkspace | Path | None = None,
+) -> tuple[Persona, ...]:
     resolved = root.resolve(strict=True)
     if not resolved.is_dir() or root.is_symlink():
         raise ValueError("persona root must be a non-symlink directory")
-    validator = _validator()
+    resolved_workspace = resolve_research_workspace(workspace, anchors=(root,))
+    validator = _validator(resolved_workspace)
     personas = tuple(_load_persona(path, validator) for path in sorted(root.glob("*.json")))
     ids = tuple(item.persona_id for item in personas)
     if len(ids) != len(set(ids)):

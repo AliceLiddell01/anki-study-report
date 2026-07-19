@@ -10,6 +10,14 @@ import pytest
 
 from gamification_sim.cli import day_from_dict, episode_from_dict
 from gamification_sim.models import SupportKind
+from gamification_sim.workspace import (
+    OUTPUT_ENV,
+    ResearchWorkspace,
+    cargo_environment,
+    cargo_run_command,
+    default_output_root,
+    resolve_research_workspace,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -244,3 +252,61 @@ def test_longitudinal_cli_validate_and_bounded_no_write():
     )
     assert run.returncode == 0
     assert "Longitudinal Review XP simulation" in run.stdout
+
+
+def test_explicit_workspace_is_validated():
+    workspace = resolve_research_workspace(ROOT)
+    assert workspace.root == ROOT.resolve()
+    assert workspace.schemas == (ROOT / "schemas").resolve()
+    assert workspace.rust_manifest == (ROOT / "rust-oracle" / "Cargo.toml").resolve()
+
+
+def test_checkout_workspace_fallback_is_bounded(monkeypatch):
+    monkeypatch.chdir(ROOT / "tests")
+    monkeypatch.delenv("GAMIFICATION_SIM_RESEARCH_ROOT", raising=False)
+    assert resolve_research_workspace().root == ROOT.resolve()
+
+
+def test_invalid_explicit_workspace_is_not_silently_replaced(tmp_path):
+    with pytest.raises(ValueError, match="missing marker"):
+        resolve_research_workspace(tmp_path)
+
+
+def test_workspace_path_rejects_parent_escape():
+    workspace = ResearchWorkspace.validated(ROOT)
+    with pytest.raises(ValueError, match="bounded"):
+        workspace.path("../README.md")
+
+
+def test_default_output_root_uses_external_temp_location(monkeypatch, tmp_path):
+    monkeypatch.delenv(OUTPUT_ENV, raising=False)
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+    output = default_output_root()
+    assert output == (tmp_path / "anki-study-report" / "gamification-sim" / "outputs").resolve()
+    assert ROOT.resolve() not in output.parents
+
+
+def test_explicit_output_root_has_priority(monkeypatch, tmp_path):
+    requested = tmp_path / "outputs"
+    monkeypatch.setenv(OUTPUT_ENV, str(requested))
+    assert default_output_root() == requested.resolve()
+
+
+def test_cargo_command_uses_workspace_toolchain_and_locked_offline(monkeypatch):
+    monkeypatch.setattr("shutil.which", lambda name: "cargo-proxy" if name == "cargo" else None)
+    command = cargo_run_command(ROOT, "evaluate-jsonl")
+    assert command[0] == "cargo-proxy"
+    assert "+stable-x86_64-pc-windows-gnu" not in command
+    assert command[1:5] == ["run", "--quiet", "--locked", "--offline"]
+    assert command[command.index("--manifest-path") + 1] == str(
+        (ROOT / "rust-oracle" / "Cargo.toml").resolve()
+    )
+    assert command[-2:] == ["--", "evaluate-jsonl"]
+
+
+def test_cargo_environment_preserves_target_dir(monkeypatch, tmp_path):
+    target = tmp_path / "rust-target"
+    monkeypatch.setenv("CARGO_TARGET_DIR", str(target))
+    environment = cargo_environment()
+    assert environment["CARGO_TARGET_DIR"] == str(target)
+    assert environment["CARGO_TERM_COLOR"] == "never"

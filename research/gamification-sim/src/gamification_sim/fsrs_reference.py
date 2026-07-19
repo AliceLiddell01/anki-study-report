@@ -11,7 +11,7 @@ from typing import Any
 from .canonical_json import canonical_digest
 from .episode_reward import evaluate_episode
 from .models import ConfidenceLevel, MemoryContext, Outcome, ReviewEpisodeInput
-from .rust_oracle import cargo_environment
+from .workspace import cargo_environment, cargo_run_command
 from .strict_json import load_strict_json, loads_strict
 
 
@@ -129,13 +129,7 @@ def _python_reference(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _rust_reference(package_root: Path, contract_path: Path) -> dict[str, Any]:
-    cargo = Path.home() / ".cargo" / "bin" / "cargo.exe"
-    command = [
-        str(cargo if cargo.is_file() else "cargo"),
-        "+stable-x86_64-pc-windows-gnu",
-        "run", "--quiet", "--manifest-path", str(package_root / "rust-oracle" / "Cargo.toml"),
-        "--", "fsrs-reference", str(contract_path),
-    ]
+    command = cargo_run_command(package_root, "fsrs-reference", str(contract_path))
     process = subprocess.run(
         command, cwd=package_root, text=True, capture_output=True, check=False,
         env=cargo_environment(), timeout=120,

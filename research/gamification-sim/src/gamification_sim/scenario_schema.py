@@ -6,14 +6,19 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from .strict_json import load_strict_json
+from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
 class ScenarioSchemaError(ValueError):
     pass
 
 
-def default_schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "schemas" / "review-scenario-v0.2.schema.json"
+def default_schema_path(
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Path:
+    return resolve_research_workspace(workspace).path(
+        "schemas/review-scenario-v0.2.schema.json"
+    )
 
 
 def format_json_path(parts: list[Any]) -> str:
@@ -26,8 +31,12 @@ def format_json_path(parts: list[Any]) -> str:
     return result
 
 
-def load_validator(schema_path: Path | None = None) -> Draft202012Validator:
-    path = schema_path or default_schema_path()
+def load_validator(
+    schema_path: Path | None = None,
+    *,
+    workspace: ResearchWorkspace | Path | None = None,
+) -> Draft202012Validator:
+    path = schema_path or default_schema_path(workspace)
     schema = load_strict_json(path)
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
