@@ -1,0 +1,128 @@
+name: R7 temporary CSS sentinel control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r7-css-sentinel-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-css-sentinel-fix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact task branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Guard exact task identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          test '${{ github.head_ref }}' = 'c1-5r-7-css-sentinel-fix'
+          test '${{ github.base_ref }}' = 'core'
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install focused test dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Apply asserted sentinel repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          smoke = Path('docker/anki-e2e/smoke-api.py')
+          smoke_text = smoke.read_text(encoding='utf-8')
+          old_smoke = '        ".cards-v2-table",\n'
+          new_smoke = '        ".cards-inbox-page",\n'
+          if smoke_text.count(old_smoke) != 1:
+              raise SystemExit('Expected exactly one legacy smoke CSS sentinel.')
+          smoke.write_text(smoke_text.replace(old_smoke, new_smoke), encoding='utf-8', newline='\n')
+
+          docs = Path('docs/packaging-release.md')
+          docs_text = docs.read_text(encoding='utf-8')
+          if docs_text.count('.cards-v2-table') != 1:
+              raise SystemExit('Expected exactly one legacy packaging CSS sentinel.')
+          docs.write_text(docs_text.replace('.cards-v2-table', '.cards-inbox-page'), encoding='utf-8', newline='\n')
+
+          tests = Path('tests/test_docker_smoke_helpers.py')
+          tests_text = tests.read_text(encoding='utf-8')
+          anchor = '''def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
+              smoke_api = load_smoke_api_module()
+
+              assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
+
+
+          def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
+          '''
+          replacement = '''def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
+              smoke_api = load_smoke_api_module()
+
+              assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
+
+
+          def test_smoke_api_css_sentinel_uses_current_cards_inbox():
+              source = (
+                  Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
+              ).read_text(encoding="utf-8")
+
+              assert '".cards-inbox-page"' in source
+              assert '".cards-v2-table"' not in source
+
+
+          def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
+          '''
+          # The triple-quoted literals above are indented by this controller script.
+          anchor = '\n'.join(line[10:] if line.startswith('          ') else line for line in anchor.splitlines()) + '\n'
+          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines()) + '\n'
+          if tests_text.count(anchor) != 1:
+              raise SystemExit('Could not locate the exact smoke-helper test insertion point.')
+          tests.write_text(tests_text.replace(anchor, replacement), encoding='utf-8', newline='\n')
+          PY
+
+      - name: Run focused verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile docker/anki-e2e/smoke-api.py
+          python -m pytest tests/test_docker_smoke_helpers.py tests/test_package_build.py
+          git diff --check
+          mapfile -t changed < <(git diff --name-only | sort)
+          expected=(
+            docs/packaging-release.md
+            docker/anki-e2e/smoke-api.py
+            tests/test_docker_smoke_helpers.py
+          )
+          test "${changed[*]}" = "${expected[*]}"
+
+      - name: Commit and push bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/packaging-release.md docker/anki-e2e/smoke-api.py tests/test_docker_smoke_helpers.py
+          git commit -m 'test: align dashboard CSS sentinel with Cards inbox'
+          git push origin HEAD:c1-5r-7-css-sentinel-fix
