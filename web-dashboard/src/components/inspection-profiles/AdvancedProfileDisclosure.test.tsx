@@ -20,12 +20,15 @@ describe("AdvancedProfileDisclosure", () => {
 
   it("is collapsed by default and advertises hidden errors in its summary", async () => {
     const onOpenChange = vi.fn();
-    await act(async () => root.render(<AdvancedProfileDisclosure item={item} draft={draft} errors={{ "profile.checks.0.roles": "select_role" }} open={false} onOpenChange={onOpenChange} onChange={() => undefined} />));
-    const details = container.querySelector("details")!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector("summary")?.textContent).toContain("1 errors");
-    expect(details.textContent).toContain("question-required");
-    await act(async () => details.querySelector<HTMLElement>("summary")!.click());
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+    const render = async (open: boolean) => act(async () => root.render(<AdvancedProfileDisclosure item={item} draft={draft} errors={{ "profile.checks.0.roles": "select_role" }} open={open} onOpenChange={onOpenChange} onChange={() => undefined} />));
+    await render(false);
+    const collapsed = container.querySelector<HTMLDetailsElement>("details")!;
+    expect(collapsed.open).toBe(false);
+    expect(collapsed.querySelector("summary")?.textContent).toContain("1 errors");
+    expect(collapsed.textContent).toContain("question-required");
+
+    await render(true);
+    expect(container.querySelector<HTMLDetailsElement>("details")?.open).toBe(true);
+    expect(container.querySelector("#inspection-advanced-panel")).not.toBeNull();
   });
 });
