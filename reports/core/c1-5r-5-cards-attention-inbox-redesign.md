@@ -6,6 +6,8 @@
 - tested implementation HEAD: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`
 - tested implementation tree: `ff771c1ad6dd50466b46af8ba66cfc50c0e57424`
 - final verification run: `29740393142` — PASS
+- post-transfer verification run: `29741098965` — PASS
+- pre-transfer closeout HEAD: `4324ecba6fa4b994fd7ea80f7230accf8776b369`
 - isolated visual run: `29738841012` — PASS
 - visual trigger: `5db6561f5467bd305cc01000317f61725928d1bb`
 - visual artifact: `8459497217`
@@ -111,7 +113,7 @@ no-overflow assertion.
 
 - TypeScript typecheck: PASS
 - focused frontend: 9 files / 25 tests PASS
-- focused backend: 92 tests PASS
+- focused backend: 106 tests PASS (including package-marker regression)
 - production Vite build and bundle guard: PASS
 - bundle: 17 JS chunks; entry 487,382 bytes; total 1,321,380 bytes
 - package build/validation and `--check-only`: PASS
@@ -133,9 +135,29 @@ evidence:
 - same-document hash navigation retaining a prior fixture;
 - What’s New modal covering the intended page.
 
-Those were fixed in disposable verification infrastructure. Production code was
-changed only for the confirmed 16 px drawer overflow. No backend contract or
-security boundary was weakened.
+Those were fixed in disposable verification infrastructure. Runtime UI code
+changed only for the confirmed 16 px drawer overflow; the package validator and
+its regression fixture were migrated from the removed `.cards-v2-table` marker
+to `.cards-inbox-page`. No backend contract or security boundary was weakened.
+
+## Cleanup
+
+The post-transfer run `29741098965` verified exact `core` and then neutralized the
+surviving temporary refs by adding ordinary fast-forward commits whose tree is
+identical to the final clean Core tree. No force-push or ref deletion was used.
+
+```text
+c1-5r-5-cards-inbox — neutralized
+c1-5r-5-status — neutralized
+c1-5r-5-visual-status — neutralized
+c1-5r-5-final-status — neutralized
+c1-5r-5-verified — synchronized to final core
+```
+
+The GitHub connector exposes no workflow-run/artifact deletion action. Completed
+run records and the seven-day visual artifact remain immutable until normal
+expiry; no temporary workflow remains runnable at a surviving R5 ref tip.
+Canonical workflows were not changed.
 
 ## Security and privacy
 
@@ -151,10 +173,10 @@ security boundary was weakened.
 
 ## Durable changed files
 
-The clean implementation contains only Cards frontend source, localized copy,
-focused tests and current documentation. Disposable workflows, apply/closeout
-scripts, triggers, visual binaries, logs, generated package output and status
-files are excluded from the durable tree.
+The clean implementation contains Cards frontend source, localized copy,
+focused tests, the package validator marker migration and current documentation.
+Disposable workflows, apply/closeout scripts, triggers, visual binaries, logs,
+generated package output and status files are excluded from the durable tree.
 
 ## Not verified
 
@@ -171,7 +193,7 @@ These omissions are intentional for R5 and must not be upgraded into claims.
 ## Git boundary
 
 ```text
-pushed to origin/core: pending closeout transfer
+pushed to origin/core: yes — ordinary fast-forward
 PR: no
 merge into master: no
 force-push: no
