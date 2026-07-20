@@ -215,3 +215,10 @@ web-dashboard/src/layout/TopNav.test.tsx
 What’s New не является primary navigation item. Он открывается action-кнопкой
 «Что нового» в utility group profile menu и из `#/settings/privacy`. Privacy
 входит в Data group Settings shell между Data и System routes.
+
+## Inspection Profiles guided route
+
+`#/settings/inspection-profiles` remains a Settings/data-quality surface rather
+than primary study navigation. Its normal path is exact note type -> generated
+Basic setup -> bounded check -> explicit confirm. Strict editing and maintenance
+tools remain secondary disclosures.

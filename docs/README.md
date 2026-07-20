@@ -36,6 +36,7 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [Declarative card display formatter v1](card-display-formatter-v1.md)
 - [Inspection Profiles v1](inspection-profiles-v1.md)
 - [Inspection Profiles settings UI](inspection-profiles-ui.md)
+- [Guided Inspection Profiles](guided-inspection-profiles.md)
 - [Settings Hub](settings-hub.md)
 - [Statistics](statistics-v1.md)
 - [FSRS analytics](fsrs-analytics.md)
@@ -65,3 +66,9 @@ See [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md). Triage s
 ## C1.5R.5 Cards attention inbox
 
 See [`cards-attention-inbox.md`](cards-attention-inbox.md). The rejected table is replaced by a semantic identity-led list, wide Inspector, 1024 px non-modal drawer, explicit learning period and bounded manual current-content continuation.
+
+## C1.5R.6 guided Inspection Profiles
+
+See [`guided-inspection-profiles.md`](guided-inspection-profiles.md). Unconfigured
+note types now open as clean generated drafts; Basic is the normal path and strict
+v1 editing remains behind Advanced.

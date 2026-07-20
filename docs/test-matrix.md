@@ -160,3 +160,11 @@ smoke в actual diff требуют один final `standard/full`. Локаль
 ## C1.5R.4 independent candidate sources
 
 See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
+
+## C1.5R.6 guided profiles
+
+Required contour: focused page/hook/Basic/Advanced/validation/projection/API tests,
+profile store/service/runtime and dashboard/triage/package regressions, typecheck,
+production build, package validation, canonical non-Docker and real Chromium
+Japanese/Programming/lifecycle/light/dark/1024 evidence. Docker/real-Anki remains
+the R7 integration gate.

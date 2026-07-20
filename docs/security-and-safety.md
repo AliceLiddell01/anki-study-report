@@ -362,3 +362,11 @@ See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses 
 ## C1.5R.4 independent candidate sources
 
 See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
+
+## Guided Inspection Profiles boundary
+
+Basic is a projection over the existing hard-coded Inspection Profile v1 union. It
+adds no executable customization surface and receives no raw note values, template
+source or media filenames. Generated drafts are inactive, confirmation remains
+validation-gated, revision conflicts never overwrite user work, and profile contents
+remain local without telemetry.

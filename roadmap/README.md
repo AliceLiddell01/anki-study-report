@@ -161,3 +161,13 @@ reports/    historical handoff, audits, measurements and closeout evidence
 ## C1.5R.5 complete
 
 Core C1 remains in progress. C1.5R.5 is complete; C1.5R.6 is next and not started; C1.5R.7 and C1.6 remain blocked by their named dependencies.
+
+## Current Core position after C1.5R.6
+
+```text
+C1.5R.0–R.6 — Complete
+C1.5R.7 — Next, not started
+C1.6 — Blocked
+Core C1 — In progress
+Owner product acceptance — Pending
+```

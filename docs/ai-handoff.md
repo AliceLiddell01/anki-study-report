@@ -44,7 +44,7 @@ C1.5R.2: Complete
 C1.5R.3: Complete
 C1.5R.4: Complete
 C1.5R.5: Complete
-C1.5R.6: Next, not started
+C1.5R.6: Complete
 C1.6: Blocked, not started
 ```
 
@@ -361,3 +361,12 @@ identity-led inbox with wide Inspector and non-modal drawer; learning scope and
 manual content continuation are explicit and bounded. Exact implementation
 `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed the required technical gates. C1.5R.6 is next and
 not started; R7 and C1.6 remain blocked.
+
+## C1.5R.6 handoff
+
+R6 is implemented and technically verified. The Inspection Profiles route now uses
+immediate clean generated drafts, open Basic guidance, friendly exact field/
+requirement/template projection, bounded validation, lifecycle-aware actions,
+collapsed strict Advanced and separated tools. No backend schema/runtime change was
+required. PR #50 targets `core`; after merge/cleanup, C1.5R.7 is next and C1.6
+remains blocked. Owner product acceptance is still pending.

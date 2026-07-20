@@ -484,3 +484,9 @@ required manifest entries.
 ## C1.5R.4 independent candidate sources
 
 See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
+
+## C1.5R.6 / R7 boundary
+
+C1.5R.6 intentionally does not run real-Anki Docker E2E. The guided settings page
+is covered by deterministic browser fixtures; exact packaged add-on integration and
+owner review are the C1.5R.7 gate.

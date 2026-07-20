@@ -141,3 +141,12 @@ C1.5R.7 — Not started
 C1.6 — Blocked
 Core C1 — In progress
 ```
+
+## Guided Inspection Profiles workspace
+
+`InspectionProfilesSettingsPage` composes `BasicProfileEditor`,
+`ProfileValidationResult` and `AdvancedProfileDisclosure` over
+`useInspectionProfilesWorkspace`. `inspectionProfileBasicView.ts` is the pure
+friendly projection over strict v1. The hook owns origin/baseline/user-edit state,
+latest-wins reads, validation cancellation, serialized mutations and conflicts.
+Dedicated visual rules live in `styles/inspectionProfiles.css`.

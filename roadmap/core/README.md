@@ -270,3 +270,11 @@ frontend/backend verification, exact production build and package validation,
 isolated baseline/R5 Playwright evidence, canonical non-Docker verification and
 clean transfer. Tested implementation: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`. C1.5R.6 is next
 and not started; R7 and C1.6 remain blocked by their named dependencies.
+
+## C1.5R.6 completion
+
+Guided Inspection Profiles is complete: generated drafts are immediate and clean,
+Basic is the normal path, Advanced preserves strict v1, Japanese/Programming
+defaults are understandable, lifecycle/conflict/accessibility/security contracts
+are covered, and deterministic Chromium evidence is recorded. C1.5R.7 is next;
+C1.6 remains blocked.
