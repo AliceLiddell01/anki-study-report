@@ -80,7 +80,12 @@ jobs:
       - name: Run Chromium visual matrix
         working-directory: web-dashboard
         shell: bash
-        run: node r6-visual.mjs
+        run: |
+          set +e
+          node r6-visual.mjs > ../r6-visual/browser.log 2>&1
+          status=$?
+          cat ../r6-visual/browser.log
+          exit $status
       - name: Upload R6 browser evidence
         if: always()
         uses: actions/upload-artifact@v4
