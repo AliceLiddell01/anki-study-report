@@ -206,6 +206,7 @@ jobs:
       ANKI_E2E_NO_BUILD: '1'
       ANKI_E2E_CACHE_BACKEND: ghcr-digest
       ANKI_E2E_PREBUILT_ADDON_PATH: /e2e/local-input/anki_study_report.ankiaddon
+      ANKI_VERSION: '26.05'
     steps:
       - name: Check out exact candidate
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -234,6 +235,7 @@ jobs:
       - name: Stage and verify exact package
         shell: pwsh
         run: |
+          "E2E_STARTED_AT=$([DateTime]::UtcNow.ToString('o'))" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           python scripts/write_ci_package_metadata.py --verify-only --output-directory r7-input/r7-package
           if ($LASTEXITCODE -ne 0) { throw 'Fast package metadata verification failed.' }
           $source = 'r7-input/r7-package/anki_study_report.ankiaddon'
@@ -259,15 +261,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Pull exact environment image
+      - name: Pull and verify exact environment image
         shell: pwsh
         env:
           IMAGE_REFERENCE: ${{ steps.environment.outputs.image_reference }}
+          IMAGE_DIGEST: ${{ steps.environment.outputs.image_digest }}
           IMAGE_PLATFORM: ${{ steps.environment.outputs.image_platform }}
+          ENVIRONMENT_CONTRACT: ${{ steps.environment.outputs.environment_contract_sha256 }}
+          PUBLICATION_RUN_ID: ${{ steps.environment.outputs.environment_publication_run_id }}
+          REUSE_RUN_ID: ${{ steps.environment.outputs.environment_reuse_verification_run_id }}
         run: |
+          $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
           docker pull --platform $env:IMAGE_PLATFORM $env:IMAGE_REFERENCE
           if ($LASTEXITCODE -ne 0) { throw 'Exact GHCR image pull failed.' }
+          $repoDigests = docker image inspect $env:IMAGE_REFERENCE --format '{{json .RepoDigests}}' | ConvertFrom-Json
+          if ($env:IMAGE_REFERENCE -notin @($repoDigests)) { throw 'Pulled image digest mismatch.' }
+          $size = docker image inspect $env:IMAGE_REFERENCE --format '{{.Size}}'
+          $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
           "ANKI_E2E_IMAGE=$env:IMAGE_REFERENCE" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_DIGEST=$env:IMAGE_DIGEST" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_PLATFORM=$env:IMAGE_PLATFORM" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_PREPARATION_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_SIZE_BYTES=$size" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:ENVIRONMENT_CONTRACT" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID=$env:PUBLICATION_RUN_ID" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=$env:REUSE_RUN_ID" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Run canonical real-Anki E2E
         shell: pwsh
@@ -276,7 +294,7 @@ jobs:
           & .\scripts\run_full_check.ps1 -DockerOnly -E2EScope full -ScreenshotWorkers 3 -NoDockerBuild *>&1 | Tee-Object r7-e2e-raw/e2e-run.log
           if ($LASTEXITCODE -ne 0) { throw 'Canonical real-Anki E2E failed.' }
 
-      - name: Verify tested package identity
+      - name: Publish exact package and environment provenance
         shell: pwsh
         run: |
           $tested = 'e2e-artifacts/package/anki_study_report.ankiaddon'
@@ -294,6 +312,25 @@ jobs:
             packageManifestSha256 = '${{ needs.fast.outputs.manifest_sha256 }}'
             packageEntryCount = [int]'${{ needs.fast.outputs.entry_count }}'
           } | ConvertTo-Json | Set-Content e2e-artifacts/reports/r7-package-provenance.json -Encoding utf8NoBOM
+          [ordered]@{
+            schemaVersion = 1
+            imageSource = 'ghcr'
+            imageReference = $env:ANKI_E2E_IMAGE
+            imageDigest = $env:ANKI_E2E_IMAGE_DIGEST
+            imagePlatform = $env:ANKI_E2E_IMAGE_PLATFORM
+            imagePreparationDurationMs = [long]$env:ANKI_E2E_IMAGE_PREPARATION_DURATION_MS
+            imageSizeBytes = [long]$env:ANKI_E2E_IMAGE_SIZE_BYTES
+            environmentContractSha256 = $env:ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256
+            environmentPublicationRunId = [long]$env:ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID
+            environmentReuseVerificationRunId = [long]$env:ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID
+            cacheState = 'ghcr-digest'
+            workflowSourceSha = '${{ github.sha }}'
+            e2eCheckoutSha = $env:OWNER_REVIEW_SHA
+            packageSource = 'fast-ci-artifact'
+            sourceFastCiRunId = [long]'${{ github.run_id }}'
+            sourceFastCiTestedSha = $env:OWNER_REVIEW_SHA
+            sourcePackageSha256 = $actual
+          } | ConvertTo-Json | Set-Content e2e-artifacts/reports/environment-image-provenance.json -Encoding utf8NoBOM
 
       - name: Prepare redacted evidence
         shell: pwsh
@@ -306,33 +343,35 @@ jobs:
             --scope full `
             --screenshot-workers 3 `
             --build-duration-ms 0 `
-            --image-size-bytes 0 `
+            --image-size-bytes $env:ANKI_E2E_IMAGE_SIZE_BYTES `
             --cache-state ghcr-digest `
             --e2e-exit-code 0 `
-            --started-at '${{ github.event.pull_request.updated_at }}' `
+            --started-at $env:E2E_STARTED_AT `
             --commit-sha $env:OWNER_REVIEW_SHA `
             --ref '${{ github.head_ref }}' `
-            --package-source r7-fast-job `
+            --package-source fast-ci-artifact `
+            --source-fast-ci-run-id '${{ github.run_id }}' `
+            --source-fast-ci-tested-sha $env:OWNER_REVIEW_SHA `
             --source-package-sha256 $env:EXPECTED_PACKAGE_SHA256 `
             --e2e-checkout-sha $env:OWNER_REVIEW_SHA
           if ($LASTEXITCODE -ne 0) { throw 'Evidence preparation failed.' }
 
       - name: Inventory screenshot evidence
         id: inventory
-        shell: bash
+        shell: pwsh
         run: |
-          python - <<'PY'
+          $count = @'
           import json
           import pathlib
-          root = pathlib.Path('r7-e2e')
-          images = [p.relative_to(root).as_posix() for p in sorted(root.rglob('*')) if p.is_file() and p.suffix.lower() in {'.png','.jpg','.jpeg','.webp'}]
+          root = pathlib.Path("r7-e2e")
+          images = [p.relative_to(root).as_posix() for p in sorted(root.rglob("*")) if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}]
           if not images:
-              raise SystemExit('No screenshots in redacted evidence')
-          pathlib.Path('r7-e2e/r7-screenshot-inventory.json').write_text(json.dumps({'count': len(images), 'files': images}, indent=2) + '\n', encoding='utf-8')
-          print(f'count={len(images)}')
-          with open(pathlib.Path().resolve() / pathlib.Path('${GITHUB_OUTPUT}'), 'a', encoding='utf-8') as out:
-              out.write(f'count={len(images)}\n')
-          PY
+              raise SystemExit("No screenshots in redacted evidence")
+          pathlib.Path("r7-e2e/r7-screenshot-inventory.json").write_text(json.dumps({"count": len(images), "files": images}, indent=2) + "\n", encoding="utf-8")
+          print(len(images))
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Screenshot inventory failed.' }
+          "count=$($count.Trim())" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Upload redacted R7 evidence
         id: upload_e2e
