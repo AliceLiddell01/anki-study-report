@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../i18n";
+import type { InspectionProfileSummary, InspectionProfilesQueryResponse } from "../types/inspectionProfiles";
 import InspectionProfilesSettingsPage from "./InspectionProfilesSettingsPage";
 
 const mocks = vi.hoisted(() => ({ query: vi.fn(), validate: vi.fn(), update: vi.fn() }));
@@ -15,19 +16,84 @@ vi.mock("../lib/inspectionProfilesApi", async () => ({
 }));
 
 const fingerprint = { algorithm: "sha256" as const, value: "a".repeat(64) };
-const field = { ordinal: 0, name: "Front" };
-const check = { checkId: "question-required", kind: "non_empty" as const, roles: ["question"], mode: "any" as const, priority: "high" as const };
-const suggestion = { detectedKind: "generic", confidence: 0.8, fieldMappings: [{ role: "question", fields: [field], confidence: 0.9 }], checks: [check], warnings: [], unresolvedFields: [] };
 const store = { status: "empty" as const, revision: 0, profileCount: 0, errorCode: null, quarantined: false };
-const queryResponse = {
-  schemaVersion: 1 as const, status: "available" as const, store, totalCount: 2, returnedCount: 2, limit: 500, truncated: false, skippedCount: 0,
-  items: ["Basic", "Cloze"].map((name, index) => ({
-    structure: { noteTypeId: String(index + 1), name, kind: index ? "cloze" as const : "standard" as const, fields: [field], templates: [{ ordinal: 0, name: "Card 1", frontFields: ["Front"], backFields: ["Front"] }], fingerprint },
-    effectiveState: "not_configured" as const, stateReason: null, authoritative: false, storedProfile: null, suggestion,
-  })),
+
+function noteType(
+  noteTypeId: string,
+  name: string,
+  detectedKind: string,
+  fields: string[],
+  mappings: Array<[string, string]>,
+  checks: InspectionProfileSummary["suggestion"]["checks"],
+  state: InspectionProfileSummary["effectiveState"] = "not_configured",
+): InspectionProfileSummary {
+  const refs = fields.map((field, ordinal) => ({ ordinal, name: field }));
+  const storedProfile = state === "not_configured" ? null : {
+    profileId: `note-type-${noteTypeId}`,
+    noteTypeId,
+    noteTypeName: name,
+    storedState: state === "disabled" ? "disabled" as const : state === "confirmed" || state === "needs_review" ? "confirmed" as const : "suggested" as const,
+    displayName: name,
+    expectedFingerprint: fingerprint,
+    appliesTo: { templateOrdinals: [] },
+    fieldMappings: mappings.map(([role, field]) => ({ role, fields: [refs.find((ref) => ref.name === field)!] })),
+    checks,
+    confirmedAt: state === "confirmed" || state === "needs_review" ? "2026-07-20T12:00:00Z" : null,
+    updatedAt: "2026-07-20T12:00:00Z",
+  };
+  return {
+    structure: {
+      noteTypeId,
+      name,
+      kind: "standard",
+      fields: refs,
+      templates: [{ ordinal: 0, name: "Card 1", frontFields: fields.slice(0, 1), backFields: fields.slice(1) }],
+      fingerprint,
+    },
+    effectiveState: state,
+    stateReason: state === "needs_review" ? "field_changed" : null,
+    authoritative: state === "confirmed",
+    storedProfile,
+    suggestion: {
+      detectedKind,
+      confidence: 0.92,
+      fieldMappings: mappings.map(([role, field]) => ({ role, fields: [refs.find((ref) => ref.name === field)!], confidence: 0.94 })),
+      checks,
+      warnings: [],
+      unresolvedFields: [],
+    },
+  };
+}
+
+const japanese = noteType("1", "Japanese Vocabulary", "japanese_vocab", ["Word", "Meaning", "Audio"], [
+  ["term", "Word"], ["meaning", "Meaning"], ["audio", "Audio"],
+], [
+  { checkId: "meaning-required", kind: "non_empty", roles: ["meaning"], mode: "any", priority: "high" },
+  { checkId: "audio-required", kind: "contains_audio", roles: ["audio"], mode: "any", priority: "medium" },
+]);
+const programming = noteType("2", "Programming Q&A", "programming", ["Question", "Answer", "Code"], [
+  ["question", "Question"], ["answer", "Answer"], ["code", "Code"],
+], [
+  { checkId: "question-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+  { checkId: "answer-required", kind: "non_empty", roles: ["answer"], mode: "any", priority: "high" },
+]);
+const confirmed = noteType("3", "Confirmed Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+], "confirmed");
+
+const queryResponse: InspectionProfilesQueryResponse = {
+  schemaVersion: 1,
+  status: "available",
+  store,
+  totalCount: 3,
+  returnedCount: 3,
+  limit: 500,
+  truncated: false,
+  skippedCount: 0,
+  items: [japanese, programming, confirmed],
 };
 
-describe("Inspection Profiles settings workspace", () => {
+describe("Inspection Profiles guided settings workspace", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -49,53 +115,80 @@ describe("Inspection Profiles settings workspace", () => {
     vi.clearAllMocks();
   });
 
-  it("loads the catalog, creates only a dirty suggestion draft, and confirms through validate v2", async () => {
+  it("materializes a clean generated Japanese draft immediately and switches without a discard dialog", async () => {
     await renderPage();
-    expect(container.textContent).toContain("Профили проверки");
-    expect(container.textContent).toContain("Basic");
-    await click(noteButton("Basic"));
-    await settle();
-    await click(button("Использовать подсказку"));
-    expect(container.textContent).toContain("Есть несохранённые изменения");
+    await click(noteButton("Japanese Vocabulary"));
+    const basic = container.querySelector<HTMLElement>("[data-testid='inspection-basic-editor']")!;
+    expect(basic.textContent).toContain("Японская лексика");
+    expect(basic.textContent).toContain("Аудио: требуется аудио");
+    expect(basic.textContent).toContain("Audio");
+    expect(basic.textContent).not.toContain("audio-required");
+    expect(container.textContent).not.toContain("Использовать подсказку");
+    expect(container.textContent).not.toContain("Есть несохранённые изменения");
     expect(mocks.update).not.toHaveBeenCalled();
+
+    await click(noteButton("Programming Q&A"));
+    expect(document.querySelector("[role='dialog']")).toBeNull();
+    const programmingBasic = container.querySelector<HTMLElement>("[data-testid='inspection-basic-editor']")!;
+    expect(programmingBasic.textContent).toContain("Вопрос: обязательно");
+    expect(programmingBasic.textContent).toContain("Ответ: обязательно");
+    expect(programmingBasic.textContent).not.toContain("требуется аудио");
+  });
+
+  it("protects the draft only after an actual user edit", async () => {
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
+    const priority = container.querySelector<HTMLSelectElement>("#inspection-basic-priority-0")!;
+    await change(priority, "low");
+    expect(container.textContent).toContain("Есть несохранённые изменения");
+    await click(noteButton("Programming Q&A"));
+    const dialog = document.querySelector<HTMLElement>("[role='dialog']");
+    expect(dialog?.textContent).toContain("Отбросить несохранённые изменения");
+  });
+
+  it("validates with schema v2 and confirms with update schema v1", async () => {
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
     await click(button("Подтвердить и включить"));
     await settle();
     expect(mocks.validate).toHaveBeenCalledWith(expect.objectContaining({ schemaVersion: 2, preview: { mode: "sample", limit: 10 } }), expect.any(AbortSignal));
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ action: "save", targetState: "confirmed", expectedRevision: 0 }));
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ schemaVersion: 1, action: "save", targetState: "confirmed", expectedRevision: 0 }));
   });
 
-  it("protects a dirty draft when switching note types", async () => {
+  it("keeps strict identifiers inside a collapsed Advanced disclosure", async () => {
     await renderPage();
-    await click(noteButton("Basic"));
-    await settle();
-    await click(button("Использовать подсказку"));
-    await click(button("Проверить профиль"));
-    await settle();
-    expect(container.textContent).toContain("Проверка и ограниченный пример");
-    await click(noteButton("Cloze"));
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
-    expect(dialog?.textContent).toContain("Отбросить несохранённые изменения");
-    expect(container.contains(dialog)).toBe(false);
-    expect(container.inert).toBe(true);
-    const keepEditing = [...dialog!.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === "Продолжить редактирование");
-    expect(keepEditing).toBeDefined();
-    await click(keepEditing!);
-    expect(document.querySelector('[role="dialog"]')).toBeNull();
-    expect(container.inert).toBe(false);
-    expect(container.textContent).toContain("Basic");
+    await click(noteButton("Japanese Vocabulary"));
+    const advanced = container.querySelector<HTMLDetailsElement>(".inspection-major-disclosure")!;
+    expect(advanced.open).toBe(false);
+    expect(container.querySelector("[data-testid='inspection-basic-editor']")?.textContent).not.toContain("meaning-required");
+    await click(advanced.querySelector("summary")!);
+    expect(advanced.open).toBe(true);
+    expect(advanced.textContent).toContain("meaning-required");
   });
 
-  it("renders complete English route copy", async () => {
+  it("does not require reconfirmation for an unchanged confirmed profile", async () => {
+    await renderPage();
+    await click(noteButton("Confirmed Basic"));
+    expect(container.textContent).toContain("Включено");
+    expect(exactButton("Подтвердить и включить")).toBeUndefined();
+    expect(exactButton("Проверить настройку")).toBeDefined();
+  });
+
+  it("renders the guided workflow in English", async () => {
     await i18n.changeLanguage("en");
     await renderPage();
-    expect(container.textContent).toContain("Inspection Profiles");
-    expect(container.textContent).toContain("Note types");
-    expect(container.textContent).toContain("Not configured");
+    await click(noteButton("Programming Q&A"));
+    expect(container.textContent).toContain("Suggested setup");
+    expect(container.textContent).toContain("Question is required");
+    expect(container.textContent).toContain("Confirm and enable");
+    expect(container.textContent).toContain("Advanced settings");
   });
 
   async function renderPage() { await act(async () => root.render(<InspectionProfilesSettingsPage />)); await settle(); }
   async function settle() { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); }
-  async function click(element: HTMLElement) { await act(async () => element.click()); }
-  function button(text: string) { const match = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text); if (!match) throw new Error(`missing button ${text}`); return match; }
+  async function click(element: HTMLElement) { await act(async () => element.click()); await settle(); }
+  async function change(element: HTMLSelectElement | HTMLInputElement, value: string) { await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); }); await settle(); }
+  function button(text: string) { const match = exactButton(text); if (!match) throw new Error(`missing button ${text}`); return match; }
+  function exactButton(text: string) { return [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text); }
   function noteButton(text: string) { const match = [...container.querySelectorAll<HTMLButtonElement>(".inspection-note-button")].find((item) => item.textContent?.includes(text)); if (!match) throw new Error(`missing note ${text}`); return match; }
 });
