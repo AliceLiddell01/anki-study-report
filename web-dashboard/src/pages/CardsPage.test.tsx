@@ -11,11 +11,13 @@ import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/tri
 import CardsPage from "./CardsPage";
 
 const workspaceMock = vi.fn<() => CardsTriageWorkspace>();
+let wideMode = true;
 vi.mock("../hooks/useCardsTriageWorkspace", () => ({ useCardsTriageWorkspace: () => workspaceMock() }));
+vi.mock("../hooks/useMediaQuery", () => ({ useMediaQuery: () => wideMode }));
 
 const learningReason: TriageReason = {
   reasonId: "learning:1", code: "learning.repeated_again", family: "learning", scope: "card",
-  priority: "high", sources: ["attention"], evidence: [{ kind: "review_counts", againCount: 4, periodStartMs: 1, periodEndMs: 2 }], detectedAtMs: 2,
+  priority: "high", sources: ["attention"], evidence: [{ kind: "review_counts", againCount: 4, periodStartMs: 1, periodEndMs: 7 * 86400000 + 1 }], detectedAtMs: 2,
 };
 const contentReason: TriageReason = {
   reasonId: "content:1", code: "content.audio_missing", family: "content", scope: "note",
@@ -27,99 +29,119 @@ const items: TriageItem[] = [
 ];
 const response: TriageQueryResponse = {
   schemaVersion: 4, dataset: "automatic", status: "partial", generatedAtMs: 10, totalCount: 2, returnedCount: 2, limit: 100, truncated: false,
-  sourceStatus: { learningCandidates: source("available", 1), contentCandidates: { ...source("available", 1), scannedNoteCount: 1, nextCursor: null }, signals: source("unavailable", 0), searchResolver: source("empty", 0), profileChecks: source("available", 1) },
-  contentChecks: { status: "profiles_need_review", confirmedProfileCount: 1, needsReviewProfileCount: 2, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 1, evaluatedNoteCount: 1, failedCheckCount: 1, skippedCount: 1, truncated: false, nextCursor: null, errorCode: null },
+  sourceStatus: { learningCandidates: source("available", 1), contentCandidates: { ...source("available", 1), scannedNoteCount: 500, truncated: true, nextCursor: "500" }, signals: source("unavailable", 0), searchResolver: source("empty", 0), profileChecks: source("available", 1) },
+  contentChecks: { status: "profiles_need_review", confirmedProfileCount: 1, needsReviewProfileCount: 2, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 500, evaluatedNoteCount: 1, failedCheckCount: 1, skippedCount: 1, truncated: true, nextCursor: "500", errorCode: null },
   items,
 };
-const inspectResponse: SearchInspectResponse<"cards"> = { schemaVersion: 2, mode: "cards", requestId: "cards-1", details: { cardId: "1001", noteId: "2001", deckId: "3", deckName: "Japanese::N5", noteTypeId: "7", noteTypeName: "Japanese Vocabulary", templateOrdinal: 0, templateName: "Recognition", displayText: "【に】（する）", displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 10, repetitions: 5, lapses: 1, flag: 1, tagSummary: ["n5"], deck: { deckId: "3", deckName: "Japanese::N5" }, noteType: { noteTypeId: "7", noteTypeName: "Japanese Vocabulary" }, template: { ordinal: 0, name: "Recognition" }, queue: 2, tags: ["n5"], renderedPreview: { renderStatus: "sanitized", frontHtml: "<b>覚える</b>", backHtml: "<b>remember</b>", frontPlainText: "覚える", css: "b{font-weight:700}", mediaRefs: [], cardOrd: 0, cardId: 1001, renderSource: "anki_native" } } };
+const inspectResponse: SearchInspectResponse<"cards"> = { schemaVersion: 2, mode: "cards", requestId: "cards-1", details: { cardId: "1001", noteId: "2001", deckId: "3", deckName: "Japanese::N5", noteTypeId: "7", noteTypeName: "Japanese Vocabulary", templateOrdinal: 0, templateName: "Recognition", displayText: "【に】（する）", displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 10, repetitions: 5, lapses: 1, flag: 1, tagSummary: ["n5"], deck: { deckId: "3", deckName: "Japanese::N5" }, noteType: { noteTypeId: "7", noteTypeName: "Japanese Vocabulary" }, template: { ordinal: 0, name: "Recognition" }, queue: 2, tags: ["n5"], renderedPreview: { renderStatus: "sanitized", frontHtml: "<b>覚える</b>", backHtml: "<b>remember</b>", frontPlainText: "覚える", backPlainText: "remember", css: "b{font-weight:700}", mediaRefs: [], cardOrd: 0, cardId: 1001, renderSource: "anki_native" } } };
 
-beforeEach(async () => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true; await i18n.changeLanguage("ru"); workspaceMock.mockReturnValue(readyWorkspace()); vi.stubGlobal("window", window); });
+beforeEach(async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  await i18n.changeLanguage("ru");
+  wideMode = true;
+  workspaceMock.mockReturnValue(readyWorkspace());
+});
 afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = ""; });
 
-describe("Cards v2 queue and Inspector", () => {
-  it("uses the same canonical identity in queue and Inspector without redesigning the workspace", () => {
+describe("Cards attention inbox", () => {
+  it("removes the spreadsheet table and renders a semantic inbox with one detail surface", () => {
     const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    expect(html).toContain('data-testid="cards-triage-table"');
-    expect(html.match(/data-testid="cards-triage-row"/g)).toHaveLength(2);
+    expect(html).toContain('data-testid="cards-inbox"');
+    expect(html.match(/data-testid="cards-inbox-item"/g)).toHaveLength(2);
+    expect(html).not.toContain("<table");
+    expect(html).not.toContain('role="grid"');
+    expect(html).not.toContain('role="listbox"');
     expect(html).toContain('data-testid="cards-inspector"');
-    expect(html.match(/【に】（する）/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(html).toContain("Карточка только с медиа");
+    expect(html).not.toContain('data-testid="cards-detail-drawer"');
     expect(html.match(/data-shadow-preview="true"/g)).toHaveLength(1);
+    expect(html).toContain("【に】（する）");
     expect(html).toContain("+1 причина");
-    expect(html).not.toContain("primaryText");
-    expect(html).not.toContain('type="checkbox"');
+    expect(html).toContain("Период обучения");
+    expect(html).toContain("Проверить следующие заметки");
   });
 
-  it("localizes unavailable fallback in English", async () => {
+  it("keeps filter clearing separate from the learning period", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    const selects = Array.from(document.querySelectorAll("select"));
+    const period = selects.find((select) => select.parentElement?.textContent?.includes("Период обучения"))!;
+    await act(async () => { period.value = "30"; period.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(workspace.setLearningPeriodDays).toHaveBeenCalledWith(30);
+    const prioritySelect = selects.find((select) => select.parentElement?.textContent?.includes("Приоритет"))!;
+    await act(async () => { prioritySelect.value = "high"; prioritySelect.dispatchEvent(new Event("change", { bubbles: true })); });
+    const clear = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Очистить фильтры"));
+    expect(clear).toBeTruthy();
+    await act(async () => clear!.click());
+    expect(workspace.setLearningPeriodDays).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
+  it("uses a full-width queue and opens a non-modal drawer on activation", async () => {
+    wideMode = false;
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    expect(document.querySelector('[data-testid="cards-detail-drawer"]')).toBeNull();
+    const item = document.querySelector('button[data-card-id="1001"]') as HTMLButtonElement;
+    item.focus();
+    await act(async () => item.click());
+    const drawer = document.querySelector('[data-testid="cards-detail-drawer"]')!;
+    expect(drawer).toBeTruthy();
+    expect(drawer.getAttribute("role")).toBe("region");
+    expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
+    expect(workspace.activate).toHaveBeenCalledWith(items[0]);
+    const close = drawer.querySelector('button[aria-label*="Закрыть подробности"]') as HTMLButtonElement;
+    await act(async () => close.click());
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[data-testid="cards-detail-drawer"]')).toBeNull();
+    expect(document.activeElement).toBe(item);
+    await act(async () => root.unmount());
+  });
+
+  it("keeps the expanded answer as the existing true modal", async () => {
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть ответ"));
+    expect(expand).toBeTruthy();
+    await act(async () => expand!.click());
+    const modal = document.querySelector('[data-testid="cards-preview-modal"]')!;
+    expect(modal.getAttribute("role")).toBe("dialog");
+    expect(modal.getAttribute("aria-modal")).toBe("true");
+    expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
+    expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).toContain("remember");
+    expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).not.toContain("覚える");
+    await act(async () => root.unmount());
+  });
+
+  it("localizes unavailable compact identity in English", async () => {
     await i18n.changeLanguage("en");
     const unavailable: TriageItem = { ...items[1]!, displaySource: "none", displayStatus: "unavailable" };
     workspaceMock.mockReturnValue({ ...readyWorkspace(), activeId: "card:1002", activeItem: unavailable });
     const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
     expect(html).toContain("Card text unavailable");
   });
-
-  it("keeps preview failures separate from reasons and exact-ID actions", () => {
-    workspaceMock.mockReturnValue({ ...readyWorkspace(), inspectStatus: "error", inspectResponse: null, inspectError: Object.assign(new Error("gone"), { code: "search_entity_not_found", status: 404, name: "SearchApiError" }) as never });
-    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    expect(html).toContain("Карточка недоступна или удалена");
-    expect(html).toContain("Частые ответы «Снова»");
-    expect(html).toContain("Нет аудио");
-    expect(html).toContain("Открыть в Anki");
-  });
-
-  it("portals expanded preview outside the inert application shell", async () => {
-    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
-    const rootNode = document.getElementById("root")!;
-    const root = createRoot(rootNode);
-    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
-    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть ответ"));
-    expect(expand).toBeTruthy();
-    await act(async () => expand!.click());
-    const modal = document.querySelector('[data-testid="cards-preview-modal"]');
-    expect(modal).toBeTruthy();
-    expect(document.getElementById("dashboard-app-shell")!.contains(modal)).toBe(false);
-    expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
-    expect(modal?.textContent).toContain("Развёрнутое превью ответа");
-    const modalPreview = modal?.querySelector('[data-preview-side="back"]');
-    expect(modalPreview).toBeTruthy();
-    expect(modalPreview?.getAttribute("data-preview-mode")).toBe("expanded");
-    expect(modalPreview?.innerHTML).toContain("remember");
-    expect(modalPreview?.innerHTML).not.toContain("覚える");
-    await act(async () => root.unmount());
-  });
 });
 
 function readyWorkspace(): CardsTriageWorkspace {
-  return { queryStatus: "ready", queryError: null, response, activeId: items[0]!.itemId, activeItem: items[0]!, inspectStatus: "ready", inspectError: null, inspectResponse, openPending: false, openResult: null, activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined) };
+  return {
+    queryStatus: "ready", queryError: null, response,
+    learningPeriodDays: 7, setLearningPeriodDays: vi.fn(),
+    activeId: items[0]!.itemId, activeItem: items[0]!,
+    inspectStatus: "ready", inspectError: null, inspectResponse,
+    openPending: false, openResult: null,
+    continuationStatus: "idle", continuationError: null, loadedContentPages: 0,
+    scannedNoteCount: 500, hasMoreContent: true, lastContinuationAddedCount: null,
+    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined),
+  };
 }
 
-function source(status: "available" | "empty" | "unavailable", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null }; }
-
-describe("Cards preview side availability", () => {
-  it("renders front in Inspector without answer-only content", () => {
-    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    expect(html).toContain("Лицевая сторона");
-    expect(html).toContain('data-preview-side="front"');
-    expect(html).toContain("覚える");
-    expect(html).not.toContain("remember");
-  });
-
-  it("keeps reasons and actions when front is unavailable", () => {
-    const missingFront = { ...inspectResponse, details: { ...inspectResponse.details, renderedPreview: { ...inspectResponse.details.renderedPreview, frontHtml: "", frontPlainText: "" } } };
-    workspaceMock.mockReturnValue({ ...readyWorkspace(), inspectResponse: missingFront });
-    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    expect(html).toContain("Лицевая сторона недоступна");
-    expect(html).toContain("Частые ответы «Снова»");
-    expect(html).toContain("Открыть в Anki");
-  });
-
-  it("does not present front as answer when back is unavailable", () => {
-    const missingBack = { ...inspectResponse, details: { ...inspectResponse.details, renderedPreview: { ...inspectResponse.details.renderedPreview, backHtml: "", backPlainText: "" } } };
-    workspaceMock.mockReturnValue({ ...readyWorkspace(), inspectResponse: missingBack });
-    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    expect(html).toContain("Превью ответа недоступно");
-    expect(html).toContain("覚える");
-    expect(html).not.toContain('data-preview-side="back"');
-    expect(html).toContain('disabled=""');
-  });
-});
+function source(status: "available" | "empty" | "unavailable", itemCount: number) {
+  return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null } as const;
+}

@@ -48,7 +48,7 @@ def write_minimal_archive(
             "[data-theme=light]",
             ".topbar-surface",
             ".shadow-panel",
-            ".cards-v2-table",
+            ".cards-inbox-page",
             ".anki-card-shadow-preview",
         ]
     )
@@ -152,7 +152,7 @@ def write_split_archive(
     stale = stale or set()
     css_payload = "\n".join([
         "[data-theme=light]", ".topbar-surface", ".shadow-panel",
-        ".cards-v2-table", ".anki-card-shadow-preview",
+        ".cards-inbox-page", ".anki-card-shadow-preview",
     ])
     lazy_file = unsafe_lazy_path or "assets/fsrs-lazy.js"
     manifest = {

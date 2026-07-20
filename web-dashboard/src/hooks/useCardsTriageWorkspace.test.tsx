@@ -3,47 +3,164 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TriageItem, TriageReason } from "../types/triage";
+import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/triage";
 import { useCardsTriageWorkspace } from "./useCardsTriageWorkspace";
 
-const triageItems: TriageItem[] = [item("1001", "First"), item("1002", "Second")];
+const first = item("1001", "First", reason("learning:1", "learning.leech", "high"));
+const second = item("1002", "Second", reason("content:2", "content.audio_missing", "medium"));
 
-afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ""; });
+let latestWorkspace: ReturnType<typeof useCardsTriageWorkspace> | null = null;
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  document.body.innerHTML = "";
+  latestWorkspace = null;
+});
 
 describe("useCardsTriageWorkspace", () => {
-  it("queries automatic v4 once and inspects only the active item through Search v2", async () => {
+  it("uses an explicit period and performs exactly one bounded continuation request per activation", async () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+    let triageCount = 0;
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input); const body = JSON.parse(String(init?.body || "{}")); calls.push({ url, body });
-      if (url.includes("/api/triage/query")) return ok({ schemaVersion: 4, dataset: "automatic", status: "available", generatedAtMs: Date.now(), totalCount: 2, returnedCount: 2, limit: 100, truncated: false, sourceStatus: { learningCandidates: source("available", 2), contentCandidates: { ...source("empty", 0), scannedNoteCount: 0, nextCursor: null }, signals: source("empty", 0), searchResolver: source("empty", 0), profileChecks: source("empty", 0) }, contentChecks: { status: "no_confirmed_profiles", confirmedProfileCount: 0, needsReviewProfileCount: 0, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 0, evaluatedNoteCount: 0, failedCheckCount: 0, skippedCount: 0, truncated: false, nextCursor: null, errorCode: null }, items: triageItems });
+      if (url.includes("/api/triage/query")) {
+        triageCount += 1;
+        if (triageCount === 1) return ok(response([first], 500, "500"));
+        if (triageCount === 2) return ok(response([first, second], 250, null));
+        return ok(response([first], 0, null));
+      }
       if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
       throw new Error(`unexpected ${url}`);
     }));
-    document.body.innerHTML = '<div id="root"></div>';
-    const root = createRoot(document.getElementById("root")!);
-    await act(async () => root.render(<Harness />));
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    const triageCall = calls.find((call) => call.url.includes("/api/triage/query"))!;
-    expect(triageCall.body.schemaVersion).toBe(4);
-    expect(triageCall.body.contentCursor).toBeNull();
-    expect(triageCall.body.dataset).toBe("automatic");
-    const scope = triageCall.body.scope as { deckIds: string[]; periodStartMs: number; periodEndMs: number };
-    expect(scope.deckIds).toEqual(["3"]);
-    expect(scope.periodEndMs - scope.periodStartMs).toBe(7 * 24 * 60 * 60 * 1000);
-    const inspectCalls = calls.filter((call) => call.url.includes("/api/search/inspect"));
-    expect(inspectCalls.map((call) => call.body.cardId)).toEqual(["1001"]);
-    expect(inspectCalls[0]!.body.schemaVersion).toBe(2);
-    const second = document.querySelector('button[data-card-id="1002"]') as HTMLButtonElement;
-    await act(async () => second.click());
-    await act(async () => { await Promise.resolve(); });
-    expect(calls.filter((call) => call.url.includes("/api/search/inspect")).map((call) => call.body.cardId)).toEqual(["1001", "1002"]);
+    const root = await mount();
+
+    const initial = calls.find((call) => call.url.includes("/api/triage/query"))!;
+    expect(initial.body.schemaVersion).toBe(4);
+    expect(initial.body.contentCursor).toBeNull();
+    const initialScope = initial.body.scope as { periodStartMs: number; periodEndMs: number; deckIds: string[] };
+    expect(initialScope.deckIds).toEqual(["3"]);
+    expect(initialScope.periodEndMs - initialScope.periodStartMs).toBe(7 * 86400000);
+    expect(latestWorkspace!.activeItem).toBeNull();
+
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    expect(calls.filter((call) => call.url.includes("/api/search/inspect")).map((call) => call.body.cardId)).toEqual(["1001"]);
+
+    await act(async () => {
+      const firstRequest = latestWorkspace!.continueContentScan();
+      const ignoredDoubleClick = latestWorkspace!.continueContentScan();
+      await Promise.all([firstRequest, ignoredDoubleClick]);
+    });
+    await waitUntil(() => latestWorkspace?.loadedContentPages === 1);
+    const triageCalls = calls.filter((call) => call.url.includes("/api/triage/query"));
+    expect(triageCalls).toHaveLength(2);
+    expect(triageCalls[1]!.body.contentCursor).toBe("500");
+    expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1001", "1002"]);
+    expect(latestWorkspace!.scannedNoteCount).toBe(750);
+    expect(latestWorkspace!.loadedContentPages).toBe(1);
+    expect(latestWorkspace!.continuationStatus).toBe("exhausted");
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1001");
+
+    await act(async () => latestWorkspace!.setLearningPeriodDays(30));
+    await flush();
+    const periodCalls = calls.filter((call) => call.url.includes("/api/triage/query"));
+    const periodCall = periodCalls[periodCalls.length - 1]!;
+    const periodScope = periodCall.body.scope as { periodStartMs: number; periodEndMs: number };
+    expect(periodCall.body.contentCursor).toBeNull();
+    expect(periodScope.periodEndMs - periodScope.periodStartMs).toBe(30 * 86400000);
+    expect(latestWorkspace!.loadedContentPages).toBe(0);
+    expect(latestWorkspace!.scannedNoteCount).toBe(0);
+    await act(async () => root.unmount());
+  });
+
+  it("preserves usable items and the same cursor after a continuation failure", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const calls: Array<Record<string, unknown>> = [];
+    let count = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (!url.includes("/api/triage/query")) return ok(searchDetails(String(body.cardId)));
+      calls.push(body); count += 1;
+      if (count === 1) return ok(response([first], 500, "500"));
+      if (count === 2) return new Response(JSON.stringify({ ok: false, error: "triage_failed", message: "failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      return ok(response([], 500, null));
+    }));
+    const root = await mount();
+    await act(async () => { await latestWorkspace!.continueContentScan(); });
+    expect(latestWorkspace!.continuationStatus).toBe("error");
+    expect(latestWorkspace!.response!.items).toHaveLength(1);
+    await act(async () => { await latestWorkspace!.continueContentScan(); });
+    expect(calls[1]!.contentCursor).toBe("500");
+    expect(calls[2]!.contentCursor).toBe("500");
+    expect(latestWorkspace!.lastContinuationAddedCount).toBe(0);
+    expect(latestWorkspace!.scannedNoteCount).toBe(1000);
+    await act(async () => root.unmount());
+  });
+
+  it("prevents stale inspect responses and reuses cached exact-card details", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const inspectCalls: string[] = [];
+    let resolveFirst: ((value: Response) => void) | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first, second], 0, null));
+      const cardId = String(body.cardId); inspectCalls.push(cardId);
+      if (cardId === "1001" && inspectCalls.length === 1) return new Promise<Response>((resolve) => { resolveFirst = resolve; });
+      return ok(searchDetails(cardId));
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await act(async () => latestWorkspace!.activate(second));
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.cardId === "1002");
+    expect(latestWorkspace!.inspectResponse?.details.cardId).toBe("1002");
+    await act(async () => resolveFirst?.(ok(searchDetails("1001"))));
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.cardId === "1002");
+    expect(latestWorkspace!.inspectResponse?.details.cardId).toBe("1002");
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    await act(async () => latestWorkspace!.activate(second));
+    await flush();
+    expect(inspectCalls.filter((value) => value === "1002")).toHaveLength(1);
     await act(async () => root.unmount());
   });
 });
 
-function Harness() { const workspace = useCardsTriageWorkspace(["3"]); return <div>{workspace.response?.items.map((value) => <button key={value.cardId} data-card-id={value.cardId} onClick={() => workspace.activate(value)}>{value.displayText}</button>)}</div>; }
-function item(cardId: string, displayText: string): TriageItem { const reason: TriageReason = { reasonId: `learning:${cardId}`, code: "learning.leech", family: "learning", scope: "card", priority: "high", sources: ["attention"], evidence: [{ kind: "leech_state", lapses: 2 }], detectedAtMs: 2 }; return { itemId: `card:${cardId}`, availability: "available", cardId, noteId: `2${cardId}`, deck: { deckId: "3", name: "Deck" }, noteType: { noteTypeId: "7", name: "Basic" }, template: { ordinal: 0, name: "Card 1" }, displayText, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, priority: "high", primaryReasonCode: "learning.leech", reasons: [reason], sources: ["attention"], cardState: { state: "review", suspended: false, buried: false, flag: 0 }, inspect: { mode: "cards", cardId } }; }
-function source(status: "available" | "empty", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null }; }
-function ok(response: unknown) { return new Response(JSON.stringify({ ok: true, response }), { status: 200, headers: { "Content-Type": "application/json" } }); }
-function searchDetails(cardId: string) { return { schemaVersion: 2, mode: "cards", details: { cardId, noteId: `2${cardId}`, deckId: "3", deckName: "Deck", noteTypeId: "7", noteTypeName: "Basic", templateOrdinal: 0, templateName: "Card 1", displayText: cardId, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 1, repetitions: 1, lapses: 0, flag: 0, tagSummary: [], deck: { deckId: "3", deckName: "Deck" }, noteType: { noteTypeId: "7", noteTypeName: "Basic" }, template: { ordinal: 0, name: "Card 1" }, queue: 2, tags: [], renderedPreview: { renderStatus: "sanitized", frontHtml: `<b>${cardId}</b>`, mediaRefs: [] } } }; }
+async function mount() {
+  document.body.innerHTML = '<div id="root"></div>';
+  const root = createRoot(document.getElementById("root")!);
+  await act(async () => root.render(<Harness />));
+  await flush();
+  return root;
+}
+
+function Harness() {
+  latestWorkspace = useCardsTriageWorkspace(["3"]);
+  return <div>{latestWorkspace.queryStatus}:{latestWorkspace.response?.items.length ?? 0}:{latestWorkspace.continuationStatus}</div>;
+}
+
+async function flush() {
+  await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
+}
+
+async function waitUntil(predicate: () => boolean, attempts = 50) {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
+  }
+  throw new Error("condition did not become true");
+}
+
+function reason(id: string, code: string, priority: "high" | "medium" | "low"): TriageReason {
+  return { reasonId: id, code, family: code.startsWith("content.") ? "content" : "learning", scope: code.startsWith("content.") ? "note" : "card", priority, sources: [code.startsWith("content.") ? "profile_checks" : "attention"], evidence: code.startsWith("content.") ? [{ kind: "profile_check", profileId: "note-type-7", checkId: "c", checkKind: "contains_audio", roles: ["audio"], fields: [], expectedCondition: "contains_audio", actualTextLength: null, expectedTextLength: null, marker: "audio", markerPresent: false, profileRevision: 1, fingerprint: "a".repeat(64), affectedSiblingCount: 1, templateOrdinals: [] }] : [{ kind: "leech_state", lapses: 8 }], detectedAtMs: 2 };
+}
+function item(cardId: string, displayText: string, itemReason: TriageReason): TriageItem {
+  return { itemId: `card:${cardId}`, availability: "available", cardId, noteId: `2${cardId}`, deck: { deckId: "3", name: "Deck" }, noteType: { noteTypeId: "7", name: "Basic" }, template: { ordinal: 0, name: "Card 1" }, displayText, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, priority: itemReason.priority, primaryReasonCode: itemReason.code, reasons: [itemReason], sources: itemReason.sources, cardState: { state: "review", suspended: false, buried: false, flag: 0 }, inspect: { mode: "cards", cardId } };
+}
+function response(values: TriageItem[], scanned: number, cursor: string | null): TriageQueryResponse {
+  const truncated = cursor !== null;
+  return { schemaVersion: 4, dataset: "automatic", status: "available", generatedAtMs: Date.now(), totalCount: values.length, returnedCount: values.length, limit: 100, truncated: false, sourceStatus: { learningCandidates: source("available", values.length), contentCandidates: { ...source(values.length ? "available" : "empty", values.length), scannedNoteCount: scanned, truncated, nextCursor: cursor }, signals: source("empty", 0), searchResolver: source("available", values.length), profileChecks: source(values.length ? "available" : "empty", values.length) }, contentChecks: { status: "available", confirmedProfileCount: 1, needsReviewProfileCount: 0, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: scanned, evaluatedNoteCount: scanned, failedCheckCount: values.length, skippedCount: 0, truncated, nextCursor: cursor, errorCode: null }, items: values };
+}
+function source(status: "available" | "empty", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null } as const; }
+function ok(responseValue: unknown) { return new Response(JSON.stringify({ ok: true, response: responseValue }), { status: 200, headers: { "Content-Type": "application/json" } }); }
+function searchDetails(cardId: string) { return { schemaVersion: 2, mode: "cards", requestId: `cards-${cardId}`, details: { cardId, noteId: `2${cardId}`, deckId: "3", deckName: "Deck", noteTypeId: "7", noteTypeName: "Basic", templateOrdinal: 0, templateName: "Card 1", displayText: cardId, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 1, repetitions: 1, lapses: 0, flag: 0, tagSummary: [], deck: { deckId: "3", deckName: "Deck" }, noteType: { noteTypeId: "7", noteTypeName: "Basic" }, template: { ordinal: 0, name: "Card 1" }, queue: 2, tags: [], renderedPreview: { renderStatus: "sanitized", frontHtml: `<b>${cardId}</b>`, backHtml: `<i>${cardId}</i>`, frontPlainText: cardId, backPlainText: cardId, css: "", mediaRefs: [], cardOrd: 0, cardId: Number(cardId), renderSource: "anki_native" } } }; }
