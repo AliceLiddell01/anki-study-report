@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.5` Complete; `C1.5R.6` Next, not started; `C1.6` blocked
+**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` Next, not started; `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -63,7 +63,7 @@ implementation. Full contract freeze and release closure remain C2 work.
   owner visual/product acceptance withdrawn —
   [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md),
   Fast CI `29648956309` PASS, real-Anki `29649071545` PASS
-- `C1.5R — Cards and Inspection Profiles UX remediation`: In progress
+- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 next
 - `C1.6 — Handoffs, actions and detector-driven resolution loop`: Blocked, not
   started
 
@@ -81,8 +81,8 @@ C1.5R.2 Declarative compact formatter runtime — Complete
 C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
 C1.5R.5 Cards attention inbox redesign — Complete
-C1.5R.6 Guided Inspection Profiles UX — Next, not started
-C1.5R.7 Integrated acceptance and owner review package — Not started
+C1.5R.6 Guided Inspection Profiles UX — Complete
+C1.5R.7 Integrated acceptance and owner review package — Next, not started
 ```
 
 #### C1.5R.0 — Recovery and corrective baseline
@@ -164,16 +164,17 @@ contracts remain unchanged. Verification and visual evidence are recorded in
 
 #### C1.5R.6 — Guided Inspection Profiles UX
 
-**Status:** Next, not started
+**Status:** Complete
 
 Makes the deterministic suggestion a ready unsaved Basic draft and moves the
 strict runtime editor behind Advanced. Japanese audio and Programming no-audio
-expectations must be understandable without exposing machine IDs in the normal
-path.
+expectations are understandable without exposing machine IDs in the normal path.
+Final evidence is recorded in
+[`reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../../reports/core/c1-5r-6-guided-inspection-profiles-ux.md).
 
 #### C1.5R.7 — Integrated acceptance and owner review package
 
-**Status:** Not started
+**Status:** Next, not started
 
 Runs the risk-appropriate integrated verification and prepares explicit owner
 screenshots/review. Technical gates cannot grant owner product acceptance.

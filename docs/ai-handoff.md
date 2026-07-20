@@ -359,14 +359,17 @@ deletion and preserve unrelated changes.
 C1.5R.5 is complete: the rejected table is removed; Cards uses the semantic
 identity-led inbox with wide Inspector and non-modal drawer; learning scope and
 manual content continuation are explicit and bounded. Exact implementation
-`a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed the required technical gates. C1.5R.6 is next and
-not started; R7 and C1.6 remain blocked.
+`a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed the required technical gates.
+C1.5R.6 subsequently completed as recorded below; R7 is next and C1.6 remains
+blocked.
 
 ## C1.5R.6 handoff
 
-R6 is implemented and technically verified. The Inspection Profiles route now uses
-immediate clean generated drafts, open Basic guidance, friendly exact field/
-requirement/template projection, bounded validation, lifecycle-aware actions,
-collapsed strict Advanced and separated tools. No backend schema/runtime change was
-required. PR #50 targets `core`; after merge/cleanup, C1.5R.7 is next and C1.6
-remains blocked. Owner product acceptance is still pending.
+R6 is complete. The Inspection Profiles route uses immediate clean generated
+drafts, open Basic guidance, friendly exact field/requirement/template projection,
+bounded validation, lifecycle-aware actions, collapsed strict Advanced and
+separated tools. No backend schema/runtime change was required. Final implementation
+`8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged by PR #50 into `core` as
+`d2ee9703a2b841c0438fc07a43db3b701835a958`; exact merged-core non-Docker and
+Chromium gates passed, and the implementation branch was deleted. C1.5R.7 is next
+and not started; C1.6 remains blocked. Owner product acceptance is still pending.

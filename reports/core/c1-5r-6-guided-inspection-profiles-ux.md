@@ -246,4 +246,115 @@ synchronized current documentation. No backend production/schema change occurred
 
 These belong to the next stage and are not upgraded into claims.
 
+## Final implementation corrections
+
+Closeout self-review found and fixed two production defects before merge:
+
+1. restoring the backend suggestion over a stored confirmed profile now preserves
+   the stored baseline and becomes protected user work instead of appearing
+   unchanged/authoritative;
+2. an invalid profile with an unavailable card sample is no longer described as
+   structurally valid.
+
+The final implementation head is
+`8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94`. Regression coverage was added for
+both defects. Correction publication run `29758568451` passed affected tests,
+typecheck and the production build.
+
+## Merge and post-merge closeout
+
+PR [#50](https://github.com/AliceLiddell01/anki-study-report/pull/50) was
+merged into `core` on 2026-07-20. The repository disables the standard merge-commit
+endpoint, so the attempted REST merge with exact expected head was rejected with
+`405 Merge commits are not allowed`. An authenticated disposable runner then
+created the equivalent non-force two-parent Git merge commit:
+
+```text
+merge commit: d2ee9703a2b841c0438fc07a43db3b701835a958
+parent 1:     cbdeadcc46a3cfd3a923521f7c08996337991f3b
+parent 2:     8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94
+```
+
+The merge tree is byte-for-byte identical to the verified implementation tree.
+GitHub recognized PR #50 as merged at `2026-07-20T16:27:23Z`. `master` was not
+modified.
+
+Post-merge verification used the exact merge SHA:
+
+- run `29760351288`: topology, Python compile, focused frontend and TypeScript
+  typecheck PASS;
+- run `29760616754`: production build, focused backend and canonical
+  `run_full_check.ps1 -SkipDocker` PASS; its later disposable script extraction
+  failed after all named technical gates;
+- run `29761002605`: direct merged-build Chromium route smoke and Git hygiene PASS;
+  artifact `8468784769`, digest
+  `981cca4925351bc6cef26a0cf3df0e61b9e55debb260f10482b47bd84fbbd440`.
+
+The route smoke covered Japanese and Programming generated Basic drafts, Advanced
+collapsed/open, invalid validation guidance and 1024 px horizontal-overflow guard.
+No mutation occurred before an explicit action.
+
+## Branch and workflow cleanup
+
+Cleanup run `29761245366` deleted the merged implementation branch, all R6
+verification/diagnostic carriers then present, and proven-obsolete R3/R4/R5 status
+or verification refs. Its final inventory parser failed after the deletions because
+it did not skip an empty ref line; the deletion operations themselves completed and
+were verified by subsequent lookup.
+
+Remaining-ref audit run `29761517938` confirmed:
+
+- `c1-5r-6-guided-inspection-profiles` absent;
+- no open pull requests;
+- no R6 implementation/verification branch remained except the temporary cleanup
+  carrier used to preserve this evidence;
+- `c1-5r-4-candidate-sources` retained because 56 commits were not proven
+  disposable/reachable from current `core`;
+- `c1-5r-5-cards-inbox` retained because 70 commits were not proven
+  disposable/reachable from current `core`;
+- `master`, `core`, `gamification` and
+  `chatgpt/gamification-concept-foundation` retained as long-lived branches.
+
+The cleanup carrier and audit observer were deleted after this Markdown commit was
+pushed. No persistent local implementation branch or worktree was created; all
+runner worktrees were disposable.
+
+Completed workflow run records and short-retention artifacts remain in GitHub
+Actions because the available connector exposes no safe selective deletion action.
+They are inactive historical evidence, not surviving workflow files or branches.
+No temporary R6 workflow exists in the `core` tree.
+
+## Final verification matrix
+
+| Contour | Exact SHA | Command / run | Result | Note |
+| --- | --- | --- | --- | --- |
+| Attached technical evidence | `5c0b3e64b7da8d953c79fe99255a9ec65a435d2d` | `29747390152` | PASS | historical implementation contour |
+| Historical browser matrix | `5a8b1c70855a6e465807e319823d223b0e54efbf` | `29749495305`, artifact `8463904480` | PASS | 20 baseline/current states |
+| Final PR-head corrections | `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` | `29758568451` | PASS | affected tests, typecheck, build |
+| PR-head focused frontend/backend | `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` | `29758875769` | PASS | technical steps passed; job failed only after evidence directory preceded clean-status assertion |
+| PR-head typecheck/build/package | `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` | `29758875769` | PASS | exact head |
+| PR-head canonical non-Docker | `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` | `29758875769` | PASS | Docker not run |
+| PR-head evidence closeout | `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` | `29759295041`, artifact `8468046445` | PASS | clean checkout verified |
+| PR #50 merge | `d2ee9703a2b841c0438fc07a43db3b701835a958` | `29759652375` | MERGED | exact two-parent non-force merge |
+| Post-merge frontend/typecheck | `d2ee9703a2b841c0438fc07a43db3b701835a958` | `29760351288` | PASS | exact tree |
+| Post-merge build/backend/canonical | `d2ee9703a2b841c0438fc07a43db3b701835a958` | `29760616754` | PASS | route harness failed later, after named gates |
+| Post-merge route smoke/hygiene | `d2ee9703a2b841c0438fc07a43db3b701835a958` | `29761002605`, artifact `8468784769` | PASS | direct Playwright script |
+| Branch deletion | N/A | `29761245366` + `29761517938` | PASS | implementation absent; ambiguous branches retained |
+| Closeout docs check | closeout head | `git diff --check` and Markdown-only guard | PASS | exact SHA recorded in PR |
+
+Durations are not reconstructed.
+
+## Final status
+
+```text
+C1.5R.0–R.6 — Complete
+C1.5R.7 — Next, not started
+C1.6 — Blocked
+Core C1 — In progress
+Owner product acceptance — Pending
+```
+
+Docker / real-Anki, the owner private profile, owner product acceptance, the R7
+integrated package and C1.6 remain unverified and outside this closeout.
+
 <!-- R6_FINAL_CLOSEOUT -->

@@ -1,9 +1,9 @@
 # C1.5R — Cards and Inspection Profiles UX remediation
 
-**Current status:** `C1.5R.0–R.5 Complete`; `C1.5R.6 Next`; `C1.6 Blocked`
+**Current status:** `C1.5R.0–R.6 Complete`; `C1.5R.7 Next`; `C1.6 Blocked`
 
-**Product gate:** owner product acceptance pending; technical gates cannot set
-this increment to Complete.
+**Product gate:** owner product acceptance remains pending for C1.5R.7; it does
+not reopen the completed C1.5R.0–R.6 technical increments.
 
 ## Initial baseline
 
@@ -128,8 +128,9 @@ The detailed display contract is
 
 ## Delivery boundary
 
-- PR: no;
-- merge: no;
+- implementation PR: #50 merged into `core` as
+  `d2ee9703a2b841c0438fc07a43db3b701835a958`;
+- merge to `master`: no;
 - release/tag: no;
 - deployment: no;
 - `.ankiaddon`/AnkiWeb publication: no;
@@ -142,4 +143,8 @@ C1.5R.6 replaced the rejected machine-first normal path with an immediate genera
 draft, guided Basic field/requirement/scope workflow, lifecycle-aware actions,
 friendly bounded validation and collapsed Advanced/Profile tools. The strict v1
 runtime, confirmed-only authority, fail-closed lifecycle, conflict protection and
-security boundary remain unchanged. R7 is the next integrated acceptance stage.
+security boundary remain unchanged. Final implementation
+`8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` and merged `core`
+`d2ee9703a2b841c0438fc07a43db3b701835a958` passed the required non-Docker and
+Chromium closeout gates. R7 is the next integrated acceptance stage; owner product
+acceptance remains pending.
