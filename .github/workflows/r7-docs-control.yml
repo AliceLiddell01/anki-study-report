@@ -1,0 +1,110 @@
+name: R7 temporary docs control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: r7-docs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-roadmap-cleanup-v2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact PR branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Guard exact branch and base
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "${{ github.base_ref }}" = core
+
+      - name: Apply asserted cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if new in text and old not in text:
+                  return
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one occurrence, found {count}: {old!r}")
+              p.write_text(text.replace(old, new), encoding="utf-8")
+
+          replace_once("roadmap/README.md", "Snapshot: **2026-07-20**.", "Snapshot: **2026-07-21**.")
+          replace_once("roadmap/README.md", "C1.5R.0 Recovery and corrective baseline — Complete\nC1.5R.1 Canonical card display identity — Complete\nC1.5R.2 Declarative compact formatter runtime — Complete\nC1.5R.3 Front/back preview semantics — Complete\nC1.5R.4 Independent triage candidate sources — Complete\nC1.5R.5 Cards attention inbox redesign — Complete\nC1.5R.6 Guided Inspection Profiles UX — Complete\nC1.5R.7 Integrated acceptance and owner review package — Next, not started\nC1.6 — Blocked, not started\nCore C1 — In progress", "C1.5R.0–R.6 — Complete\nC1.5R.7 Integrated acceptance and owner decision — In progress\nC1.6 Canonical single-card resolution loop — Planned after accepted R7\nC1.6B Bounded bulk actions — Conditional\nCore C1 — In progress\nOwner product acceptance — Pending")
+          replace_once("roadmap/README.md", "| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.6` Complete; `C1.5R.7` Next; `C1.6` blocked | — |", "| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional | — |")
+          replace_once("roadmap/README.md", "├─ C1.5R.0–R.6 are Complete; C1.5R.7 is Next, not started\n                           ├─ all C1.5R stages must finish before C1.6\n                           ├─ owner product acceptance is a separate C1.5R gate\n                           └─ does not wait for G/O/I/E", "├─ C1.5R.0–R.6 are Complete; C1.5R.7 is In progress\n                           ├─ accepted R7 unlocks C1.6\n                           ├─ C1.6B remains Conditional and is not part of R7 or C1.6\n                           ├─ owner product acceptance is a separate C1.5R gate\n                           └─ does not wait for G/O/I/E")
+          replace_once("roadmap/README.md", "## C1.5R.6 complete\n\nCore C1 remains in progress. C1.5R.6 is complete after PR #50 merge, exact merged-core verification and task-branch cleanup. C1.5R.7 is next and not started; C1.6 remains blocked.\n\n## Current Core position after C1.5R.6\n\n```text\nC1.5R.0–R.6 — Complete\nC1.5R.7 — Next, not started\nC1.6 — Blocked\nCore C1 — In progress\nOwner product acceptance — Pending\n```", "## C1.5R.7 integrated acceptance\n\nCore C1 remains in progress. C1.5R.0–R.6 are complete. C1.5R.7 is now in progress and owns integrated technical acceptance, exact package provenance, real-Anki evidence and the separate owner decision. It does not implement C1.6 or C1.6B.\n\n## Current Core position\n\n```text\nC1.5R.0–R.6 — Complete\nC1.5R.7 — In progress\nC1.6 — Planned after accepted R7\nC1.6B — Conditional\nCore C1 — In progress\nOwner product acceptance — Pending\n```")
+
+          replace_once("roadmap/core/README.md", "**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` Next, not started; `C1.6` blocked", "**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional")
+          replace_once("roadmap/core/README.md", "**Status:** In progress — C1.5R remediation active; C1.6 blocked", "**Status:** In progress — C1.5R.7 integrated acceptance active; C1.6 planned after accepted R7")
+          replace_once("roadmap/core/README.md", "- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 next\n- `C1.6 — Handoffs, actions and detector-driven resolution loop`: Blocked, not\n  started", "- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 in progress\n- `C1.6 — Canonical single-card resolution loop`: Planned after accepted R7; not started\n- `C1.6B — Bounded bulk actions`: Conditional; not started")
+          replace_once("roadmap/core/README.md", "C1.5R.7 Integrated acceptance and owner review package — Next, not started", "C1.5R.7 Integrated acceptance and owner decision — In progress")
+          replace_once("roadmap/core/README.md", "**Status:** Next, not started\n\nRuns the risk-appropriate integrated verification and prepares explicit owner\nscreenshots/review. Technical gates cannot grant owner product acceptance.", "**Status:** In progress\n\nRuns risk-appropriate integrated verification, freezes exact package provenance, prepares explicit owner evidence and stops for one of three owner decisions. Technical gates cannot grant owner product acceptance. R7 does not implement C1.6 or C1.6B.")
+          replace_once("roadmap/core/README.md", "- bounded bulk triage with typed results in the later C1.6 loop;", "- one canonical single-card resolution loop in C1.6;\n- bounded bulk actions only if the separate C1.6B activation criteria are met;")
+          replace_once("roadmap/core/README.md", "- C1.6 implementation before C1.5R and owner acceptance.", "- C1.6 implementation before accepted C1.5R.7 owner review;\n- C1.6B bulk actions without a separate activation decision.")
+          replace_once("roadmap/core/README.md", "- C1.6 resolution loop completed before C1 closes.", "- C1.6 canonical single-card resolution loop completed before C1 closes;\n- C1.6B remains optional unless separately activated.")
+          section = """## C1.6 — Canonical single-card resolution loop\n\n**Status:** Planned after accepted C1.5R.7; not started\n\n```text\nissue\n→ existing Safe Action or Open in Anki\n→ action result\n→ Awaiting recheck\n→ canonical bounded reevaluation\n→ Still active | Resolved | Recheck failed | Evidence stale\n```\n\nC1.6 reuses existing Search, Safe Actions and Anki Browser handoffs. It does not add bulk selection, manual resolve/archive/snooze, a second action system or unbounded reevaluation.\n\n## C1.6B — Bounded bulk actions\n\n**Status:** Conditional; not started\n\nC1.6B activates only after the single-card loop is accepted and separate evidence proves a bounded multi-card task. It is not part of R7 or mandatory C1.6.\n\n"""
+          replace_once("roadmap/core/README.md", "## C2 — Core 1.0 Hardening\n", section + "## C2 — Core 1.0 Hardening\n")
+          replace_once("roadmap/core/README.md", "and deterministic Chromium evidence is recorded. C1.5R.7 is next;\nC1.6 remains blocked.", "and deterministic Chromium evidence is recorded. C1.5R.7 is in progress;\nC1.6 is planned only after accepted R7, and C1.6B remains Conditional.")
+
+          replace_once("docs/ai-handoff.md", "Snapshot: **2026-07-20**", "Snapshot: **2026-07-21**")
+          replace_once("docs/ai-handoff.md", "C1.5R.6: Complete\nC1.6: Blocked, not started", "C1.5R.6: Complete\nC1.5R.7: In progress — integrated technical acceptance and owner decision\nC1.6: Planned after accepted R7; not started\nC1.6B: Conditional; not started\nOwner product acceptance: Pending")
+          replace_once("docs/ai-handoff.md", "C1.5R.6 Guided Inspection Profiles UX — Next, not started\nC1.5R.7 Integrated acceptance and owner review package — Not started", "C1.5R.6 Guided Inspection Profiles UX — Complete\nC1.5R.7 Integrated acceptance and owner decision — In progress")
+          replace_once("docs/ai-handoff.md", "C1.5R.1–R.5 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47`\npassed focused frontend/backend, typecheck, production build, package validation\nand canonical non-Docker verification in run `29740393142`. Isolated visual\nrun `29738841012` passed the baseline/R5 matrix. C1.5R.6 is Next, not\nstarted. Do not begin C1.6 before R6/R7 and separate owner product acceptance.", "C1.5R.0–R.6 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed focused frontend/backend, typecheck, production build, package validation and canonical non-Docker verification in run `29740393142`; isolated visual run `29738841012` passed the baseline/R5 matrix. R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958` and passed its merged-core gates. R7 is the only active Core increment. Do not begin C1.6 before accepted R7 owner review; C1.6B remains Conditional.")
+          replace_once("docs/ai-handoff.md", "## Exact next action\n\nC1.5R.6 — Guided Inspection Profiles UX is Next, not started. Preserve the R5\ninbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity\nand R3 preview semantics. Do not start R7 or C1.6 in parallel.", "## Exact next action\n\nC1.5R.7 — integrated acceptance and owner decision. Preserve the R5 inbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity, R3 preview semantics and R6 guided Inspection Profiles. Freeze one exact package/evidence chain and stop for owner review. Do not start C1.6 or C1.6B in parallel.")
+          replace_once("docs/ai-handoff.md", "C1.5R.7 is next\nand not started; C1.6 remains blocked. Owner product acceptance is still pending.", "C1.5R.7 is in progress; C1.6 is planned only after accepted R7, C1.6B remains Conditional, and owner product acceptance is pending.")
+
+          replace_once("docs/cards-v2-product-contract.md", "**Status:** Corrective C1.5R remediation in progress; R1–R5 technically complete; owner product acceptance pending\n**Branch:** `core`\n**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox; Guided Inspection Profiles and integrated owner acceptance remain", "**Status:** Corrective C1.5R remediation in progress; R1–R6 technically complete; R7 integrated acceptance active; owner product acceptance pending\n**Branch:** `core`\n**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox and Guided Inspection Profiles is complete; exact integrated acceptance and owner decision remain")
+          replace_once("docs/cards-v2-product-contract.md", "Entry: direct navigation, card notification, explicit Search selection, return from Anki Browser, or bounded batch triage.", "Entry: direct navigation, card notification, explicit Search selection, or return from Anki Browser. Bounded bulk entry is not part of the mandatory loop and belongs only to conditional C1.6B.")
+          replace_once("docs/cards-v2-product-contract.md", "The checkbox is intentionally absent until C1.6 owns bounded bulk actions.", "The checkbox is intentionally absent; bounded bulk actions belong only to conditional C1.6B.")
+          replace_once("docs/cards-v2-product-contract.md", "Future C1.6 bulk\nselection must become a third independent state rather than reuse either one.", "Any future C1.6B bulk selection must become a third independent state rather than reuse either one.")
+          replace_once("docs/cards-v2-product-contract.md", "Active → Action in progress → Awaiting recheck → Still active | Resolved after recheck", "issue → existing Safe Action or Open in Anki → action result → Awaiting recheck → canonical bounded reevaluation → Still active | Resolved | Recheck failed | Evidence stale")
+          p = Path("docs/cards-v2-product-contract.md")
+          marker = "## Current delivery sequence"
+          if marker not in p.read_text(encoding="utf-8"):
+              p.write_text(p.read_text(encoding="utf-8").rstrip() + "\n\n## Current delivery sequence\n\n```text\nC1.5R.0–R.6 — Complete\nC1.5R.7 — In progress: integrated technical acceptance and owner decision\nC1.6 — Planned after accepted R7: canonical single-card resolution loop\nC1.6B — Conditional: bounded bulk actions\n```\n\nR7 does not change the product contract or implement actions. It verifies the integrated R1–R6 behavior, exact package provenance, real-Anki evidence and the separate owner gate.\n", encoding="utf-8")
+
+          replace_once("reports/core/c1-5r-cards-profiles-ux-remediation.md", "**Current status:** `C1.5R.0–R.6 Complete`; `C1.5R.7 Next`; `C1.6 Blocked`", "**Current status:** `C1.5R.0–R.6 Complete`; `C1.5R.7 In progress`; `C1.6 Planned after accepted R7`; `C1.6B Conditional`")
+          replace_once("reports/core/c1-5r-cards-profiles-ux-remediation.md", "| Fast CI | not required for R5 |\n| Docker / real-Anki | intentionally deferred to R7 integration |\n| owner screenshot/product review | pending and never automatic |", "| R6 guided Inspection Profiles closeout | PASS — implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94`, merged `d2ee9703a2b841c0438fc07a43db3b701835a958` |\n| R7 focused/canonical/Fast CI/package | in progress |\n| R7 Docker / real-Anki | in progress; exact accepted package required |\n| owner screenshot/product review | pending and never automatic |")
+          replace_once("reports/core/c1-5r-cards-profiles-ux-remediation.md", "- C1.6 implementation: not started and blocked.", "- C1.6 implementation: planned only after accepted R7; not started;\n- C1.6B bounded bulk actions: Conditional; not started.")
+          replace_once("reports/core/c1-5r-cards-profiles-ux-remediation.md", "acceptance remains pending.", "acceptance remains pending. R7 integrated technical acceptance is now in progress; it does not implement C1.6 or C1.6B.")
+          PY
+
+      - name: Verify docs-only diff and push
+        shell: bash
+        run: |
+          git diff --check
+          expected="$(printf '%s\n' docs/ai-handoff.md docs/cards-v2-product-contract.md reports/core/c1-5r-cards-profiles-ux-remediation.md roadmap/README.md roadmap/core/README.md | sort)"
+          changed="$(git diff --name-only | sort)"
+          if [ -z "$changed" ]; then
+            echo 'Cleanup already applied.'
+            exit 0
+          fi
+          test "$changed" = "$expected"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add $changed
+          git commit -m 'docs: mark R7 integrated acceptance in progress'
+          git push origin HEAD:${{ github.head_ref }}
