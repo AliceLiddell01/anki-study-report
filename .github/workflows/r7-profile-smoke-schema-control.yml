@@ -52,21 +52,22 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           smoke = Path("docker/anki-e2e/smoke-api.py")
           text = smoke.read_text(encoding="utf-8")
 
-          search_old = '''        {
-              "mode": "cards",
-              "query": "",
-          '''
-          search_new = '''        {
-              "schemaVersion": 2,
-              "mode": "cards",
-              "query": "",
-          '''
-          search_old = "\n".join(line[10:] if line.startswith("          ") else line for line in search_old.splitlines()) + "\n"
-          search_new = "\n".join(line[10:] if line.startswith("          ") else line for line in search_new.splitlines()) + "\n"
+          search_old = (
+              '        {\n'
+              '            "mode": "cards",\n'
+              '            "query": "",\n'
+          )
+          search_new = (
+              '        {\n'
+              '            "schemaVersion": 2,\n'
+              '            "mode": "cards",\n'
+              '            "query": "",\n'
+          )
           if text.count(search_old) != 1:
               raise SystemExit("Expected exactly one Inspection Profiles Search request without schemaVersion.")
           text = text.replace(search_old, search_new)
@@ -86,45 +87,32 @@ jobs:
 
           tests = Path("tests/test_docker_smoke_helpers.py")
           tests_text = tests.read_text(encoding="utf-8")
-          anchor = '''def test_smoke_api_css_sentinel_uses_current_cards_inbox():
-              source = (
-                  Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
-              ).read_text(encoding="utf-8")
-
-              assert '".cards-inbox-page"' in source
-              assert '".cards-v2-table"' not in source
-
-
-          def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
-          '''
-          replacement = '''def test_smoke_api_css_sentinel_uses_current_cards_inbox():
-              source = (
-                  Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
-              ).read_text(encoding="utf-8")
-
-              assert '".cards-inbox-page"' in source
-              assert '".cards-v2-table"' not in source
-
-
-          def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_schemas():
-              source = (
-                  Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
-              ).read_text(encoding="utf-8")
-
-              assert '"schemaVersion": 2,\n            "mode": "cards"' in source
-              assert '"schemaVersion": 4,\n            "dataset": "search_workset"' in source
-              assert 'triage.get("schemaVersion") == 4' in source
-              assert "canonical triage v4 is active" in source
-              assert "canonical triage v2 is active" not in source
-
-
-          def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
-          '''
-          anchor = "\n".join(line[10:] if line.startswith("          ") else line for line in anchor.splitlines()) + "\n"
-          replacement = "\n".join(line[10:] if line.startswith("          ") else line for line in replacement.splitlines()) + "\n"
-          if tests_text.count(anchor) != 1:
+          marker = "def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():\n"
+          if tests_text.count(marker) != 1:
               raise SystemExit("Could not locate the exact smoke schema regression insertion point.")
-          tests.write_text(tests_text.replace(anchor, replacement), encoding="utf-8", newline="\n")
+          regression = dedent(
+              '''
+              def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_schemas():
+                  source = (
+                      Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
+                  ).read_text(encoding="utf-8")
+                  search_helper = source.split("def search_note_type_cards", 1)[1].split(
+                      "def reasons_for_note_type", 1
+                  )[0]
+                  profile_smoke = source.split("def assert_inspection_profiles_contract", 1)[1].split(
+                      "def find_structure", 1
+                  )[0]
+
+                  assert '"schemaVersion": 2' in search_helper
+                  assert '"schemaVersion": 4' in profile_smoke
+                  assert 'triage.get("schemaVersion") == 4' in profile_smoke
+                  assert "canonical triage v4 is active" in profile_smoke
+                  assert "canonical triage v2 is active" not in profile_smoke
+
+
+              '''
+          ).lstrip()
+          tests.write_text(tests_text.replace(marker, regression + marker), encoding="utf-8", newline="\n")
           PY
 
       - name: Run focused verification
