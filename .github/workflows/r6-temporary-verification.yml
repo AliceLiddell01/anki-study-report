@@ -37,20 +37,27 @@ jobs:
         working-directory: web-dashboard
         shell: pwsh
         run: pnpm install --frozen-lockfile
-      - name: Focused frontend
+      - name: Page tests
         working-directory: web-dashboard
-        shell: pwsh
-        run: |
-          $tests = @(
-            'src/pages/InspectionProfilesSettingsPage.test.tsx',
-            'src/hooks/useInspectionProfilesWorkspace.test.tsx',
-            'src/components/inspection-profiles/BasicProfileEditor.test.tsx',
-            'src/components/inspection-profiles/AdvancedProfileDisclosure.test.tsx',
-            'src/components/inspection-profiles/ProfileValidationResult.test.tsx',
-            'src/lib/inspectionProfileBasicView.test.ts',
-            'src/lib/inspectionProfilesApi.test.ts'
-          )
-          pnpm exec vitest run @tests
+        run: pnpm exec vitest run src/pages/InspectionProfilesSettingsPage.test.tsx
+      - name: Hook tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/hooks/useInspectionProfilesWorkspace.test.tsx
+      - name: Basic editor tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/components/inspection-profiles/BasicProfileEditor.test.tsx
+      - name: Advanced disclosure tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/components/inspection-profiles/AdvancedProfileDisclosure.test.tsx
+      - name: Validation result tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/components/inspection-profiles/ProfileValidationResult.test.tsx
+      - name: Projection tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/lib/inspectionProfileBasicView.test.ts
+      - name: API regression tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/lib/inspectionProfilesApi.test.ts
       - name: Typecheck
         working-directory: web-dashboard
         shell: pwsh
