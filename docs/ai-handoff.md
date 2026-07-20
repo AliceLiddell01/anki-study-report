@@ -43,7 +43,8 @@ C1.5R.1: Complete
 C1.5R.2: Complete
 C1.5R.3: Complete
 C1.5R.4: Complete
-C1.5R.5: Next, not started
+C1.5R.5: Complete
+C1.5R.6: Next, not started
 C1.6: Blocked, not started
 ```
 
@@ -54,6 +55,7 @@ Current reports:
 - [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md)
 - [`../reports/core/c1-5r-3-front-back-preview-semantics.md`](../reports/core/c1-5r-3-front-back-preview-semantics.md)
 - [`../reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../reports/core/c1-5r-4-independent-triage-candidate-sources.md)
+- [`../reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md)
 
 ## Historical C1.5 evidence
 
@@ -89,17 +91,16 @@ C1.5R.1 Canonical card display identity — Complete
 C1.5R.2 Declarative compact formatter runtime — Complete
 C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
-C1.5R.5 Cards attention inbox redesign — Next, not started
-C1.5R.6 Guided Inspection Profiles UX — Not started
+C1.5R.5 Cards attention inbox redesign — Complete
+C1.5R.6 Guided Inspection Profiles UX — Next, not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
-C1.5R.1–R.4 are closed. R4 exact implementation
-`31b3b795e055f6be963c129b3edc1afdfc9dcd57` passed focused backend/frontend,
-typecheck, production build, package/API verification and the canonical
-non-Docker gate in run `29701478622`; post-transfer run `29701642665` passed on
-the exact `core` tree. C1.5R.5 is Next, not started. Do not begin C1.6 before
-the remaining C1.5R stages and separate owner product acceptance.
+C1.5R.1–R.5 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47`
+passed focused frontend/backend, typecheck, production build, package validation
+and canonical non-Docker verification in run `29740393142`. Isolated visual
+run `29738841012` passed the baseline/R5 matrix. C1.5R.6 is Next, not
+started. Do not begin C1.6 before R6/R7 and separate owner product acceptance.
 
 ## C1.5R.1 implementation
 
@@ -158,8 +159,7 @@ RU: Карточка только с медиа | Текст карточки н
 EN: Card with media only | Card text unavailable
 ```
 
-The current Cards table/split UI remains product-rejected historical C1.5 UI.
-C1.5R.1 did not redesign it.
+The product-rejected C1.5 table is historical. C1.5R.5 now uses a semantic identity-led inbox, wide Inspector and non-modal 1024 px drawer.
 
 ## C1.5R.1 focused verification closeout
 
@@ -315,10 +315,9 @@ Programming: unchanged
 
 ## Exact next action
 
-C1.5R.5 — Cards attention inbox redesign is Next, not started. Begin it only
-with a separate explicit task. Preserve Triage schema v4, Search schema v2,
-current source bounds, R1 compact identity, and R3 preview semantics. Do not
-start C1.6 in parallel.
+C1.5R.6 — Guided Inspection Profiles UX is Next, not started. Preserve the R5
+inbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity
+and R3 preview semantics. Do not start R7 or C1.6 in parallel.
 
 ## Verification boundary
 
@@ -355,6 +354,10 @@ merge/rebase to `master`, release, deploy, publish `.ankiaddon` or update AnkiWe
 as an implicit continuation. Avoid force-push, destructive reset, clean or stash
 deletion and preserve unrelated changes.
 
-## C1.5R.4 complete
+## C1.5R.5 complete
 
-C1.5R.4 is complete: learning and current-content candidate sources are independent; only authoritative confirmed profiles scan current content; Triage schema v4 is strict; focused, build, package, API and canonical non-Docker verification passed; the exact implementation was fast-forwarded to `core`; temporary R4/R4V refs were neutralized to a clean tree. C1.5R.5 is next and not started; C1.6 remains blocked.
+C1.5R.5 is complete: the rejected table is removed; Cards uses the semantic
+identity-led inbox with wide Inspector and non-modal drawer; learning scope and
+manual content continuation are explicit and bounded. Exact implementation
+`a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed the required technical gates. C1.5R.6 is next and
+not started; R7 and C1.6 remain blocked.

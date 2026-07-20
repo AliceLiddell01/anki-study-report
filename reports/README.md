@@ -21,6 +21,9 @@ production code/tests
 - [c1-5r-0-recovery-baseline.md](core/c1-5r-0-recovery-baseline.md)
 - [c1-5r-1-canonical-card-display-identity.md](core/c1-5r-1-canonical-card-display-identity.md)
 - [c1-5r-2-declarative-compact-formatter-runtime.md](core/c1-5r-2-declarative-compact-formatter-runtime.md)
+- [c1-5r-3-front-back-preview-semantics.md](core/c1-5r-3-front-back-preview-semantics.md)
+- [c1-5r-4-independent-triage-candidate-sources.md](core/c1-5r-4-independent-triage-candidate-sources.md)
+- [c1-5r-5-cards-attention-inbox-redesign.md](core/c1-5r-5-cards-attention-inbox-redesign.md)
 
 ## Product reports
 

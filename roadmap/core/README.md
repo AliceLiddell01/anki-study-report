@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.4` Complete; `C1.5R.5` Next, not started; `C1.6` blocked
+**Current status:** `C1.5R.0–R.5` Complete; `C1.5R.6` Next, not started; `C1.6` blocked
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -80,8 +80,8 @@ C1.5R.1 Canonical card display identity — Complete
 C1.5R.2 Declarative compact formatter runtime — Complete
 C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
-C1.5R.5 Cards attention inbox redesign — Next, not started
-C1.5R.6 Guided Inspection Profiles UX — Not started
+C1.5R.5 Cards attention inbox redesign — Complete
+C1.5R.6 Guided Inspection Profiles UX — Next, not started
 C1.5R.7 Integrated acceptance and owner review package — Not started
 ```
 
@@ -153,15 +153,18 @@ evidence is recorded in
 
 #### C1.5R.5 — Cards attention inbox redesign
 
-**Status:** Next, not started
+**Status:** Complete
 
-Implements Variant A: dense identity-led inbox list plus persistent Inspector on
-wide desktop, and a full-width queue plus non-modal detail drawer around 1024 px.
-The rejected spreadsheet table is not retained as a hidden default.
+Implements Variant A: dense identity-led semantic inbox plus persistent Inspector
+from 1200 px, and a full-width queue plus non-modal detail drawer below that
+breakpoint. The rejected spreadsheet table is removed. Learning period is
+explicit, current-content continuation is manual/bounded, and R1/R3/R4/Search v2
+contracts remain unchanged. Verification and visual evidence are recorded in
+[`reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
 
 #### C1.5R.6 — Guided Inspection Profiles UX
 
-**Status:** Not started
+**Status:** Next, not started
 
 Makes the deterministic suggestion a ready unsaved Basic draft and moves the
 strict runtime editor behind Advanced. Japanese audio and Programming no-audio
@@ -260,6 +263,10 @@ the user decision, data availability, bounded query, placement, interpretation,
 and verification scope. If no justified gap exists, C3 closes without feature
 expansion.
 
-## C1.5R.4 complete
+## C1.5R.5 complete
 
-C1.5R.4 is complete after clean reconstruction, focused backend/frontend verification, typecheck, production build, package validation, API smoke, canonical non-Docker verification, exact fast-forward transfer to `core`, post-transfer checks, and temporary-ref neutralization. C1.5R.5 is next and not started; C1.6 remains blocked.
+C1.5R.5 is complete after clean reconstruction on `b2d812b4dd303965030108991858fb4bc779e73e`, focused
+frontend/backend verification, exact production build and package validation,
+isolated baseline/R5 Playwright evidence, canonical non-Docker verification and
+clean transfer. Tested implementation: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`. C1.5R.6 is next
+and not started; R7 and C1.6 remain blocked by their named dependencies.

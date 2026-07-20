@@ -2,16 +2,16 @@
 
 ## Status and scope
 
-**Status:** Corrective C1.5R remediation in progress; owner product acceptance pending
+**Status:** Corrective C1.5R remediation in progress; R1–R5 technically complete; owner product acceptance pending
 **Branch:** `core`
-**Production status:** the C1.5 table implementation is technically verified but product-rejected; C1.5R replaces its display identity, preview semantics, candidate scope and inbox presentation
+**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox; Guided Inspection Profiles and integrated owner acceptance remain
 
 Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
 and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
 
-This contract defines the `#/cards` workflow. C1.5 resolves the queue/Inspector layout and accessibility behavior in [`cards-v2-workspace-ui.md`](cards-v2-workspace-ui.md). Assignment, snooze/archive, remote collaboration and manual resolve are not adopted.
+This contract defines the `#/cards` workflow. Current queue/Inspector/drawer behavior is fixed in [`cards-attention-inbox.md`](cards-attention-inbox.md); [`cards-v2-workspace-ui.md`](cards-v2-workspace-ui.md) is historical. Assignment, snooze/archive, remote collaboration and manual resolve are not adopted.
 
 ## User problem
 
@@ -119,28 +119,24 @@ Suggestion explains required roles and mapped fields; confirmation is explicit. 
 
 ## Main workspace
 
-Три равноправных режима `table`, `tiles` и `Anki preview` больше не являются
-канонической навигацией Cards. Основной workflow строится вокруг одной
-компактной очереди и Inspector выбранной карточки. Сама очередь может быть
-реализована как плотная таблица, структурированный список или гибридный
-интерактивный grid — окончательный вариант определяется прототипированием и
-accessibility-тестами. Anki preview сохраняется для активной карточки и при
-необходимости может разворачиваться. Tiles не входят в обязательный C1
-workflow, но отдельный визуальный режим допустим в будущем только при доказанной
-пользовательской задаче.
-
-Desktop layout:
+The canonical R5 workflow is one dense identity-led semantic inbox. The rejected
+spreadsheet table, tiles and equal display-mode switcher are absent.
 
 ```text
-header + compact summary
-filters/sorting
-bounded compact queue | Inspector
-contextual bulk toolbar when selection exists
+wide desktop >= 1200 px
+compact summary/filters
+semantic ordered inbox | persistent Inspector
+
+narrow desktop < 1200 px
+compact summary/filters
+full-width inbox
+non-modal detail drawer after explicit activation
 ```
 
-Replace five KPI cards with one cap-aware summary (active total, high priority, profile warning). Counters represent the bounded result, not loaded page, and disclose truncation. The first row should normally appear in the initial desktop viewport; template/display diagnostics leave the main path.
-
-Always-visible filters: text, reason family, priority, deck, sort. Advanced: exact reason, note type, source, card state, freshness/profile state. Summary counters are shortcuts only when active-filter state is explicit.
+The initial response remains bounded to 100 issues. Full preview loads only for
+the active item. Learning scope is explicit (7/30/90 days); current-content
+continuation is manual, cursor-coherent and client-bounded. See
+[`cards-attention-inbox.md`](cards-attention-inbox.md).
 
 ## Queue row
 
@@ -209,13 +205,13 @@ active item when it survives and otherwise chooses the first inspectable row.
 Filters have persistent labels/state. Mutation, recheck, checkbox selection and
 bulk toolbar semantics are deferred to C1.6.
 
-Do not assume `listbox`: options cannot accessibly contain required links/buttons/checkboxes. Native table, structured list and grid remain prototype alternatives; grid requires a complete composite focus model. Final roles are deferred to keyboard/screen-reader testing.
+Do not assume `listbox`: options cannot accessibly contain required links/buttons/checkboxes. The selected structure is a semantic ordered list with one native button per item. `table`, ARIA `grid`, `listbox`, `option`, roving tabindex and arrow-key composite navigation are not used.
 
 ## Responsive boundary
 
-- about `1180 CSS px+`: split queue/Inspector;
-- about `900–1179 px`: narrow split or stacked/drawer;
-- below about `900 px`: functional stacking only; mobile-first redesign is out of scope.
+- `1200 CSS px+`: split inbox/Inspector;
+- below `1200 CSS px`: full-width inbox and non-modal drawer after activation;
+- mobile-first redesign remains out of scope.
 
 ## RU/EN terminology
 

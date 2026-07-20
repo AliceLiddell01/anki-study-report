@@ -37,7 +37,8 @@ C1.5R.1 Canonical card display identity — Complete
 C1.5R.2 Declarative compact formatter runtime — Complete
 C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
-C1.5R.5 Cards attention inbox redesign — Next, not started
+C1.5R.5 Cards attention inbox redesign — Complete
+C1.5R.6 Guided Inspection Profiles UX — Next, not started
 C1.6 — Blocked, not started
 Core C1 — In progress
 ```
@@ -46,7 +47,7 @@ See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md),
 the [C1.5R.1 implementation report](../reports/core/c1-5r-1-canonical-card-display-identity.md),
 the [C1.5R.2 implementation report](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md),
 the [C1.5R.3 implementation report](../reports/core/c1-5r-3-front-back-preview-semantics.md),
-and the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md).
+and the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), and the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
 
 Parallel tracks do not block `C1` or `C2`:
 
@@ -60,7 +61,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.4` Complete; `C1.5R.5` Next; `C1.6` blocked | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.5` Complete; `C1.5R.6` Next; `C1.6` blocked | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -74,7 +75,7 @@ Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
                            │
-                           ├─ C1.5R.0–R.4 are Complete; C1.5R.5 is Next, not started
+                           ├─ C1.5R.0–R.5 are Complete; C1.5R.6 is Next, not started
                            ├─ all C1.5R stages must finish before C1.6
                            ├─ owner product acceptance is a separate C1.5R gate
                            └─ does not wait for G/O/I/E
@@ -157,6 +158,6 @@ reports/    historical handoff, audits, measurements and closeout evidence
 8. Verification follows `docs/test-matrix.md` and
    `docs/verification-run-policy.md`; docs-only work does not justify Docker E2E.
 
-## C1.5R.4 complete
+## C1.5R.5 complete
 
-Core C1 remains in progress. C1.5R.4 is complete; C1.5R.5 is next and not started; C1.6 remains blocked.
+Core C1 remains in progress. C1.5R.5 is complete; C1.5R.6 is next and not started; C1.5R.7 and C1.6 remain blocked by their named dependencies.

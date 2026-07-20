@@ -20,7 +20,11 @@ resolved pagination, settings, warning/critical toast, RU/EN, light/dark,
 read-resolution independence и persistence. Из-за App Shell, local API и
 profile lifecycle требуется один финальный `standard/full`.
 
-Снимок документации: 2026-07-16.
+Снимок документации: 2026-07-20.
+
+## C1.5R.5 Cards attention inbox
+
+R5 technical completion uses focused Cards hook/page/component/helper Vitest, focused Triage/Search/dashboard-server pytest, TypeScript typecheck, production build/bundle guard, package validation, isolated Playwright baseline/R5 screenshots and canonical `run_full_check.ps1 -SkipDocker`. The browser matrix covers 1440 light/dark, 1280/100 items, 1024 queue/drawer/modal, partial source, profiles-needs-review, continuation and empty state with explicit no-horizontal-overflow metrics. Docker/real-Anki, Fast CI and owner private-profile acceptance are intentionally deferred to R7/integration policy.
 
 Минимальная проверка - нижняя граница для маленького изменения. Желательная
 проверка нужна перед merge/release или если изменение затрагивает несколько

@@ -1,6 +1,6 @@
 # C1.5R — Cards and Inspection Profiles UX remediation
 
-**Current status:** `C1.5R — In progress`; `C1.6 — Blocked`
+**Current status:** `C1.5R.0–R.5 Complete`; `C1.5R.6 Next`; `C1.6 Blocked`
 
 **Product gate:** owner product acceptance pending; technical gates cannot set
 this increment to Complete.
@@ -117,12 +117,13 @@ The detailed display contract is
 | Gate | Result |
 | --- | --- |
 | focused red tests before implementation | expected FAIL, recorded above |
-| focused implementation tests | pending |
-| TypeScript/build | pending |
-| `python -m compileall -q anki_study_report docker/anki-e2e` | pending |
-| canonical `run_full_check.ps1 -SkipDocker` | pending |
-| exact-SHA Fast CI | pending |
-| targeted `standard/cards`, restart | pending |
+| R1–R4 focused and canonical gates | PASS; see increment reports |
+| R5 focused frontend/backend | PASS — 25 Vitest / 92 pytest |
+| R5 TypeScript/build/bundle/package | PASS — run `29740393142` |
+| R5 isolated visual matrix | PASS — run `29738841012`, artifact `8459497217` |
+| R5 canonical `run_full_check.ps1 -SkipDocker` | PASS — exact `a30f4db66e73f3f836e69ba90cfc06974ce3df47` |
+| Fast CI | not required for R5 |
+| Docker / real-Anki | intentionally deferred to R7 integration |
 | owner screenshot/product review | pending and never automatic |
 
 ## Delivery boundary

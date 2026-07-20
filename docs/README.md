@@ -30,7 +30,8 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [Navigation / IA](navigation-ia.md)
 - [Cards v2 product contract](cards-v2-product-contract.md)
 - [Cards v2 triage read API](cards-v2-triage-read-api.md)
-- [Cards v2 workspace UI](cards-v2-workspace-ui.md)
+- [Cards attention inbox](cards-attention-inbox.md)
+- [Historical C1.5 workspace UI](cards-v2-workspace-ui.md)
 - [Canonical card display identity](card-display-identity.md)
 - [Declarative card display formatter v1](card-display-formatter-v1.md)
 - [Inspection Profiles v1](inspection-profiles-v1.md)
@@ -59,4 +60,8 @@ See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses 
 
 ## C1.5R.4 independent candidate sources
 
-See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
+See [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md). Triage schema v4 separates bounded period learning candidates from bounded current-content candidates.
+
+## C1.5R.5 Cards attention inbox
+
+See [`cards-attention-inbox.md`](cards-attention-inbox.md). The rejected table is replaced by a semantic identity-led list, wide Inspector, 1024 px non-modal drawer, explicit learning period and bounded manual current-content continuation.
