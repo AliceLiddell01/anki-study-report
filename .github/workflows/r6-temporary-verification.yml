@@ -33,6 +33,7 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@9.15.9 --activate
+          New-Item -ItemType Directory -Force .r6-artifacts | Out-Null
       - name: Install dashboard dependencies
         working-directory: web-dashboard
         shell: pwsh
@@ -48,11 +49,14 @@ jobs:
             src/components/inspection-profiles/AdvancedProfileDisclosure.test.tsx `
             src/components/inspection-profiles/ProfileValidationResult.test.tsx `
             src/lib/inspectionProfileBasicView.test.ts `
-            src/lib/inspectionProfilesApi.test.ts
+            src/lib/inspectionProfilesApi.test.ts 2>&1 | Tee-Object ..\.r6-artifacts\focused-frontend.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Typecheck
         working-directory: web-dashboard
         shell: pwsh
-        run: pnpm run typecheck
+        run: |
+          pnpm run typecheck 2>&1 | Tee-Object ..\.r6-artifacts\typecheck.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Focused backend
         shell: pwsh
         run: |
@@ -63,19 +67,34 @@ jobs:
             tests/test_dashboard_server.py `
             tests/test_triage_candidates.py `
             tests/test_triage_service.py `
-            tests/test_package_build.py
+            tests/test_package_build.py 2>&1 | Tee-Object .r6-artifacts\focused-backend.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Production build
         working-directory: web-dashboard
         shell: pwsh
-        run: pnpm run build:addon
+        run: |
+          pnpm run build:addon 2>&1 | Tee-Object ..\.r6-artifacts\build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package validation
         shell: pwsh
         run: |
-          node scripts/run_python.mjs scripts/package_addon.py --check
-          node scripts/run_python.mjs scripts/package_addon.py --check-only
+          node scripts/run_python.mjs scripts/package_addon.py --check 2>&1 | Tee-Object .r6-artifacts\package.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/run_python.mjs scripts/package_addon.py --check-only 2>&1 | Tee-Object -Append .r6-artifacts\package.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Canonical non-Docker
         shell: pwsh
-        run: .\scripts\run_full_check.ps1 -SkipDocker
+        run: |
+          .\scripts\run_full_check.ps1 -SkipDocker 2>&1 | Tee-Object .r6-artifacts\canonical.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload temporary diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r6-verification-${{ github.run_id }}
+          path: .r6-artifacts
+          if-no-files-found: warn
+          retention-days: 1
       - name: Git hygiene
         if: always()
         shell: pwsh
