@@ -59,6 +59,11 @@ describe("inspectionProfileBasicView", () => {
     expect(projectBasicProfile({ ...item, structure: { ...item.structure, name: "Japanese Audio Programming" } }, profile, "en").detectedKind.label).toBe("Programming question/answer");
   });
 
+  it("recognizes the backend canonical basic kind", () => {
+    expect(friendlyDetectedKind("basic", "en")).toEqual(expect.objectContaining({ label: "General front/back", known: true }));
+    expect(friendlyDetectedKind("basic", "ru")).toEqual(expect.objectContaining({ label: "Общий front/back", known: true }));
+  });
+
   it("provides a safe custom-role fallback", () => {
     expect(friendlyRole("my_custom_role", "ru")).toEqual(expect.objectContaining({ label: "My custom role", known: false }));
   });
