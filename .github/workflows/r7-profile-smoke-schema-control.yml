@@ -128,7 +128,8 @@ jobs:
               tests/test_docker_smoke_helpers.py \
               tests/test_search_service.py \
               tests/test_triage_service.py \
-              tests/test_dashboard_server.py
+              tests/test_dashboard_server.py::test_search_endpoints_require_token_post_and_preserve_typed_statuses \
+              tests/test_dashboard_server.py::test_triage_endpoint_is_token_protected_post_json_only_and_strict
             git diff --check
             mapfile -t changed < <(git diff --name-only | sort)
             expected=(
