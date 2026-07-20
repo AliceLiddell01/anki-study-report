@@ -10,18 +10,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: r6-self-review
   cancel-in-progress: true
 
 jobs:
-  verify:
+  verify-and-close:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: c1-5r-6-guided-inspection-profiles
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,9 +37,58 @@ jobs:
         working-directory: web-dashboard
         shell: pwsh
         run: pnpm install --frozen-lockfile
+      - name: Apply the field-clear regression fix
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          editor = Path("web-dashboard/src/components/inspection-profiles/BasicProfileEditor.tsx")
+          text = editor.read_text(encoding="utf-8")
+          old = '''  const updateMapping = (index: number, ordinal: number) => {
+              const field = item.structure.fields.find((candidate) => candidate.ordinal === ordinal);
+              if (!field) return;
+              onChange({
+                ...draft,
+                fieldMappings: draft.fieldMappings.map((mapping, current) => current === index ? { ...mapping, fields: [{ ...field }] } : mapping),
+              });
+            };'''
+          new = '''  const updateMapping = (index: number, value: string) => {
+              const field = value === "" ? null : item.structure.fields.find((candidate) => candidate.ordinal === Number(value)) ?? null;
+              onChange({
+                ...draft,
+                fieldMappings: draft.fieldMappings.map((mapping, current) => current === index ? { ...mapping, fields: field ? [{ ...field }] : [] } : mapping),
+              });
+            };'''
+          if old not in text:
+              raise SystemExit("Basic field-mapping helper fragment not found")
+          text = text.replace(old, new)
+          old_change = 'onChange={(event) => updateMapping(index, Number(event.target.value))}'
+          new_change = 'onChange={(event) => updateMapping(index, event.target.value)}'
+          if old_change not in text:
+              raise SystemExit("Basic field selector fragment not found")
+          editor.write_text(text.replace(old_change, new_change), encoding="utf-8")
+
+          test = Path("web-dashboard/src/components/inspection-profiles/BasicProfileEditor.test.tsx")
+          test_text = test.read_text(encoding="utf-8")
+          old_assertion = '''    await change(answerSelect, "2");
+              expect(current.fieldMappings[1]?.fields).toEqual([{ ordinal: 2, name: "Code" }]);'''
+          new_assertion = '''    await change(answerSelect, "2");
+              expect(current.fieldMappings[1]?.fields).toEqual([{ ordinal: 2, name: "Code" }]);
+              await change(answerSelect, "");
+              expect(current.fieldMappings[1]?.fields).toEqual([]);'''
+          if old_assertion not in test_text:
+              raise SystemExit("Basic field selector test fragment not found")
+          test.write_text(test_text.replace(old_assertion, new_assertion), encoding="utf-8")
+          '@ | Set-Content -Encoding UTF8 r6_patch.py
+          python r6_patch.py
+          Remove-Item r6_patch.py
       - name: Projection tests
         working-directory: web-dashboard
         run: pnpm exec vitest run src/lib/inspectionProfileBasicView.test.ts
+      - name: Basic editor tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/components/inspection-profiles/BasicProfileEditor.test.tsx
       - name: Page tests
         working-directory: web-dashboard
         run: pnpm exec vitest run src/pages/InspectionProfilesSettingsPage.test.tsx
@@ -46,8 +98,20 @@ jobs:
       - name: Production build
         working-directory: web-dashboard
         run: pnpm run build:addon
-      - name: Git hygiene
+      - name: Remove temporary workflow
         shell: pwsh
-        run: git diff --check
-
-# Temporary workflow. It is deleted immediately after this exact-head verification.
+        run: Remove-Item .github/workflows/r6-self-review.yml
+      - name: Commit exact verified tree
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --check
+          git status --short
+          git add web-dashboard/src/lib/inspectionProfileBasicView.ts `
+            web-dashboard/src/lib/inspectionProfileBasicView.test.ts `
+            web-dashboard/src/components/inspection-profiles/BasicProfileEditor.tsx `
+            web-dashboard/src/components/inspection-profiles/BasicProfileEditor.test.tsx `
+            .github/workflows/r6-self-review.yml
+          git commit -m "fix: align guided field mapping with canonical profile semantics"
+          git push origin HEAD:c1-5r-6-guided-inspection-profiles
