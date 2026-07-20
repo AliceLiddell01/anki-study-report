@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - temp/g1-3-publish
-    paths:
-      - .github/workflows/temp-g1-3-publish.yml
 
 permissions:
   contents: read
@@ -16,7 +14,6 @@ concurrency:
 
 jobs:
   publish:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
