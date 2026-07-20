@@ -52,10 +52,11 @@ describe("BasicProfileEditor", () => {
     await render();
     await change(container.querySelector<HTMLSelectElement>("#inspection-basic-new-requirement")!, "min_text_length");
     await click(button("Add"));
-    expect(current.checks.at(-1)).toEqual(expect.objectContaining({ checkId: "min-text-length-1", kind: "min_text_length", minLength: 1 }));
+    expect(current.checks[current.checks.length - 1]).toEqual(expect.objectContaining({ checkId: "min-text-length-1", kind: "min_text_length", minLength: 1 }));
     await render();
     expect(container.querySelector("[data-testid='inspection-basic-editor']")?.textContent).not.toContain("min-text-length-1");
-    const remove = [...container.querySelectorAll<HTMLButtonElement>(".inspection-icon-button")].at(-1)!;
+    const removeButtons = [...container.querySelectorAll<HTMLButtonElement>(".inspection-icon-button")];
+    const remove = removeButtons[removeButtons.length - 1]!;
     await click(remove);
     expect(current.checks).toHaveLength(1);
   });
