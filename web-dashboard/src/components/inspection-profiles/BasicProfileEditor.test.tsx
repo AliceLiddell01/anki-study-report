@@ -46,6 +46,8 @@ describe("BasicProfileEditor", () => {
     expect([...answerSelect.options].find((option) => option.value === "0")?.disabled).toBe(true);
     await change(answerSelect, "2");
     expect(current.fieldMappings[1]?.fields).toEqual([{ ordinal: 2, name: "Code" }]);
+    await change(answerSelect, "");
+    expect(current.fieldMappings[1]?.fields).toEqual([]);
   });
 
   it("adds and removes a strict built-in requirement with a stable internal ID", async () => {

@@ -37,12 +37,11 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
   const view = useMemo(() => projectBasicProfile(item, draft, language), [draft, item, language]);
   const [newKind, setNewKind] = useState<InspectionProfileCheckKind>("non_empty");
 
-  const updateMapping = (index: number, ordinal: number) => {
-    const field = item.structure.fields.find((candidate) => candidate.ordinal === ordinal);
-    if (!field) return;
+  const updateMapping = (index: number, value: string) => {
+    const field = value === "" ? null : item.structure.fields.find((candidate) => candidate.ordinal === Number(value)) ?? null;
     onChange({
       ...draft,
-      fieldMappings: draft.fieldMappings.map((mapping, current) => current === index ? { ...mapping, fields: [{ ...field }] } : mapping),
+      fieldMappings: draft.fieldMappings.map((mapping, current) => current === index ? { ...mapping, fields: field ? [{ ...field }] : [] } : mapping),
     });
   };
 
@@ -106,7 +105,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                     className="form-control"
                     value={role.mapping.fields[0]?.ordinal ?? ""}
                     aria-describedby={error ? `${selectId}-error` : `${selectId}-help`}
-                    onChange={(event) => updateMapping(index, Number(event.target.value))}
+                    onChange={(event) => updateMapping(index, event.target.value)}
                   >
                     <option value="">{copy.chooseField}</option>
                     {item.structure.fields.map((field) => {
