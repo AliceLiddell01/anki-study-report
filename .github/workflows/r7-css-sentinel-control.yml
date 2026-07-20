@@ -94,7 +94,6 @@ jobs:
 
           def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
           '''
-          # The triple-quoted literals above are indented by this controller script.
           anchor = '\n'.join(line[10:] if line.startswith('          ') else line for line in anchor.splitlines()) + '\n'
           replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines()) + '\n'
           if tests_text.count(anchor) != 1:
@@ -111,8 +110,8 @@ jobs:
           git diff --check
           mapfile -t changed < <(git diff --name-only | sort)
           expected=(
-            docs/packaging-release.md
             docker/anki-e2e/smoke-api.py
+            docs/packaging-release.md
             tests/test_docker_smoke_helpers.py
           )
           test "${changed[*]}" = "${expected[*]}"
