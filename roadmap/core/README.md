@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` Next, not started; `C1.6` blocked
+**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -41,7 +41,7 @@ implementation. Full contract freeze and release closure remain C2 work.
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — C1.5R remediation active; C1.6 blocked
+**Status:** In progress — C1.5R.7 integrated acceptance active; C1.6 planned after accepted R7
 
 ### Completed and active increments
 
@@ -63,9 +63,9 @@ implementation. Full contract freeze and release closure remain C2 work.
   owner visual/product acceptance withdrawn —
   [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md),
   Fast CI `29648956309` PASS, real-Anki `29649071545` PASS
-- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 next
-- `C1.6 — Handoffs, actions and detector-driven resolution loop`: Blocked, not
-  started
+- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 in progress
+- `C1.6 — Canonical single-card resolution loop`: Planned after accepted R7; not started
+- `C1.6B — Bounded bulk actions`: Conditional; not started
 
 C1.5's green runs prove that the old implementation executed and produced the
 expected technical artifact. They do not establish product correctness after
@@ -82,7 +82,7 @@ C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
 C1.5R.5 Cards attention inbox redesign — Complete
 C1.5R.6 Guided Inspection Profiles UX — Complete
-C1.5R.7 Integrated acceptance and owner review package — Next, not started
+C1.5R.7 Integrated acceptance and owner decision — In progress
 ```
 
 #### C1.5R.0 — Recovery and corrective baseline
@@ -174,10 +174,9 @@ Final evidence is recorded in
 
 #### C1.5R.7 — Integrated acceptance and owner review package
 
-**Status:** Next, not started
+**Status:** In progress
 
-Runs the risk-appropriate integrated verification and prepares explicit owner
-screenshots/review. Technical gates cannot grant owner product acceptance.
+Runs risk-appropriate integrated verification, freezes exact package provenance, prepares explicit owner evidence and stops for one of three owner decisions. Technical gates cannot grant owner product acceptance. R7 does not implement C1.6 or C1.6B.
 
 ### C1 goal
 
@@ -199,7 +198,8 @@ Actions, Signals, and Notification Center foundations.
 - stable reason/severity model and deterministic ordering;
 - safe context and preview;
 - reuse of Search/Browser/action contracts;
-- bounded bulk triage with typed results in the later C1.6 loop;
+- one canonical single-card resolution loop in C1.6;
+- bounded bulk actions only if the separate C1.6B activation criteria are met;
 - detector-driven resolution rather than manual hiding;
 - desktop accessibility, keyboard, RU/EN, light/dark, and bounded performance.
 
@@ -210,7 +210,8 @@ Actions, Signals, and Notification Center foundations.
 - remote task sync;
 - a second query/action/signal system;
 - mobile-first redesign;
-- C1.6 implementation before C1.5R and owner acceptance.
+- C1.6 implementation before accepted C1.5R.7 owner review;
+- C1.6B bulk actions without a separate activation decision.
 
 ### C1 completion criteria
 
@@ -220,7 +221,29 @@ Actions, Signals, and Notification Center foundations.
 - sanitizer, media, action, loopback, token, and privacy boundaries preserved;
 - C1.5R technical verification complete;
 - separate owner product acceptance complete;
-- C1.6 resolution loop completed before C1 closes.
+- C1.6 canonical single-card resolution loop completed before C1 closes;
+- C1.6B remains optional unless separately activated.
+
+## C1.6 — Canonical single-card resolution loop
+
+**Status:** Planned after accepted C1.5R.7; not started
+
+```text
+issue
+→ existing Safe Action or Open in Anki
+→ action result
+→ Awaiting recheck
+→ canonical bounded reevaluation
+→ Still active | Resolved | Recheck failed | Evidence stale
+```
+
+C1.6 reuses existing Search, Safe Actions and Anki Browser handoffs. It does not add bulk selection, manual resolve/archive/snooze, a second action system or unbounded reevaluation.
+
+## C1.6B — Bounded bulk actions
+
+**Status:** Conditional; not started
+
+C1.6B activates only after the single-card loop is accepted and separate evidence proves a bounded multi-card task. It is not part of R7 or mandatory C1.6.
 
 ## C2 — Core 1.0 Hardening
 
@@ -277,5 +300,5 @@ and not started; R7 and C1.6 remain blocked by their named dependencies.
 Guided Inspection Profiles is complete: generated drafts are immediate and clean,
 Basic is the normal path, Advanced preserves strict v1, Japanese/Programming
 defaults are understandable, lifecycle/conflict/accessibility/security contracts
-are covered, and deterministic Chromium evidence is recorded. C1.5R.7 is next;
-C1.6 remains blocked.
+are covered, and deterministic Chromium evidence is recorded. C1.5R.7 is in progress;
+C1.6 is planned only after accepted R7, and C1.6B remains Conditional.

@@ -1,6 +1,6 @@
 # C1.5R — Cards and Inspection Profiles UX remediation
 
-**Current status:** `C1.5R.0–R.6 Complete`; `C1.5R.7 Next`; `C1.6 Blocked`
+**Current status:** `C1.5R.0–R.6 Complete`; `C1.5R.7 In progress`; `C1.6 Planned after accepted R7`; `C1.6B Conditional`
 
 **Product gate:** owner product acceptance remains pending for C1.5R.7; it does
 not reopen the completed C1.5R.0–R.6 technical increments.
@@ -122,8 +122,9 @@ The detailed display contract is
 | R5 TypeScript/build/bundle/package | PASS — run `29740393142` |
 | R5 isolated visual matrix | PASS — run `29738841012`, artifact `8459497217` |
 | R5 canonical `run_full_check.ps1 -SkipDocker` | PASS — exact `a30f4db66e73f3f836e69ba90cfc06974ce3df47` |
-| Fast CI | not required for R5 |
-| Docker / real-Anki | intentionally deferred to R7 integration |
+| R6 guided Inspection Profiles closeout | PASS — implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94`, merged `d2ee9703a2b841c0438fc07a43db3b701835a958` |
+| R7 focused/canonical/Fast CI/package | in progress |
+| R7 Docker / real-Anki | in progress; exact accepted package required |
 | owner screenshot/product review | pending and never automatic |
 
 ## Delivery boundary
@@ -135,7 +136,8 @@ The detailed display contract is
 - deployment: no;
 - `.ankiaddon`/AnkiWeb publication: no;
 - owner private profile read/export: no;
-- C1.6 implementation: not started and blocked.
+- C1.6 implementation: planned only after accepted R7; not started;
+- C1.6B bounded bulk actions: Conditional; not started.
 
 ## R6 remediation outcome
 
@@ -147,4 +149,4 @@ security boundary remain unchanged. Final implementation
 `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` and merged `core`
 `d2ee9703a2b841c0438fc07a43db3b701835a958` passed the required non-Docker and
 Chromium closeout gates. R7 is the next integrated acceptance stage; owner product
-acceptance remains pending.
+acceptance remains pending. R7 integrated technical acceptance is now in progress; it does not implement C1.6 or C1.6B.
