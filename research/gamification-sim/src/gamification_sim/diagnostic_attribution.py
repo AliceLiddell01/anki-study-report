@@ -159,6 +159,31 @@ def _raw_memory_gain(before: float | None, after: float | None) -> float:
     return math.log(after / before)
 
 
+def recompute_episode_counterfactuals(row: dict[str, Any]) -> dict[str, float]:
+    """Re-evaluate reward-only counterfactuals without mutating a trace row."""
+    common = {
+        "passed": row["outcome"] != Outcome.AGAIN.value,
+        "baseline": row["baseline_credit"],
+        "neutral": row["neutral_context_credit"],
+        "confidence": row["confidence"],
+        "effective_bonus": row["effective_bonus"],
+        "episode_cap": row["episode_cap"],
+    }
+    f_cm = _counter_context(challenge=row["adjusted_challenge"], memory=row["memory_gain_credit"], **common)
+    f_c0 = _counter_context(challenge=row["adjusted_challenge"], memory=0.0, **common)
+    f_0m = _counter_context(challenge=0.0, memory=row["memory_gain_credit"], **common)
+    f_00 = _counter_context(challenge=0.0, memory=0.0, **common)
+    return {
+        "f_cm": f_cm,
+        "f_c0": f_c0,
+        "f_0m": f_0m,
+        "f_00": f_00,
+        "challenge_main": f_c0 - f_00,
+        "memory_main": f_0m - f_00,
+        "interaction": f_cm - f_c0 - f_0m + f_00,
+    }
+
+
 def _comparison_id(policy_id: str) -> str:
     if policy_id in POLICY_COMPARISONS:
         return POLICY_COMPARISONS[policy_id]
@@ -290,6 +315,7 @@ class AttributionCollector:
                 "source_event_key": episode.source_event_key,
                 "desired_retention": policy.desired_retention(day),
                 "scheduled_due_day": previous.next_due_day,
+                "next_due_day": updated.next_due_day,
                 "actual_review_day": day,
                 "delay_days": max(0, day - previous.next_due_day),
                 "due_relation": episode.due_relation.value,
@@ -318,6 +344,7 @@ class AttributionCollector:
                 "memory_gain_credit": item.memory_gain_credit,
                 "confidence": confidence,
                 "effective_bonus": item.bonus_eligibility,
+                "episode_cap": params.core_episode_cap,
                 "response_validity": episode.response_validity,
                 "context_before_blend": context_before_blend,
                 "context_after_blend": context_after_blend,
@@ -925,218 +952,102 @@ def _cross_horizon_attribution(
     return result
 
 
-def _dominant(values: dict[str, float]) -> tuple[str, float, float]:
-    total = sum(abs(value) for value in values.values())
-    if not values or total <= 0:
+def _aggregate_signed_and_absolute(rows: list[dict[str, Any]], contribution_field: str) -> tuple[dict[str, float], dict[str, float]]:
+    """Return signed totals and cell-level absolute totals without cancellation."""
+    signed: dict[str, float] = defaultdict(float)
+    absolute: dict[str, float] = defaultdict(float)
+    for row in rows:
+        for key, raw_value in row[contribution_field].items():
+            value = float(raw_value)
+            signed[key] += value
+            absolute[key] += abs(value)
+    return dict(sorted(signed.items())), dict(sorted(absolute.items()))
+
+
+def _dominant_from_cell_absolute(signed_totals: dict[str, float], absolute_cell_totals: dict[str, float]) -> tuple[str, float, float]:
+    denominator = sum(absolute_cell_totals.values())
+    if not absolute_cell_totals or denominator <= 0:
         return "none", 0.0, 0.0
-    key = max(values, key=lambda item: abs(values[item]))
-    return key, values[key], abs(values[key]) / total
+    key = max(sorted(absolute_cell_totals), key=lambda item: absolute_cell_totals[item])
+    return key, signed_totals[key], absolute_cell_totals[key] / denominator
 
 
 def _root_cause_summary(cross: list[dict[str, Any]]) -> dict[str, Any]:
     retention = [row for row in cross if row["comparison"].startswith("retention-")]
-    aggregate_components: dict[str, float] = defaultdict(float)
-    aggregate_windows: dict[str, float] = defaultdict(float)
-    for row in retention:
-        for key, value in row["component_contributions"].items():
-            aggregate_components[key] += value
-        for key, value in row["window_contributions"].items():
-            aggregate_windows[key] += value
-    component, component_value, component_share = _dominant(dict(aggregate_components))
-    window, window_value, window_share = _dominant(dict(aggregate_windows))
+    component_signed, component_absolute = _aggregate_signed_and_absolute(retention, "component_contributions")
+    window_signed, window_absolute = _aggregate_signed_and_absolute(retention, "window_contributions")
+    component, component_value, component_share = _dominant_from_cell_absolute(component_signed, component_absolute)
+    window, window_value, window_share = _dominant_from_cell_absolute(window_signed, window_absolute)
     max_residual = max((abs(row["residual"]) for row in cross), default=0.0)
     same_sign = {
-        comparison: len(
-            {
-                math.copysign(1.0, row["delta_365_minus_90"])
-                for row in retention
-                if row["comparison"] == comparison and abs(row["delta_365_minus_90"]) > TOLERANCE
-            }
-        )
-        <= 1
+        comparison: len({math.copysign(1.0, row["delta_365_minus_90"]) for row in retention if row["comparison"] == comparison and abs(row["delta_365_minus_90"]) > TOLERANCE}) <= 1
         for comparison in ("retention-high-cycle", "retention-low-cycle")
     }
+    challenge_signs = {math.copysign(1.0, row["component_contributions"]["challenge_main"]) for row in retention if abs(row["component_contributions"]["challenge_main"]) > TOLERANCE}
+    challenge_consistent = len(challenge_signs) <= 1
     if max_residual > TOLERANCE:
-        classification = "ROOT_CAUSE_UNRESOLVED"
-        confidence = "LOW"
+        classification, confidence = "ROOT_CAUSE_UNRESOLVED", "LOW"
     elif component_share >= 0.55 and window_share >= 0.45:
         classification = "ROOT_CAUSE_LOCALIZED"
         confidence = "HIGH" if component_share >= 0.70 and window_share >= 0.60 else "MEDIUM"
     else:
-        classification = "ROOT_CAUSE_PARTIALLY_LOCALIZED"
-        confidence = "MEDIUM"
+        classification, confidence = "ROOT_CAUSE_PARTIALLY_LOCALIZED", "MEDIUM"
     return {
         "classification": classification,
         "confidence": confidence,
         "dominant_component": component,
-        "dominant_component_value": component_value,
-        "dominant_component_share_of_absolute_contributions": component_share,
+        "dominant_component_signed_total": component_value,
+        "dominant_component_share_of_cell_level_absolute_contributions": component_share,
+        "component_share_formula": "sum(abs(component contribution per retention cell)) / sum(abs(all component contributions per retention cell))",
+        "component_signed_totals": component_signed,
+        "component_absolute_cell_totals": component_absolute,
         "dominant_window": window,
-        "dominant_window_value": window_value,
-        "dominant_window_share_of_absolute_contributions": window_share,
+        "dominant_window_signed_total": window_value,
+        "dominant_window_share_of_cell_level_absolute_contributions": window_share,
+        "window_share_formula": "sum(abs(window contribution per retention cell)) / sum(abs(all window contributions per retention cell))",
+        "window_signed_totals": window_signed,
+        "window_absolute_cell_totals": window_absolute,
         "retention_groups_replica_direction_consistent": same_sign,
+        "challenge_direction_consistent_across_retention_cells": challenge_consistent,
         "max_abs_residual": max_residual,
         "rationale": (
-            "The fixed-trajectory decomposition fully reconciles the observed cross-horizon "
-            "growth and identifies the dominant component and timing window without selecting "
-            "a coefficient or candidate."
-            if classification != "ROOT_CAUSE_UNRESOLVED"
-            else "The attribution residual exceeded the frozen tolerance."
+            "The fixed-trajectory decomposition reconciles the observed growth and identifies a dominant component and timing window, but replica magnitudes, Challenge signs and lineage concentration vary; the trace is not a unique causal formula and no coefficient or candidate was tested."
+            if classification != "ROOT_CAUSE_UNRESOLVED" else "The attribution residual exceeded the frozen tolerance."
         ),
     }
 
 
-def _answer_rows(
-    cross: list[dict[str, Any]],
-    summary: dict[str, Any],
-    controls: TraceBundle,
-) -> list[dict[str, Any]]:
+def _answer_rows(cross: list[dict[str, Any]], summary: dict[str, Any], controls: TraceBundle) -> list[dict[str, Any]]:
+    return _corrected_answer_rows(cross, summary, controls.policies)
+
+
+def _corrected_answer_rows(cross: list[dict[str, Any]], summary: dict[str, Any], control_policies: list[dict[str, Any]]) -> list[dict[str, Any]]:
     retention = [row for row in cross if row["comparison"].startswith("retention-")]
     intentional = [row for row in cross if row["comparison"] == "intentional-backlog"]
-    aggregate_components: dict[str, float] = defaultdict(float)
-    for row in retention:
-        for key, value in row["component_contributions"].items():
-            aggregate_components[key] += value
-    cap_interaction = aggregate_components.get("interaction", 0.0)
-    count_rows = [
-        {
-            "comparison": row["comparison"],
-            "replica": row["replica"],
-            "review_count_difference_90": row["review_count_difference_90"],
-            "review_count_difference_365": row["review_count_difference_365"],
-            "baseline_delta_90": row["baseline_delta_90"],
-            "baseline_delta_365": row["baseline_delta_365"],
-        }
-        for row in cross
+    count_rows = [{"comparison": row["comparison"], "replica": row["replica"], "review_count_difference_90": row["review_count_difference_90"], "review_count_difference_365": row["review_count_difference_365"], "baseline_delta_90": row["baseline_delta_90"], "baseline_delta_365": row["baseline_delta_365"]} for row in cross]
+    endpoint = [{"comparison": row["comparison"], "replica": row["replica"]} for row in cross if row["advantage_90"] < 0 < row["advantage_365"]]
+    controls = {row["policy_id"]: row["core_context"] for row in control_policies}
+    challenge = [{"comparison": row["comparison"], "replica": row["replica"], "challenge_main": row["component_contributions"]["challenge_main"], "sign": "positive" if row["component_contributions"]["challenge_main"] > TOLERANCE else "negative" if row["component_contributions"]["challenge_main"] < -TOLERANCE else "zero"} for row in retention]
+    lineage = [{"comparison": row["comparison"], "replica": row["replica"], "share_90": row["lineage_positive_top_20_share_90"], "share_365": row["lineage_positive_top_20_share_365"]} for row in retention]
+    cden = sum(summary["component_absolute_cell_totals"].values())
+    wden = sum(summary["window_absolute_cell_totals"].values())
+    rows = [
+        (1, "review_count_share", "Review-count differences explain baseline deltas, but their direct share of frozen unexplained advantage is zero because baseline_delta is subtracted exactly.", "This is an accounting conclusion inside the synthetic metric, not a claim about user behavior.", {"cells": count_rows}),
+        (2, "per_review_context", "After baseline removal, contextual and day-level credits reconcile all six cross-horizon deltas within tolerance.", "Reconciliation identifies where the metric is accounted for; it does not establish a unique causal intervention.", {"signed_component_totals": summary["component_signed_totals"], "absolute_cell_component_totals": summary["component_absolute_cell_totals"], "max_abs_residual": summary["max_abs_residual"]}),
+        (3, "component_distribution", f"{summary['dominant_component']} is the largest component under cell-level absolute aggregation.", "The dominant share is descriptive across four retention cells and does not select a coefficient.", {"formula": summary["component_share_formula"], "signed_totals": summary["component_signed_totals"], "absolute_cell_totals": summary["component_absolute_cell_totals"], "shares": {key: value / cden if cden else 0.0 for key, value in summary["component_absolute_cell_totals"].items()}, "dominant": summary["dominant_component"]}),
+        (4, "divergence_timing", f"{summary['dominant_window']} is the largest timing window under cell-level absolute aggregation.", "The timing result localizes accumulation after transitions but does not identify a unique formula change.", {"formula": summary["window_share_formula"], "windows_by_cell": {f"{row['comparison']}:{row['replica']}": row["window_contributions"] for row in retention}, "signed_totals": summary["window_signed_totals"], "absolute_cell_totals": summary["window_absolute_cell_totals"], "shares": {key: value / wden if wden else 0.0 for key, value in summary["window_absolute_cell_totals"].items()}, "dominant": summary["dominant_window"]}),
+        (5, "shared_mechanism", "Both retention groups grow in both replicas, but the component decomposition is not direction-consistent enough to claim one fully shared mechanism.", "Group-level growth direction is shared; Challenge signs and effect magnitudes are not.", {"replica_direction_consistent": summary["retention_groups_replica_direction_consistent"], "challenge_direction_consistent": summary["challenge_direction_consistent_across_retention_cells"]}),
+        (6, "replica_difference", "Replica-specific deltas and component values differ materially and are preserved without averaging.", "Two replicas expose heterogeneity but do not characterize a population distribution.", {"cells": retention}),
+        (7, "lineage_concentration", "Positive contextual contribution is concentrated in a subset of synthetic lineages, with concentration varying by replica.", "The statistic is descriptive and does not identify real cards or users.", {"shares": lineage}),
+        (8, "actual_vs_natural_due", "Challenge attribution separates actual from natural-due retrievability, but Challenge contributions are not direction-consistent across all retention cells.", "Mixed signs prevent treating Challenge as one shared dominant mechanism.", {"measured_fields": ["retrievability_actual", "retrievability_natural_due", "extra_challenge", "delay_credit", "adjusted_challenge"], "cells": challenge, "direction_consistent": summary["challenge_direction_consistent_across_retention_cells"]}),
+        (9, "memory_gain_counterfactual", "MemoryGain is isolated by the fixed-trajectory f(0,M)-f(0,0) main effect and is the largest cell-level absolute component.", "This is a reward-only post-hoc decomposition on fixed scheduler trajectories.", {"formula": "f(0,M) - f(0,0)", "signed_total": summary["component_signed_totals"]["memory_main"], "absolute_cell_total": summary["component_absolute_cell_totals"]["memory_main"]}),
+        (10, "endpoint_cancellation", "Three cells have negative 90-day advantage and positive 365-day advantage.", "This frozen synthetic pattern is not a forecast for real users.", {"cells": endpoint}),
+        (11, "interval_neutral_control", "The bounded development control traces stable-default and no-fsrs-neutral without changing canonical cells.", "The control is exploratory and shorter than confirmatory horizons.", {"core_context": controls}),
+        (12, "cap_suppression", "Cap/blend interaction is negligible and traced control suppression remains zero.", "This does not prove every future candidate is cap-insensitive.", {"interaction_signed_total": summary["component_signed_totals"]["interaction"], "interaction_absolute_cell_total": summary["component_absolute_cell_totals"]["interaction"], "control_suppression_events": sum(row["honest_baseline_suppression_events"] for row in control_policies)}),
+        (13, "intentional_backlog", "Intentional backlog remains a separate PASS control and does not show two-replica systematic growth.", "The executable growth rule is not applied to the non-retention group.", {"cells": intentional}),
+        (14, "mechanism_class", "The mechanism class remains partially localized: MemoryGain and post-transition accumulation dominate, but no unique causal correction is established.", "Replica magnitudes differ, Challenge signs are mixed, lineage concentration varies, the trace is not a unique causal formula, and no coefficient or candidate was tested.", {"classification": summary["classification"], "confidence": summary["confidence"], "reasons": ["replica magnitudes differ", "Challenge does not have one common sign across every retention cell", "lineage concentration differs", "the trace is a deterministic decomposition rather than a unique causal formula", "no coefficient or candidate has been tested"], "candidate_tested": False, "unique_causal_formula_established": False}),
     ]
-    endpoint_cancellation = [
-        row
-        for row in cross
-        if row["advantage_90"] < 0 < row["advantage_365"]
-    ]
-    control_contexts = {
-        row["policy_id"]: row["core_context"]
-        for row in controls.policies
-    }
-    answers = [
-        (
-            1,
-            "review_count_share",
-            "Review-count differences produce baseline deltas, but the frozen unexplained-advantage formula subtracts baseline_delta exactly; their direct share of unexplained advantage is therefore zero.",
-            {"cells": count_rows},
-        ),
-        (
-            2,
-            "per_review_context",
-            "All unexplained advantage is reconciled by contextual and day-level credits after baseline removal.",
-            {"aggregate_components": dict(sorted(aggregate_components.items()))},
-        ),
-        (
-            3,
-            "component_distribution",
-            f"The dominant cross-horizon component is {summary['dominant_component']}.",
-            {"aggregate_components": dict(sorted(aggregate_components.items()))},
-        ),
-        (
-            4,
-            "divergence_timing",
-            f"The dominant timing window is {summary['dominant_window']}.",
-            {
-                "windows": {
-                    f"{row['comparison']}:{row['replica']}": row["window_contributions"]
-                    for row in retention
-                }
-            },
-        ),
-        (
-            5,
-            "shared_mechanism",
-            "High- and low-retention cycling are compared through the same decomposition; consistency is reported per group rather than assumed.",
-            {"replica_direction_consistent": summary["retention_groups_replica_direction_consistent"]},
-        ),
-        (
-            6,
-            "replica_difference",
-            "Replica-specific deltas remain visible and are not averaged away.",
-            {"cells": retention},
-        ),
-        (
-            7,
-            "lineage_concentration",
-            "Positive contextual contribution concentration is measured as the top 20% lineage share.",
-            {
-                "shares": [
-                    {
-                        "comparison": row["comparison"],
-                        "replica": row["replica"],
-                        "share_90": row["lineage_positive_top_20_share_90"],
-                        "share_365": row["lineage_positive_top_20_share_365"],
-                    }
-                    for row in retention
-                ]
-            },
-        ),
-        (
-            8,
-            "actual_vs_natural_due",
-            "Challenge attribution explicitly separates actual and natural-due retrievability through adjusted challenge and delay credit.",
-            {"dominant_component": summary["dominant_component"]},
-        ),
-        (
-            9,
-            "memory_gain_counterfactual",
-            "MemoryGain is isolated with fixed-trajectory f(0,M)-f(0,0) main effects.",
-            {"memory_main": aggregate_components.get("memory_main", 0.0)},
-        ),
-        (
-            10,
-            "endpoint_cancellation",
-            "Cells with negative 90-day advantage and positive 365-day advantage are explicitly identified.",
-            {
-                "cells": [
-                    {"comparison": row["comparison"], "replica": row["replica"]}
-                    for row in endpoint_cancellation
-                ]
-            },
-        ),
-        (
-            11,
-            "interval_neutral_control",
-            "A bounded development control traces stable-default and no-fsrs-neutral without changing canonical cells.",
-            {"core_context": control_contexts},
-        ),
-        (
-            12,
-            "cap_suppression",
-            "Cap/blend nonlinearity is isolated in interaction; baseline suppression remains zero.",
-            {"interaction": cap_interaction},
-        ),
-        (
-            13,
-            "intentional_backlog",
-            "Intentional backlog remains separately reported and is not generalized from the retention-cycle mechanism.",
-            {"cells": intentional},
-        ),
-        (
-            14,
-            "mechanism_class",
-            "The mechanism class is localized only to the level supported by the deterministic decomposition; no coefficient or candidate is selected.",
-            {
-                "classification": summary["classification"],
-                "confidence": summary["confidence"],
-            },
-        ),
-    ]
-    return [
-        {
-            "question": number,
-            "id": key,
-            "answer": answer,
-            "evidence": evidence,
-            "classification": "EXPLORATORY_NON_DECISION",
-        }
-        for number, key, answer, evidence in answers
-    ]
+    return [{"question": number, "id": key, "answer": answer, "boundary": boundary, "evidence": evidence, "classification": "EXPLORATORY_NON_DECISION"} for number, key, answer, boundary, evidence in rows]
 
 
 def _grain_counts(

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 from gamification_sim.canonical_json import canonical_digest
 from gamification_sim.diagnostic_attribution import (
@@ -13,6 +14,8 @@ from gamification_sim.diagnostic_attribution import (
     SECONDARY_SEED,
     POLICY_IDS,
     _aggregate_grains,
+    _aggregate_signed_and_absolute,
+    _dominant_from_cell_absolute,
     _canonical_cells,
     _finite_walk,
     _json_text,
@@ -20,6 +23,7 @@ from gamification_sim.diagnostic_attribution import (
     _strict_load,
     _validate_schema,
     build_evidence_base,
+    recompute_episode_counterfactuals,
     run_trace,
     transition_marker,
 )
@@ -159,6 +163,7 @@ def test_episode_rows_contain_all_frozen_scheduler_and_reward_fields(short_bundl
         "memory_gain_credit",
         "confidence",
         "effective_bonus",
+        "episode_cap",
         "response_validity",
         "context_before_blend",
         "context_after_blend",
@@ -238,27 +243,62 @@ def test_six_cells_and_three_groups_match_immutable_g0_7(short_bundle, long_bund
     assert groups == contract["current_evidence"]["groups"]
 
 
-def test_fixed_trajectory_ablations_do_not_change_scheduler_events(short_bundle):
-    event_identity = [
-        (
-            row["source_event_key"],
-            row["scheduled_due_day"],
-            row["actual_review_day"],
-            row["stability_after"],
-            row["difficulty_after"],
-        )
-        for row in short_bundle.episodes
-    ]
-    assert event_identity == [
-        (
-            row["source_event_key"],
-            row["scheduled_due_day"],
-            row["actual_review_day"],
-            row["stability_after"],
-            row["difficulty_after"],
-        )
-        for row in short_bundle.episodes
-    ]
+class _SchedulerIdentityCollector:
+    def __init__(self):
+        self.events = []
+        self.policy_digests = {}
+
+    def observe(self, event):
+        if event["kind"] == "day":
+            policy = event["policy"]
+            for observed in event["episode_observations"]:
+                episode = observed["episode"]
+                previous = observed["previous_state"]
+                updated = observed["updated_state"]
+                self.events.append({"source_event_key": episode.source_event_key, "policy_id": policy.policy_id, "replica": event["replica"], "horizon_days": event["horizon_days"], "day": event["day"], "scheduled_due_day": previous.next_due_day, "actual_review_day": event["day"], "outcome": episode.outcome.value, "stability_after": updated.stability, "difficulty_after": updated.difficulty, "next_due_day": updated.next_due_day})
+        elif event["kind"] == "policy_result":
+            result = event["result"]
+            self.policy_digests[(result["policy_id"], result["replica"], result["horizon_days"])] = (result["trajectory_digest"], result["final_cohort_digest"])
+
+
+def _trace_identity(bundle):
+    return sorted([{"source_event_key": row["source_event_key"], "policy_id": row["policy_id"], "replica": row["replica"], "horizon_days": row["horizon_days"], "day": row["day"], "scheduled_due_day": row["scheduled_due_day"], "actual_review_day": row["actual_review_day"], "outcome": row["outcome"], "stability_after": row["stability_after"], "difficulty_after": row["difficulty_after"], "next_due_day": row["next_due_day"]} for row in bundle.episodes], key=lambda row: (row["horizon_days"], row["policy_id"], row["replica"], row["day"], row["source_event_key"]))
+
+
+def _assert_identity(expected, observed):
+    assert observed == expected
+
+
+def test_scheduler_identity_is_independent_across_plain_trace_and_diagnostic_paths():
+    policies = ("stable-high", "stable-low")
+    plain = run_longitudinal(CONFIG, mode_id="development", master_seed=MASTER_SEED, parameter_set_ids=("R-CURRENT",), policy_ids=policies, workspace=ROOT)
+    direct = _SchedulerIdentityCollector()
+    observed = run_longitudinal(CONFIG, mode_id="development", master_seed=MASTER_SEED, parameter_set_ids=("R-CURRENT",), policy_ids=policies, workspace=ROOT, diagnostic_observer=direct.observe)
+    traced = run_trace(CONFIG, mode_id="development", master_seed=MASTER_SEED, workspace=ROOT, policy_ids=policies)
+    assert observed == plain
+    assert observed["manifest"]["trajectory_digest"] == plain["manifest"]["trajectory_digest"]
+    assert observed["manifest"]["final_cohort_digest"] == plain["manifest"]["final_cohort_digest"]
+    expected = sorted(direct.events, key=lambda row: (row["horizon_days"], row["policy_id"], row["replica"], row["day"], row["source_event_key"]))
+    _assert_identity(expected, _trace_identity(traced))
+    traced_digests = {(row["policy_id"], row["replica"], row["horizon_days"]): (row["trajectory_digest"], row["final_cohort_digest"]) for row in traced.policies}
+    assert traced_digests == direct.policy_digests
+
+
+def test_scheduler_identity_assertion_detects_mutated_transition(short_bundle):
+    expected = _trace_identity(short_bundle)
+    mutated = copy.deepcopy(expected)
+    mutated[0]["next_due_day"] += 1
+    with pytest.raises(AssertionError):
+        _assert_identity(expected, mutated)
+
+
+def test_fixed_trajectory_counterfactuals_do_not_mutate_scheduler_events(short_bundle):
+    before = copy.deepcopy(short_bundle.episodes)
+    recomputed = [recompute_episode_counterfactuals(row) for row in short_bundle.episodes]
+    assert short_bundle.episodes == before
+    for row, values in zip(short_bundle.episodes, recomputed):
+        for key, value in values.items():
+            assert row[key] == pytest.approx(value)
     assert all(row["classification"] == "EXPLORATORY_NON_DECISION" for row in short_bundle.episodes)
 
 
@@ -376,6 +416,11 @@ def test_evidence_record_validates_against_schema(
         "frozen_blob_audit": "PASS",
         "exact_seven_path_diff": "PASS",
     }
+    evidence["correction"] = copy.deepcopy(
+        _strict_load(
+            ROOT / "evidence/g1.2-root-cause-attribution-v1.json"
+        )["correction"]
+    )
     _validate_schema(ATTRIBUTION_SCHEMA, evidence)
 
 
@@ -389,3 +434,58 @@ def test_required_policy_set_is_exactly_frozen():
         "intentional-backlog",
         "honest-backlog-return",
     }
+
+
+def test_cell_level_absolute_component_aggregation_does_not_cancel_signs():
+    rows = [{"component_contributions": {"a": 2.0, "b": 1.0}}, {"component_contributions": {"a": -1.0, "b": 1.0}}]
+    signed, absolute = _aggregate_signed_and_absolute(rows, "component_contributions")
+    key, value, share = _dominant_from_cell_absolute(signed, absolute)
+    assert signed == {"a": 1.0, "b": 2.0}
+    assert absolute == {"a": 3.0, "b": 2.0}
+    assert key == "a" and value == pytest.approx(1.0) and share == pytest.approx(0.6)
+    assert share != pytest.approx(abs(signed["a"]) / sum(abs(item) for item in signed.values()))
+
+
+def test_cell_level_absolute_window_aggregation_does_not_cancel_signs():
+    rows = [{"window_contributions": {"early": 3.0, "late": 1.0}}, {"window_contributions": {"early": -2.0, "late": 1.0}}]
+    signed, absolute = _aggregate_signed_and_absolute(rows, "window_contributions")
+    key, value, share = _dominant_from_cell_absolute(signed, absolute)
+    assert key == "early" and value == pytest.approx(1.0) and share == pytest.approx(5.0 / 7.0)
+    assert share != pytest.approx(abs(signed["early"]) / sum(abs(item) for item in signed.values()))
+
+
+def test_committed_evidence_has_corrected_shares_and_mixed_challenge_signs():
+    evidence = _strict_load(ROOT / "evidence/g1.2-root-cause-attribution-v1.json")
+    summary = evidence["attribution"]["summary"]
+    assert summary["dominant_component"] == "memory_main"
+    assert summary["dominant_component_share_of_cell_level_absolute_contributions"] == pytest.approx(0.4552230855238075)
+    assert summary["dominant_window"] == "post_transition"
+    assert summary["dominant_window_share_of_cell_level_absolute_contributions"] == pytest.approx(0.8565121323195105)
+    assert summary["challenge_direction_consistent_across_retention_cells"] is False
+
+
+def test_strict_policy_and_root_answer_schema_rejects_unknown_and_wrong_pairing():
+    evidence = _strict_load(ROOT / "evidence/g1.2-root-cause-attribution-v1.json")
+    schema = _strict_load(ATTRIBUTION_SCHEMA)
+    invalid_policy = copy.deepcopy(evidence)
+    invalid_policy["attribution"]["control_summary"]["policies"][0]["unknown"] = 1
+    with pytest.raises(ValidationError):
+        Draft202012Validator(schema).validate(invalid_policy)
+    invalid_answer = copy.deepcopy(evidence)
+    invalid_answer["root_cause_answers"][7]["evidence"]["unknown"] = True
+    with pytest.raises(ValidationError):
+        Draft202012Validator(schema).validate(invalid_answer)
+    invalid_pair = copy.deepcopy(evidence)
+    invalid_pair["root_cause_answers"][7]["evidence"] = copy.deepcopy(invalid_pair["root_cause_answers"][8]["evidence"])
+    with pytest.raises(ValidationError):
+        Draft202012Validator(schema).validate(invalid_pair)
+
+
+def test_root_answers_state_direct_conclusions_and_boundaries():
+    evidence = _strict_load(ROOT / "evidence/g1.2-root-cause-attribution-v1.json")
+    answers = {row["id"]: row for row in evidence["root_cause_answers"]}
+    assert all(row["answer"] and row["boundary"] and row["classification"] == "EXPLORATORY_NON_DECISION" for row in answers.values())
+    assert answers["actual_vs_natural_due"]["evidence"]["direction_consistent"] is False
+    assert "not direction-consistent" in answers["actual_vs_natural_due"]["answer"]
+    assert answers["mechanism_class"]["evidence"]["candidate_tested"] is False
+    assert answers["mechanism_class"]["evidence"]["unique_causal_formula_established"] is False

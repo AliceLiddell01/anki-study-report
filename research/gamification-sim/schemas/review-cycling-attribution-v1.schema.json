@@ -139,18 +139,26 @@
           "type": "integer"
         },
         "window_contributions": {
-          "additionalProperties": {
-            "type": "number"
-          },
-          "propertyNames": {
-            "enum": [
-              "pre_transition",
-              "day_30_transition",
-              "between_transitions",
-              "day_60_transition",
-              "post_transition",
-              "backlog_return_window"
-            ]
+          "additionalProperties": false,
+          "properties": {
+            "backlog_return_window": {
+              "type": "number"
+            },
+            "between_transitions": {
+              "type": "number"
+            },
+            "day_30_transition": {
+              "type": "number"
+            },
+            "day_60_transition": {
+              "type": "number"
+            },
+            "post_transition": {
+              "type": "number"
+            },
+            "pre_transition": {
+              "type": "number"
+            }
           },
           "type": "object"
         }
@@ -244,40 +252,1650 @@
       "type": "string"
     },
     "policySummary": {
-      "additionalProperties": true,
-      "type": "object"
-    },
-    "rootAnswer": {
       "additionalProperties": false,
       "properties": {
-        "answer": {
+        "again_count": {
+          "type": "integer"
+        },
+        "challenge_main": {
+          "type": "number"
+        },
+        "comparison_id": {
           "minLength": 1,
           "type": "string"
         },
-        "classification": {
-          "const": "EXPLORATORY_NON_DECISION"
+        "completion_credit": {
+          "type": "number"
         },
-        "evidence": {
-          "type": "object"
+        "core_baseline": {
+          "type": "number"
         },
-        "id": {
-          "pattern": "^[a-z0-9_]+$",
+        "core_context": {
+          "type": "number"
+        },
+        "f_00": {
+          "type": "number"
+        },
+        "f_0m": {
+          "type": "number"
+        },
+        "f_c0": {
+          "type": "number"
+        },
+        "f_cm": {
+          "type": "number"
+        },
+        "final_cohort_digest": {
+          "minLength": 1,
           "type": "string"
         },
-        "question": {
-          "maximum": 14,
-          "minimum": 1,
+        "grain": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "honest_baseline_suppression_events": {
           "type": "integer"
+        },
+        "horizon_days": {
+          "type": "integer"
+        },
+        "initial_cohort_digest": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "interaction": {
+          "type": "number"
+        },
+        "latent_stream_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "memory_main": {
+          "type": "number"
+        },
+        "parameter_set_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "policy_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "replica": {
+          "type": "integer"
+        },
+        "review_count": {
+          "type": "integer"
+        },
+        "run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "successful_review_count": {
+          "type": "integer"
+        },
+        "supplemental": {
+          "type": "number"
+        },
+        "support": {
+          "type": "number"
+        },
+        "total_review_units": {
+          "type": "number"
+        },
+        "trajectory_digest": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "volume_credit": {
+          "type": "number"
         }
       },
       "required": [
-        "question",
-        "id",
-        "answer",
-        "evidence",
-        "classification"
+        "again_count",
+        "challenge_main",
+        "comparison_id",
+        "completion_credit",
+        "core_baseline",
+        "core_context",
+        "f_00",
+        "f_0m",
+        "f_c0",
+        "f_cm",
+        "final_cohort_digest",
+        "grain",
+        "honest_baseline_suppression_events",
+        "horizon_days",
+        "initial_cohort_digest",
+        "interaction",
+        "latent_stream_id",
+        "memory_main",
+        "parameter_set_id",
+        "policy_id",
+        "replica",
+        "review_count",
+        "run_id",
+        "successful_review_count",
+        "supplemental",
+        "support",
+        "total_review_units",
+        "trajectory_digest",
+        "volume_credit"
       ],
       "type": "object"
+    },
+    "rootAnswer": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "cells": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "baseline_delta_365": {
+                        "type": "number"
+                      },
+                      "baseline_delta_90": {
+                        "type": "number"
+                      },
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      },
+                      "review_count_difference_365": {
+                        "type": "integer"
+                      },
+                      "review_count_difference_90": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "comparison",
+                      "replica",
+                      "review_count_difference_90",
+                      "review_count_difference_365",
+                      "baseline_delta_90",
+                      "baseline_delta_365"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 6,
+                  "minItems": 6,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cells"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "review_count_share"
+            },
+            "question": {
+              "const": 1
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_cell_component_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "challenge_main": {
+                      "type": "number"
+                    },
+                    "completion_credit": {
+                      "type": "number"
+                    },
+                    "interaction": {
+                      "type": "number"
+                    },
+                    "memory_main": {
+                      "type": "number"
+                    },
+                    "neutral_context": {
+                      "type": "number"
+                    },
+                    "supplemental": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "number"
+                    },
+                    "volume_credit": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "challenge_main",
+                    "completion_credit",
+                    "interaction",
+                    "memory_main",
+                    "neutral_context",
+                    "supplemental",
+                    "support",
+                    "volume_credit"
+                  ],
+                  "type": "object"
+                },
+                "max_abs_residual": {
+                  "type": "number"
+                },
+                "signed_component_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "challenge_main": {
+                      "type": "number"
+                    },
+                    "completion_credit": {
+                      "type": "number"
+                    },
+                    "interaction": {
+                      "type": "number"
+                    },
+                    "memory_main": {
+                      "type": "number"
+                    },
+                    "neutral_context": {
+                      "type": "number"
+                    },
+                    "supplemental": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "number"
+                    },
+                    "volume_credit": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "challenge_main",
+                    "completion_credit",
+                    "interaction",
+                    "memory_main",
+                    "neutral_context",
+                    "supplemental",
+                    "support",
+                    "volume_credit"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "signed_component_totals",
+                "absolute_cell_component_totals",
+                "max_abs_residual"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "per_review_context"
+            },
+            "question": {
+              "const": 2
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_cell_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "challenge_main": {
+                      "type": "number"
+                    },
+                    "completion_credit": {
+                      "type": "number"
+                    },
+                    "interaction": {
+                      "type": "number"
+                    },
+                    "memory_main": {
+                      "type": "number"
+                    },
+                    "neutral_context": {
+                      "type": "number"
+                    },
+                    "supplemental": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "number"
+                    },
+                    "volume_credit": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "challenge_main",
+                    "completion_credit",
+                    "interaction",
+                    "memory_main",
+                    "neutral_context",
+                    "supplemental",
+                    "support",
+                    "volume_credit"
+                  ],
+                  "type": "object"
+                },
+                "dominant": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "formula": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "shares": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "challenge_main": {
+                      "type": "number"
+                    },
+                    "completion_credit": {
+                      "type": "number"
+                    },
+                    "interaction": {
+                      "type": "number"
+                    },
+                    "memory_main": {
+                      "type": "number"
+                    },
+                    "neutral_context": {
+                      "type": "number"
+                    },
+                    "supplemental": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "number"
+                    },
+                    "volume_credit": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "challenge_main",
+                    "completion_credit",
+                    "interaction",
+                    "memory_main",
+                    "neutral_context",
+                    "supplemental",
+                    "support",
+                    "volume_credit"
+                  ],
+                  "type": "object"
+                },
+                "signed_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "challenge_main": {
+                      "type": "number"
+                    },
+                    "completion_credit": {
+                      "type": "number"
+                    },
+                    "interaction": {
+                      "type": "number"
+                    },
+                    "memory_main": {
+                      "type": "number"
+                    },
+                    "neutral_context": {
+                      "type": "number"
+                    },
+                    "supplemental": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "number"
+                    },
+                    "volume_credit": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "challenge_main",
+                    "completion_credit",
+                    "interaction",
+                    "memory_main",
+                    "neutral_context",
+                    "supplemental",
+                    "support",
+                    "volume_credit"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "formula",
+                "signed_totals",
+                "absolute_cell_totals",
+                "shares",
+                "dominant"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "component_distribution"
+            },
+            "question": {
+              "const": 3
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_cell_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "between_transitions": {
+                      "type": "number"
+                    },
+                    "day_30_transition": {
+                      "type": "number"
+                    },
+                    "day_60_transition": {
+                      "type": "number"
+                    },
+                    "post_transition": {
+                      "type": "number"
+                    },
+                    "pre_transition": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "between_transitions",
+                    "day_30_transition",
+                    "day_60_transition",
+                    "post_transition",
+                    "pre_transition"
+                  ],
+                  "type": "object"
+                },
+                "dominant": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "formula": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "shares": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "between_transitions": {
+                      "type": "number"
+                    },
+                    "day_30_transition": {
+                      "type": "number"
+                    },
+                    "day_60_transition": {
+                      "type": "number"
+                    },
+                    "post_transition": {
+                      "type": "number"
+                    },
+                    "pre_transition": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "between_transitions",
+                    "day_30_transition",
+                    "day_60_transition",
+                    "post_transition",
+                    "pre_transition"
+                  ],
+                  "type": "object"
+                },
+                "signed_totals": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "between_transitions": {
+                      "type": "number"
+                    },
+                    "day_30_transition": {
+                      "type": "number"
+                    },
+                    "day_60_transition": {
+                      "type": "number"
+                    },
+                    "post_transition": {
+                      "type": "number"
+                    },
+                    "pre_transition": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "between_transitions",
+                    "day_30_transition",
+                    "day_60_transition",
+                    "post_transition",
+                    "pre_transition"
+                  ],
+                  "type": "object"
+                },
+                "windows_by_cell": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "retention-high-cycle:0": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "between_transitions": {
+                          "type": "number"
+                        },
+                        "day_30_transition": {
+                          "type": "number"
+                        },
+                        "day_60_transition": {
+                          "type": "number"
+                        },
+                        "post_transition": {
+                          "type": "number"
+                        },
+                        "pre_transition": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "between_transitions",
+                        "day_30_transition",
+                        "day_60_transition",
+                        "post_transition",
+                        "pre_transition"
+                      ],
+                      "type": "object"
+                    },
+                    "retention-high-cycle:1": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "between_transitions": {
+                          "type": "number"
+                        },
+                        "day_30_transition": {
+                          "type": "number"
+                        },
+                        "day_60_transition": {
+                          "type": "number"
+                        },
+                        "post_transition": {
+                          "type": "number"
+                        },
+                        "pre_transition": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "between_transitions",
+                        "day_30_transition",
+                        "day_60_transition",
+                        "post_transition",
+                        "pre_transition"
+                      ],
+                      "type": "object"
+                    },
+                    "retention-low-cycle:0": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "between_transitions": {
+                          "type": "number"
+                        },
+                        "day_30_transition": {
+                          "type": "number"
+                        },
+                        "day_60_transition": {
+                          "type": "number"
+                        },
+                        "post_transition": {
+                          "type": "number"
+                        },
+                        "pre_transition": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "between_transitions",
+                        "day_30_transition",
+                        "day_60_transition",
+                        "post_transition",
+                        "pre_transition"
+                      ],
+                      "type": "object"
+                    },
+                    "retention-low-cycle:1": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "between_transitions": {
+                          "type": "number"
+                        },
+                        "day_30_transition": {
+                          "type": "number"
+                        },
+                        "day_60_transition": {
+                          "type": "number"
+                        },
+                        "post_transition": {
+                          "type": "number"
+                        },
+                        "pre_transition": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "between_transitions",
+                        "day_30_transition",
+                        "day_60_transition",
+                        "post_transition",
+                        "pre_transition"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "retention-high-cycle:0",
+                    "retention-high-cycle:1",
+                    "retention-low-cycle:0",
+                    "retention-low-cycle:1"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "formula",
+                "windows_by_cell",
+                "signed_totals",
+                "absolute_cell_totals",
+                "shares",
+                "dominant"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "divergence_timing"
+            },
+            "question": {
+              "const": 4
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "challenge_direction_consistent": {
+                  "type": "boolean"
+                },
+                "replica_direction_consistent": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "retention-high-cycle": {
+                      "type": "boolean"
+                    },
+                    "retention-low-cycle": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "retention-high-cycle",
+                    "retention-low-cycle"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "replica_direction_consistent",
+                "challenge_direction_consistent"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "shared_mechanism"
+            },
+            "question": {
+              "const": 5
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "cells": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "advantage_365": {
+                        "type": "number"
+                      },
+                      "advantage_90": {
+                        "type": "number"
+                      },
+                      "baseline_delta_365": {
+                        "type": "number"
+                      },
+                      "baseline_delta_90": {
+                        "type": "number"
+                      },
+                      "classification": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "component_contributions": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "challenge_main": {
+                            "type": "number"
+                          },
+                          "completion_credit": {
+                            "type": "number"
+                          },
+                          "interaction": {
+                            "type": "number"
+                          },
+                          "memory_main": {
+                            "type": "number"
+                          },
+                          "neutral_context": {
+                            "type": "number"
+                          },
+                          "supplemental": {
+                            "type": "number"
+                          },
+                          "support": {
+                            "type": "number"
+                          },
+                          "volume_credit": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "challenge_main",
+                          "completion_credit",
+                          "interaction",
+                          "memory_main",
+                          "neutral_context",
+                          "supplemental",
+                          "support",
+                          "volume_credit"
+                        ],
+                        "type": "object"
+                      },
+                      "delta_365_minus_90": {
+                        "type": "number"
+                      },
+                      "lineage_positive_top_20_share_365": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "lineage_positive_top_20_share_90": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      },
+                      "residual": {
+                        "type": "number"
+                      },
+                      "review_count_difference_365": {
+                        "type": "integer"
+                      },
+                      "review_count_difference_90": {
+                        "type": "integer"
+                      },
+                      "window_contributions": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "between_transitions": {
+                            "type": "number"
+                          },
+                          "day_30_transition": {
+                            "type": "number"
+                          },
+                          "day_60_transition": {
+                            "type": "number"
+                          },
+                          "post_transition": {
+                            "type": "number"
+                          },
+                          "pre_transition": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "between_transitions",
+                          "day_30_transition",
+                          "day_60_transition",
+                          "post_transition",
+                          "pre_transition"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "advantage_365",
+                      "advantage_90",
+                      "baseline_delta_365",
+                      "baseline_delta_90",
+                      "classification",
+                      "comparison",
+                      "component_contributions",
+                      "delta_365_minus_90",
+                      "lineage_positive_top_20_share_365",
+                      "lineage_positive_top_20_share_90",
+                      "replica",
+                      "residual",
+                      "review_count_difference_365",
+                      "review_count_difference_90",
+                      "window_contributions"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 4,
+                  "minItems": 4,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cells"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "replica_difference"
+            },
+            "question": {
+              "const": 6
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "shares": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      },
+                      "share_365": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "share_90": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "comparison",
+                      "replica",
+                      "share_90",
+                      "share_365"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 4,
+                  "minItems": 4,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "shares"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "lineage_concentration"
+            },
+            "question": {
+              "const": 7
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "cells": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "challenge_main": {
+                        "type": "number"
+                      },
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      },
+                      "sign": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "comparison",
+                      "replica",
+                      "challenge_main",
+                      "sign"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 4,
+                  "minItems": 4,
+                  "type": "array"
+                },
+                "direction_consistent": {
+                  "type": "boolean"
+                },
+                "measured_fields": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 5,
+                  "minItems": 5,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "measured_fields",
+                "cells",
+                "direction_consistent"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "actual_vs_natural_due"
+            },
+            "question": {
+              "const": 8
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_cell_total": {
+                  "type": "number"
+                },
+                "formula": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "signed_total": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "formula",
+                "signed_total",
+                "absolute_cell_total"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "memory_gain_counterfactual"
+            },
+            "question": {
+              "const": 9
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "cells": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "comparison",
+                      "replica"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 3,
+                  "minItems": 3,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cells"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "endpoint_cancellation"
+            },
+            "question": {
+              "const": 10
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "core_context": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "no-fsrs-neutral": {
+                      "type": "number"
+                    },
+                    "stable-default": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "no-fsrs-neutral",
+                    "stable-default"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "core_context"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "interval_neutral_control"
+            },
+            "question": {
+              "const": 11
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "control_suppression_events": {
+                  "type": "integer"
+                },
+                "interaction_absolute_cell_total": {
+                  "type": "number"
+                },
+                "interaction_signed_total": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "interaction_signed_total",
+                "interaction_absolute_cell_total",
+                "control_suppression_events"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "cap_suppression"
+            },
+            "question": {
+              "const": 12
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "cells": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "advantage_365": {
+                        "type": "number"
+                      },
+                      "advantage_90": {
+                        "type": "number"
+                      },
+                      "baseline_delta_365": {
+                        "type": "number"
+                      },
+                      "baseline_delta_90": {
+                        "type": "number"
+                      },
+                      "classification": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "comparison": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "component_contributions": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "challenge_main": {
+                            "type": "number"
+                          },
+                          "completion_credit": {
+                            "type": "number"
+                          },
+                          "interaction": {
+                            "type": "number"
+                          },
+                          "memory_main": {
+                            "type": "number"
+                          },
+                          "neutral_context": {
+                            "type": "number"
+                          },
+                          "supplemental": {
+                            "type": "number"
+                          },
+                          "support": {
+                            "type": "number"
+                          },
+                          "volume_credit": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "challenge_main",
+                          "completion_credit",
+                          "interaction",
+                          "memory_main",
+                          "neutral_context",
+                          "supplemental",
+                          "support",
+                          "volume_credit"
+                        ],
+                        "type": "object"
+                      },
+                      "delta_365_minus_90": {
+                        "type": "number"
+                      },
+                      "lineage_positive_top_20_share_365": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "lineage_positive_top_20_share_90": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "replica": {
+                        "type": "integer"
+                      },
+                      "residual": {
+                        "type": "number"
+                      },
+                      "review_count_difference_365": {
+                        "type": "integer"
+                      },
+                      "review_count_difference_90": {
+                        "type": "integer"
+                      },
+                      "window_contributions": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "backlog_return_window": {
+                            "type": "number"
+                          },
+                          "between_transitions": {
+                            "type": "number"
+                          },
+                          "day_30_transition": {
+                            "type": "number"
+                          },
+                          "day_60_transition": {
+                            "type": "number"
+                          },
+                          "post_transition": {
+                            "type": "number"
+                          },
+                          "pre_transition": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "backlog_return_window",
+                          "between_transitions",
+                          "day_30_transition",
+                          "day_60_transition",
+                          "post_transition",
+                          "pre_transition"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "advantage_365",
+                      "advantage_90",
+                      "baseline_delta_365",
+                      "baseline_delta_90",
+                      "classification",
+                      "comparison",
+                      "component_contributions",
+                      "delta_365_minus_90",
+                      "lineage_positive_top_20_share_365",
+                      "lineage_positive_top_20_share_90",
+                      "replica",
+                      "residual",
+                      "review_count_difference_365",
+                      "review_count_difference_90",
+                      "window_contributions"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cells"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "intentional_backlog"
+            },
+            "question": {
+              "const": 13
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "boundary": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "classification": {
+              "const": "EXPLORATORY_NON_DECISION"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "candidate_tested": {
+                  "type": "boolean"
+                },
+                "classification": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "confidence": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reasons": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 5,
+                  "minItems": 5,
+                  "type": "array"
+                },
+                "unique_causal_formula_established": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "classification",
+                "confidence",
+                "reasons",
+                "candidate_tested",
+                "unique_causal_formula_established"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "const": "mechanism_class"
+            },
+            "question": {
+              "const": 14
+            }
+          },
+          "required": [
+            "question",
+            "id",
+            "answer",
+            "boundary",
+            "evidence",
+            "classification"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "sha1": {
       "pattern": "^[0-9a-f]{40}$",
@@ -391,45 +2009,126 @@
         "summary": {
           "additionalProperties": false,
           "properties": {
+            "challenge_direction_consistent_across_retention_cells": {
+              "type": "boolean"
+            },
             "classification": {
-              "enum": [
-                "ROOT_CAUSE_LOCALIZED",
-                "ROOT_CAUSE_PARTIALLY_LOCALIZED",
-                "ROOT_CAUSE_UNRESOLVED"
-              ]
-            },
-            "confidence": {
-              "enum": [
-                "HIGH",
-                "MEDIUM",
-                "LOW"
-              ]
-            },
-            "dominant_component": {
+              "minLength": 1,
               "type": "string"
             },
-            "dominant_component_share_of_absolute_contributions": {
+            "component_absolute_cell_totals": {
+              "additionalProperties": false,
+              "properties": {
+                "challenge_main": {
+                  "type": "number"
+                },
+                "completion_credit": {
+                  "type": "number"
+                },
+                "interaction": {
+                  "type": "number"
+                },
+                "memory_main": {
+                  "type": "number"
+                },
+                "neutral_context": {
+                  "type": "number"
+                },
+                "supplemental": {
+                  "type": "number"
+                },
+                "support": {
+                  "type": "number"
+                },
+                "volume_credit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "challenge_main",
+                "completion_credit",
+                "interaction",
+                "memory_main",
+                "neutral_context",
+                "supplemental",
+                "support",
+                "volume_credit"
+              ],
+              "type": "object"
+            },
+            "component_share_formula": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "component_signed_totals": {
+              "additionalProperties": false,
+              "properties": {
+                "challenge_main": {
+                  "type": "number"
+                },
+                "completion_credit": {
+                  "type": "number"
+                },
+                "interaction": {
+                  "type": "number"
+                },
+                "memory_main": {
+                  "type": "number"
+                },
+                "neutral_context": {
+                  "type": "number"
+                },
+                "supplemental": {
+                  "type": "number"
+                },
+                "support": {
+                  "type": "number"
+                },
+                "volume_credit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "challenge_main",
+                "completion_credit",
+                "interaction",
+                "memory_main",
+                "neutral_context",
+                "supplemental",
+                "support",
+                "volume_credit"
+              ],
+              "type": "object"
+            },
+            "confidence": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "dominant_component": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "dominant_component_share_of_cell_level_absolute_contributions": {
               "maximum": 1,
               "minimum": 0,
               "type": "number"
             },
-            "dominant_component_value": {
+            "dominant_component_signed_total": {
               "type": "number"
             },
             "dominant_window": {
+              "minLength": 1,
               "type": "string"
             },
-            "dominant_window_share_of_absolute_contributions": {
+            "dominant_window_share_of_cell_level_absolute_contributions": {
               "maximum": 1,
               "minimum": 0,
               "type": "number"
             },
-            "dominant_window_value": {
+            "dominant_window_signed_total": {
               "type": "number"
             },
             "max_abs_residual": {
-              "maximum": 1e-09,
-              "minimum": 0,
               "type": "number"
             },
             "rationale": {
@@ -451,18 +2150,85 @@
                 "retention-low-cycle"
               ],
               "type": "object"
+            },
+            "window_absolute_cell_totals": {
+              "additionalProperties": false,
+              "properties": {
+                "between_transitions": {
+                  "type": "number"
+                },
+                "day_30_transition": {
+                  "type": "number"
+                },
+                "day_60_transition": {
+                  "type": "number"
+                },
+                "post_transition": {
+                  "type": "number"
+                },
+                "pre_transition": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "between_transitions",
+                "day_30_transition",
+                "day_60_transition",
+                "post_transition",
+                "pre_transition"
+              ],
+              "type": "object"
+            },
+            "window_share_formula": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "window_signed_totals": {
+              "additionalProperties": false,
+              "properties": {
+                "between_transitions": {
+                  "type": "number"
+                },
+                "day_30_transition": {
+                  "type": "number"
+                },
+                "day_60_transition": {
+                  "type": "number"
+                },
+                "post_transition": {
+                  "type": "number"
+                },
+                "pre_transition": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "between_transitions",
+                "day_30_transition",
+                "day_60_transition",
+                "post_transition",
+                "pre_transition"
+              ],
+              "type": "object"
             }
           },
           "required": [
             "classification",
             "confidence",
             "dominant_component",
-            "dominant_component_value",
-            "dominant_component_share_of_absolute_contributions",
+            "dominant_component_signed_total",
+            "dominant_component_share_of_cell_level_absolute_contributions",
+            "component_share_formula",
+            "component_signed_totals",
+            "component_absolute_cell_totals",
             "dominant_window",
-            "dominant_window_value",
-            "dominant_window_share_of_absolute_contributions",
+            "dominant_window_signed_total",
+            "dominant_window_share_of_cell_level_absolute_contributions",
+            "window_share_formula",
+            "window_signed_totals",
+            "window_absolute_cell_totals",
             "retention_groups_replica_direction_consistent",
+            "challenge_direction_consistent_across_retention_cells",
             "max_abs_residual",
             "rationale"
           ],
@@ -533,6 +2299,185 @@
         "MEDIUM",
         "LOW"
       ]
+    },
+    "correction": {
+      "additionalProperties": false,
+      "properties": {
+        "actions_access_failure": {
+          "additionalProperties": false,
+          "properties": {
+            "download_attempted": {
+              "type": "boolean"
+            },
+            "http_status": {
+              "type": "integer"
+            },
+            "metadata_attempted": {
+              "type": "boolean"
+            },
+            "token_context": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "http_status",
+            "metadata_attempted",
+            "download_attempted",
+            "token_context"
+          ],
+          "type": "object"
+        },
+        "audit": {
+          "additionalProperties": false,
+          "properties": {
+            "bytes": {
+              "type": "integer"
+            },
+            "files": {
+              "type": "integer"
+            },
+            "local_audit_zip_sha256": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "manifest_sha256": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "rerun_artifact_sha256": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "files",
+            "bytes",
+            "manifest_sha256",
+            "local_audit_zip_sha256",
+            "rerun_artifact_sha256"
+          ],
+          "type": "object"
+        },
+        "checkpoint": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "method": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "original_artifact": {
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "execution_job_id": {
+              "type": "integer"
+            },
+            "id": {
+              "type": "integer"
+            },
+            "independently_verified": {
+              "type": "boolean"
+            },
+            "manifest_digest": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "preserved": {
+              "type": "boolean"
+            },
+            "workflow_run_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "workflow_run_id",
+            "execution_job_id",
+            "digest",
+            "manifest_digest",
+            "independently_verified",
+            "preserved"
+          ],
+          "type": "object"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "rerun": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_digest": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "artifact_id": {
+              "type": "integer"
+            },
+            "artifact_name": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "execution_job_id": {
+              "type": "integer"
+            },
+            "master_seed": {
+              "type": "integer"
+            },
+            "platform": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "python": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "rust": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "secondary_seed": {
+              "type": "integer"
+            },
+            "source_commit": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "workflow_run_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "workflow_run_id",
+            "execution_job_id",
+            "artifact_id",
+            "artifact_name",
+            "artifact_digest",
+            "source_commit",
+            "platform",
+            "python",
+            "rust",
+            "master_seed",
+            "secondary_seed"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "checkpoint",
+        "method",
+        "reason",
+        "original_artifact",
+        "actions_access_failure",
+        "rerun",
+        "audit"
+      ],
+      "type": "object"
     },
     "decision_boundary": {
       "additionalProperties": false,
@@ -931,7 +2876,8 @@
     "publication",
     "cleanup",
     "decision_boundary",
-    "limitations"
+    "limitations",
+    "correction"
   ],
   "type": "object"
 }

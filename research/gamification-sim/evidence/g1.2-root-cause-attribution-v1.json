@@ -275,19 +275,56 @@
       }
     ],
     "summary": {
+      "challenge_direction_consistent_across_retention_cells": false,
       "classification": "ROOT_CAUSE_PARTIALLY_LOCALIZED",
+      "component_absolute_cell_totals": {
+        "challenge_main": 0.010497195981742511,
+        "completion_credit": 0.013152775591959131,
+        "interaction": 8.361795399204714e-19,
+        "memory_main": 0.022260745074185677,
+        "neutral_context": 0.0,
+        "supplemental": 0.0,
+        "support": 0.002990021873690739,
+        "volume_credit": 0.0
+      },
+      "component_share_formula": "sum(abs(component contribution per retention cell)) / sum(abs(all component contributions per retention cell))",
+      "component_signed_totals": {
+        "challenge_main": 0.005763315546949993,
+        "completion_credit": 0.013152775591959131,
+        "interaction": 6.822056405358306e-19,
+        "memory_main": 0.022260745074185677,
+        "neutral_context": 0.0,
+        "supplemental": 0.0,
+        "support": 0.0018185204302389713,
+        "volume_credit": 0.0
+      },
       "confidence": "MEDIUM",
       "dominant_component": "memory_main",
-      "dominant_component_share_of_absolute_contributions": 0.5177476549118729,
-      "dominant_component_value": 0.022260745074185677,
+      "dominant_component_share_of_cell_level_absolute_contributions": 0.4552230855238075,
+      "dominant_component_signed_total": 0.022260745074185677,
       "dominant_window": "post_transition",
-      "dominant_window_share_of_absolute_contributions": 0.9453264013290912,
-      "dominant_window_value": 0.04319348356221992,
+      "dominant_window_share_of_cell_level_absolute_contributions": 0.8565121323195105,
+      "dominant_window_signed_total": 0.04319348356221992,
       "max_abs_residual": 1.4363510381087963e-15,
-      "rationale": "The fixed-trajectory decomposition fully reconciles the observed cross-horizon growth and identifies the dominant component and timing window without selecting a coefficient or candidate.",
+      "rationale": "The fixed-trajectory decomposition reconciles the observed growth and identifies a dominant component and timing window, but replica magnitudes, Challenge signs and lineage concentration vary; the trace is not a unique causal formula and no coefficient or candidate was tested.",
       "retention_groups_replica_direction_consistent": {
         "retention-high-cycle": true,
         "retention-low-cycle": true
+      },
+      "window_absolute_cell_totals": {
+        "between_transitions": 0.005455629787493284,
+        "day_30_transition": 0.0,
+        "day_60_transition": 0.0017803924708852167,
+        "post_transition": 0.04319348356221992,
+        "pre_transition": 0.0
+      },
+      "window_share_formula": "sum(abs(window contribution per retention cell)) / sum(abs(all window contributions per retention cell))",
+      "window_signed_totals": {
+        "between_transitions": 0.0011499988655692167,
+        "day_30_transition": 0.0,
+        "day_60_transition": -0.0013481257844554497,
+        "post_transition": 0.04319348356221992,
+        "pre_transition": 0.0
       }
     }
   },
@@ -311,6 +348,46 @@
     "status": "COMPLETE_EXCEPT_CANONICAL_EVIDENCE_RUN"
   },
   "confidence": "MEDIUM",
+  "correction": {
+    "actions_access_failure": {
+      "download_attempted": true,
+      "http_status": 404,
+      "metadata_attempted": true,
+      "token_context": "GITHUB_TOKEN"
+    },
+    "audit": {
+      "bytes": 28248999,
+      "files": 43,
+      "local_audit_zip_sha256": "8bc7e7d1a97c315bef2093e57a1d94296ad067870d3d6e926939c5db22c55399",
+      "manifest_sha256": "60011077cc4301ef479ffe8f268926d02deece592159c1bf2e1fc398f91fe8b4",
+      "rerun_artifact_sha256": "965700e8f78ff59581d4fa849c551abfe229bc37f6fcc9f72ec892a5143ce550"
+    },
+    "checkpoint": "G1.2a",
+    "method": "WINDOWS_RERUN_DUE_TO_ACTIONS_ARTIFACT_HTTP_404",
+    "original_artifact": {
+      "digest": "sha256:f18f22d5adc9c5e2cca9314a874ca7de83c1182aa1580dcecda766d64b9a42e9",
+      "execution_job_id": 88241257488,
+      "id": 8447755442,
+      "independently_verified": true,
+      "manifest_digest": "60011077cc4301ef479ffe8f268926d02deece592159c1bf2e1fc398f91fe8b4",
+      "preserved": true,
+      "workflow_run_id": 29705334586
+    },
+    "reason": "The preserved canonical G1.2 artifact was independently verified through the GitHub connector, but GITHUB_TOKEN returned HTTP 404 for its metadata and download inside Actions. A fresh exact Windows rerun was therefore used, as permitted by G1.2a.",
+    "rerun": {
+      "artifact_digest": "sha256:965700e8f78ff59581d4fa849c551abfe229bc37f6fcc9f72ec892a5143ce550",
+      "artifact_id": 8464902065,
+      "artifact_name": "g1-2a-windows-rerun-8944e82c0af025e36b04bd38362aae756e52a841",
+      "execution_job_id": 88383968478,
+      "master_seed": 20260716,
+      "platform": "Windows AMD64",
+      "python": "CPython 3.11.9 x64",
+      "rust": "1.97.1-x86_64-pc-windows-msvc",
+      "secondary_seed": 20260717,
+      "source_commit": "c83ab1ad015d6a013b0d8d1c2da659df507a2771",
+      "workflow_run_id": 29751810161
+    }
+  },
   "decision_boundary": {
     "candidate_selected": false,
     "g1_3_started": false,
@@ -371,7 +448,7 @@
   },
   "publication": {
     "canonical_branch": "gamification",
-    "canonical_input_commit": "f8374c58578d3a492dffa3e5b758e78b4049cdbf",
+    "canonical_input_commit": "c83ab1ad015d6a013b0d8d1c2da659df507a2771",
     "changed_paths": [
       "research/gamification-sim/src/gamification_sim/diagnostic_attribution.py",
       "research/gamification-sim/src/gamification_sim/longitudinal_runner.py",
@@ -478,7 +555,8 @@
   },
   "root_cause_answers": [
     {
-      "answer": "Review-count differences produce baseline deltas, but the frozen unexplained-advantage formula subtracts baseline_delta exactly; their direct share of unexplained advantage is therefore zero.",
+      "answer": "Review-count differences explain baseline deltas, but their direct share of frozen unexplained advantage is zero because baseline_delta is subtracted exactly.",
+      "boundary": "This is an accounting conclusion inside the synthetic metric, not a claim about user behavior.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "cells": [
@@ -536,10 +614,22 @@
       "question": 1
     },
     {
-      "answer": "All unexplained advantage is reconciled by contextual and day-level credits after baseline removal.",
+      "answer": "After baseline removal, contextual and day-level credits reconcile all six cross-horizon deltas within tolerance.",
+      "boundary": "Reconciliation does not establish a unique causal intervention.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "aggregate_components": {
+        "absolute_cell_component_totals": {
+          "challenge_main": 0.010497195981742511,
+          "completion_credit": 0.013152775591959131,
+          "interaction": 8.361795399204714e-19,
+          "memory_main": 0.022260745074185677,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.002990021873690739,
+          "volume_credit": 0.0
+        },
+        "max_abs_residual": 1.4363510381087963e-15,
+        "signed_component_totals": {
           "challenge_main": 0.005763315546949993,
           "completion_credit": 0.013152775591959131,
           "interaction": 6.822056405358306e-19,
@@ -554,10 +644,33 @@
       "question": 2
     },
     {
-      "answer": "The dominant cross-horizon component is memory_main.",
+      "answer": "memory_main is the largest component under cell-level absolute aggregation.",
+      "boundary": "The share is descriptive and does not select a coefficient.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "aggregate_components": {
+        "absolute_cell_totals": {
+          "challenge_main": 0.010497195981742511,
+          "completion_credit": 0.013152775591959131,
+          "interaction": 8.361795399204714e-19,
+          "memory_main": 0.022260745074185677,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.002990021873690739,
+          "volume_credit": 0.0
+        },
+        "dominant": "memory_main",
+        "formula": "sum(abs(component contribution per retention cell)) / sum(abs(all component contributions per retention cell))",
+        "shares": {
+          "challenge_main": 0.21466334249963306,
+          "completion_credit": 0.2689688538375613,
+          "interaction": 1.709952784356205e-17,
+          "memory_main": 0.4552230855238075,
+          "neutral_context": 0.0,
+          "supplemental": 0.0,
+          "support": 0.06114471813899814,
+          "volume_credit": 0.0
+        },
+        "signed_totals": {
           "challenge_main": 0.005763315546949993,
           "completion_credit": 0.013152775591959131,
           "interaction": 6.822056405358306e-19,
@@ -572,10 +685,34 @@
       "question": 3
     },
     {
-      "answer": "The dominant timing window is post_transition.",
+      "answer": "post_transition is the largest timing window under cell-level absolute aggregation.",
+      "boundary": "The result does not identify a unique formula change.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "windows": {
+        "absolute_cell_totals": {
+          "between_transitions": 0.005455629787493284,
+          "day_30_transition": 0.0,
+          "day_60_transition": 0.0017803924708852167,
+          "post_transition": 0.04319348356221992,
+          "pre_transition": 0.0
+        },
+        "dominant": "post_transition",
+        "formula": "sum(abs(window contribution per retention cell)) / sum(abs(all window contributions per retention cell))",
+        "shares": {
+          "between_transitions": 0.10818328870605111,
+          "day_30_transition": 0.0,
+          "day_60_transition": 0.03530457897443837,
+          "post_transition": 0.8565121323195105,
+          "pre_transition": 0.0
+        },
+        "signed_totals": {
+          "between_transitions": 0.0011499988655692167,
+          "day_30_transition": 0.0,
+          "day_60_transition": -0.0013481257844554497,
+          "post_transition": 0.04319348356221992,
+          "pre_transition": 0.0
+        },
+        "windows_by_cell": {
           "retention-high-cycle:0": {
             "between_transitions": 0.0009555294173270844,
             "day_30_transition": 0.0,
@@ -610,9 +747,11 @@
       "question": 4
     },
     {
-      "answer": "High- and low-retention cycling are compared through the same decomposition; consistency is reported per group rather than assumed.",
+      "answer": "Both retention groups grow in both replicas, but component attribution is not direction-consistent enough to claim one fully shared mechanism.",
+      "boundary": "Challenge signs and magnitudes differ.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
+        "challenge_direction_consistent": false,
         "replica_direction_consistent": {
           "retention-high-cycle": true,
           "retention-low-cycle": true
@@ -622,7 +761,8 @@
       "question": 5
     },
     {
-      "answer": "Replica-specific deltas remain visible and are not averaged away.",
+      "answer": "Replica-specific deltas differ materially and remain unaveraged.",
+      "boundary": "Two replicas expose heterogeneity, not a population distribution.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "cells": [
@@ -760,7 +900,8 @@
       "question": 6
     },
     {
-      "answer": "Positive contextual contribution concentration is measured as the top 20% lineage share.",
+      "answer": "Positive contribution concentration varies by synthetic lineage and replica.",
+      "boundary": "This does not identify real cards or users.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "shares": [
@@ -794,25 +935,63 @@
       "question": 7
     },
     {
-      "answer": "Challenge attribution explicitly separates actual and natural-due retrievability through adjusted challenge and delay credit.",
+      "answer": "Challenge attribution separates actual from natural-due retrievability, but Challenge contributions are not direction-consistent across all retention cells.",
+      "boundary": "Mixed signs prevent a shared dominant Challenge mechanism claim.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "dominant_component": "memory_main"
+        "cells": [
+          {
+            "challenge_main": 0.0032225348656895916,
+            "comparison": "retention-high-cycle",
+            "replica": 0,
+            "sign": "positive"
+          },
+          {
+            "challenge_main": 0.0019705706650461592,
+            "comparison": "retention-high-cycle",
+            "replica": 1,
+            "sign": "positive"
+          },
+          {
+            "challenge_main": -0.0023669402173962595,
+            "comparison": "retention-low-cycle",
+            "replica": 0,
+            "sign": "negative"
+          },
+          {
+            "challenge_main": 0.002937150233610502,
+            "comparison": "retention-low-cycle",
+            "replica": 1,
+            "sign": "positive"
+          }
+        ],
+        "direction_consistent": false,
+        "measured_fields": [
+          "retrievability_actual",
+          "retrievability_natural_due",
+          "extra_challenge",
+          "delay_credit",
+          "adjusted_challenge"
+        ]
       },
       "id": "actual_vs_natural_due",
       "question": 8
     },
     {
-      "answer": "MemoryGain is isolated with fixed-trajectory f(0,M)-f(0,0) main effects.",
+      "answer": "MemoryGain is isolated by f(0,M)-f(0,0) and is the largest cell-level absolute component.",
+      "boundary": "This is post-hoc reward decomposition on fixed trajectories.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "memory_main": 0.022260745074185677
+        "absolute_cell_total": 0.022260745074185677,
+        "formula": "f(0,M) - f(0,0)",
+        "signed_total": 0.022260745074185677
       },
       "id": "memory_gain_counterfactual",
       "question": 9
     },
     {
-      "answer": "Cells with negative 90-day advantage and positive 365-day advantage are explicitly identified.",
+      "answer": "Three cells move from negative 90-day to positive 365-day advantage.",
+      "boundary": "This is synthetic evidence, not a real-user forecast.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "cells": [
@@ -834,7 +1013,8 @@
       "question": 10
     },
     {
-      "answer": "A bounded development control traces stable-default and no-fsrs-neutral without changing canonical cells.",
+      "answer": "The bounded interval-neutral controls do not change canonical cells.",
+      "boundary": "They use a shorter exploratory horizon.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "core_context": {
@@ -846,16 +1026,20 @@
       "question": 11
     },
     {
-      "answer": "Cap/blend nonlinearity is isolated in interaction; baseline suppression remains zero.",
+      "answer": "Cap/blend interaction is negligible and control suppression remains zero.",
+      "boundary": "Future candidates still require their own checks.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
-        "interaction": 6.822056405358306e-19
+        "control_suppression_events": 0,
+        "interaction_absolute_cell_total": 8.361795399204714e-19,
+        "interaction_signed_total": 6.822056405358306e-19
       },
       "id": "cap_suppression",
       "question": 12
     },
     {
-      "answer": "Intentional backlog remains separately reported and is not generalized from the retention-cycle mechanism.",
+      "answer": "Intentional backlog remains a separate PASS control without two-replica systematic growth.",
+      "boundary": "The retention growth rule is not applied to this group.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
         "cells": [
@@ -931,11 +1115,21 @@
       "question": 13
     },
     {
-      "answer": "The mechanism class is localized only to the level supported by the deterministic decomposition; no coefficient or candidate is selected.",
+      "answer": "The mechanism remains partially localized: MemoryGain and post-transition accumulation dominate, but no unique correction is established.",
+      "boundary": "Replica magnitudes differ, Challenge signs are mixed, lineage concentration varies, decomposition is not a unique causal formula, and no candidate was tested.",
       "classification": "EXPLORATORY_NON_DECISION",
       "evidence": {
+        "candidate_tested": false,
         "classification": "ROOT_CAUSE_PARTIALLY_LOCALIZED",
-        "confidence": "MEDIUM"
+        "confidence": "MEDIUM",
+        "reasons": [
+          "replica magnitudes differ",
+          "Challenge does not have one common sign across every retention cell",
+          "lineage concentration differs",
+          "the trace is a deterministic decomposition rather than a unique causal formula",
+          "no coefficient or candidate has been tested"
+        ],
+        "unique_causal_formula_established": false
       },
       "id": "mechanism_class",
       "question": 14
@@ -952,10 +1146,10 @@
     "artifact_audit": "PASS",
     "exact_seven_path_diff": "PASS",
     "focused_command": "python -m pytest research/gamification-sim/tests/test_diagnostic_attribution.py research/gamification-sim/tests/test_episode_reward.py research/gamification-sim/tests/test_day_aggregation.py research/gamification-sim/tests/test_longitudinal_runner.py research/gamification-sim/tests/test_matched_analysis.py",
-    "focused_passed": 110,
+    "focused_passed": 117,
     "frozen_blob_audit": "PASS",
     "full_command": "python -m pytest research/gamification-sim/tests",
-    "full_passed": 839,
+    "full_passed": 846,
     "schema_validation": "PASS"
   },
   "version": "review-cycling-attribution-v1"

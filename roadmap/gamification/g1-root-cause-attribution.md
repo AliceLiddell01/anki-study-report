@@ -8,6 +8,8 @@
 
 `confidence — MEDIUM`
 
+`G1.2a corrective checkpoint — Complete`
+
 `G1.3 — Next / Ready`
 
 `production integration — PROHIBITED`
@@ -155,8 +157,8 @@ advantage is fully reconciled by contextual and day-level credits.
 
 ## Challenge, MemoryGain, interaction and day-level attribution
 
-- dominant component: `memory_main` (0.0222607450742, 51.77% of absolute contributions);
-- dominant timing window: `post_transition` (0.0431934835622, 94.53% of absolute contributions);
+- dominant component: `memory_main` (45.52% of cell-level absolute component contributions);
+- dominant timing window: `post_transition` (85.65% of cell-level absolute window contributions);
 - maximum reconciliation residual: `1.43635103811e-15`.
 
 | Comparison | R | Challenge | Memory | Interaction | Neutral | Support | Volume | Completion |
@@ -193,13 +195,13 @@ them to the canonical six cells.
 | 5 | `shared_mechanism` | High- and low-retention cycling are compared through the same decomposition; consistency is reported per group rather than assumed. |
 | 6 | `replica_difference` | Replica-specific deltas remain visible and are not averaged away. |
 | 7 | `lineage_concentration` | Positive contextual contribution concentration is measured as the top 20% lineage share. |
-| 8 | `actual_vs_natural_due` | Challenge attribution explicitly separates actual and natural-due retrievability through adjusted challenge and delay credit. |
+| 8 | `actual_vs_natural_due` | Challenge separates actual and natural-due retrievability, but its signs are mixed across retention cells, so it is not one direction-consistent shared mechanism. |
 | 9 | `memory_gain_counterfactual` | MemoryGain is isolated with fixed-trajectory f(0,M)-f(0,0) main effects. |
 | 10 | `endpoint_cancellation` | Cells with negative 90-day advantage and positive 365-day advantage are explicitly identified. |
 | 11 | `interval_neutral_control` | A bounded development control traces stable-default and no-fsrs-neutral without changing canonical cells. |
 | 12 | `cap_suppression` | Cap/blend nonlinearity is isolated in interaction; baseline suppression remains zero. |
 | 13 | `intentional_backlog` | Intentional backlog remains separately reported and is not generalized from the retention-cycle mechanism. |
-| 14 | `mechanism_class` | The mechanism class is localized only to the level supported by the deterministic decomposition; no coefficient or candidate is selected. |
+| 14 | `mechanism_class` | The result remains partial because replica magnitudes, Challenge signs and lineage concentration differ; the trace is not a unique causal formula and no candidate was tested. |
 
 ## Classification
 
@@ -211,8 +213,8 @@ This is an exploratory mechanism classification, not a new decision gate.
 
 ## Tests and checks
 
-- focused: `python -m pytest research/gamification-sim/tests/test_diagnostic_attribution.py research/gamification-sim/tests/test_episode_reward.py research/gamification-sim/tests/test_day_aggregation.py research/gamification-sim/tests/test_longitudinal_runner.py research/gamification-sim/tests/test_matched_analysis.py` — 110 passed;
-- full package: `python -m pytest research/gamification-sim/tests` — 839 passed;
+- focused: `python -m pytest research/gamification-sim/tests/test_diagnostic_attribution.py research/gamification-sim/tests/test_episode_reward.py research/gamification-sim/tests/test_day_aggregation.py research/gamification-sim/tests/test_longitudinal_runner.py research/gamification-sim/tests/test_matched_analysis.py` — 117 passed;
+- full package: `python -m pytest research/gamification-sim/tests` — 846 passed;
 - same-seed 90/365 replay: byte-identical normalized trees and trace digests;
 - secondary seed: different trajectory with schema/reconciliation PASS;
 - schema self-check and evidence validation: PASS;
@@ -266,3 +268,7 @@ class. It must prospectively define bounded hypotheses before viewing candidate
 decision evidence. G1.3 was not started here.
 
 Candidate selected: **NO**. Production approval: **NO**.
+
+## G1.2a corrective checkpoint
+
+The follow-up audit replaced the tautological scheduler-identity test, tightened the attribution schema, corrected contribution shares to cell-level absolute aggregation, and made every root-cause answer state its conclusion and boundary. See [`g1-root-cause-attribution-correction.md`](g1-root-cause-attribution-correction.md).

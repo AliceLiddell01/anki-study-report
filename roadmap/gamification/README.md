@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0` is Complete; `G1` is In Progress; `G1.1` and its corrective checkpoint are Complete; `G1.2` is Complete; `G1.3` is Next / Ready; production integration is not approved
+**Current status:** `G0` is Complete; `G1` is In Progress; `G1.1` and its corrective checkpoint are Complete; `G1.2` and its G1.2a correction are Complete; `G1.3` is Next / Ready; production integration is not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
 
@@ -175,12 +175,14 @@ Already met: the historical branch is materially diverged from `master` and must
 The canonical master-based `gamification` branch contains a self-consistent research package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change; no Pull Request to `master` is created; production integration remains prohibited without a separate explicit owner decision.
 
 ## G1 — Close Review XP cross-horizon cycling gap
-**Status:** In Progress — G1.1 and corrective checkpoint Complete; G1.2 Complete; G1.3 Next / Ready
+**Status:** In Progress — G1.1 and corrective checkpoint Complete; G1.2 and G1.2a correction Complete; G1.3 Next / Ready
 
 ### Working decomposition
 
 - `G1.1 — Freeze problem and diagnostic contract`: Complete — [`g1-problem-gate-freeze.md`](g1-problem-gate-freeze.md); corrective checkpoint: Complete — [`g1-contract-correction.md`](g1-contract-correction.md)
 - `G1.2 — Root-cause attribution`: Complete — [`g1-root-cause-attribution.md`](g1-root-cause-attribution.md)
+- `G1.2a — Attribution contract and evidence correction`: Complete — [`g1-root-cause-attribution-correction.md`](g1-root-cause-attribution-correction.md)
+- `G1.2a — Attribution contract and evidence correction`: Complete — [`g1-root-cause-attribution-correction.md`](g1-root-cause-attribution-correction.md)
 - `G1.3 — Candidate hypothesis design`: Next / Ready
 - `G1.4 — Bounded screening`: Planned after G1.3
 - `G1.5 — Matched 90/365 evidence`: Planned after G1.4
@@ -194,6 +196,10 @@ It does not change the reward formula, run diagnostics or select a candidate.
 G1.2 adds deterministic synthetic attribution, reproduces the frozen six-cell
 baseline, reconciles runtime totals and localizes the mechanism class as
 `ROOT_CAUSE_PARTIALLY_LOCALIZED` with `MEDIUM` confidence. It selects no coefficient or candidate and leaves production prohibited.
+
+G1.2a corrects the attribution test and evidence contract: scheduler identity is
+checked independently, normative evidence is strict, and shares use cell-level
+absolute aggregation. Frozen cells, gates and decisions remain unchanged.
 
 ### Goal
 
