@@ -65,6 +65,10 @@ jobs:
               'programmingBasic.getByText("Answer is required", { exact: true }).isVisible()',
               'programmingBasic.locator("strong").filter({ hasText: "Answer is required" }).first().isVisible()',
           )
+          script = script.replace(
+              'programmingBasic.getByText(/audio/i).count()',
+              'programmingBasic.locator(".inspection-requirement-row").filter({ hasText: /audio/i }).count()',
+          )
           Path('web-dashboard/r6-visual.mjs').write_text(script, encoding='utf-8')
           PY
       - name: Start deterministic Vite servers
