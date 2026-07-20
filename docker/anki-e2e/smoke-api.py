@@ -223,14 +223,14 @@ def assert_inspection_profiles_contract(
         "/api/triage/query",
         token,
         {
-            "schemaVersion": 2,
+            "schemaVersion": 4,
             "dataset": "search_workset",
             "cardIds": card_ids,
             "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
             "limit": min(200, max(1, len(card_ids))),
         },
     )
-    assert_true(triage.get("schemaVersion") == 2, "canonical triage v2 is active")
+    assert_true(triage.get("schemaVersion") == 4, "canonical triage v4 is active")
     triage_items = triage.get("items") if isinstance(triage.get("items"), list) else []
     japanese_id = japanese["structure"]["noteTypeId"]
     programming_id = programming["structure"]["noteTypeId"]
@@ -315,6 +315,7 @@ def search_note_type_cards(base_url: str, token: str, note_type_id: str, request
         "/api/search/query",
         token,
         {
+            "schemaVersion": 2,
             "mode": "cards",
             "query": "",
             "filters": [{"type": "note_type", "noteTypeId": note_type_id}],
