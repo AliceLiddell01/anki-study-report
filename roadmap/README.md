@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-Snapshot: **2026-07-20**.
+Snapshot: **2026-07-21**.
 
 The roadmap has one mandatory core path and several independent or conditional
 tracks. A larger stage number does not create a global queue across unrelated
@@ -32,16 +32,12 @@ Current core status:
 ```text
 C1.5 technical implementation evidence — retained historically
 C1.5 owner product acceptance — withdrawn
-C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Complete
-C1.5R.2 Declarative compact formatter runtime — Complete
-C1.5R.3 Front/back preview semantics — Complete
-C1.5R.4 Independent triage candidate sources — Complete
-C1.5R.5 Cards attention inbox redesign — Complete
-C1.5R.6 Guided Inspection Profiles UX — Complete
-C1.5R.7 Integrated acceptance and owner review package — Next, not started
-C1.6 — Blocked, not started
+C1.5R.0–R.6 — Complete
+C1.5R.7 Integrated acceptance and owner decision — In progress
+C1.6 Canonical single-card resolution loop — Planned after accepted R7
+C1.6B Bounded bulk actions — Conditional
 Core C1 — In progress
+Owner product acceptance — Pending
 ```
 
 See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md),
@@ -62,7 +58,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.6` Complete; `C1.5R.7` Next; `C1.6` blocked | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -76,8 +72,9 @@ Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
                            │
-                           ├─ C1.5R.0–R.6 are Complete; C1.5R.7 is Next, not started
-                           ├─ all C1.5R stages must finish before C1.6
+                           ├─ C1.5R.0–R.6 are Complete; C1.5R.7 is In progress
+                           ├─ accepted R7 unlocks C1.6
+                           ├─ C1.6B remains Conditional and is not part of R7 or C1.6
                            ├─ owner product acceptance is a separate C1.5R gate
                            └─ does not wait for G/O/I/E
 
@@ -159,16 +156,17 @@ reports/    historical handoff, audits, measurements and closeout evidence
 8. Verification follows `docs/test-matrix.md` and
    `docs/verification-run-policy.md`; docs-only work does not justify Docker E2E.
 
-## C1.5R.6 complete
+## C1.5R.7 integrated acceptance
 
-Core C1 remains in progress. C1.5R.6 is complete after PR #50 merge, exact merged-core verification and task-branch cleanup. C1.5R.7 is next and not started; C1.6 remains blocked.
+Core C1 remains in progress. C1.5R.0–R.6 are complete. C1.5R.7 is now in progress and owns integrated technical acceptance, exact package provenance, real-Anki evidence and the separate owner decision. It does not implement C1.6 or C1.6B.
 
-## Current Core position after C1.5R.6
+## Current Core position
 
 ```text
 C1.5R.0–R.6 — Complete
-C1.5R.7 — Next, not started
-C1.6 — Blocked
+C1.5R.7 — In progress
+C1.6 — Planned after accepted R7
+C1.6B — Conditional
 Core C1 — In progress
 Owner product acceptance — Pending
 ```

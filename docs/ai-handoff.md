@@ -1,6 +1,6 @@
 # AI handoff — Anki Study Report
 
-Snapshot: **2026-07-20**
+Snapshot: **2026-07-21**
 
 ## Start here
 
@@ -45,7 +45,10 @@ C1.5R.3: Complete
 C1.5R.4: Complete
 C1.5R.5: Complete
 C1.5R.6: Complete
-C1.6: Blocked, not started
+C1.5R.7: In progress — integrated technical acceptance and owner decision
+C1.6: Planned after accepted R7; not started
+C1.6B: Conditional; not started
+Owner product acceptance: Pending
 ```
 
 Current reports:
@@ -92,15 +95,11 @@ C1.5R.2 Declarative compact formatter runtime — Complete
 C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
 C1.5R.5 Cards attention inbox redesign — Complete
-C1.5R.6 Guided Inspection Profiles UX — Next, not started
-C1.5R.7 Integrated acceptance and owner review package — Not started
+C1.5R.6 Guided Inspection Profiles UX — Complete
+C1.5R.7 Integrated acceptance and owner decision — In progress
 ```
 
-C1.5R.1–R.5 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47`
-passed focused frontend/backend, typecheck, production build, package validation
-and canonical non-Docker verification in run `29740393142`. Isolated visual
-run `29738841012` passed the baseline/R5 matrix. C1.5R.6 is Next, not
-started. Do not begin C1.6 before R6/R7 and separate owner product acceptance.
+C1.5R.0–R.6 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed focused frontend/backend, typecheck, production build, package validation and canonical non-Docker verification in run `29740393142`; isolated visual run `29738841012` passed the baseline/R5 matrix. R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958` and passed its merged-core gates. R7 is the only active Core increment. Do not begin C1.6 before accepted R7 owner review; C1.6B remains Conditional.
 
 ## C1.5R.1 implementation
 
@@ -315,9 +314,7 @@ Programming: unchanged
 
 ## Exact next action
 
-C1.5R.6 — Guided Inspection Profiles UX is Next, not started. Preserve the R5
-inbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity
-and R3 preview semantics. Do not start R7 or C1.6 in parallel.
+C1.5R.7 — integrated acceptance and owner decision. Preserve the R5 inbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity, R3 preview semantics and R6 guided Inspection Profiles. Freeze one exact package/evidence chain and stop for owner review. Do not start C1.6 or C1.6B in parallel.
 
 ## Verification boundary
 
@@ -371,5 +368,4 @@ bounded validation, lifecycle-aware actions, collapsed strict Advanced and
 separated tools. No backend schema/runtime change was required. Final implementation
 `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged by PR #50 into `core` as
 `d2ee9703a2b841c0438fc07a43db3b701835a958`; exact merged-core non-Docker and
-Chromium gates passed, and the implementation branch was deleted. C1.5R.7 is next
-and not started; C1.6 remains blocked. Owner product acceptance is still pending.
+Chromium gates passed, and the implementation branch was deleted. C1.5R.7 is in progress; C1.6 is planned only after accepted R7, C1.6B remains Conditional, and owner product acceptance is pending.

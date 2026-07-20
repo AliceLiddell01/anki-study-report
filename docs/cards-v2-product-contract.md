@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-**Status:** Corrective C1.5R remediation in progress; R1–R5 technically complete; owner product acceptance pending
+**Status:** Corrective C1.5R remediation in progress; R1–R6 technically complete; R7 integrated acceptance active; owner product acceptance pending
 **Branch:** `core`
-**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox; Guided Inspection Profiles and integrated owner acceptance remain
+**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox and Guided Inspection Profiles is complete; exact integrated acceptance and owner decision remain
 
 Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
 and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
@@ -23,7 +23,7 @@ The outcome is not “finish an inbox”. The user understands an issue, acts sa
 
 **Primary job:** understand a detected card problem and choose the next safe step without turning the dashboard into another editor.
 
-Entry: direct navigation, card notification, explicit Search selection, return from Anki Browser, or bounded batch triage.
+Entry: direct navigation, card notification, explicit Search selection, or return from Anki Browser. Bounded bulk entry is not part of the mandatory loop and belongs only to conditional C1.6B.
 
 Happy path:
 
@@ -142,7 +142,7 @@ continuation is manual, cursor-coherent and client-bounded. See
 
 Required in C1.5: compact front/primary text, deck, categorical priority,
 primary reason, additional-reason count, short evidence and relevant card state.
-The checkbox is intentionally absent until C1.6 owns bounded bulk actions.
+The checkbox is intentionally absent; bounded bulk actions belong only to conditional C1.6B.
 
 Excluded from scan path: full answer preview, template catalog, opaque score, every metric, repeated query text and several always-visible actions. Row activation opens Inspector; checkbox changes bulk selection only. A quick row action is allowed only after usability/accessibility evidence.
 
@@ -173,7 +173,7 @@ Reuse the existing session handoff; IDs do not enter URL/persistent storage. Cha
 ## Resolution semantics
 
 ```text
-Active → Action in progress → Awaiting recheck → Still active | Resolved after recheck
+issue → existing Safe Action or Open in Anki → action result → Awaiting recheck → canonical bounded reevaluation → Still active | Resolved | Recheck failed | Evidence stale
 ```
 
 Mutation success does not prove resolution. Native edits make evidence potentially stale. A row leaves the automatic queue only when canonical reevaluation no longer reports the reason. Brief session feedback is allowed; durable notification history remains. `Done`, `Resolve`, `Hide forever`, `Ignore permanently` are prohibited.
@@ -196,8 +196,7 @@ Mutation success does not prove resolution. Native edits make evidence potential
 
 ## Keyboard and accessibility contract
 
-Focus and the active Inspector item are independent in C1.5. Future C1.6 bulk
-selection must become a third independent state rather than reuse either one.
+Focus and the active Inspector item are independent in C1.5. Any future C1.6B bulk selection must become a third independent state rather than reuse either one.
 
 Tab order covers filters, queue and Inspector. Row activation does not move
 focus. Escape closes expanded preview and returns focus. Refresh keeps the
@@ -325,3 +324,14 @@ See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses 
 ## C1.5R.4 independent candidate sources
 
 See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
+
+## Current delivery sequence
+
+```text
+C1.5R.0–R.6 — Complete
+C1.5R.7 — In progress: integrated technical acceptance and owner decision
+C1.6 — Planned after accepted R7: canonical single-card resolution loop
+C1.6B — Conditional: bounded bulk actions
+```
+
+R7 does not change the product contract or implement actions. It verifies the integrated R1–R6 behavior, exact package provenance, real-Anki evidence and the separate owner gate.
