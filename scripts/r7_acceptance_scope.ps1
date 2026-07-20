@@ -55,7 +55,13 @@ $env:ANKI_E2E_SCREENSHOT_WORKERS = "3"
 $env:ANKI_E2E_RESOURCE_TELEMETRY = "1"
 $env:ANKI_E2E_VERIFY_RESTART = "1"
 $env:ANKI_E2E_NO_BUILD = "1"
+$env:ANKI_E2E_IMAGE_SOURCE = "ghcr"
+$env:ANKI_E2E_PACKAGE_SOURCE = "fast-ci-artifact"
+$env:ANKI_E2E_FAST_CI_RUN_ID = [string]$SourceRunId
+$env:ANKI_E2E_FAST_CI_TESTED_SHA = $OwnerReviewSha
+$env:ANKI_E2E_FAST_CI_PACKAGE_SHA256 = $ExpectedPackageSha256
 $env:ANKI_E2E_CACHE_BACKEND = "ghcr-digest"
+$env:ANKI_E2E_CACHE_STATE = "ghcr-digest"
 $env:ANKI_E2E_PREBUILT_ADDON_PATH = "/e2e/local-input/anki_study_report.ankiaddon"
 $env:ANKI_VERSION = "26.05"
 
