@@ -1,0 +1,89 @@
+name: R6 visual retry
+
+on:
+  push:
+    branches:
+      - c1-5r-6-guided-inspection-profiles
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r6-visual-retry-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: core
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+      - name: Install dashboard and Chromium
+        working-directory: web-dashboard
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Prepare baseline and extract disposable harness
+        shell: bash
+        run: |
+          ln -s "$GITHUB_WORKSPACE/web-dashboard/node_modules" "$GITHUB_WORKSPACE/baseline/web-dashboard/node_modules"
+          mkdir -p r6-visual
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/r6-temporary-verification.yml').read_text(encoding='utf-8')
+          marker = "cat > web-dashboard/r6-visual.mjs <<'R6_SCRIPT'"
+          start = source.index(marker) + len(marker)
+          end = source.index('\n          R6_SCRIPT', start)
+          block = source[start:].splitlines()[1:]
+          block = source[start:end].splitlines()[1:]
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in block) + '\n'
+          Path('web-dashboard/r6-visual.mjs').write_text(script, encoding='utf-8')
+          PY
+      - name: Start deterministic Vite servers
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE/web-dashboard"
+          nohup pnpm exec vite --host 127.0.0.1 --port 4173 > "$GITHUB_WORKSPACE/r6-visual/current-vite.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/r6-visual/current-vite.pid"
+          cd "$GITHUB_WORKSPACE/baseline/web-dashboard"
+          nohup "$GITHUB_WORKSPACE/web-dashboard/node_modules/.bin/vite" --host 127.0.0.1 --port 4174 > "$GITHUB_WORKSPACE/r6-visual/baseline-vite.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/r6-visual/baseline-vite.pid"
+          for port in 4173 4174; do
+            ready=0
+            for attempt in $(seq 1 60); do
+              if curl --silent --fail "http://127.0.0.1:${port}/" > /dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "Vite server on ${port} did not start"
+              cat "$GITHUB_WORKSPACE/r6-visual/current-vite.log" || true
+              cat "$GITHUB_WORKSPACE/r6-visual/baseline-vite.log" || true
+              exit 1
+            fi
+          done
+      - name: Run Chromium visual matrix
+        working-directory: web-dashboard
+        shell: bash
+        run: node r6-visual.mjs
+      - name: Upload R6 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r6-browser-evidence-${{ github.run_id }}
+          path: r6-visual
+          if-no-files-found: error
+          retention-days: 1
