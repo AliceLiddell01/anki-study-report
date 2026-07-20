@@ -1,0 +1,369 @@
+name: R7 temporary integrated acceptance
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: r7-integrated-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-integrated-acceptance-v2'
+    name: Exact Fast CI and package
+    runs-on: windows-2025
+    timeout-minutes: 30
+    outputs:
+      package_sha256: ${{ steps.package.outputs.package_sha256 }}
+      manifest_sha256: ${{ steps.package.outputs.manifest_sha256 }}
+      entry_count: ${{ steps.package.outputs.entry_count }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+      artifact_name: ${{ steps.package.outputs.artifact_name }}
+    env:
+      OWNER_REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Guard exact SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($actual -ne $env:OWNER_REVIEW_SHA) { throw "Exact SHA mismatch: $actual" }
+          if ('${{ github.head_ref }}' -ne 'c1-5r-7-integrated-acceptance-v2') { throw 'Unexpected head branch.' }
+          if ('${{ github.base_ref }}' -ne 'core') { throw 'Unexpected base branch.' }
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: web-dashboard/pnpm-lock.yaml
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          Push-Location web-dashboard
+          pnpm install --frozen-lockfile
+          Pop-Location
+
+      - name: Run canonical non-Docker verification
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force r7-fast/logs | Out-Null
+          & .\scripts\run_full_check.ps1 -SkipDocker *>&1 | Tee-Object r7-fast/logs/full-check.log
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical non-Docker verification failed.' }
+
+      - name: Build exact package manifest
+        id: package
+        shell: pwsh
+        env:
+          ARTIFACT_NAME: r7-package-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python scripts/package_addon.py --output anki_study_report.ankiaddon --check-only
+          if ($LASTEXITCODE -ne 0) { throw 'Package validation failed.' }
+          New-Item -ItemType Directory -Force r7-package | Out-Null
+          Copy-Item anki_study_report.ankiaddon r7-package/anki_study_report.ankiaddon -Force
+          python scripts/write_ci_package_metadata.py `
+            --package r7-package/anki_study_report.ankiaddon `
+            --output-directory r7-package `
+            --repository '${{ github.repository }}' `
+            --event-name pull_request `
+            --ref '${{ github.ref }}' `
+            --tested-commit-sha $env:OWNER_REVIEW_SHA `
+            --source-head-sha $env:OWNER_REVIEW_SHA `
+            --source-base-sha '${{ github.event.pull_request.base.sha }}' `
+            --run-id '${{ github.run_id }}' `
+            --run-attempt '${{ github.run_attempt }}' `
+            --artifact-name $env:ARTIFACT_NAME
+          if ($LASTEXITCODE -ne 0) { throw 'Package metadata generation failed.' }
+          python scripts/write_ci_package_metadata.py --verify-only --output-directory r7-package
+          if ($LASTEXITCODE -ne 0) { throw 'Package metadata verification failed.' }
+
+          @'
+          import hashlib
+          import json
+          import pathlib
+          import zipfile
+
+          package = pathlib.Path("r7-package/anki_study_report.ankiaddon")
+          package_sha = hashlib.sha256(package.read_bytes()).hexdigest()
+          manifest = []
+          forbidden_parts = {".git", "__pycache__", "tests", "docker", "artifacts", "screenshots", "logs"}
+          forbidden_suffixes = {".pyc", ".pyo", ".log", ".ankiaddon"}
+          with zipfile.ZipFile(package) as archive:
+              bad = archive.testzip()
+              if bad is not None:
+                  raise SystemExit(f"ZIP integrity failed at {bad}")
+              for info in sorted(archive.infolist(), key=lambda item: item.filename):
+                  path = pathlib.PurePosixPath(info.filename)
+                  if path.is_absolute() or ".." in path.parts:
+                      raise SystemExit(f"unsafe path: {info.filename}")
+                  if {part.lower() for part in path.parts} & forbidden_parts:
+                      raise SystemExit(f"forbidden entry: {info.filename}")
+                  if path.suffix.lower() in forbidden_suffixes:
+                      raise SystemExit(f"forbidden entry: {info.filename}")
+                  data = b"" if info.is_dir() else archive.read(info.filename)
+                  manifest.append({"path": path.as_posix(), "size": info.file_size, "sha256": hashlib.sha256(data).hexdigest()})
+          manifest_bytes = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+          pathlib.Path("r7-package/package-manifest.json").write_bytes(manifest_bytes)
+          pathlib.Path("r7-package/package-verification.json").write_text(json.dumps({
+              "ankiaddonFilename": package.name,
+              "ankiaddonSha256": package_sha,
+              "packageManifestSha256": hashlib.sha256(manifest_bytes).hexdigest(),
+              "packageEntryCount": len(manifest),
+              "zipIntegrityResult": "pass"
+          }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Package manifest verification failed.' }
+
+          $verification = Get-Content r7-package/package-verification.json -Raw | ConvertFrom-Json
+          "package_sha256=$($verification.ankiaddonSha256)" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "manifest_sha256=$($verification.packageManifestSha256)" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "entry_count=$($verification.packageEntryCount)" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "artifact_name=$env:ARTIFACT_NAME" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Verify git hygiene
+        shell: pwsh
+        run: |
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { throw 'git diff --check failed.' }
+          $tracked = git status --short --untracked-files=no
+          if ($tracked) { throw "Tracked worktree changes detected:`n$tracked" }
+
+      - name: Upload exact package and provenance
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: |
+            r7-package/
+            r7-fast/logs/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+
+      - name: Summarize exact Fast CI
+        shell: pwsh
+        run: |
+          @(
+            '## R7 exact Fast CI and package'
+            ''
+            '| Field | Value |'
+            '| --- | --- |'
+            '| Owner review SHA | `${{ github.event.pull_request.head.sha }}` |'
+            '| Artifact | `${{ steps.package.outputs.artifact_name }}` |'
+            '| Artifact ID | `${{ steps.upload.outputs.artifact-id }}` |'
+            '| GitHub artifact digest | `${{ steps.upload.outputs.artifact-digest }}` |'
+            '| .ankiaddon SHA-256 | `${{ steps.package.outputs.package_sha256 }}` |'
+            '| Manifest SHA-256 | `${{ steps.package.outputs.manifest_sha256 }}` |'
+            '| Package entries | `${{ steps.package.outputs.entry_count }}` |'
+            '| ZIP integrity | PASS |'
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+
+  e2e:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-integrated-acceptance-v2'
+    name: Exact package real-Anki E2E
+    needs: fast
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    env:
+      OWNER_REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
+      EXPECTED_PACKAGE_SHA256: ${{ needs.fast.outputs.package_sha256 }}
+      ANKI_E2E_SCOPE: full
+      ANKI_E2E_SCREENSHOT_WORKERS: '3'
+      ANKI_E2E_RESOURCE_TELEMETRY: '1'
+      ANKI_E2E_VERIFY_RESTART: '1'
+      ANKI_E2E_NO_BUILD: '1'
+      ANKI_E2E_CACHE_BACKEND: ghcr-digest
+      ANKI_E2E_PREBUILT_ADDON_PATH: /e2e/local-input/anki_study_report.ankiaddon
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Download exact package from Fast job
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.fast.outputs.artifact_name }}
+          path: r7-input
+
+      - name: Stage and verify exact package
+        shell: pwsh
+        run: |
+          python scripts/write_ci_package_metadata.py --verify-only --output-directory r7-input/r7-package
+          if ($LASTEXITCODE -ne 0) { throw 'Fast package metadata verification failed.' }
+          $source = 'r7-input/r7-package/anki_study_report.ankiaddon'
+          $actual = (Get-FileHash -Algorithm SHA256 $source).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_PACKAGE_SHA256) { throw "Downloaded package SHA mismatch: $actual" }
+          New-Item -ItemType Directory -Force docker/anki-e2e/local-input | Out-Null
+          Copy-Item $source docker/anki-e2e/local-input/anki_study_report.ankiaddon -Force
+
+      - name: Resolve immutable GHCR environment
+        id: environment
+        shell: pwsh
+        run: |
+          python scripts/validate_e2e_environment_consumer.py validate-consumer-lock `
+            --spec docker/anki-e2e/environment-image-spec.json `
+            --lock docker/anki-e2e/environment-image-lock.json `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Environment lock validation failed.' }
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pull exact environment image
+        shell: pwsh
+        env:
+          IMAGE_REFERENCE: ${{ steps.environment.outputs.image_reference }}
+          IMAGE_PLATFORM: ${{ steps.environment.outputs.image_platform }}
+        run: |
+          docker pull --platform $env:IMAGE_PLATFORM $env:IMAGE_REFERENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Exact GHCR image pull failed.' }
+          "ANKI_E2E_IMAGE=$env:IMAGE_REFERENCE" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run canonical real-Anki E2E
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force r7-e2e-raw | Out-Null
+          & .\scripts\run_full_check.ps1 -DockerOnly -E2EScope full -ScreenshotWorkers 3 -NoDockerBuild *>&1 | Tee-Object r7-e2e-raw/e2e-run.log
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical real-Anki E2E failed.' }
+
+      - name: Verify tested package identity
+        shell: pwsh
+        run: |
+          $tested = 'e2e-artifacts/package/anki_study_report.ankiaddon'
+          if (-not (Test-Path $tested -PathType Leaf)) { throw 'E2E package evidence missing.' }
+          $actual = (Get-FileHash -Algorithm SHA256 $tested).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_PACKAGE_SHA256) { throw "E2E tested package mismatch: $actual" }
+          New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
+          [ordered]@{
+            schemaVersion = 1
+            ownerReviewSha = $env:OWNER_REVIEW_SHA
+            e2eCheckoutSha = (git rev-parse HEAD).Trim().ToLowerInvariant()
+            e2ePackageSha256 = $actual
+            fastArtifactId = '${{ needs.fast.outputs.artifact_id }}'
+            fastArtifactDigest = '${{ needs.fast.outputs.artifact_digest }}'
+            packageManifestSha256 = '${{ needs.fast.outputs.manifest_sha256 }}'
+            packageEntryCount = [int]'${{ needs.fast.outputs.entry_count }}'
+          } | ConvertTo-Json | Set-Content e2e-artifacts/reports/r7-package-provenance.json -Encoding utf8NoBOM
+
+      - name: Prepare redacted evidence
+        shell: pwsh
+        run: |
+          python scripts/prepare_ci_e2e_artifacts.py `
+            --source e2e-artifacts `
+            --output r7-e2e `
+            --raw-logs r7-e2e-raw `
+            --mode standard `
+            --scope full `
+            --screenshot-workers 3 `
+            --build-duration-ms 0 `
+            --image-size-bytes 0 `
+            --cache-state ghcr-digest `
+            --e2e-exit-code 0 `
+            --started-at '${{ github.event.pull_request.updated_at }}' `
+            --commit-sha $env:OWNER_REVIEW_SHA `
+            --ref '${{ github.head_ref }}' `
+            --package-source r7-fast-job `
+            --source-package-sha256 $env:EXPECTED_PACKAGE_SHA256 `
+            --e2e-checkout-sha $env:OWNER_REVIEW_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Evidence preparation failed.' }
+
+      - name: Inventory screenshot evidence
+        id: inventory
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          root = pathlib.Path('r7-e2e')
+          images = [p.relative_to(root).as_posix() for p in sorted(root.rglob('*')) if p.is_file() and p.suffix.lower() in {'.png','.jpg','.jpeg','.webp'}]
+          if not images:
+              raise SystemExit('No screenshots in redacted evidence')
+          pathlib.Path('r7-e2e/r7-screenshot-inventory.json').write_text(json.dumps({'count': len(images), 'files': images}, indent=2) + '\n', encoding='utf-8')
+          print(f'count={len(images)}')
+          with open(pathlib.Path().resolve() / pathlib.Path('${GITHUB_OUTPUT}'), 'a', encoding='utf-8') as out:
+              out.write(f'count={len(images)}\n')
+          PY
+
+      - name: Upload redacted R7 evidence
+        id: upload_e2e
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r7-e2e-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: r7-e2e/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Summarize exact E2E
+        shell: pwsh
+        run: |
+          @(
+            '## R7 exact real-Anki E2E'
+            ''
+            '| Field | Value |'
+            '| --- | --- |'
+            '| Owner review SHA | `${{ github.event.pull_request.head.sha }}` |'
+            '| .ankiaddon SHA-256 | `${{ needs.fast.outputs.package_sha256 }}` |'
+            '| E2E package SHA-256 | `${{ needs.fast.outputs.package_sha256 }}` |'
+            '| Evidence artifact ID | `${{ steps.upload_e2e.outputs.artifact-id }}` |'
+            '| Evidence artifact digest | `${{ steps.upload_e2e.outputs.artifact-digest }}` |'
+            '| Screenshots | `${{ steps.inventory.outputs.count }}` |'
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Clean Docker state
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ANKI_E2E_IMAGE) {
+            docker compose -f docker/anki-e2e/docker-compose.yml -f docker/anki-e2e/docker-compose.ghcr.yml down -v --remove-orphans
+          }
