@@ -460,7 +460,7 @@ def assert_dashboard_assets(base_url: str, token: str, artifacts: Path, label: s
         "[data-theme=light]",
         ".topbar-surface",
         ".shadow-panel",
-        ".cards-v2-table",
+        ".cards-inbox-page",
         ".anki-card-shadow-preview",
     ]
     missing_markers = [marker for marker in markers if marker not in css_payload]
