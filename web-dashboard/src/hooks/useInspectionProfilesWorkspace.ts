@@ -186,8 +186,15 @@ export function useInspectionProfilesWorkspace(): InspectionProfilesWorkspace {
   const replaceWithSuggestion = useCallback(() => {
     const item = catalog?.items.find((candidate) => candidate.structure.noteTypeId === selectedIdRef.current) ?? null;
     if (!item) return;
+    const current = snapshotRef.current;
     const generated = createDraft(item, true);
-    commitSnapshot({ profile: generated, baseline: cloneProfile(generated), origin: "generated", userEdited: false });
+    const cleanGenerated = current.origin === "generated" && !current.userEdited;
+    commitSnapshot({
+      profile: generated,
+      baseline: cleanGenerated ? cloneProfile(generated) : cloneProfile(current.baseline),
+      origin: "generated",
+      userEdited: !cleanGenerated,
+    });
     clearEditorFeedback();
     setConflictRevision(null);
   }, [catalog?.items, clearEditorFeedback, commitSnapshot]);

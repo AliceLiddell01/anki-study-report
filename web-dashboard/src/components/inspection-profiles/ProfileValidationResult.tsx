@@ -32,7 +32,9 @@ export default function ProfileValidationResult({ item, draft, validation }: Pro
         {validation.valid ? <CheckCircle2 size={21} aria-hidden="true" /> : <AlertTriangle size={21} aria-hidden="true" />}
         <div>
           <h3 id="inspection-validation-title">{validation.valid ? (ru ? "Настройка структурно корректна" : "The setup is structurally valid") : (ru ? "Настройку нужно исправить" : "The setup needs correction")}</h3>
-          <p>{noCards
+          <p>{!validation.valid
+          ? (ru ? "Исправьте структурные ошибки перед включением профиля." : "Fix the structural errors before enabling the profile.")
+          : noCards
             ? (ru ? "Профиль структурно корректен, но карточек для содержательного примера нет." : "The profile is structurally valid, but there are no cards available for a content sample.")
             : (ru ? "Backend проверил ограниченную безопасную выборку без передачи содержимого заметок." : "The backend checked a bounded safe sample without exposing note contents.")}</p>
         </div>

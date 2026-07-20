@@ -28,6 +28,12 @@ describe("ProfileValidationResult", () => {
     expect(container.textContent).not.toContain("20");
   });
 
+  it("does not describe an invalid unavailable preview as structurally valid", async () => {
+    await act(async () => root.render(<ProfileValidationResult item={item} draft={draft} validation={{ ...validation, valid: false, fieldErrors: { "profile.checks.0.roles": "select_role" }, preview: { status: "unavailable", requestedCount: 10, evaluatedCount: 0, missingCardIds: [], failureCount: 0, truncated: false, items: [] } }} />));
+    expect(container.textContent).toContain("Fix the structural errors before enabling the profile");
+    expect(container.textContent).not.toContain("structurally valid, but there are no cards");
+  });
+
   it("states honestly when no content sample is available", async () => {
     await act(async () => root.render(<ProfileValidationResult item={item} draft={draft} validation={{ ...validation, preview: { status: "unavailable", requestedCount: 10, evaluatedCount: 0, missingCardIds: [], failureCount: 0, truncated: false, items: [] } }} />));
     expect(container.textContent).toContain("there are no cards available for a content sample");

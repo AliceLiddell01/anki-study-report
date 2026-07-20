@@ -117,6 +117,38 @@ describe("useInspectionProfilesWorkspace", () => {
     expect(latest.dirty).toBe(true);
   });
 
+  it("treats restoring a suggestion over a stored profile as protected user work", async () => {
+    const stored = structuredClone(response);
+    const item = stored.items[0]!;
+    item.effectiveState = "confirmed";
+    item.authoritative = true;
+    item.storedProfile = {
+      profileId: "note-type-1",
+      noteTypeId: "1",
+      noteTypeName: "Type 1",
+      storedState: "confirmed",
+      displayName: "Stored profile",
+      expectedFingerprint: fingerprint,
+      appliesTo: { templateOrdinals: [] },
+      fieldMappings: [{ role: "question", fields: [field] }],
+      checks: [check],
+      confirmedAt: "2026-07-20T12:00:00Z",
+      updatedAt: "2026-07-20T12:00:00Z",
+    };
+    item.suggestion.checks = [{ ...check, checkId: "suggested-required" }];
+    mocks.query.mockResolvedValueOnce(stored);
+    await render();
+    await act(async () => { latest.select("1"); });
+    expect(latest.draftOrigin).toBe("stored");
+    expect(latest.dirty).toBe(false);
+    await act(async () => latest.replaceWithSuggestion());
+    expect(latest.draftOrigin).toBe("generated");
+    expect(latest.hasUserEdits).toBe(true);
+    expect(latest.dirty).toBe(true);
+    expect(latest.draft?.checks[0]?.checkId).toBe("suggested-required");
+    expect(latest.select("2")).toBe(false);
+  });
+
   it("uses validate v2 and update v1 only after explicit save", async () => {
     await render();
     await act(async () => { latest.select("1"); });
