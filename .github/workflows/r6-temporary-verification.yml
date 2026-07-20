@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - c1-5r-6-guided-inspection-profiles
+  pull_request:
+    branches:
+      - core
   workflow_dispatch:
 
 permissions:
