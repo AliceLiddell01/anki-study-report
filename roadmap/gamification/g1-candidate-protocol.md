@@ -9,6 +9,8 @@ G1.4 execution readiness: Blocked on implementation
 G1.4 started: No
 candidate selected: No
 production integration: Prohibited
+canonical publication: Complete
+cleanup: Partial — terminal temp-ref deletion exception
 ```
 
 ## Baseline and delivery
@@ -20,10 +22,20 @@ production integration: Prohibited
 - baseline divergence: none;
 - merge base with `master`: `359c26f82a9ee78c8e27603f9ded5ca9bef2c71e`;
 - open PRs from `gamification`: none observed;
-- `temp/g1-3-*` refs: none observed;
+- `temp/g1-3-*` refs at run-manifest capture: none observed;
 - local checkout at start: unavailable; work used connector-backed reads and locally validated generated content.
 
-Publication commit and new protocol/schema blob identities are recorded in the final execution report after GitHub publication; they are intentionally absent from the self-contained machine contract.
+Post-publication provenance:
+
+```text
+primary publication commit: 4212b2274c827a59d901294a85fc36973c76999e
+machine protocol blob: 6bfec56821045b6d383f2926fab79f151157ad13
+protocol schema blob: 9f70005d0be255d1c9dc09ad57cc158033a7919e
+```
+
+These identities are intentionally absent from the self-contained machine contract, avoiding publication self-reference.
+
+A temporary `temp/g1-3-publish` branch was created after manifest capture when testing a stage-only publication path. No workflow run was used as validation or publication evidence. The workflow, archive chunks and trigger were removed; their cleanup tip is `60b14b3cb57bb7bd9d85b02f79c73af4631079ee`. The connector exposes no delete-ref action, so the now-inactive branch ref remains as a terminal cleanup exception.
 
 ## Result
 
