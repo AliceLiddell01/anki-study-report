@@ -280,3 +280,10 @@ preview isolation, existing CardsPage and legacy report payload remain intact.
 C1.4 adds the local Settings editor and strict client-side one-profile
 import/export documented in [inspection-profiles-ui.md](inspection-profiles-ui.md).
 It adds no Cards queue/Inspector or collection mutation.
+
+## Guided editor projection
+
+The C1.5R.6 UI does not define a second schema. A generated browser-only suggestion,
+Basic controls and Advanced controls all edit one exact v1 document. Generated
+origin/user-dirty semantics are UI state and are never persisted in the profile.
+Validate schema v2 and update schema v1 remain unchanged.

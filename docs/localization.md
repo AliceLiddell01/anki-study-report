@@ -141,3 +141,10 @@ What’s New и consent используют namespace `pages.whatsNew`/`pages.p
 ## C1.5R.3 preview semantics
 
 See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.
+
+## Guided Inspection Profiles terminology
+
+Friendly detected kinds, role purposes, requirement titles, priorities, lifecycle
+guidance, validation/no-card/conflict states, Advanced and Profile tools have RU/EN
+parity. Unknown backend kind/role/warning values use safe localized fallbacks rather
+than leaking machine identifiers as normal copy.

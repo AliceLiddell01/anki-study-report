@@ -135,3 +135,11 @@ The detailed display contract is
 - `.ankiaddon`/AnkiWeb publication: no;
 - owner private profile read/export: no;
 - C1.6 implementation: not started and blocked.
+
+## R6 remediation outcome
+
+C1.5R.6 replaced the rejected machine-first normal path with an immediate generated
+draft, guided Basic field/requirement/scope workflow, lifecycle-aware actions,
+friendly bounded validation and collapsed Advanced/Profile tools. The strict v1
+runtime, confirmed-only authority, fail-closed lifecycle, conflict protection and
+security boundary remain unchanged. R7 is the next integrated acceptance stage.
