@@ -130,7 +130,7 @@ Package validator проверяет, что dashboard CSS содержит ва
 [data-theme=light]
 .topbar-surface
 .shadow-panel
-.cards-v2-table
+.cards-inbox-page
 .anki-card-shadow-preview
 ```
 

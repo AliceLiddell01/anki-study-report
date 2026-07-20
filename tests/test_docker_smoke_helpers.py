@@ -73,6 +73,15 @@ def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
     assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
 
 
+def test_smoke_api_css_sentinel_uses_current_cards_inbox():
+    source = (
+        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
+    ).read_text(encoding="utf-8")
+
+    assert '".cards-inbox-page"' in source
+    assert '".cards-v2-table"' not in source
+
+
 def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
     smoke_api = load_smoke_api_module()
     missing_audio = {
