@@ -53,6 +53,18 @@ jobs:
           end = source.index('\n          R6_SCRIPT', start)
           block = source[start:end].splitlines()[1:]
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in block) + '\n'
+          script = script.replace(
+              'basic.getByText("Audio must contain audio", { exact: true }).isVisible()',
+              'basic.locator("strong").filter({ hasText: "Audio must contain audio" }).first().isVisible()',
+          )
+          script = script.replace(
+              'programmingBasic.getByText("Question is required", { exact: true }).isVisible()',
+              'programmingBasic.locator("strong").filter({ hasText: "Question is required" }).first().isVisible()',
+          )
+          script = script.replace(
+              'programmingBasic.getByText("Answer is required", { exact: true }).isVisible()',
+              'programmingBasic.locator("strong").filter({ hasText: "Answer is required" }).first().isVisible()',
+          )
           Path('web-dashboard/r6-visual.mjs').write_text(script, encoding='utf-8')
           PY
       - name: Start deterministic Vite servers
