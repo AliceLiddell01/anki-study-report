@@ -17,17 +17,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  diagnose-typecheck:
     runs-on: windows-latest
-    timeout-minutes: 70
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
       - name: Enable pnpm
         shell: pwsh
         run: |
@@ -37,57 +34,25 @@ jobs:
         working-directory: web-dashboard
         shell: pwsh
         run: pnpm install --frozen-lockfile
-      - name: Page tests
+      - name: Capture typecheck
+        id: typecheck
+        continue-on-error: true
         working-directory: web-dashboard
-        run: pnpm exec vitest run src/pages/InspectionProfilesSettingsPage.test.tsx
-      - name: Hook tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/hooks/useInspectionProfilesWorkspace.test.tsx
-      - name: Basic editor tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/components/inspection-profiles/BasicProfileEditor.test.tsx
-      - name: Advanced disclosure tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/components/inspection-profiles/AdvancedProfileDisclosure.test.tsx
-      - name: Validation result tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/components/inspection-profiles/ProfileValidationResult.test.tsx
-      - name: Projection tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/lib/inspectionProfileBasicView.test.ts
-      - name: API regression tests
-        working-directory: web-dashboard
-        run: pnpm exec vitest run src/lib/inspectionProfilesApi.test.ts
-      - name: Typecheck
-        working-directory: web-dashboard
-        shell: pwsh
-        run: pnpm run typecheck
-      - name: Focused backend
         shell: pwsh
         run: |
-          node scripts/run_python.mjs -m pytest -q `
-            tests/test_inspection_profile_store.py `
-            tests/test_inspection_profile_service.py `
-            tests/test_inspection_profile_runtime.py `
-            tests/test_dashboard_server.py `
-            tests/test_triage_candidates.py `
-            tests/test_triage_service.py `
-            tests/test_package_build.py
-      - name: Production build
-        working-directory: web-dashboard
-        shell: pwsh
-        run: pnpm run build:addon
-      - name: Package validation
-        shell: pwsh
-        run: |
-          node scripts/run_python.mjs scripts/package_addon.py --check
-          node scripts/run_python.mjs scripts/package_addon.py --check-only
-      - name: Canonical non-Docker
-        shell: pwsh
-        run: .\scripts\run_full_check.ps1 -SkipDocker
-      - name: Git hygiene
+          cmd /c "pnpm run typecheck > ..\r6-typecheck.txt 2>&1"
+          exit $LASTEXITCODE
+      - name: Upload typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r6-typecheck-${{ github.run_id }}
+          path: r6-typecheck.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Fail on typecheck error
         if: always()
         shell: pwsh
         run: |
-          git status --short --branch
-          git diff --check
+          Get-Content r6-typecheck.txt
+          if ('${{ steps.typecheck.outcome }}' -ne 'success') { exit 1 }
