@@ -1,0 +1,48 @@
+name: R6 self-review verification
+
+on:
+  push:
+    branches:
+      - c1-5r-6-guided-inspection-profiles
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r6-self-review
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        shell: pwsh
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+      - name: Install dashboard dependencies
+        working-directory: web-dashboard
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+      - name: Projection tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/lib/inspectionProfileBasicView.test.ts
+      - name: Page tests
+        working-directory: web-dashboard
+        run: pnpm exec vitest run src/pages/InspectionProfilesSettingsPage.test.tsx
+      - name: Typecheck
+        working-directory: web-dashboard
+        run: pnpm run typecheck
+      - name: Production build
+        working-directory: web-dashboard
+        run: pnpm run build:addon
+      - name: Git hygiene
+        shell: pwsh
+        run: git diff --check
