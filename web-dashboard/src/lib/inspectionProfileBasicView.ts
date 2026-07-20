@@ -54,11 +54,13 @@ const ROLE_COPY: Record<string, { ru: [string, string]; en: [string, string] }> 
   explanation: { ru: ["Объяснение", "Дополнительное объяснение решения."], en: ["Explanation", "Additional explanation of the solution."] },
 };
 
-const KIND_COPY: Record<string, { ru: [string, string]; en: [string, string] }> = {
+const GENERAL_KIND = { ru: ["Общий front/back", "Универсальная структура вопроса и ответа."], en: ["General front/back", "A general question-and-answer structure."] } as const;
+const KIND_COPY: Record<string, { ru: readonly [string, string]; en: readonly [string, string] }> = {
   japanese_vocab: { ru: ["Японская лексика", "Поля слова, значения и учебных media."], en: ["Japanese vocabulary", "Word, meaning, and study-media fields."] },
   japanese_grammar: { ru: ["Японская грамматика", "Грамматическая конструкция, значение и примеры."], en: ["Japanese grammar", "Grammar pattern, meaning, and examples."] },
   programming: { ru: ["Вопрос по программированию", "Вопрос, ответ, код и объяснение."], en: ["Programming question/answer", "Question, answer, code, and explanation."] },
-  generic: { ru: ["Общий front/back", "Универсальная структура вопроса и ответа."], en: ["General front/back", "A general question-and-answer structure."] },
+  basic: GENERAL_KIND,
+  generic: GENERAL_KIND,
   cloze: { ru: ["Пропуски", "Тип записи с cloze-карточками."], en: ["Cloze", "A note type that generates cloze cards."] },
   unknown: { ru: ["Пользовательский тип", "Автоматическая семантика определена не полностью."], en: ["Unknown/custom", "Automatic semantics are incomplete."] },
 };
@@ -132,7 +134,7 @@ export function projectRequirement(
   const roleViews = check.roles.map((role) => roles.get(role)).filter((role): role is BasicRoleView => Boolean(role));
   const roleLabels = check.roles.map((role) => roles.get(role)?.label ?? humanize(role));
   const fields = roleViews.flatMap((role) => role.mapping.fields.map((field) => field.name));
-  const subject = roleLabels.join(language === "ru" ? ", " : ", ") || (language === "ru" ? "Поле" : "Field");
+  const subject = roleLabels.join(", ") || (language === "ru" ? "Поле" : "Field");
   let title: string;
   switch (check.kind) {
     case "non_empty": title = language === "ru" ? `${subject}: обязательно` : `${subject} is required`; break;
@@ -174,10 +176,6 @@ export function createCheck(profile: InspectionProfile, kind: InspectionProfileC
   if (kind === "min_text_length") return { ...base, kind, mode: "any", minLength: 1 };
   if (kind === "one_of_roles_non_empty" || kind === "all_roles_non_empty") return { ...base, kind };
   return { ...base, kind, mode: "any" };
-}
-
-export function canonicalProfileJson(profile: InspectionProfile): string {
-  return JSON.stringify(profile, Object.keys(profile).sort());
 }
 
 function humanize(value: string): string {
