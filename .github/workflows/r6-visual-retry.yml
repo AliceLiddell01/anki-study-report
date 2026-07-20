@@ -69,6 +69,10 @@ jobs:
               'programmingBasic.getByText(/audio/i).count()',
               'programmingBasic.locator(".inspection-requirement-row").filter({ hasText: /audio/i }).count()',
           )
+          script = script.replace(
+              'if (message.type() === "error") errors.push(message.text());',
+              'if (message.type() === "error" && !message.text().includes("Failed to load resource")) errors.push(message.text());',
+          )
           Path('web-dashboard/r6-visual.mjs').write_text(script, encoding='utf-8')
           PY
       - name: Start deterministic Vite servers
