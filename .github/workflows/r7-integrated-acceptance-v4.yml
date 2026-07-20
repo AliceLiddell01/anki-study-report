@@ -1,4 +1,4 @@
-name: R7 temporary integrated acceptance v4
+name: R7 temporary integrated acceptance v5
 
 on:
   pull_request:
@@ -10,24 +10,25 @@ permissions:
   packages: read
 
 concurrency:
-  group: r7-integrated-v4-${{ github.event.pull_request.number }}
+  group: r7-integrated-v5-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   acceptance:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'c1-5r-7-integrated-acceptance-v2'
-    name: Exact package cards and full acceptance
+      github.head_ref == 'c1-5r-7-acceptance-execution'
+    name: Exact clean candidate cards and full acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     env:
-      OWNER_REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
+      OWNER_REVIEW_SHA: e35dd132a4da5cc31ad48ef1aad39bf6fd1acfe8
+      OWNER_REVIEW_REF: c1-5r-7-integrated-acceptance-v2
     steps:
-      - name: Check out exact candidate
+      - name: Check out exact clean candidate
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: e35dd132a4da5cc31ad48ef1aad39bf6fd1acfe8
           persist-credentials: false
           fetch-depth: 0
 
@@ -46,7 +47,7 @@ jobs:
           $candidate = (git rev-parse HEAD).Trim().ToLowerInvariant()
           $control = (git -C r7-control rev-parse HEAD).Trim().ToLowerInvariant()
           if ($candidate -ne $env:OWNER_REVIEW_SHA) { throw "Candidate SHA mismatch: $candidate" }
-          if ('${{ github.head_ref }}' -ne 'c1-5r-7-integrated-acceptance-v2') { throw 'Unexpected head branch.' }
+          if ('${{ github.head_ref }}' -ne 'c1-5r-7-acceptance-execution') { throw 'Unexpected execution branch.' }
           if ('${{ github.base_ref }}' -ne 'core') { throw 'Unexpected base branch.' }
           if (-not (Test-Path r7-control/scripts/r7_prepare_package.py -PathType Leaf)) { throw 'Trusted package helper is missing.' }
           if (-not (Test-Path r7-control/scripts/r7_acceptance_scope.ps1 -PathType Leaf)) { throw 'Trusted scope helper is missing.' }
@@ -91,7 +92,7 @@ jobs:
         id: package
         shell: pwsh
         env:
-          ARTIFACT_NAME: r7-package-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          ARTIFACT_NAME: r7-package-${{ env.OWNER_REVIEW_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           python scripts/package_addon.py --output anki_study_report.ankiaddon --check-only
           if ($LASTEXITCODE -ne 0) { throw 'Package validation failed.' }
@@ -101,7 +102,7 @@ jobs:
             --package-directory r7-package `
             --provenance-directory r7-provenance `
             --repository '${{ github.repository }}' `
-            --ref '${{ github.ref }}' `
+            --ref "refs/heads/$env:OWNER_REVIEW_REF" `
             --tested-sha $env:OWNER_REVIEW_SHA `
             --source-base-sha '${{ steps.control.outputs.control_sha }}' `
             --run-id '${{ github.run_id }}' `
@@ -115,7 +116,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: r7-fast-provenance-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: r7-fast-provenance-${{ env.OWNER_REVIEW_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             r7-provenance/
             r7-fast/logs/
@@ -216,14 +217,14 @@ jobs:
             -PackageManifestSha256 '${{ steps.package.outputs.manifest_sha256 }}' `
             -PackageEntryCount '${{ steps.package.outputs.entry_count }}' `
             -SourceRunId '${{ github.run_id }}' `
-            -RefName '${{ github.head_ref }}'
+            -RefName $env:OWNER_REVIEW_REF
 
       - name: Upload targeted cards evidence
         id: upload_cards
         if: always() && steps.cards.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: r7-e2e-cards-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: r7-e2e-cards-${{ env.OWNER_REVIEW_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: r7-e2e-cards/
           if-no-files-found: error
           retention-days: 14
@@ -243,14 +244,14 @@ jobs:
             -PackageManifestSha256 '${{ steps.package.outputs.manifest_sha256 }}' `
             -PackageEntryCount '${{ steps.package.outputs.entry_count }}' `
             -SourceRunId '${{ github.run_id }}' `
-            -RefName '${{ github.head_ref }}'
+            -RefName $env:OWNER_REVIEW_REF
 
       - name: Upload final full evidence
         id: upload_full
         if: always() && steps.full.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: r7-e2e-full-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: r7-e2e-full-${{ env.OWNER_REVIEW_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: r7-e2e-full/
           if-no-files-found: error
           retention-days: 14
@@ -267,7 +268,8 @@ jobs:
             ''
             '| Field | Value |'
             '| --- | --- |'
-            '| Owner review SHA | `${{ github.event.pull_request.head.sha }}` |'
+            "| Owner review SHA | `$env:OWNER_REVIEW_SHA` |"
+            "| Owner review ref | `$env:OWNER_REVIEW_REF` |"
             '| Trusted control SHA | `${{ steps.control.outputs.control_sha }}` |'
             '| Package artifact ID | `${{ steps.upload_package.outputs.artifact-id }}` |'
             '| Package transport digest | `${{ steps.upload_package.outputs.artifact-digest }}` |'
