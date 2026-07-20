@@ -82,6 +82,24 @@ def test_smoke_api_css_sentinel_uses_current_cards_inbox():
     assert '".cards-v2-table"' not in source
 
 
+def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_schemas():
+    source = (
+        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
+    ).read_text(encoding="utf-8")
+    search_helper = source.split("def search_note_type_cards", 1)[1].split(
+        "def reasons_for_note_type", 1
+    )[0]
+    profile_smoke = source.split("def assert_inspection_profiles_contract", 1)[1].split(
+        "def find_structure", 1
+    )[0]
+
+    assert '"schemaVersion": 2' in search_helper
+    assert '"schemaVersion": 4' in profile_smoke
+    assert 'triage.get("schemaVersion") == 4' in profile_smoke
+    assert "canonical triage v4 is active" in profile_smoke
+    assert "canonical triage v2 is active" not in profile_smoke
+
+
 def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
     smoke_api = load_smoke_api_module()
     missing_audio = {
