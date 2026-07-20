@@ -1,0 +1,298 @@
+name: R7 temporary integrated acceptance v4
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: r7-integrated-v4-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-integrated-acceptance-v2'
+    name: Exact package cards and full acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      OWNER_REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check out current trusted controls
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: core
+          path: r7-control
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard exact candidate and controls
+        id: control
+        shell: pwsh
+        run: |
+          $candidate = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          $control = (git -C r7-control rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($candidate -ne $env:OWNER_REVIEW_SHA) { throw "Candidate SHA mismatch: $candidate" }
+          if ('${{ github.head_ref }}' -ne 'c1-5r-7-integrated-acceptance-v2') { throw 'Unexpected head branch.' }
+          if ('${{ github.base_ref }}' -ne 'core') { throw 'Unexpected base branch.' }
+          if (-not (Test-Path r7-control/scripts/r7_prepare_package.py -PathType Leaf)) { throw 'Trusted package helper is missing.' }
+          if (-not (Test-Path r7-control/scripts/r7_acceptance_scope.ps1 -PathType Leaf)) { throw 'Trusted scope helper is missing.' }
+          "control_sha=$control" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: web-dashboard/pnpm-lock.yaml
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          Push-Location web-dashboard
+          pnpm install --frozen-lockfile
+          Pop-Location
+
+      - name: Run canonical non-Docker verification
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force r7-fast/logs | Out-Null
+          & .\scripts\run_full_check.ps1 -SkipDocker *>&1 | Tee-Object r7-fast/logs/full-check.log
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical non-Docker verification failed.' }
+
+      - name: Prepare exact package and provenance
+        id: package
+        shell: pwsh
+        env:
+          ARTIFACT_NAME: r7-package-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python scripts/package_addon.py --output anki_study_report.ankiaddon --check-only
+          if ($LASTEXITCODE -ne 0) { throw 'Package validation failed.' }
+          Remove-Item r7-package, r7-provenance -Recurse -Force -ErrorAction SilentlyContinue
+          python r7-control/scripts/r7_prepare_package.py `
+            --package anki_study_report.ankiaddon `
+            --package-directory r7-package `
+            --provenance-directory r7-provenance `
+            --repository '${{ github.repository }}' `
+            --ref '${{ github.ref }}' `
+            --tested-sha $env:OWNER_REVIEW_SHA `
+            --source-base-sha '${{ steps.control.outputs.control_sha }}' `
+            --run-id '${{ github.run_id }}' `
+            --run-attempt '${{ github.run_attempt }}' `
+            --artifact-name $env:ARTIFACT_NAME `
+            --github-output $env:GITHUB_OUTPUT *>&1 | Tee-Object r7-fast/logs/package-provenance.log
+          if ($LASTEXITCODE -ne 0) { throw 'R7 package provenance preparation failed.' }
+
+      - name: Upload Fast provenance
+        id: upload_provenance
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r7-fast-provenance-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            r7-provenance/
+            r7-fast/logs/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+
+      - name: Upload exact package
+        id: upload_package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: r7-package/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+
+      - name: Download exact package artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: r7-input
+
+      - name: Verify candidate worktree hygiene
+        shell: pwsh
+        run: |
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { throw 'git diff --check failed.' }
+          $tracked = git status --short --untracked-files=no
+          if ($tracked) { throw "Tracked candidate changes detected:`n$tracked" }
+
+      - name: Resolve immutable GHCR environment
+        id: environment
+        shell: pwsh
+        run: |
+          python scripts/validate_e2e_environment_consumer.py validate-consumer-lock `
+            --spec docker/anki-e2e/environment-image-spec.json `
+            --lock docker/anki-e2e/environment-image-lock.json `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Environment lock validation failed.' }
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pull and verify exact environment image
+        shell: pwsh
+        env:
+          IMAGE_REFERENCE: ${{ steps.environment.outputs.image_reference }}
+          IMAGE_DIGEST: ${{ steps.environment.outputs.image_digest }}
+          IMAGE_PLATFORM: ${{ steps.environment.outputs.image_platform }}
+          EXPECTED_VERSION: ${{ steps.environment.outputs.environment_version }}
+          EXPECTED_CONTRACT: ${{ steps.environment.outputs.environment_contract_sha256 }}
+          EXPECTED_REVISION: ${{ steps.environment.outputs.published_from_commit_sha }}
+          PUBLICATION_RUN_ID: ${{ steps.environment.outputs.environment_publication_run_id }}
+          REUSE_RUN_ID: ${{ steps.environment.outputs.environment_reuse_verification_run_id }}
+        run: |
+          $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+          docker pull --platform $env:IMAGE_PLATFORM $env:IMAGE_REFERENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Exact GHCR image pull failed.' }
+          $repoDigests = docker image inspect $env:IMAGE_REFERENCE --format '{{json .RepoDigests}}' | ConvertFrom-Json
+          if ($env:IMAGE_REFERENCE -notin @($repoDigests)) { throw 'Pulled image digest mismatch.' }
+          $platform = docker image inspect $env:IMAGE_REFERENCE --format '{{.Os}}/{{.Architecture}}'
+          $source = docker image inspect $env:IMAGE_REFERENCE --format '{{index .Config.Labels "org.opencontainers.image.source"}}'
+          $version = docker image inspect $env:IMAGE_REFERENCE --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
+          $contract = docker image inspect $env:IMAGE_REFERENCE --format '{{index .Config.Labels "io.github.anki-study-report.e2e.environment-contract"}}'
+          $revision = docker image inspect $env:IMAGE_REFERENCE --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
+          if ($platform -ne $env:IMAGE_PLATFORM) { throw "Environment platform mismatch: $platform" }
+          if ($source -ne 'https://github.com/AliceLiddell01/anki-study-report') { throw 'Environment source label mismatch.' }
+          if ($version -ne $env:EXPECTED_VERSION) { throw 'Environment version label mismatch.' }
+          if ($contract -ne $env:EXPECTED_CONTRACT) { throw 'Environment contract label mismatch.' }
+          if ($revision -and $revision -ne $env:EXPECTED_REVISION) { throw 'Environment revision label mismatch.' }
+          $size = docker image inspect $env:IMAGE_REFERENCE --format '{{.Size}}'
+          $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
+          "ANKI_E2E_IMAGE=$env:IMAGE_REFERENCE" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_DIGEST=$env:IMAGE_DIGEST" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_PLATFORM=$platform" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_PREPARATION_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_IMAGE_SIZE_BYTES=$size" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID=$env:PUBLICATION_RUN_ID" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=$env:REUSE_RUN_ID" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run targeted cards with restart
+        id: cards
+        shell: pwsh
+        run: |
+          & ./r7-control/scripts/r7_acceptance_scope.ps1 `
+            -Scope cards `
+            -ExpectedPackageSha256 '${{ steps.package.outputs.package_sha256 }}' `
+            -OwnerReviewSha $env:OWNER_REVIEW_SHA `
+            -WorkflowSourceSha '${{ steps.control.outputs.control_sha }}' `
+            -PackageArtifactId '${{ steps.upload_package.outputs.artifact-id }}' `
+            -PackageArtifactDigest '${{ steps.upload_package.outputs.artifact-digest }}' `
+            -PackageManifestSha256 '${{ steps.package.outputs.manifest_sha256 }}' `
+            -PackageEntryCount '${{ steps.package.outputs.entry_count }}' `
+            -SourceRunId '${{ github.run_id }}' `
+            -RefName '${{ github.head_ref }}'
+
+      - name: Upload targeted cards evidence
+        id: upload_cards
+        if: always() && steps.cards.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r7-e2e-cards-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: r7-e2e-cards/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Run final full with restart
+        id: full
+        shell: pwsh
+        run: |
+          & ./r7-control/scripts/r7_acceptance_scope.ps1 `
+            -Scope full `
+            -ExpectedPackageSha256 '${{ steps.package.outputs.package_sha256 }}' `
+            -OwnerReviewSha $env:OWNER_REVIEW_SHA `
+            -WorkflowSourceSha '${{ steps.control.outputs.control_sha }}' `
+            -PackageArtifactId '${{ steps.upload_package.outputs.artifact-id }}' `
+            -PackageArtifactDigest '${{ steps.upload_package.outputs.artifact-digest }}' `
+            -PackageManifestSha256 '${{ steps.package.outputs.manifest_sha256 }}' `
+            -PackageEntryCount '${{ steps.package.outputs.entry_count }}' `
+            -SourceRunId '${{ github.run_id }}' `
+            -RefName '${{ github.head_ref }}'
+
+      - name: Upload final full evidence
+        id: upload_full
+        if: always() && steps.full.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r7-e2e-full-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: r7-e2e-full/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Summarize exact acceptance chain
+        if: success()
+        shell: pwsh
+        run: |
+          $cardsCount = (Get-Content r7-cards-screenshot-count.txt -Raw).Trim()
+          $fullCount = (Get-Content r7-full-screenshot-count.txt -Raw).Trim()
+          @(
+            '## R7 exact integrated acceptance chain'
+            ''
+            '| Field | Value |'
+            '| --- | --- |'
+            '| Owner review SHA | `${{ github.event.pull_request.head.sha }}` |'
+            '| Trusted control SHA | `${{ steps.control.outputs.control_sha }}` |'
+            '| Package artifact ID | `${{ steps.upload_package.outputs.artifact-id }}` |'
+            '| Package transport digest | `${{ steps.upload_package.outputs.artifact-digest }}` |'
+            '| Package SHA-256 | `${{ steps.package.outputs.package_sha256 }}` |'
+            '| Package manifest SHA-256 | `${{ steps.package.outputs.manifest_sha256 }}` |'
+            '| Targeted cards artifact ID | `${{ steps.upload_cards.outputs.artifact-id }}` |'
+            "| Targeted cards screenshots | `$cardsCount` |"
+            '| Final full artifact ID | `${{ steps.upload_full.outputs.artifact-id }}` |'
+            "| Final full screenshots | `$fullCount` |"
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Verify candidate worktree remains untouched
+        if: success()
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim().ToLowerInvariant() -ne $env:OWNER_REVIEW_SHA) { throw 'Candidate SHA changed.' }
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { throw 'git diff --check failed.' }
+          $tracked = git status --short --untracked-files=no
+          if ($tracked) { throw "Tracked candidate changes detected:`n$tracked" }
+
+      - name: Clean Docker state
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ANKI_E2E_IMAGE) {
+            docker compose -f docker/anki-e2e/docker-compose.yml -f docker/anki-e2e/docker-compose.ghcr.yml down -v --remove-orphans
+          }
