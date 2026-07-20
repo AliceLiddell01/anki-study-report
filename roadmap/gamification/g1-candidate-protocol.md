@@ -29,11 +29,12 @@ Post-publication provenance:
 
 ```text
 primary publication commit: 4212b2274c827a59d901294a85fc36973c76999e
+schema hardening commit: baa3390448fd21c311c361b93cd66618302cd40e
 machine protocol blob: 6bfec56821045b6d383f2926fab79f151157ad13
-protocol schema blob: 9f70005d0be255d1c9dc09ad57cc158033a7919e
+protocol schema blob: f211dc2099d6c1ea6fbe760b7693e66119127fa6
 ```
 
-These identities are intentionally absent from the self-contained machine contract, avoiding publication self-reference.
+These identities are intentionally absent from the self-contained machine contract, avoiding publication self-reference. The schema-hardening commit adds an explicit machine-enforced maximum of two parameterizations per frozen family; protocol decision semantics and contract data are unchanged.
 
 A temporary `temp/g1-3-publish` branch was created after manifest capture when testing a stage-only publication path. No workflow run was used as validation or publication evidence. The workflow, archive chunks and trigger were removed; their cleanup tip is `60b14b3cb57bb7bd9d85b02f79c73af4631079ee`. The connector exposes no delete-ref action, so the now-inactive branch ref remains as a terminal cleanup exception.
 
@@ -59,8 +60,9 @@ Execution readiness is `BLOCKED_ON_IMPLEMENTATION`: the current static reward pa
 - finite-number traversal and `allow_nan=False` serialization;
 - deterministic sorted compact serialization;
 - Draft 2020-12 schema self-check and contract validation;
+- schema-enforced limits of two frozen families and no more than two parameterizations per family;
 - semantic checks for unique IDs/references, family/parameterization limits, bound membership, budget recomputation, predicate completeness, non-compensable hard gates and false decision/production flags;
-- thirteen required negative samples;
+- thirteen required negative samples plus a same-total third-parameterization-per-family rejection;
 - relative-link and allowlist audit over the generated delivery;
 - forbidden-path/secret pattern and trailing-whitespace scan.
 
