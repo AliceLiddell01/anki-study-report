@@ -58,6 +58,11 @@ describe("Cards attention inbox", () => {
     expect(html).toContain("+1 причина");
     expect(html).toContain("Период обучения");
     expect(html).toContain("Проверить следующие заметки");
+    expect(html).toContain("workspace-page");
+    expect(html).toContain("workspace-region");
+    expect(html).toContain("workspace-interactive");
+    expect(html).toContain("workspace-selected");
+    expect(html).toContain("workspace-safe-area");
   });
 
   it("keeps filter clearing separate from the learning period", async () => {

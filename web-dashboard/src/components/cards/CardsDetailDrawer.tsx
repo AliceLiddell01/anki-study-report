@@ -46,7 +46,7 @@ export function CardsDetailDrawer({
   return (
     <aside
       id={regionId}
-      className="cards-detail-drawer"
+      className="cards-detail-drawer workspace-region workspace-safe-area"
       role="region"
       aria-labelledby={labelledBy}
       data-testid="cards-detail-drawer"

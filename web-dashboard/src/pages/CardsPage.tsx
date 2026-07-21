@@ -126,17 +126,17 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   return (
-    <div className="cards-inbox-page page-stack" data-testid="cards-inbox-page" data-workspace-mode={isWide ? "wide" : "drawer"}>
+    <div className="cards-inbox-page page-stack workspace-page" data-testid="cards-inbox-page" data-workspace-mode={isWide ? "wide" : "drawer"}>
       <header className="cards-inbox-heading">
         <div>
           <span className="page-eyebrow">{t("eyebrow")}</span>
-          <h1>{t("title")}</h1>
-          <p>{t("description")}</p>
+          <h1 className="workspace-page-title">{t("title")}</h1>
+          <p className="workspace-body">{t("description")}</p>
         </div>
         <span className="cards-inbox-readonly">{t("singleCard")}</span>
       </header>
 
-      <section className="cards-inbox-controls panel-surface" aria-label={t("filters.label")}>
+      <section className="cards-inbox-controls panel-surface workspace-region" aria-label={t("filters.label")}>
         <div className="cards-inbox-summary" aria-live="polite">
           <strong>{workspace.response ? t("summary.items", { count: allItems.length }) : t("summary.loading")}</strong>
           {workspace.response ? <span>{t("summary.high", { count: highCount })}</span> : null}
@@ -207,7 +207,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
 
       <CardsWorkspaceWarnings workspace={workspace} />
       {workspace.lastOutcome ? (
-        <div className={`cards-inbox-warning cards-resolution-outcome is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
+        <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
           <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
           <span>{t(`resolution.states.${workspace.lastOutcome.phase}.description`)}</span>
         </div>
@@ -215,11 +215,11 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       <CoverageDisclosure workspace={workspace} />
 
       <div className="cards-inbox-workspace">
-        <section className="cards-inbox-queue panel-surface" aria-labelledby="cards-inbox-queue-title">
+        <section className="cards-inbox-queue panel-surface workspace-region" aria-labelledby="cards-inbox-queue-title">
           <header className="cards-inbox-queue-header">
             <div>
-              <h2 id="cards-inbox-queue-title" ref={queueHeadingRef} tabIndex={-1}>{t("queue.title")}</h2>
-              <p>{workspace.response ? t("queue.visible", { visible: visibleItems.length, total: allItems.length }) : t("queue.loading")}</p>
+              <h2 id="cards-inbox-queue-title" className="workspace-section-title" ref={queueHeadingRef} tabIndex={-1}>{t("queue.title")}</h2>
+              <p className="workspace-meta">{workspace.response ? t("queue.visible", { visible: visibleItems.length, total: allItems.length }) : t("queue.loading")}</p>
             </div>
           </header>
           <QueueState
@@ -236,7 +236,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
         </section>
 
         {isWide ? (
-          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
+          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region workspace-safe-area" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
             <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} />
           </aside>
         ) : null}

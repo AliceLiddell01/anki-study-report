@@ -126,19 +126,19 @@ export default function InspectionProfilesSettingsPage() {
   };
 
   return (
-    <div className="inspection-workspace-page">
+    <div className="inspection-workspace-page workspace-page">
       <header className="inspection-page-header">
         <span className="brand-icon-badge"><ShieldCheck size={21} aria-hidden="true" /></span>
         <div>
           <p className="inspection-eyebrow">{t("inspectionProfiles.eyebrow")}</p>
-          <h1>{t("inspectionProfiles.title")}</h1>
-          <p>{t("inspectionProfiles.description")}</p>
-          <p className="inspection-safety-note">{t("inspectionProfiles.safety")}</p>
+          <h1 className="workspace-page-title">{t("inspectionProfiles.title")}</h1>
+          <p className="workspace-body">{t("inspectionProfiles.description")}</p>
+          <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
         </div>
       </header>
 
       {workspace.loadState === "error" ? (
-        <section className="inspection-load-state is-error" role="alert">
+        <section className="inspection-load-state workspace-state is-error" role="alert">
           <h2>{t("inspectionProfiles.load.failed")}</h2>
           <p>{statusLabel(t, workspace.loadError)}</p>
           <button type="button" className="secondary-button" onClick={() => void workspace.reload()}>{t("inspectionProfiles.actions.retry")}</button>
@@ -146,13 +146,13 @@ export default function InspectionProfilesSettingsPage() {
       ) : null}
 
       {workspace.catalog && workspace.catalog.store.status !== "available" && workspace.catalog.store.status !== "empty" ? (
-        <section className="inspection-store-warning" role="alert">
+        <section className="inspection-store-warning workspace-state" role="alert">
           <strong>{t(`inspectionProfiles.store.${workspace.catalog.store.status}.title`)}</strong>
           <span>{t(`inspectionProfiles.store.${workspace.catalog.store.status}.description`)}</span>
         </section>
       ) : null}
 
-      <section className="inspection-summary" aria-label={t("inspectionProfiles.summary.label")}>
+      <section className="inspection-summary workspace-region" aria-label={t("inspectionProfiles.summary.label")}>
         <SummaryButton label={t("inspectionProfiles.summary.total")} value={summary.total} active={stateFilter === "all"} onClick={() => setStateFilter("all")} />
         <SummaryButton label={t("inspectionProfiles.states.confirmed")} value={summary.confirmed} active={stateFilter === "confirmed"} onClick={() => setStateFilter("confirmed")} />
         <SummaryButton label={t("inspectionProfiles.states.needs_review")} value={summary.needs_review} active={stateFilter === "needs_review"} onClick={() => setStateFilter("needs_review")} />
@@ -161,9 +161,9 @@ export default function InspectionProfilesSettingsPage() {
       </section>
 
       <div className="inspection-workspace">
-        <aside className="inspection-catalog" aria-labelledby="inspection-catalog-title">
+        <aside className="inspection-catalog workspace-region" aria-labelledby="inspection-catalog-title">
           <div className="inspection-catalog-header">
-            <h2 id="inspection-catalog-title">{t("inspectionProfiles.catalog.title")}</h2>
+            <h2 id="inspection-catalog-title" className="workspace-section-title">{t("inspectionProfiles.catalog.title")}</h2>
             <span>{workspace.catalog?.returnedCount ?? 0}/{workspace.catalog?.totalCount ?? 0}</span>
           </div>
           <label className="inspection-search" htmlFor="inspection-profile-search"><Search size={16} aria-hidden="true" /><span>{t("inspectionProfiles.catalog.search")}</span><input id="inspection-profile-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
@@ -178,7 +178,7 @@ export default function InspectionProfilesSettingsPage() {
           {workspace.catalog?.truncated ? <p className="inspection-truncated" role="status">{t("inspectionProfiles.catalog.truncated", { count: workspace.catalog.returnedCount, total: workspace.catalog.totalCount })}</p> : null}
         </aside>
 
-        <main className="inspection-editor" aria-live="off">
+        <main className="inspection-editor workspace-region workspace-safe-area" aria-live="off">
           {!workspace.selected ? <section className="inspection-empty-editor"><FileCheck2 size={34} aria-hidden="true" /><h2>{t("inspectionProfiles.editor.selectTitle")}</h2><p>{t("inspectionProfiles.editor.selectDescription")}</p></section> : workspace.draft ? (
             <ProfileWorkspace
               item={workspace.selected}
@@ -261,14 +261,14 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
         </dl>
       </section>
 
-      <section className={`inspection-state-guidance is-${item.effectiveState}`} role={item.effectiveState === "needs_review" ? "alert" : "status"}>
+      <section className={`inspection-state-guidance workspace-state is-${item.effectiveState}`} role={item.effectiveState === "needs_review" ? "alert" : "status"}>
         <strong>{guidance.title}</strong>
         <p>{guidance.description}</p>
         {item.effectiveState === "needs_review" ? <p>{reasonLabel(item.stateReason, language)}</p> : null}
       </section>
 
       {workspace.conflictRevision !== null ? (
-        <section className="inspection-conflict" role="alert">
+        <section className="inspection-conflict workspace-state" role="alert">
           <h3>{t("inspectionProfiles.conflict.title")}</h3>
           <p>{t("inspectionProfiles.conflict.description", { revision: workspace.conflictRevision })}</p>
           <div>
@@ -325,11 +325,11 @@ function NoteTypeButton({ item, selected, onClick }: { item: InspectionProfileSu
   const { t, i18n } = useTranslation("pages");
   const language = profileLanguage(i18n.resolvedLanguage);
   const kind = friendlyDetectedKind(item.suggestion.detectedKind, language).label;
-  return <button type="button" className={`inspection-note-button${selected ? " is-selected" : ""}`} aria-pressed={selected} title={item.structure.name} onClick={onClick}><span className="inspection-note-name">{item.structure.name}</span><span className={`inspection-state-badge is-${item.effectiveState}`}>{t(`inspectionProfiles.states.${item.effectiveState}`)}</span><small>{kind} · {t(`inspectionProfiles.stateHints.${item.effectiveState}`)}</small><span className="inspection-note-meta">{t("inspectionProfiles.catalog.structure", { fields: item.structure.fields.length, templates: item.structure.templates.length })}</span></button>;
+  return <button type="button" className={`inspection-note-button workspace-interactive${selected ? " is-selected workspace-selected" : ""}`} aria-pressed={selected} title={item.structure.name} onClick={onClick}><span className="inspection-note-name">{item.structure.name}</span><span className={`inspection-state-badge is-${item.effectiveState}`}>{t(`inspectionProfiles.states.${item.effectiveState}`)}</span><small>{kind} · {t(`inspectionProfiles.stateHints.${item.effectiveState}`)}</small><span className="inspection-note-meta workspace-meta">{t("inspectionProfiles.catalog.structure", { fields: item.structure.fields.length, templates: item.structure.templates.length })}</span></button>;
 }
 
 function SummaryButton({ label, value, active, onClick }: { label: string; value: number; active: boolean; onClick: () => void }) {
-  return <button type="button" className={active ? "is-active" : undefined} aria-pressed={active} onClick={onClick}><span>{label}</span><strong>{value}</strong></button>;
+  return <button type="button" className={`workspace-interactive${active ? " is-active workspace-selected" : ""}`} aria-pressed={active} onClick={onClick}><span>{label}</span><strong>{value}</strong></button>;
 }
 
 function ErrorSummary({ errors, onNavigate }: { errors: Record<string, string>; onNavigate: (path: string) => void }) {
