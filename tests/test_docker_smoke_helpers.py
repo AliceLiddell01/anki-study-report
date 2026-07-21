@@ -100,6 +100,23 @@ def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_sch
     assert "canonical triage v2 is active" not in profile_smoke
 
 
+@pytest.mark.parametrize(
+    ("scope", "expected"),
+    [
+        ("cards", True),
+        ("full", True),
+        ("global", False),
+        ("notifications", False),
+    ],
+)
+def test_smoke_api_runs_inspection_profiles_for_cards_and_full(
+    scope: str, expected: bool
+):
+    smoke_api = load_smoke_api_module()
+
+    assert smoke_api.should_run_inspection_profiles(scope) is expected
+
+
 def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source():
     source = (
         Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"

@@ -15,6 +15,10 @@ from urllib.request import Request, urlopen
 from artifact_paths import ArtifactPaths
 
 
+def should_run_inspection_profiles(scope: str) -> bool:
+    return scope in {"cards", "full"}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run API smoke checks against Anki Study Report dashboard.")
     parser.add_argument("--label", default="run")
@@ -41,7 +45,7 @@ def main() -> int:
     if os.environ.get("ANKI_E2E_SCOPE", "full") in {"full", "notifications"}:
         notification_summary = assert_notification_contract(base_url, token, artifacts, args.label)
     inspection_profiles_summary = None
-    if os.environ.get("ANKI_E2E_SCOPE", "full") == "cards":
+    if should_run_inspection_profiles(os.environ.get("ANKI_E2E_SCOPE", "full")):
         inspection_profiles_summary = assert_inspection_profiles_contract(
             base_url, token, artifacts, args.label
         )
