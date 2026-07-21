@@ -225,7 +225,7 @@ export function CardPreview({ details, side }: { details: SearchCardDetails; sid
         mode={side === "back" ? "expanded" : "preview"}
         side={side}
         html={htmlWithMediaToken(html)}
-        css={preview.css || ""}
+        css={cssWithMediaToken(preview.css || "")}
         title={title}
         cardOrd={preview.cardOrd || details.templateOrdinal}
         renderSource={preview.renderSource || ""}
@@ -254,6 +254,10 @@ function plainTextHtml(value: string): string {
 
 function htmlWithMediaToken(html: string): string {
   return html.replace(/(\/api\/media\?name=[^\"'&<>]+)(?![^\"'<>]*token=)/g, (url) => appendToken(url));
+}
+
+export function cssWithMediaToken(css: string): string {
+  return css.replace(/\/api\/media\?name=[^\"'&\\)\s]+/g, (url) => appendToken(url));
 }
 
 function appendToken(url: string): string {

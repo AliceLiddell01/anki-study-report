@@ -31,6 +31,15 @@ def fetch_raw(url: str, body: bytes) -> tuple[int, str, bytes]:
         return error.code, error.headers.get("Content-Type", ""), error.read()
 
 
+def fetch_headers(url: str) -> tuple[int, dict[str, str], bytes]:
+    request = Request(url, headers={"User-Agent": "anki-study-report-test"})
+    try:
+        with urlopen(request, timeout=5) as response:
+            return response.status, dict(response.headers.items()), response.read()
+    except HTTPError as error:
+        return error.code, dict(error.headers.items()), error.read()
+
+
 def write_dashboard_static(root: Path) -> None:
     assets_dir = root / "assets"
     assets_dir.mkdir(parents=True)
@@ -119,6 +128,46 @@ def test_dashboard_server_smoke_endpoints():
         manager.stop()
 
     assert manager.state().running is False
+
+
+def test_dashboard_server_sends_deny_by_default_browser_security_policy(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    monkeypatch.setattr(dashboard_server, "_find_static_dir", lambda: None)
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+
+    try:
+        status, headers, body = fetch_headers(f"{base_url}/")
+        assert status == 200
+        policy = headers["Content-Security-Policy"]
+        for directive in (
+            "default-src 'none'",
+            "script-src 'self' 'nonce-",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "media-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "frame-src 'none'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        ):
+            assert directive in policy
+        assert "http:" not in policy
+        assert "https:" not in policy
+        assert headers["Referrer-Policy"] == "no-referrer"
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        nonce = policy.split("'nonce-", 1)[1].split("'", 1)[0]
+        assert f'nonce="{nonce}"'.encode() in body
+
+        forbidden_status, forbidden_headers, _ = fetch_headers(f"{base_url}/api/report")
+        assert forbidden_status == 403
+        assert forbidden_headers["Content-Security-Policy"].startswith("default-src 'none'")
+    finally:
+        manager.stop()
 
 
 def test_search_endpoints_require_token_post_and_preserve_typed_statuses():
@@ -623,6 +672,8 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
     media_dir.mkdir()
     media_file = media_dir / "front.gif"
     media_file.write_bytes(b"GIF89a")
+    font_file = media_dir / "study.woff2"
+    font_file.write_bytes(b"wOF2safe")
 
     manager = dashboard_server.DashboardServerManager()
     manager.configure_media_handler(lambda name: ((media_dir / name).read_bytes(), (media_dir / name).suffix))
@@ -638,6 +689,11 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
         assert status == 200
         assert content_type == "image/gif"
         assert body == b"GIF89a"
+
+        status, content_type, body = fetch(f"{base_url}/api/media?name=study.woff2&token={token}")
+        assert status == 200
+        assert content_type == "font/woff2"
+        assert body == b"wOF2safe"
 
         status, _, _ = fetch(f"{base_url}/api/media?name=..%2Fsecret.txt&token={token}")
         assert status == 400

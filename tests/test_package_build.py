@@ -19,6 +19,12 @@ REQUIRED_ARCHIVE_FILES = {
     "config.json",
     "changelog.json",
     "telemetry_contract.json",
+    "THIRD_PARTY_NOTICES.md",
+    "_vendor/README.md",
+    "_vendor/tinycss2/__init__.py",
+    "_vendor/webencodings/__init__.py",
+    "_vendor/licenses/tinycss2-LICENSE",
+    "_vendor/licenses/webencodings-LICENSE",
     "card_display_formatter_store.py",
     "card_display_formatter_service.py",
     "card_display_formatter_runtime.py",
@@ -59,6 +65,15 @@ def write_minimal_archive(
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
+        for name in (
+            "THIRD_PARTY_NOTICES.md",
+            "_vendor/README.md",
+            "_vendor/tinycss2/__init__.py",
+            "_vendor/webencodings/__init__.py",
+            "_vendor/licenses/tinycss2-LICENSE",
+            "_vendor/licenses/webencodings-LICENSE",
+        ):
+            archive.writestr(name, "packaged dependency notice")
         archive.writestr("dashboard_server.py", "")
         archive.writestr("card_display_formatter_store.py", "")
         archive.writestr("card_display_formatter_service.py", "")
@@ -179,6 +194,15 @@ def write_split_archive(
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
+        for name in (
+            "THIRD_PARTY_NOTICES.md",
+            "_vendor/README.md",
+            "_vendor/tinycss2/__init__.py",
+            "_vendor/webencodings/__init__.py",
+            "_vendor/licenses/tinycss2-LICENSE",
+            "_vendor/licenses/webencodings-LICENSE",
+        ):
+            archive.writestr(name, "packaged dependency notice")
         archive.writestr("dashboard_server.py", "")
         archive.writestr("card_display_formatter_store.py", "")
         archive.writestr("card_display_formatter_service.py", "")

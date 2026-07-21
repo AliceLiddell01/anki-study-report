@@ -8,6 +8,8 @@ import re
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from .card_css_policy import sanitize_card_stylesheet
+
 
 FIELD_SEPARATOR = "\x1f"
 PREVIEW_SCHEMA_VERSION = 1
@@ -517,13 +519,7 @@ def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
 
 
 def sanitize_card_css(value: Any) -> str:
-    text = str(value or "")
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"@import[^;]+;", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"url\((?:file://|https?://|[A-Za-z]:\\)[^)]+\)", "url()", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b[A-Za-z]:\\[^\s;{}]+", " ", text)
-    text = re.sub(r"token=[^\s;{}]+", "token=[redacted]", text, flags=re.IGNORECASE)
-    return text[:4000]
+    return sanitize_card_stylesheet(value)
 
 
 def _sanitize_style_attributes(text: str) -> str:

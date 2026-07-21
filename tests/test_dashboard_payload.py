@@ -446,7 +446,7 @@ def test_dashboard_payload_preserves_safe_rendered_style_class_and_media_refs():
     assert 'style="color: rgb(255, 165, 0)"' in rendered["frontHtml"]
     assert "position" not in rendered["frontHtml"]
     assert "token=secret" not in rendered["frontHtml"]
-    assert rendered["css"] == ".word-focus { color: orange; }"
+    assert rendered["css"] == "@scope (.card){.word-focus{color:orange;}}"
     assert rendered["mediaRefs"] == [{"name": "要.gif", "type": "image", "url": "/api/media?name=%E8%A6%81.gif"}]
     assert rendered["cardOrd"] == 1
 

@@ -40,6 +40,27 @@ DEFAULT_PORT = 8766
 DEFAULT_IDLE_TIMEOUT_SECONDS = 1800
 
 
+def _dashboard_content_security_policy(script_nonce: str) -> str:
+    return "; ".join(
+        (
+            "default-src 'none'",
+            f"script-src 'self' 'nonce-{script_nonce}'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "media-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "frame-src 'none'",
+            "worker-src 'none'",
+            "manifest-src 'self'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        )
+    )
+
+
 @dataclass(frozen=True)
 class DashboardServerState:
     running: bool
@@ -879,6 +900,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
     def __init__(self, *args: Any, manager: DashboardServerManager, **kwargs: Any) -> None:
         self.manager = manager
+        self._script_nonce = secrets.token_urlsafe(18)
         super().__init__(*args, **kwargs)
 
     def do_GET(self) -> None:
@@ -1155,6 +1177,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         return
 
+    def end_headers(self) -> None:
+        self.send_header("Content-Security-Policy", _dashboard_content_security_policy(self._script_nonce))
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        super().end_headers()
+
     def _send_json(self, data: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
         payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status)
@@ -1270,7 +1298,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": True, "message": "Logs cleared.", "status": log_status()})
 
     def _send_builtin_dashboard(self) -> None:
-        payload = """<!doctype html>
+        html = """<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -1617,7 +1645,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
   </script>
 </body>
 </html>
-""".encode("utf-8")
+"""
+        payload = html.replace("<script>", f'<script nonce="{self._script_nonce}">').encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
@@ -2197,6 +2226,10 @@ def _content_type(path: Path) -> str:
         ".wav": "audio/wav",
         ".m4a": "audio/mp4",
         ".flac": "audio/flac",
+        ".otf": "font/otf",
+        ".ttf": "font/ttf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
         ".svg": "image/svg+xml",
         ".txt": "text/plain; charset=utf-8",
         ".webp": "image/webp",
@@ -2216,6 +2249,10 @@ def _media_content_type(path: Path | str) -> str:
         ".wav": "audio/wav",
         ".m4a": "audio/mp4",
         ".flac": "audio/flac",
+        ".otf": "font/otf",
+        ".ttf": "font/ttf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
     }.get(suffix, "application/octet-stream")
 
 
@@ -2230,7 +2267,10 @@ def _safe_media_name(value: str) -> str:
     if re.match(r"^[A-Za-z]:", name):
         return ""
     suffix = Path(name).suffix.lower().lstrip(".")
-    if suffix not in {"gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac"}:
+    if suffix not in {
+        "gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac",
+        "otf", "ttf", "woff", "woff2",
+    }:
         return ""
     return name
 
