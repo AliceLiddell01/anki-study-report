@@ -1,8 +1,8 @@
-# Formatter display identity карточки v1
+# Formatter идентичности отображения карточки v1
 
 ## Статус
 
-**Этап:** `C1.5R.2 — Complete`  
+**Этап:** `C1.5R.2 — завершено`  
 **Ветка:** `core`  
 **Schema:** [`schemas/card-display-formatter-v1.schema.json`](../schemas/card-display-formatter-v1.schema.json)
 
@@ -14,24 +14,24 @@ anki_study_report/card_display_formatter_service.py
 anki_study_report/card_display_formatter_runtime.py
 ```
 
-Card display formatter v1 — независимый локальный configuration contract для изменения compact identity точной пары Anki note type/template.
+Card display formatter v1 — независимый локальный контракт конфигурации для изменения компактной идентичности точной пары «тип заметки Anki — шаблон».
 
 Он не:
 
 - расширяет Inspection Profile v1;
-- меняет полный preview Inspector или expanded preview;
+- меняет полный предпросмотр Inspector или расширенный предпросмотр;
 - изменяет collection;
 - выполняет пользовательский код.
 
 ## Точное назначение
 
-Без configuration сохраняется каноническая identity R1:
+Без конфигурации сохраняется каноническая идентичность R1:
 
 ```text
 【に】（する）
 ```
 
-Для настроенного Japanese note type, reviewer front которого содержит:
+Для настроенного типа заметки Japanese, лицевая сторона reviewer которого содержит:
 
 ```html
 【<b>に</b>】<img src="感.gif"><img src="謝.gif">（<b>する</b>）
@@ -43,11 +43,11 @@ Card display formatter v1 — независимый локальный configur
 【に】感謝（する）
 ```
 
-Programming и любые другие note types без formatter, привязанного к точному ID, сохраняют существующую canonical identity.
+Programming и любые другие типы заметок без formatter, привязанного к точному ID, сохраняют существующую каноническую идентичность.
 
 ## Независимое хранение
 
-Документ хранится отдельно для активного Anki profile:
+Документ хранится отдельно для активного профиля Anki:
 
 ```text
 <profile>/addon_data/<addon-id>/card_display_formatters.json
@@ -65,26 +65,26 @@ note types/templates
 
 Store использует:
 
-- deterministic UTF-8 JSON;
-- temporary file в той же директории;
+- детерминированный UTF-8 JSON;
+- временный файл в том же каталоге;
 - `flush`;
 - `os.fsync`;
 - `os.replace`.
 
-Каждый успешный save/delete увеличивает monotonic `revision`; caller передаёт `expectedRevision`.
+Каждое успешное сохранение или удаление увеличивает монотонную `revision`; вызывающая сторона передаёт `expectedRevision`.
 
-### Recovery states
+### Состояния восстановления
 
-| State | Поведение |
+| Состояние | Поведение |
 | --- | --- |
-| `missing` | пустой документ revision 0 |
-| `corrupt` / invalid v1 | quarantine rename и fallback к canonical display |
-| future schema | bytes сохраняются, writes отклоняются, используется canonical display fallback |
-| inaccessible | `unavailable`, используется canonical display fallback |
+| `missing` | пустой документ с revision 0 |
+| `corrupt` или недопустимый v1 | переименование в quarantine и fallback на каноническое отображение |
+| будущая schema | байты сохраняются, запись отклоняется, используется fallback канонического отображения |
+| недоступный файл | состояние `unavailable`, используется fallback канонического отображения |
 
-API errors и normal logs не содержат path или document content.
+Ошибки API и обычные логи не содержат путь или содержимое документа.
 
-## Document shape и ограничения
+## Структура документа и ограничения
 
 Канонический пустой документ:
 
@@ -96,7 +96,7 @@ API errors и normal logs не содержат path или document content.
 }
 ```
 
-Formatter entry:
+Запись formatter:
 
 ```json
 {
@@ -116,60 +116,60 @@ Formatter entry:
 }
 ```
 
-Hard bounds:
+Жёсткие ограничения:
 
 ```text
-document                         1 MiB
+документ                         1 МиБ
 formatters                       1000
-entries per note type            33
-noteTypeName/templateName        160 Unicode characters
+записей на тип заметки           33
+noteTypeName/templateName        160 символов Unicode
 templateOrdinal                  null | 0..31
-lineSeparator                    0..8 characters, no controls/CR/LF
+lineSeparator                    0..8 символов, без управляющих символов, CR и LF
 maxLines                         1..4
 maxCharacters                    1..240
-noteTypeId                       positive signed-64 decimal string
+noteTypeId                       положительная десятичная строка signed-64
 ```
 
-Root и nested objects отклоняют unknown keys. Booleans не считаются integers.
+Корневой и вложенные объекты отклоняют неизвестные ключи. Boolean не считается integer.
 
-Fail closed обрабатываются:
+По принципу fail closed обрабатываются:
 
-- duplicate keys `(noteTypeId, templateOrdinal)`;
-- incoherent nullable template fields;
-- invalid timestamps;
-- writes в future schema.
+- дублирующиеся ключи `(noteTypeId, templateOrdinal)`;
+- несогласованные nullable-поля шаблона;
+- недопустимые timestamps;
+- запись в документ будущей schema.
 
-## Identity и resolution
+## Идентичность и разрешение конфигурации
 
-Binding key:
+Ключ привязки:
 
 ```text
 (noteTypeId, templateOrdinal)
 ```
 
-Names являются только bounded display/diagnostic snapshots. Binding по name, deck, field value или fuzzy similarity отсутствует.
+Имена являются только ограниченными snapshot для отображения и диагностики. Привязка по имени, колоде, значению поля или нечёткому сходству отсутствует.
 
-Resolution:
+Порядок разрешения:
 
 ```text
-exact enabled  → применить exact formatter
-exact disabled → запретить default inheritance и использовать canonical R1 fallback
-exact отсутствует + note-type default enabled  → применить default
-exact отсутствует + default disabled/absent    → canonical R1 fallback
+точный enabled  → применить точный formatter
+точный disabled → запретить наследование стандарта и использовать канонический fallback R1
+точный отсутствует + стандарт типа заметки enabled  → применить стандарт
+точный отсутствует + стандарт disabled/отсутствует → канонический fallback R1
 ```
 
-Store читается один раз на Search/Triage request. После этого одна immutable resolver map переиспользуется для всех projected cards.
+Store читается один раз на запрос Search или Triage. После этого одна неизменяемая map resolver переиспользуется для всех проецируемых карточек.
 
 Отсутствуют:
 
-- per-card file reads;
-- HTTP calls;
-- collection scans;
-- mutable module-global formatter cache.
+- чтения файлов для каждой карточки;
+- HTTP-вызовы;
+- сканирование collection;
+- изменяемый глобальный cache formatter на уровне модуля.
 
-## Declarative policies
+## Декларативные политики
 
-Enums:
+Enum:
 
 ```text
 storedState: enabled | disabled
@@ -179,31 +179,31 @@ imageMode: omit | filename | stem | marker
 audioMode: omit | filename | stem | marker
 ```
 
-Фиксированные markers:
+Фиксированные маркеры:
 
 ```text
 image: 🖼
 audio: 🔊
 ```
 
-Marker text в v1 не настраивается.
+Текст маркеров в v1 не настраивается.
 
-Schema и API не содержат capabilities для:
+Schema и API не содержат возможности для:
 
 - JavaScript, Python или SQL;
 - shell или regex;
 - selector, expression или callback;
-- import/module;
-- path или URL;
-- field value;
-- template HTML/CSS;
-- remote endpoint.
+- import или module;
+- пути или URL;
+- значения поля;
+- HTML или CSS шаблона;
+- удалённого endpoint.
 
-Runtime не использует `eval`, `exec`, dynamic import, plugin callback или subprocess.
+Runtime не использует `eval`, `exec`, динамический import, plugin callback или subprocess.
 
-## Упорядоченный token stream
+## Упорядоченный поток токенов
 
-Compact parser создаёт только:
+Компактный parser создаёт только:
 
 ```text
 text
@@ -212,30 +212,30 @@ image
 audio
 ```
 
-Source order сохраняется. Между соседними inline text/media tokens не добавляется выдуманный separator. HTML entities декодируются. `<br>` и block boundaries создают line breaks. Whitespace нормализуется внутри итоговых строк. Malformed blocked embedded content fail closed.
+Порядок источника сохраняется. Между соседними inline-токенами текста и media не добавляется искусственный разделитель. HTML-entities декодируются. `<br>` и границы блоков создают переносы строк. Пробелы нормализуются внутри итоговых строк. Повреждённое запрещённое встроенное содержимое работает по принципу fail closed.
 
 Распознаётся безопасное audio:
 
 - `[sound:filename]`;
-- unnamed `[anki:play:...]`;
-- безопасные rendered audio/source references.
+- безымянный `[anki:play:...]`;
+- безопасные отрендеренные ссылки audio и source.
 
-Unnamed audio выдаёт только фиксированный marker, когда `audioMode: marker`.
+Безымянное audio выводит только фиксированный маркер, когда задано `audioMode: marker`.
 
 ## Правила безопасного имени media
 
-Media token может содержать только normalized flat local filename либо `null`.
+Media-токен может содержать только нормализованное плоское локальное имя файла либо `null`.
 
 Разрешённое имя:
 
-- bounded;
-- без scheme;
-- без absolute path;
-- без slash/backslash;
-- без traversal;
-- без control characters.
+- имеет ограниченную длину;
+- не содержит scheme;
+- не является абсолютным путём;
+- не содержит slash или backslash;
+- не содержит traversal;
+- не содержит управляющих символов.
 
-Validation выполняется после HTML entity decoding.
+Validation выполняется после декодирования HTML-entities.
 
 Примеры отклоняемых ссылок:
 
@@ -250,14 +250,14 @@ data:...
 file:...
 ```
 
-Отклонённый или unnamed media token всё ещё может вывести фиксированный marker. Raw unsafe text наружу не возвращается.
+Отклонённый или безымянный media-токен всё ещё может вывести фиксированный маркер. Необработанный небезопасный текст наружу не возвращается.
 
-Formatter processing никогда не:
+Обработка formatter никогда не:
 
-- открывает media file;
-- проверяет существование file;
-- разрешает filesystem path;
-- загружает remote resource.
+- открывает media-файл;
+- проверяет существование файла;
+- разрешает путь файловой системы;
+- загружает удалённый ресурс.
 
 ## Семантика строк и truncation
 
@@ -265,54 +265,54 @@ Formatter processing никогда не:
 
 ```text
 tokenize
-→ применить text/media modes
-→ построить lines
-→ удалить empty lines
-→ выбрать первые maxLines meaningful lines
-→ нормализовать whitespace каждой line
+→ применить режимы text и media
+→ построить строки
+→ удалить пустые строки
+→ выбрать первые maxLines содержательных строк
+→ нормализовать пробелы каждой строки
 → объединить через lineSeparator
 → применить maxCharacters
 ```
 
 Truncation:
 
-- добавляет один terminal ellipsis;
+- добавляет одно завершающее многоточие;
 - никогда не превышает `maxCharacters`;
 - точно устанавливает `displayTruncated`.
 
-Валидный non-empty configured result:
+Допустимый непустой настроенный результат:
 
 ```text
 displayStatus = available
-displaySource = configured inputSource
-displayText = configured output
-displayTruncated = formatter truncation
+displaySource = настроенный inputSource
+displayText = настроенный результат
+displayTruncated = результат truncation formatter
 ```
 
-Search остаётся schema v2, Triage — schema v3 в этом contract snapshot. В Search/Triage payload не добавляются публичные fields `formatterApplied`, formatter ID, alias или formatter configuration.
+Search остаётся на schema v2, Triage — на schema v3 в snapshot этого контракта. В payload Search и Triage не добавляются публичные поля `formatterApplied`, ID formatter, alias или конфигурация formatter.
 
-## Canonical fallback и повторное использование render
+## Канонический fallback и повторное использование рендера
 
-Без active formatter:
+Без активного formatter:
 
 ```text
-Browser question → reviewer front → media_only/unavailable
+вопрос Browser → лицевая сторона reviewer → media_only/unavailable
 ```
 
-При active formatter сначала используется только выбранный source.
+При активном formatter сначала используется только выбранный источник.
 
-Следующие состояния возвращают обработку к неизменённому canonical fallback R1:
+Следующие состояния возвращают обработку к неизменённому каноническому fallback R1:
 
-- render unavailable;
-- invalid token stream;
-- empty output;
-- output, полностью удалённый policy.
+- рендер недоступен;
+- поток токенов недопустим;
+- результат пуст;
+- результат полностью удалён политикой.
 
-В рамках projection одной card каждый source рендерится не более одного раза. Неудачный configured attempt кэшируется и переиспользуется fallback. `card.answer()` никогда не вызывается.
+В рамках проекции одной карточки каждый источник рендерится не более одного раза. Неудачная настроенная попытка кэшируется и переиспользуется fallback. `card.answer()` никогда не вызывается.
 
-## Локальный dashboard API
+## Локальный API dashboard
 
-Token-protected POST-only JSON endpoints:
+Защищённые токеном POST-only JSON endpoints:
 
 ```text
 /api/card-display-formatters/query
@@ -320,15 +320,15 @@ Token-protected POST-only JSON endpoints:
 /api/card-display-formatters/update
 ```
 
-Все endpoints используют schema v1, exact keys и существующий body cap 64 KiB.
+Все endpoints используют schema v1, точные ключи и существующее ограничение тела 64 КиБ.
 
-Query request:
+Запрос query:
 
 ```json
 {"schemaVersion": 1}
 ```
 
-Query response содержит:
+Ответ query содержит:
 
 ```text
 schemaVersion
@@ -339,20 +339,20 @@ errorCode
 quarantined
 ```
 
-`validate` принимает один strict formatter, ничего не сохраняет и не читает collection. Возвращается normalized value либо bounded field errors.
+`validate` принимает один строгий formatter, ничего не сохраняет и не читает collection. Возвращается нормализованное значение либо ограниченные ошибки полей.
 
-Update actions:
+Действия update:
 
 ```text
 save   expectedRevision + formatter
-delete expectedRevision + exact noteTypeId/templateOrdinal key
+delete expectedRevision + точный ключ noteTypeId/templateOrdinal
 ```
 
-Delete не может случайно удалить все formatters note type. Revision conflict возвращает current revision. Errors раскрывают только generic machine codes.
+Delete не может случайно удалить все formatters типа заметки. Конфликт revision возвращает актуальную revision. Ошибки раскрывают только обобщённые машинные коды.
 
-## Frontend contract
+## Контракт frontend
 
-Strict types/parser/client:
+Строгие types, parser и client:
 
 ```text
 web-dashboard/src/types/cardDisplayFormatters.ts
@@ -361,44 +361,44 @@ web-dashboard/src/lib/cardDisplayFormattersApi.ts
 
 Они отклоняют:
 
-- old/future schemas;
-- unknown keys;
-- malformed IDs и timestamps;
-- invalid enums/limits;
-- duplicate keys;
-- incoherent nullable template fields;
-- malformed error envelopes.
+- старые и будущие schema;
+- неизвестные ключи;
+- повреждённые ID и timestamps;
+- недопустимые enum и ограничения;
+- дублирующиеся ключи;
+- несогласованные nullable-поля шаблона;
+- повреждённые envelopes ошибок.
 
-C1.5R.2 не добавляет route, page, hook, Settings navigation или form. Guided formatter UX относится к C1.5R.6.
+C1.5R.2 не добавляет маршрут, страницу, hook, навигацию Settings или форму. Пошаговый UX formatter относится к C1.5R.6.
 
-## Безопасность и приватность
+## Безопасность и конфиденциальность
 
 Сохраняются границы:
 
 ```text
-loopback-only server
-dashboard token
+server доступен только через loopback-интерфейс
+токен dashboard
 frontend не имеет доступа к collection
-нет iframe/template JavaScript execution
-нет arbitrary code или query language
-нет чтения media files или remote loads
-нет raw HTML/note fields в formatter store
-нет local paths или token-bearing URLs
-нет telemetry/normal logs для formatter filename или displayText
+нет выполнения JavaScript шаблона через iframe
+нет произвольного кода или языка запросов
+нет чтения media-файлов или удалённых загрузок
+нет необработанного HTML или полей заметки в store formatter
+нет локальных путей или URL с токеном
+нет телеметрии и обычных логов для имени файла formatter или displayText
 ```
 
-Configured `displayText` возвращается только локальному dashboard как явный product output.
+Настроенный `displayText` возвращается только локальному dashboard как явный продуктовый результат.
 
 ## Отложенная работа
 
 В formatter v1 не входят:
 
 ```text
-Settings/guided UI
-automatic suggestions
-live formatter preview API
-front/back preview semantics
-candidate-source redesign
-Cards inbox redesign
-C1.6 actions/recheck/resolution
+UI Settings и пошаговой настройки
+автоматические предложения
+API живого предпросмотра formatter
+семантика предпросмотра лицевой и обратной стороны
+переработка источников кандидатов
+переработка очереди Cards
+действия, recheck и определение результата C1.6
 ```
