@@ -233,6 +233,28 @@ def test_query_caps_results_paginates_and_loads_only_the_requested_page():
     assert all(isinstance(item["cardId"], str) and isinstance(item["noteId"], str) for item in result["items"])
 
 
+def test_result_selection_streams_once_and_keeps_only_the_bounded_ordered_ids():
+    class OneShotIds:
+        iterations = 0
+
+        def __iter__(self):
+            self.iterations += 1
+            if self.iterations > 1:
+                raise AssertionError("native results must not be iterated twice")
+            yield from range(100_000, 0, -1)
+
+        def __len__(self):
+            raise AssertionError("selection must not require a materialized Python length")
+
+    found = OneShotIds()
+    ids, truncated = search._bounded_sorted_entity_ids(found, limit=search.RESULT_CAP, reverse=False)
+    assert found.iterations == 1
+    assert truncated is True
+    assert len(ids) == search.RESULT_CAP
+    assert ids[:3] == [1, 2, 3]
+    assert ids[-1] == search.RESULT_CAP
+
+
 def test_sort_is_deterministic_deduplicated_and_supports_descending():
     col = FakeCollection(range(1, 5))
     col.card_ids = [2, 4, 2, 1, 3]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+import threading
 
 from conftest import import_addon_module
 
@@ -152,3 +153,50 @@ def test_formatter_store_failure_is_generic_and_does_not_break_search(monkeypatc
     )
     assert result["ok"] is True
     assert "private" not in repr(logged)
+
+
+def test_broad_search_is_single_flight_and_does_not_schedule_a_pile_up(monkeypatch):
+    started = threading.Event()
+    release = threading.Event()
+
+    class DeferredQueryOp(FakeQueryOp):
+        def run_in_background(self):
+            def complete():
+                started.set()
+                release.wait(2)
+                self.success(self.op(self.parent.col))
+
+            threading.Thread(target=complete, daemon=True).start()
+            return self
+
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: DeferredQueryOp)
+    monkeypatch.setattr(runtime, "execute_search_request", lambda _col, value: {"requestId": value["requestId"]})
+    first_result = {}
+    first_thread = threading.Thread(
+        target=lambda: first_result.update(runtime.run_search_query_sync(mw, payload(), timeout_seconds=2)),
+        daemon=True,
+    )
+    first_thread.start()
+    assert started.wait(1)
+
+    second_payload = {**payload(), "requestId": "runtime-2", "query": "tag:newer"}
+    second = runtime.run_search_query_sync(mw, second_payload, timeout_seconds=2)
+
+    assert second == {
+        "ok": False,
+        "error": "search_busy",
+        "message": "Another broad search is still running.",
+        "requestId": "runtime-2",
+    }
+    assert taskman.calls == 1
+    release.set()
+    first_thread.join(2)
+    assert first_result == {"ok": True, "response": {"requestId": "runtime-1"}}
+    third_payload = {**payload(), "requestId": "runtime-3", "query": "tag:after"}
+    assert runtime.run_search_query_sync(mw, third_payload, timeout_seconds=2) == {
+        "ok": True,
+        "response": {"requestId": "runtime-3"},
+    }
+    assert taskman.calls == 2

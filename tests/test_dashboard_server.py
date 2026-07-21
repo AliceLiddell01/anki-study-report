@@ -87,7 +87,7 @@ def test_dashboard_server_smoke_endpoints():
         status, content_type, body = fetch(f"{base_url}/api/status")
         assert status == 200
         assert "application/json" in content_type
-        assert json.loads(body)["running"] is True
+        assert json.loads(body) == {"ok": True, "status": "running"}
 
         status, _, _ = fetch(f"{base_url}/api/health")
         assert status == 403
@@ -232,7 +232,12 @@ def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
             assert status == 400
             assert json.loads(body)["error"] == "invalid_search_request"
 
-        for code, expected_status in [("invalid_search_request", 400), ("search_timeout", 504), ("search_failed", 503)]:
+        for code, expected_status in [
+            ("invalid_search_request", 400),
+            ("search_timeout", 504),
+            ("search_busy", 409),
+            ("search_failed", 503),
+        ]:
             manager.configure_search_handlers(
                 query_handler=lambda payload, code=code: {"ok": False, "error": code, "message": "Safe failure."}
             )
@@ -619,11 +624,7 @@ def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch
         assert status == 200
         assert "application/json" in content_type
         status_payload = json.loads(body)
-        assert status_payload["running"] is True
-        assert status_payload["static_available"] is False
-        assert status_payload["static_dir"] is None
-        assert status_payload["report_available"] is False
-        assert status_payload["url"].endswith("?token=...")
+        assert status_payload == {"ok": True, "status": "running"}
         assert token not in body.decode("utf-8")
 
         status, content_type, body = fetch(f"{base_url}/")
@@ -634,6 +635,59 @@ def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch
         assert "fallback-режиме" in text
         assert "build:addon" in text
         assert token not in text
+    finally:
+        manager.stop()
+
+
+def test_public_status_is_minimal_and_protected_diagnostics_redact_cross_platform_paths(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        status, _, body = fetch(f"{base_url}/api/status")
+        assert status == 200
+        public = json.loads(body)
+        assert public == {"ok": True, "status": "running"}
+        serialized = json.dumps(public)
+        assert "static_dir" not in serialized
+        assert "report_path" not in serialized
+
+        status, _, body = fetch(f"{base_url}/api/server/status?token={token}")
+        assert status == 200
+        protected = json.loads(body)
+        assert protected["static_dir"] is None or protected["static_dir"].startswith("<redacted>/")
+        assert protected["report_path"].startswith("<redacted>/")
+        assert "/tmp/" not in json.dumps(protected)
+
+        for value in (
+            r"C:\Users\Alice\AppData\Local\report.json",
+            "/Users/alice/Library/Application Support/report.json",
+            "/home/alice/.local/share/report.json",
+        ):
+            redacted = dashboard_server._mask_path(value)
+            assert redacted == "<redacted>/report.json"
+            assert "alice" not in redacted.lower()
+    finally:
+        manager.stop()
+
+
+def test_failed_unauthenticated_request_does_not_extend_idle_activity():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=60)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        before = manager._last_request_at
+        status, _, _ = fetch(f"{base_url}/api/report?token=wrong")
+        assert status == 403
+        assert manager._last_request_at == before
+
+        status, _, _ = fetch(f"{base_url}/api/report?token={token}")
+        assert status == 404
+        assert manager._last_request_at > before
     finally:
         manager.stop()
 

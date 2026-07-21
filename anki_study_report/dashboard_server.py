@@ -881,7 +881,10 @@ class DashboardServerManager:
     def token_is_valid(self, token: str | None) -> bool:
         with self._lock:
             expected = self._token
-        return bool(expected and token and secrets.compare_digest(token, expected))
+        valid = bool(expected and token and secrets.compare_digest(token, expected))
+        if valid:
+            self.touch()
+        return valid
 
     def _monitor_idle(self) -> None:
         while not self._stop_event.wait(5):
@@ -904,12 +907,13 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def do_GET(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
 
         if path == "/api/status":
-            self._send_json(_state_to_dict(self.manager.state()))
+            self.manager.touch()
+            state = self.manager.state()
+            self._send_json({"ok": state.running, "status": "running" if state.running else "stopped"})
             return
         if path == "/api/health":
             self._send_health(_query_token(parsed))
@@ -1060,7 +1064,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
         state = self.manager.state()
         if not state.static_available or state.static_dir is None:
-            self._send_builtin_dashboard()
+            if path in {"", "/", "/index.html"}:
+                self.manager.touch()
+                self._send_builtin_dashboard()
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
             return
 
         static_dir = Path(state.static_dir)
@@ -1068,10 +1076,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if target is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
+        self.manager.touch()
         self._send_file(target)
 
     def do_POST(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
 
@@ -1166,7 +1174,6 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         if path == "/api/settings/notifications":
@@ -1897,6 +1904,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.NOT_FOUND
         elif error == "search_timeout":
             status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error == "search_busy":
+            status = HTTPStatus.CONFLICT
         elif error in {"search_unavailable", "search_failed"}:
             status = HTTPStatus.SERVICE_UNAVAILABLE
         else:
@@ -2386,13 +2395,7 @@ def _state_to_dict(state: DashboardServerState) -> dict[str, Any]:
 def _mask_path(value: str | None) -> str | None:
     if not value:
         return value
-    try:
-        path = Path(value)
-        parts = path.resolve().parts
-    except OSError:
-        return value
-    if "Users" in parts:
-        index = parts.index("Users")
-        if len(parts) > index + 2:
-            return str(Path(*parts[: index + 2]) / "..." / Path(*parts[index + 3 :]))
-    return str(path)
+    normalized = str(value).replace("\\", "/").rstrip("/")
+    name = normalized.rsplit("/", 1)[-1]
+    name = re.sub(r"[^A-Za-z0-9._ -]", "_", name)[:120] or "path"
+    return f"<redacted>/{name}"

@@ -73,34 +73,59 @@ def test_smoke_api_card_rows_ignore_removed_problem_cards_alias():
     assert smoke_api._card_rows_from_report({"problemCards": [row("problemCards")]}) == []
 
 
-def test_smoke_api_css_sentinel_uses_current_cards_inbox():
-    source = (
-        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
-    ).read_text(encoding="utf-8")
+def test_smoke_api_asset_contract_executes_current_cards_inbox_marker(monkeypatch, tmp_path):
+    smoke_api = load_smoke_api_module()
+    css = " ".join((
+        "[data-theme=light]", ".topbar-surface", ".shadow-panel",
+        ".cards-inbox-page", ".anki-card-shadow-preview",
+    )).encode()
 
-    assert '".cards-inbox-page"' in source
-    assert '".cards-v2-table"' not in source
+    def fetch_bytes(_base_url, path, _token, _params=None):
+        if path == "/":
+            return 200, "text/html", b'<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js"></script>'
+        if path == "/assets/app.css":
+            return 200, "text/css", css
+        if path == "/assets/app.js":
+            return 200, "application/javascript", b"window.ready=true"
+        raise AssertionError(path)
+
+    monkeypatch.setattr(smoke_api, "fetch_bytes", fetch_bytes)
+    result = smoke_api.assert_dashboard_assets("http://127.0.0.1", "token", tmp_path, "unit")
+    assert result["missingCssMarkers"] == []
+    assert result["cssAssetCount"] == 1
 
 
-def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_schemas():
-    source = (
-        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-api.py"
-    ).read_text(encoding="utf-8")
-    search_helper = source.split("def search_note_type_cards", 1)[1].split(
-        "def reasons_for_note_type", 1
-    )[0]
-    profile_smoke = source.split("def assert_inspection_profiles_contract", 1)[1].split(
-        "def find_structure", 1
-    )[0]
+def test_smoke_api_inspection_profile_requests_execute_current_search_and_triage_schemas(monkeypatch):
+    smoke_api = load_smoke_api_module()
+    calls = []
 
-    assert '"schemaVersion": 2' in search_helper
-    assert '"schemaVersion": 4' in profile_smoke
-    assert 'triage.get("schemaVersion") == 4' in profile_smoke
-    assert "canonical triage v4 is active" in profile_smoke
-    assert '"/api/triage/recheck"' in profile_smoke
-    assert 'recheck.get("schemaVersion") == 1' in profile_smoke
-    assert "recheck evaluates only the requested card" in profile_smoke
-    assert "canonical triage v2 is active" not in profile_smoke
+    def post_json(base_url, path, token, payload):
+        calls.append((base_url, path, token, payload))
+        return {"items": [{"cardId": "11"}]}
+
+    monkeypatch.setattr(smoke_api, "post_json", post_json)
+    assert smoke_api.search_note_type_cards("http://dashboard", "token", "7", "japanese") == [{"cardId": "11"}]
+    search_payload = calls[0][3]
+    assert search_payload["schemaVersion"] == 2
+    assert search_payload["mode"] == "cards"
+    assert search_payload["filters"] == [{"type": "note_type", "noteTypeId": "7"}]
+
+    triage = smoke_api.inspection_triage_request(["11", "12"])
+    assert triage["schemaVersion"] == 4
+    assert triage["dataset"] == "search_workset"
+    assert triage["cardIds"] == ["11", "12"]
+    recheck = smoke_api.inspection_recheck_request({
+        "cardId": "11",
+        "noteId": "21",
+        "reasons": [{"reasonId": "learning:learning.leech"}],
+    })
+    assert recheck == {
+        "schemaVersion": 1,
+        "cardId": "11",
+        "expectedNoteId": "21",
+        "reasonIds": ["learning:learning.leech"],
+        "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+    }
 
 
 @pytest.mark.parametrize(
