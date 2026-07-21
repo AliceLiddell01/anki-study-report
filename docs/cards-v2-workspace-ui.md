@@ -2,32 +2,32 @@
 
 ## Статус
 
-Этот документ сохранён только как историческое свидетельство отклонённого Design Gate C1.5 с нативной таблицей. Он не является актуальным implementation contract.
+Этот документ сохраняется только как историческое свидетельство отклонённого Design Gate C1.5 с нативной таблицей. Он не является актуальным контрактом реализации.
 
-Текущий контракт представления `#/cards` описан в документах:
+Текущее представление `#/cards` описано в документах:
 
-- [`cards-attention-inbox.md`](cards-attention-inbox.md) — C1.5R.5: semantic inbox с приоритетом идентичности, wide Inspector и non-modal drawer на 1024 px;
-- [`card-preview-semantics.md`](card-preview-semantics.md) — лицевая сторона в Inspector и развёрнутый answer/back;
-- [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md) — независимые learning/current-content sources и ручное cursor continuation.
+- [`cards-attention-inbox.md`](cards-attention-inbox.md) — C1.5R.5: семантическая очередь с приоритетом идентичности, широкий Inspector и немодальная панель при 1024 px;
+- [`card-preview-semantics.md`](card-preview-semantics.md) — лицевая сторона в Inspector и ответ или обратная сторона в расширенном диалоге;
+- [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md) — независимые источники обучения и текущего содержимого и ручное продолжение через cursor.
 
 ## Историческое решение
 
-В C1.5 была выбрана компактная нативная таблица с persistent Inspector. Позднее owner review по screenshots и реальному профилю отозвал product acceptance.
+В C1.5 была выбрана компактная нативная таблица с постоянным Inspector. Позднее проверка владельцем по скриншотам и реальному профилю отозвала продуктовую приёмку.
 
-C1.5R.5 полностью удаляет эту таблицу и не сохраняет её как responsive alias, скрытый режим, feature flag или fallback.
+C1.5R.5 полностью удаляет эту таблицу и не сохраняет её как responsive-alias, скрытый режим, feature flag или fallback.
 
-Исторические зелёные CI/E2E runs по-прежнему доказывают, что старая реализация выполнялась, но не подтверждают корректность текущего продукта.
+Исторические успешные запуски CI и E2E по-прежнему подтверждают работоспособность старой реализации, но не корректность актуального продукта.
 
 ## Текущая граница
 
-C1.5R.5 остаётся read-only. В него не входят:
+C1.5R.5 работает только на чтение. В него не входят:
 
-- selection и mutations;
+- выбор и mutations;
 - Safe Actions;
-- manual resolution;
-- recheck lifecycle;
-- функциональность editor;
-- ARIA grid или listbox;
-- второй preview renderer.
+- ручное определение устранения;
+- жизненный цикл recheck;
+- функции editor;
+- ARIA `grid` или `listbox`;
+- второй renderer предпросмотра.
 
 Эти возможности находятся вне scope R5.
