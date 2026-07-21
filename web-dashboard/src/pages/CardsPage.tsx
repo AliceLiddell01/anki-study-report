@@ -316,6 +316,15 @@ function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof us
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   return (
     <div className="cards-inbox-warnings">
+      {workspace.mutationPending ? (
+        <div className="cards-inbox-warning" role="status" aria-live="polite" aria-busy="true" data-testid="cards-mutation-pending">
+          <RotateCw size={18} aria-hidden="true" />
+          <span>
+            <strong>{t("resolution.states.action_pending.title")}</strong>{" "}
+            {t("resolution.states.action_pending.description")}
+          </span>
+        </div>
+      ) : null}
       {workspace.response?.contentChecks.status === "profiles_need_review" ? (
         <div className="cards-inbox-warning" role="status">
           <TriangleAlert size={18} aria-hidden="true" />

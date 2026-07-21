@@ -10,11 +10,13 @@ const first = item("1001", "First", reason("learning:1", "learning.leech", "high
 const second = item("1002", "Second", reason("content:2", "content.audio_missing", "medium"));
 
 let latestWorkspace: ReturnType<typeof useCardsTriageWorkspace> | null = null;
+let harnessDeckIds = ["3"];
 
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
   latestWorkspace = null;
+  harnessDeckIds = ["3"];
 });
 
 describe("useCardsTriageWorkspace", () => {
@@ -122,6 +124,185 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => latestWorkspace!.activate(second));
     await flush();
     expect(inspectCalls.filter((value) => value === "1002")).toHaveLength(1);
+    await act(async () => root.unmount());
+  });
+
+  it("loads a fresh inspect payload for the same active card after explicit refresh", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let inspectCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/search/inspect")) {
+        inspectCount += 1;
+        const value = searchDetails(String(body.cardId));
+        value.details.displayText = inspectCount === 1 ? "stale inspect" : "fresh inspect";
+        return ok(value);
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.displayText === "stale inspect");
+
+    await act(async () => latestWorkspace!.refresh());
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.displayText === "fresh inspect");
+
+    expect(inspectCount).toBe(2);
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1001");
+    await act(async () => root.unmount());
+  });
+
+  it("ignores an inspect response from before a refresh generation", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let resolveStale: ((value: Response) => void) | null = null;
+    let inspectCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/search/inspect")) {
+        inspectCount += 1;
+        if (inspectCount === 1) return new Promise<Response>((resolve) => { resolveStale = resolve; });
+        const fresh = searchDetails(String(body.cardId));
+        fresh.details.displayText = "fresh generation";
+        return ok(fresh);
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await act(async () => latestWorkspace!.refresh());
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.displayText === "fresh generation");
+
+    const stale = searchDetails("1001");
+    stale.details.displayText = "stale generation";
+    await act(async () => resolveStale?.(ok(stale)));
+    await flush();
+
+    expect(latestWorkspace!.inspectResponse?.details.displayText).toBe("fresh generation");
+    expect(inspectCount).toBe(2);
+    await act(async () => root.unmount());
+  });
+
+  it("invalidates inspect data when the selected deck context changes", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let inspectCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/search/inspect")) {
+        inspectCount += 1;
+        const value = searchDetails(String(body.cardId));
+        value.details.displayText = `deck generation ${inspectCount}`;
+        return ok(value);
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.displayText === "deck generation 1");
+
+    harnessDeckIds = ["4"];
+    await act(async () => root.render(<Harness />));
+    await waitUntil(() => latestWorkspace?.inspectResponse?.details.displayText === "deck generation 2");
+
+    expect(inspectCount).toBe(2);
+    await act(async () => root.unmount());
+  });
+
+  it("keeps a deferred mutation globally busy across refresh and isolates its stale completion", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let resolveAction: ((value: Response) => void) | null = null;
+    let actionCalls = 0;
+    let openCalls = 0;
+    let recheckCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/entities/cards/actions")) {
+        actionCalls += 1;
+        return new Promise<Response>((resolve) => { resolveAction = resolve; });
+      }
+      if (url.includes("/api/actions")) {
+        openCalls += 1;
+        return ok({ ok: true, code: "browser_opened", message: "opened" });
+      }
+      if (url.includes("/api/triage/recheck")) {
+        recheckCalls += 1;
+        return ok(recheck(first));
+      }
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    let pending!: Promise<void>;
+    await act(async () => { pending = latestWorkspace!.runSafeAction("suspend"); await Promise.resolve(); });
+    expect(latestWorkspace!.mutationPending).toBe(true);
+
+    await act(async () => latestWorkspace!.refresh());
+    await waitUntil(() => latestWorkspace?.queryStatus === "ready" && latestWorkspace?.activeItem?.cardId === "1001");
+    expect(latestWorkspace!.mutationPending).toBe(true);
+    expect(latestWorkspace!.resolution).toBeNull();
+    await act(async () => {
+      await latestWorkspace!.runSafeAction("bury");
+      await latestWorkspace!.openInAnki();
+      await latestWorkspace!.recheckActive();
+    });
+    expect(actionCalls).toBe(1);
+    expect(openCalls).toBe(0);
+    expect(recheckCalls).toBe(0);
+
+    await act(async () => {
+      resolveAction?.(ok({
+        schemaVersion: 1,
+        entityType: "cards",
+        action: "suspend",
+        requestedCount: 1,
+        affectedCount: 1,
+        unchangedCount: 0,
+        undoable: true,
+        resultCode: "action.cards_suspended",
+        args: {},
+        requestId: "old-generation",
+      }));
+      await pending;
+    });
+    expect(latestWorkspace!.mutationPending).toBe(false);
+    expect(latestWorkspace!.resolution).toBeNull();
+    expect(latestWorkspace!.lastOutcome).toBeNull();
+    expect(latestWorkspace!.response?.items.map((value) => value.cardId)).toEqual(["1001"]);
+    await act(async () => root.unmount());
+  });
+
+  it("keeps a deferred mutation busy across a period transition", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let resolveAction: ((value: Response) => void) | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/entities/cards/actions")) return new Promise<Response>((resolve) => { resolveAction = resolve; });
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    let pending!: Promise<void>;
+    await act(async () => { pending = latestWorkspace!.runSafeAction("suspend"); await Promise.resolve(); });
+    await act(async () => latestWorkspace!.setLearningPeriodDays(30));
+    await waitUntil(() => latestWorkspace?.learningPeriodDays === 30 && latestWorkspace?.queryStatus === "ready");
+    expect(latestWorkspace!.mutationPending).toBe(true);
+    await act(async () => {
+      resolveAction?.(ok({
+        schemaVersion: 1, entityType: "cards", action: "suspend", requestedCount: 1,
+        affectedCount: 1, unchangedCount: 0, undoable: true,
+        resultCode: "action.cards_suspended", args: {}, requestId: "period-transition",
+      }));
+      await pending;
+    });
+    expect(latestWorkspace!.mutationPending).toBe(false);
+    expect(latestWorkspace!.resolution).toBeNull();
     await act(async () => root.unmount());
   });
 
@@ -245,7 +426,7 @@ async function mount() {
 }
 
 function Harness() {
-  latestWorkspace = useCardsTriageWorkspace(["3"]);
+  latestWorkspace = useCardsTriageWorkspace(harnessDeckIds);
   return <div>{latestWorkspace.queryStatus}:{latestWorkspace.response?.items.length ?? 0}:{latestWorkspace.continuationStatus}</div>;
 }
 
