@@ -1,78 +1,73 @@
-# C1.5R.1 — Canonical card display identity
+# C1.5R.1 — каноническая идентичность отображения карточки
 
-**Date:** 2026-07-19
+**Дата:** 2026-07-19
 
-**Branch:** `core`
+**Ветка:** `core`
 
-**Baseline:** `219fe515ef58e55bc3b8866b4ec4832148126df3`
+**Исходное состояние:** `219fe515ef58e55bc3b8866b4ec4832148126df3`
 
-**Tested implementation HEAD:** `a46116e43756eceb3820f4eca76b28645a54a3ff`
+**Проверенный HEAD реализации:** `a46116e43756eceb3820f4eca76b28645a54a3ff`
 
-**Documentation closeout HEAD:** recorded by the Markdown-only closeout commit
+**HEAD итоговой документации:** зафиксирован отдельным Markdown-коммитом завершения
 
-**Status:** Complete
+**Статус:** завершено
 
-## Purpose
+## Назначение
 
-C1.5R.1 corrects compact card identity without absorbing later remediation
-stages. One exact-card backend projector now supplies Search, Triage and current
-Cards surfaces. Arbitrary note sort/first-non-empty fields are no longer used as
-card identity.
+C1.5R.1 исправляет компактную идентичность карточки, не поглощая последующие этапы исправлений. Теперь один backend-projector конкретной карточки обслуживает Search, Triage и актуальные поверхности Cards. Произвольное поле сортировки заметки и первое непустое поле больше не используются как идентичность карточки.
 
-This report is the focused verification closeout for C1.5R.1. It does not
-constitute owner product acceptance for the complete C1.5R remediation.
+Этот отчёт фиксирует профильную проверку и завершение C1.5R.1. Он не является продуктовой приёмкой владельцем всего комплекса исправлений C1.5R.
 
-## Scope completed
+## Выполненный scope
 
-### Backend projector
+### Backend-projector
 
-Added:
+Добавлен файл:
 
 ```text
 anki_study_report/card_display_identity.py
 ```
 
-The projector uses this precedence:
+Projector использует следующий приоритет:
 
 ```text
-native Browser question
-→ native reviewer front
-→ explicit media_only or unavailable state
+нативный вопрос Browser
+→ нативная лицевая сторона reviewer
+→ явное состояние media_only или unavailable
 ```
 
-It:
+Он:
 
-- projects the first meaningful rendered line;
-- removes sound/Anki playback markers;
-- treats media elements as media without exposing filenames or URLs;
-- drops scripts, styles and unsafe embedded content;
-- preserves adjacent inline Japanese text without invented spaces;
-- collapses whitespace and decodes entities;
-- bounds text to 240 characters with one ellipsis;
-- fails closed for malformed blocked markup;
-- never scans arbitrary note fields;
-- never renders answer/back;
-- never reads media files;
-- never exposes renderer exceptions.
+- выбирает первую содержательную строку отрендеренного текста;
+- удаляет маркеры воспроизведения звука и Anki;
+- распознаёт media-элементы как media, не раскрывая имена файлов или URL;
+- удаляет scripts, styles и небезопасное встроенное содержимое;
+- сохраняет соседний inline-текст на японском без искусственных пробелов;
+- нормализует пробелы и декодирует entities;
+- ограничивает текст 240 символами и одним многоточием;
+- работает по принципу fail closed для повреждённой запрещённой разметки;
+- никогда не перебирает произвольные поля заметки;
+- никогда не рендерит ответ или обратную сторону;
+- никогда не читает media-файлы;
+- никогда не раскрывает исключения renderer.
 
-The exact media-heavy Japanese fixture produces:
+Точная японская фикстура с большим количеством media даёт:
 
 ```text
 【に】（する）
 ```
 
-and not the unrelated sort-field value:
+а не несвязанное значение поля сортировки:
 
 ```text
 「Существительное」
 ```
 
-### Search schema v2
+### Schema v2 Search
 
-Normal Search query and inspect requests/responses now require exact
-`schemaVersion: 2`.
+Обычные запросы и ответы Search для поиска и просмотра теперь требуют точное значение `schemaVersion: 2`.
 
-Card rows/details contain:
+Строки и подробности карточек содержат:
 
 ```text
 displayText
@@ -81,64 +76,57 @@ displayStatus      available | media_only | unavailable
 displayTruncated
 ```
 
-Card `primaryText` is removed. Note rows/details retain note-mode `primaryText`.
-Search metadata remains an independent schema v1 variant.
+Поле `primaryText` карточки удалено. Строки и подробности заметок сохраняют `primaryText` в режиме заметок. Metadata Search остаётся независимым вариантом schema v1.
 
-Search card rows, Search card inspect and exact-card resolution all reuse the
-same Python card projector.
+Строки карточек Search, просмотр карточки в Search и определение конкретной карточки используют один Python-projector.
 
-### Triage schema v3
+### Schema v3 Triage
 
-Triage request/response now require exact `schemaVersion: 3`.
+Запрос и ответ Triage теперь требуют точное значение `schemaVersion: 3`.
 
-Triage items carry the same four display fields and no `primaryText`. Available
-items copy Search exact-card identity. Missing or malformed resolver items use
-the explicit unavailable state. Legacy `attention.frontPreview` is not used as
-a fallback.
+Элементы Triage содержат те же четыре поля отображения и не содержат `primaryText`. Доступные элементы копируют идентичность конкретной карточки из Search. Отсутствующие или повреждённые элементы resolver используют явное состояние unavailable. Устаревшее поле `attention.frontPreview` не используется как fallback.
 
-### Strict frontend parsing
+### Строгий parsing во frontend
 
-Search and Triage runtime parsers reject:
+Runtime-parsers Search и Triage отклоняют:
 
-- old schemas;
-- unknown top-level, item or nested keys;
-- card `primaryText` aliases;
-- missing display fields;
-- invalid source/status enums;
-- overlong text;
-- incoherent text/source/status/truncation combinations;
-- count, ID and nested-shape drift.
+- старые schema;
+- неизвестные верхнеуровневые, вложенные или относящиеся к элементам ключи;
+- alias `primaryText` у карточки;
+- отсутствующие поля отображения;
+- недопустимые enum source/status;
+- слишком длинный текст;
+- несогласованные сочетания текста, source, status и truncation;
+- расхождения count, ID и вложенной структуры.
 
-### Shared UI presentation
+### Общее представление в UI
 
-Added:
+Добавлен файл:
 
 ```text
 web-dashboard/src/lib/cardDisplayText.ts
 ```
 
-The helper returns backend text unchanged for `available` and localizes only the
-two explicit fallback states:
+В состоянии `available` helper возвращает backend-текст без изменений и локализует только два явных fallback-состояния:
 
-| State | RU | EN |
+| Состояние | RU | EN |
 | --- | --- | --- |
 | `media_only` | Карточка только с медиа | Card with media only |
 | `unavailable` | Текст карточки недоступен | Card text unavailable |
 
-It is used by:
+Он используется в:
 
 ```text
-Search card row
-Search card Inspector heading
-Cards visible-text filter
-Cards queue item
-Cards Inspector heading
+строке карточки Search
+заголовке Inspector карточки Search
+фильтре Cards по видимому тексту
+элементе очереди Cards
+заголовке Inspector Cards
 ```
 
-The current Cards table/split workspace was not redesigned and remains
-product-rejected historical C1.5 UI.
+Текущее табличное split-пространство Cards не перерабатывалось и остаётся историческим UI C1.5, отклонённым на продуктовом уровне.
 
-## Tests added or updated
+## Добавленные и обновлённые тесты
 
 Python:
 
@@ -165,12 +153,9 @@ web-dashboard/src/pages/CardsPage.test.tsx
 web-dashboard/src/pages/SearchPageActions.test.tsx
 ```
 
-Covered behavior includes Browser/reviewer precedence, media-only/unavailable
-states, exact Japanese fixture, unsafe markup removal, truncation, no answer or
-media-file read, Search/Triage parity, schema rejection, unknown-key rejection,
-RU/EN fallback, exact-ID handoff and active-card-only inspect.
+Покрыто поведение приоритетов Browser/reviewer, состояний media-only и unavailable, точной японской фикстуры, удаления небезопасной разметки, truncation, запрета чтения ответа и media-файлов, паритета Search/Triage, отклонения schema и неизвестных ключей, fallback RU/EN, передачи точного ID и просмотра только активной карточки.
 
-## Documentation synchronized
+## Синхронизированная документация
 
 ```text
 docs/card-display-identity.md
@@ -184,36 +169,35 @@ roadmap/README.md
 roadmap/core/README.md
 ```
 
-## Verification performed
+## Выполненная проверка
 
-### Tested implementation
+### Проверенная реализация
 
 ```text
-branch: core
-tested implementation HEAD: a46116e43756eceb3820f4eca76b28645a54a3ff
-origin/core synchronization: 0 behind / 0 ahead
-origin/master divergence: 0 behind / 71 ahead
-open pull requests from core: none
+ветка: core
+проверенный HEAD реализации: a46116e43756eceb3820f4eca76b28645a54a3ff
+синхронизация с origin/core: 0 позади / 0 впереди
+расхождение с origin/master: 0 позади / 71 впереди
+открытые PR из core: отсутствуют
 ```
 
-The focused contour was executed on the exact tested implementation HEAD after
-the only verification defect had been corrected and pushed.
+Профильный контур выполнен на точном проверенном HEAD реализации после исправления и отправки единственного дефекта проверки.
 
-### Python compile
+### Компиляция Python
 
 ```powershell
 node scripts/run_python.mjs -m compileall -q anki_study_report
 ```
 
-Result:
+Результат:
 
 ```text
-exit code: 0
-duration: 2.75 s
-remaining __pycache__ / .pyc / .pyo: 0
+код завершения: 0
+длительность: 2,75 с
+оставшиеся __pycache__ / .pyc / .pyo: 0
 ```
 
-### Focused Python
+### Профильные Python-тесты
 
 ```powershell
 node scripts/run_python.mjs -m pytest -q `
@@ -226,22 +210,20 @@ node scripts/run_python.mjs -m pytest -q `
   tests/test_dashboard_server.py
 ```
 
-Result on the tested implementation HEAD:
+Результат на проверенном HEAD реализации:
 
 ```text
 85 passed
 0 failed
 1 warning
-pytest duration: 10.83 s
-command duration: 12.69 s
-exit code: 0
+длительность pytest: 10,83 с
+длительность команды: 12,69 с
+код завершения: 0
 ```
 
-The warning was an environment-only `PytestCacheWarning`: Windows denied
-creation of `.pytest_cache`. Test execution and exit status were unaffected,
-and no cache artifact entered Git.
+Предупреждение относилось только к окружению: `PytestCacheWarning`, поскольку Windows запретила создание `.pytest_cache`. На выполнение тестов и код завершения это не повлияло, cache-артефакт в Git не попал.
 
-### Focused frontend Vitest
+### Профильный frontend Vitest
 
 ```powershell
 pnpm exec vitest run `
@@ -255,20 +237,18 @@ pnpm exec vitest run `
   src/pages/SearchPageActions.test.tsx
 ```
 
-Result on the tested implementation HEAD:
+Результат на проверенном HEAD реализации:
 
 ```text
 8 test files passed
 54 tests passed
 0 failed
-Vitest duration: 3.60 s
-command duration: 7.29 s
-exit code: 0
+длительность Vitest: 3,60 с
+длительность команды: 7,29 с
+код завершения: 0
 ```
 
-`SearchPageActions.test.tsx` passed and retained pagination, cross-page
-selection, the 200-item cap, action refresh, duplicate-submit protection and
-the remaining Search Safe Actions regressions required by this closeout.
+`SearchPageActions.test.tsx` прошёл и сохранил проверки pagination, выбора между страницами, ограничения в 200 элементов, обновления после действия, защиты от повторной отправки и остальных регрессий Safe Actions в Search, необходимых для завершения этапа.
 
 ### TypeScript typecheck
 
@@ -276,25 +256,20 @@ the remaining Search Safe Actions regressions required by this closeout.
 pnpm run typecheck
 ```
 
-Result on the tested implementation HEAD:
+Результат на проверенном HEAD реализации:
 
 ```text
 tsc --noEmit
 0 errors
-duration: 10.60 s
-exit code: 0
+длительность: 10,60 с
+код завершения: 0
 ```
 
-### Verification defect and fix
+### Дефект проверки и исправление
 
-The first typecheck on implementation candidate
-`52c03c340c7a98b72d869ea42d6a9a46d56233e7` found 12 TypeScript errors in
-three test files. Runtime tests were green; the mocks had inferred zero- or
-one-argument tuples while the assertions inspected the optional second
-`RequestInit` argument.
+Первый typecheck кандидата реализации `52c03c340c7a98b72d869ea42d6a9a46d56233e7` выявил 12 ошибок TypeScript в трёх тестовых файлах. Runtime-тесты проходили; mocks вывели tuple с нулём или одним аргументом, тогда как assertions проверяли необязательный второй аргумент `RequestInit`.
 
-The fix changed no production behavior. It typed the affected mocks as
-`typeof fetch` in:
+Исправление не изменило production-поведение. Затронутые mocks получили тип `typeof fetch` в файлах:
 
 ```text
 web-dashboard/src/lib/searchApi.test.ts
@@ -302,88 +277,83 @@ web-dashboard/src/lib/triageApi.test.ts
 web-dashboard/src/pages/SearchPage.test.tsx
 ```
 
-Fix commit:
+Коммит исправления:
 
 ```text
 a46116e43756eceb3820f4eca76b28645a54a3ff — test: type fetch mocks for strict contract checks
 ```
 
-After the fix:
+После исправления:
 
 ```text
-affected narrow Vitest: 3 files / 39 tests passed
-full focused Python: 85 passed
-full focused Vitest: 8 files / 54 tests passed
+узкий набор затронутых Vitest: 3 файла / 39 тестов passed
+полный профильный Python-набор: 85 passed
+полный профильный Vitest-набор: 8 файлов / 54 теста passed
 typecheck: passed
 ```
 
-No further verification defects were found.
+Других дефектов проверки не обнаружено.
 
-### Git hygiene
+### Гигиена Git
 
 ```text
-tracked working-tree changes before closeout: 0
-staged changes before closeout: 0
-prohibited tracked artifacts: 0
+отслеживаемые изменения рабочего дерева перед завершением: 0
+staged-изменения перед завершением: 0
+запрещённые отслеживаемые артефакты: 0
 git diff --check: passed
-merge in progress: no
-rebase in progress: no
-cherry-pick in progress: no
+выполняющийся merge: нет
+выполняющийся rebase: нет
+выполняющийся cherry-pick: нет
 ```
 
-Two unrelated untracked Gamification helper files were preserved and excluded:
+Два несвязанных неотслеживаемых вспомогательных файла геймификации сохранены и исключены из scope:
 
 ```text
 g0_6a_run.ps1
 g0_6a_tool.py
 ```
 
-### Deliberately not run
+### Намеренно не запускалось
 
 ```text
-full Python suite
-full frontend suite
-frontend build
-package validation/build
+полный набор Python-тестов
+полный набор frontend-тестов
+сборка frontend
+проверка или сборка пакета
 run_full_check.ps1 -SkipDocker
 Fast CI
 Docker
 real-Anki E2E
-release verification
-owner product acceptance
+проверка выпуска
+продуктовая приёмка владельцем
 ```
 
-These were outside the focused C1.5R.1V verification policy. Heavy integrated
-verification remains C1.5R.7 work.
+Это находилось за пределами политики профильной проверки C1.5R.1V. Тяжёлая комплексная проверка остаётся частью C1.5R.7.
 
-## Scope explicitly not implemented
+## Явно не реализованный scope
 
 ```text
-C1.5R.2 declarative compact formatter runtime
-C1.5R.3 front/back preview semantics
-C1.5R.4 independent candidate sources and explicit period state
-C1.5R.5 dense inbox and 1024 px non-modal drawer
-C1.5R.6 guided Inspection Profiles UX
-C1.5R.7 integrated acceptance package
-C1.6 actions/recheck/resolution loop
+семантика предпросмотра лицевой и обратной стороны C1.5R.3
+изменения источников кандидатов и явное состояние периода C1.5R.4
+плотная очередь и немодальная панель для 1024 px C1.5R.5
+пошаговая настройка Inspection Profiles C1.5R.6
+пакет комплексной приёмки C1.5R.7
+цикл действий, перепроверки и определения результата C1.6
 ```
 
-## Git boundary
+## Границы Git
 
-No PR, merge, rebase, force-push, release, deployment, `.ankiaddon` publication
-or AnkiWeb update was performed. Generated assets, screenshots, logs, caches,
-profile data, tokens and E2E outputs were not committed.
+PR, merge, rebase, force-push, выпуск, deployment, публикация `.ankiaddon` или обновление AnkiWeb не выполнялись. Сгенерированные assets, скриншоты, логи, caches, данные профиля, токены и результаты E2E не коммитились.
 
-## Final stage state
+## Финальное состояние этапа
 
 ```text
-C1.5R.0 — Complete
-C1.5R.1 — Complete
-C1.5R.2 — Next, not started
-C1.5R.3–R.7 — Not started
-C1.6 — Blocked
-Core C1 — In progress
+C1.5R.0 — завершено
+C1.5R.1 — завершено
+C1.5R.2 — следующий этап, не начат
+C1.5R.3–R.7 — не начаты
+C1.6 — заблокирован
+Core C1 — выполняется
 ```
 
-The exact next Core increment is C1.5R.2. It was not started during this
-closeout.
+Следующая точная часть Core — C1.5R.2. Она не начиналась во время завершения этого этапа.
