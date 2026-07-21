@@ -1,6 +1,6 @@
 # Канонический API Cards v2 Triage
 
-## Текущие schemas
+## Текущие schema
 
 ```text
 POST /api/triage/query    schemaVersion 4
@@ -9,17 +9,17 @@ POST /api/triage/recheck  schemaVersion 1
 
 Оба endpoints:
 
-- доступны только на loopback;
-- защищены dashboard token;
+- доступны только через loopback-интерфейс;
+- защищены токеном dashboard;
 - принимают `POST application/json`;
-- ограничены body 8 KiB;
+- ограничены телом 8 КиБ;
 - сериализованы через Anki `QueryOp`.
 
-Requests принимают только strict bounded IDs, scope и schema fields. Query language, SQL, HTML, значения note и arbitrary action input запрещены.
+Запросы принимают только строгие ограниченные ID, scope и поля schema. Язык запросов, SQL, HTML, значения заметок и произвольный ввод действий запрещены.
 
 ## Query v4
 
-### Automatic queue
+### Автоматическая очередь
 
 ```json
 {
@@ -35,7 +35,7 @@ Requests принимают только strict bounded IDs, scope и schema fie
 }
 ```
 
-### Search workset
+### Рабочий набор Search
 
 ```json
 {
@@ -51,36 +51,36 @@ Requests принимают только strict bounded IDs, scope и schema fie
 }
 ```
 
-Automatic result объединяет независимые bounded sources:
+Автоматический результат объединяет независимые ограниченные источники:
 
-- period-bound learning candidates;
-- current-content candidates;
-- active Signals;
-- Search identity.
+- кандидатов обучения за выбранный период;
+- кандидатов по текущему содержимому;
+- активные Signals;
+- идентичность Search.
 
-Pagination current-content является явной и bounded. Client никогда не запускает автоматический cursor loop. Search workset сохраняет explicit first-seen order карточек.
+Pagination текущего содержимого является явной и ограниченной. Client никогда не запускает автоматический цикл cursor. Рабочий набор Search сохраняет явный порядок первого появления карточек.
 
-Response публикует:
+Ответ публикует:
 
-- typed aggregate/source/content-check status;
-- counts;
-- cursor coherence;
-- до четырёх стабильных reasons на item.
+- типизированное общее состояние и состояния источников и проверок содержимого;
+- количества;
+- согласованность cursor;
+- до четырёх стабильных причин на элемент.
 
-Queue identity использует ту же Search-owned compact projection, что Search rows и Inspectors. Full preview HTML/media не входит в Triage; Search inspect вызывается только для active card.
+Идентичность очереди использует ту же компактную проекцию, принадлежащую Search, что строки Search и Inspectors. Полный HTML предпросмотра и media не входят в Triage; просмотр Search вызывается только для активной карточки.
 
-Стабильные reason IDs:
+Стабильные ID причин:
 
 ```text
 learning:<code>
 profile:<profileId>:check:<checkId>
 ```
 
-Evidence bounded и исключает raw note values, HTML, filenames, template source, filesystem paths, tokens и exceptions.
+Подтверждение ограничено и исключает необработанные значения заметок, HTML, имена файлов, исходный код шаблона, пути файловой системы, токены и исключения.
 
-## Exact-card recheck v1
+## Recheck конкретной карточки v1
 
-Request:
+Запрос:
 
 ```json
 {
@@ -96,9 +96,9 @@ Request:
 }
 ```
 
-`reasonIds` содержит `1..4` уникальных bounded canonical IDs текущего item. Это позволяет server работать fail closed, когда прежний authoritative profile reason больше нельзя проверить. Это не список reasons, которые нужно скрыть.
+`reasonIds` содержит от одного до четырёх уникальных ограниченных канонических ID причин текущего элемента. Это позволяет server работать по принципу fail closed, когда прежнюю авторитетную причину профиля больше нельзя проверить. Это не список причин, которые нужно скрыть.
 
-Сокращённая shape response:
+Сокращённая структура ответа:
 
 ```json
 {
@@ -145,7 +145,7 @@ Request:
 }
 ```
 
-Реальный response содержит полный strict `contentChecks` object и либо полный Triage item, либо `null`.
+Настоящий ответ содержит полный строгий объект `contentChecks` и либо полный элемент Triage, либо `null`.
 
 `entityStatus`:
 
@@ -153,34 +153,34 @@ Request:
 available | missing | changed | unavailable
 ```
 
-Top-level `status`:
+Состояние верхнего уровня:
 
 ```text
 available | partial | unavailable
 ```
 
-Resolution допустим только тогда, когда:
+Устранение допустимо только тогда, когда:
 
-- entity status authoritative;
-- все required sources authoritative;
-- возвращённый available item содержит ноль reasons.
+- состояние сущности авторитетно;
+- все обязательные источники авторитетны;
+- возвращённый доступный элемент содержит ноль причин.
 
-Partial/unavailable/error source status, изменение authority profile, mismatch identity и collection failure не могут дать resolved result.
+Частичное, недоступное или ошибочное состояние источника, изменение authority профиля, несовпадение идентичности и ошибка collection не могут дать результат Resolved.
 
-## Parser и HTTP behavior
+## Parser и поведение HTTP
 
-TypeScript parsers требуют:
+Parsers TypeScript требуют:
 
-- exact top-level и nested keys;
-- finite bounded numbers;
-- decimal ID strings;
-- допустимые enum values;
-- coherent item identity;
-- отсутствие future fields.
+- точные верхнеуровневые и вложенные ключи;
+- конечные ограниченные числа;
+- десятичные строки ID;
+- допустимые значения enum;
+- согласованную идентичность элемента;
+- отсутствие будущих полей.
 
-Automatic items Query v4 должны иметь хотя бы один reason. Только Recheck v1 может вернуть available exact item с нулём reasons как authoritative proof.
+Автоматические элементы Query v4 должны иметь хотя бы одну причину. Только Recheck v1 может вернуть доступный точный элемент с нулём причин как авторитетное подтверждение.
 
-HTTP behavior:
+Поведение HTTP:
 
 ```text
 GET                                      → 405
@@ -191,12 +191,12 @@ runtime unavailable/failure              → 503
 timeout                                  → 504
 ```
 
-Public errors остаются generic и не раскрывают collection values, queries, paths или exceptions.
+Публичные ошибки остаются обобщёнными и не раскрывают значения collection, queries, пути или исключения.
 
-## UI contract
+## Контракт UI
 
-Lifecycle C1.6 и reconciliation reasons описаны в:
+Жизненный цикл C1.6 и reconciliation причин описаны в:
 
 - [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 
-Automatic queue cap 100 — только bounded presentation. Он никогда не доказывает, что issue resolved.
+Ограничение автоматической очереди в 100 элементов является только ограничением представления. Оно никогда не доказывает, что проблема устранена.
