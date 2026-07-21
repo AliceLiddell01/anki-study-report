@@ -1,175 +1,175 @@
-# Cards attention inbox
+# Очередь карточек, требующих внимания
 
 ## Статус
 
-Этот контракт описывает `C1.5R.5 — Cards attention inbox redesign` для `#/cards`.
+Этот контракт описывает `C1.5R.5 — переработка очереди карточек, требующих внимания` для `#/cards`.
 
-Он заменяет отклонённую spreadsheet-like table C1.5. Layout C1.5R.5 принят владельцем в составе C1.5R.7 и расширен C1.6 без изменения структуры queue, Inspector/drawer или preview.
+Он заменяет отклонённую таблицу C1.5 в стиле электронной таблицы. Компоновка C1.5R.5 принята владельцем в составе C1.5R.7 и расширена в C1.6 без изменения структуры очереди, Inspector, выдвижной панели или предпросмотра.
 
 ## Выбранная структура
 
 ```text
-Variant A — плотный inbox с приоритетом display identity
+Вариант A — плотная очередь с приоритетом идентичности отображения
 
-wide desktop (>= 1200 CSS px)
-compact summary и filters
-ordered inbox list | persistent Inspector
+широкий desktop (>= 1200 CSS px)
+компактная сводка и фильтры
+упорядоченная очередь | постоянный Inspector
 
-narrow desktop (< 1200 CSS px)
-compact summary и filters
-full-width inbox list
-non-modal detail drawer после явной активации
+узкий desktop (< 1200 CSS px)
+компактная сводка и фильтры
+очередь на всю ширину
+немодальная панель подробностей после явной активации
 ```
 
-Старая table не сохраняется как switch, feature flag, hidden fallback или responsive alias. Tiles, tabs, ARIA grid и listbox semantics отклонены.
+Старая таблица не сохраняется как переключатель, feature flag, скрытый fallback или responsive-alias. Tiles, tabs и семантика ARIA `grid` и `listbox` отклонены.
 
 ## Семантика очереди
 
-Queue — обычный semantic ordered list. Каждый item содержит ровно одну native button и создаёт один tab stop.
+Очередь — обычный упорядоченный семантический список. Каждый элемент содержит ровно одну нативную кнопку и создаёт одну точку Tab.
 
-Button:
+Кнопка:
 
-- использует compact card identity как accessible name;
-- описывает priority, primary reason, bounded evidence, metadata и note scope;
-- использует `aria-current` для active item;
-- управляет текущей detail region;
-- использует `aria-expanded` только в drawer mode;
-- не содержит nested actions, checkbox, menu, preview или media read.
+- использует компактную идентичность карточки как доступное имя;
+- описывает приоритет, основную причину, ограниченное подтверждение, metadata и scope заметки;
+- использует `aria-current` для активного элемента;
+- управляет текущей областью подробностей;
+- использует `aria-expanded` только в режиме выдвижной панели;
+- не содержит вложенных действий, checkbox, menu, предпросмотра или чтения media.
 
-Focus и active state независимы. `Enter`, `Space` и click активируют item, но не перемещают focus на detail surface. Текущий item имеет textual и visual state и не определяется только цветом.
+Фокус и активное состояние независимы. `Enter`, `Space` и click активируют элемент, но не переводят фокус на поверхность подробностей. Текущий элемент имеет текстовое и визуальное состояние и не определяется только цветом.
 
-## Анатомия item
+## Анатомия элемента
 
-Порядок visual scan:
+Порядок визуального просмотра:
 
-1. categorical priority и стабильная позиция в queue;
-2. compact identity карточки, не более двух строк;
-3. localized primary reason и количество дополнительных reasons;
-4. одно bounded evidence sentence;
-5. deck, card state и полезная metadata note type;
-6. note scope и sibling impact, когда применимо;
-7. detail affordance.
+1. категориальный приоритет и стабильная позиция в очереди;
+2. компактная идентичность карточки не более чем в две строки;
+3. локализованная основная причина и количество дополнительных причин;
+4. одно предложение с ограниченным подтверждением;
+5. колода, состояние карточки и полезные metadata типа заметки;
+6. scope заметки и влияние на sibling-карточки, когда применимо;
+7. элемент перехода к подробностям.
 
-Из queue исключены numeric risk, raw reason codes, IDs, raw evidence objects, queries, fingerprints, profile/check IDs и preview HTML.
+Из очереди исключены числовой риск, необработанные коды причин, ID, необработанные объекты подтверждений, queries, fingerprints, ID профилей и проверок и HTML предпросмотра.
 
-## Detail surfaces
+## Поверхности подробностей
 
-`CardsDetail` переиспользуется wide Inspector и narrow drawer. Одновременно существует ровно одна detail surface и один active preview host.
+`CardsDetail` совместно используется широким Inspector и узкой выдвижной панелью. Одновременно существует ровно одна поверхность подробностей и один активный host предпросмотра.
 
-### Wide Inspector
+### Широкий Inspector
 
-- persistent semantic `aside`;
-- sticky и независимо scrollable при необходимости;
-- width `clamp(380px, 34vw, 520px)`;
-- queue column не сжимается уже 560 px.
+- постоянный семантический `aside`;
+- sticky и при необходимости независимо прокручиваемый;
+- ширина `clamp(380px, 34vw, 520px)`;
+- колонка очереди не сжимается уже 560 px.
 
-### Narrow drawer
+### Узкая выдвижная панель
 
-- labelled semantic `aside` с `role="region"`;
-- fixed ниже application header;
-- maximum geometry `min(640px, 100vw - 32px)`;
-- без `aria-modal`, backdrop, inert shell и focus trap;
-- queue остаётся operable;
-- `Escape` и visible close control закрывают drawer;
-- focus возвращается точному activating item либо queue heading fallback;
-- activation другого item обновляет открытый drawer.
+- подписанный семантический `aside` с `role="region"`;
+- фиксируется ниже заголовка приложения;
+- максимальная геометрия `min(640px, 100vw - 32px)`;
+- без `aria-modal`, backdrop, inert-оболочки и focus trap;
+- очередь остаётся доступной для взаимодействия;
+- `Escape` и видимый элемент управления закрытием закрывают панель;
+- фокус возвращается точному активировавшему элементу или, как fallback, заголовку очереди;
+- активация другого элемента обновляет открытую панель.
 
-`AccessibleModal` остаётся единственным modal для answer preview. Его focus trap, portal и inert application boundary сохраняются. `Escape` сначала закрывает modal, затем drawer.
+`AccessibleModal` остаётся единственным модальным диалогом для предпросмотра ответа. Его focus trap, portal и inert-граница приложения сохраняются. `Escape` сначала закрывает модальный диалог, затем выдвижную панель.
 
-## Содержимое details и preview
+## Содержимое подробностей и предпросмотр
 
-Порядок sections:
+Порядок разделов:
 
-1. priority и полная compact identity;
-2. deck, note type и card state;
-3. все canonical reasons с priority, scope, source и bounded evidence;
-4. safe native front preview;
-5. expanded answer через настоящий modal;
-6. recommended step;
-7. применимые single-card Safe Actions или Open in Anki;
-8. Inspection Profile handoff, когда применимо;
-9. collapsed safe technical identity;
-10. lifecycle action/recheck C1.6.
+1. приоритет и полная компактная идентичность;
+2. колода, тип заметки и состояние карточки;
+3. все канонические причины с приоритетом, scope, источником и ограниченным подтверждением;
+4. безопасный нативный предпросмотр лицевой стороны;
+5. расширенный ответ через настоящий модальный диалог;
+6. рекомендуемый следующий шаг;
+7. применимые Safe Actions для одной карточки или Open in Anki;
+8. переход к Inspection Profile, когда применимо;
+9. свёрнутая безопасная техническая идентичность;
+10. действия жизненного цикла и recheck C1.6.
 
-Только active item запрашивает Search inspect schema v2. Queue items не рендерят preview HTML и не читают media. Один inspect cache переиспользуется Inspector, drawer и answer expansion.
+Только активный элемент запрашивает schema v2 просмотра Search. Элементы очереди не рендерят HTML предпросмотра и не читают media. Один cache просмотра переиспользуется Inspector, выдвижной панелью и расширенным ответом.
 
-## Learning period
+## Период обучения
 
-Learning period — явный session-local state:
+Период обучения — явное локальное состояние сессии:
 
 ```text
-7 дней — default
+7 дней — по умолчанию
 30 дней
 90 дней
 ```
 
-Он меняет только period-bound learning reasons/evidence. Current-content checks используют current collection и не считаются period-bound.
+Он меняет только причины и подтверждения обучения, ограниченные периодом. Проверки текущего содержимого используют актуальную collection и не зависят от периода.
 
-При изменении period:
+При изменении периода:
 
-- отменяются прежний query и continuation;
-- запускается один automatic Triage v4 request с `contentCursor: null`;
-- accumulated content pages очищаются;
-- local filters сохраняются;
-- active item сохраняется только при наличии в новом response;
-- stale inspect/query/recheck responses не могут перезаписать current state.
+- отменяются прежний запрос и продолжение;
+- запускается один автоматический запрос Triage v4 с `contentCursor: null`;
+- накопленные страницы текущего содержимого очищаются;
+- локальные фильтры сохраняются;
+- активный элемент сохраняется только при наличии в новом ответе;
+- устаревшие ответы inspect, query и recheck не могут перезаписать актуальное состояние.
 
-`Clear filters` сбрасывает priority/reason/deck/text, но не period.
+`Clear filters` сбрасывает приоритет, причину, колоду и текст, но не период.
 
-## Ручное continuation current-content scan
+## Ручное продолжение проверки текущего содержимого
 
-Continuation доступен только при coherent v4 cursor state: `truncated = true` и один non-null cursor.
+Продолжение доступно только при согласованном состоянии cursor v4: `truncated = true` и один ненулевой cursor.
 
-Одна activation отправляет один automatic Triage v4 request с текущими period/deck scope, `contentCursor` и response limit. Automatic cursor loop отсутствует.
+Одна активация отправляет один автоматический запрос Triage v4 с текущими периодом и scope колоды, `contentCursor` и ограничением ответа. Автоматический цикл cursor отсутствует.
 
 `mergeTriagePages()`:
 
-- дедуплицирует items по `itemId`;
-- объединяет reasons по `reasonId`;
-- дедуплицирует sources/evidence;
-- сохраняет canonical identity и inspect target;
-- выбирает strongest categorical priority;
-- сохраняет canonical ordering;
+- дедуплицирует элементы по `itemId`;
+- объединяет причины по `reasonId`;
+- дедуплицирует источники и подтверждения;
+- сохраняет каноническую идентичность и цель inspect;
+- выбирает самый сильный категориальный приоритет;
+- сохраняет канонический порядок;
 - суммирует progress;
-- переносит latest coherent cursor;
-- сохраняет существующие issues после continuation failure.
+- переносит последний согласованный cursor;
+- сохраняет существующие проблемы после ошибки продолжения.
 
-Client accumulation ограничено:
+Накопление на клиенте ограничено:
 
 ```text
-500 unique items
-10 additional content pages
+500 уникальных элементов
+10 дополнительных страниц содержимого
 ```
 
-Достижение limit показывается явно и не выдаётся за завершённый scan collection.
+Достижение ограничения показывается явно и не выдаётся за завершённую проверку collection.
 
-## Filters и coverage
+## Фильтры и покрытие
 
-Всегда видимые controls:
+Всегда видимые элементы управления:
 
-- priority;
-- family/exact reason;
-- deck;
-- local visible-text match;
-- learning period;
+- приоритет;
+- семейство или точная причина;
+- колода;
+- локальное совпадение по видимому тексту;
+- период обучения;
 - refresh;
-- clear filters при активных non-period filters.
+- clear filters при активных фильтрах, не относящихся к периоду.
 
-Text filtering выполняется только по уже загруженным identity, deck, note type и localized reason labels. Он не становится arbitrary backend query.
+Фильтрация текста выполняется только по уже загруженным идентичности, колоде, типу заметки и локализованным подписям причин. Она не превращается в произвольный backend-запрос.
 
-Workspace coverage показывается один раз. Native `details` disclosure сообщает status learning/content/profiles/signals и progress current-content scan.
+Покрытие рабочего пространства показывается один раз. Нативный disclosure `details` сообщает состояние обучения, содержимого, профилей и Signals и progress проверки текущего содержимого.
 
-## Lifecycle C1.6
+## Жизненный цикл C1.6
 
-После существующего Safe Action или Open in Anki item переходит в `Awaiting recheck`. Action success и `action.no_changes` не доказывают resolution.
+После существующего Safe Action или Open in Anki элемент переходит в `Awaiting recheck`. Успех действия и `action.no_changes` не доказывают устранение проблемы.
 
 Явный `POST /api/triage/recheck`:
 
-- оценивает одну exact card;
-- переиспользует canonical detectors Triage v4;
-- работает fail closed при partial/unavailable/stale evidence;
-- выполняет reconciliation stable `reasonId`;
-- удаляет item только после fully authoritative zero-reason result.
+- оценивает одну конкретную карточку;
+- переиспользует канонические детекторы Triage v4;
+- работает по принципу fail closed при частичном, недоступном или устаревшем подтверждении;
+- выполняет reconciliation по стабильному `reasonId`;
+- удаляет элемент только после полностью авторитетного результата без причин.
 
 Возможные состояния:
 
@@ -181,43 +181,43 @@ Recheck failed
 Evidence stale
 ```
 
-После полного resolution focus детерминированно переходит на следующий item, предыдущий item или queue heading.
+После полного устранения фокус детерминированно переходит на следующий элемент, предыдущий элемент или заголовок очереди.
 
 Полный контракт: [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 
-## Accessibility и keyboard
+## Доступность и клавиатура
 
-- semantic list и native buttons;
-- без `grid`, `listbox`, `option`, roving tabindex и arrow-key composite model;
-- visible focus и textual active state;
-- labelled/described items и detail region;
-- polite live announcements;
-- priority не определяется только цветом;
-- drawer без focus trap и inert shell;
-- deterministic focus restoration;
-- reduced-motion drawer transition;
-- modal answer behavior не меняется;
-- busy state и conflicting-control disabling во время action/recheck.
+- семантический список и нативные кнопки;
+- без `grid`, `listbox`, `option`, roving tabindex и составной модели со стрелками;
+- видимый фокус и текстовое активное состояние;
+- подписанные и описанные элементы и область подробностей;
+- вежливые live-announcements;
+- приоритет не определяется только цветом;
+- выдвижная панель без focus trap и inert-оболочки;
+- детерминированное восстановление фокуса;
+- переход панели с учётом reduced motion;
+- поведение модального диалога ответа не меняется;
+- busy-state и отключение конфликтующих элементов управления во время действия или recheck.
 
-## Bounds и performance
+## Ограничения и производительность
 
-Initial server response ограничен 100 items. Loaded client queue — 500 unique items. Filtering local. Merge map/set based. Только active drawer владеет listener `Escape`.
+Начальный ответ server ограничен 100 элементами. Загруженная очередь client — 500 уникальными элементами. Фильтрация выполняется локально. Merge основан на map и set. Только активная выдвижная панель владеет listener `Escape`.
 
-Virtualization не вводится: measured fixture 100/500 items не требует второй rendering architecture.
+Virtualization не вводится: измеренная фикстура из 100 и 500 элементов не требует второй архитектуры рендера.
 
 ## Сохраняемые контракты
 
-- compact identity и safe fallback states C1.5R.1;
-- Inspector-front / expanded-answer semantics C1.5R.3;
-- Triage query v4 и cursor coherence C1.5R.4;
-- Search inspect schema v2;
-- loopback/token/content-type/body-size boundaries;
-- sanitizer, trusted media validation и Shadow DOM isolation;
-- single-card Safe Actions/Open in Anki;
-- exact-card canonical recheck v1;
-- reason-level removed/remaining/new reconciliation;
-- deterministic focus recovery.
+- компактная идентичность и безопасные fallback-состояния C1.5R.1;
+- семантика «лицевая сторона в Inspector, ответ в расширенном диалоге» C1.5R.3;
+- запрос Triage v4 и согласованность cursor C1.5R.4;
+- schema v2 просмотра Search;
+- границы loopback, токена, content type и размера тела;
+- sanitizer, проверка доверенных media и изоляция Shadow DOM;
+- Safe Actions и Open in Anki для одной карточки;
+- канонический recheck конкретной карточки v1;
+- reconciliation удалённых, оставшихся и новых причин;
+- детерминированное восстановление фокуса.
 
 ## Границы
 
-C1.6 не добавляет selection/bulk controls, manual resolve, editor functionality, новые detectors, Triage query schema v5 или Search schema changes. Bulk actions остаются только условным C1.6B.
+C1.6 не добавляет элементы массового выбора, ручной resolve, функции editor, новые детекторы, schema v5 запроса Triage или изменения schema Search. Массовые действия остаются только условным этапом C1.6B.
