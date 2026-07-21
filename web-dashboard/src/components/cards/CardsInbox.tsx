@@ -73,7 +73,7 @@ function CardsInboxItem({
       <button
         id={`${itemKey}-button`}
         type="button"
-        className={`cards-inbox-item${active ? " is-active" : ""}`}
+        className={`cards-inbox-item workspace-interactive${active ? " is-active workspace-selected" : ""}`}
         data-card-id={item.cardId}
         data-testid="cards-inbox-item"
         aria-current={active ? "true" : undefined}

@@ -184,6 +184,17 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(container.textContent).toContain("Advanced settings");
   });
 
+  it("uses the shared workspace roles without turning selection into focus", async () => {
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
+    expect(container.querySelector(".inspection-workspace-page.workspace-page")).toBeTruthy();
+    expect(container.querySelectorAll(".workspace-region").length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelector(".inspection-note-button.workspace-interactive.workspace-selected")).toBeTruthy();
+    expect(container.querySelector(".inspection-state-guidance.workspace-state")).toBeTruthy();
+    expect(container.querySelector(".inspection-editor.workspace-safe-area")).toBeTruthy();
+    expect(document.activeElement?.classList.contains("workspace-selected")).toBe(false);
+  });
+
   async function renderPage() { await act(async () => root.render(<InspectionProfilesSettingsPage />)); await settle(); }
   async function settle() { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); }
   async function click(element: HTMLElement) { await act(async () => element.click()); await settle(); }
