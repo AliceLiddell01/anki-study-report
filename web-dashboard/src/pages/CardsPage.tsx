@@ -19,7 +19,7 @@ import type { LoadState } from "./HomePage";
 type PriorityFilter = "all" | TriagePriority;
 type ReasonFilter = "all" | "learning" | "content" | string;
 
-const WIDE_WORKSPACE_QUERY = "(min-width: 1200px)";
+export const CARDS_WIDE_WORKSPACE_QUERY = "(min-width: 1200px)";
 const REASON_CODES = [
   "learning.leech",
   "learning.repeated_again",
@@ -39,7 +39,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
     [report?.deckHub?.scope.selectedDeckIds],
   );
   const workspace = useCardsTriageWorkspace(deckIds);
-  const isWide = useMediaQuery(WIDE_WORKSPACE_QUERY, true);
+  const isWide = useMediaQuery(CARDS_WIDE_WORKSPACE_QUERY, true);
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [reason, setReason] = useState<ReasonFilter>("all");
   const [deck, setDeck] = useState("all");
@@ -109,6 +109,14 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
 
   const filtersActive = priority !== "all" || reason !== "all" || deck !== "all" || !!textFilter.trim();
   const highCount = allItems.filter((item) => item.priority === "high").length;
+  const activeFilterLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (priority !== "all") labels.push(t("filters.activePriority", { value: t(`priorities.${priority}`) }));
+    if (reason !== "all") labels.push(t("filters.activeReason", { value: reason === "learning" || reason === "content" ? t(`families.${reason}`) : reasonLabel(reason, t) }));
+    if (deck !== "all") labels.push(t("filters.activeDeck", { value: deck }));
+    if (textFilter.trim()) labels.push(t("filters.activeText", { value: textFilter.trim() }));
+    return labels;
+  }, [deck, priority, reason, t, textFilter]);
 
   const clearFilters = useCallback(() => {
     setPriority("all");
@@ -133,76 +141,94 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           <h1 className="workspace-page-title">{t("title")}</h1>
           <p className="workspace-body">{t("description")}</p>
         </div>
-        <span className="cards-inbox-readonly">{t("singleCard")}</span>
       </header>
 
       <section className="cards-inbox-controls panel-surface workspace-region" aria-label={t("filters.label")}>
         <div className="cards-inbox-summary" aria-live="polite">
           <strong>{workspace.response ? t("summary.items", { count: allItems.length }) : t("summary.loading")}</strong>
           {workspace.response ? <span>{t("summary.high", { count: highCount })}</span> : null}
-          <span>{t("summary.period", { count: workspace.learningPeriodDays })}</span>
-          {workspace.response ? <span>{t("summary.contentScanned", { count: workspace.scannedNoteCount })}</span> : null}
-          {workspace.hasMoreContent ? <span className="is-warning">{t("summary.contentMore")}</span> : null}
-          {workspace.response?.truncated ? <span className="is-warning">{t("summary.responseTruncated", { count: workspace.response.limit })}</span> : null}
         </div>
 
-        <div className="cards-inbox-filter-row">
-          <label>
-            <span>{t("filters.priority")}</span>
-            <select value={priority} onChange={(event) => setPriority(event.target.value as PriorityFilter)}>
-              <option value="all">{t("filters.allPriorities")}</option>
-              <option value="high">{t("priorities.high")}</option>
-              <option value="medium">{t("priorities.medium")}</option>
-              <option value="low">{t("priorities.low")}</option>
-            </select>
-          </label>
-          <label>
-            <span>{t("filters.reason")}</span>
-            <select value={reason} onChange={(event) => setReason(event.target.value)}>
-              <option value="all">{t("filters.allReasons")}</option>
-              <optgroup label={t("families.groups")}>
-                <option value="learning">{t("families.learning")}</option>
-                <option value="content">{t("families.content")}</option>
-              </optgroup>
-              <optgroup label={t("families.learning")}>
-                {REASON_CODES.filter((code) => code.startsWith("learning.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
-              </optgroup>
-              <optgroup label={t("families.content")}>
-                {REASON_CODES.filter((code) => code.startsWith("content.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
-              </optgroup>
-            </select>
-          </label>
-          <label>
-            <span>{t("filters.deck")}</span>
-            <select value={deck} onChange={(event) => setDeck(event.target.value)}>
-              <option value="all">{t("filters.allDecks")}</option>
-              {decks.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
-          </label>
-          <label className="cards-inbox-text-filter">
-            <span>{t("filters.text")}</span>
-            <input value={textFilter} onChange={(event) => setTextFilter(event.target.value)} placeholder={t("filters.textPlaceholder")} />
-          </label>
-          <label>
-            <span>{t("period.label")}</span>
-            <select
-              value={workspace.learningPeriodDays}
-              title={t("period.help")}
-              onChange={(event) => workspace.setLearningPeriodDays(Number(event.target.value) as LearningPeriodDays)}
-            >
-              <option value={7}>{t("period.days", { count: 7 })}</option>
-              <option value={30}>{t("period.days", { count: 30 })}</option>
-              <option value={90}>{t("period.days", { count: 90 })}</option>
-            </select>
-          </label>
-          <div className="cards-inbox-toolbar-actions">
-            {filtersActive ? <button type="button" className="secondary-button" onClick={clearFilters}>{t("filters.clear")}</button> : null}
-            <button type="button" className="secondary-button" onClick={workspace.refresh} disabled={workspace.queryStatus === "loading"}>
-              <RefreshCw size={16} aria-hidden="true" />{t("refresh")}
-            </button>
+        <div className="cards-inbox-control-groups">
+          <fieldset className="cards-inbox-filter-group">
+            <legend>{t("filters.queueGroup")}</legend>
+            <div className="cards-inbox-filter-row">
+              <label>
+                <span>{t("filters.priority")}</span>
+                <select value={priority} onChange={(event) => setPriority(event.target.value as PriorityFilter)}>
+                  <option value="all">{t("filters.allPriorities")}</option>
+                  <option value="high">{t("priorities.high")}</option>
+                  <option value="medium">{t("priorities.medium")}</option>
+                  <option value="low">{t("priorities.low")}</option>
+                </select>
+              </label>
+              <label>
+                <span>{t("filters.reason")}</span>
+                <select value={reason} onChange={(event) => setReason(event.target.value)}>
+                  <option value="all">{t("filters.allReasons")}</option>
+                  <optgroup label={t("families.groups")}>
+                    <option value="learning">{t("families.learning")}</option>
+                    <option value="content">{t("families.content")}</option>
+                  </optgroup>
+                  <optgroup label={t("families.learning")}>
+                    {REASON_CODES.filter((code) => code.startsWith("learning.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
+                  </optgroup>
+                  <optgroup label={t("families.content")}>
+                    {REASON_CODES.filter((code) => code.startsWith("content.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
+                  </optgroup>
+                </select>
+              </label>
+              <label>
+                <span>{t("filters.deck")}</span>
+                <select value={deck} onChange={(event) => setDeck(event.target.value)}>
+                  <option value="all">{t("filters.allDecks")}</option>
+                  {decks.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
+              <label className="cards-inbox-text-filter">
+                <span>{t("filters.text")}</span>
+                <input value={textFilter} onChange={(event) => setTextFilter(event.target.value)} placeholder={t("filters.textPlaceholder")} />
+              </label>
+            </div>
+          </fieldset>
+          <div className="cards-inbox-scope-group" role="group" aria-label={t("queryScope.label")}>
+            <span className="cards-inbox-group-title">{t("queryScope.label")}</span>
+            <div className="cards-inbox-scope-row">
+              <label>
+                <span>{t("period.label")}</span>
+                <select
+                  value={workspace.learningPeriodDays}
+                  title={t("period.help")}
+                  onChange={(event) => workspace.setLearningPeriodDays(Number(event.target.value) as LearningPeriodDays)}
+                >
+                  <option value={7}>{t("period.days", { count: 7 })}</option>
+                  <option value={30}>{t("period.days", { count: 30 })}</option>
+                  <option value={90}>{t("period.days", { count: 90 })}</option>
+                </select>
+              </label>
+              <div className="cards-inbox-toolbar-actions">
+                {filtersActive ? <button type="button" className="tertiary-button" onClick={clearFilters}>{t("filters.clear")}</button> : null}
+                <button type="button" className="secondary-button" onClick={workspace.refresh} disabled={workspace.queryStatus === "loading"}>
+                  <RefreshCw size={16} aria-hidden="true" />{t("refresh")}
+                </button>
+              </div>
+            </div>
+            <p className="cards-inbox-period-help">{t("period.help")}</p>
+            {workspace.response ? (
+              <p className="cards-inbox-scope-status" role="status">
+                <span>{t("summary.contentScanned", { count: workspace.scannedNoteCount })}</span>
+                {workspace.hasMoreContent ? <span className="is-warning">{t("summary.contentMore")}</span> : null}
+                {workspace.response.truncated ? <span className="is-warning">{t("summary.responseTruncated", { count: workspace.response.limit })}</span> : null}
+              </p>
+            ) : null}
           </div>
         </div>
-        <p className="cards-inbox-period-help">{t("period.help")}</p>
+        {activeFilterLabels.length ? (
+          <div className="cards-inbox-active-filters" role="status">
+            <strong>{t("filters.active")}</strong>
+            <ul>{activeFilterLabels.map((label) => <li key={label}>{label}</li>)}</ul>
+          </div>
+        ) : null}
       </section>
 
       <CardsWorkspaceWarnings workspace={workspace} />
@@ -248,6 +274,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           labelledBy={detailHeadingId}
           regionId={detailRegionId}
           closeLabel={t("drawer.close")}
+          contextLabel={t("drawer.title")}
           restoreFocusTo={activatorRef.current}
           fallbackFocusTo={queueHeadingRef.current}
           onRequestClose={closeDrawer}
@@ -317,7 +344,7 @@ function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof us
   return (
     <div className="cards-inbox-warnings">
       {workspace.mutationPending ? (
-        <div className="cards-inbox-warning" role="status" aria-live="polite" aria-busy="true" data-testid="cards-mutation-pending">
+        <div className="cards-inbox-warning workspace-state" role="status" aria-live="polite" aria-busy="true" data-testid="cards-mutation-pending">
           <RotateCw size={18} aria-hidden="true" />
           <span>
             <strong>{t("resolution.states.action_pending.title")}</strong>{" "}
@@ -326,17 +353,17 @@ function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof us
         </div>
       ) : null}
       {workspace.response?.contentChecks.status === "profiles_need_review" ? (
-        <div className="cards-inbox-warning" role="status">
+        <div className="cards-inbox-warning workspace-state" role="status">
           <TriangleAlert size={18} aria-hidden="true" />
           <span><strong>{t("profiles.title", { count: workspace.response.contentChecks.needsReviewProfileCount })}</strong> {t("profiles.description")}</span>
           <a className="secondary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
         </div>
       ) : null}
       {workspace.response?.status === "partial" ? (
-        <div className="cards-inbox-warning is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.partial")}</div>
+        <div className="cards-inbox-warning workspace-state is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.partial")}</div>
       ) : null}
       {workspace.response?.truncated ? (
-        <div className="cards-inbox-warning is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.responseTruncated", { count: workspace.response.limit })}</div>
+        <div className="cards-inbox-warning workspace-state is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.responseTruncated", { count: workspace.response.limit })}</div>
       ) : null}
     </div>
   );
@@ -390,5 +417,5 @@ function ContinuationFooter({ workspace }: { workspace: ReturnType<typeof useCar
 }
 
 function WorkspaceMessage({ title, text, action, alert = false, status = false }: { title: string; text: string; action?: ReactNode; alert?: boolean; status?: boolean }) {
-  return <div className="cards-inbox-message" role={alert ? "alert" : status ? "status" : undefined}><strong>{title}</strong><p>{text}</p>{action}</div>;
+  return <div className="cards-inbox-message workspace-state" role={alert ? "alert" : status ? "status" : undefined}><strong>{title}</strong><p>{text}</p>{action}</div>;
 }

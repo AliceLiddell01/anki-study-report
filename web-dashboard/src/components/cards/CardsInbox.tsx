@@ -65,7 +65,7 @@ function CardsInboxItem({
   const evidenceId = `${itemKey}-evidence`;
   const metadataId = `${itemKey}-metadata`;
   const scopeId = reason?.scope === "note" ? `${itemKey}-scope` : null;
-  const describedBy = [priorityId, reasonId, evidenceId, metadataId, scopeId].filter(Boolean).join(" ");
+  const describedBy = [priorityId, reasonId, evidenceId, metadataId].join(" ");
   const text = cardDisplayText(item);
 
   return (
@@ -106,8 +106,8 @@ function CardsInboxItem({
             <span aria-hidden="true">·</span>
             <span>{stateLabel(item, t)}</span>
             {item.noteType.name ? <><span aria-hidden="true">·</span><span>{item.noteType.name}</span></> : null}
+            {scopeId ? <><span aria-hidden="true">·</span><span id={scopeId}>{scopeLabel(reason, t)}</span></> : null}
           </span>
-          {scopeId ? <span id={scopeId} className="cards-inbox-item-scope">{scopeLabel(reason, t)}</span> : null}
         </span>
         <ChevronRight className="cards-inbox-item-chevron" size={18} aria-hidden="true" />
       </button>

@@ -18,7 +18,7 @@ describe("CardsDetailDrawer", () => {
     const close = vi.fn();
     const root = createRoot(document.getElementById("root")!);
     await act(async () => root.render(
-      <CardsDetailDrawer open labelledBy="detail-title" regionId="detail-region" closeLabel="Close" restoreFocusTo={activator} fallbackFocusTo={null} onRequestClose={close}>
+      <CardsDetailDrawer open labelledBy="detail-title" regionId="detail-region" closeLabel="Close" contextLabel="Card details" restoreFocusTo={activator} fallbackFocusTo={null} onRequestClose={close}>
         <h2 id="detail-title">Details</h2><button type="button">Inner action</button>
       </CardsDetailDrawer>,
     ));
@@ -26,6 +26,7 @@ describe("CardsDetailDrawer", () => {
     const drawer = document.querySelector('[data-testid="cards-detail-drawer"]')!;
     expect(drawer.getAttribute("role")).toBe("region");
     expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(drawer.textContent).toContain("Card details");
     expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
     expect(drawer.querySelectorAll("button")).toHaveLength(2);
 

@@ -41,19 +41,27 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
 
   return (
     <div className="cards-detail-content" data-testid="cards-detail-content">
+      <LifecycleBanner state={workspace.resolution} />
+
       <header className="cards-detail-header">
         <div className="cards-detail-heading-copy">
           <PriorityBadge value={item.priority} />
           <h2 id={headingId}>{cardDisplayText(item)}</h2>
-          <p>{item.deck.name || "—"} · {item.noteType.name || t("queue.unknownType")} · {stateLabel(item, t)}</p>
         </div>
       </header>
 
+      <dl className="cards-detail-metadata" aria-label={t("inspector.metadata")}>
+        <Entry label={t("inspector.deck")} value={item.deck.name || "—"} />
+        <Entry label={t("inspector.state")} value={stateLabel(item, t)} />
+        <Entry label={t("inspector.noteType")} value={item.noteType.name || t("queue.unknownType")} />
+        <Entry label={t("inspector.template")} value={details?.templateName ?? item.template.name} />
+      </dl>
+
       <section className="cards-detail-section" aria-labelledby={`${headingId}-reasons`}>
         <h3 id={`${headingId}-reasons`}>{t("inspector.reasons")}</h3>
-        <div className="cards-detail-reasons">
-          {item.reasons.map((reason, index) => <ReasonCard key={reason.reasonId} reason={reason} primary={index === 0} />)}
-        </div>
+        <ul className="cards-detail-reasons">
+          {item.reasons.map((reason, index) => <ReasonRow key={reason.reasonId} reason={reason} primary={index === 0} />)}
+        </ul>
       </section>
 
       <section className="cards-detail-section" aria-labelledby={`${headingId}-preview`}>
@@ -93,6 +101,10 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
       <section className="cards-detail-section" aria-labelledby={`${headingId}-next`}>
         <h3 id={`${headingId}-next`}>{t("inspector.next")}</h3>
         <p className="cards-detail-next-copy">{recommendedStep(item, t)}</p>
+      </section>
+
+      <section className="cards-detail-section cards-detail-action-zone" aria-labelledby={`${headingId}-actions`}>
+        <h3 id={`${headingId}-actions`}>{t("inspector.actions")}</h3>
         <p className="cards-detail-resolution-rule">{t("resolution.rule")}</p>
         <div className="cards-detail-actions">
           {safeActions(item).map((action, index) => (
@@ -119,12 +131,14 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
             {workspace.openResult.ok ? t("actions.opened") : t("actions.failed")}
           </p>
         ) : null}
-        <ResolutionResult
-          state={workspace.resolution}
-          recheckDisabled={workspace.mutationPending}
-          onRecheck={() => void workspace.recheckActive()}
-        />
       </section>
+
+      <ResolutionResult
+        state={workspace.resolution}
+        headingId={`${headingId}-result`}
+        recheckDisabled={workspace.mutationPending}
+        onRecheck={() => void workspace.recheckActive()}
+      />
 
       <details className="cards-detail-technical">
         <summary>{t("inspector.technical")}</summary>
@@ -141,12 +155,25 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   );
 }
 
+function LifecycleBanner({ state }: { state: CardsResolutionState | null }) {
+  const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  const phase = state?.phase ?? "idle";
+  return (
+    <section className={`cards-detail-lifecycle workspace-state is-${phase}`} role={state ? "status" : undefined} aria-live={state ? "polite" : undefined}>
+      <strong>{t(`resolution.states.${phase}.title`)}</strong>
+      <p>{t(`resolution.states.${phase}.description`)}</p>
+    </section>
+  );
+}
+
 function ResolutionResult({
   state,
+  headingId,
   recheckDisabled,
   onRecheck,
 }: {
   state: CardsResolutionState | null;
+  headingId: string;
   recheckDisabled: boolean;
   onRecheck: () => void;
 }) {
@@ -156,9 +183,8 @@ function ResolutionResult({
   const noChanges = state.actionResult && "resultCode" in state.actionResult && state.actionResult.resultCode === "action.no_changes";
   const actionSucceeded = state.actionResult && "resultCode" in state.actionResult && !noChanges;
   return (
-    <div className={`cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-state" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"}>
-      <strong>{t(`resolution.states.${state.phase}.title`)}</strong>
-      <p>{t(`resolution.states.${state.phase}.description`)}</p>
+    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-state" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
+      <h3 id={headingId}>{t("inspector.result")}</h3>
       {actionSucceeded ? <p>{t("resolution.actionSucceeded")}</p> : null}
       {noChanges ? <p>{t("resolution.noChanges")}</p> : null}
       {state.reconciliation ? (
@@ -173,7 +199,7 @@ function ResolutionResult({
           <RotateCw size={16} aria-hidden="true" />{t("resolution.recheck")}
         </button>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -195,10 +221,10 @@ function safeActions(item: NonNullable<CardsTriageWorkspace["activeItem"]>): Car
   return actions;
 }
 
-function ReasonCard({ reason, primary }: { reason: TriageReason; primary: boolean }) {
+function ReasonRow({ reason, primary }: { reason: TriageReason; primary: boolean }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   return (
-    <article className={primary ? "is-primary" : undefined}>
+    <li className={primary ? "is-primary" : undefined}>
       <div className="cards-detail-reason-heading">
         <strong>{reasonLabel(reason.code, t)}</strong>
         <PriorityBadge value={reason.priority} />
@@ -207,7 +233,7 @@ function ReasonCard({ reason, primary }: { reason: TriageReason; primary: boolea
       {reason.evidence.map((evidence, index) => (
         <p key={`${reason.reasonId}-${index}`} className="cards-detail-reason-evidence">{evidenceLabel(evidence, t)}</p>
       ))}
-    </article>
+    </li>
   );
 }
 
