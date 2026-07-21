@@ -2,9 +2,9 @@
 
 **Снимок документации:** 2026-07-22
 
-Актуальные contracts находятся в `docs/`, sequencing — в `roadmap/`, historical reports и audits — в `reports/`.
+Актуальные контракты находятся в `docs/`, последовательность работ — в `roadmap/`, исторические отчёты и аудиты — в `reports/`.
 
-## Source of truth
+## Источники истины
 
 ```text
 web-dashboard/src/app/router.tsx
@@ -18,53 +18,53 @@ web-dashboard/src/types/
 web-dashboard/src/i18n/
 ```
 
-`App.tsx` читает dashboard token из `window.location.search`. Frontend не читает Anki collection напрямую. Theme и RU/EN preferences остаются local и independent.
+`App.tsx` читает токен dashboard из `window.location.search`. Frontend не читает collection Anki напрямую. Настройки темы и языка RU/EN остаются локальными и независимыми.
 
-## Основные routes
+## Основные маршруты
 
 ```text
 Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-| Route | Component | Data/API | Главный риск |
+| Маршрут | Компонент | Данные или API | Главный риск |
 | --- | --- | --- | --- |
-| `#/home` | `HomePage` | `StudyReport.today` | current-day vs historical scope |
-| `#/calendar` | `CalendarPage` | `activityHub` | date/scope availability |
-| `#/stats` | statistics pages | Statistics/FSRS API | bounded latest-wins queries |
-| `#/decks` | `DecksPage` | `deckHub`, Browser action | direct/subtree semantics |
-| `#/search` | `SearchPage` | Search v2, metadata v1 | strict parsing, exact IDs |
-| `#/cards` | lazy `CardsPage` | Triage query v4, recheck v1, Search inspect v2 | bounded accumulation, action/recheck races, focus, responsive detail |
-| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | Inspection Profiles API | exact refs, lifecycle, local drafts |
+| `#/home` | `HomePage` | `StudyReport.today` | различие текущего дня и исторического scope |
+| `#/calendar` | `CalendarPage` | `activityHub` | доступность даты и scope |
+| `#/stats` | страницы Statistics | API Statistics/FSRS | ограниченные запросы с latest-wins |
+| `#/decks` | `DecksPage` | `deckHub`, действие Browser | семантика direct и subtree |
+| `#/search` | `SearchPage` | Search v2, metadata v1 | строгий parsing и точные ID |
+| `#/cards` | лениво загружаемый `CardsPage` | запрос Triage v4, recheck v1, просмотр Search v2 | ограниченное накопление, гонки действий и recheck, фокус и responsive-подробности |
+| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | API Inspection Profiles | точные ссылки, жизненный цикл и локальные черновики |
 
-## Canonical card identity и preview
+## Каноническая идентичность карточки и предпросмотр
 
-Один backend exact-card projector предоставляет identity Search row/details и Triage item.
+Один backend-projector конкретной карточки предоставляет идентичность строк и подробностей Search и элементов Triage.
 
-`cardDisplayText()` локализует только explicit states `media_only` и `unavailable` и не анализирует arbitrary note fields.
+`cardDisplayText()` локализует только явные состояния `media_only` и `unavailable` и не анализирует произвольные поля заметки.
 
 ```text
-Search query/inspect: schema v2
-Search metadata: schema v1
-Triage query: schema v4
-Triage exact-card recheck: schema v1
+запрос и просмотр Search: schema v2
+metadata Search: schema v1
+запрос Triage: schema v4
+перепроверка конкретной карточки Triage: schema v1
 ```
 
-Только active Cards item запрашивает Search inspect. `AnkiCardShadowPreview` показывает sanitized native front в Inspector/drawer. `AccessibleModal` показывает cached answer/back.
+Только активный элемент Cards запрашивает просмотр Search. `AnkiCardShadowPreview` показывает санитизированную нативную лицевую сторону в Inspector или выдвижной панели. `AccessibleModal` показывает закэшированный ответ или обратную сторону.
 
-Queue items не рендерят full HTML и не читают media.
+Элементы очереди не рендерят полный HTML и не читают media.
 
-## Cards attention inbox topology
+## Топология очереди карточек, требующих внимания
 
 ```text
 CardsPage
-├─ compact summary + controls priority/reason/deck/text/period
-├─ source/profile coverage warnings
-└─ CardsInbox semantic ordered list
-   ├─ >= 1200 px: persistent CardsDetail Inspector
-   └─ < 1200 px: full-width queue + CardsDetailDrawer
+├─ компактная сводка и управление приоритетом, причиной, колодой, текстом и периодом
+├─ предупреждения об источниках и покрытии профилями
+└─ CardsInbox — упорядоченный семантический список
+   ├─ >= 1200 px: постоянный Inspector CardsDetail
+   └─ < 1200 px: очередь на всю ширину + CardsDetailDrawer
 ```
 
-Основные modules:
+Основные модули:
 
 ```text
 components/cards/CardsInbox.tsx
@@ -79,15 +79,15 @@ lib/triagePresentation.ts
 styles/cardsInbox.css
 ```
 
-Queue — обычный `<ol>` с одной native button на item. Это не `table`, ARIA `grid`, `listbox` или roving-tabindex composite. Focus и active item раздельны.
+Очередь — обычный `<ol>` с одной нативной кнопкой на элемент. Это не `table`, ARIA `grid`, `listbox` или составной элемент с roving tabindex. Фокус и активный элемент разделены.
 
-Wide mode выбирает первый inspectable item без перемещения focus. На 1024 px persistent Inspector и automatic preview request отсутствуют; explicit activation открывает labelled non-modal drawer без backdrop, `aria-modal`, inert shell и focus trap.
+В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. При 1024 px постоянный Inspector и автоматический запрос предпросмотра отсутствуют; явная активация открывает подписанную немодальную панель без backdrop, `aria-modal`, inert-оболочки и focus trap.
 
-Answer preview остаётся единственным modal.
+Предпросмотр ответа остаётся единственным модальным диалогом.
 
-## Period и continuation state
+## Состояние периода и продолжения
 
-Hook владеет session-local learning period:
+Hook хранит локальный для сессии период обучения:
 
 ```text
 7 дней
@@ -95,22 +95,22 @@ Hook владеет session-local learning period:
 90 дней
 ```
 
-Period change запускает один automatic query v4 с `contentCursor: null`, abort-ит stale work, очищает accumulated content pages и сохраняет local filters.
+Изменение периода запускает один автоматический запрос v4 с `contentCursor: null`, отменяет устаревшую работу, очищает накопленные страницы текущего содержимого и сохраняет локальные фильтры.
 
-Manual continuation доступен только при coherent cursor state. Одна activation отправляет один request.
+Ручное продолжение доступно только при согласованном состоянии cursor. Одна активация отправляет один запрос.
 
-Accumulation:
+Накопление:
 
-- дедуплицирует items/reasons/sources;
-- сохраняет canonical ordering;
-- bounded до 500 unique items;
-- bounded до 10 additional pages;
-- сохраняет prior usable items после error;
-- не запускает automatic cursor loop.
+- дедуплицирует элементы, причины и источники;
+- сохраняет канонический порядок;
+- ограничено 500 уникальными элементами;
+- ограничено 10 дополнительными страницами;
+- сохраняет прежние пригодные элементы после ошибки;
+- не запускает автоматический цикл cursor.
 
-## C1.6 lifecycle state
+## Состояние жизненного цикла C1.6
 
-`useCardsTriageWorkspace` владеет one-card lifecycle:
+`useCardsTriageWorkspace` отвечает за жизненный цикл одной карточки:
 
 ```text
 idle
@@ -120,18 +120,18 @@ idle
 → still_active | partially_resolved | resolved | failed | stale
 ```
 
-- mutations serialized и не abort-ятся;
-- reads latest-wins и guarded sequence IDs;
-- action success не удаляет item;
-- `recheckTriageCard()` вызывает strict `/api/triage/recheck` v1;
-- reconciliation сравнивает stable `reasonId`;
-- remaining/new reasons обновляют item на месте;
-- item удаляется только после fully authoritative zero-reason response;
-- post-removal focus выбирает next, previous или queue heading.
+- mutations сериализуются и не отменяются;
+- чтения используют latest-wins и защищённые sequence ID;
+- успех действия не удаляет элемент;
+- `recheckTriageCard()` вызывает строгий `/api/triage/recheck` v1;
+- reconciliation сравнивает стабильные `reasonId`;
+- оставшиеся и новые причины обновляют элемент на месте;
+- элемент удаляется только после полностью авторитетного ответа без причин;
+- после удаления фокус выбирает следующий или предыдущий элемент либо заголовок очереди.
 
-Safe Actions и Open in Anki остаются существующими paths. Bulk/manual resolution отсутствуют.
+Safe Actions и Open in Anki остаются существующими путями. Массовое и ручное определение устранения отсутствует.
 
-## Guided Inspection Profiles workspace
+## Рабочее пространство пошаговой настройки Inspection Profiles
 
 `InspectionProfilesSettingsPage` объединяет:
 
@@ -142,21 +142,21 @@ AdvancedProfileDisclosure
 useInspectionProfilesWorkspace
 ```
 
-`inspectionProfileBasicView.ts` — pure friendly projection над strict v1.
+`inspectionProfileBasicView.ts` — чистая понятная проекция строгого v1.
 
-Hook владеет origin/baseline/user-edit state, latest-wins reads, validation cancellation, serialized mutations и revision conflicts.
+Hook отвечает за происхождение черновика, исходное состояние и пользовательские изменения, чтения latest-wins, отмену validation, сериализованные mutations и конфликты revision.
 
-## Security boundary
+## Граница безопасности
 
-- frontend не имеет collection access;
-- strict parsers v4/v1/v2 отклоняют unknown и incoherent payloads;
-- exact card IDs используются для inspect/recheck/Open in Anki;
-- display text не становится native query;
-- sanitizer, validated media URLs и Shadow DOM isolation сохраняются;
-- client-side resolution inference отсутствует;
-- C1.6 не добавляет second detector/action stack.
+- frontend не имеет доступа к collection;
+- строгие parsers v4, v1 и v2 отклоняют неизвестные и несогласованные payload;
+- точные ID карточек используются для inspect, recheck и Open in Anki;
+- отображаемый текст не превращается в нативный запрос;
+- sanitizer, проверенные URL media и изоляция Shadow DOM сохраняются;
+- определение устранения проблемы на клиенте отсутствует;
+- C1.6 не добавляет второй стек детекторов или действий.
 
-## Focused tests
+## Профильные тесты
 
 ```text
 pages/CardsPage.test.tsx
@@ -171,21 +171,21 @@ components/AnkiCardShadowPreview.test.tsx
 pages/LocalizationSmoke.test.tsx
 ```
 
-C1.6 frontend suite:
+Набор frontend-тестов C1.6:
 
 ```text
-324 tests PASS
-TypeScript typecheck PASS
-production build PASS
-bundle guard PASS — entry 429,516 bytes
+324 теста — PASS
+TypeScript typecheck — PASS
+production-сборка — PASS
+ограничение bundle — PASS, entry 429 516 байт
 ```
 
 ## Текущий статус Core
 
 ```text
-C1.5R.0–R.7 — Complete; owner accepted
-C1.6 — Complete; owner accepted; merged into core
-C1.6B — Conditional; not started
-Core C1 — Complete
-C2 — Next; not started
+C1.5R.0–R.7 — завершено; принято владельцем
+C1.6 — завершено; принято владельцем; влито в core
+C1.6B — условный этап; не начат
+Core C1 — завершён
+C2 — следующий этап; не начат
 ```
