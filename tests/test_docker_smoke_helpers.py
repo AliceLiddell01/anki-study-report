@@ -111,13 +111,15 @@ def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source()
     assert 'name: /E2E Japanese Vocabulary/' in workspace
     assert 'name: /E2E Generic Basic/' in workspace
     assert 'sourceLifecycleText.includes("Не настроен")' in workspace
-    assert 'name: "Восстановить предложенную настройку", exact: true' in workspace
-    assert 'name: "Использовать подсказку", exact: true' not in workspace
+    assert 'page.locator("#inspection-basic-priority-0")' in workspace
+    assert 'initialPriority === "high" ? "medium" : "high"' in workspace
+    assert "Восстановить предложенную настройку" not in workspace
+    assert "Использовать подсказку" not in workspace
     assert 'suggestionSourceName: "E2E Generic Basic"' in workspace
 
     japanese_state = workspace.index("await japanese.click()")
     unconfigured_source = workspace.index("await suggestionSource.click()")
-    apply_suggestion = workspace.index('name: "Восстановить предложенную настройку", exact: true')
+    apply_suggestion = workspace.index('page.locator("#inspection-basic-priority-0")')
     assert japanese_state < unconfigured_source < apply_suggestion
 
 
