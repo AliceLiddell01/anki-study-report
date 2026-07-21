@@ -1,9 +1,9 @@
-# Display identity карточки
+# Идентичность отображения карточки
 
 ## Статус
 
-**Канонический baseline:** `C1.5R.1 — Complete`  
-**Опциональный formatter layer:** `C1.5R.2 — Complete`  
+**Каноническое исходное состояние:** `C1.5R.1 — завершено`  
+**Необязательный слой форматтера:** `C1.5R.2 — завершено`  
 **Ветка:** `core`
 
 **Реализация:**
@@ -17,9 +17,9 @@ anki_study_report/card_display_formatter_runtime.py
 
 **Публичные контракты:** Search schema v2 и Triage schema v3; C1.5R.2 их не изменяет.
 
-C1.5R.1 установил одну backend-owned identity точной карточки для Search, Triage и текущих Cards surfaces. C1.5R.2 добавил над этим projector опциональный bounded declarative formatter.
+C1.5R.1 установил единую идентичность конкретной карточки, формируемую backend, для Search, Triage и актуальных поверхностей Cards. C1.5R.2 добавил поверх этого projector необязательный ограниченный декларативный formatter.
 
-При отсутствующем, disabled, corrupt, unsupported или unavailable formatter, а также при пустом formatter output система всегда возвращается к завершённой семантике R1.
+При отсутствующем, отключённом, повреждённом, неподдерживаемом или недоступном formatter, а также при его пустом результате система всегда возвращается к завершённой семантике R1.
 
 Связанные документы:
 
@@ -27,43 +27,43 @@ C1.5R.1 установил одну backend-owned identity точной карт
 - [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md);
 - [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md).
 
-## Общая identity точной карточки
+## Общая идентичность конкретной карточки
 
-Одна compact identity используется в:
+Одна компактная идентичность используется в:
 
-- строке результата Search card;
-- заголовке Search card Inspector;
-- каноническом Triage item;
-- item очереди Cards;
-- заголовке Cards Inspector.
+- строке карточки в результатах Search;
+- заголовке Inspector карточки Search;
+- каноническом элементе Triage;
+- элементе очереди Cards;
+- заголовке Inspector Cards.
 
-Search в note mode остаётся note projection и сохраняет `primaryText`. В card rows, card details и Triage items card alias `primaryText` отсутствует.
+Search в режиме заметок остаётся проекцией заметки и сохраняет `primaryText`. В строках и подробностях карточек и элементах Triage alias карточки `primaryText` отсутствует.
 
 ## Авторитетный projector
 
-`project_card_display_identity(card, formatter=None)` отвечает за одну точную card.
+`project_card_display_identity(card, formatter=None)` отвечает за одну конкретную карточку.
 
-Без active formatter источники используются в таком порядке:
+Без активного formatter источники используются в таком порядке:
 
-1. native Browser question: `card.question(reload=True, browser=True)`;
-2. native reviewer front: `card.question(reload=True, browser=False)`;
+1. нативный вопрос Browser: `card.question(reload=True, browser=True)`;
+2. нативная лицевая сторона reviewer: `card.question(reload=True, browser=False)`;
 3. явное состояние `media_only` или `unavailable`.
 
-При active formatter сначала используется только объявленный `inputSource`.
+При активном formatter сначала используется только объявленный `inputSource`.
 
-Request-local resolver выбирает конфигурацию по точной паре:
+Локальный для запроса resolver выбирает конфигурацию по точной паре:
 
 ```text
 (noteTypeId, templateOrdinal)
 ```
 
-Поддерживаются default formatter note type и exact disabled opt-out. Names, decks, fields и fuzzy similarity никогда не участвуют в binding.
+Поддерживаются стандартный formatter типа заметки и точный отключённый opt-out. Имена, колоды, поля и нечёткое сходство никогда не участвуют в binding.
 
-При ошибке configured source уже отрендеренные значения переиспользуются, после чего применяется каноническая последовательность fallback. Каждый source рендерится не более одного раза за projection одной card. Projector никогда не вызывает `card.answer()`.
+При ошибке настроенного источника уже отрендеренные значения переиспользуются, после чего применяется каноническая последовательность fallback. Каждый источник рендерится не более одного раза за проекцию одной карточки. Projector никогда не вызывает `card.answer()`.
 
-## Упорядоченная compact tokenization
+## Упорядоченная компактная tokenization
 
-Parser создаёт только tokens:
+Parser создаёт только токены:
 
 ```text
 text
@@ -72,35 +72,35 @@ image
 audio
 ```
 
-Порядок text и media tokens сохраняется. Inline nodes объединяются без выдуманного separator. `<br>` и block boundaries создают новые строки. HTML entities декодируются. Whitespace нормализуется только внутри итоговых строк.
+Порядок текстовых и media-токенов сохраняется. Соседние inline-узлы объединяются без искусственного разделителя. `<br>` и границы блоков создают новые строки. HTML-entities декодируются. Пробелы нормализуются только внутри итоговых строк.
 
 Удаляется содержимое:
 
 - `script`, `style`, `iframe`;
 - `object`, `embed`;
-- SVG/MathML;
-- template/form;
-- unsafe media containers.
+- SVG и MathML;
+- template и form;
+- небезопасных media-контейнеров.
 
-Malformed blocked nesting fail closed.
+Повреждённая вложенность запрещённых элементов работает по принципу fail closed.
 
-Каноническая projection R1 пропускает media tokens и выбирает первую содержательную строку. Поэтому точный Japanese fixture с большим количеством media остаётся:
+Каноническая проекция R1 пропускает media-токены и выбирает первую содержательную строку. Поэтому точная японская фикстура с большим количеством media остаётся:
 
 ```text
 【に】（する）
 ```
 
-Включённый reviewer-front formatter с `imageMode: stem` может вернуть:
+Включённый formatter лицевой стороны reviewer с `imageMode: stem` может вернуть:
 
 ```text
 【に】感謝（する）
 ```
 
-Safe media handling, policy enums, выбор строк и точная truncation описаны в [`card-display-formatter-v1.md`](card-display-formatter-v1.md). Media file никогда не открывается и не проверяется на существование.
+Безопасная обработка media, enum политики, выбор строк и точный truncation описаны в [`card-display-formatter-v1.md`](card-display-formatter-v1.md). Media-файл никогда не открывается и не проверяется на существование.
 
-## Wire contract
+## Wire-контракт
 
-Card identity остаётся плоским exact fragment:
+Идентичность карточки остаётся плоским точным fragment:
 
 ```json
 {
@@ -123,43 +123,43 @@ browser_question | reviewer_front | none
 available | media_only | unavailable
 ```
 
-Правила coherence:
+Правила согласованности:
 
-- `available`: bounded non-empty text и отрендеренный Browser/reviewer source;
-- `media_only`: пустой text, без truncation, rendered source сохраняется;
-- `unavailable`: пустой text, source `none`, без truncation.
+- `available`: ограниченный непустой текст и отрендеренный источник Browser или reviewer;
+- `media_only`: пустой текст, без truncation, отрендеренный источник сохраняется;
+- `unavailable`: пустой текст, источник `none`, без truncation.
 
-Formatter state и configuration не копируются в Search/Triage wire data. Публичных fields `formatterApplied`, `formatterId`, aliases, HTML или filename metadata нет.
+Состояние и конфигурация formatter не копируются в wire-данные Search и Triage. Публичных полей `formatterApplied`, `formatterId`, aliases, HTML или metadata имени файла нет.
 
-## Schemas Search и Triage
+## Schema Search и Triage
 
-Search query/inspect остаются strict schema v2. Search metadata остаётся независимым variant schema v1. Triage использует точную schema v3 в этом contract snapshot; дальнейшие additive изменения candidate source описаны отдельно в Triage v4.
+Запросы и просмотр Search остаются на строгой schema v2. Metadata Search остаётся независимым вариантом schema v1. В snapshot этого контракта Triage использует точную schema v3; последующие добавочные изменения источников кандидатов отдельно описаны для Triage v4.
 
-`project_card_row()` обслуживает обычный Search, Search inspect и exact-card resolution, который переиспользует Triage. Поэтому все card surfaces используют один resolver и один backend identity path; второй formatter implementation в Triage отсутствует.
+`project_card_row()` обслуживает обычный Search, просмотр Search и определение конкретной карточки, которое переиспользует Triage. Поэтому все поверхности карточек используют один resolver и один путь идентичности backend; второй formatter в Triage отсутствует.
 
-Строгие TypeScript parsers отклоняют:
+Строгие parsers TypeScript отклоняют:
 
-- старые schemas;
-- unknown keys;
-- card aliases;
-- malformed IDs;
-- слишком длинный text;
-- incoherent display state/source/text.
+- старые schema;
+- неизвестные ключи;
+- aliases карточки;
+- повреждённые ID;
+- слишком длинный текст;
+- несогласованные состояние, источник и текст отображения.
 
 ## Поведение UI
 
-Для `available` backend text отображается без изменений. Frontend локализует только явные fallback states:
+Для `available` backend-текст отображается без изменений. Frontend локализует только явные fallback-состояния:
 
-| State | RU | EN |
+| Состояние | RU | EN |
 | --- | --- | --- |
 | `media_only` | Карточка только с медиа | Card with media only |
 | `unavailable` | Текст карточки недоступен | Card text unavailable |
 
-C1.5R.2 не добавляет formatter route, page, hook, Settings navigation, form, live preview или Cards redesign. Guided configuration относится к C1.5R.6, preview semantics — к C1.5R.3.
+C1.5R.2 не добавляет маршрут formatter, страницу, hook, навигацию Settings, форму, живой предпросмотр или переработку Cards. Пошаговая настройка относится к C1.5R.6, семантика предпросмотра — к C1.5R.3.
 
-## Безопасность и приватность
+## Безопасность и конфиденциальность
 
-Dashboard остаётся loopback-only и token-protected. Frontend никогда не читает collection. Compact identity и formatter configuration остаются локальными и не копируются в telemetry или normal logs.
+Dashboard остаётся доступным только через loopback-интерфейс и защищённым токеном. Frontend никогда не читает collection. Компактная идентичность и конфигурация formatter остаются локальными и не копируются в телеметрию или обычные логи.
 
 Runtime не выполняет:
 
@@ -167,26 +167,26 @@ Runtime не выполняет:
 - SQL или shell;
 - regex или selectors;
 - expressions или callbacks;
-- dynamic imports;
+- динамические imports;
 - subprocess.
 
-Не логируются raw HTML, значения note fields, содержимое media, absolute paths, renderer exceptions, formatter filenames, сгенерированный `displayText` или tokens.
+Не логируются необработанный HTML, значения полей заметки, содержимое media, абсолютные пути, исключения renderer, имена файлов formatter, сгенерированный `displayText` или токены.
 
 ## Состояние проверки
 
-C1.5R.1 и C1.5R.2 завершены. Для implementation tree C1.5R.2, committed и pushed как `edad09e8ffae443b94e192b266084abb66c37adf`, пройдены:
+C1.5R.1 и C1.5R.2 завершены. Для дерева реализации C1.5R.2, закоммиченного и отправленного как `edad09e8ffae443b94e192b266084abb66c37adf`, пройдены:
 
 ```text
-focused backend: 142 passed
-focused frontend: 49 passed
+профильный backend: 142 passed
+профильный frontend: 49 passed
 TypeScript typecheck: PASS
-package build and validation: PASS
-canonical run_full_check.ps1 -SkipDocker: PASS
-Git hygiene and origin/core synchronization: PASS
+сборка и проверка пакета: PASS
+канонический run_full_check.ps1 -SkipDocker: PASS
+гигиена Git и синхронизация origin/core: PASS
 ```
 
-Итоговая integrated verification и owner acceptance всего C1.5R зафиксированы в reports C1.5R.7.
+Финальная комплексная проверка и приёмка владельцем всего C1.5R зафиксированы в отчёте C1.5R.7.
 
-## Семантика preview C1.5R.3
+## Семантика предпросмотра C1.5R.3
 
-См. [`card-preview-semantics.md`](card-preview-semantics.md). Полный preview использует reviewer/native front и answer: Inspector показывает front, развёрнутый dialog — answer, а compact identity не меняется.
+См. [`card-preview-semantics.md`](card-preview-semantics.md). Полный предпросмотр использует нативные лицевую сторону и ответ reviewer: Inspector показывает лицевую сторону, расширенный диалог — ответ, а компактная идентичность не меняется.
