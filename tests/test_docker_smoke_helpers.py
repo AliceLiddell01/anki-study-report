@@ -127,6 +127,28 @@ def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source()
     assert japanese_state < unconfigured_source < apply_suggestion
 
 
+def test_smoke_browser_search_contract_uses_schema_v2_requests():
+    source = (
+        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"
+    ).read_text(encoding="utf-8")
+    query_contract = source.split("async function assertSearchQueryContract", 1)[1].split(
+        "async function assertSafeEntityActions", 1
+    )[0]
+    action_contract = source.split("async function assertSafeEntityActions", 1)[1].split(
+        "async function assertSearchWorkspaceUi", 1
+    )[0]
+
+    assert 'const cardRequest = {\n    schemaVersion: 2,' in query_contract
+    assert 'schemaVersion: 2,\n    mode: "cards",\n    cardId,' in query_contract
+    assert 'schemaVersion: 2,\n    mode: "notes",\n    noteId,' in query_contract
+    assert '{ schemaVersion: 2, mode: "cards", cardId, requestId }' in action_contract
+    assert '{ schemaVersion: 2, mode: "notes", noteId, requestId }' in action_contract
+    assert 'schemaVersion: 2, mode: "cards", query: "", filters:' in action_contract
+    assert 'postSearchContract("/api/search/inspect", {\n    mode:' not in query_contract
+    assert '{ mode: "cards", cardId, requestId }' not in action_contract
+    assert '{ mode: "notes", noteId, requestId }' not in action_contract
+
+
 def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
     source = (
         Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"

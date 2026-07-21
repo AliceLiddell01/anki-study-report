@@ -3150,6 +3150,7 @@ async function fetchReport() {
 async function assertSearchQueryContract() {
   const nativeQuery = 'deck:"E2E Fixtures"';
   const cardRequest = {
+    schemaVersion: 2,
     mode: "cards",
     query: nativeQuery,
     filters: [],
@@ -3185,11 +3186,13 @@ async function assertSearchQueryContract() {
   const cardId = String(cardResult.items[0].cardId || "");
   const noteId = String(noteResult.items[0].noteId || "");
   const cardInspect = await postSearchContract("/api/search/inspect", {
+    schemaVersion: 2,
     mode: "cards",
     cardId,
     requestId: "e2e-card-inspect",
   });
   const noteInspect = await postSearchContract("/api/search/inspect", {
+    schemaVersion: 2,
     mode: "notes",
     noteId,
     requestId: "e2e-note-inspect",
@@ -3274,8 +3277,8 @@ async function assertSafeEntityActions({ cardId, noteId, cardBefore, noteBefore 
     assertBrowser(result.body?.response?.undoable === true, `${expectedCode} reports native undo support.`);
     return result.body.response;
   };
-  const inspectCard = async (requestId) => (await postSearchContract("/api/search/inspect", { mode: "cards", cardId, requestId })).body?.response?.details;
-  const inspectNote = async (requestId) => (await postSearchContract("/api/search/inspect", { mode: "notes", noteId, requestId })).body?.response?.details;
+  const inspectCard = async (requestId) => (await postSearchContract("/api/search/inspect", { schemaVersion: 2, mode: "cards", cardId, requestId })).body?.response?.details;
+  const inspectNote = async (requestId) => (await postSearchContract("/api/search/inspect", { schemaVersion: 2, mode: "notes", noteId, requestId })).body?.response?.details;
 
   const suspend = await action("cards", { action: "suspend", cardIds: [cardId], requestId: "e2e-suspend" }, "cards.suspended");
   assertBrowser((await inspectCard("e2e-suspended"))?.queue === -1, "Suspend refresh exposes the suspended queue.");
@@ -3305,7 +3308,7 @@ async function assertSafeEntityActions({ cardId, noteId, cardBefore, noteBefore 
   await action("cards", { action: "move_to_deck", cardIds: [cardId], deckId: String(targetDeckId), requestId: "e2e-move" }, "cards.moved");
   assertBrowser(Number((await inspectCard("e2e-moved"))?.deckId) === targetDeckId, "Move refresh exposes the destination deck.");
   const movedQuery = await postSearchContract("/api/search/query", {
-    mode: "cards", query: "", filters: [{ type: "deck", deckId: String(targetDeckId) }],
+    schemaVersion: 2, mode: "cards", query: "", filters: [{ type: "deck", deckId: String(targetDeckId) }],
     sort: { key: "entity_id", direction: "asc" }, page: 1, pageSize: 25, requestId: "e2e-moved-query",
   });
   assertBrowser(movedQuery.body?.response?.items?.some((item) => String(item.cardId) === cardId), "Deck-filtered query refresh finds the moved card.");
