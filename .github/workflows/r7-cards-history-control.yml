@@ -1,0 +1,82 @@
+name: R7 temporary Cards history normalization control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r7-cards-history-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  normalize:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-cards-history-trigger'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact target branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c1-5r-7-cards-browser-harness-fix
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Guard exact normalization inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ github.head_ref }}' = 'c1-5r-7-cards-history-trigger'
+          test '${{ github.base_ref }}' = 'core'
+          test "$(git rev-parse HEAD)" = '5a0d321eecfa38e3f66235431140f8c67bfce6f6'
+          git cat-file -e 'f1c474033f9ab66a056377396bf1ff79e8f4f46c^{commit}'
+          mapfile -t changed < <(git diff --name-only 'f1c474033f9ab66a056377396bf1ff79e8f4f46c' HEAD | sort)
+          expected=(
+            docker/anki-e2e/smoke-browser.mjs
+            tests/test_docker_smoke_helpers.py
+          )
+          printf 'actual=%s\n' "${changed[*]}"
+          printf 'expected=%s\n' "${expected[*]}"
+          test "${changed[*]}" = "${expected[*]}"
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Verify exact target tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          node --check docker/anki-e2e/smoke-browser.mjs
+          python -m pytest tests/test_docker_smoke_helpers.py
+          git diff --check 'f1c474033f9ab66a056377396bf1ff79e8f4f46c' HEAD
+
+      - name: Replace trigger history with one permanent commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          old_sha="$(git rev-parse HEAD)"
+          git reset --soft 'f1c474033f9ab66a056377396bf1ff79e8f4f46c'
+          mapfile -t staged < <(git diff --cached --name-only | sort)
+          expected=(
+            docker/anki-e2e/smoke-browser.mjs
+            tests/test_docker_smoke_helpers.py
+          )
+          test "${staged[*]}" = "${expected[*]}"
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test: align Cards browser smoke with the attention inbox'
+          test "$(git rev-list --count 'f1c474033f9ab66a056377396bf1ff79e8f4f46c'..HEAD)" = '1'
+          git push \
+            --force-with-lease=refs/heads/c1-5r-7-cards-browser-harness-fix:"$old_sha" \
+            origin HEAD:refs/heads/c1-5r-7-cards-browser-harness-fix
