@@ -1,29 +1,29 @@
-# AI handoff — Anki Study Report
+# Передача контекста ИИ — Anki Study Report
 
 **Снимок:** 2026-07-22
 
 ## С чего начать
 
-Читайте в таком порядке:
+Читайте источники в таком порядке:
 
 1. [`../README.md`](../README.md);
 2. этот файл;
 3. [`../roadmap/README.md`](../roadmap/README.md);
 4. [`../roadmap/core/README.md`](../roadmap/core/README.md);
-5. current production code и tests для requested scope;
-6. focused contract и latest report соответствующего этапа.
+5. актуальные production-код и тесты в пределах задачи;
+6. профильный контракт и последний отчёт соответствующего этапа.
 
-При противоречиях используйте приоритет:
+При противоречиях используйте следующий приоритет:
 
 ```text
-current production code и tests
-→ current README и focused docs
-→ fresh reports/artifacts
-→ older plans/messages
-→ assumptions
+актуальные production-код и тесты
+→ актуальные README и профильные документы
+→ свежие отчёты и артефакты
+→ старые планы и сообщения
+→ предположения
 ```
 
-Не утверждайте, что file, artifact или code path изучен, если он фактически не был открыт.
+Не утверждайте, что файл, артефакт или участок кода изучен, если он фактически не был открыт.
 
 ## Текущее состояние проекта
 
@@ -31,26 +31,26 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 
 Dashboard:
 
-- loopback-only;
-- token-protected;
-- получает bounded JSON/API projections;
-- не даёт frontend прямой доступ к collection.
+- доступен только через loopback-интерфейс;
+- защищён токеном;
+- получает ограниченные JSON/API-проекции;
+- не предоставляет frontend прямой доступ к collection.
 
-Принятый product contour до Stage 9.5 завершён.
+Принятый продуктовый контур до Stage 9.5 завершён.
 
-Текущий Core status:
+Текущий статус Core:
 
 ```text
-branch: core
-C1.5R.0–R.7: Complete
-C1.5R owner product acceptance: Accepted
-C1.6: Complete; owner accepted; merged into core
-C1.6B: Conditional; not started
-Core C1: Complete
-C2: Next; not started
+ветка: core
+C1.5R.0–R.7: завершено
+продуктовая приёмка C1.5R владельцем: выполнена
+C1.6: завершено; принято владельцем; влито в core
+C1.6B: условный этап; не начат
+Core C1: завершён
+C2: следующий этап; не начат
 ```
 
-Core head после C1.6:
+Head ветки Core после C1.6:
 
 ```text
 928e3fe749ce6aa4b9c414641c4ef66ac46a694b
@@ -60,10 +60,10 @@ PR C1.6:
 
 ```text
 #125 — Add canonical single-card resolution loop
-merged by rebase into core
+влит в core через rebase
 ```
 
-## Current reports
+## Актуальные отчёты
 
 - [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md);
 - [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md);
@@ -77,23 +77,23 @@ merged by rebase into core
 
 ## Исторический C1.5
 
-Historical C1.5 Fast CI и real-Anki runs доказывают, что старая implementation работала, но не являются acceptance evidence для текущего UX после owner rejection.
+Исторические запуски Fast CI и real-Anki для C1.5 подтверждают работоспособность прежней реализации, но не являются подтверждением приёмки текущего UX после отклонения владельцем.
 
 C1.5R заменил отклонённые части:
 
 ```text
-R1 canonical card display identity
-R2 declarative compact formatter
-R3 front/back preview semantics
-R4 independent candidate sources
-R5 identity-led Cards inbox
-R6 guided Inspection Profiles
-R7 integrated acceptance
+R1 каноническая идентичность отображения карточки
+R2 декларативный компактный форматтер
+R3 семантика предпросмотра лицевой и обратной стороны
+R4 независимые источники кандидатов
+R5 очередь Cards, построенная вокруг идентичности карточки
+R6 пошаговая настройка Inspection Profiles
+R7 комплексная приёмка
 ```
 
-## Current Cards contracts
+## Актуальные контракты Cards
 
-Основные documents:
+Основные документы:
 
 - [`cards-v2-product-contract.md`](cards-v2-product-contract.md);
 - [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
@@ -104,19 +104,19 @@ R7 integrated acceptance
 - [`inspection-profiles-v1.md`](inspection-profiles-v1.md);
 - [`guided-inspection-profiles.md`](guided-inspection-profiles.md).
 
-## Compact card identity
+## Компактная идентичность карточки
 
-`anki_study_report/card_display_identity.py` владеет compact identity exact card.
+Модуль `anki_study_report/card_display_identity.py` отвечает за компактную идентичность конкретной карточки.
 
-Fallback sequence:
+Последовательность fallback:
 
 ```text
-Browser question
-→ reviewer front
+вопрос из Browser
+→ лицевая сторона reviewer
 → media_only | unavailable
 ```
 
-Wire fields:
+Поля wire-контракта:
 
 ```text
 displayText
@@ -125,94 +125,94 @@ displayStatus      available | media_only | unavailable
 displayTruncated
 ```
 
-Один backend projection используют Search row/details, Triage item, Cards queue и Inspector heading.
+Одну backend-проекцию используют строки и подробности Search, элементы Triage, очередь Cards и заголовок Inspector.
 
-Card `primaryText` отсутствует. Note-mode Search сохраняет note `primaryText`.
+Поле `primaryText` у Card отсутствует. Search в режиме заметок сохраняет `primaryText` заметки.
 
-## Preview semantics
+## Семантика предпросмотра
 
-- Inspector показывает sanitized native front;
-- expanded modal показывает sanitized native answer/back;
-- только active card загружает full preview;
-- queue rows не читают media и не рендерят full HTML;
-- sanitizer, media validation и Shadow DOM isolation обязательны.
+- Inspector показывает санитизированную нативную лицевую сторону;
+- расширенный модальный диалог показывает санитизированную нативную обратную сторону;
+- полный предпросмотр загружается только для активной карточки;
+- строки очереди не читают media и не рендерят полный HTML;
+- sanitizer, проверка media и изоляция Shadow DOM обязательны.
 
-## Candidate sources Triage v4
+## Источники кандидатов Triage v4
 
-Triage query v4 разделяет:
+Запрос Triage v4 разделяет:
 
-- period-bound learning candidates;
-- bounded current-content candidates;
-- active Signals;
-- Search identity.
+- кандидатов по учебной активности за ограниченный период;
+- кандидатов по текущему содержимому с ограниченным объёмом;
+- активные Signals;
+- идентичность Search.
 
-Current-content scan:
+Проверка текущего содержимого:
 
-- только confirmed/current Inspection Profiles;
-- keyset bound 500 notes за request;
-- explicit cursor continuation;
-- без automatic cursor loop;
-- deterministic representative card;
-- без preview/media reads.
+- использует только подтверждённые и актуальные Inspection Profiles;
+- имеет keyset-ограничение в 500 заметок на запрос;
+- продолжение выполняется через явный cursor;
+- автоматический цикл по cursor отсутствует;
+- representative card выбирается детерминированно;
+- предпросмотр и media не читаются.
 
-## Cards attention inbox
+## Очередь карточек, требующих внимания
 
-Canonical layout:
-
-```text
->= 1200 px: dense semantic inbox + persistent Inspector
-< 1200 px: full-width inbox + non-modal drawer
-```
-
-Queue — semantic ordered list с одной native button на item. Это не table, ARIA grid, listbox или roving-tabindex composite.
-
-Learning period: 7/30/90 дней. Current-content continuation manual и client-bounded до 500 unique items / 10 additional pages.
-
-## Guided Inspection Profiles
-
-Normal path:
+Каноническая компоновка:
 
 ```text
-exact note type
-→ immediate clean generated Basic draft
-→ bounded validation/sample
-→ explicit confirm
+>= 1200 px: плотная семантическая очередь + постоянный Inspector
+< 1200 px: очередь на всю ширину + немодальная выдвижная панель
 ```
 
-Basic является friendly projection над strict v1 document. Advanced сохраняет exact IDs, mappings, checks и template scope. Autosave/autoconfirm отсутствуют.
+Очередь — упорядоченный семантический список с одной нативной кнопкой на элемент. Это не таблица, ARIA `grid`, `listbox` или составной элемент с roving tabindex.
 
-Only confirmed/current profiles создают content reasons. `suggested`, `disabled` и `needs_review` fail closed.
+Период обучения: 7, 30 или 90 дней. Продолжение проверки текущего содержимого запускается вручную и ограничено на клиенте: до 500 уникальных элементов и 10 дополнительных страниц.
 
-## C1.6 — canonical single-card resolution loop
+## Пошаговая настройка Inspection Profiles
+
+Обычный путь:
+
+```text
+конкретный тип заметки
+→ немедленно создаваемый чистый черновик Basic
+→ ограниченная проверка и выборка
+→ явное подтверждение
+```
+
+Basic предоставляет понятную проекцию строгого документа v1. Advanced сохраняет точные ID, mappings, checks и область шаблонов. Автосохранение и автоподтверждение отсутствуют.
+
+Причины по содержимому создают только подтверждённые и актуальные профили. Состояния `suggested`, `disabled` и `needs_review` работают по принципу fail closed.
+
+## C1.6 — канонический цикл решения проблемы одной карточки
 
 C1.6 завершён, принят владельцем и влит в `core`.
 
-Implementation/runtime candidate:
+Кандидат реализации и runtime:
 
 ```text
 edaf9030dbba355593e52cf8922d4c7985ce4b75
 ```
 
-Final PR head:
+Финальный head PR:
 
 ```text
 9e4b74b0bc3a0a34590217550a7e8be4263c7fd6
 ```
 
-Merged core commit:
+Коммит после вливания в Core:
 
 ```text
 928e3fe749ce6aa4b9c414641c4ef66ac46a694b
 ```
 
-Lifecycle:
+Жизненный цикл:
 
 ```text
-issue
-→ existing Safe Action or Open in Anki
-→ action result
+проблема
+→ существующий Safe Action или Open in Anki
+→ результат действия
 → Awaiting recheck
-→ exact-card canonical bounded recheck
+→ каноническая ограниченная перепроверка конкретной карточки
 → Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
 ```
 
@@ -223,105 +223,105 @@ POST /api/triage/query    schema v4
 POST /api/triage/recheck  schema v1
 ```
 
-Recheck request содержит одну exact card, expected note ID, `1..4` stable reason IDs и current scope.
+Запрос перепроверки содержит одну конкретную карточку, ожидаемый ID заметки, от одного до четырёх стабильных ID причин и текущую область проверки.
 
-Backend переиспользует canonical detectors Triage v4 через serialized `QueryOp`. Второй detector stack отсутствует.
+Backend переиспользует канонические детекторы Triage v4 через сериализованный `QueryOp`. Второй стек детекторов отсутствует.
 
-### Resolution rules
+### Правила определения результата
 
-- action success и `action.no_changes` не доказывают resolution;
-- Open in Anki является handoff, а не mutation proof;
-- remaining reasons обновляют item на месте;
-- removed + remaining дают Partially resolved;
-- new reasons показываются явно;
-- zero reasons удаляют item только при fully authoritative result;
-- partial/unavailable/error/stale/missing/changed работают fail closed;
-- post-removal focus recovery deterministic.
+- успешное действие и `action.no_changes` не доказывают устранение проблемы;
+- Open in Anki является передачей управления, а не доказательством изменения;
+- оставшиеся причины обновляют элемент на месте;
+- сочетание удалённых и оставшихся причин даёт состояние Partially resolved;
+- новые причины показываются явно;
+- отсутствие причин удаляет элемент только при полностью авторитетном результате;
+- частичный, недоступный, ошибочный, устаревший, отсутствующий или изменившийся результат работает по принципу fail closed;
+- после удаления элемента фокус восстанавливается детерминированно.
 
-### Out of scope
+### Вне scope
 
-- bulk selection;
-- manual resolve/archive/snooze;
-- persistent completion state;
-- second action/detector system;
-- unbounded reevaluation;
+- массовый выбор;
+- ручные resolve, archive и snooze;
+- постоянное состояние завершения;
+- вторая система действий или детекторов;
+- неограниченная повторная оценка;
 - C1.6B.
 
-### Verification
+### Проверка
 
 ```text
-focused backend/E2E helpers: 81 tests PASS
-frontend: 324 tests PASS
+профильные backend- и E2E-вспомогательные тесты: 81 тест, PASS
+frontend: 324 теста, PASS
 Python compileall: PASS
-production build/bundle guard: PASS — 429,516 bytes
-package: PASS — 77 entries
-canonical non-Docker: PASS — 324 frontend, 802 Python, 5 platform skips
+production-сборка и ограничение bundle: PASS — 429 516 байт
+пакет: PASS — 77 записей
+каноническая проверка без Docker: PASS — 324 frontend-теста, 802 Python-теста, 5 пропусков платформенных тестов
 Fast CI 29862254960: PASS
-final-head Fast CI 29863609253: PASS
-targeted standard/cards + restart 29862551442: PASS
-final standard/full 29862800106: PASS
+Fast CI для финального head 29863609253: PASS
+целевой standard/cards с перезапуском 29862551442: PASS
+финальный standard/full 29862800106: PASS
 ```
 
-Не выполнялась отдельная проверка C1.6 на private Anki profile владельца. Local Docker не повторял успешные exact-package cloud E2E runs.
+Отдельная проверка C1.6 на приватном профиле Anki владельца не выполнялась. Локальный Docker не повторял успешные cloud E2E-запуски с точным пакетом.
 
-## Exact next action
+## Следующее точное действие
 
-Следующий обязательный Core этап:
+Следующий обязательный этап Core:
 
 ```text
 C2 — Core 1.0 Hardening
 ```
 
-Перед implementation C2 требуется отдельный product/technical planning task. Не начинать C1.6B без отдельного evidence и owner decision.
+Перед реализацией C2 требуется отдельная задача на продуктовую и техническую проработку. Не начинать C1.6B без отдельного подтверждения необходимости и решения владельца.
 
-Не выполнять как implicit continuation:
+Не выполнять как неявное продолжение:
 
 - merge в `master`;
-- release;
+- выпуск;
 - deployment;
-- публикацию `.ankiaddon` или AnkiWeb;
-- C3 feature expansion.
+- публикацию `.ankiaddon` или на AnkiWeb;
+- расширение функций C3.
 
-## Verification boundary
+## Границы проверки
 
 Используйте:
 
 - [`test-matrix.md`](test-matrix.md);
 - [`verification-run-policy.md`](verification-run-policy.md).
 
-Heavy real-Anki E2E остаётся integration gate. Не повторять successful exact-SHA runs без concrete reason.
+Тяжёлый real-Anki E2E остаётся интеграционным gate. Не повторяйте успешные запуски для того же SHA без конкретной причины.
 
-## Technical invariants
+## Технические инварианты
 
-Не делать:
+Запрещено:
 
-- one-sided public payload/schema change;
-- direct frontend collection access;
-- bind server beyond `127.0.0.1`;
-- weaken token validation, sanitizer, media validation или action allowlists;
-- log token или full token-bearing URL;
-- create iframe/template-JavaScript execution surface;
-- manually edit generated dashboard assets;
-- commit logs, screenshots, cache, profile data, tokens, `.ankiaddon` или E2E outputs;
-- change correct production behavior ради obsolete test;
-- create second query/action/signal/detector stack;
-- infer resolution on client from action success или queue disappearance;
-- start C1.6B/C2/C3 без отдельной task boundary.
+- односторонне менять публичный payload или schema;
+- предоставлять frontend прямой доступ к collection;
+- привязывать сервер к интерфейсу, отличному от `127.0.0.1`;
+- ослаблять проверку токена, sanitizer, проверку media или allowlist действий;
+- логировать токен или полный URL с токеном;
+- создавать поверхность выполнения JavaScript через iframe или шаблоны;
+- вручную редактировать сгенерированные assets dashboard;
+- коммитить логи, скриншоты, cache, данные профиля, токены, `.ankiaddon` или результаты E2E;
+- менять корректное production-поведение ради устаревшего теста;
+- создавать второй стек запросов, действий, сигналов или детекторов;
+- определять устранение проблемы на клиенте только по успеху действия или исчезновению элемента из очереди;
+- начинать C1.6B, C2 или C3 без отдельной границы задачи.
 
-## Other tracks
+## Другие треки
 
-Gamification, telemetry operations, identity continuity, extensions и platform work независимы. Они не блокируют C2 без explicit dependency.
+Геймификация, эксплуатация телеметрии, непрерывность идентификации, расширения и платформенные работы независимы. Они не блокируют C2 без явно зафиксированной зависимости.
 
-## Git boundary
+## Границы работы с Git
 
-Работать в target branch, указанной owner/task. Для Core по умолчанию используется `core`.
+Работайте в целевой ветке, указанной владельцем или задачей. Для Core по умолчанию используется `core`.
 
 Не выполнять автоматически:
 
-- merge/rebase в `master`;
-- release/deploy/publish;
+- merge или rebase в `master`;
+- выпуск, deployment или публикацию;
 - force-push;
-- destructive reset/clean/stash deletion;
-- overwrite unrelated changes.
+- разрушительные reset, clean или удаление stash;
+- перезапись несвязанных изменений.
 
-Commit messages должны описывать фактическое изменение.
+Сообщения коммитов должны описывать фактически выполненное изменение.
