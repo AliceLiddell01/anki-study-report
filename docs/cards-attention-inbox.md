@@ -226,10 +226,13 @@ not require a second rendering architecture.
 - Search inspect schema v2;
 - loopback/token/content-type/body-size boundaries;
 - sanitizer, trusted media validation and Shadow DOM preview isolation;
-- read-only Cards actions.
+- single-card Safe Actions and Open in Anki with an explicit canonical recheck;
+- reason-level removed/remaining/new reconciliation and deterministic focus recovery.
 
 ## Boundaries
 
-R5 does not implement Safe Actions, mutation, selection/bulk controls, manual
-resolve, editor functionality, new detectors, Triage schema v5, Search schema
-changes, Guided Inspection Profiles UX, R7 owner acceptance or C1.6.
+The accepted R5 layout is extended by C1.6 without changing its queue,
+Inspector/drawer or preview structure. C1.6 does not implement selection/bulk
+controls, manual resolve, editor functionality, new detectors, Triage query
+schema v5 or Search schema changes. See
+[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).

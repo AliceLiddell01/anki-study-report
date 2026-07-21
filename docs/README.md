@@ -30,6 +30,7 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [Navigation / IA](navigation-ia.md)
 - [Cards v2 product contract](cards-v2-product-contract.md)
 - [Cards v2 triage read API](cards-v2-triage-read-api.md)
+- [Cards single-card resolution loop](cards-v2-resolution-loop.md)
 - [Cards attention inbox](cards-attention-inbox.md)
 - [Historical C1.5 workspace UI](cards-v2-workspace-ui.md)
 - [Canonical card display identity](card-display-identity.md)

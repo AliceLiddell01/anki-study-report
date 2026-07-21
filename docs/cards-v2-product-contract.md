@@ -2,12 +2,13 @@
 
 ## Status and scope
 
-**Status:** Corrective C1.5R remediation in progress; R1–R6 technically complete; R7 integrated acceptance active; owner product acceptance pending
+**Status:** C1.5R accepted; C1.6 implemented / verification complete; C1.6 owner acceptance pending
 **Branch:** `core`
-**Production status:** the rejected C1.5 table has been replaced by the C1.5R.5 identity-led attention inbox and Guided Inspection Profiles is complete; exact integrated acceptance and owner decision remain
+**Production status:** the identity-led attention inbox and Guided Inspection Profiles are accepted; the canonical single-card action/recheck/reconciliation loop is implemented on the C1.6 candidate and awaits owner acceptance
 
-Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md)
-and [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
+Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md),
+[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md) and
+[`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
 
@@ -201,8 +202,9 @@ Focus and the active Inspector item are independent in C1.5. Any future C1.6B bu
 Tab order covers filters, queue and Inspector. Row activation does not move
 focus. Escape closes expanded preview and returns focus. Refresh keeps the
 active item when it survives and otherwise chooses the first inspectable row.
-Filters have persistent labels/state. Mutation, recheck, checkbox selection and
-bulk toolbar semantics are deferred to C1.6.
+Filters have persistent labels/state. C1.6 adds one-card mutation/recheck live
+status and deterministic focus recovery. Checkbox selection and bulk toolbar
+semantics remain outside mandatory C1.6 and belong only to conditional C1.6B.
 
 Do not assume `listbox`: options cannot accessibly contain required links/buttons/checkboxes. The selected structure is a semantic ordered list with one native button per item. `table`, ARIA `grid`, `listbox`, `option`, roving tabindex and arrow-key composite navigation are not used.
 
@@ -328,10 +330,9 @@ See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded pe
 ## Current delivery sequence
 
 ```text
-C1.5R.0–R.6 — Complete
-C1.5R.7 — In progress: integrated technical acceptance and owner decision
-C1.6 — Planned after accepted R7: canonical single-card resolution loop
+C1.5R.0–R.7 — Complete; owner accepted
+C1.6 — Implemented / verification complete; owner acceptance pending
 C1.6B — Conditional: bounded bulk actions
 ```
 
-R7 does not change the product contract or implement actions. It verifies the integrated R1–R6 behavior, exact package provenance, real-Anki evidence and the separate owner gate.
+C1.6 reuses existing single-card Safe Actions and Open in Anki, then requires an explicit exact-card canonical recheck before removal. It does not add bulk/manual resolution or persistent completion state.

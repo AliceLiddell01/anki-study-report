@@ -20,7 +20,19 @@ resolved pagination, settings, warning/critical toast, RU/EN, light/dark,
 read-resolution independence и persistence. Из-за App Shell, local API и
 profile lifecycle требуется один финальный `standard/full`.
 
-Снимок документации: 2026-07-20.
+Снимок документации: 2026-07-22.
+
+## C1.6 canonical single-card resolution loop
+
+Focused layer: exact-card candidate/service/runtime/dashboard pytest; strict
+Triage recheck parser/client and Cards hook/page Vitest; action/no_changes,
+reason removed/remaining/new, partial/unavailable, missing/changed, race/focus
+and E2E-helper regressions; RU/EN parity; typecheck; production bundle guard;
+Python compileall; package validation. Canonical local gate is
+`run_full_check.ps1 -SkipDocker`. Cloud order is exact-SHA Fast CI, targeted
+`standard/cards` with restart, then `standard/full` because the shared dashboard
+server, router and browser smoke changed. Exact Fast package handoff is required;
+source-built/local Docker evidence is not a substitute.
 
 ## C1.5R.5 Cards attention inbox
 

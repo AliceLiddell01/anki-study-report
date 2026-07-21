@@ -171,22 +171,22 @@ A stale revision returns the current revision with HTTP 409.
 
 The API exposes no raw HTML, note values, media contents, filesystem paths,
 renderer exceptions, arbitrary expression language, or live card preview.
-Search remains schema v2 and Triage remains schema v3; formatter configuration is
-not added to either payload.
+Search remains schema v2. Formatter configuration is not added to Search or
+Triage payloads; Triage query has since advanced independently to schema v4.
 
 Full contract: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
 
 ## Canonical triage read API
 
 `POST /api/triage/query` is token-protected, POST/JSON-only and capped at 8 KiB.
-It now requires exact `schemaVersion: 3`; schema v2 is rejected because item
-identity changed.
+It requires exact `schemaVersion: 4`; older schemas are rejected rather than
+silently aliased.
 
-`automatic` combines current bounded learning sources, active card Signals and
-confirmed-profile content reasons. `search_workset` accepts 1..200 exact card
-IDs and preserves first-seen order.
+`automatic` combines independent bounded period-learning and current-content
+sources, active card Signals and confirmed-profile content reasons.
+`search_workset` accepts 1..200 exact card IDs and preserves first-seen order.
 
-Triage v3 items carry the same four display fields as Search v2 and no
+Triage v4 items carry the same four display fields as Search v2 and no
 `primaryText`. Available cards copy the Search-owned projection. Missing or
 malformed resolver rows use explicit unavailable identity. Legacy
 `attention.frontPreview` is not a fallback.
@@ -197,6 +197,19 @@ It contains no full preview/media, raw revlog, note values, arbitrary query,
 exception, token or runtime path.
 
 Full contract: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
+
+## Canonical exact-card recheck
+
+`POST /api/triage/recheck` is the C1.6 schema-v1 one-card recheck endpoint. It
+uses the same token, POST/JSON-only 8 KiB boundary and `QueryOp` serialization
+as Triage query. The strict request contains one card ID, expected note ID,
+1..4 current stable reason IDs and the current period/deck scope.
+
+The service delegates to canonical learning, active Signal, Search identity and
+Inspection Profile evaluators for only that card. Typed source/entity status
+fails closed; incomplete evidence cannot return Resolved. Full API and UX
+contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md) and
+[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 
 ## Inspection Profiles API
 
@@ -318,17 +331,15 @@ Backend filename validation, sanitizer, Shadow DOM isolation and token checks
 remain mandatory. Arbitrary `file:`, `javascript:`, iframe or template
 JavaScript execution is prohibited.
 
-## C1.5R verification state
+## Current Cards verification state
 
 ```text
-C1.5R.1 — Complete
-C1.5R.2 — Complete
-C1.5R.3 — Next, not started
-C1.5R.4–R.7 — Not started
-C1.6 — Blocked
+C1.5R.0–R.7 — Complete; owner accepted
+C1.6 — Implemented / verification complete; owner acceptance pending
+C1.6B — Conditional; not started
 ```
 
-R2 keeps Search v2 and Triage v3 unchanged. Owner-checkout focused frontend,
+Historical R2 evidence kept Search v2 and then-current Triage v3 unchanged. Owner-checkout focused frontend,
 package validation and the canonical non-Docker gate passed for the implementation
 tree committed as `edad09e8ffae443b94e192b266084abb66c37adf`. R3 is now Next, not started.
 

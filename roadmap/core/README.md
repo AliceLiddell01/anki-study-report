@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Next, not started; `C1.6B` Conditional
+**Current status:** `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Implemented / verification complete, owner acceptance pending; `C1.6B` Conditional
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -41,7 +41,7 @@ implementation. Full contract freeze and release closure remain C2 work.
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — C1.5R complete; C1.6 Next, not started
+**Status:** In progress — C1.5R complete; C1.6 implemented and verified, owner acceptance pending
 
 ### Completed and active increments
 
@@ -64,7 +64,8 @@ implementation. Full contract freeze and release closure remain C2 work.
   [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md),
   Fast CI `29648956309` PASS, real-Anki `29649071545` PASS
 - `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R7 complete; owner accepted
-- `C1.6 — Canonical single-card resolution loop`: Next; not started
+- `C1.6 — Canonical single-card resolution loop`: Implemented / verification complete; owner acceptance pending —
+  [`reports/core/c1-6-canonical-single-card-resolution-loop.md`](../../reports/core/c1-6-canonical-single-card-resolution-loop.md)
 - `C1.6B — Bounded bulk actions`: Conditional; not started
 
 C1.5's green runs prove that the old implementation executed and produced the
@@ -226,7 +227,7 @@ Actions, Signals, and Notification Center foundations.
 
 ## C1.6 — Canonical single-card resolution loop
 
-**Status:** Next; not started
+**Status:** Implemented / verification complete; owner acceptance pending
 
 ```text
 issue
@@ -237,7 +238,12 @@ issue
 → Still active | Resolved | Recheck failed | Evidence stale
 ```
 
-C1.6 reuses existing Search, Safe Actions and Anki Browser handoffs. It does not add bulk selection, manual resolve/archive/snooze, a second action system or unbounded reevaluation.
+C1.6 reuses existing Search, Safe Actions and Anki Browser handoffs. A strict
+exact-card recheck delegates to the canonical Triage evaluators, reconciles
+stable reason IDs and fails closed on partial/unavailable evidence. It does not
+add bulk selection, manual resolve/archive/snooze, a second action system,
+persistent completion state or unbounded reevaluation. Owner review and merge
+remain pending; Core C1 is not declared complete.
 
 ## C1.6B — Bounded bulk actions
 
@@ -287,18 +293,20 @@ the user decision, data availability, bounded query, placement, interpretation,
 and verification scope. If no justified gap exists, C3 closes without feature
 expansion.
 
-## C1.5R.5 complete
+## Historical C1.5R.5 closeout
 
 C1.5R.5 is complete after clean reconstruction on `b2d812b4dd303965030108991858fb4bc779e73e`, focused
 frontend/backend verification, exact production build and package validation,
 isolated baseline/R5 Playwright evidence, canonical non-Docker verification and
-clean transfer. Tested implementation: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`. C1.5R.6 is next
-and not started; R7 and C1.6 remain blocked by their named dependencies.
+clean transfer. Tested implementation: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`.
+At that snapshot C1.5R.6, R7 and C1.6 were still pending; current status is
+recorded at the top of this file.
 
-## C1.5R.6 completion
+## Historical C1.5R.6 completion
 
 Guided Inspection Profiles is complete: generated drafts are immediate and clean,
 Basic is the normal path, Advanced preserves strict v1, Japanese/Programming
 defaults are understandable, lifecycle/conflict/accessibility/security contracts
-are covered, and deterministic Chromium evidence is recorded. C1.5R.7 is in progress;
-C1.6 is planned only after accepted R7, and C1.6B remains Conditional.
+are covered, and deterministic Chromium evidence is recorded. At that snapshot
+C1.5R.7 and C1.6 were still pending; current status is recorded at the top of
+this file. C1.6B remains Conditional.
