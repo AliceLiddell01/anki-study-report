@@ -1,229 +1,189 @@
-# C1.5R.0 — Recovery and corrective baseline
+# C1.5R.0 — восстановление и исходное состояние исправлений
 
-**Status:** `C1.5R.0 — Complete`
+**Статус:** `C1.5R.0 — завершено`
 
-**Branch:** `core`
+**Ветка:** `core`
 
-**Next:** `C1.5R.1 — Canonical card display identity`
+**Следующий этап:** `C1.5R.1 — каноническая идентичность отображения карточки`
 
-## 1. Purpose
+## 1. Назначение
 
-This stage recovers the useful C1.5R Phase A findings, corrects the official
-project status, and establishes a documentation-only starting point for the
-remediation sequence. It does not implement production behavior, add a new API,
-change schemas, or begin C1.5R.1.
+Этот этап восстанавливает полезные выводы Phase A для C1.5R, исправляет официальный статус проекта и создаёт документальную исходную точку для последовательности исправлений. Он не меняет production-поведение, не добавляет новый API, не изменяет schema и не начинает C1.5R.1.
 
-The historical C1.5 implementation remains valid technical evidence. Its owner
-product acceptance is withdrawn.
+Историческая реализация C1.5 остаётся действительным техническим подтверждением. Её продуктовая приёмка владельцем отозвана.
 
-## 2. Execution environment
+## 2. Среда выполнения
 
-Execution was connector-first from ChatGPT with GitHub read/write access.
+Работа выполнялась из ChatGPT преимущественно через GitHub connector с доступом на чтение и запись.
 
 ```text
-repository: AliceLiddell01/anki-study-report
-active remote branch: core
-local project checkout: unavailable
-local project working tree: unavailable
-shell/git against the project checkout: unavailable
-GitHub connector write capability: available
+репозиторий: AliceLiddell01/anki-study-report
+активная удалённая ветка: core
+локальный checkout проекта: недоступен
+локальное рабочее дерево проекта: недоступно
+shell/git для checkout проекта: недоступны
+запись через GitHub connector: доступна
 ```
 
-Only `origin/core` state was inspected. No claim is made about a previous
-chat's local index, unstaged changes, untracked files, stash, or worktree.
+Изучалось только состояние `origin/core`. Этот отчёт ничего не утверждает о локальном индексе, незакоммиченных изменениях, неотслеживаемых файлах, stash или worktree из предыдущего чата.
 
-## 3. Initial repository state
+## 3. Исходное состояние репозитория
 
-Observed before the corrective commits:
+До исправляющих коммитов наблюдалось следующее:
 
 ```text
 origin/core HEAD: b3055ac4992c1658101d6d837a9aa74ab1274d9a
 origin/master HEAD: 359c26f82a9ee78c8e27603f9ded5ca9bef2c71e
-origin/master...origin/core: 0 behind / 26 ahead
-open pull requests from core: none
+origin/master...origin/core: 0 позади / 26 впереди
+открытые PR из core: отсутствуют
 ```
 
-The prompt's earlier reference point
-`101103585149aa0a30d411ad538fbcc06641a05b` was two commits behind the observed
-`origin/core` head.
+Указанная ранее в задании точка `101103585149aa0a30d411ad538fbcc06641a05b` отставала от наблюдаемого head `origin/core` на два коммита.
 
-Remote branches are not described as clean or dirty; those terms apply to a
-working tree, which was unavailable.
+Удалённые ветки не описываются как чистые или изменённые: эти понятия относятся к рабочему дереву, которое было недоступно.
 
-## 4. Local and remote distinction
+## 4. Различие локального и удалённого состояния
 
-| State | Result |
+| Состояние | Результат |
 | --- | --- |
-| local HEAD | unavailable |
-| local branch | unavailable |
-| local working tree | unavailable |
-| staged state | unavailable |
-| untracked state | unavailable |
-| `origin/core` | inspected through GitHub |
-| `origin/master` | inspected through GitHub |
+| локальный HEAD | недоступен |
+| локальная ветка | недоступна |
+| локальное рабочее дерево | недоступно |
+| staged-состояние | недоступно |
+| неотслеживаемые файлы | недоступны |
+| `origin/core` | изучен через GitHub |
+| `origin/master` | изучен через GitHub |
 
-The previous Phase A temporary directory and local prototype were not available
-and were not reconstructed from guesses.
+Временный каталог и локальный прототип предыдущего Phase A были недоступны и не восстанавливались на основании предположений.
 
-## 5. Recovered files and commits
+## 5. Восстановленные файлы и коммиты
 
-The remote branch contained two commits after the earlier C1.5 closeout point:
+Удалённая ветка содержала два коммита после прежней точки завершения C1.5:
 
-1. `cd8e0eb96d6a89508a74890d57adac4fd109080a` — reopened Cards product
-   acceptance in documentation and created a preliminary Phase A report and
-   display-identity draft;
-2. `b3055ac4992c1658101d6d837a9aa74ab1274d9a` — added two intentionally red
-   tests without production implementation.
+1. `cd8e0eb96d6a89508a74890d57adac4fd109080a` — повторно открыл продуктовую приёмку Cards в документации и создал предварительный отчёт Phase A и черновик идентичности отображения;
+2. `b3055ac4992c1658101d6d837a9aa74ab1274d9a` — добавил два намеренно падающих теста без production-реализации.
 
-The second commit was outside the C1.5R.0 delivery boundary. The two tests were
-removed from `origin/core` by restoring their parent blobs before the
-Markdown-only baseline commit. Their scenarios remain recorded below for
-C1.5R.1/C1.5R.3.
+Второй коммит выходил за границы поставки C1.5R.0. Перед документальным коммитом исходного состояния два теста были удалены из `origin/core` восстановлением blob из родительского коммита. Их сценарии сохранены ниже для C1.5R.1 и C1.5R.3.
 
-The preliminary Phase A report remains at:
+Предварительный отчёт Phase A сохранён по пути:
 
 ```text
 reports/core/c1-5r-cards-profiles-ux-remediation.md
 ```
 
-It is supporting forensic history, not the C1.5R closeout report.
+Это вспомогательная история расследования, а не итоговый отчёт C1.5R.
 
-## 6. Unavailable or lost state
+## 6. Недоступное или утраченное состояние
 
-The following state could not be recovered in this chat:
+В этом чате не удалось восстановить:
 
-- any uncommitted Phase A Markdown edits from a previous local checkout;
-- any uncommitted exact red-test diff beyond the two tests already pushed;
-- the previous local prototype source and temporary screenshots;
-- the raw owner-profile export or private Anki profile;
-- the legacy `cards.zip` archive as a file in the current environment.
+- незакоммиченные Markdown-изменения Phase A из предыдущего локального checkout;
+- незакоммиченный точный diff падающих тестов, кроме двух уже отправленных тестов;
+- исходники прежнего локального прототипа и временные скриншоты;
+- необработанный экспорт профиля владельца или приватный профиль Anki;
+- архив `cards.zip` как файл в текущем окружении.
 
-No private owner profile was imported, opened, or read.
+Приватный профиль владельца не импортировался, не открывался и не читался.
 
-## 7. Evidence inventory
+## 7. Инвентаризация подтверждений
 
-| Source | Availability | Actually opened in this stage | Role | Freshness | Limitations |
+| Источник | Доступность | Фактически открыт на этом этапе | Роль | Актуальность | Ограничения |
 | --- | --- | --- | --- | --- | --- |
-| accepted C1.5 E2E artifact, run `29649071545`, artifact `8430943370` | available and downloaded | yes | historical technical evidence for the accepted implementation SHA | exact run from C1.5 | proves the rejected implementation worked; does not prove product acceptance |
-| 28 screenshots inside the accepted artifact | available | yes, inventory opened; representative Cards images visually inspected | runtime/layout evidence for synthetic/APKG Cards and Inspection Profiles | same exact run | synthetic/APKG evidence, not owner-profile acceptance |
-| owner-provided Cards screenshot with `Cards = 0` | referenced by recovery prompt/Phase A | no raw file in this chat | product defect evidence | post-C1.5 owner review | separate from accepted artifact; not present among its 28 screenshots |
-| owner-provided Inspection Profiles screenshots | referenced by recovery prompt and Phase A report | no raw file in this chat | product evidence that the normal path is too technical and long | post-C1.5 owner review | current stage relies on the recorded Phase A observation, not a new visual review |
-| legacy `cards.zip` | referenced by Phase A | no | historical comparison only | older than accepted C1.5 artifact | distinct evidence set; must not be treated as the accepted C1.5 artifact |
-| earlier front/back screenshots | referenced by Phase A | no raw files in this chat | expected answer-side semantic evidence | historical | supports direction, not a new runtime verification |
-| previous Phase A messages/report | available in prompt and repository | yes | recovered forensic findings and decisions | current remediation context | not a substitute for unavailable local diffs |
-| current `origin/core` docs/code/tests | available | yes | authoritative current remote state | current branch state | no local worktree visibility |
+| принятый E2E-артефакт C1.5, запуск `29649071545`, артефакт `8430943370` | доступен и загружен | да | историческое техническое подтверждение для принятого SHA реализации | точный запуск C1.5 | подтверждает работоспособность отклонённой реализации, но не продуктовую приёмку |
+| 28 скриншотов внутри принятого артефакта | доступны | да, открыта инвентаризация; визуально изучены репрезентативные изображения Cards | подтверждение runtime и компоновки для синтетических/APKG-данных Cards и Inspection Profiles | тот же точный запуск | синтетическое/APKG-подтверждение, а не приёмка на профиле владельца |
+| предоставленный владельцем скриншот Cards со значением `Cards = 0` | упомянут в задании на восстановление и Phase A | исходный файл в этом чате отсутствует | подтверждение продуктового дефекта | после проверки C1.5 владельцем | не относится к принятому артефакту и отсутствует среди его 28 скриншотов |
+| предоставленные владельцем скриншоты Inspection Profiles | упомянуты в задании на восстановление и отчёте Phase A | исходные файлы в этом чате отсутствуют | подтверждение того, что обычный путь слишком технический и длинный | после проверки C1.5 владельцем | этап опирается на зафиксированное наблюдение Phase A, а не на новую визуальную проверку |
+| устаревший `cards.zip` | упомянут в Phase A | нет | только историческое сравнение | старше принятого артефакта C1.5 | отдельный набор подтверждений; нельзя считать его принятым артефактом C1.5 |
+| прежние скриншоты лицевой и обратной стороны | упомянуты в Phase A | исходные файлы в этом чате отсутствуют | подтверждение ожидаемой семантики обратной стороны | историческое | поддерживает направление, но не является новой runtime-проверкой |
+| предыдущие сообщения и отчёт Phase A | доступны в задании и репозитории | да | восстановленные выводы расследования и решения | актуальный контекст исправлений | не заменяют недоступные локальные diff |
+| актуальные документы, код и тесты `origin/core` | доступны | да | авторитетное текущее удалённое состояние | текущее состояние ветки | локальное рабочее дерево не видно |
 
-The accepted artifact contained exactly 84 ZIP entries and 28 image files. The
-Cards/Profiles subset included five Cards screenshots and four Inspection
-Profiles screenshots. The Inspection Profiles `dirty-suggestion` and
-`validated-preview` full-page captures were approximately 6068 px and 6576 px
-high, respectively, which is consistent with the Phase A report's concern about
-the normal workflow's length.
+Принятый артефакт содержал ровно 84 записи ZIP и 28 изображений. Подмножество Cards/Profiles включало пять скриншотов Cards и четыре скриншота Inspection Profiles. Полностраничные снимки Inspection Profiles `dirty-suggestion` и `validated-preview` имели высоту приблизительно 6068 и 6576 px соответственно, что согласуется с замечанием отчёта Phase A о чрезмерной длине обычного workflow.
 
-The accepted artifact and legacy `cards.zip` are not interchangeable. The
-separate owner screenshot reporting `Cards = 0` was not found in the accepted
-artifact inventory.
+Принятый артефакт и устаревший `cards.zip` не взаимозаменяемы. Отдельный скриншот владельца со значением `Cards = 0` не найден в инвентаризации принятого артефакта.
 
-## 8. Confirmed defects
+## 8. Подтверждённые дефекты
 
-Read-only inspection of current production code confirmed:
+Проверка актуального production-кода без изменений подтвердила:
 
-1. Search card identity uses the note sort field and then arbitrary non-empty
-   fields. A media-heavy card can therefore fall back to an unrelated field.
-2. Triage resolves card rows through the same Search projector and repeats the
-   same incorrect compact text in Cards.
-3. Search card rows, Triage items, the Cards queue, and the Cards Inspector do
-   not share a dedicated canonical compact card-identity projection.
-4. The Inspector and expanded preview currently render the same front side;
-   the expanded surface does not default to answer/back.
-5. The Cards hook hides a fixed seven-day learning period in implementation.
-6. Automatic content candidates reuse the period-bound revlog candidate set;
-   zero recent reviews can therefore suppress current content failures.
-7. An unconfigured Inspection Profile does not receive the suggestion as a ready
-   unsaved draft until the user invokes `Use suggestion`.
-8. The normal Inspection Profiles path exposes runtime-level role slugs, check
-   kinds, modes, IDs, template ordinals, and repeated fieldsets.
-9. The C1.5 table/split layout is product-rejected, especially around the 1024 px
-   desktop contour.
+1. Идентичность карточки в Search использует поле сортировки заметки, а затем произвольные непустые поля. Поэтому карточка с большим количеством media может получить текст из несвязанного поля.
+2. Triage формирует строки карточек через тот же projector Search и повторяет неверный компактный текст в Cards.
+3. Строки карточек Search, элементы Triage, очередь Cards и Inspector Cards не используют единую специализированную каноническую проекцию компактной идентичности карточки.
+4. Inspector и расширенный предпросмотр показывают одну и ту же лицевую сторону; расширенная поверхность по умолчанию не показывает ответ или обратную сторону.
+5. Hook Cards скрывает в реализации фиксированный семидневный период обучения.
+6. Автоматические кандидаты по содержимому повторно используют набор кандидатов revlog, ограниченный периодом; при отсутствии недавних повторений текущие ошибки содержимого могут быть подавлены.
+7. Для ненастроенного Inspection Profile предложение не становится готовым несохранённым черновиком, пока пользователь не нажмёт `Use suggestion`.
+8. Обычный путь Inspection Profiles показывает технические slugs ролей runtime, виды проверок, режимы, ID, порядковые номера шаблонов и повторяющиеся группы полей.
+9. Табличная split-компоновка C1.5 отклонена на продуктовом уровне, особенно для desktop-ширины около 1024 px.
 
-## 9. Accepted design decisions
+## 9. Принятые проектные решения
 
-The following decisions are fixed for remediation planning and are not reopened
-in C1.5R.0:
+Следующие решения зафиксированы для планирования исправлений и не пересматриваются в C1.5R.0:
 
-- wide desktop: **Variant A — identity-led dense inbox list** plus persistent
-  Inspector;
-- approximately 1024 px: full-width queue plus a non-modal detail drawer;
-- the drawer does not use `inert`, a focus trap, or modal semantics;
-- row activation does not steal focus;
-- the drawer has an explicit return-to-queue action;
-- compact identity is shared across Search card row/Inspector, Triage, Cards
-  queue, and Cards Inspector heading;
-- Inspector displays rendered front;
-- expanded preview defaults to rendered answer/back;
-- current-content candidates are independent of the selected learning period;
-- Inspection Profiles use a guided Basic workflow, with the strict runtime
-  editor behind Advanced;
-- suggestions become ready unsaved drafts without an extra adoption step;
-- no formatter is silently added to strict Inspection Profile v1;
-- C1.6 remains blocked until C1.5R and separate owner product acceptance are
-  complete.
+- широкий desktop: **вариант A — плотная очередь, построенная вокруг идентичности карточки**, и постоянный Inspector;
+- ширина около 1024 px: очередь на всю ширину и немодальная выдвижная панель подробностей;
+- выдвижная панель не использует `inert`, focus trap или модальную семантику;
+- активация строки не перехватывает фокус;
+- у панели есть явное действие возврата к очереди;
+- компактная идентичность общая для строки и Inspector Search, Triage, очереди Cards и заголовка Inspector Cards;
+- Inspector показывает отрендеренную лицевую сторону;
+- расширенный предпросмотр по умолчанию показывает отрендеренный ответ или обратную сторону;
+- кандидаты по текущему содержимому не зависят от выбранного периода обучения;
+- Inspection Profiles используют пошаговый workflow Basic, а строгий runtime-редактор находится в Advanced;
+- предложения становятся готовыми несохранёнными черновиками без дополнительного действия принятия;
+- форматтер не добавляется незаметно в строгий Inspection Profile v1;
+- C1.6 остаётся заблокированным до завершения C1.5R и отдельной продуктовой приёмки владельцем.
 
-## 10. C1.5 historical technical evidence
+## 10. Историческое техническое подтверждение C1.5
 
-Historical evidence is retained without reclassifying successful runs as
-failures:
+Исторические подтверждения сохраняются без переклассификации успешных запусков в неудачные:
 
 ```text
-accepted implementation SHA: 0460afe472cd87029368924bdf5640e90271c03c
+SHA принятой реализации: 0460afe472cd87029368924bdf5640e90271c03c
 Fast CI: 29648956309 — PASS
 real-Anki standard/cards E2E: 29649071545 — PASS
-artifact: 8430943370
-closeout SHA: 101103585149aa0a30d411ad538fbcc06641a05b
+артефакт: 8430943370
+SHA итогового отчёта: 101103585149aa0a30d411ad538fbcc06641a05b
 ```
 
-These runs prove the old implementation's technical execution and artifact
-production. They do not prove the current product contract or owner acceptance.
+Эти запуски подтверждают техническое выполнение старой реализации и создание артефактов. Они не подтверждают актуальный продуктовый контракт или приёмку владельцем.
 
-## 11. Withdrawn product acceptance
+## 11. Отозванная продуктовая приёмка
 
-The corrected status is:
+Исправленный статус:
 
 ```text
-C1.4 runtime/API foundation — accepted
-C1.4 configuration UX — remediation required
+C1.4 основа runtime/API — принята
+C1.4 UX настройки — требуется исправление
 
-C1.5 technical architecture — historical verified evidence
-C1.5 product acceptance — withdrawn
+C1.5 техническая архитектура — исторически проверенное подтверждение
+C1.5 продуктовая приёмка — отозвана
 
-C1.5R — In progress
-C1.6 — Blocked and not started
-Core C1 — In progress
+C1.5R — выполняется
+C1.6 — заблокирован и не начат
+Core C1 — выполняется
 ```
 
-The old C1.5 report is retained as historical evidence and explicitly amended.
-Its former visual/product-acceptance statements are superseded.
+Старый отчёт C1.5 сохранён как историческое подтверждение и явно дополнен исправлением. Его прежние утверждения о визуальной и продуктовой приёмке больше не действуют.
 
-## 12. C1.5R decomposition
+## 12. Разбиение C1.5R
 
 ```text
-C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Next, not started
-C1.5R.2 Declarative compact formatter runtime — Not started
-C1.5R.3 Front/back preview semantics — Not started
-C1.5R.4 Independent triage candidate sources — Not started
-C1.5R.5 Cards attention inbox redesign — Not started
-C1.5R.6 Guided Inspection Profiles UX — Not started
-C1.5R.7 Integrated acceptance and owner review package — Not started
+C1.5R.0 Восстановление и исходное состояние исправлений — завершено
+C1.5R.1 Каноническая идентичность отображения карточки — следующий этап, не начат
+C1.5R.2 Декларативный runtime компактного форматтера — не начат
+C1.5R.3 Семантика предпросмотра лицевой и обратной стороны — не начат
+C1.5R.4 Независимые источники кандидатов Triage — не начат
+C1.5R.5 Переработка очереди карточек, требующих внимания — не начат
+C1.5R.6 Пошаговая настройка Inspection Profiles — не начат
+C1.5R.7 Комплексная приёмка и пакет для проверки владельцем — не начат
 ```
 
-The decomposition orders shared identity before formatter configuration and UI
-redesign, and keeps owner acceptance as a distinct final gate.
+Такое разбиение размещает общую идентичность раньше настройки форматтера и переработки UI, а приёмку владельцем сохраняет как отдельный финальный gate.
 
-## 13. Red-test inventory and future scenarios
+## 13. Инвентаризация падающих тестов и будущих сценариев
 
-Two premature red tests had been pushed and were removed from the R0 remote
-baseline without running them:
+Два преждевременно добавленных падающих теста были отправлены в репозиторий, а затем удалены из удалённого исходного состояния R0 без запуска:
 
 ```text
 tests/test_search_service.py
@@ -233,45 +193,44 @@ tests/test_note_intelligence.py
   test_full_preview_uses_reviewer_render_not_browser_appearance
 ```
 
-Required future scenarios:
+Обязательные будущие сценарии:
 
 ### C1.5R.1
 
-- media-heavy card does not fall back to an unrelated part-of-speech field;
-- Search/Triage/Cards compact-display parity;
-- Browser Appearance present, absent, and empty;
-- exact default Japanese compact display;
-- strict unknown-field rejection during a schema-version transition.
+- карточка с большим количеством media не использует несвязанное поле части речи как fallback;
+- паритет компактного отображения Search, Triage и Cards;
+- Browser Appearance присутствует, отсутствует или пуст;
+- точное стандартное компактное отображение японской карточки;
+- отклонение неизвестных полей при переходе между версиями schema.
 
 ### C1.5R.3
 
-- Inspector uses front;
-- expanded modal uses back/answer;
-- answer-only marker semantics;
-- narrow preview clipping;
-- modal focus trap and focus restoration for the expanded preview.
+- Inspector использует лицевую сторону;
+- расширенный модальный диалог использует обратную сторону или ответ;
+- семантика маркера, присутствующего только на ответе;
+- обрезка узкого предпросмотра;
+- focus trap модального диалога и восстановление фокуса после расширенного предпросмотра.
 
 ### C1.5R.4
 
-- zero period reviews plus a current content failure;
-- content remains when the learning period changes;
-- Programming profile does not receive a false audio issue;
-- bounded partial/truncated content scan.
+- отсутствие повторений за период при наличии текущей ошибки содержимого;
+- ошибка содержимого сохраняется при изменении периода обучения;
+- профиль Programming не получает ложную проблему отсутствия audio;
+- ограниченная частичная или усечённая проверка содержимого.
 
 ### C1.5R.6
 
-- automatic unsaved suggested draft;
-- Japanese audio default;
-- Programming no-audio default;
-- Basic confirmation without opening Advanced;
-- compact formatter preview.
+- автоматический несохранённый черновик предложения;
+- стандартное требование audio для Japanese;
+- стандартное отсутствие требования audio для Programming;
+- подтверждение Basic без открытия Advanced;
+- предпросмотр компактного форматтера.
 
-R0 does not implement or execute these tests.
+R0 не реализует и не запускает эти тесты.
 
-## 14. Files changed
+## 14. Изменённые файлы
 
-The corrective baseline changes only Markdown, after a separate corrective
-commit removed the premature test additions:
+После отдельного исправляющего коммита, удалившего преждевременные тесты, исходное состояние изменяет только Markdown:
 
 ```text
 docs/ai-handoff.md
@@ -283,55 +242,54 @@ reports/core/c1-5-cards-workspace.md
 reports/core/c1-5r-0-recovery-baseline.md
 ```
 
-Existing C1.5R status banners in `docs/cards-v2-product-contract.md` and
-`docs/cards-v2-workspace-ui.md` remain in force.
+Действующие баннеры статуса C1.5R в `docs/cards-v2-product-contract.md` и `docs/cards-v2-workspace-ui.md` сохраняются.
 
-## 15. Verification
+## 15. Проверка
 
-Performed for the exact generated Markdown set:
+Для точного набора созданных Markdown-файлов выполнены:
 
-- manual path/link review for changed internal links;
-- trailing-whitespace scan;
-- Markdown file inventory check;
-- a temporary staged-tree `git diff --check` against the generated files;
-- post-write GitHub commit inspection and changed-file boundary review.
+- ручная проверка путей и внутренних ссылок в изменённых файлах;
+- проверка конечных пробелов;
+- проверка списка Markdown-файлов;
+- временный `git diff --check` для staged-дерева созданных файлов;
+- проверка коммита после записи в GitHub и границ изменённых файлов.
 
-Not run:
+Не запускались:
 
-- Python tests;
-- frontend tests;
+- Python-тесты;
+- frontend-тесты;
 - TypeScript typecheck;
-- frontend/add-on build;
-- package validation/build;
+- сборка frontend или add-on;
+- проверка или сборка пакета;
 - Fast CI;
-- Docker or real-Anki E2E.
+- Docker или real-Anki E2E.
 
-## 16. Git boundary
+## 16. Границы Git
 
 ```text
-branch: origin/core
-PR: no
-merge: no
-rebase: no
-force-push: no
-release: no
-deployment: no
-AnkiWeb publication: no
-production code changed: no
-production schemas changed: no
+ветка: origin/core
+PR: нет
+merge: нет
+rebase: нет
+force-push: нет
+выпуск: нет
+deployment: нет
+публикация на AnkiWeb: нет
+production-код изменён: нет
+production-schema изменены: нет
 ```
 
-## 17. Status
+## 17. Статус
 
 ```text
-C1.5R.0 — Complete
-C1.5R.1 — Next, not started
-C1.6 — Blocked
-Core C1 — In progress
+C1.5R.0 — завершено
+C1.5R.1 — следующий этап, не начат
+C1.6 — заблокирован
+Core C1 — выполняется
 ```
 
-## 18. Next step
+## 18. Следующий шаг
 
 ```text
-C1.5R.1 — Canonical card display identity
+C1.5R.1 — каноническая идентичность отображения карточки
 ```
