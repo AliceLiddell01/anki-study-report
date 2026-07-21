@@ -9,6 +9,7 @@ from conftest import import_addon_module
 
 
 service = import_addon_module("inspection_profile_service")
+authority = import_addon_module("exact_card_authority")
 
 
 def model() -> dict:
@@ -239,6 +240,95 @@ def test_triage_content_reason_is_note_deduped_and_workset_order_selects_represe
     evidence = workset["reasons"][0]["reason"]["evidence"][0]
     assert evidence["affectedSiblingCount"] == 2
     assert workset["reasons"][0]["reason"]["reasonId"] == "profile:note-type-123:check:meaning-required"
+
+
+def test_exact_card_authority_ignores_unrelated_profile_health_but_aggregate_warning_remains(monkeypatch):
+    structure_a = service.build_note_type_structure(model())
+    model_b = deepcopy(model())
+    model_b.update({"id": 456, "name": "Programming"})
+    structure_b = service.build_note_type_structure(model_b)
+    profile_a = confirmed_profile(structure_a)
+    profile_b = confirmed_profile(structure_b)
+    profile_b.update({
+        "profileId": "note-type-456",
+        "noteTypeId": "456",
+        "noteTypeName": structure_b["name"],
+        "expectedFingerprint": {"algorithm": "sha256", "value": "0" * 64},
+    })
+    snapshot = {"status": "available", "revision": 4, "profiles": [profile_a, profile_b]}
+    candidate = {
+        "cardId": 1,
+        "noteId": 8,
+        "noteTypeId": 123,
+        "templateOrdinal": 0,
+        "rawFields": "term\x1fmeaning\x1f[sound:voice.mp3]\x1flong example\x1f<img src=\"image.png\">",
+        "siblingCount": 1,
+    }
+    monkeypatch.setattr(service, "attach_sibling_counts", lambda _col, values: values)
+    col = SimpleNamespace(models=SimpleNamespace(all=lambda: [model(), model_b]))
+
+    aggregate = service.evaluate_profiles_for_triage(col, [candidate], snapshot, dataset="search_workset")
+    exact = service.evaluate_profiles_for_triage(
+        col,
+        [candidate],
+        snapshot,
+        dataset="search_workset",
+        exact_note_type_id=123,
+        previous_reason_ids=("learning:learning.repeated_again",),
+    )
+
+    assert aggregate["sourceStatus"]["status"] == "partial"
+    assert aggregate["contentChecks"]["needsReviewProfileCount"] == 1
+    assert exact["sourceStatus"]["status"] == "empty"
+    assert exact["contentChecks"]["status"] == "available"
+    assert exact["contentChecks"]["needsReviewProfileCount"] == 0
+    assert exact["reasons"] == []
+
+
+def test_exact_card_authority_fails_closed_only_for_relevant_dependencies(monkeypatch):
+    structure = service.build_note_type_structure(model())
+    stale = confirmed_profile(structure)
+    stale["expectedFingerprint"] = {"algorithm": "sha256", "value": "0" * 64}
+    col = SimpleNamespace(models=SimpleNamespace(all=lambda: [model()]))
+    monkeypatch.setattr(service, "attach_sibling_counts", lambda _col, values: values)
+    candidate = {
+        "cardId": 1, "noteId": 8, "noteTypeId": 123, "templateOrdinal": 0,
+        "rawFields": "term\x1fmeaning\x1f[sound:voice.mp3]\x1flong example\x1f<img src=\"image.png\">",
+    }
+
+    relevant_stale = service.evaluate_profiles_for_triage(
+        col,
+        [candidate],
+        {"status": "available", "revision": 4, "profiles": [stale]},
+        dataset="search_workset",
+        exact_note_type_id=123,
+        previous_reason_ids=("learning:learning.repeated_again",),
+    )
+    lost_previous_content = service.evaluate_profiles_for_triage(
+        col,
+        [candidate],
+        {"status": "available", "revision": 4, "profiles": []},
+        dataset="search_workset",
+        exact_note_type_id=123,
+        previous_reason_ids=("profile:note-type-123:check:audio-required",),
+    )
+
+    assert relevant_stale["sourceStatus"]["status"] == "partial"
+    assert relevant_stale["contentChecks"]["status"] == "profiles_need_review"
+    assert lost_previous_content["sourceStatus"]["status"] == "partial"
+    assert lost_previous_content["sourceStatus"]["errorCode"] == "profile_authority_changed"
+
+
+@pytest.mark.parametrize("store_status", ["corrupt", "future_schema", "unavailable"])
+def test_exact_card_learning_only_authority_does_not_depend_on_unrelated_unreadable_inventory(store_status):
+    scope = authority.scope_exact_card_profile(
+        {"status": store_status, "profiles": []},
+        note_type_id=123,
+        previous_reason_ids=("learning:learning.repeated_again",),
+    )
+    assert scope.profile is None
+    assert scope.requires_profile_authority is False
+    assert scope.blocking_error_code is None
 
 
 def test_programming_suggestion_has_question_answer_without_audio_and_media_checks_pass():

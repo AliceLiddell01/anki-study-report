@@ -10,6 +10,7 @@ from conftest import import_addon_module
 
 
 triage = import_addon_module("triage_service")
+profiles = import_addon_module("inspection_profile_service")
 
 
 def request(dataset="automatic", *, card_ids=None, limit=None):
@@ -425,6 +426,116 @@ def test_exact_recheck_returns_current_reasons_and_full_resolution_without_queue
     assert resolved["status"] == "available"
     assert resolved["item"]["cardId"] == "1"
     assert resolved["item"]["reasons"] == []
+
+
+def test_exact_recheck_passes_local_note_type_and_previous_reason_dependencies(monkeypatch):
+    captured = {}
+    configure_exact_recheck(monkeypatch, learning=[], profile_reasons=[], profile_status="empty")
+
+    def evaluate(*_args, **kwargs):
+        captured.update(kwargs)
+        return {
+            "reasons": [],
+            "sourceStatus": source("empty"),
+            "contentChecks": content_checks("available"),
+        }
+
+    monkeypatch.setattr(triage, "evaluate_profiles_for_triage", evaluate)
+    result = triage.execute_triage_recheck(
+        object(),
+        recheck_request(),
+        signal_rows=[],
+        signal_source_status={"status": "empty"},
+    )
+
+    assert result["status"] == "available"
+    assert result["item"]["reasons"] == []
+    assert captured["exact_note_type_id"] == 7
+    assert captured["previous_reason_ids"] == ("learning:learning.repeated_again",)
+
+
+def test_exact_recheck_resolves_learning_only_card_despite_unrelated_profile_review(monkeypatch):
+    model_a = {
+        "id": 7,
+        "name": "Basic",
+        "type": 0,
+        "flds": [{"name": "Front", "ord": 0}],
+        "tmpls": [{"name": "Card 1", "ord": 0, "qfmt": "{{Front}}", "afmt": "{{Front}}"}],
+    }
+    model_b = {**model_a, "id": 8, "name": "Unrelated"}
+    structure_a = profiles.build_note_type_structure(model_a)
+    structure_b = profiles.build_note_type_structure(model_b)
+    profile_a = {
+        "profileId": "note-type-7",
+        "noteTypeId": "7",
+        "noteTypeName": "Basic",
+        "storedState": "confirmed",
+        "displayName": "Basic",
+        "expectedFingerprint": structure_a["fingerprint"],
+        "appliesTo": {"templateOrdinals": []},
+        "fieldMappings": [{"role": "term", "fields": [{"ordinal": 0, "name": "Front"}]}],
+        "checks": [{
+            "checkId": "front-required",
+            "kind": "non_empty",
+            "roles": ["term"],
+            "mode": "any",
+            "priority": "high",
+        }],
+        "confirmedAt": "2026-07-18T00:00:00Z",
+        "updatedAt": "2026-07-18T00:00:00Z",
+    }
+    profile_b = {
+        **profile_a,
+        "profileId": "note-type-8",
+        "noteTypeId": "8",
+        "noteTypeName": "Unrelated",
+        "expectedFingerprint": {
+            "algorithm": structure_b["fingerprint"]["algorithm"],
+            "value": "0" * 64,
+        },
+    }
+    snapshot = {"status": "available", "revision": 2, "profiles": [profile_a, profile_b]}
+    col = type("Collection", (), {"models": type("Models", (), {"all": lambda self: [model_a, model_b]})()})()
+
+    monkeypatch.setattr(
+        triage,
+        "collect_exact_learning_triage_candidate_with_status",
+        lambda *_args, **_kwargs: ([], source("empty")),
+    )
+    monkeypatch.setattr(
+        triage,
+        "load_exact_inspection_candidates",
+        lambda *_args, **_kwargs: {
+            "items": [{
+                "cardId": 1,
+                "noteId": 10001,
+                "noteTypeId": 7,
+                "templateOrdinal": 0,
+                "rawFields": "Front text",
+                "siblingCount": 1,
+            }],
+            "missingCardIds": [],
+        },
+    )
+    monkeypatch.setattr(profiles, "attach_sibling_counts", lambda _col, values: values)
+    monkeypatch.setattr(
+        triage,
+        "resolve_card_rows",
+        lambda *_args, **_kwargs: {"items": [card_row(1)], "missingCardIds": []},
+    )
+
+    result = triage.execute_triage_recheck(
+        col,
+        recheck_request(),
+        signal_rows=[],
+        signal_source_status={"status": "empty"},
+        profile_store_snapshot=snapshot,
+    )
+
+    assert result["status"] == "available"
+    assert result["sourceStatus"]["profileChecks"]["status"] == "empty"
+    assert result["contentChecks"]["status"] == "available"
+    assert result["item"]["reasons"] == []
 
 
 def test_exact_recheck_fails_closed_for_partial_profiles_and_missing_or_changed_entity(monkeypatch):

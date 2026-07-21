@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 from .card_display_identity import unavailable_card_display_identity
+from .exact_card_authority import reason_requires_profile_authority
 from .inspection_profile_service import (
     evaluate_profiles_for_triage,
     load_exact_inspection_candidates,
@@ -244,10 +245,15 @@ def execute_triage_recheck(
             exact_candidates["items"],
             snapshot,
             dataset="search_workset",
+            exact_note_type_id=_positive_int(resolved.get("noteTypeId")),
+            previous_reason_ids=tuple(request["reasonIds"]),
         )
         content_state = str(profile_result.get("contentChecks", {}).get("status") or "unavailable")
-        had_content_reason = any(reason_id.startswith("profile:") for reason_id in request["reasonIds"])
-        if had_content_reason and content_state != "available":
+        needs_profile_authority = any(
+            reason_requires_profile_authority(reason_id)
+            for reason_id in request["reasonIds"]
+        )
+        if needs_profile_authority and content_state != "available":
             profile_result["sourceStatus"] = _source_status(
                 "partial",
                 item_count=_non_negative_int(profile_result.get("sourceStatus", {}).get("itemCount")),

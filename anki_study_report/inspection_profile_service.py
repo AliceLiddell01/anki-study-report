@@ -9,6 +9,7 @@ import json
 import re
 from typing import Any
 
+from .exact_card_authority import scope_exact_card_profile
 from .inspection_profile_store import (
     CHECK_KINDS,
     INSPECTION_PROFILE_SCHEMA_VERSION,
@@ -737,7 +738,25 @@ def evaluate_profiles_for_triage(
     store_snapshot: dict[str, Any],
     *,
     dataset: str,
+    exact_note_type_id: int | None = None,
+    previous_reason_ids: Iterable[str] = (),
 ) -> dict[str, Any]:
+    exact_scope = None
+    if exact_note_type_id is not None:
+        exact_scope = scope_exact_card_profile(
+            store_snapshot,
+            note_type_id=exact_note_type_id,
+            previous_reason_ids=previous_reason_ids,
+        )
+        if exact_scope.blocking_error_code is not None:
+            return _triage_profile_result(
+                "partial",
+                "unavailable",
+                error_code=exact_scope.blocking_error_code,
+            )
+        if exact_scope.profile is None:
+            return _triage_profile_result("empty", "no_confirmed_profiles")
+
     store_status = str(store_snapshot.get("status") or "unavailable")
     if store_status in {"future_schema", "unavailable", "corrupt"}:
         source_state = "error" if store_status == "corrupt" else "unavailable"
@@ -746,7 +765,11 @@ def evaluate_profiles_for_triage(
             "unavailable",
             error_code=str(store_snapshot.get("errorCode") or "profile_store_unavailable"),
         )
-    profiles = [item for item in store_snapshot.get("profiles", []) if isinstance(item, dict)]
+    profiles = (
+        [exact_scope.profile]
+        if exact_scope is not None
+        else [item for item in store_snapshot.get("profiles", []) if isinstance(item, dict)]
+    )
     model_ids = {int(profile["noteTypeId"]) for profile in profiles}
     catalog = read_note_type_structures(col, model_ids, limit=MAX_PROFILES)
     structures = {item["noteTypeId"]: item for item in catalog["items"]}
@@ -766,9 +789,18 @@ def evaluate_profiles_for_triage(
             content_status = "disabled"
         else:
             content_status = "no_confirmed_profiles"
+        fail_closed = bool(
+            exact_scope is not None
+            and (needs_review_count or exact_scope.requires_profile_authority)
+        )
         return _triage_profile_result(
-            "empty",
+            "partial" if fail_closed else "empty",
             content_status,
+            error_code=(
+                "profile_authority_changed"
+                if exact_scope is not None and exact_scope.requires_profile_authority
+                else None
+            ),
             confirmed_count=0,
             needs_review_count=needs_review_count,
             disabled_count=disabled_count,
