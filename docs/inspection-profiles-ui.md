@@ -1,68 +1,99 @@
-# Inspection Profiles settings UI
+# UI настроек Inspection Profiles
 
-Current route:
+## Текущий маршрут
 
 ```text
 #/settings/inspection-profiles
 ```
 
-The authoritative interaction contract is
-[Guided Inspection Profiles](guided-inspection-profiles.md). The strict persisted
-format remains [Inspection Profiles v1](inspection-profiles-v1.md).
+Авторитетный interaction contract:
 
-## Page contour
+- [Guided Inspection Profiles](guided-inspection-profiles.md).
 
-The page keeps the Settings sidebar, compact state summary and searchable catalog.
-It does not auto-select an arbitrary note type. Rich catalog entries remain native
-buttons and expose note-type name, effective state, friendly detected kind and
-field/template counts.
+Строгий persisted format:
 
-Selecting an unconfigured type creates a deterministic browser-only generated
-draft immediately. Opening or switching a clean generated draft is not unsaved
-user work. There is no normal-path `Use suggestion` action.
+- [Inspection Profiles v1](inspection-profiles-v1.md).
+
+## Контур страницы
+
+Страница сохраняет:
+
+- Settings sidebar;
+- compact summary состояний;
+- searchable catalog.
+
+Произвольный note type автоматически не выбирается. Содержательные catalog entries остаются native buttons и показывают:
+
+- название note type;
+- effective state;
+- понятный detected kind;
+- количество fields/templates.
+
+Выбор unconfigured type немедленно создаёт детерминированный browser-only generated draft. Открытие или переключение clean generated draft не считается несохранённой пользовательской работой.
+
+В normal path отсутствует отдельное действие `Use suggestion`.
 
 ## Basic
 
-Basic is open by default and contains:
+Basic открыт по умолчанию и содержит:
 
-1. friendly suggested-setup summary and confidence category;
-2. exact Anki field mappings shown through friendly roles;
-3. friendly requirements projected over every strict v1 check kind;
-4. friendly card-template scope;
+1. понятную сводку suggested setup и категорию confidence;
+2. exact Anki field mappings, показанные через понятные roles;
+3. понятные requirements, проецируемые на каждый strict check kind v1;
+4. понятный scope card templates;
 5. bounded validation/sample result;
-6. one lifecycle-aware primary action.
+6. одно lifecycle-aware primary action.
 
-Basic never displays role slugs, template ordinals or stable check IDs. It never
-creates a second persisted model.
+Basic никогда не показывает:
 
-## Advanced and tools
+- role slugs;
+- template ordinals;
+- stable check IDs.
 
-Advanced is a native disclosure containing the strict editors and machine-level
-identifiers. Profile tools is a separate disclosure containing import, export,
-deterministic reset, start empty, disable and delete. These tools do not compete
-visually with confirmation.
+Basic не создаёт вторую persisted model.
 
-Hidden Advanced errors are represented outside the collapsed panel. Explicit
-failed validation focuses the error summary; links reveal and focus strict controls.
+## Advanced и tools
 
-## Persistence and authority
+Advanced — native disclosure со strict editors и machine-level identifiers.
 
-- no autosave;
-- no autoconfirm;
-- validate v2 before confirmed update v1;
-- only `confirmed` and structurally current profiles are authoritative;
-- `needs_review` and `disabled` fail closed;
-- revision conflicts preserve the local user draft.
+Profile tools — отдельный disclosure, содержащий:
+
+- import;
+- export;
+- deterministic reset;
+- start empty;
+- disable;
+- delete.
+
+Эти tools не конкурируют визуально с confirmation.
+
+Hidden Advanced errors обозначаются снаружи collapsed panel. После явного failed validation focus переходит на error summary; links раскрывают и фокусируют соответствующие strict controls.
+
+## Persistence и authority
+
+- autosave отсутствует;
+- autoconfirm отсутствует;
+- перед confirmed update v1 выполняется validate v2;
+- авторитетны только `confirmed` и structurally current profiles;
+- `needs_review` и `disabled` работают fail closed;
+- revision conflicts сохраняют локальный пользовательский draft.
 
 ## Responsive target
 
-The primary target is desktop/laptop. The catalog/editor split is used at wide
-sizes and stacks at 1024 px without horizontal overflow. Advanced remains collapsed
-so the normal path is not dominated by the strict editor.
+Основная цель — desktop/laptop.
 
-## Verification boundary
+На широких размерах используется split catalog/editor. На 1024 px layout складывается без horizontal overflow. Advanced остаётся collapsed, чтобы normal path не был подчинён strict editor.
 
-C1.5R.6 covers deterministic component/hook/projection tests, backend regression,
-typecheck, production build, package validation, canonical non-Docker verification
-and a real Chromium light/dark matrix. Docker/real-Anki and owner-private-profile
-acceptance belong to C1.5R.7.
+## Граница проверки
+
+C1.5R.6 покрывает:
+
+- deterministic component/hook/projection tests;
+- backend regression;
+- typecheck;
+- production build;
+- package validation;
+- canonical non-Docker verification;
+- real Chromium light/dark matrix.
+
+Docker/real-Anki и acceptance на приватном профиле владельца были выполнены в C1.5R.7.

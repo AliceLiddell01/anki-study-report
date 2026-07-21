@@ -1,84 +1,99 @@
 # Inspection Profiles v1
 
-## Status and purpose
+## Статус и назначение
 
-**Contract version:** 1
-**Runtime stage:** C1.3
-**UI:** implemented in C1.4 at `#/settings/inspection-profiles`
+**Версия контракта:** 1  
+**Runtime stage:** C1.3  
+**UI:** реализован в C1.4 по маршруту `#/settings/inspection-profiles`
 
-An Inspection Profile is a local, declarative set of content requirements for
-one exact Anki note type. It answers questions such as “Japanese Vocabulary
-requires meaning and audio” without applying that rule to Programming cards.
-It never executes user code and never modifies a collection, note, card,
-template or media file.
+Inspection Profile — локальный declarative набор требований к содержимому для одного точного Anki note type. Например, он может определить, что «Japanese Vocabulary требует meaning и audio», не применяя это правило к карточкам Programming.
 
-Anki note types own ordered fields and card templates; one note may generate
-multiple cards. This contract follows those native boundaries rather than
-assuming a universal card shape. See Anki’s [Getting
-Started](https://docs.ankiweb.net/getting-started.html), [Card
-Templates](https://docs.ankiweb.net/templates/intro.html) and
-[Field Replacements](https://docs.ankiweb.net/templates/fields.html).
+Inspection Profile никогда не:
+
+- выполняет пользовательский код;
+- изменяет collection;
+- изменяет note, card, template или media file.
+
+Anki note types владеют упорядоченными fields и card templates; одна note может создавать несколько cards. Контракт следует этим нативным границам и не предполагает универсальную форму карточки.
+
+Справочные документы Anki:
+
+- [Getting Started](https://docs.ankiweb.net/getting-started.html);
+- [Card Templates](https://docs.ankiweb.net/templates/intro.html);
+- [Field Replacements](https://docs.ankiweb.net/templates/fields.html).
 
 ## Lifecycle
 
 ```text
 not_configured → suggested → confirmed
                          ↘ needs_review
-suggested|confirmed → disabled
+suggested | confirmed → disabled
 ```
 
-Persisted state is `suggested | confirmed | disabled`. `not_configured` and
-`needs_review` are computed. Only a `confirmed` profile whose fingerprint and
-exact references still match the current note type is authoritative.
+Persisted state:
 
-| Effective state | Authoritative content reasons |
+```text
+suggested | confirmed | disabled
+```
+
+`not_configured` и `needs_review` вычисляются. Авторитетным является только `confirmed` profile, у которого fingerprint и exact references всё ещё совпадают с текущим note type.
+
+| Effective state | Авторитетные content reasons |
 | --- | --- |
-| `not_configured` | no |
-| `suggested` | no |
-| `confirmed` | yes |
-| `needs_review` | no; fail closed |
-| `disabled` | no |
+| `not_configured` | нет |
+| `suggested` | нет |
+| `confirmed` | да |
+| `needs_review` | нет; fail closed |
+| `disabled` | нет |
 
-Learning reasons do not depend on profiles and continue in every state.
-Suggestions cannot confirm, modify or fuzzy-rebind a profile.
+Learning reasons не зависят от profiles и продолжают работать в любом состоянии. Suggestions не могут автоматически подтвердить, изменить или fuzzy-rebind profile.
 
-## Storage and recovery
+## Хранение и recovery
 
-The document is stored inside the active Anki profile:
+Документ хранится внутри активного Anki profile:
 
 ```text
 <profile>/addon_data/<addon-id>/inspection_profiles.json
 ```
 
-It is not stored in the collection, add-on global config, note types or
-templates. This follows Anki’s add-on [Configuration and User
-Files](https://addon-docs.ankiweb.net/addon-config.html) boundaries while
-keeping runtime state isolated per Anki profile.
+Он не хранится в:
 
-The store is thread-safe and uses UTF-8 deterministic JSON. Writes use a temp
-file in the same directory, `flush`, `fsync` and `os.replace`. Every successful
-write increments a monotonic `revision`; writers must supply the current
-`expectedRevision`. A stale revision returns a conflict without overwriting
-newer state.
+- collection;
+- глобальном config add-on;
+- note types;
+- templates.
 
-- missing file: valid empty store, revision 0;
-- corrupt/invalid v1: original is atomically renamed with a bounded
-  `.corrupt-<UTC>` suffix and the source fails closed;
-- future `schemaVersion`: file remains byte-for-byte untouched and writes are
-  rejected;
-- inaccessible store: safe `unavailable` status, no exception/path leak.
+Это соответствует границам Anki [Configuration and User Files](https://addon-docs.ankiweb.net/addon-config.html) и сохраняет runtime state изолированным для каждого Anki profile.
 
-No user-supplied path is accepted. Document size is capped at 1 MiB.
+Store thread-safe и использует deterministic UTF-8 JSON. Writes выполняются через temporary file в той же директории, `flush`, `fsync` и `os.replace`.
+
+Каждая успешная write увеличивает monotonic `revision`; writer обязан передать текущий `expectedRevision`. Stale revision возвращает conflict и не перезаписывает более новое состояние.
+
+Recovery behavior:
+
+- missing file — валидный empty store, revision 0;
+- corrupt/invalid v1 — исходный файл атомарно переименовывается с bounded suffix `.corrupt-<UTC>`, source fail closed;
+- future `schemaVersion` — файл остаётся byte-for-byte неизменным, writes отклоняются;
+- inaccessible store — безопасный status `unavailable`, без утечки exception/path.
+
+Пользовательский path не принимается. Размер документа ограничен 1 MiB.
 
 ## Schema v1
 
-The portable Draft 2020-12 schema is
-[`schemas/inspection-profile-v1.schema.json`](../schemas/inspection-profile-v1.schema.json).
-The production Python validator independently enforces the same shapes plus
-cross-field uniqueness, signed-64-bit IDs and mapping/check relationships.
-Draft behavior follows [JSON Schema Core
-2020-12](https://json-schema.org/draft/2020-12/json-schema-core.html) and
-[Validation 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation.html).
+Portable schema Draft 2020-12:
+
+[`schemas/inspection-profile-v1.schema.json`](../schemas/inspection-profile-v1.schema.json)
+
+Production Python validator независимо проверяет те же shapes, а также:
+
+- cross-field uniqueness;
+- signed-64-bit IDs;
+- relationships mappings/checks.
+
+Schema следует:
+
+- [JSON Schema Core 2020-12](https://json-schema.org/draft/2020-12/json-schema-core.html);
+- [Validation 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation.html).
 
 ```json
 {
@@ -112,90 +127,155 @@ Draft behavior follows [JSON Schema Core
 }
 ```
 
-V1 permits one profile per `noteTypeId`; IDs are positive signed-64-bit
-decimal strings. Unknown fields are rejected. Profile/check IDs, roles,
-timestamps, arrays and numeric parameters are bounded. Documents contain no
-field values, template HTML/CSS, deck binding, path, code or query.
+V1 разрешает один profile на `noteTypeId`; IDs представлены positive signed-64-bit decimal strings. Unknown fields отклоняются.
 
-## Structures and fingerprints
+Bounded:
 
-The bounded catalog reads current Anki model metadata inside a serialized
-`QueryOp`, following Anki’s [Background
-Operations](https://addon-docs.ankiweb.net/background-ops.html). A public
-structure contains only:
+- profile/check IDs;
+- roles;
+- timestamps;
+- arrays;
+- numeric parameters.
 
-- note type ID, name and `standard | cloze` kind;
-- ordered field ordinal and exact name;
-- ordered template ordinal/name and referenced field names on front/back;
+Документ не содержит field values, template HTML/CSS, deck binding, path, code или query.
+
+## Structures и fingerprints
+
+Bounded catalog читает current Anki model metadata внутри serialized `QueryOp` в соответствии с Anki [Background Operations](https://addon-docs.ankiweb.net/background-ops.html).
+
+Public structure содержит только:
+
+- note type ID, name и kind `standard | cloze`;
+- ordered field ordinal и exact name;
+- ordered template ordinal/name и referenced field names для front/back;
 - SHA-256 fingerprint.
 
-The fingerprint is SHA-256 of canonical JSON containing noteTypeId, ordered
-fields, template identities/references and kind. Field add/remove/rename/
-reorder and relevant template reference changes invalidate it. CSS, static
-template text, mod time, sample values and deck assignment do not.
+Fingerprint — SHA-256 от canonical JSON, содержащего:
 
-Confirmation checks both ordinal and exact field-name snapshot. A stale
-profile is never fuzzy-matched to renamed fields or another noteTypeId.
-Bounded reason codes are `field_added`, `field_removed`, `field_changed`,
-`template_field_usage_changed`, `note_type_missing`, `fingerprint_mismatch`
-and `unsupported_profile`.
+- `noteTypeId`;
+- ordered fields;
+- template identities/references;
+- kind.
 
-## Roles and suggestions
+Fingerprint инвалидируют:
 
-Standard roles are:
+- add/remove/rename/reorder field;
+- релевантные изменения template field references.
+
+Fingerprint не изменяют:
+
+- CSS;
+- static template text;
+- mod time;
+- sample values;
+- deck assignment.
+
+Confirmation проверяет и ordinal, и exact field-name snapshot. Stale profile никогда не fuzzy-match-ится к renamed fields или другому `noteTypeId`.
+
+Bounded reason codes:
+
+```text
+field_added
+field_removed
+field_changed
+template_field_usage_changed
+note_type_missing
+fingerprint_mismatch
+unsupported_profile
+```
+
+## Roles и suggestions
+
+Стандартные roles:
 
 ```text
 term reading meaning example audio image part_of_speech pitch
 question answer explanation code
 ```
 
-A bounded custom role may match `[a-z][a-z0-9_]{0,39}`. Each mapped field is
-an exact `{ordinal,name}` reference. Roles and field references cannot be
-duplicated, and every role targeted by a check must be mapped.
+Bounded custom role может соответствовать regex:
 
-Suggestions reuse deterministic local note-intelligence heuristics. They may
-return detected kind, per-mapping confidence, proposed checks, warnings and
-unresolved fields. They use no network, LLM or telemetry and persist no note
-samples. Ambiguity remains unresolved; suggestion is never authority.
+```text
+[a-z][a-z0-9_]{0,39}
+```
+
+Каждый mapped field — точная reference `{ordinal, name}`. Roles и field references не могут дублироваться. Каждый role, используемый check, должен иметь mapping.
+
+Suggestions переиспользуют детерминированные локальные heuristics note intelligence. Они могут вернуть:
+
+- detected kind;
+- confidence каждого mapping;
+- proposed checks;
+- warnings;
+- unresolved fields.
+
+Suggestions не используют network, LLM или telemetry и не сохраняют note samples. Ambiguity остаётся unresolved; suggestion никогда не становится authority автоматически.
 
 ## Allowlisted checks
 
-| Kind | Semantics |
+| Kind | Семантика |
 | --- | --- |
-| `non_empty` | normalized meaningful text exists in `any`/`all` mapped refs; media-only fields are empty text |
-| `contains_audio` | safe `[sound:filename]` marker exists in declared refs; file existence is not checked |
-| `contains_image` | safe `<img … src=…>` reference exists in declared refs; media is not read |
-| `min_text_length` | normalized plain-text Unicode length meets `1..10000` in `any`/`all` mode |
-| `one_of_roles_non_empty` | at least one target role has meaningful text |
-| `all_roles_non_empty` | every target role has meaningful text |
+| `non_empty` | normalized meaningful text существует в `any`/`all` mapped refs; media-only fields считаются empty text |
+| `contains_audio` | в declared refs существует безопасный marker `[sound:filename]`; существование file не проверяется |
+| `contains_image` | в declared refs существует безопасная reference `<img … src=…>`; media не читается |
+| `min_text_length` | normalized plain-text Unicode length удовлетворяет `1..10000` в mode `any`/`all` |
+| `one_of_roles_non_empty` | хотя бы один target role содержит meaningful text |
+| `all_roles_non_empty` | каждый target role содержит meaningful text |
 
-Plain text uses the existing safe extraction: tags, invisible markup, media
-markers, NBSP and repeated whitespace cannot create false text. Checks use
-only confirmed exact mappings and optional template ordinal scope. No full
-card render or template JavaScript is executed.
+Plain text использует существующее безопасное extraction. Tags, invisible markup, media markers, NBSP и repeated whitespace не могут создать ложный text.
 
-Rejected rule capabilities include arbitrary regex/substring languages, CSS
-selectors, Python, JavaScript, SQL, shell, imports/callbacks, filesystem/media
-existence, network rules, cross-note aggregates and review-history conditions.
+Checks используют только confirmed exact mappings и optional template ordinal scope. Полный card render и template JavaScript не выполняются.
 
-## Evaluation and safe evidence
+Отклонённые rule capabilities:
 
-Failed checks produce typed internal results with profile/note-type/check
-identity, check kind, note scope, priority, roles, exact mapped field
-identities, profile revision, fingerprint, sibling count and template scope.
-Evidence may include expected condition, actual/expected text length or
-`markerPresent: false`.
+- arbitrary regex/substring languages;
+- CSS selectors;
+- Python, JavaScript, SQL или shell;
+- imports/callbacks;
+- filesystem/media existence;
+- network rules;
+- cross-note aggregates;
+- review-history conditions.
 
-Evidence never includes raw note content, HTML, audio/image filename, local
-path, token, template source or exception text. Preview accepts at most 20
-explicit card IDs or a bounded exact-note-type sample and returns only safe
-failure evidence.
+## Evaluation и безопасное evidence
+
+Failed checks создают typed internal results со следующими данными:
+
+- profile/note-type/check identity;
+- check kind;
+- note scope;
+- priority;
+- roles;
+- exact mapped field identities;
+- profile revision;
+- fingerprint;
+- sibling count;
+- template scope.
+
+Evidence может включать expected condition, actual/expected text length или `markerPresent: false`.
+
+Evidence никогда не содержит:
+
+- raw note content;
+- HTML;
+- audio/image filename;
+- local path;
+- token;
+- template source;
+- exception text.
+
+Preview принимает не более 20 explicit card IDs либо bounded sample точного note type и возвращает только safe failure evidence.
 
 ## Runtime API
 
-All endpoints are loopback-only, require the current dashboard token, accept
-`POST application/json`, use IDs/documents in the body, cap the body at 64 KiB
-and return generic machine errors:
+Все endpoints:
+
+- loopback-only;
+- требуют текущий dashboard token;
+- принимают `POST application/json`;
+- передают IDs/documents в body;
+- ограничивают body до 64 KiB;
+- возвращают generic machine errors.
 
 ```text
 POST /api/inspection-profiles/query
@@ -203,25 +283,29 @@ POST /api/inspection-profiles/validate
 POST /api/inspection-profiles/update
 ```
 
-- `query`: `schemaVersion`, `noteTypeIds` (0..200), `limit` (1..500); returns
-  structures, effective states, stored profile, suggestions and store revision;
-- `validate` v1: strict draft plus 0..20 exact card IDs; does not persist;
-- `validate` v2: strict draft plus `{mode: "sample", limit: 1..20}`; selects
-  deterministic smallest card IDs only for `profile.noteTypeId`, reads at most
-  `limit + 1`, reports truncation and does not persist;
-- `update/save`: `expectedRevision`, explicit `targetState`, strict profile and
-  current fingerprint/reference validation;
-- `update/disable`: preserves configuration but suppresses authority;
-- `update/delete`: removes only that profile.
+Операции:
 
-Current model reads and preview card reads run through serialized `QueryOp`.
-The only write is the profile-local JSON file; it is not an Anki `CollectionOp`
-and does not mutate collection state.
+- `query`: `schemaVersion`, `noteTypeIds` (`0..200`), `limit` (`1..500`); возвращает structures, effective states, stored profile, suggestions и store revision;
+- `validate` v1: strict draft + `0..20` exact card IDs; не сохраняет изменения;
+- `validate` v2: strict draft + `{mode: "sample", limit: 1..20}`; выбирает детерминированные минимальные card IDs только для `profile.noteTypeId`, читает не более `limit + 1`, сообщает truncation и ничего не сохраняет;
+- `update/save`: `expectedRevision`, явный `targetState`, strict profile и current fingerprint/reference validation;
+- `update/disable`: сохраняет configuration, но отключает authority;
+- `update/delete`: удаляет только указанный profile.
 
-## Canonical triage v2
+Current model reads и preview card reads выполняются через serialized `QueryOp`.
 
-Triage schema v2 adds `sourceStatus.profileChecks`, aggregate
-`contentChecks`, stable `reasonId` and `profile_check` evidence. Content codes:
+Единственная write — profile-local JSON file. Она не является Anki `CollectionOp` и не изменяет collection state.
+
+## Канонический Triage
+
+Inspection Profiles добавляют в Triage:
+
+- source status profile checks;
+- aggregate `contentChecks`;
+- stable `reasonId`;
+- evidence типа `profile_check`.
+
+Content codes:
 
 ```text
 content.required_text_missing
@@ -231,35 +315,57 @@ content.text_too_short
 content.required_group_missing
 ```
 
-Identity is `profile:<profileId>:check:<checkId>`, so two same-kind checks stay
-distinct. Content scope is `note`. One failing note appears once on a
-deterministic representative card; evidence reports only the affected sibling
-count. Automatic data chooses the smallest candidate card ID. Search worksets
-choose the first explicitly selected applicable sibling, preserve requested
-order and never invent unselected rows. Independent card-level learning
-reasons on sibling cards remain separate.
+Reason identity:
 
-Automatic evaluation uses one bounded shared revlog/card/note candidate query
-(100 plus a truncation sentinel), including candidates with no learning issue.
-Search worksets load at most 200 exact IDs in one batch. Raw fields never leave
-the backend. Legacy `attentionCards`, including its heuristic missing-field
-labels, is unchanged; heuristics do not become canonical content reasons.
+```text
+profile:<profileId>:check:<checkId>
+```
 
-Content status distinguishes `available`, `no_confirmed_profiles`,
-`profiles_need_review`, `disabled`, `partial` and `unavailable`. Missing
-profiles are not an error. Store/model unavailability never means resolved.
+Поэтому два checks одного kind остаются различимыми. Content scope — `note`.
 
-## Examples
+Одна failing note показывается один раз на детерминированной representative card; evidence сообщает только affected sibling count.
 
-Japanese Vocabulary maps `meaning → Meaning`, `audio → Audio`, `example →
-Example` and may confirm `non_empty`/`contains_audio` checks. A missing audio
-marker creates `content.audio_missing` only after explicit confirmation.
+Automatic dataset выбирает минимальный candidate card ID. Search workset выбирает первый явно выбранный применимый sibling, сохраняет requested order и не создаёт unselected rows. Независимые card-level learning reasons siblings остаются отдельными.
 
-Programming maps `question → Question` and `answer → Answer`; it confirms two
-`non_empty` checks and has no audio requirement. The Japanese rule cannot
-apply to it because profiles are keyed to exact noteTypeId and fingerprint.
+Automatic evaluation использует один bounded shared candidate query для revlog/card/note с лимитом 100 + truncation sentinel, включая candidates без learning issue. Search workset загружает не более 200 exact IDs одним batch. Raw fields не покидают backend.
 
-## Bounds, privacy and compatibility
+Legacy `attentionCards`, включая heuristic missing-field labels, не меняется; heuristics не становятся canonical content reasons.
+
+Content status различает:
+
+```text
+available
+no_confirmed_profiles
+profiles_need_review
+disabled
+partial
+unavailable
+```
+
+Отсутствующие profiles не считаются error. Недоступность store/model никогда не означает resolved.
+
+## Примеры
+
+Japanese Vocabulary может сопоставить:
+
+```text
+meaning → Meaning
+audio → Audio
+example → Example
+```
+
+и подтвердить checks `non_empty` / `contains_audio`. Missing audio marker создаёт `content.audio_missing` только после явного confirmation.
+
+Programming может сопоставить:
+
+```text
+question → Question
+answer → Answer
+```
+
+и подтвердить два checks `non_empty` без требования audio. Japanese rule не применяется к нему, потому что profiles привязаны к exact `noteTypeId` и fingerprint.
+
+## Bounds, privacy и compatibility
 
 | Resource | Bound |
 | --- | ---: |
@@ -272,18 +378,24 @@ apply to it because profiles are keyed to exact noteTypeId and fingerprint.
 | automatic candidates | 100 |
 | Search workset | 200 |
 
-Profile contents, field mappings and checks are never sent through telemetry.
-Logs contain only operation/error codes and exception types, not profile data,
-note values, paths or tokens. Search, Safe Actions, Signals, Notifications,
-preview isolation, existing CardsPage and legacy report payload remain intact.
+Profile contents, field mappings и checks никогда не отправляются через telemetry.
 
-C1.4 adds the local Settings editor and strict client-side one-profile
-import/export documented in [inspection-profiles-ui.md](inspection-profiles-ui.md).
-It adds no Cards queue/Inspector or collection mutation.
+Logs содержат только operation/error codes и exception types, но не profile data, note values, paths или tokens.
+
+Не меняются:
+
+- Search;
+- Safe Actions;
+- Signals;
+- Notifications;
+- preview isolation;
+- существующий CardsPage;
+- legacy report payload.
+
+C1.4 добавляет local Settings editor и strict client-side import/export одного profile, описанный в [`inspection-profiles-ui.md`](inspection-profiles-ui.md). Он не добавляет Cards queue/Inspector или collection mutation.
 
 ## Guided editor projection
 
-The C1.5R.6 UI does not define a second schema. A generated browser-only suggestion,
-Basic controls and Advanced controls all edit one exact v1 document. Generated
-origin/user-dirty semantics are UI state and are never persisted in the profile.
-Validate schema v2 and update schema v1 remain unchanged.
+UI C1.5R.6 не определяет вторую schema. Generated browser-only suggestion, Basic controls и Advanced controls редактируют один exact document v1.
+
+Generated origin и user-dirty semantics являются UI state и никогда не сохраняются в profile. Validate schema v2 и update schema v1 остаются неизменными.

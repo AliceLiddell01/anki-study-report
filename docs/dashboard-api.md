@@ -1,9 +1,8 @@
-# Dashboard API и payload-контракт
+# Dashboard API и payload contract
 
-Снимок документации: 2026-07-19.
+**Снимок документации:** 2026-07-22
 
-Dashboard — локальное приложение, которое получает опубликованный report payload
-и несколько narrow API. Frontend не читает Anki collection напрямую.
+Dashboard — локальное приложение, которое получает опубликованный report payload и несколько узких API. Frontend не читает Anki collection напрямую.
 
 ## Token model
 
@@ -13,18 +12,17 @@ Dashboard — локальное приложение, которое получ
 ?token=<dashboard-token>
 ```
 
-Dashboard открывается на loopback URL вида:
+Dashboard открывается по loopback URL:
 
 ```text
 http://127.0.0.1:<port>/?token=<token>#/home
 ```
 
-Неверный token возвращает `403`. Token и полный token-bearing URL не попадают в
-normal logs, DOM dumps, public artifacts или telemetry.
+Invalid token возвращает `403`. Token и полный token-bearing URL не попадают в normal logs, DOM dumps, public artifacts или telemetry.
 
-## Endpoint map
+## Карта endpoints
 
-Основные GET:
+### Основные GET
 
 ```text
 /api/status
@@ -46,7 +44,7 @@ normal logs, DOM dumps, public artifacts или telemetry.
 /api/telemetry/status
 ```
 
-Основные POST/PUT:
+### Основные POST/PUT
 
 ```text
 /api/cache/rebuild
@@ -60,6 +58,7 @@ normal logs, DOM dumps, public artifacts или telemetry.
 /api/search/query
 /api/search/inspect
 /api/triage/query
+/api/triage/recheck
 /api/inspection-profiles/query
 /api/inspection-profiles/validate
 /api/inspection-profiles/update
@@ -79,24 +78,20 @@ normal logs, DOM dumps, public artifacts или telemetry.
 /api/telemetry/check-send
 ```
 
-Server/dashboard actions remain an allowlist, not arbitrary RPC.
+Server/dashboard actions остаются allowlist, а не arbitrary RPC.
 
-## Search query and inspect
+## Search query и inspect
 
-`POST /api/search/query` and `POST /api/search/inspect` are token-protected,
-POST-only, JSON-only and capped at 8 KiB.
+`POST /api/search/query` и `POST /api/search/inspect`:
 
-### Query/inspect schema v2
+- token-protected;
+- POST-only;
+- JSON-only;
+- body cap 8 KiB.
 
-Normal query and inspect requests require exact `schemaVersion: 2`. Missing or
-wrong schema and unknown keys return `400 invalid_search_request`. Schema v1 is
-not accepted as an alias.
+Normal query и inspect требуют exact `schemaVersion: 2`. Schema v1 не является alias. Query использует native Anki grammar, bounded filters, page sizes `25 | 50 | 100` и hard cap 2000. Inspect принимает ровно один decimal-string `cardId` или `noteId`.
 
-Query uses native Anki grammar, bounded structured filters, page sizes
-`25|50|100` and hard cap 2000. Inspect accepts exactly one decimal-string
-`cardId` or `noteId`.
-
-Card rows/details in v2 contain:
+Card rows/details v2:
 
 ```text
 displayText
@@ -105,28 +100,17 @@ displayStatus      available | media_only | unavailable
 displayTruncated
 ```
 
-They do not contain card `primaryText`. Note rows/details retain note
-`primaryText` and do not receive card display fields.
+Card alias `primaryText` отсутствует. Note rows/details сохраняют note `primaryText` и не получают card display fields.
 
-The backend projector renders Browser question, then reviewer front, then emits
-explicit media-only/unavailable state. It never scans arbitrary note fields.
-Search row and Search inspect reuse the same projection.
+Frontend parser отклоняет old schemas, aliases, unknown keys, malformed IDs, count drift и incoherent display state.
 
-The frontend parser rejects old schemas, aliases, unknown keys, malformed IDs,
-count drift and incoherent display status/source/text combinations.
-
-### Metadata schema v1
-
-Search metadata remains an independent exact v1 request variant:
+Search metadata остаётся отдельным request variant v1:
 
 ```json
-{"kind":"metadata","requestId":"search-metadata-1"}
+{"kind": "metadata", "requestId": "search-metadata-1"}
 ```
 
-It returns bounded deck/note-type catalogs and truncation markers. Metadata is
-not silently upgraded to v2 and v2 query requests are not accepted as metadata.
-
-### Search errors
+Search errors:
 
 ```text
 400 invalid_search_request
@@ -136,12 +120,52 @@ not silently upgraded to v2 and v2 query requests are not accepted as metadata.
 504 search_timeout
 ```
 
-Full contract: [`search-query-foundation.md`](search-query-foundation.md).
+Полный контракт: [`search-v1-and-safe-actions.md`](search-v1-and-safe-actions.md).
+
+## Triage query v4
+
+`POST /api/triage/query`:
+
+- token-protected;
+- POST/JSON-only;
+- body cap 8 KiB;
+- exact `schemaVersion: 4`.
+
+Automatic query объединяет bounded period-learning, current-content, active Signal и Search identity sources. Current-content continuation является manual и cursor-bounded. Search workset принимает `1..200` exact card IDs и сохраняет first-seen order.
+
+Response содержит typed source/content status, counts, cursor coherence, stable reasons и Search-owned compact identity. Full preview/media, raw revlog, note values, arbitrary query, exception, token и runtime path отсутствуют.
+
+## Exact-card recheck v1
+
+`POST /api/triage/recheck`:
+
+- token-protected;
+- POST/JSON-only;
+- body cap 8 KiB;
+- exact `schemaVersion: 1`;
+- serialized through `QueryOp`.
+
+Request содержит:
+
+```text
+cardId
+expectedNoteId
+reasonIds (1..4)
+scope
+```
+
+Recheck оценивает только exact card и переиспользует canonical sources Triage v4. Response возвращает typed source status, `entityStatus`, `contentChecks` и current canonical item либо `null`.
+
+Resolved допустим только при fully authoritative coverage и нуле current reasons. Partial/unavailable/error source, profile-authority change, identity mismatch, missing/changed entity или collection failure работают fail closed.
+
+Полные контракты:
+
+- [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
+- [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 
 ## Card display formatter API
 
-C1.5R.2 adds three token-protected, POST-only, `application/json` endpoints with
-a 64 KiB body cap:
+Endpoints:
 
 ```text
 /api/card-display-formatters/query
@@ -149,85 +173,42 @@ a 64 KiB body cap:
 /api/card-display-formatters/update
 ```
 
-All requests use exact `schemaVersion: 1` and reject unknown keys.
+Они token-protected, POST-only, используют exact schema v1 и body cap 64 KiB.
 
-`query` accepts only:
-
-```json
-{"schemaVersion":1}
-```
-
-Its response contains the independent store status, revision, strict formatter
-entries, generic `errorCode`, and `quarantined` flag. Allowed status values are:
+Store statuses:
 
 ```text
 empty | available | corrupt | future_schema | unavailable
 ```
 
-`validate` accepts one strict formatter and performs no collection read or
-persistence. `update` accepts only exact `save` or `delete` actions with
-`expectedRevision`; deletion identifies one `(noteTypeId, templateOrdinal)` key.
-A stale revision returns the current revision with HTTP 409.
+`validate` ничего не сохраняет и не читает collection. `update` принимает только `save`/`delete` с `expectedRevision`. API не раскрывает raw HTML, note values, media contents, paths, renderer exceptions или arbitrary expression language.
 
-The API exposes no raw HTML, note values, media contents, filesystem paths,
-renderer exceptions, arbitrary expression language, or live card preview.
-Search remains schema v2. Formatter configuration is not added to Search or
-Triage payloads; Triage query has since advanced independently to schema v4.
-
-Full contract: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
-
-## Canonical triage read API
-
-`POST /api/triage/query` is token-protected, POST/JSON-only and capped at 8 KiB.
-It requires exact `schemaVersion: 4`; older schemas are rejected rather than
-silently aliased.
-
-`automatic` combines independent bounded period-learning and current-content
-sources, active card Signals and confirmed-profile content reasons.
-`search_workset` accepts 1..200 exact card IDs and preserves first-seen order.
-
-Triage v4 items carry the same four display fields as Search v2 and no
-`primaryText`. Available cards copy the Search-owned projection. Missing or
-malformed resolver rows use explicit unavailable identity. Legacy
-`attention.frontPreview` is not a fallback.
-
-The response retains typed source status, content-check status, counts,
-truncation, priority, reasons, evidence, state and exact Search inspect identity.
-It contains no full preview/media, raw revlog, note values, arbitrary query,
-exception, token or runtime path.
-
-Full contract: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md).
-
-## Canonical exact-card recheck
-
-`POST /api/triage/recheck` is the C1.6 schema-v1 one-card recheck endpoint. It
-uses the same token, POST/JSON-only 8 KiB boundary and `QueryOp` serialization
-as Triage query. The strict request contains one card ID, expected note ID,
-1..4 current stable reason IDs and the current period/deck scope.
-
-The service delegates to canonical learning, active Signal, Search identity and
-Inspection Profile evaluators for only that card. Typed source/entity status
-fails closed; incomplete evidence cannot return Resolved. Full API and UX
-contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md) and
-[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
+Полный контракт: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
 
 ## Inspection Profiles API
 
-`POST /api/inspection-profiles/query`, `/validate` and `/update` use the current
-token, strict JSON and 64 KiB cap. Query returns bounded note-type structures,
-fingerprints, lifecycle, stored profile and non-authoritative suggestion.
-Validation is read-only; update performs explicit local profile-store changes
-with optimistic revision/fingerprint checks.
+```text
+POST /api/inspection-profiles/query
+POST /api/inspection-profiles/validate
+POST /api/inspection-profiles/update
+```
 
-Only confirmed/current profiles create content reasons. Suggested, disabled,
-needs-review, missing/future/corrupt/unavailable states fail closed.
+Endpoints используют current token, strict JSON и cap 64 KiB.
 
-Full contract: [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
+Query возвращает bounded structures, fingerprints, lifecycle, stored profile и non-authoritative suggestion. Validation read-only. Update изменяет local profile store с optimistic revision/fingerprint checks.
+
+Content reasons создают только confirmed/current profiles. Suggested, disabled, needs-review, missing, future, corrupt и unavailable states fail closed.
+
+Полный контракт: [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
 ## Entity actions API
 
-`POST /api/entities/cards/actions` and `/api/entities/notes/actions` require token,
-POST, JSON and an 8 KiB cap.
+```text
+POST /api/entities/cards/actions
+POST /api/entities/notes/actions
+```
+
+Требования: token, POST, JSON, body cap 8 KiB.
 
 Card allowlist:
 
@@ -241,112 +222,71 @@ Note allowlist:
 add_tags | remove_tags
 ```
 
-Batches contain 1..200 exact decimal IDs. Stale IDs reject the full batch.
-Mutations use official Anki operation wrappers and one native undo step. Generic
-method invocation, SQL and arbitrary commands are prohibited.
+Batch содержит `1..200` exact decimal IDs. Один stale ID отклоняет весь batch. Mutations используют official Anki wrappers и один native undo step.
 
-Full contract: [`search-v1-and-safe-actions.md`](search-v1-and-safe-actions.md).
+Action success, включая `action.no_changes`, не доказывает resolution Cards. Resolution определяется только явным `/api/triage/recheck`.
 
-## Settings and profile APIs
+## Settings и Profile API
 
-`GET/POST /api/dashboard/settings` exposes normalized public settings and accepts
-only allowlisted partial patches. Unknown/internal fields fail with
-`invalid_settings`.
+`GET/POST /api/dashboard/settings` публикует normalized public settings и принимает только allowlisted partial patches.
 
-`GET/POST /api/profile` exposes public profile data. Writable fields remain
-bounded (`customStudyStartedOn`, `deckOverviewSort`); computed identity and
-metrics are not writable.
+`GET/POST /api/profile` публикует public profile data. Writable fields:
 
-## Statistics and FSRS
+```text
+customStudyStartedOn
+deckOverviewSort
+```
 
-`POST /api/statistics/query` accepts typed scope/period/granularity/comparison
-only. `POST /api/statistics/fsrs/query` accepts the documented read-only FSRS
-operations. Neither endpoint accepts arbitrary search/SQL or publishes raw
-revlog/card/note rows.
+Computed identity и metrics read-only.
 
-## Notification and telemetry boundaries
+## Statistics и FSRS
 
-Notification endpoints use schema v1 bounded lists/preferences and local
-notification IDs. Telemetry endpoints accept only opt-in bounded technical
-event contracts. Collection content, field names/values, Search queries,
-card/note/deck IDs, compact display text, media filenames and token-bearing URLs
-are excluded from remote telemetry.
+`POST /api/statistics/query` принимает typed scope/period/granularity/comparison.
+
+`POST /api/statistics/fsrs/query` принимает documented read-only FSRS operations.
+
+Arbitrary search/SQL и raw revlog/card/note rows запрещены.
+
+## Notifications и telemetry
+
+Notification endpoints используют bounded schema v1 и local notification IDs. Telemetry endpoints принимают только opt-in bounded technical events.
+
+Remote telemetry исключает collection content, field names/values, Search queries, card/note/deck IDs, compact display text, media filenames и token-bearing URLs.
 
 ## Payload source of truth
 
-Backend report builder:
+Backend:
 
 ```text
 anki_study_report/dashboard_payload.py
 ```
 
-Frontend report type:
+Frontend:
 
 ```text
 web-dashboard/src/types/report.ts
 ```
 
-Stable report sections include:
+Canonical Cards использует `/api/triage/query` и `/api/triage/recheck`. Legacy `attentionCards` остаётся compatibility surface для других consumers.
 
-```text
-metadata
-summary
-kpis
-answerDistribution
-activity
-comparison
-decks
-attentionCards
-attentionCardsStatus
-noteTypeCatalog
-forecast
-fsrs
-recommendations
-cache
-today
-profile
-activityHub
-deckHub
-statisticsHub
-```
+## Preview и media
 
-`today`, `profile`, `activityHub`, `deckHub` and `statisticsHub` remain their
-specialized dashboard slices. Canonical Cards reads `/api/triage/query`, not
-legacy `attentionCards`. Legacy `attentionCards` remains a report compatibility
-surface for other consumers.
+Search inspect содержит sanitized `renderedPreview` рядом с compact identity. Full preview загружается только для active card.
 
-## Preview and media
-
-Search card inspect includes the existing sanitized `renderedPreview` alongside
-compact identity. Compact identity and full preview are different products.
-Only the active card loads full preview data.
-
-Media URLs use:
+Media URL:
 
 ```text
 /api/media?name=<validated-media-name>&token=<token>
 ```
 
-Backend filename validation, sanitizer, Shadow DOM isolation and token checks
-remain mandatory. Arbitrary `file:`, `javascript:`, iframe or template
-JavaScript execution is prohibited.
+Обязательны backend filename validation, sanitizer, Shadow DOM isolation и token checks. `file:`, `javascript:`, iframe и template JavaScript execution запрещены.
 
-## Current Cards verification state
+## Текущий статус Core
 
 ```text
 C1.5R.0–R.7 — Complete; owner accepted
-C1.6 — Implemented / verification complete; owner acceptance pending
+C1.6 — Complete; owner accepted; merged into core
 C1.6B — Conditional; not started
+Core C1 — Complete
+C2 — Next; not started
 ```
-
-Historical R2 evidence kept Search v2 and then-current Triage v3 unchanged. Owner-checkout focused frontend,
-package validation and the canonical non-Docker gate passed for the implementation
-tree committed as `edad09e8ffae443b94e192b266084abb66c37adf`. R3 is now Next, not started.
-
-## C1.5R.3 preview semantics
-
-See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.
-
-## C1.5R.4 independent candidate sources
-
-See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.

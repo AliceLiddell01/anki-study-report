@@ -1,79 +1,54 @@
-# Core product track
+# Продуктовая ветка Core
 
-**Track:** `C`
+**Трек:** `C`  
+**Роль:** единственный обязательный последовательный путь основного add-on  
+**Текущий статус:** `C1 Complete`; `C1.6B Conditional`; `C2 Next, not started`
 
-**Role:** the only mandatory sequential path for the main add-on
+Core не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные треки могут развиваться независимо, но не меняют критерии завершения Core.
 
-**Current status:** `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Implemented / verification complete, owner acceptance pending; `C1.6B` Conditional
+## Модель поставки
 
-Core does not depend on gamification, accounts, telemetry admin UI, or extension
-packs. Parallel tracks may advance independently but do not change core
-completion criteria.
+Core разрабатывается в долгоживущей ветке `core`.
 
-## Delivery model
+- `C1` и `C2` выполняются последовательно;
+- merge в `master`, release tag, GitHub Release, `.ankiaddon`, deployment и публикация AnkiWeb требуют отдельного owner approval;
+- sync с `master` выполняется осознанно и документируется;
+- unrelated commits не merge/rebase/cherry-pick-ятся автоматически;
+- force-push запрещён без явного owner approval;
+- commit messages описывают фактическое изменение.
 
-Core is developed in the long-lived `core` branch.
+Baselines:
 
-- `C1` and `C2` proceed sequentially in the same branch;
-- no PR, merge to `master`, release tag, GitHub Release, `.ankiaddon`, deployment,
-  or AnkiWeb publication occurs without separate owner approval after a stable
-  Core build;
-- synchronization with `master` is deliberate and documented;
-- unrelated commits are not merged, rebased, or cherry-picked automatically;
-- force-push is prohibited without explicit owner approval;
-- commit messages describe the actual change.
+- [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md);
+- [`reports/core/c1-5r-0-recovery-baseline.md`](../../reports/core/c1-5r-0-recovery-baseline.md).
 
-The original branch baseline is in
-[`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md).
-The corrective C1.5R baseline is in
-[`reports/core/c1-5r-0-recovery-baseline.md`](../../reports/core/c1-5r-0-recovery-baseline.md).
-
-## Sequence
+## Последовательность
 
 ```text
-C1 Cards v2 / Problem Triage
-→ C2 Core 1.0 Hardening
-→ C3 Contextual Additions, only for a proven gap
+C1 Cards v2 / Problem Triage — Complete
+→ C2 Core 1.0 Hardening — Next
+→ C3 Contextual Additions — только при доказанном пробеле
 ```
 
-Selected hardening may occur inside C1 only when required for a safe triage
-implementation. Full contract freeze and release closure remain C2 work.
+# C1 — Cards v2 / Problem Triage
 
-## C1 — Cards v2 / Problem Triage
+**Статус:** Complete
 
-**Status:** In progress — C1.5R complete; C1.6 implemented and verified, owner acceptance pending
+## Завершённые increments
 
-### Completed and active increments
+| Increment | Статус | Основной источник |
+| --- | --- | --- |
+| `C1.0 — Core branch baseline` | Complete | [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md) |
+| `C1.1 — Product contract` | Complete | [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md) |
+| `C1.2 — Canonical triage model and read API` | Complete | [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md) |
+| `C1.3 — Inspection Profiles: contract and runtime` | Complete | [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md) |
+| `C1.4 — Inspection Profiles: user configuration` | Complete | [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md) |
+| `C1.5 — Canonical Cards workspace` | Historical technical evidence; product acceptance withdrawn | [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md) |
+| `C1.5R — UX remediation` | R0–R7 Complete; owner accepted | reports C1.5R |
+| `C1.6 — Canonical single-card resolution loop` | Complete; owner accepted; merged | [`docs/cards-v2-resolution-loop.md`](../../docs/cards-v2-resolution-loop.md) |
+| `C1.6B — Bounded bulk actions` | Conditional; not started | отдельный activation decision |
 
-- `C1.0 — Core branch baseline`: Complete —
-  [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md)
-- `C1.1 — Product contract`: Complete —
-  [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md)
-- `C1.2 — Canonical triage model and read API`: Complete —
-  [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md),
-  Fast CI `29637594843` PASS
-- `C1.3 — Inspection Profiles: contract and runtime`: Complete —
-  [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md),
-  real-Anki `29641398848` PASS
-- `C1.4 — Inspection Profiles: user configuration`: technical runtime/API
-  foundation accepted; configuration UX included in C1.5R remediation —
-  [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md),
-  historical real-Anki `29644836731` PASS
-- `C1.5 — Canonical Cards workspace`: historical technical evidence retained;
-  owner visual/product acceptance withdrawn —
-  [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md),
-  Fast CI `29648956309` PASS, real-Anki `29649071545` PASS
-- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R7 complete; owner accepted
-- `C1.6 — Canonical single-card resolution loop`: Implemented / verification complete; owner acceptance pending —
-  [`reports/core/c1-6-canonical-single-card-resolution-loop.md`](../../reports/core/c1-6-canonical-single-card-resolution-loop.md)
-- `C1.6B — Bounded bulk actions`: Conditional; not started
-
-C1.5's green runs prove that the old implementation executed and produced the
-expected technical artifact. They do not establish product correctness after
-owner review rejected display identity, preview semantics, candidate scope,
-Cards presentation, and the normal Inspection Profiles path.
-
-### C1.5R decomposition
+## C1.5R decomposition
 
 ```text
 C1.5R.0 Recovery and corrective baseline — Complete
@@ -86,227 +61,178 @@ C1.5R.6 Guided Inspection Profiles UX — Complete
 C1.5R.7 Integrated acceptance and owner decision — Complete
 ```
 
-#### C1.5R.0 — Recovery and corrective baseline
+### C1.5R.1 — Canonical card display identity
 
-**Status:** Complete
+Одна backend-projected compact identity используется Search, Triage, Cards queue и Inspector. Search query/inspect schema v2; note mode сохраняет note `primaryText`; card alias удалён.
 
-Owns recovery, evidence separation, corrected status, display-contract baseline,
-roadmap/handoff amendments, and safe removal of premature remote red tests. It
-changes no production code or public schema and runs no heavy gate.
+Отчёт:
 
-#### C1.5R.1 — Canonical card display identity
+- [`reports/core/c1-5r-1-canonical-card-display-identity.md`](../../reports/core/c1-5r-1-canonical-card-display-identity.md).
 
-**Status:** Complete
+### C1.5R.2 — Declarative compact formatter runtime
 
-Owns one backend-projected compact identity shared by Search card rows/details,
-Triage, Cards queue, and Cards Inspector heading. It removes unrelated-field
-fallback and introduces Search query/inspect schema v2 plus Triage schema v3.
-Search metadata remains v1. Card `primaryText` aliases are removed while note
-mode retains note `primaryText`.
+Реализованы strict schema v1, profile-local atomic store, exact/default/disabled resolver, safe token runtime и formatter API. Arbitrary code и formatter UI не добавлены.
 
-The implementation, strict parsers, RU/EN fallback states, focused tests and
-contract docs are committed. Exact-HEAD verification passed: Python compile,
-85 focused Python tests, 54 focused Vitest tests and TypeScript typecheck.
-The only discovered defect was test-only fetch-mock typing and was corrected
-in `a46116e43756eceb3820f4eca76b28645a54a3ff`.
-Implementation report:
-[`reports/core/c1-5r-1-canonical-card-display-identity.md`](../../reports/core/c1-5r-1-canonical-card-display-identity.md).
+Отчёт:
 
-It does not implement formatter configuration, preview-side correction,
-candidate-source redesign, Cards inbox redesign, 1024 px drawer, Inspection
-Profiles redesign, or C1.6 actions.
+- [`reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md).
 
-#### C1.5R.2 — Declarative compact formatter runtime
+### C1.5R.3 — Front/back preview semantics
 
-**Status:** Complete
+Inspector показывает native sanitized front, expanded modal — answer/back. Сохраняются sanitizer, media validation, Shadow DOM и accessibility modal.
 
-Owns the independent strict schema v1, profile-local atomic store, exact/default/
-disabled resolver, safe ordered formatter token runtime, Search/Triage identity
-integration, token-protected query/validate/update API, strict TypeScript client,
-package entries and focused documentation/tests. Inspection Profile v1 remains
-unchanged and no arbitrary code or formatter UI is introduced.
+Отчёт:
 
-Owner-checkout focused frontend, typecheck, package validation and the canonical
-non-Docker gate passed for the implementation tree committed and pushed as
-`edad09e8ffae443b94e192b266084abb66c37adf`. The canonical rerun passed 279 frontend tests and 772
-Python tests with five environment-only skips. Fast CI, Docker and real-Anki E2E
-were not required for R2. C1.5R.3 is now Next, not started.
+- [`reports/core/c1-5r-3-front-back-preview-semantics.md`](../../reports/core/c1-5r-3-front-back-preview-semantics.md).
 
-#### C1.5R.3 — Front/back preview semantics
+### C1.5R.4 — Independent triage candidate sources
 
-**Status:** Complete
+Разделены period-bound learning candidates и bounded current-content candidates. Автоматически сканируются только authoritative confirmed Inspection Profiles. Triage query schema v4 использует explicit cursor continuation.
 
-Owns native rendered front in the Inspector and answer/back in expanded preview,
-while preserving sanitizer, media validation, Shadow DOM, modal focus, and
-single-active-card reads. Verification and transfer evidence is recorded in
-[`reports/core/c1-5r-3-front-back-preview-semantics.md`](../../reports/core/c1-5r-3-front-back-preview-semantics.md).
+Отчёт:
 
-#### C1.5R.4 — Independent triage candidate sources
+- [`reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../../reports/core/c1-5r-4-independent-triage-candidate-sources.md).
 
-**Status:** Complete
+### C1.5R.5 — Cards attention inbox redesign
 
-Separates period-bound learning candidates from bounded current-content
-candidates, scans only authoritative confirmed Inspection Profiles, exposes
-strict schema v4 continuation/source state, and keeps Search schema v2 and the
-R1–R3 identity/preview contracts unchanged. Exact implementation and cleanup
-evidence is recorded in
-[`reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../../reports/core/c1-5r-4-independent-triage-candidate-sources.md).
+Реализован identity-led semantic inbox, persistent Inspector от 1200 px и non-modal drawer ниже breakpoint. Spreadsheet table удалена. Learning period явный; current-content continuation ручной и bounded.
 
-#### C1.5R.5 — Cards attention inbox redesign
+Отчёт:
 
-**Status:** Complete
+- [`reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
 
-Implements Variant A: dense identity-led semantic inbox plus persistent Inspector
-from 1200 px, and a full-width queue plus non-modal detail drawer below that
-breakpoint. The rejected spreadsheet table is removed. Learning period is
-explicit, current-content continuation is manual/bounded, and R1/R3/R4/Search v2
-contracts remain unchanged. Verification and visual evidence are recorded in
-[`reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
+### C1.5R.6 — Guided Inspection Profiles UX
 
-#### C1.5R.6 — Guided Inspection Profiles UX
+Suggestion сразу становится clean unsaved Basic draft. Strict editor находится в Advanced. Japanese/Programming defaults понятны без machine IDs.
 
-**Status:** Complete
+Отчёт:
 
-Makes the deterministic suggestion a ready unsaved Basic draft and moves the
-strict runtime editor behind Advanced. Japanese audio and Programming no-audio
-expectations are understandable without exposing machine IDs in the normal path.
-Final evidence is recorded in
-[`reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../../reports/core/c1-5r-6-guided-inspection-profiles-ux.md).
+- [`reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../../reports/core/c1-5r-6-guided-inspection-profiles-ux.md).
 
-#### C1.5R.7 — Integrated acceptance and owner decision
+### C1.5R.7 — Integrated acceptance
 
-**Status:** Complete
+Candidate `df633563490f80346617871ec5640adf99154956` прошёл focused harness regression, canonical non-Docker и full real-Anki E2E с restart. Owner product acceptance получен.
 
-Candidate `df633563490f80346617871ec5640adf99154956` passed focused harness regression, canonical non-Docker verification and clean full real-Anki E2E with restart. Owner product acceptance is recorded. R7 did not implement C1.6 or C1.6B. Final evidence is recorded in [`reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
+Отчёт:
 
-### C1 goal
-
-Turn `#/cards` into one problem-triage workflow over the existing Search, Safe
-Actions, Signals, and Notification Center foundations.
-
-### C1 dependencies
-
-- completed product contour through Stage 9.5;
-- native Cards/Notes Search and inspect;
-- allowlisted undoable actions;
-- local typed Signals and notification handoff;
-- isolated card preview host.
-
-### C1 scope
-
-- one bounded queue from canonical issues, active card signals, and explicit
-  Search handoff;
-- stable reason/severity model and deterministic ordering;
-- safe context and preview;
-- reuse of Search/Browser/action contracts;
-- one canonical single-card resolution loop in C1.6;
-- bounded bulk actions only if the separate C1.6B activation criteria are met;
-- detector-driven resolution rather than manual hiding;
-- desktop accessibility, keyboard, RU/EN, light/dark, and bounded performance.
-
-### C1 out of scope
-
-- full Anki editor clone;
-- arbitrary rules, SQL, JavaScript, iframe, or template execution;
-- remote task sync;
-- a second query/action/signal system;
-- mobile-first redesign;
-- C1.6 implementation before accepted C1.5R.7 owner review;
-- C1.6B bulk actions without a separate activation decision.
-
-### C1 completion criteria
-
-- one canonical triage workflow;
-- backend/frontend/types/tests/docs parity;
-- bounded large-fixture behavior;
-- sanitizer, media, action, loopback, token, and privacy boundaries preserved;
-- C1.5R technical verification complete;
-- separate owner product acceptance complete;
-- C1.6 canonical single-card resolution loop completed before C1 closes;
-- C1.6B remains optional unless separately activated.
+- [`reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
 
 ## C1.6 — Canonical single-card resolution loop
 
-**Status:** Implemented / verification complete; owner acceptance pending
+**Статус:** Complete; owner accepted; merged into `core`
+
+Implementation/runtime candidate:
+
+```text
+edaf9030dbba355593e52cf8922d4c7985ce4b75
+```
+
+Final PR head:
+
+```text
+9e4b74b0bc3a0a34590217550a7e8be4263c7fd6
+```
+
+Merged core commit:
+
+```text
+928e3fe749ce6aa4b9c414641c4ef66ac46a694b
+```
+
+Lifecycle:
 
 ```text
 issue
 → existing Safe Action or Open in Anki
 → action result
 → Awaiting recheck
-→ canonical bounded reevaluation
-→ Still active | Resolved | Recheck failed | Evidence stale
+→ exact-card canonical bounded recheck
+→ Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
 ```
 
-C1.6 reuses existing Search, Safe Actions and Anki Browser handoffs. A strict
-exact-card recheck delegates to the canonical Triage evaluators, reconciles
-stable reason IDs and fails closed on partial/unavailable evidence. It does not
-add bulk selection, manual resolve/archive/snooze, a second action system,
-persistent completion state or unbounded reevaluation. Owner review and merge
-remain pending; Core C1 is not declared complete.
+C1.6 добавляет strict `POST /api/triage/recheck` schema v1, reason reconciliation и deterministic focus recovery.
+
+Сохраняются:
+
+- существующие Safe Actions и Open in Anki;
+- Triage query v4 detectors;
+- Search identity/inspect contracts;
+- fail-closed partial/unavailable/stale behavior;
+- single-card scope;
+- RU/EN и accessibility.
+
+Не добавлены bulk selection, manual resolve/archive/snooze, persistent completion state, second detector/action system и unbounded reevaluation.
+
+Verification:
+
+```text
+focused backend/E2E helpers: 81 tests PASS
+frontend: 324 tests PASS
+canonical non-Docker: 324 frontend, 802 Python, 5 skips
+Fast CI 29862254960: PASS
+final-head Fast CI 29863609253: PASS
+targeted standard/cards 29862551442: PASS
+final standard/full 29862800106: PASS
+```
+
+Отдельная проверка на private Anki profile владельца не выполнялась. Local Docker не дублировал successful exact-package cloud E2E.
+
+Контракты и evidence:
+
+- [`docs/cards-v2-resolution-loop.md`](../../docs/cards-v2-resolution-loop.md);
+- [`reports/core/c1-6-canonical-single-card-resolution-loop.md`](../../reports/core/c1-6-canonical-single-card-resolution-loop.md).
 
 ## C1.6B — Bounded bulk actions
 
-**Status:** Conditional; not started
+**Статус:** Conditional; not started
 
-C1.6B activates only after the single-card loop is accepted and separate evidence proves a bounded multi-card task. It is not part of R7 or mandatory C1.6.
+C1.6B активируется только после отдельного evidence, подтверждающего bounded multi-card task, и отдельного owner decision. Он не требуется для завершения C1.
 
-## C2 — Core 1.0 Hardening
+## Критерии завершения C1
 
-**Status:** Planned after C1
+Все обязательные критерии выполнены:
 
-### Goal
+- один canonical triage workflow;
+- parity backend/frontend/types/tests/docs;
+- bounded large-fixture behavior;
+- сохранены sanitizer, media, action, loopback, token и privacy boundaries;
+- C1.5R technical verification и owner acceptance завершены;
+- C1.6 single-card resolution loop реализован, проверен, принят и влит;
+- C1.6B остаётся optional.
 
-Stabilize the existing product as a supportable 1.0 core without adding another
-delivery system.
+# C2 — Core 1.0 Hardening
 
-### Dependencies
+**Статус:** Next; not started
 
-- C1 public workflow and contracts substantially closed;
-- no unresolved C1.5R/C1.6 product or migration blocker;
-- current Fast CI, exact-package GHCR E2E, and manual gated release remain
-  authoritative.
+## Цель
 
-### Scope
+Стабилизировать существующий продукт как поддерживаемый Core 1.0 без новой delivery system и без feature expansion.
 
-- API/schema inventory, versioning, and deprecation policy;
-- migrations, future-schema fail-closed behavior, corruption quarantine, and
-  per-profile isolation;
-- clean install, update, profile switch, restart, and recovery matrix;
-- performance, bundle, query, and history budgets;
-- keyboard/accessibility closure across current core;
-- packaging, rollback, security, and release checklist validation.
+## Зависимости
 
-### Out of scope
+- Core C1 закрыт;
+- отсутствуют unresolved blockers C1.5R/C1.6;
+- Fast CI, exact-package GHCR E2E и manual gated release остаются authoritative.
 
-- new product features;
-- gamification, accounts, telemetry operations, or extension ecosystem;
-- rebuilding delivery infrastructure already covered by the platform track.
+## Scope
 
-## C3 — Contextual Additions
+- inventory API/schema, versioning и deprecation policy;
+- migrations, future-schema fail-closed, corruption quarantine и per-profile isolation;
+- matrix clean install, update, profile switch, restart и recovery;
+- performance, bundle, query и history budgets;
+- keyboard/accessibility closure;
+- packaging, rollback, security и release checklist validation.
 
-**Status:** Conditional
+## Вне scope
 
-C3 closes only concrete questions discovered through C1, Signals, or real usage
-that current Statistics, FSRS, and Search cannot answer. Each addition must name
-the user decision, data availability, bounded query, placement, interpretation,
-and verification scope. If no justified gap exists, C3 closes without feature
-expansion.
+- новые product features;
+- gamification, accounts, telemetry operations или extension ecosystem;
+- rebuild delivery infrastructure, уже покрытой Platform track.
 
-## Historical C1.5R.5 closeout
+# C3 — Contextual Additions
 
-C1.5R.5 is complete after clean reconstruction on `b2d812b4dd303965030108991858fb4bc779e73e`, focused
-frontend/backend verification, exact production build and package validation,
-isolated baseline/R5 Playwright evidence, canonical non-Docker verification and
-clean transfer. Tested implementation: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`.
-At that snapshot C1.5R.6, R7 and C1.6 were still pending; current status is
-recorded at the top of this file.
+**Статус:** Conditional
 
-## Historical C1.5R.6 completion
+C3 закрывает только конкретные gaps, найденные через C1, Signals или реальное использование, на которые текущие Statistics, FSRS и Search не могут ответить.
 
-Guided Inspection Profiles is complete: generated drafts are immediate and clean,
-Basic is the normal path, Advanced preserves strict v1, Japanese/Programming
-defaults are understandable, lifecycle/conflict/accessibility/security contracts
-are covered, and deterministic Chromium evidence is recorded. At that snapshot
-C1.5R.7 and C1.6 were still pending; current status is recorded at the top of
-this file. C1.6B remains Conditional.
+Каждое addition обязано определить user decision, data availability, bounded query, placement, interpretation и verification scope. При отсутствии доказанного gap C3 закрывается без feature expansion.

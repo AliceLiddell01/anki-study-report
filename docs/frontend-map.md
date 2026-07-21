@@ -1,9 +1,8 @@
 # Карта frontend dashboard
 
-Снимок документации: 2026-07-20.
+**Снимок документации:** 2026-07-22
 
-Current contracts live in `docs/`; sequencing lives in `roadmap/`; historical
-reports and audits live in `reports/`.
+Актуальные contracts находятся в `docs/`, sequencing — в `roadmap/`, historical reports и audits — в `reports/`.
 
 ## Source of truth
 
@@ -19,57 +18,53 @@ web-dashboard/src/types/
 web-dashboard/src/i18n/
 ```
 
-`App.tsx` reads the dashboard token from `window.location.search`. Frontend never
-reads the Anki collection directly. Theme and RU/EN preferences remain local and
-independent.
+`App.tsx` читает dashboard token из `window.location.search`. Frontend не читает Anki collection напрямую. Theme и RU/EN preferences остаются local и independent.
 
-## Primary routes
+## Основные routes
 
 ```text
 Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-| Route | Component | Primary data/API | Main risk |
+| Route | Component | Data/API | Главный риск |
 | --- | --- | --- | --- |
 | `#/home` | `HomePage` | `StudyReport.today` | current-day vs historical scope |
 | `#/calendar` | `CalendarPage` | `activityHub` | date/scope availability |
-| `#/stats` | statistics pages | statistics/FSRS APIs | bounded latest-wins queries |
+| `#/stats` | statistics pages | Statistics/FSRS API | bounded latest-wins queries |
 | `#/decks` | `DecksPage` | `deckHub`, Browser action | direct/subtree semantics |
 | `#/search` | `SearchPage` | Search v2, metadata v1 | strict parsing, exact IDs |
-| `#/cards` | `CardsPage` | Triage v4, Search inspect v2 | bounded accumulation, active preview, responsive detail |
-| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | Inspection Profiles APIs | exact refs, lifecycle, local drafts |
+| `#/cards` | lazy `CardsPage` | Triage query v4, recheck v1, Search inspect v2 | bounded accumulation, action/recheck races, focus, responsive detail |
+| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | Inspection Profiles API | exact refs, lifecycle, local drafts |
 
-## Canonical card identity and preview
+## Canonical card identity и preview
 
-One backend exact-card projector supplies Search row/details and Triage item
-identity. Frontend `cardDisplayText()` localizes only explicit `media_only` and
-`unavailable` states; it does not inspect arbitrary note fields.
+Один backend exact-card projector предоставляет identity Search row/details и Triage item.
+
+`cardDisplayText()` локализует только explicit states `media_only` и `unavailable` и не анализирует arbitrary note fields.
 
 ```text
 Search query/inspect: schema v2
 Search metadata: schema v1
-Triage automatic/search workset: schema v4
+Triage query: schema v4
+Triage exact-card recheck: schema v1
 ```
 
-Only the active Cards item requests Search inspect. `AnkiCardShadowPreview`
-shows sanitized native front in the Inspector/drawer. The existing
-`AccessibleModal` shows the cached answer/back. Queue items render no full HTML
-and perform no media reads.
+Только active Cards item запрашивает Search inspect. `AnkiCardShadowPreview` показывает sanitized native front в Inspector/drawer. `AccessibleModal` показывает cached answer/back.
 
-## Cards attention inbox
+Queue items не рендерят full HTML и не читают media.
 
-Current topology:
+## Cards attention inbox topology
 
 ```text
 CardsPage
-├─ compact summary + priority/reason/deck/text/period controls
-├─ source/profile coverage warnings and disclosure
+├─ compact summary + controls priority/reason/deck/text/period
+├─ source/profile coverage warnings
 └─ CardsInbox semantic ordered list
-   ├─ >= 1200 px: one persistent CardsDetail Inspector
-   └─ < 1200 px: full-width queue; explicit activation opens CardsDetailDrawer
+   ├─ >= 1200 px: persistent CardsDetail Inspector
+   └─ < 1200 px: full-width queue + CardsDetailDrawer
 ```
 
-Durable modules:
+Основные modules:
 
 ```text
 components/cards/CardsInbox.tsx
@@ -77,41 +72,89 @@ components/cards/CardsDetail.tsx
 components/cards/CardsDetailDrawer.tsx
 hooks/useCardsTriageWorkspace.ts
 hooks/useMediaQuery.ts
+lib/triageApi.ts
 lib/triageOrdering.ts
 lib/triagePagination.ts
 lib/triagePresentation.ts
 styles/cardsInbox.css
 ```
 
-The queue is an ordinary `<ol>` with one native button per item. It is not a
-`table`, ARIA `grid`, `listbox` or roving-tabindex composite. Focus and active
-item remain separate.
+Queue — обычный `<ol>` с одной native button на item. Это не `table`, ARIA `grid`, `listbox` или roving-tabindex composite. Focus и active item раздельны.
 
-Wide mode selects the first inspectable item without moving focus. At 1024 px
-there is no persistent Inspector and no automatic preview request. Activation
-opens a labelled non-modal drawer with no backdrop, `aria-modal`, inert shell or
-focus trap. The answer preview remains the only modal.
+Wide mode выбирает первый inspectable item без перемещения focus. На 1024 px persistent Inspector и automatic preview request отсутствуют; explicit activation открывает labelled non-modal drawer без backdrop, `aria-modal`, inert shell и focus trap.
 
-## Period and continuation state
+Answer preview остаётся единственным modal.
 
-The hook owns explicit session-local 7/30/90-day learning scope. Period changes
-restart one automatic v4 request with `contentCursor: null`, abort stale work and
-clear accumulated content pages while preserving local filters.
+## Period и continuation state
 
-Manual content continuation is available only for coherent v4 cursor state. One
-activation sends one request. Accumulation deduplicates items/reasons/sources,
-keeps canonical ordering and is bounded to 500 unique items and 10 additional
-pages. Errors retain prior usable items and retry the same cursor. There is no
-automatic cursor loop.
+Hook владеет session-local learning period:
 
-## Security and action boundary
+```text
+7 дней
+30 дней
+90 дней
+```
 
-- frontend has no collection access;
-- strict v4/v2 parsers reject unknown or incoherent payloads;
-- exact card IDs drive inspect and Open-in-Anki handoff;
-- no display text becomes a native query;
-- sanitizer, validated media URLs and Shadow DOM isolation are unchanged;
-- R5 adds no mutation, selection, resolve/recheck or editor surface.
+Period change запускает один automatic query v4 с `contentCursor: null`, abort-ит stale work, очищает accumulated content pages и сохраняет local filters.
+
+Manual continuation доступен только при coherent cursor state. Одна activation отправляет один request.
+
+Accumulation:
+
+- дедуплицирует items/reasons/sources;
+- сохраняет canonical ordering;
+- bounded до 500 unique items;
+- bounded до 10 additional pages;
+- сохраняет prior usable items после error;
+- не запускает automatic cursor loop.
+
+## C1.6 lifecycle state
+
+`useCardsTriageWorkspace` владеет one-card lifecycle:
+
+```text
+idle
+→ action/open handoff
+→ awaiting_recheck
+→ rechecking
+→ still_active | partially_resolved | resolved | failed | stale
+```
+
+- mutations serialized и не abort-ятся;
+- reads latest-wins и guarded sequence IDs;
+- action success не удаляет item;
+- `recheckTriageCard()` вызывает strict `/api/triage/recheck` v1;
+- reconciliation сравнивает stable `reasonId`;
+- remaining/new reasons обновляют item на месте;
+- item удаляется только после fully authoritative zero-reason response;
+- post-removal focus выбирает next, previous или queue heading.
+
+Safe Actions и Open in Anki остаются существующими paths. Bulk/manual resolution отсутствуют.
+
+## Guided Inspection Profiles workspace
+
+`InspectionProfilesSettingsPage` объединяет:
+
+```text
+BasicProfileEditor
+ProfileValidationResult
+AdvancedProfileDisclosure
+useInspectionProfilesWorkspace
+```
+
+`inspectionProfileBasicView.ts` — pure friendly projection над strict v1.
+
+Hook владеет origin/baseline/user-edit state, latest-wins reads, validation cancellation, serialized mutations и revision conflicts.
+
+## Security boundary
+
+- frontend не имеет collection access;
+- strict parsers v4/v1/v2 отклоняют unknown и incoherent payloads;
+- exact card IDs используются для inspect/recheck/Open in Anki;
+- display text не становится native query;
+- sanitizer, validated media URLs и Shadow DOM isolation сохраняются;
+- client-side resolution inference отсутствует;
+- C1.6 не добавляет second detector/action stack.
 
 ## Focused tests
 
@@ -120,6 +163,7 @@ pages/CardsPage.test.tsx
 hooks/useCardsTriageWorkspace.test.tsx
 components/cards/CardsInbox.test.tsx
 components/cards/CardsDetailDrawer.test.tsx
+lib/triageApi.test.ts
 lib/triagePagination.test.ts
 lib/triageOrdering.test.ts
 hooks/useMediaQuery.test.tsx
@@ -127,26 +171,21 @@ components/AnkiCardShadowPreview.test.tsx
 pages/LocalizationSmoke.test.tsx
 ```
 
-R5 focused verification passed 9 files / 25 Vitest tests, TypeScript typecheck,
-production build/bundle guard and 92 focused backend regressions. The exact
-implementation commit is `a30f4db66e73f3f836e69ba90cfc06974ce3df47`; full evidence is in
-[`../reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
-
-## Current status
+C1.6 frontend suite:
 
 ```text
-C1.5R.0–R.5 — Complete
-C1.5R.6 — Next, not started
-C1.5R.7 — Not started
-C1.6 — Blocked
-Core C1 — In progress
+324 tests PASS
+TypeScript typecheck PASS
+production build PASS
+bundle guard PASS — entry 429,516 bytes
 ```
 
-## Guided Inspection Profiles workspace
+## Текущий статус Core
 
-`InspectionProfilesSettingsPage` composes `BasicProfileEditor`,
-`ProfileValidationResult` and `AdvancedProfileDisclosure` over
-`useInspectionProfilesWorkspace`. `inspectionProfileBasicView.ts` is the pure
-friendly projection over strict v1. The hook owns origin/baseline/user-edit state,
-latest-wins reads, validation cancellation, serialized mutations and conflicts.
-Dedicated visual rules live in `styles/inspectionProfiles.css`.
+```text
+C1.5R.0–R.7 — Complete; owner accepted
+C1.6 — Complete; owner accepted; merged into core
+C1.6B — Conditional; not started
+Core C1 — Complete
+C2 — Next; not started
+```

@@ -1,33 +1,33 @@
-# Card preview semantics
+# Семантика предпросмотра карточки
 
-## Contract
+## Контракт
 
-Compact Search/Cards identity and full card preview are separate systems.
+Компактная идентичность карточки в Search/Cards и полный предпросмотр карточки — разные системы.
 
-- Queue rows use only compact identity.
-- One active Inspector card receives one Search inspect payload.
-- Inspector renders the sanitized native **front**.
-- The expanded dialog renders the sanitized native **answer/back**.
-- The frontend never concatenates front and back. Anki resolves `{{FrontSide}}` while rendering the answer.
+- Строки очереди используют только компактную идентичность.
+- Для одной активной карточки Inspector получает один payload Search inspect.
+- Inspector отображает санитизированную нативную **лицевую сторону**.
+- Развёрнутый диалог отображает санитизированный нативный **ответ / оборотную сторону**.
+- Frontend никогда не объединяет лицевую и оборотную стороны вручную. Anki подставляет `{{FrontSide}}` при рендеринге ответа.
 
-## Native source
+## Нативный источник
 
-For Anki 26.05+, full preview calls `Card.render_output(reload=True, browser=False)` once. Its question, answer, CSS, question AV tags and answer AV tags are projected into the existing `RenderedCardPreview` payload. Browser Appearance remains exclusive to compact display identity.
+Для Anki 26.05+ полный предпросмотр один раз вызывает `Card.render_output(reload=True, browser=False)`. Его question, answer, CSS, question AV tags и answer AV tags преобразуются в существующий payload `RenderedCardPreview`. Режим Browser Appearance используется только для компактной display identity.
 
-If `render_output()` is unavailable, the explicit adapter uses reviewer `card.question(reload=True, browser=False)` and `card.answer()`. Unsupported signatures fail safely into the existing sanitized template renderer.
+Если `render_output()` недоступен, явный адаптер использует reviewer-вызовы `card.question(reload=True, browser=False)` и `card.answer()`. Неподдерживаемые сигнатуры безопасно переводят обработку на существующий санитизированный template renderer.
 
-## Media and safety
+## Медиа и безопасность
 
-Front replaces question AV markers. Answer replaces both question and answer AV markers because an answer may contain `FrontSide`. `mediaRefs` is a deduplicated union of both sides. Rendering never reads media bytes.
+На лицевой стороне заменяются question AV markers. На стороне ответа заменяются и question, и answer AV markers, поскольку ответ может содержать `FrontSide`. `mediaRefs` представляет собой дедуплицированное объединение ссылок обеих сторон. Рендеринг никогда не читает байты медиафайлов.
 
-Sanitizer allowlists, URL/path validation, CSS redaction and Shadow DOM isolation remain mandatory. Card JavaScript, iframe/object/embed, remote/file URLs and token/path disclosure remain prohibited.
+Allowlist санитайзера, проверка URL и путей, очистка CSS и изоляция Shadow DOM остаются обязательными. Запрещены JavaScript карточек, `iframe`/`object`/`embed`, удалённые и `file:` URL, а также раскрытие token или локального пути.
 
-## Layout and accessibility
+## Layout и доступность
 
-Inspector fits content to width inside a bounded vertically scrollable region. The answer dialog uses a wider content region, fits to width only and relies on natural modal vertical scrolling. Image and font readiness remeasure the layout.
+Inspector вписывает содержимое по ширине внутри ограниченной области с вертикальной прокруткой. Диалог ответа использует более широкую область, вписывает содержимое только по ширине и полагается на естественную вертикальную прокрутку modal. После готовности изображений и шрифтов layout измеряется повторно.
 
-The shared modal keeps the application shell inert, focuses the visible title, traps Tab/Shift+Tab, closes on Escape and restores focus to the invoking control when it still exists.
+Общий modal делает application shell неактивным, переводит focus на видимый заголовок, удерживает `Tab`/`Shift+Tab`, закрывается по `Escape` и возвращает focus на вызвавший control, если он всё ещё существует.
 
-## Reads
+## Чтения
 
-Opening the answer dialog reuses the active inspect payload. Queue rows do not receive full preview data or media reads.
+Открытие диалога ответа переиспользует payload активного Search inspect. Строки очереди не получают данные полного предпросмотра и не инициируют чтение медиа.
