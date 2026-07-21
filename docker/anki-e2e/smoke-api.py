@@ -226,13 +226,7 @@ def assert_inspection_profiles_contract(
         base_url,
         "/api/triage/query",
         token,
-        {
-            "schemaVersion": 4,
-            "dataset": "search_workset",
-            "cardIds": card_ids,
-            "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
-            "limit": min(200, max(1, len(card_ids))),
-        },
+        inspection_triage_request(card_ids),
     )
     assert_true(triage.get("schemaVersion") == 4, "canonical triage v4 is active")
     triage_items = triage.get("items") if isinstance(triage.get("items"), list) else []
@@ -279,13 +273,7 @@ def assert_inspection_profiles_contract(
         base_url,
         "/api/triage/recheck",
         token,
-        {
-            "schemaVersion": 1,
-            "cardId": recheck_item["cardId"],
-            "expectedNoteId": recheck_item["noteId"],
-            "reasonIds": [reason["reasonId"] for reason in recheck_item["reasons"]],
-            "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
-        },
+        inspection_recheck_request(recheck_item),
     )
     assert_true(recheck.get("schemaVersion") == 1, "canonical exact-card recheck v1 is active")
     assert_true(recheck.get("cardId") == recheck_item["cardId"], "recheck evaluates only the requested card")
@@ -369,6 +357,26 @@ def search_note_type_cards(base_url: str, token: str, note_type_id: str, request
     items = response.get("items") if isinstance(response.get("items"), list) else []
     assert_true(items, f"Search returns cards for note type {note_type_id}")
     return [item for item in items if isinstance(item, dict)]
+
+
+def inspection_triage_request(card_ids: list[str]) -> dict[str, Any]:
+    return {
+        "schemaVersion": 4,
+        "dataset": "search_workset",
+        "cardIds": list(card_ids),
+        "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+        "limit": min(200, max(1, len(card_ids))),
+    }
+
+
+def inspection_recheck_request(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schemaVersion": 1,
+        "cardId": item["cardId"],
+        "expectedNoteId": item["noteId"],
+        "reasonIds": [reason["reasonId"] for reason in item["reasons"]],
+        "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+    }
 
 
 def reasons_for_note_type(items: list[Any], note_type_id: str) -> list[dict[str, Any]]:

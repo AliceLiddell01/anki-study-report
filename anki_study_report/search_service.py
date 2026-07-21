@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from html import unescape
 from html.parser import HTMLParser
+import heapq
 import math
 import re
 from typing import Any
@@ -144,9 +145,11 @@ def execute_search_query(
     native_query = build_native_query(col, request)
     found = col.find_cards(native_query, order=False) if request["mode"] == "cards" else col.find_notes(native_query, order=False)
 
-    ids = sorted({_coerce_entity_id(value) for value in found}, reverse=request["sort"]["direction"] == "desc")
-    truncated = len(ids) > RESULT_CAP
-    bounded_ids = ids[:RESULT_CAP]
+    bounded_ids, truncated = _bounded_sorted_entity_ids(
+        found,
+        limit=RESULT_CAP,
+        reverse=request["sort"]["direction"] == "desc",
+    )
     bounded_total = len(bounded_ids)
     page = request["page"]
     page_size = request["pageSize"]
@@ -176,6 +179,43 @@ def execute_search_query(
     if request.get("requestId") is not None:
         response["requestId"] = request["requestId"]
     return response
+
+
+def _bounded_sorted_entity_ids(
+    values: Any,
+    *,
+    limit: int,
+    reverse: bool,
+) -> tuple[list[int], bool]:
+    """Select deterministic IDs with O(limit) add-on memory.
+
+    Anki's public find_cards/find_notes API still returns its complete native
+    sequence. This helper prevents a second full-size set and sorted list in
+    the add-on while preserving the existing hard result cap.
+    """
+
+    bounded_limit = max(1, int(limit))
+    heap: list[int] = []
+    selected: set[int] = set()
+    truncated = False
+    for raw_value in values:
+        entity_id = _coerce_entity_id(raw_value)
+        if entity_id in selected:
+            continue
+        heap_value = entity_id if reverse else -entity_id
+        if len(heap) < bounded_limit:
+            heapq.heappush(heap, heap_value)
+            selected.add(entity_id)
+            continue
+        boundary = heap[0] if reverse else -heap[0]
+        better = entity_id > boundary if reverse else entity_id < boundary
+        truncated = True
+        if not better:
+            continue
+        removed = heapq.heapreplace(heap, heap_value)
+        selected.remove(removed if reverse else -removed)
+        selected.add(entity_id)
+    return sorted(selected, reverse=reverse), truncated
 
 
 def execute_search_inspect(
