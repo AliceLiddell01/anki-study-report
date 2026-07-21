@@ -1,115 +1,115 @@
-# Канонический цикл решения одной карточки
+# Канонический цикл решения проблемы одной карточки
 
 ## Статус
 
 **Этап:** `C1.6`  
 **Поставка:** реализовано, проверено, принято владельцем и влито в `core`  
-**Merge commit:** `928e3fe749ce6aa4b9c414641c4ef66ac46a694b`  
+**Merge-коммит:** `928e3fe749ce6aa4b9c414641c4ef66ac46a694b`  
 **Scope:** одна активная карточка автоматической очереди за раз
 
-Cards Inspector и drawer на 1024 px используют один lifecycle:
+Inspector Cards и выдвижная панель при ширине 1024 px используют один жизненный цикл:
 
 ```text
-issue
+проблема
 → существующий Safe Action или Open in Anki
 → результат действия
 → Awaiting recheck
-→ каноническая bounded-перепроверка точной карточки
+→ каноническая ограниченная перепроверка конкретной карточки
 → Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
 ```
 
-Успешное действие, включая `action.no_changes`, никогда само по себе не доказывает resolution. Ограничение очереди и исчезновение карточки из первых 100 строк также не являются доказательством resolution.
+Успешное действие, включая `action.no_changes`, никогда само по себе не доказывает устранение проблемы. Ограничение очереди и исчезновение карточки из первых 100 строк также не являются доказательством.
 
 ## Пути действий
 
-- Для learning issues показываются только применимые существующие single-card Safe Actions: `suspend`/`unsuspend` и `bury`/`unbury`.
-- Для content-only issues основным путём редактирования остаётся Open in Anki; при необходимости показывается переход к Inspection Profiles.
-- Open in Anki является handoff, а не заявлением о mutation. После успешного handoff item остаётся активным до явной перепроверки.
-- Одновременно выполняется не более одной mutation. Mutation requests не отменяются.
-- Reads используют latest-wins cancellation и sequence guards: устаревший open, inspect или recheck response не может заменить более новое состояние active card.
+- Для проблем обучения показываются только применимые существующие Safe Actions для одной карточки: `suspend`/`unsuspend` и `bury`/`unbury`.
+- Для проблем только с содержимым основным путём редактирования остаётся Open in Anki; при необходимости показывается переход к Inspection Profiles.
+- Open in Anki является передачей управления, а не заявлением о mutation. После успешной передачи элемент остаётся активным до явной перепроверки.
+- Одновременно выполняется не более одной mutation. Запросы mutation не отменяются.
+- Чтения используют отмену по latest-wins и sequence guards: устаревший ответ open, inspect или recheck не может заменить более новое состояние активной карточки.
 
 В C1.6 не входят:
 
-- bulk selection и checkbox;
-- manual Done/Resolve/Hide/Archive/Snooze;
-- persistent completion store;
-- второй action или detector stack.
+- массовый выбор и checkbox;
+- ручные Done, Resolve, Hide, Archive и Snooze;
+- постоянное хранилище завершения;
+- второй стек действий или детекторов.
 
-`C1.6B` остаётся Conditional.
+`C1.6B` остаётся условным этапом.
 
-## Каноническая перепроверка точной карточки
+## Каноническая перепроверка конкретной карточки
 
 `POST /api/triage/recheck` schema v1 принимает:
 
 - один `cardId`;
 - ожидаемый `noteId`;
 - текущие стабильные `reasonIds`;
-- текущий Cards scope.
+- текущий scope Cards.
 
 Endpoint:
 
-- loopback-only;
-- token-protected;
+- доступен только через loopback-интерфейс;
+- защищён токеном;
 - принимает только JSON;
-- ограничен 8 KiB;
-- сериализован через существующий `QueryOp` bridge.
+- ограничен 8 КиБ;
+- сериализован через существующий bridge `QueryOp`.
 
 Service оценивает только запрошенную карточку и переиспользует те же канонические компоненты, что и Triage v4:
 
-- bounded learning detectors в выбранном period/deck scope;
-- active local Signal projection;
-- Search-owned identity точной карточки;
-- current confirmed Inspection Profiles.
+- ограниченные детекторы обучения в выбранных периоде и scope колод;
+- проекцию активных локальных Signals;
+- идентичность конкретной карточки, принадлежащую Search;
+- актуальные подтверждённые Inspection Profiles.
 
-Отсутствуют второй detector stack, client-side inference resolution, автоматический cursor loop и collection-wide scan.
+Отсутствуют второй стек детекторов, клиентское определение устранения, автоматический цикл cursor и проверка всей collection.
 
-Response возвращает `entityStatus`, typed source status, content-check status и текущий canonical item.
+Ответ возвращает `entityStatus`, типизированное состояние источников, состояние проверок содержимого и текущий канонический элемент.
 
-Состояния `partial`, `unavailable` и `error` работают fail closed: прежние reasons остаются active/stale, а UI не может показать Resolved. Предыдущий profile reason также fail closed, если authority profile больше не является current.
+Состояния `partial`, `unavailable` и `error` работают по принципу fail closed: прежние причины остаются активными или устаревшими, а UI не может показать Resolved. Предыдущая причина профиля также работает fail closed, если authority профиля больше не является актуальной.
 
 ## Reconciliation причин
 
 Ключ сравнения — стабильный `reasonId`:
 
-- remaining reasons сохраняют item и обновляют priority, primary reason, evidence, state и recommended step на месте;
-- removed + remaining reasons дают Partially resolved;
-- new reasons явно показываются и сохраняют item active;
-- отсутствие current reasons удаляет item только после полностью authoritative recheck;
-- missing, changed и outside-scope identity имеют отдельные non-success states.
+- оставшиеся причины сохраняют элемент и обновляют на месте приоритет, основную причину, подтверждение, состояние и рекомендуемый шаг;
+- сочетание удалённых и оставшихся причин даёт Partially resolved;
+- новые причины показываются явно и сохраняют элемент активным;
+- отсутствие актуальных причин удаляет элемент только после полностью авторитетного recheck;
+- отсутствующая, изменённая или находящаяся вне scope идентичность имеет отдельное состояние неуспеха.
 
-После удаления focus перемещается:
+После удаления фокус перемещается:
 
-1. на следующий item в той же позиции очереди;
-2. затем на предыдущий item;
-3. на heading очереди, если она стала пустой.
+1. на следующий элемент в той же позиции очереди;
+2. затем на предыдущий элемент;
+3. на заголовок очереди, если она стала пустой.
 
-Filters, загруженные pages и порядок очереди сохраняются.
+Фильтры, загруженные страницы и порядок очереди сохраняются.
 
-## Accessibility и локализация
+## Доступность и локализация
 
-Resolution state использует вежливую live status region и busy state во время action/recheck. Конфликтующие controls временно disabled. Keyboard activation остаётся native. Восстановление focus после удаления детерминировано.
+Состояние решения использует вежливую live-region и busy-state во время действия или recheck. Конфликтующие элементы управления временно отключаются. Активация с клавиатуры остаётся нативной. Восстановление фокуса после удаления детерминировано.
 
-Все новые labels и states имеют RU/EN parity.
+Все новые подписи и состояния имеют паритет RU/EN.
 
-## Verification
+## Проверка
 
-Полное evidence:
+Полные подтверждения:
 
 - [`../reports/core/c1-6-canonical-single-card-resolution-loop.md`](../reports/core/c1-6-canonical-single-card-resolution-loop.md).
 
-Подтверждены:
+Подтверждено:
 
 ```text
-focused backend/E2E helpers: 81 tests PASS
-frontend: 324 tests PASS
+профильные backend- и E2E-вспомогательные тесты: 81 тест — PASS
+frontend: 324 теста — PASS
 Python compileall: PASS
-production build/bundle guard: PASS
-package: 77 entries PASS
-canonical non-Docker: 324 frontend, 802 Python passed, 5 platform skips
+production-сборка и ограничение bundle: PASS
+пакет: 77 записей — PASS
+каноническая проверка без Docker: 324 frontend-теста; 802 Python-теста passed; 5 пропусков платформенных тестов
 Fast CI 29862254960: PASS
-final-head Fast CI 29863609253: PASS
-targeted real-Anki standard/cards 29862551442: PASS
-final full real-Anki 29862800106: PASS
+Fast CI для финального head 29863609253: PASS
+целевой real-Anki standard/cards 29862551442: PASS
+финальный полный real-Anki 29862800106: PASS
 ```
 
-Не выполнялась отдельная проверка на приватном Anki-профиле владельца. Локальный Docker не дублировал успешные exact-package cloud E2E runs.
+Отдельная проверка на приватном профиле Anki владельца не выполнялась. Локальный Docker не повторял успешные cloud E2E-запуски с точным пакетом.
