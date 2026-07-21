@@ -1388,7 +1388,7 @@ async function assertInspectionProfilesWorkspace(page) {
   await priority.selectOption(initialPriority === "high" ? "medium" : "high");
   await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
   const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
-  await page.getByRole("button", { name: "Проверить профиль", exact: true }).click();
+  await page.getByRole("button", { name: "Проверить настройку", exact: true }).click();
   await page.getByRole("heading", { name: "Проверка и ограниченный пример" }).waitFor({ state: "visible", timeout: 30000 });
   const previewScreenshot = await saveStateScreenshot(page, "inspection-profiles", "validated-preview", "light");
 

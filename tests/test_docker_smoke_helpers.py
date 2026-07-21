@@ -113,6 +113,8 @@ def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source()
     assert 'sourceLifecycleText.includes("Не настроен")' in workspace
     assert 'page.locator("#inspection-basic-priority-0")' in workspace
     assert 'initialPriority === "high" ? "medium" : "high"' in workspace
+    assert 'name: "Проверить настройку", exact: true' in workspace
+    assert 'name: "Проверить профиль", exact: true' not in workspace
     assert "Восстановить предложенную настройку" not in workspace
     assert "Использовать подсказку" not in workspace
     assert 'suggestionSourceName: "E2E Generic Basic"' in workspace
