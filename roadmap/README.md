@@ -1,171 +1,160 @@
 # Roadmap Anki Study Report
 
-Snapshot: **2026-07-22**.
+**Снимок:** 2026-07-22
 
-The roadmap has one mandatory core path and several independent or conditional
-tracks. A larger stage number does not create a global queue across unrelated
-tracks. Current production code/tests and current contracts outrank roadmap and
-historical reports when they disagree.
+Roadmap содержит один обязательный путь Core и несколько независимых или условных треков. Больший номер этапа не создаёт общей очереди между несвязанными направлениями. При противоречиях актуальные production-код и тесты и текущие контракты имеют приоритет над roadmap и историческими отчётами.
 
-## Current position
+## Текущее положение
 
-The accepted product contour through **Stage 9.5** remains complete:
+Принятый продуктовый контур до **Stage 9.5** включительно завершён:
 
 ```text
 Foundation / IA / Settings / Profile / Activity / Decks
 → Statistics / FSRS / Localization
 → Search / Safe Actions
-→ Notices / opt-in Telemetry / Signals / Notifications
+→ Notices / телеметрия с явным согласием / Signals / Notifications
 ```
 
-The next mandatory add-on work remains inside Core:
+Следующая обязательная работа над add-on остаётся внутри Core:
 
 ```text
-C1 Cards v2 / Problem Triage
-  ├─ C1.5R remediation — Complete
-  └─ C1.6 canonical single-card resolution loop — Implemented / verification complete; owner acceptance pending
-→ C2 Core 1.0 Hardening
-→ C3 Contextual Additions, only for a proven gap
+C1 Cards v2 / Problem Triage — завершён
+  ├─ C1.5R исправление — завершено
+  ├─ C1.6 канонический цикл решения одной карточки — завершён
+  └─ C1.6B ограниченные массовые действия — условный этап
+→ C2 Core 1.0 Hardening — следующий этап
+→ C3 Contextual Additions — только при доказанном пробеле
 ```
 
-Current core status:
+Текущий статус Core:
 
 ```text
-C1.5 technical implementation evidence — retained historically
-C1.5 owner product acceptance — withdrawn
-C1.5R.0–R.7 — Complete
-Owner product acceptance — Accepted
-C1.6 Canonical single-card resolution loop — Implemented / verification complete; owner acceptance pending
-C1.6B Bounded bulk actions — Conditional
-Core C1 — In progress
+технические подтверждения C1.5 — сохранены как исторические
+продуктовая приёмка C1.5 владельцем — отозвана
+C1.5R.0–R.7 — завершены
+продуктовая приёмка C1.5R владельцем — выполнена
+C1.6 — завершён; принят владельцем; влит в core
+C1.6B — условный этап
+Core C1 — завершён
+C2 — следующий этап; не начат
 ```
 
-See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md),
-the [C1.5R.1 implementation report](../reports/core/c1-5r-1-canonical-card-display-identity.md),
-the [C1.5R.2 implementation report](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md),
-the [C1.5R.3 implementation report](../reports/core/c1-5r-3-front-back-preview-semantics.md),
-the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md), the [C1.5R.6 implementation report](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md), the [C1.5R.7 closeout](../reports/core/c1-5r-7-integrated-acceptance-closeout.md), and the [C1.6 implementation report](../reports/core/c1-6-canonical-single-card-resolution-loop.md).
+См. отчёты:
 
-Parallel tracks do not block `C1` or `C2`:
+- [C1.5R.0 — восстановление и исходное состояние](../reports/core/c1-5r-0-recovery-baseline.md);
+- [C1.5R.1 — каноническая идентичность отображения](../reports/core/c1-5r-1-canonical-card-display-identity.md);
+- [C1.5R.2 — декларативный runtime компактного форматтера](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md);
+- [C1.5R.3 — семантика предпросмотра](../reports/core/c1-5r-3-front-back-preview-semantics.md);
+- [C1.5R.4 — независимые источники кандидатов](../reports/core/c1-5r-4-independent-triage-candidate-sources.md);
+- [C1.5R.5 — переработка очереди Cards](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md);
+- [C1.5R.6 — пошаговая настройка Inspection Profiles](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md);
+- [C1.5R.7 — комплексная приёмка](../reports/core/c1-5r-7-integrated-acceptance-closeout.md);
+- [C1.6 — цикл решения проблемы одной карточки](../reports/core/c1-6-canonical-single-card-resolution-loop.md).
 
-- `G` — Gamification research/product;
-- `O` — Telemetry operations;
-- `I` — Identity continuity, conditional;
-- `E` — Extension ecosystem, deferred/conditional;
-- `CI` — platform, delivery and real-Anki verification.
+Параллельные треки не блокируют `C1` или `C2`:
 
-## Track map
+- `G` — исследование и продуктовая проработка геймификации;
+- `O` — эксплуатация телеметрии;
+- `I` — условная непрерывность идентификации;
+- `E` — отложенная или условная экосистема расширений;
+- `CI` — платформа, поставка и проверка в real-Anki.
 
-| Track | Role | Current status | Does not block |
+## Карта треков
+
+| Трек | Роль | Текущий статус | Что не блокирует |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.7` Complete; `C1.6` implemented/verified, owner pending; `C1.6B` Conditional | — |
-| [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
-| [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
-| [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
-| [Extensions `E`](extensions/README.md) | first-party extension discovery | `E1` Conditional | core release/maturity |
-| [Platform `CI`](platform/README.md) | CI/CD/E2E/release | CI 6B Complete; future work measured | all product tracks |
+| [Core `C`](core/README.md) | единственный критический путь add-on | `C1` завершён; `C2` следующий; `C1.6B` условный | — |
+| [Геймификация `G`](gamification/README.md) | параллельное исследование → необязательный продукт | `G0` следующий; production не одобрен | C1, C2 |
+| [Эксплуатация `O`](operations/README.md) | защищённые административные инструменты телеметрии | `O1` запланирован | C1, C2 |
+| [Идентификация `I`](identity/README.md) | необязательный gate непрерывности | `I1` условный | телеметрию, C1, C2 и локальную геймификацию |
+| [Расширения `E`](extensions/README.md) | обнаружение first-party-расширений | `E1` условный | выпуск и зрелость Core |
+| [Платформа `CI`](platform/README.md) | CI/CD, E2E и release | CI 6B завершён; будущая работа определяется измерениями | все продуктовые треки |
 
-## Dependency view
+## Зависимости
 
 ```text
-Completed Stage 0–9.5
+Завершённые Stage 0–9.5
         │
-        └──────────────→ C1 → C2 → C3?
-                           │
-                           ├─ C1.5R.0–R.7 are Complete; owner acceptance is recorded
-                           ├─ C1.6 is implemented and verification complete; owner acceptance is pending
-                           ├─ C1.6B remains Conditional and is not part of mandatory C1.6
-                           ├─ C1.5R is closed
-                           └─ does not wait for G/O/I/E
+        └──────────────→ C1 завершён → C2 → C3?
+                              │
+                              ├─ C1.5R.0–R.7 завершены и приняты
+                              ├─ C1.6 завершён, принят и влит
+                              ├─ C1.6B остаётся условным и не входит в обязательный C1.6
+                              └─ Core не ждёт G/O/I/E
 
 G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7?/G8?
                          │
-                         └─ G5 may wait for stable C2 contracts
+                         └─ G5 может ждать стабильных контрактов C2
 
-O1 may run independently after telemetry query/authorization contracts exist.
-I1 activates only for a proven cross-installation requirement.
-E1 starts only with a concrete reference pack and stable C2 contracts.
-CI 7 measurement permits at most one justified CI 8/9/10 optimization.
+O1 может выполняться независимо после появления контрактов запросов и авторизации телеметрии.
+I1 активируется только при доказанной необходимости непрерывности между установками.
+E1 начинается только при наличии конкретного reference-pack и стабильных контрактов C2.
+Измерения CI 7 допускают не более одной обоснованной оптимизации CI 8, 9 или 10.
 ```
 
-## Completed product history
+## Завершённая история продукта
 
-Historical Stage 0–9.5 files remain under
-[`roadmap/product/`](product/README.md). They are not mass-renamed because their
-accepted sequence and links remain useful.
+Исторические файлы Stage 0–9.5 остаются в [`roadmap/product/`](product/README.md). Они не переименовываются массово, поскольку принятая последовательность и ссылки остаются полезными.
 
-C1.5's successful Fast CI and real-Anki runs are preserved in historical
-reports. They are not reclassified as failures merely because the product
-acceptance was later withdrawn.
+Успешные запуски Fast CI и real-Anki для C1.5 сохранены в исторических отчётах. Они не переклассифицируются как ошибки только потому, что продуктовая приёмка позднее была отозвана.
 
-## Old to new future mapping
+## Сопоставление старой и новой структуры
 
-| Previous placement | New placement |
+| Прежнее расположение | Новое расположение |
 | --- | --- |
-| Stage 10 Cards v2 | `C1` Core track |
-| Stage 10.5 Core 1.0 Hardening | `C2` Core track |
-| Stage 11 Contextual Analytics | `C3` conditional contextual additions |
-| Stage 12 Extension Foundation | `E1` discovery → `E2` minimal foundation |
-| Stage 13 Analytics Pack | `E3` conditional |
-| Unscheduled Telemetry Admin Dashboard | `O1` planned operational stage |
-| Unscheduled Identity continuity | `I1` conditional gate |
-| Gamification branch without main-roadmap placement | `G0–G8` parallel track |
+| Stage 10 Cards v2 | `C1` трека Core |
+| Stage 10.5 Core 1.0 Hardening | `C2` трека Core |
+| Stage 11 Contextual Analytics | условные контекстные дополнения `C3` |
+| Stage 12 Extension Foundation | обнаружение `E1` → минимальная основа `E2` |
+| Stage 13 Analytics Pack | условный `E3` |
+| Telemetry Admin Dashboard без расписания | запланированный эксплуатационный этап `O1` |
+| непрерывность идентификации без расписания | условный gate `I1` |
+| ветка геймификации вне основной roadmap | параллельный трек `G0–G8` |
 
-Previous future-stage paths remain compatibility pointers.
+Прежние пути будущих этапов сохраняются как указатели совместимости.
 
-## Status vocabulary
+## Словарь статусов
 
-- **Complete** — the named increment's required result exists; product acceptance
-  is explicit where it is a separate gate.
-- **Implemented, focused verification pending** — the implementation candidate,
-  synchronized contracts and focused tests exist, but required execution
-  evidence has not yet passed.
-- **Next** — recommended next stage inside its track.
-- **Planned** — sequenced after explicit dependencies.
-- **Conditional** — activates only when named evidence or trigger exists.
-- **Blocked** — a dependency or acceptance gap prevents start.
-- **Deferred** — intentionally outside the current planning horizon.
-- **Research-only** — not production-ready and not included in package/CI.
+- **Завершено** — обязательный результат указанного этапа существует; продуктовая приёмка указана отдельно, когда является самостоятельным gate.
+- **Реализовано, профильная проверка ожидается** — кандидат реализации, синхронизированные контракты и профильные тесты существуют, но обязательные подтверждения выполнения ещё не прошли.
+- **Следующий этап** — рекомендуемая следующая работа внутри трека.
+- **Запланировано** — находится в последовательности после явных зависимостей.
+- **Условный этап** — активируется только при наличии указанного подтверждения или trigger.
+- **Заблокировано** — зависимость или пробел приёмки не позволяет начать работу.
+- **Отложено** — намеренно находится вне текущего горизонта планирования.
+- **Только исследование** — не готово для production и не входит в пакет или CI.
 
-## Folder boundaries
+## Границы каталогов
 
 ```text
-docs/       current architecture/API/UX/security/operations contracts
-roadmap/    tracks, stages, dependencies and activation criteria
-reports/    historical handoff, audits, measurements and closeout evidence
+docs/       актуальные контракты архитектуры, API, UX, безопасности и эксплуатации
+roadmap/    треки, этапы, зависимости и критерии активации
+reports/    исторические передачи контекста, аудиты, измерения и подтверждения завершения
 ```
 
-- [Documentation index](../docs/README.md)
-- [Historical reports](../reports/README.md)
-- [Decision log](../docs/decision-log.md)
-- [AI handoff](../docs/ai-handoff.md)
+- [Индекс документации](../docs/README.md);
+- [Исторические отчёты](../reports/README.md);
+- [Журнал решений](../docs/decision-log.md);
+- [Передача контекста ИИ](../docs/ai-handoff.md).
 
-## Rules for roadmap changes
+## Правила изменения roadmap
 
-1. Production code/tests outrank roadmap claims.
-2. Every stage states goal, status, dependencies, scope, out of scope,
-   activation, and completion criteria.
-3. Parallel work does not become a core blocker without a documented dependency.
-4. No placeholder route, setting, account, pack, or gamification UI appears
-   before its implementation stage.
-5. Payload/public behavior changes remain synchronized across backend, frontend
-   types, tests, and docs.
-6. Research candidates are not production commitments.
-7. Historical evidence remains under `reports/`; generated/runtime artifacts do
-   not enter git.
-8. Verification follows `docs/test-matrix.md` and
-   `docs/verification-run-policy.md`; docs-only work does not justify Docker E2E.
+1. Production-код и тесты имеют приоритет над утверждениями roadmap.
+2. Каждый этап указывает цель, статус, зависимости, scope, границы, критерии активации и завершения.
+3. Параллельная работа не становится блокером Core без документированной зависимости.
+4. Placeholder-маршрут, настройка, аккаунт, пакет или UI геймификации не появляются до этапа реализации.
+5. Изменения payload и публичного поведения синхронизируются между backend, types frontend, тестами и документацией.
+6. Исследовательские кандидаты не являются обязательствами production.
+7. Исторические подтверждения остаются в `reports/`; сгенерированные и runtime-артефакты не попадают в Git.
+8. Проверка следует `docs/test-matrix.md` и `docs/verification-run-policy.md`; изменение только документации не оправдывает Docker E2E.
 
-## C1.5R complete
-
-C1.5R.0–R.7 are complete. Integrated technical acceptance passed on candidate `df633563490f80346617871ec5640adf99154956`, and owner product acceptance is recorded. C1.6 and C1.6B were not implemented by R7.
-
-## Current Core position
+## Текущая точка Core
 
 ```text
-C1.5R.0–R.7 — Complete
-Owner product acceptance — Accepted
-C1.6 — Implemented / verification complete; owner acceptance pending
-C1.6B — Conditional
-Core C1 — In progress
+C1.5R.0–R.7 — завершены
+продуктовая приёмка C1.5R владельцем — выполнена
+C1.6 — завершён; принят владельцем; влит в core
+C1.6B — условный этап
+Core C1 — завершён
+C2 — следующий этап; не начат
 ```
