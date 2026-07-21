@@ -1,244 +1,186 @@
-# C1.5 — Canonical Cards workspace
+# C1.5 — каноническое рабочее пространство Cards
 
 > [!IMPORTANT]
-> **Amendment after owner product review:** this report is retained as historical
-> technical acceptance evidence. Subsequent owner review withdrew visual/product
-> acceptance. The former statements that C1.5 was product-complete, that C1.6 was
-> next, and that the accepted screenshots established visual coherence are
-> superseded. Current status and corrective decisions are recorded in
-> [`c1-5r-0-recovery-baseline.md`](c1-5r-0-recovery-baseline.md).
+> **Дополнение после продуктовой проверки владельцем:** этот отчёт сохраняется как историческое техническое подтверждение приёмки. Последующая проверка владельцем отозвала визуальную и продуктовую приёмку. Прежние утверждения о завершённости C1.5 на продуктовом уровне, о C1.6 как следующем этапе и о визуальной согласованности принятых скриншотов больше не действуют. Актуальный статус и решения по исправлению зафиксированы в [`c1-5r-0-recovery-baseline.md`](c1-5r-0-recovery-baseline.md).
 
-**Historical technical status:** implementation and exact-SHA gates passed
+**Исторический технический статус:** реализация и gates для точного SHA прошли
 
-**Current product status:** `C1.5 product acceptance — withdrawn`
+**Актуальный продуктовый статус:** `продуктовая приёмка C1.5 — отозвана`
 
-**Current remediation status:** `C1.5R — In progress`; `C1.6 — Blocked`
+**Актуальный статус исправлений:** `C1.5R — выполняется`; `C1.6 — заблокирован`
 
-**Initial branch:** `core`
+**Начальная ветка:** `core`
 
-**Initial HEAD:** `205bf74af77160b346bf96ebb98c3f35bf824bb3`
+**Начальный HEAD:** `205bf74af77160b346bf96ebb98c3f35bf824bb3`
 
-**Initial divergence:** `0 behind / 17 ahead` of `origin/master`; `0 behind /
-0 ahead` of `origin/core`
+**Начальное расхождение:** `0 позади / 17 впереди` относительно `origin/master`; `0 позади / 0 впереди` относительно `origin/core`
 
-**Initial worktree:** clean
+**Начальное рабочее дерево:** чистое
 
-**Open pull requests from `core`:** none
+**Открытые pull requests из `core`:** отсутствуют
 
-## Historical Design Gate
+## Исторический Design Gate
 
-### Sources and constraints
+### Источники и ограничения
 
-The C1.5 audit covered roadmap/handoff, Cards v2 product and triage contracts,
-C1.2–C1.4 reports, current Cards/Search/preview/actions implementations, tests,
-Fast CI, and real-Anki E2E harness.
+Аудит C1.5 охватывал roadmap и handoff, продуктовый контракт Cards v2 и контракт Triage, отчёты C1.2–C1.4, актуальные реализации Cards, Search, предпросмотра и действий, тесты, Fast CI и harness real-Anki E2E.
 
-External sources included the Anki Manual's Browser/Search/Card Templates, Anki
-add-on background-operation guidance, and W3C table/grid/modal-dialog patterns.
-They supported native Browser identity, serialized collection reads, native
-semantic table behavior for the then-selected surface, and portal/focus behavior
-for the expanded modal.
+Внешние источники включали разделы Anki Manual о Browser, Search и Card Templates, рекомендации по фоновым операциям add-on Anki и паттерны W3C для table, grid и modal dialog. Они поддерживали нативную идентичность Browser, сериализованное чтение collection, нативную семантику таблицы для выбранной тогда поверхности и поведение portal и фокуса расширенного модального диалога.
 
-### Legacy baseline audit
+### Аудит устаревшего исходного состояния
 
-Accepted C1.4 real-Anki artifact `29644836731` represented the unchanged legacy
-Cards page and provided twelve 1440 px full-page images:
+Принятый real-Anki-артефакт C1.4 `29644836731` представлял неизменённую устаревшую страницу Cards и содержал двенадцать полностраничных изображений шириной 1440 px:
 
-- APKG table, tiles, and Anki preview in light/dark;
-- synthetic Japanese/Programming table, tiles, and Anki preview in light/dark.
+- APKG в режимах table, tiles и Anki preview в светлой и тёмной темах;
+- синтетические Japanese и Programming в режимах table, tiles и Anki preview в светлой и тёмной темах.
 
-Observed historical full-page heights:
+Наблюдаемая историческая высота полных страниц:
 
-| Fixture | Table | Tiles | Anki preview |
+| Фикстура | Table | Tiles | Anki preview |
 | --- | ---: | ---: | ---: |
-| APKG | 3,133 px | 3,826 px | 9,877 px |
-| Synthetic | 5,743 px | 7,678 px | 19,232 px |
+| APKG | 3133 px | 3826 px | 9877 px |
+| Синтетическая | 5743 px | 7678 px | 19 232 px |
 
-A temporary 1024 px development baseline placed the first actionable row at
-1,111 px, below the 960 px initial viewport, and reached 1,573 px for only three
-rows.
+Временное исходное состояние разработки при 1024 px размещало первую строку с доступным действием на высоте 1111 px, ниже начального viewport 960 px, и достигало 1573 px всего для трёх строк.
 
-The legacy page duplicated diagnosis/KPIs/tabs/problem filter/display modes,
-showed unexplained `riskScore`, rendered full previews for every row, and forced
-long keyboard paths before the queue.
+Устаревшая страница дублировала diagnosis, KPI, tabs, фильтр проблем и режимы отображения, показывала необъяснённый `riskScore`, рендерила полный предпросмотр для каждой строки и создавала длинный клавиатурный путь до очереди.
 
-No screenshot was committed. Historical source inventory was recorded as:
+Скриншоты не коммитились. Историческая инвентаризация исходников была зафиксирована как:
 
 ```text
 artifacts/screenshots/cards/{apkg,synthetic}/{table,tiles,anki-preview}/{light,dark}.png
 ```
 
-### Temporary prototypes and historical decision
+### Временные прототипы и историческое решение
 
-Two temporary local prototypes used the same triage-v2-style fixture:
+Два временных локальных прототипа использовали одну фикстуру в стиле triage v2:
 
-- A: native compact table plus persistent Inspector;
-- B: structured vertical list plus persistent Inspector.
+- A: нативная компактная таблица и постоянный Inspector;
+- B: структурированный вертикальный список и постоянный Inspector.
 
-The original C1.5 decision selected Table A for row comparison and density. That
-decision is historical and is now superseded by the C1.5R product direction:
+Первоначальное решение C1.5 выбрало таблицу A ради сравнения строк и плотности. Это решение является историческим и заменено продуктовым направлением C1.5R:
 
 ```text
-Variant A — identity-led dense inbox list
-wide desktop: dense list + persistent Inspector
-~1024 px: full-width queue + non-modal detail drawer
+Вариант A — плотная очередь, построенная вокруг идентичности карточки
+широкий desktop: плотный список + постоянный Inspector
+около 1024 px: очередь на всю ширину + немодальная панель подробностей
 ```
 
-The rejected spreadsheet-like table is not retained as the C1.5R default or a
-hidden mode. The current corrective contract is
-[`../../docs/card-display-identity.md`](../../docs/card-display-identity.md).
+Отклонённая таблица в стиле электронной таблицы не сохраняется как стандартный или скрытый режим C1.5R. Актуальный исправляющий контракт: [`../../docs/card-display-identity.md`](../../docs/card-display-identity.md).
 
-## Historical implementation
+## Историческая реализация
 
-C1.5 changed `#/cards` to read automatic triage schema v2 for the selected deck
-scope, a fixed seven-day period, and a bounded limit of 100. It implemented one
-native table queue plus persistent Inspector:
+C1.5 перевёл `#/cards` на чтение автоматической schema v2 Triage для выбранного scope колоды, фиксированного семидневного периода и ограничения 100 элементов. Была реализована одна нативная табличная очередь с постоянным Inspector:
 
-- categorical priority, primary text, reason, bounded evidence, deck, and state;
-- priority/reason/deck/text filters;
-- one active row independent of keyboard focus;
-- one sanitized Shadow DOM preview for the active item;
-- portal-based expanded preview reusing the inspected detail;
-- exact-card `open-search-selection` handoff;
-- explicit loading/unavailable/partial/empty/profile-review states;
-- no legacy tabs, display switch, `riskScore`, duplicated row previews,
-  checkbox, mutation, or resolution loop.
+- категориальный приоритет, основной текст, причина, ограниченное подтверждение, колода и состояние;
+- фильтры по приоритету, причине, колоде и тексту;
+- одна активная строка, не зависящая от клавиатурного фокуса;
+- один санитизированный предпросмотр Shadow DOM для активного элемента;
+- расширенный предпросмотр через portal с переиспользованием просмотренных подробностей;
+- передача `open-search-selection` для точной карточки;
+- явные состояния loading, unavailable, partial, empty и profile-review;
+- отсутствие устаревших tabs, переключателя отображения, `riskScore`, дублирующих предпросмотров строк, checkbox, mutation и цикла определения результата.
 
-Search inspect card details added the bounded `renderedPreview` shape under
-Search inspect schema version 1. Sanitization and media validation remained
-backend responsibilities.
+Подробности просмотра карточки в Search получили ограниченную структуру `renderedPreview` в schema v1 просмотра Search. Санитизация и проверка media оставались обязанностью backend.
 
-The real-Anki harness captured workspace light/dark, expanded, 1024 px, and APKG
-proof. It checked 100-row performance, keyboard activation, one preview host,
-exact-card open, portal modal, absence of legacy controls, and no horizontal
-page overflow.
+Harness real-Anki фиксировал рабочее пространство в светлой и тёмной темах, расширенный режим, ширину 1024 px и подтверждение APKG. Он проверял производительность на 100 строках, активацию с клавиатуры, один host предпросмотра, открытие точной карточки, portal-модальный диалог, отсутствие устаревших элементов управления и отсутствие горизонтального overflow страницы.
 
-These statements describe what the old implementation did. They are not the
-current product specification.
+Эти утверждения описывают старую реализацию, а не актуальную продуктовую спецификацию.
 
-## Historical verification evidence
+## Исторические подтверждения проверки
 
-### Local checks recorded at C1.5
+### Локальные проверки, зафиксированные для C1.5
 
 - `python -m compileall -q anki_study_report docker/anki-e2e`: PASS;
-- focused frontend Cards/hook/Search API: 37 PASS;
-- focused Python Search/triage/package/E2E helpers: 65 PASS;
-- Search/localization regression contour: 17 PASS;
+- профильные frontend-тесты Cards, hook и Search API: 37 PASS;
+- профильные Python-тесты Search, Triage, пакета и E2E helpers: 65 PASS;
+- регрессионный контур Search и локализации: 17 PASS;
 - `node --check docker/anki-e2e/smoke-browser.mjs`: PASS;
-- `pnpm run build:addon`: PASS, 17 JS chunks, 457,930-byte largest/entry chunk;
-- `run_full_check.ps1 -SkipDocker`: PASS, 52 frontend files/278 tests and 708
-  Python tests with four environment-specific skips, package build/validation
-  PASS.
+- `pnpm run build:addon`: PASS, 17 JS chunks, крупнейший и entry chunk — 457 930 байт;
+- `run_full_check.ps1 -SkipDocker`: PASS, 52 frontend-файла и 278 тестов, 708 Python-тестов с четырьмя пропусками из-за окружения; сборка и проверка пакета — PASS.
 
-The local browser proof recorded a 1024 layout with 509 px queue and 376 px
-Inspector, no document overflow, nine rows, one active row, and one preview host.
-Enter activated another row without moving focus; Escape closed the expanded
-portal modal and restored trigger focus.
+Локальное browser-подтверждение зафиксировало компоновку 1024 px с очередью 509 px и Inspector 376 px, без overflow документа, с девятью строками, одной активной строкой и одним host предпросмотра. Enter активировал другую строку без перемещения фокуса; Escape закрывал расширенный portal-модальный диалог и возвращал фокус trigger.
 
-### Exact-SHA cloud evidence
+### Cloud-подтверждение точного SHA
 
 ```text
-accepted implementation SHA:
+SHA принятой реализации:
 0460afe472cd87029368924bdf5640e90271c03c
 
 Fast CI:
 29648956309 — PASS
 
-exact package artifact:
+артефакт точного пакета:
 8430913583
 
-diagnostics artifact:
+артефакт диагностики:
 8430913479
 
 real-Anki standard/cards E2E:
 29649071545 — PASS
 
-redacted E2E artifact:
+отредактированный E2E-артефакт:
 8430943370
 
 digest:
 sha256:332082fda809c1fed0be902a89065c9232a403fd1f5ba15512a23ca86ea3ea9d
 ```
 
-The artifact manifest succeeded and contained 28 screenshots, including five
-Cards screenshots and four Inspection Profiles screenshots. Browser automation
-recorded 12 queue rows, one Inspector, one preview host, no checkbox/legacy
-mode/risk score, zero document overflow, no actionable request/console/page
-errors, a 1024 split, APKG native media rendering, and a portal modal.
+Manifest артефакта прошёл и содержал 28 скриншотов, включая пять скриншотов Cards и четыре скриншота Inspection Profiles. Browser-автоматизация зафиксировала 12 строк очереди, один Inspector, один host предпросмотра, отсутствие checkbox, устаревшего режима и risk score, нулевой overflow документа, отсутствие требующих действий ошибок запросов, console и page, split-компоновку 1024 px, нативный рендер media APKG и portal-модальный диалог.
 
-Restart/API proof recorded 23 cards, 10 APKG attention cards, native render
-source, Japanese profile transition to `needs_review`, Programming remaining
-`confirmed`, preserved learning reason, and no raw value leak in profile
-evidence.
+Подтверждение restart и API зафиксировало 23 карточки, 10 attention cards APKG, нативный источник рендера, переход профиля Japanese в `needs_review`, сохранение состояния `confirmed` у Programming, сохранённую причину обучения и отсутствие утечки необработанных значений в подтверждениях профиля.
 
-### Superseded visual-acceptance statement
+### Заменённое утверждение о визуальной приёмке
 
-The original report stated that the screenshots had been manually reviewed and
-that density, long text, Inspector balance, preview isolation, expanded modal,
-and the 1024 layout were visually coherent.
+Первоначальный отчёт утверждал, что скриншоты были изучены вручную и что плотность, длинный текст, баланс Inspector, изоляция предпросмотра, расширенный модальный диалог и компоновка 1024 px визуально согласованы.
 
-That statement is retained only as historical record of the earlier review and
-is **superseded**. Later owner product review rejected the product behavior and
-presentation. The successful artifact remains technical evidence, not owner
-product acceptance.
+Это утверждение сохраняется только как историческая запись прежней проверки и **больше не действует**. Последующая продуктовая проверка владельцем отклонила поведение и представление продукта. Успешный артефакт остаётся техническим подтверждением, но не продуктовой приёмкой владельцем.
 
-### Diagnostic runs retained
+### Сохранённые диагностические запуски
 
-- `29647972946`: FAIL because Search parser rejected backend
-  `fallbackReason: null`; fixed by `15fab44`;
-- `29648324031`: FAIL on an over-exact APKG deck-label selector; fixed by
-  `46004cb`;
-- `29648565541`: FAIL on legacy exact Cards H1 checks after product H1 changed;
-  fixed by `e8f4b7f`;
-- `29648810472`: browser and restart smokes passed, but wrapper retained legacy
-  screenshot counts; fixed by `0460afe`.
+- `29647972946`: FAIL, поскольку parser Search отклонил backend-поле `fallbackReason: null`; исправлено в `15fab44`;
+- `29648324031`: FAIL на чрезмерно точном selector подписи колоды APKG; исправлено в `46004cb`;
+- `29648565541`: FAIL на устаревшей точной проверке H1 Cards после изменения продуктового H1; исправлено в `e8f4b7f`;
+- `29648810472`: browser- и restart-smoke прошли, но wrapper сохранял устаревшее количество скриншотов; исправлено в `0460afe`.
 
-The successful final run is not repeated or relabeled as failed.
+Успешный финальный запуск не повторяется и не переименовывается в неудачный.
 
-## Historical commits
+## Исторические коммиты
 
-- `0c536f9` — Design Gate contract and prototype decision;
-- `45acab4` — canonical Cards queue/Inspector implementation and coverage;
-- `15fab44` — native preview nullable fallback parity;
-- `46004cb` — APKG deck E2E selector;
-- `e8f4b7f` — canonical Cards heading E2E expectations;
-- `0460afe` — canonical Cards screenshot manifest counts;
-- `1011035` — documentation closeout.
+- `0c536f9` — контракт Design Gate и решение по прототипу;
+- `45acab4` — реализация и покрытие канонической очереди Cards и Inspector;
+- `15fab44` — паритет nullable fallback нативного предпросмотра;
+- `46004cb` — E2E-selector колоды APKG;
+- `e8f4b7f` — ожидания E2E для канонического заголовка Cards;
+- `0460afe` — количество скриншотов в manifest канонических Cards;
+- `1011035` — завершение документации.
 
-## Defects confirmed after owner review
+## Дефекты, подтверждённые после проверки владельцем
 
-The current remediation baseline confirms:
+Актуальное исходное состояние исправлений подтверждает:
 
-1. card compact identity is derived through note sort-field/arbitrary-field
-   fallback and is repeated by Search/Triage/Cards;
-2. the Inspector and expanded preview both show front rather than front then
-   answer/back;
-3. the learning period is fixed and hidden in the Cards hook;
-4. current-content candidates depend on the selected period's revlog candidates;
-5. the C1.5 table/split layout is rejected;
-6. Inspection Profiles exposes the strict runtime editor as the normal path and
-   requires an extra `Use suggestion` step.
+1. компактная идентичность карточки формируется через fallback на поле сортировки заметки или произвольное поле и повторяется в Search, Triage и Cards;
+2. Inspector и расширенный предпросмотр показывают лицевую сторону вместо последовательности «лицевая сторона, затем ответ или обратная сторона»;
+3. период обучения фиксирован и скрыт в hook Cards;
+4. кандидаты по текущему содержимому зависят от кандидатов revlog выбранного периода;
+5. табличная split-компоновка C1.5 отклонена;
+6. Inspection Profiles показывает строгий runtime-editor как обычный путь и требует дополнительное действие `Use suggestion`.
 
-See
-[`c1-5r-0-recovery-baseline.md`](c1-5r-0-recovery-baseline.md) for the full
-corrective decomposition and evidence inventory.
+Полное разбиение исправлений и инвентаризация подтверждений находятся в [`c1-5r-0-recovery-baseline.md`](c1-5r-0-recovery-baseline.md).
 
-## Current limitations and boundary
+## Актуальные ограничения и границы
 
-C1.5 remains historical read-only implementation evidence. It did not implement
-bulk selection, Safe Action mutation, awaiting recheck, detector-driven
-resolution, or C1.6 handoffs.
+C1.5 остаётся историческим read-only-подтверждением реализации. Он не реализовывал массовый выбор, mutation Safe Action, состояние awaiting recheck, определяемое детектором устранение проблемы или передачи C1.6.
 
-No PR, merge, release, deployment, AnkiWeb publication, or owner-profile read was
-part of C1.5.
+PR, merge, выпуск, deployment, публикация на AnkiWeb и чтение профиля владельца не входили в C1.5.
 
-Current status:
+Актуальный статус:
 
 ```text
-C1.5 technical evidence — retained
-C1.5 product acceptance — withdrawn
-C1.5R — In progress
-C1.5R.1 — Next, not started
-C1.6 — Blocked, not started
-Core C1 — In progress
+техническое подтверждение C1.5 — сохранено
+продуктовая приёмка C1.5 — отозвана
+C1.5R — выполняется
+C1.5R.1 — следующий этап, не начат
+C1.6 — заблокирован, не начат
+Core C1 — выполняется
 ```
