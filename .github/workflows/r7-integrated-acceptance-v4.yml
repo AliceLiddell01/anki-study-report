@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     env:
-      OWNER_REVIEW_SHA: 8058f74b8fd84c3ec22cca5b1ebf4c437a73df15
+      OWNER_REVIEW_SHA: 0117f5e33494bf9b1b91523e18eb940eec4c7591
       OWNER_REVIEW_REF: c1-5r-7-integrated-acceptance-v2
     steps:
       - name: Check out exact clean candidate
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: 8058f74b8fd84c3ec22cca5b1ebf4c437a73df15
+          ref: 0117f5e33494bf9b1b91523e18eb940eec4c7591
           persist-credentials: false
           fetch-depth: 0
 
