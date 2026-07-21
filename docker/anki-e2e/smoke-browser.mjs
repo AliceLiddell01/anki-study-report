@@ -1827,79 +1827,132 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
     const initial = await inspectCardsV2Layout(page);
-    assertBrowser(initial.rowCount > 0, "Cards v2 renders canonical triage rows.");
-    assertBrowser(initial.previewHostCount === 1, "Cards v2 renders one active-card preview only.");
-    assertBrowser(initial.inspectorCount === 1, "Cards v2 renders one persistent Inspector.");
-    assertBrowser(initial.legacyModeControlCount === 0, "Cards v2 removes legacy table/tiles/Anki-preview modes.");
-    assertBrowser(initial.checkboxCount === 0, "Cards v2 does not render a dead C1.5 bulk checkbox.");
-    assertBrowser(initial.riskScoreTextCount === 0, "Cards v2 does not expose legacy numeric risk scores.");
-    assertBrowser(inspectRequests.length - beforeInitial === 1, "Cards v2 requests Search inspect only for the initial active card.");
-    if (perf100Enabled) assertBrowser(initial.rowCount === 100, `Cards v2 bounded performance queue renders 100 rows: ${initial.rowCount}`);
+    assertBrowser(initial.inboxCount === 1, "Cards attention inbox renders one semantic list.");
+    assertBrowser(initial.itemCount > 0 && initial.listItemCount === initial.itemCount, "Cards attention inbox renders one list item per actionable card.");
+    assertBrowser(initial.invalidItemButtonCount === 0, "Each Cards attention item exposes exactly one native button.");
+    assertBrowser(initial.tableCount === 0 && initial.gridRoleCount === 0 && initial.listboxRoleCount === 0, "Cards attention inbox does not regress to table, grid, or listbox semantics.");
+    assertBrowser(initial.previewHostCount === 1, "Cards attention inbox renders one active-card preview only.");
+    assertBrowser(initial.inspectorCount === 1 && initial.drawerCount === 0, "Wide Cards workspace renders one persistent Inspector and no drawer.");
+    assertBrowser(initial.activeItemCount === 1, "Wide Cards workspace exposes exactly one current inbox item.");
+    assertBrowser(initial.legacyModeControlCount === 0, "Cards attention inbox removes legacy table, tiles, and Anki-preview modes.");
+    assertBrowser(initial.checkboxCount === 0, "Cards attention inbox does not render a dead bulk checkbox.");
+    assertBrowser(initial.riskScoreTextCount === 0, "Cards attention inbox does not expose legacy numeric risk scores.");
+    assertBrowser(inspectRequests.length - beforeInitial === 1, "Cards attention inbox requests Search inspect only for the initial active card.");
+    if (perf100Enabled) assertBrowser(initial.itemCount === 100, `Cards bounded performance queue renders 100 items: ${initial.itemCount}`);
 
     const lightPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "light");
-    await ensureArtifactParent(lightPath); await page.screenshot({ path: lightPath, fullPage: true });
+    await ensureArtifactParent(lightPath);
+    await page.screenshot({ path: lightPath, fullPage: true });
     const visualStates = [{ mode: "workspace", theme: "light", screenshot: relativeArtifactPath(artifactPaths, lightPath), details: initial }];
 
-    if (initial.rowCount > 1) {
-      const second = page.locator(".cards-v2-row-activate").nth(1);
+    if (initial.itemCount > 1) {
+      const second = page.locator('[data-testid="cards-inbox-item"]').nth(1);
+      const beforeSecond = inspectRequests.length;
       await second.focus();
-      await second.press("Enter");
-      await page.waitForFunction(() => document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length === 1, undefined, { timeout: 60000 });
-      await page.waitForFunction((count) => performance.getEntriesByType("resource").filter((entry) => entry.name.includes("/api/search/inspect")).length >= count, beforeInitial + 2, { timeout: 60000 }).catch(() => undefined);
-      assertBrowser(inspectRequests.length - beforeInitial === 2, "Keyboard row activation requests exactly one new active-card inspect.");
-      const activeRows = await page.locator('tr[aria-current="true"]').count();
-      assertBrowser(activeRows === 1, "Keyboard activation leaves exactly one current row.");
+      await Promise.all([
+        page.waitForResponse((response) => response.url().includes("/api/search/inspect") && response.request().method() === "POST", { timeout: 60000 }),
+        second.press("Enter"),
+      ]);
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length === 1, undefined, { timeout: 15000 });
+      await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+      assertBrowser(inspectRequests.length - beforeSecond === 1, "Keyboard inbox activation requests exactly one new active-card inspect.");
     }
 
-    const expand = page.getByRole("button", { name: "Развернуть превью" });
+    const expand = page.getByRole("button", { name: "Развернуть ответ", exact: true });
     await expand.click();
     await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "visible", timeout: 15000 });
+    await page.locator('[data-testid="cards-preview-modal"] [data-testid="anki-card-shadow-preview"][data-preview-side="back"]').waitFor({ state: "visible", timeout: 15000 });
     const modalState = await page.evaluate(() => {
       const shell = document.getElementById("dashboard-app-shell");
       const modal = document.querySelector('[data-testid="cards-preview-modal"]');
-      return { shellInert: Boolean(shell?.inert), shellAriaHidden: shell?.getAttribute("aria-hidden") === "true", modalOutsideShell: Boolean(modal && shell && !shell.contains(modal)), dialogCount: document.querySelectorAll('[role="dialog"]').length };
+      return {
+        shellInert: Boolean(shell?.inert),
+        shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
+        modalOutsideShell: Boolean(modal && shell && !shell.contains(modal)),
+        dialogCount: document.querySelectorAll('[role="dialog"]').length,
+        backPreviewCount: modal?.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-preview-side="back"]').length || 0,
+      };
     });
-    assertBrowser((modalState.shellInert || modalState.shellAriaHidden) && modalState.modalOutsideShell && modalState.dialogCount === 1, "Expanded preview portals outside the inert app shell.");
+    assertBrowser((modalState.shellInert || modalState.shellAriaHidden) && modalState.modalOutsideShell && modalState.dialogCount === 1 && modalState.backPreviewCount === 1, "Expanded answer is one true modal outside the inert app shell.");
     const expandedPath = artifactPaths.cardsScreenshot("synthetic", "expanded", "light");
-    await ensureArtifactParent(expandedPath); await page.screenshot({ path: expandedPath, fullPage: true });
+    await ensureArtifactParent(expandedPath);
+    await page.screenshot({ path: expandedPath, fullPage: true });
     visualStates.push({ mode: "expanded", theme: "light", screenshot: relativeArtifactPath(artifactPaths, expandedPath), details: modalState });
     await page.keyboard.press("Escape");
     await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "hidden", timeout: 15000 });
 
-    const open = page.getByRole("button", { name: "Открыть в Anki" });
-    await open.focus(); await page.keyboard.press("Enter");
+    const open = page.getByRole("button", { name: "Открыть в Anki", exact: true });
+    await open.focus();
+    await page.keyboard.press("Enter");
     await page.getByText("Запрос на открытие Anki Browser принят. Проблема остаётся активной.").waitFor({ state: "visible", timeout: 15000 });
 
     await prepareCardsPage(page, "workspace", "dark");
+    await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
     const darkPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "dark");
-    await ensureArtifactParent(darkPath); await page.screenshot({ path: darkPath, fullPage: true });
+    await ensureArtifactParent(darkPath);
+    await page.screenshot({ path: darkPath, fullPage: true });
     const dark = await inspectCardsV2Layout(page);
+    assertBrowser(dark.inspectorCount === 1 && dark.drawerCount === 0 && dark.previewHostCount === 1, "Dark wide Cards workspace preserves the attention inbox and Inspector contract.");
     visualStates.push({ mode: "workspace", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, darkPath), details: dark });
 
     await page.setViewportSize({ width: 1024, height: 900 });
     await prepareCardsPage(page, "workspace-1024", "light");
-    const narrow = await inspectCardsV2Layout(page);
-    assertBrowser(narrow.documentOverflow <= 1, `Cards v2 1024 layout has no horizontal document overflow: ${narrow.documentOverflow}`);
-    assertBrowser(narrow.queueWidth >= 500 && narrow.inspectorWidth >= 300, `Cards v2 1024 split remains readable: queue=${narrow.queueWidth}, inspector=${narrow.inspectorWidth}`);
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length === 0 && !document.querySelector('[data-testid="cards-detail-drawer"]'), undefined, { timeout: 15000 });
+    const narrowClosed = await inspectCardsV2Layout(page);
+    assertBrowser(narrowClosed.documentOverflow <= 1, `Cards 1024 layout has no horizontal document overflow: ${narrowClosed.documentOverflow}`);
+    assertBrowser(narrowClosed.itemCount > 0 && narrowClosed.queueWidthRatio >= 0.95, `Cards 1024 queue remains full width before activation: ${JSON.stringify(narrowClosed)}`);
+    assertBrowser(narrowClosed.inspectorCount === 0 && narrowClosed.drawerCount === 0 && narrowClosed.previewHostCount === 0 && narrowClosed.activeItemCount === 0, "Cards 1024 starts with a full-width queue and no implicit detail surface.");
+
+    const first = page.locator('[data-testid="cards-inbox-item"]').first();
+    const firstCardId = await first.getAttribute("data-card-id");
+    await first.focus();
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/api/search/inspect") && response.request().method() === "POST", { timeout: 60000 }),
+      first.press("Enter"),
+    ]);
+    await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "visible", timeout: 15000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="cards-detail-drawer"] [data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+    const narrowOpen = await inspectCardsV2Layout(page);
+    assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null, "Cards 1024 opens one non-modal detail region.");
+    assertBrowser(!narrowOpen.shellInert && !narrowOpen.shellAriaHidden, "Cards 1024 drawer does not inert the dashboard shell.");
+    assertBrowser(narrowOpen.inspectorCount === 0 && narrowOpen.previewHostCount === 1 && narrowOpen.activeItemCount === 1, "Cards 1024 drawer renders one active detail preview without a wide Inspector.");
+    assertBrowser(narrowOpen.itemCount === narrowClosed.itemCount && narrowOpen.disabledItemCount === 0, "Cards 1024 queue remains operable while the drawer is open.");
     const narrowPath = artifactPaths.cardsScreenshot("synthetic", "workspace-1024", "light");
-    await ensureArtifactParent(narrowPath); await page.screenshot({ path: narrowPath, fullPage: true });
-    visualStates.push({ mode: "workspace-1024", theme: "light", screenshot: relativeArtifactPath(artifactPaths, narrowPath), details: narrow });
+    await ensureArtifactParent(narrowPath);
+    await page.screenshot({ path: narrowPath, fullPage: true });
+    visualStates.push({ mode: "workspace-1024", theme: "light", screenshot: relativeArtifactPath(artifactPaths, narrowPath), details: narrowOpen });
+
+    await page.getByRole("button", { name: "Развернуть ответ", exact: true }).click();
+    await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "visible", timeout: 15000 });
+    assertBrowser(await page.locator('[data-testid="cards-detail-drawer"]').count() === 1, "Opening the answer modal preserves the underlying non-modal drawer.");
+    await page.keyboard.press("Escape");
+    await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "hidden", timeout: 15000 });
+    assertBrowser(await page.locator('[data-testid="cards-detail-drawer"]').count() === 1, "The first Escape closes only the answer modal.");
+    await page.keyboard.press("Escape");
+    await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "hidden", timeout: 15000 });
+    await page.waitForFunction((cardId) => document.activeElement?.getAttribute("data-card-id") === cardId, firstCardId, { timeout: 15000 });
 
     const importSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-import-summary.json"));
-    const apkg = { enabled: Boolean(importSummary.enabled), imported: Boolean(importSummary.imported), cardCount: Number(importSummary.cardCount || 0), activePreviewOnly: narrow.previewHostCount === 1 };
+    const apkg = { enabled: Boolean(importSummary.enabled), imported: Boolean(importSummary.imported), cardCount: Number(importSummary.cardCount || 0), activePreviewOnly: false };
     if (apkg.enabled) {
-      assertBrowser(apkg.imported && apkg.cardCount > 0, "Cards v2 APKG fixture was imported.");
+      assertBrowser(apkg.imported && apkg.cardCount > 0, "Cards APKG fixture was imported.");
       const apkgDeckName = (importSummary.deckNames || [])[0];
-      assertBrowser(Boolean(apkgDeckName), "Cards v2 APKG fixture exposes a deck name.");
-      const deckFilter = page.locator(".cards-v2-filter-row select").nth(2);
-      assertBrowser(await deckFilter.count() === 1, "Cards v2 exposes one structural deck filter.");
-      await deckFilter.selectOption({ label: apkgDeckName });
-      await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-triage-row"]').length > 0, undefined, { timeout: 60000 });
+      assertBrowser(Boolean(apkgDeckName), "Cards APKG fixture exposes a deck name.");
+      await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+      await prepareCardsPage(page, "workspace", "light");
+      await applyDeckFilter(page, apkgDeckName);
+      await page.waitForFunction((deckName) => {
+        const items = [...document.querySelectorAll('[data-testid="cards-inbox-item"]')];
+        return items.length > 0 && items.every((item) => (item.textContent || "").includes(deckName));
+      }, apkgDeckName, { timeout: 60000 });
       await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+      await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
       const apkgLayout = await inspectCardsV2Layout(page);
-      assertBrowser(apkgLayout.previewHostCount === 1, "Cards v2 APKG deck keeps one active preview.");
+      assertBrowser(apkgLayout.previewHostCount === 1 && apkgLayout.activeItemCount === 1 && apkgLayout.inspectorCount === 1, "Cards APKG deck keeps one active preview in the wide Inspector.");
+      apkg.activePreviewOnly = true;
       const apkgPath = artifactPaths.cardsScreenshot("apkg", "workspace", "light");
-      await ensureArtifactParent(apkgPath); await page.screenshot({ path: apkgPath, fullPage: true });
+      await ensureArtifactParent(apkgPath);
+      await page.screenshot({ path: apkgPath, fullPage: true });
       visualStates.push({ mode: "workspace", theme: "light", fixture: "apkg", deckName: apkgDeckName, screenshot: relativeArtifactPath(artifactPaths, apkgPath), details: apkgLayout });
     }
 
@@ -1912,20 +1965,41 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
 
 async function inspectCardsV2Layout(page) {
   return page.evaluate(() => {
-    const queue = document.querySelector(".cards-v2-queue")?.getBoundingClientRect();
-    const inspector = document.querySelector(".cards-v2-inspector")?.getBoundingClientRect();
-    const bodyText = document.body.innerText || "";
+    const pageRoot = document.querySelector('[data-testid="cards-inbox-page"]');
+    const workspace = pageRoot?.querySelector(".cards-inbox-workspace")?.getBoundingClientRect();
+    const queue = pageRoot?.querySelector(".cards-inbox-queue")?.getBoundingClientRect();
+    const inspector = pageRoot?.querySelector(".cards-inbox-inspector")?.getBoundingClientRect();
+    const drawer = document.querySelector('[data-testid="cards-detail-drawer"]');
+    const shell = document.getElementById("dashboard-app-shell");
+    const items = [...(pageRoot?.querySelectorAll('[data-testid="cards-inbox-item"]') || [])];
+    const listItems = [...(pageRoot?.querySelectorAll('[data-testid="cards-inbox-list-item"]') || [])];
+    const bodyText = pageRoot?.textContent || "";
     return {
-      rowCount: document.querySelectorAll('[data-testid="cards-triage-row"]').length,
-      inspectorCount: document.querySelectorAll('[data-testid="cards-inspector"]').length,
+      inboxCount: pageRoot?.querySelectorAll('[data-testid="cards-inbox"]').length || 0,
+      itemCount: items.length,
+      listItemCount: listItems.length,
+      invalidItemButtonCount: listItems.filter((item) => item.querySelectorAll("button").length !== 1 || item.querySelectorAll(":scope > button").length !== 1).length,
+      activeItemCount: pageRoot?.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length || 0,
+      disabledItemCount: items.filter((item) => item.disabled).length,
+      tableCount: pageRoot?.querySelectorAll("table").length || 0,
+      gridRoleCount: pageRoot?.querySelectorAll('[role="grid"]').length || 0,
+      listboxRoleCount: pageRoot?.querySelectorAll('[role="listbox"]').length || 0,
+      inspectorCount: pageRoot?.querySelectorAll('[data-testid="cards-inspector"]').length || 0,
+      drawerCount: drawer ? 1 : 0,
+      drawerRoleRegionCount: drawer?.getAttribute("role") === "region" ? 1 : 0,
+      drawerAriaModal: drawer?.getAttribute("aria-modal") ?? null,
       previewHostCount: document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length,
-      checkboxCount: document.querySelectorAll('input[type="checkbox"]').length,
-      legacyModeControlCount: [...document.querySelectorAll("button")].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,
+      checkboxCount: pageRoot?.querySelectorAll('input[type="checkbox"]').length || 0,
+      legacyModeControlCount: [...(pageRoot?.querySelectorAll("button") || [])].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,
       riskScoreTextCount: (bodyText.match(/Риск\s+\d+|risk\s+\d+/gi) || []).length,
+      workspaceWidth: Math.round(workspace?.width || 0),
       queueWidth: Math.round(queue?.width || 0),
+      queueWidthRatio: workspace?.width ? Number(((queue?.width || 0) / workspace.width).toFixed(3)) : 0,
       inspectorWidth: Math.round(inspector?.width || 0),
       documentOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       pageHeight: document.documentElement.scrollHeight,
+      shellInert: Boolean(shell?.inert),
+      shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
     };
   });
 }
@@ -1982,20 +2056,21 @@ async function applyApkgDeckFilter(page, deckName, expectation) {
   await filterSummary.waitFor({ state: "visible", timeout: 15000 });
   const summaryText = (await filterSummary.innerText()).replace(/\s+/g, " ").trim();
   assertBrowser(
-    summaryText.includes(`Показано ${expectation.filteredCardCount} карточек`),
+    summaryText.startsWith(`Показано ${expectation.filteredCardCount} из `),
     `APKG deck filter count mismatch before preview wait: deck=${deckName}, expected=${expectation.filteredCardCount}, actual=${summaryText}`,
   );
 }
 
 async function waitForCardsPageReady(page) {
-  await page.getByRole("heading", { name: "Карточки, требующие внимания" }).waitFor({ timeout: 60000 });
+  await page.getByRole("heading", { name: "Карточки, требующие внимания", exact: true }).waitFor({ timeout: 60000 });
   await page.waitForFunction(
     () => !/Загружаем очередь внимания|Не удалось загрузить карточки|Карточки недоступны/.test(document.body.innerText),
     undefined,
     { timeout: 60000 },
   );
-  await page.locator('[data-testid="cards-triage-table"]').waitFor({ state: "visible", timeout: 60000 });
-  await page.locator('[data-testid="cards-inspector"]').waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="cards-inbox-page"]').waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="cards-inbox"]').waitFor({ state: "visible", timeout: 60000 });
+  await page.locator('[data-testid="cards-inbox-item"]').first().waitFor({ state: "visible", timeout: 60000 });
   const errorText = await visibleErrorText(page);
   if (errorText) {
     throw new Error(`Cards page shows visible error: ${errorText}`);
