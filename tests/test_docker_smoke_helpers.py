@@ -138,6 +138,10 @@ def test_smoke_browser_search_contract_uses_schema_v2_requests():
         "async function assertSearchWorkspaceUi", 1
     )[0]
 
+    card_details = source.split("function assertCompleteCardDetails", 1)[1].split(
+        "function assertCompleteNoteDetails", 1
+    )[0]
+
     assert 'const cardRequest = {\n    schemaVersion: 2,' in query_contract
     assert 'schemaVersion: 2,\n    mode: "cards",\n    cardId,' in query_contract
     assert 'schemaVersion: 2,\n    mode: "notes",\n    noteId,' in query_contract
@@ -147,6 +151,12 @@ def test_smoke_browser_search_contract_uses_schema_v2_requests():
     assert 'postSearchContract("/api/search/inspect", {\n    mode:' not in query_contract
     assert '{ mode: "cards", cardId, requestId }' not in action_contract
     assert '{ mode: "notes", noteId, requestId }' not in action_contract
+
+    for field in ("displayText", "displaySource", "displayStatus", "displayTruncated"):
+        assert f'"{field}"' in card_details
+    assert '"primaryText"' not in card_details
+    assert '"browser_question", "reviewer_front", "none"' in card_details
+    assert '"available", "media_only", "unavailable"' in card_details
 
 
 def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
