@@ -3381,8 +3381,11 @@ function assertBoundedSearchResult(result, mode) {
 }
 
 function assertCompleteCardDetails(details) {
-  const required = ["cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName", "templateOrdinal", "templateName", "primaryText", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary", "deck", "noteType", "template", "queue", "tags", "renderedPreview"];
+  const required = ["cardId", "noteId", "deckId", "deckName", "noteTypeId", "noteTypeName", "templateOrdinal", "templateName", "displayText", "displaySource", "displayStatus", "displayTruncated", "state", "due", "interval", "repetitions", "lapses", "flag", "tagSummary", "deck", "noteType", "template", "queue", "tags", "renderedPreview"];
   assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Card inspect returns every declared detail field.");
+  assertBrowser(typeof details?.displayText === "string" && typeof details?.displayTruncated === "boolean", "Card inspect returns bounded display identity values.");
+  assertBrowser(["browser_question", "reviewer_front", "none"].includes(details?.displaySource), "Card inspect returns a current display source.");
+  assertBrowser(["available", "media_only", "unavailable"].includes(details?.displayStatus), "Card inspect returns a current display status.");
   assertBrowser(details?.deck?.deckId === details?.deckId && details?.noteType?.noteTypeId === details?.noteTypeId, "Card inspect nested identities match the row projection.");
   assertBrowser(["available", "sanitized", "unavailable", "fallback", "error"].includes(details?.renderedPreview?.renderStatus), "Card inspect returns a bounded safe preview status.");
 }
