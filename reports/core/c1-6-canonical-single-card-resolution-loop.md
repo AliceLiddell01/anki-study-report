@@ -1,97 +1,69 @@
-# C1.6 — Canonical single-card resolution loop
+# C1.6 — канонический цикл решения проблемы одной карточки
 
-**Date:** 2026-07-22
+**Дата:** 2026-07-22
 
-**Target branch:** `core`
+**Целевая ветка:** `core`
 
 **Draft PR:** [#125](https://github.com/AliceLiddell01/anki-study-report/pull/125)
 
-**Base SHA:** `f5a7bf663e6721714a3f883e3e1f2451c84df532`
+**Исходный SHA:** `f5a7bf663e6721714a3f883e3e1f2451c84df532`
 
-**Verified runtime candidate:** `edaf9030dbba355593e52cf8922d4c7985ce4b75`
+**Проверенный кандидат runtime:** `edaf9030dbba355593e52cf8922d4c7985ce4b75`
 
-**Owner decision:** Pending
+**Решение владельца на момент отчёта:** ожидается
 
-## Result
+## Результат
 
-C1.6 is implemented and mandatory verification is complete. The existing Cards
-Inspector and narrow drawer now expose one-card Safe Action/Open in Anki paths,
-separate action results from resolution, require explicit canonical exact-card
-recheck and reconcile stable reasons before updating or removing an item.
+C1.6 реализован, обязательная проверка завершена. Существующие Inspector Cards и узкая выдвижная панель теперь предоставляют пути Safe Action и Open in Anki для одной карточки, отделяют результат действия от устранения проблемы, требуют явной канонической перепроверки конкретной карточки и сопоставляют стабильные причины перед обновлением или удалением элемента.
 
-Owner product acceptance and merge remain pending. Core C1 is not declared
-complete. C1.6B remains Conditional and was not started.
+На момент составления отчёта продуктовая приёмка владельцем и merge ещё ожидались. Core C1 не объявлялся завершённым. C1.6B оставался условным и не начинался.
 
-## Architecture
+## Архитектура
 
-- `POST /api/triage/recheck` schema v1 is strict, token-protected, JSON-only,
-  8 KiB bounded and serialized through the existing `QueryOp` runtime.
-- The service reads one exact card and delegates to the canonical period
-  learning detector, active Signal projection, Search-owned identity and
-  current confirmed Inspection Profile evaluator.
-- The request carries the current stable reason IDs so loss of prior profile
-  authority fails closed instead of producing a false resolution.
-- The frontend compares old/current reasons by `reasonId`. Remaining/new
-  reasons refresh the item in place; zero reasons remove it only after fully
-  available evidence; missing/changed/partial/unavailable states never resolve.
-- Safe Actions reuse the existing one-card action endpoint. Mutations are
-  serialized and never aborted; inspect/open/recheck reads are latest-wins.
-- Full resolution selects the next queue item predictably and restores focus
-  without resetting filters, loaded pages or ordering.
-- No bulk controls, manual resolve/archive/snooze, persistent completion state,
-  new detector stack, automatic cursor loop or client-side resolution inference
-  was added.
+- Schema v1 `POST /api/triage/recheck` является строгой, защищена токеном, принимает только JSON, ограничена 8 КиБ и сериализуется через существующий runtime `QueryOp`.
+- Service читает одну конкретную карточку и делегирует работу каноническому детектору обучения за период, проекции активных Signal, идентичности, принадлежащей Search, и evaluator актуального подтверждённого Inspection Profile.
+- Запрос передаёт текущие стабильные ID причин, поэтому потеря прежней авторитетности профиля работает по принципу fail closed, а не создаёт ложное устранение проблемы.
+- Frontend сравнивает прежние и текущие причины по `reasonId`. Оставшиеся и новые причины обновляют элемент на месте; отсутствие причин удаляет его только после полностью доступного подтверждения; отсутствующие, изменённые, частичные и недоступные состояния никогда не считаются устранением.
+- Safe Actions переиспользуют существующий endpoint действия над одной карточкой. Mutations сериализуются и никогда не отменяются; чтения inspect, open и recheck используют latest-wins.
+- При полном устранении предсказуемо выбирается следующий элемент очереди и восстанавливается фокус без сброса фильтров, загруженных страниц или порядка.
+- Не добавлены массовые элементы управления, ручные resolve, archive и snooze, постоянное состояние завершения, новый стек детекторов, автоматический цикл cursor или клиентское определение устранения проблемы.
 
-## Verification
+## Проверка
 
-| Gate | Result |
+| Gate | Результат |
 | --- | --- |
-| focused backend + E2E helpers | PASS — 81 tests |
-| focused Cards/API/frontend | PASS — 37 tests; later full frontend superseded it |
+| профильный backend и E2E helpers | PASS — 81 тест |
+| профильные Cards, API и frontend | PASS — 37 тестов; позднее заменено полным frontend-набором |
 | frontend typecheck | PASS |
-| full frontend | PASS — 324 tests |
-| production bundle guard | PASS — 20 JS chunks; entry 429,516 bytes |
-| focused harness after selector correction | PASS — `node --check`; 30 tests |
+| полный frontend | PASS — 324 теста |
+| ограничение production-bundle | PASS — 20 JS chunks; entry 429 516 байт |
+| профильный harness после исправления selector | PASS — `node --check`; 30 тестов |
 | Python 3.11 compileall | PASS — `python -m compileall -q anki_study_report` |
-| canonical non-Docker | PASS — 324 frontend; 802 Python passed, 5 platform skips |
-| package build/check | PASS — 77 entries |
-| Fast CI exact runtime SHA | PASS — run `29862254960` |
-| exact Fast package | PASS — artifact `8507861970`; SHA `edaf9030dbba355593e52cf8922d4c7985ce4b75` |
-| targeted real-Anki | PASS — run `29862551442`, `standard/cards`, restart enabled, artifact `8507958104` |
-| final full real-Anki | PASS — run `29862800106`, `standard/full`, restart enabled, artifact `8508096629` |
-| repository diff hygiene | PASS — `git diff --check` |
+| каноническая проверка без Docker | PASS — 324 frontend-теста; 802 Python-теста passed, 5 пропусков платформенных тестов |
+| сборка и проверка пакета | PASS — 77 записей |
+| Fast CI для точного SHA runtime | PASS — запуск `29862254960` |
+| точный пакет Fast CI | PASS — артефакт `8507861970`; SHA `edaf9030dbba355593e52cf8922d4c7985ce4b75` |
+| целевой real-Anki | PASS — запуск `29862551442`, `standard/cards`, перезапуск включён, артефакт `8507958104` |
+| финальный полный real-Anki | PASS — запуск `29862800106`, `standard/full`, перезапуск включён, артефакт `8508096629` |
+| гигиена diff репозитория | PASS — `git diff --check` |
 
-Fast CI and both E2E runs used the exact prebuilt package handoff. The E2E image
-was the immutable GHCR digest selected by the workflow. Uploaded artifacts are
-the workflow's redacted public artifacts; no raw token-bearing artifact is
-published or committed.
+Fast CI и оба E2E-запуска использовали передачу точного предварительно собранного пакета. E2E-image использовал неизменяемый digest GHCR, выбранный workflow. Загруженные артефакты являются отредактированными публичными артефактами workflow; необработанный артефакт с токеном не публиковался и не коммитился.
 
-## Failures resolved during execution
+## Ошибки, устранённые во время выполнения
 
-- Runs `29861530303` and `29861909109` stopped before Anki because GitHub
-  dynamically attached pull-request identity to a manual Fast CI source run,
-  which the exact handoff validator correctly rejects. The same draft PR was
-  temporarily closed while producing and consuming the valid workflow-dispatch
-  handoff; no second PR was created.
-- Run `29862014838` reached real Anki: API smoke passed, then the new browser
-  assertion matched identical outcome text in two live regions. The harness was
-  corrected to scope the assertion to `cards-resolution-state` in `edaf9030`.
-  Its artifact export also rejected the failure log because it contained a
-  private absolute container path; no unsafe artifact was published.
-- The corrected targeted and full runs both passed, including redacted artifact
-  preparation and cleanup.
+- Запуски `29861530303` и `29861909109` остановились до запуска Anki, поскольку GitHub динамически добавил идентичность pull request к ручному исходному запуску Fast CI, а validator точной передачи корректно её отклонил. Тот же draft PR временно закрывался во время создания и использования допустимой передачи workflow-dispatch; второй PR не создавался.
+- Запуск `29862014838` дошёл до реального Anki: API smoke прошёл, после чего новая browser-assertion совпала с одинаковым текстом результата в двух live regions. В `edaf9030` harness был исправлен так, чтобы assertion ограничивалась `cards-resolution-state`. Экспорт артефакта также отклонил failure log из-за приватного абсолютного пути контейнера; небезопасный артефакт не публиковался.
+- Исправленные целевой и полный запуски прошли, включая подготовку отредактированных артефактов и очистку.
 
-## Product review boundary
+## Граница продуктовой проверки
 
-Owner review should confirm the clarity of applicable actions, the visible
-action-versus-resolution distinction, reason-level removed/remaining/new
-feedback, stale/error states and focus behavior after full resolution.
+Владельцу следует проверить понятность применимых действий, видимое различие между действием и устранением проблемы, обратную связь по удалённым, оставшимся и новым причинам, устаревшие и ошибочные состояния и поведение фокуса после полного устранения.
 
-## Explicit exclusions
+## Явные исключения
 
-- owner product acceptance: pending;
-- merge to `core` or `master`: not performed;
-- release, tag, GitHub Release, deployment or AnkiWeb publication: not performed;
-- C1.6B bulk actions: not started;
-- C2: not started;
-- private owner Anki profile: not read or modified.
+- продуктовая приёмка владельцем: на момент отчёта ожидалась;
+- merge в `core` или `master`: на момент отчёта не выполнялся;
+- выпуск, tag, GitHub Release, deployment или публикация на AnkiWeb: не выполнялись;
+- массовые действия C1.6B: не начинались;
+- C2: не начинался;
+- приватный профиль Anki владельца: не читался и не изменялся.
