@@ -1,34 +1,34 @@
-# Guided Inspection Profiles
+# Пошаговая настройка Inspection Profiles
 
-Этот документ описывает актуальный продуктовый и interaction contract маршрута `#/settings/inspection-profiles` после C1.5R.6.
+Этот документ описывает актуальный продуктовый контракт и взаимодействие маршрута `#/settings/inspection-profiles` после C1.5R.6.
 
 ## Назначение продукта
 
 Inspection Profiles отвечают на пять обычных пользовательских вопросов:
 
-1. Какое содержимое должно присутствовать в карточках этого точного note type?
-2. Какие точные Anki fields соответствуют этим назначениям?
-3. Какие bounded declarative checks будут выполняться?
-4. Можно ли безопасно включить предложенную configuration?
-5. Почему ранее включённый profile перестал быть авторитетным?
+1. Какое содержимое должно присутствовать в карточках этого точного типа заметки?
+2. Какие точные поля Anki соответствуют этим назначениям?
+3. Какие ограниченные декларативные проверки будут выполняться?
+4. Можно ли безопасно включить предложенную конфигурацию?
+5. Почему ранее включённый профиль перестал быть авторитетным?
 
-Страница является локальной settings surface. Она никогда не редактирует collection и не выполняет arbitrary code, queries, regular expressions, JavaScript, Python или SQL.
+Страница является локальной поверхностью настроек. Она никогда не редактирует collection и не выполняет произвольный код, queries, регулярные выражения, JavaScript, Python или SQL.
 
-## Generated draft
+## Создаваемый черновик
 
-Выбор note type в состоянии `not_configured` немедленно преобразует детерминированную backend suggestion в browser-only strict profile draft v1.
+Выбор типа заметки в состоянии `not_configured` немедленно преобразует детерминированное backend-suggestion в строгий черновик профиля v1, существующий только в browser.
 
 ```text
-выбрать точный note type
-→ появляется generated draft
-→ save request не выполняется
-→ confirmation не выполняется
-→ authoritative inspection не включается
+выбрать точный тип заметки
+→ появляется созданный черновик
+→ запрос сохранения не выполняется
+→ подтверждение не выполняется
+→ авторитетная проверка не включается
 ```
 
-Отдельного normal-path шага `Use suggestion` нет.
+Отдельного шага обычного пути `Use suggestion` нет.
 
-Generated draft и пользовательская работа — разные состояния:
+Созданный черновик и пользовательская работа — разные состояния:
 
 ```text
 origin: generated
@@ -36,36 +36,36 @@ userEdited: false
 dirty: false
 ```
 
-Clean generated draft можно отбросить при переключении note type или пересоздать после свежего catalog query.
+Чистый созданный черновик можно отбросить при переключении типа заметки или пересоздать после свежего запроса каталога.
 
-Первое изменение profile через Basic или Advanced переводит draft в пользовательскую работу. Imported и start-empty drafts принадлежат пользователю сразу. Только настоящая пользовательская работа включает selection guard и защиту `beforeunload`.
+Первое изменение профиля через Basic или Advanced превращает черновик в пользовательскую работу. Импортированный и пустой черновики принадлежат пользователю сразу. Только настоящая пользовательская работа включает защиту при переключении и `beforeunload`.
 
-Сохранённые profiles `suggested`, `confirmed`, `needs_review` и `disabled` загружаются как clean stored baselines. Ничего не сохраняется и не подтверждается автоматически.
+Сохранённые профили `suggested`, `confirmed`, `needs_review` и `disabled` загружаются как чистое исходное состояние. Ничего не сохраняется и не подтверждается автоматически.
 
-## Нормальная information architecture
+## Информационная архитектура обычного пути
 
-Selected workspace расположен в таком порядке:
+Выбранное рабочее пространство расположено в таком порядке:
 
 ```text
-заголовок точного note type
-lifecycle guidance
-Suggested setup
-Fields used
-Requirements
-Card scope
-validation/sample result
-state-aware primary actions
-Advanced settings disclosure
-Profile tools disclosure
+заголовок точного типа заметки
+подсказка по жизненному циклу
+предложенная настройка
+используемые поля
+требования
+scope карточек
+результат validation и выборки
+основные действия с учётом состояния
+свёрнутые расширенные настройки
+свёрнутые инструменты профиля
 ```
 
-Basic открыт по умолчанию. Advanced и Profile tools по умолчанию свёрнуты.
+Basic открыт по умолчанию. Advanced и инструменты профиля по умолчанию свёрнуты.
 
-Существует один strict profile draft. Basic — понятная projection над ним, а не вторая persisted model.
+Существует один строгий черновик профиля. Basic — понятная проекция над ним, а не вторая сохраняемая модель.
 
-## Понятные roles
+## Понятные роли
 
-Известные roles используют локализованные человеческие названия и короткие назначения, например:
+Известные роли используют локализованные человеческие названия и короткие назначения, например:
 
 ```text
 Word
@@ -81,158 +81,158 @@ Code
 Explanation
 ```
 
-Exact field names берутся из выбранного note type. Ordinals и role slugs в Basic не показываются.
+Точные имена полей берутся из выбранного типа заметки. Ordinal и slugs ролей в Basic не показываются.
 
-Field, уже занятый другим single-field role, disabled в соответствующем selector. Страница никогда молча не создаёт конфликтующее duplicate field claim.
+Поле, уже занятое другой ролью с одним полем, отключается в соответствующем selector. Страница никогда молча не создаёт конфликтующее повторное назначение поля.
 
-Unknown roles используют безопасный humanized fallback custom role и сохраняют свой exact strict mapping.
+Неизвестные роли используют безопасный понятный fallback пользовательской роли и сохраняют точный строгий mapping.
 
-## Понятные requirements
+## Понятные требования
 
-Basic проецирует каждый check kind Inspection Profile v1:
+Basic проецирует каждый вид проверки Inspection Profile v1:
 
-- `non_empty` → выбранный field обязателен;
-- `contains_audio` → обязателен audio marker;
-- `contains_image` → обязателен image marker;
-- `min_text_length` → bounded minimum character count;
-- `one_of_roles_non_empty` → заполнен хотя бы один selected role;
-- `all_roles_non_empty` → заполнены все selected roles.
+- `non_empty` → выбранное поле обязательно;
+- `contains_audio` → обязателен маркер audio;
+- `contains_image` → обязателен маркер image;
+- `min_text_length` → ограниченное минимальное количество символов;
+- `one_of_roles_non_empty` → заполнена хотя бы одна выбранная роль;
+- `all_roles_non_empty` → заполнены все выбранные роли.
 
 Пользователь может:
 
-- изменить понятную priority;
-- изменить selection roles;
-- изменить minimum length;
-- добавить поддерживаемый hard-coded requirement kind;
-- удалить requirement.
+- изменить понятный приоритет;
+- изменить выбранные роли;
+- изменить минимальную длину;
+- добавить поддерживаемый жёстко заданный вид требования;
+- удалить требование.
 
-Check IDs остаются стабильными внутренними identifiers и не пересоздаются при обычном редактировании.
+ID проверок остаются стабильными внутренними идентификаторами и не пересоздаются при обычном редактировании.
 
 ## Ожидания для Japanese и Programming
 
-Frontend использует `suggestion.detectedKind` и точную backend suggestion. Study kind не выводится из display name note type.
+Frontend использует `suggestion.detectedKind` и точное backend-suggestion. Вид обучения не выводится из отображаемого имени типа заметки.
 
-Japanese vocabulary suggestion с mapped role Audio явно содержит Audio requirement в Basic.
+Suggestion японской лексики с сопоставленной ролью Audio явно содержит требование Audio в Basic.
 
-Programming suggestion явно содержит requirements Question и Answer и не выдумывает Audio requirement.
+Suggestion Programming явно содержит требования Question и Answer и не добавляет вымышленное требование Audio.
 
-Safe selector добавления requirements всё ещё может предлагать поддерживаемый Audio check kind; это не означает, что Audio настроен по умолчанию.
+Безопасный selector добавления требований всё ещё может предлагать поддерживаемый вид проверки Audio; это не означает, что Audio настроен по умолчанию.
 
-## Card scope
+## Scope карточек
 
-Пустой `templateOrdinals` означает все card templates. Basic показывает template names и никогда не строит текст вокруг ordinal.
+Пустой `templateOrdinals` означает все шаблоны карточек. Basic показывает имена шаблонов и никогда не строит текст вокруг ordinal.
 
-Для note type с одним template используется компактная read-only summary.
+Для типа заметки с одним шаблоном используется компактная сводка только для чтения.
 
-Отсутствующий selected template является blocking review error и никогда не сбрасывается молча.
+Отсутствующий выбранный шаблон является блокирующей ошибкой проверки и никогда не сбрасывается молча.
 
-## Lifecycle actions
+## Действия жизненного цикла
 
-| Effective state | Обычное primary behavior |
+| Фактическое состояние | Обычное основное поведение |
 | --- | --- |
-| `not_configured` | Confirm and enable; generated draft также можно сохранить как draft |
-| `suggested` | Confirm and enable; dirty changes можно сохранить |
-| `confirmed`, unchanged | показывается Enabled status; redundant confirmation отсутствует |
-| `confirmed`, edited | Validate and confirm changes |
+| `not_configured` | Confirm and enable; созданный черновик также можно сохранить как draft |
+| `suggested` | Confirm and enable; пользовательские изменения можно сохранить |
+| `confirmed`, без изменений | показывается состояние Enabled; повторное подтверждение отсутствует |
+| `confirmed`, изменён | Validate and confirm changes |
 | `needs_review` | Review and confirm again |
 | `disabled` | Review and enable |
 
-Сохранение изменённого confirmed profile как `suggested` требует confirmation, потому что удаляет authority. Disable и delete остаются явными confirmed tools.
+Сохранение изменённого подтверждённого профиля как `suggested` требует подтверждения, поскольку снимает его авторитетность. Disable и delete остаются явными подтверждаемыми инструментами.
 
-## Validation и sample
+## Validation и выборка
 
-`Check setup` отправляет validate request schema v2 с bounded sample limit 10.
+`Check setup` отправляет запрос validate schema v2 с ограничением выборки 10.
 
-Confirmation сначала выполняет validation, а затем update schema v1. После invalid result mutation не отправляется.
+Подтверждение сначала выполняет validation, затем update schema v1. После недопустимого результата mutation не отправляется.
 
-Result группирует failures по понятному requirement, а не по check ID.
+Результат группирует ошибки по понятному требованию, а не по ID проверки.
 
 UI может показывать:
 
-- counts;
-- exact mapped field names;
-- marker presence;
-- bounded text length;
-- sibling impact.
+- количества;
+- точные имена сопоставленных полей;
+- наличие маркера;
+- ограниченную длину текста;
+- влияние на sibling-карточки.
 
 UI никогда не показывает:
 
-- raw note values;
-- card HTML;
-- template source;
-- media filenames;
-- filesystem paths;
-- tokens.
+- необработанные значения заметок;
+- HTML карточки;
+- исходный код шаблона;
+- имена media-файлов;
+- пути файловой системы;
+- токены.
 
-Structurally valid profile без доступных cards честно обозначается как валидная structure без content sample.
+Структурно допустимый профиль без доступных карточек честно обозначается как допустимая структура без выборки содержимого.
 
-## Advanced и hidden errors
+## Advanced и скрытые ошибки
 
 Advanced сохраняет:
 
-- display name;
-- exact template scope;
-- role slugs;
-- exact field references;
-- check kinds;
-- priorities;
-- modes;
-- minimum lengths;
-- stable IDs.
+- отображаемое имя;
+- точный scope шаблонов;
+- slugs ролей;
+- точные ссылки на поля;
+- виды проверок;
+- приоритеты;
+- режимы;
+- минимальные длины;
+- стабильные ID.
 
-Basic и Advanced редактируют один strict document.
+Basic и Advanced редактируют один строгий документ.
 
-Validation errors, относящиеся к collapsed Advanced controls, представлены:
+Ошибки validation, относящиеся к свёрнутым элементам управления Advanced, представлены:
 
-- error count в summary disclosure;
-- page error summary.
+- количеством ошибок в сводке disclosure;
+- общей сводкой ошибок страницы.
 
-После явного failed Check/Confirm action focus переходит на summary. Активация соответствующей ссылки сначала открывает Advanced, затем переводит focus на точный control.
+После явного неудачного действия Check или Confirm фокус переходит на сводку. Активация соответствующей ссылки сначала открывает Advanced, затем переводит фокус на точный элемент управления.
 
-## Conflict и reload
+## Конфликт и перезагрузка
 
-Reads используют `AbortController` и latest-wins. Mutations сериализованы.
+Чтения используют `AbortController` и latest-wins. Mutations сериализуются.
 
-Revision conflict:
+Конфликт revision:
 
-- сохраняет пользовательский draft;
-- отдельно обновляет server catalog state;
-- предлагает явный выбор review-server либо discard-and-reload.
+- сохраняет пользовательский черновик;
+- отдельно обновляет состояние server-каталога;
+- предлагает явный выбор: изучить server-версию либо отбросить изменения и перезагрузить.
 
-Client никогда не повторяет conflicting mutation автоматически и не перезаписывает latest server revision молча.
+Client никогда не повторяет конфликтующую mutation автоматически и не перезаписывает последнюю server-revision молча.
 
-## Accessibility
+## Доступность
 
 Страница содержит:
 
 - один `h1`;
-- native catalog buttons;
+- нативные кнопки каталога;
 - видимые labels;
-- groups `fieldset`/`legend`;
-- native selects и checkboxes;
-- keyboard-operable native disclosures;
-- программно доступное open state;
-- status/alert semantics;
-- перемещение focus только после явного failed action или modal interaction.
+- группы `fieldset` и `legend`;
+- нативные selects и checkboxes;
+- доступные с клавиатуры нативные disclosure;
+- программно доступное открытое состояние;
+- семантику status и alert;
+- перемещение фокуса только после явного неудачного действия или взаимодействия с модальным диалогом.
 
-State и priority выражаются текстом, а не только цветом. RU и EN используют одну strict data model.
+Состояние и приоритет выражаются текстом, а не только цветом. RU и EN используют одну строгую модель данных.
 
-## Безопасность и приватность
+## Безопасность и конфиденциальность
 
-Frontend не имеет доступа к collection и использует только token-protected loopback API.
+Frontend не имеет доступа к collection и использует только защищённый токеном loopback-API.
 
-Basic компилируется исключительно в существующий hard-coded union v1.
+Basic компилируется исключительно в существующий жёстко заданный union v1.
 
-Import остаётся strict data:
+Import остаётся строгими данными:
 
-- maximum 1 MiB;
-- bound к exact note type, fingerprint и references;
-- dirty и non-authoritative до явного confirmation.
+- максимум 1 МиБ;
+- привязан к точному типу заметки, fingerprint и references;
+- остаётся изменённым и неавторитетным до явного подтверждения.
 
-Export содержит только сохранённый локальный profile document.
+Export содержит только сохранённый локальный документ профиля.
 
 ## Граница этапа
 
-C1.5R.6 проверил guided page на deterministic fixtures и в Chromium. Интегрированный package, Docker/real-Anki и owner product acceptance были завершены в C1.5R.7.
+C1.5R.6 проверил пошаговую страницу на детерминированных фикстурах и в Chromium. Комплексный пакет, Docker и real-Anki и продуктовая приёмка владельцем завершены в C1.5R.7.
 
-C1.6 остаётся отдельным этапом и не является частью Guided Inspection Profiles.
+C1.6 остаётся отдельным этапом и не является частью пошаговой настройки Inspection Profiles.
