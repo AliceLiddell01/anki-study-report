@@ -1,19 +1,19 @@
-# Navigation / Information Architecture
+# Навигация и информационная архитектура
 
-**Статус решения:** Accepted / Complete through Stage 9.5  
+**Статус решения:** принято; завершено до Stage 9.5 включительно  
 **Базовая IA завершена:** 2026-07-10
 
-Statistics, Search и Notification workflow были добавлены последующими этапами без возвращения placeholder routes.
+Statistics, Search и workflow уведомлений добавлены последующими этапами без возвращения placeholder-маршрутов.
 
 ## IA уведомлений
 
-Bell находится в App Shell, но не добавляет пункт primary navigation. Он открывает compact panel и ведёт в `#/notifications`.
+Bell находится в App Shell, но не добавляет пункт основной навигации. Он открывает компактную панель и ведёт в `#/notifications`.
 
-Полный Notification Center является пользовательской history surface. `#/settings/notifications` находится в System group Settings shell между Privacy и Server.
+Полный Notification Center является пользовательской поверхностью истории. `#/settings/notifications` находится в системной группе Settings между Privacy и Server.
 
-Context actions ведут в существующие routes Statistics, Decks и Search. Entity IDs не записываются в hash.
+Контекстные действия ведут в существующие маршруты Statistics, Decks и Search. ID сущностей не записываются в hash.
 
-FSRS находится внутри Statistics по route `#/stats/fsrs` с nested pages:
+FSRS находится внутри Statistics по маршруту `#/stats/fsrs` с вложенными страницами:
 
 ```text
 memory
@@ -22,54 +22,54 @@ steps
 simulator
 ```
 
-Standalone `#/fsrs` остаётся invalid.
+Отдельный `#/fsrs` остаётся недопустимым.
 
-Settings shell расширен в Stage 2. Актуальный settings contract описан в [`settings-hub.md`](settings-hub.md). Решения Stage 1 по primary navigation и avatar menu остаются без изменений.
+Оболочка Settings расширена в Stage 2. Актуальный контракт описан в [`settings-hub.md`](settings-hub.md). Решения Stage 1 по основной навигации и menu аватара остаются без изменений.
 
 ## Границы Stage 1
 
-Stage 1 меняет только hierarchy существующих frontend sections и App Shell:
+Stage 1 меняет только иерархию существующих разделов frontend и App Shell:
 
-- сокращает primary navigation до основных учебных разделов;
-- отделяет Profile и global utilities в avatar menu;
-- объединяет существующие технические страницы общей settings navigation;
-- сохраняет все работающие routes;
+- сокращает основную навигацию до ключевых учебных разделов;
+- отделяет Profile и глобальные инструменты в menu аватара;
+- объединяет существующие технические страницы общей навигацией Settings;
+- сохраняет все работающие маршруты;
 - сохраняет fallback неизвестного hash на `#/home`.
 
 Stage 1 не меняет:
 
-- dashboard payload;
-- Python API;
-- token model;
-- Cards rendering;
+- payload dashboard;
+- API Python;
+- модель токена;
+- рендер Cards;
 - sanitizer;
-- action allowlist;
-- содержимое product pages глубже, чем требуется для их названия и места в IA.
+- allowlist действий;
+- содержимое продуктовых страниц глубже, чем требуется для их названия и места в IA.
 
-## Primary navigation
+## Основная навигация
 
-Единственный source of truth для видимых основных пунктов — `primaryNavItems` в `web-dashboard/src/app/router.tsx`.
+Единственный источник истины для видимых основных пунктов — `primaryNavItems` в `web-dashboard/src/app/router.tsx`.
 
-| Порядок | Название | Route | Роль |
+| Порядок | Название | Маршрут | Роль |
 | --- | --- | --- | --- |
 | 1 | Сегодня | `#/home` | оперативный центр текущего учебного дня |
-| 2 | Активность | `#/calendar` | Calendar v2, выбранный день и derived history |
+| 2 | Активность | `#/calendar` | Calendar v2, выбранный день и производная история |
 | 3 | Статистика | `#/stats` | аналитика периодов, качества, нагрузки, прогресса и колод |
-| 4 | Колоды | `#/decks` | scoped hierarchy, состояние, причины и области внимания |
-| 5 | Поиск | `#/search` | native Cards/Notes query, inspect и явные безопасные actions |
-| 6 | Карточки | `#/cards` | bounded queue проблем и persistent Inspector активной карточки |
+| 4 | Колоды | `#/decks` | иерархия в текущем scope, состояние, причины и области внимания |
+| 5 | Поиск | `#/search` | нативный запрос Cards/Notes, inspect и явные безопасные действия |
+| 6 | Карточки | `#/cards` | ограниченная очередь проблем и постоянный Inspector активной карточки |
 
-Профиль, Инструменты и технические страницы не являются аналитическими tabs и не входят в primary navigation.
+Профиль, Инструменты и технические страницы не являются аналитическими tabs и не входят в основную навигацию.
 
-Stage 5 не меняет IA: `#/decks` остаётся тем же primary route, но его content становится master-detail Decks v2. См. `docs/decks-v2.md`.
+Stage 5 не меняет IA: `#/decks` остаётся тем же основным маршрутом, но его содержимое становится master-detail Decks v2. См. `docs/decks-v2.md`.
 
-Stage 5.5 также не меняет routes. Persistent theme control находится в App Shell utility dock вне primary nav, avatar menu и Settings sidebar.
+Stage 5.5 также не меняет маршруты. Постоянное управление темой находится в utility dock App Shell вне основной навигации, menu аватара и боковой панели Settings.
 
-Selector RU/EN находится в том же dock и также не является navigation item. См. [`localization.md`](localization.md).
+Selector RU/EN находится в том же dock и также не является пунктом навигации. См. [`localization.md`](localization.md).
 
 ## Роль Today/Home
 
-Route `#/home` сохраняет техническое имя для compatibility, но в UI называется «Сегодня».
+Маршрут `#/home` сохраняет техническое имя для совместимости, но в UI называется «Сегодня».
 
 Его задача — показать:
 
@@ -80,13 +80,13 @@ Route `#/home` сохраняет техническое имя для compatibi
 
 Он не должен дублировать Profile, Activity, Statistics, Decks или Cards.
 
-Глубокий redesign `HomePage` не входит в Stage 1.
+Глубокая переработка `HomePage` не входит в Stage 1.
 
-## Avatar dropdown
+## Dropdown аватара
 
-Справа в topbar расположен явный trigger «Профиль» с нейтральным avatar fallback и chevron.
+Справа в topbar расположен явный trigger «Профиль» с нейтральным fallback-аватаром и chevron.
 
-Меню разделено на два блока:
+Menu разделено на два блока:
 
 ```text
 Профиль            → #/profile
@@ -101,25 +101,25 @@ Route `#/home` сохраняет техническое имя для compatibi
 - открывается в новой вкладке;
 - использует `noopener noreferrer`;
 - использует `referrerPolicy="no-referrer"`;
-- не вызывает backend action;
-- не получает dashboard token;
-- не изменяет SPA route.
+- не вызывает backend-действие;
+- не получает токен dashboard;
+- не меняет маршрут SPA.
 
-Route `#/support` не существует. Отдельная support page возможна только после отдельного product decision при появлении нескольких providers.
+Маршрут `#/support` не существует. Отдельная страница поддержки возможна только после отдельного продуктового решения при появлении нескольких providers.
 
-Keyboard behavior меню:
+Поведение menu с клавиатурой:
 
 - открытие по click или `ArrowDown`;
-- navigation через `ArrowUp`/`ArrowDown`;
-- `Home`/`End`;
-- закрытие по `Escape`, click outside, выбору route или внешней смене route;
-- после `Escape` focus возвращается на trigger.
+- перемещение через `ArrowUp` и `ArrowDown`;
+- `Home` и `End`;
+- закрытие по `Escape`, click вне menu, выбору маршрута или внешней смене маршрута;
+- после `Escape` фокус возвращается на trigger.
 
-`#/profile` является самостоятельной локальной all-collection surface: identity, lifetime KPI, activity и deck overview. Он не дублирует primary routes Calendar/Decks/Cards и не изменяет dashboard scope. См. `docs/profile-mvp.md`.
+`#/profile` является самостоятельной локальной поверхностью всей collection: идентичность, KPI за всё время, активность и обзор колод. Он не дублирует основные маршруты Calendar, Decks и Cards и не меняет scope dashboard. См. `docs/profile-mvp.md`.
 
-## Settings navigation
+## Навигация Settings
 
-`SettingsLayout` задаёт persistent desktop sidebar Settings Hub:
+`SettingsLayout` задаёт постоянную desktop-панель Settings Hub:
 
 ```text
 Отчёт
@@ -139,11 +139,11 @@ Keyboard behavior меню:
   Логи                 → #/settings/logs
 ```
 
-`#/integrations` и `#/logs` сохраняются как compatibility redirects.
+`#/integrations` и `#/logs` сохраняются как redirects совместимости.
 
-Источники данных остаются read-only diagnostics, а не платформой внешних integrations.
+Источники данных остаются диагностикой только для чтения, а не платформой внешних integrations.
 
-## Текущие routes
+## Текущие маршруты
 
 ```text
 #/home
@@ -174,9 +174,9 @@ Keyboard behavior меню:
 #/stats/fsrs/simulator
 ```
 
-## Скрытые, но сохранённые routes
+## Скрытые, но сохранённые маршруты
 
-Эти routes скрыты из primary navigation, но доступны через Profile menu или Settings shell:
+Эти маршруты скрыты из основной навигации, но доступны через menu Profile или оболочку Settings:
 
 ```text
 #/profile
@@ -192,39 +192,39 @@ Keyboard behavior меню:
 #/settings/logs
 ```
 
-## Future routes и правило эволюции
+## Будущие маршруты и правило эволюции
 
-Statistics v1 и Search v1 добавлены только как полноценные primary routes.
+Statistics v1 и Search v1 добавлены только как полноценные основные маршруты.
 
-Notifications реализованы как App Shell bell и utility route, а не primary tab.
+Notifications реализованы как bell App Shell и служебный маршрут, а не основная вкладка.
 
 Будущая IA меняется только вместе с реальными пользовательскими workflows:
 
-- «Активность» сохраняет route `#/calendar`; отдельный `#/activity` не добавляется;
-- Statistics появился только вместе с полноценным product и содержит пять sections;
-- FSRS живёт внутри Statistics, а не отдельной primary tab;
+- «Активность» сохраняет маршрут `#/calendar`; отдельный `#/activity` не добавляется;
+- Statistics появился только вместе с полноценным продуктом и содержит пять разделов;
+- FSRS живёт внутри Statistics, а не отдельной основной вкладкой;
 - пользовательский поиск называется «Поиск»; старый Browse не является alias или placeholder;
-- Notifications не переносятся в primary navigation без отдельного доказанного решения;
-- Additions появляются только после проектирования соответствующей системы.
+- Notifications не переносятся в основную навигацию без отдельного доказанного решения;
+- дополнения появляются только после проектирования соответствующей системы.
 
-## Routes, которые нельзя возвращать как placeholders
+## Маршруты, которые нельзя возвращать как placeholders
 
 ```text
 #/fsrs
 #/browse
 ```
 
-Эти и любые unknown hashes безопасно разрешаются в `#/home`. Compatibility aliases для них не создаются.
+Эти и любые неизвестные hashes безопасно разрешаются в `#/home`. Aliases совместимости для них не создаются.
 
-## Почему пользовательская и техническая navigation разделены
+## Почему пользовательская и техническая навигация разделены
 
-Primary navigation отвечает на вопрос: «Куда перейти для учёбы и анализа?»
+Основная навигация отвечает на вопрос: «Куда перейти для учёбы и анализа?»
 
-Profile, global actions, cache/server controls и diagnostics решают другую задачу и создавали visual noise рядом с учебными sections.
+Profile, глобальные действия, управление cache и server и диагностика решают другую задачу и создавали визуальный шум рядом с учебными разделами.
 
-Avatar menu сохраняет заметный вход в личные и global functions, а Settings shell не позволяет техническим pages превратиться в orphan routes.
+Menu аватара сохраняет заметный вход в личные и глобальные функции, а оболочка Settings не позволяет техническим страницам превратиться в изолированные маршруты.
 
-Source of truth и tests:
+Источники истины и тесты:
 
 ```text
 web-dashboard/src/app/router.tsx
@@ -234,21 +234,21 @@ web-dashboard/src/app/router.test.tsx
 web-dashboard/src/layout/TopNav.test.tsx
 ```
 
-What’s New не является primary navigation item. Он открывается action «Что нового» в utility group Profile menu и из `#/settings/privacy`.
+What’s New не является пунктом основной навигации. Он открывается действием «Что нового» в служебной группе menu Profile и из `#/settings/privacy`.
 
-Privacy находится в Data group Settings shell между Data и System routes.
+Privacy находится в группе Data оболочки Settings между Data и системными маршрутами.
 
-## Guided route Inspection Profiles
+## Маршрут пошаговой настройки Inspection Profiles
 
-`#/settings/inspection-profiles` остаётся settings/data-quality surface, а не primary study navigation.
+`#/settings/inspection-profiles` остаётся поверхностью настроек и качества данных, а не основной учебной навигацией.
 
-Normal path:
+Обычный путь:
 
 ```text
-точный note type
-→ generated Basic setup
-→ bounded check
-→ explicit confirm
+точный тип заметки
+→ созданная настройка Basic
+→ ограниченная проверка
+→ явное подтверждение
 ```
 
-Strict editing и maintenance tools остаются secondary disclosures.
+Строгое редактирование и инструменты обслуживания остаются вторичными disclosure.
