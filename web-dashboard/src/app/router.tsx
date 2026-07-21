@@ -2,7 +2,6 @@ import { lazy, type ReactNode } from "react";
 import SettingsLayout from "../layout/SettingsLayout";
 import ActionsPage from "../pages/ActionsPage";
 import CalendarPage from "../pages/CalendarPage";
-import CardsPage from "../pages/CardsPage";
 import DecksPage from "../pages/DecksPage";
 import HomePage, { type LoadState } from "../pages/HomePage";
 import IntegrationsPage from "../pages/IntegrationsPage";
@@ -20,6 +19,7 @@ const NotificationCenterPage = lazy(() => import("../pages/NotificationCenterPag
 const NotificationSettingsPage = lazy(() => import("../pages/NotificationSettingsPage"));
 const InspectionProfilesSettingsPage = lazy(() => import("../pages/InspectionProfilesSettingsPage"));
 const SearchPage = lazy(() => import("../pages/SearchPage"));
+const CardsPage = lazy(() => import("../pages/CardsPage"));
 
 export type RoutePath =
   | "/home"

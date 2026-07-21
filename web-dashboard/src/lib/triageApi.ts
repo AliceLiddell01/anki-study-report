@@ -7,6 +7,8 @@ import type {
   TriagePriority,
   TriageQueryRequest,
   TriageQueryResponse,
+  TriageRecheckRequest,
+  TriageRecheckResponse,
   TriageReason,
   TriageSource,
   TriageSourceStatus,
@@ -72,8 +74,52 @@ export async function fetchTriageQuery(
   return parseTriageQueryResponse(payload.response);
 }
 
+export async function fetchTriageRecheck(
+  request: TriageRecheckRequest,
+  signal?: AbortSignal,
+): Promise<TriageRecheckResponse> {
+  const token = new URLSearchParams(window.location.search).get("token") || "";
+  const response = await fetch(`/api/triage/recheck?token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  if (!isRecord(payload)) {
+    throw new TriageApiError("Card recheck failed.", { code: "triage_recheck_failed", status: response.status });
+  }
+  if (!response.ok || payload.ok !== true || !("response" in payload)) {
+    throw new TriageApiError(
+      typeof payload.message === "string" ? payload.message : "Card recheck failed.",
+      {
+        code: typeof payload.error === "string" ? payload.error : "triage_recheck_failed",
+        status: response.status,
+        fieldErrors: stringRecord(payload.fieldErrors),
+      },
+    );
+  }
+  if (!exactKeys(payload, ["ok", "response"]) || !isTriageRecheckResponse(payload.response)) {
+    throw invalidResponseError();
+  }
+  return payload.response;
+}
+
 export function parseTriageQueryResponse(value: unknown): TriageQueryResponse {
   if (!isTriageQueryResponse(value)) {
+    throw invalidResponseError();
+  }
+  return value;
+}
+
+export function parseTriageRecheckResponse(value: unknown): TriageRecheckResponse {
+  if (!isTriageRecheckResponse(value)) {
     throw invalidResponseError();
   }
   return value;
@@ -96,7 +142,7 @@ function isTriageQueryResponse(value: unknown): value is TriageQueryResponse {
   return value.items.every((item) => isTriageItem(item, dataset));
 }
 
-function isTriageItem(value: unknown, dataset: TriageDataset): value is TriageItem {
+function isTriageItem(value: unknown, dataset: TriageDataset, allowEmptyAutomatic = false): value is TriageItem {
   if (!isRecord(value) || !exactKeys(value, [
     "itemId", "availability", "cardId", "noteId", "deck", "noteType", "template",
     "displayText", "displaySource", "displayStatus", "displayTruncated",
@@ -110,7 +156,7 @@ function isTriageItem(value: unknown, dataset: TriageDataset): value is TriageIt
   if (value.availability === "missing" && !(value.displayStatus === "unavailable" && value.displaySource === "none")) return false;
   if (!Array.isArray(value.reasons) || value.reasons.length > 4 || !value.reasons.every(isTriageReason)) return false;
   if (!sourceArray(value.sources) || !isCardStateSummary(value.cardState)) return false;
-  if (dataset === "automatic" && (value.reasons.length === 0 || value.sources.includes("search_workset"))) return false;
+  if (dataset === "automatic" && ((!allowEmptyAutomatic && value.reasons.length === 0) || value.sources.includes("search_workset"))) return false;
   if (dataset === "search_workset" && !value.sources.includes("search_workset")) return false;
   if (value.reasons.length === 0) {
     if (value.priority !== null || value.primaryReasonCode !== null) return false;
@@ -119,6 +165,31 @@ function isTriageItem(value: unknown, dataset: TriageDataset): value is TriageIt
   }
   if (value.availability === "missing") return value.inspect === null;
   return isInspect(value.inspect, value.cardId);
+}
+
+function isTriageRecheckResponse(value: unknown): value is TriageRecheckResponse {
+  if (!isRecord(value) || !exactKeys(value, [
+    "schemaVersion", "cardId", "expectedNoteId", "status", "entityStatus",
+    "generatedAtMs", "sourceStatus", "contentChecks", "item",
+  ])) return false;
+  if (value.schemaVersion !== 1 || !decimalId(value.cardId) || !decimalId(value.expectedNoteId)) return false;
+  if (!new Set(["available", "partial", "unavailable"]).has(String(value.status))) return false;
+  if (!new Set(["available", "missing", "changed", "unavailable"]).has(String(value.entityStatus))) return false;
+  if (!safeTimestamp(value.generatedAtMs) || !isContentChecks(value.contentChecks)) return false;
+  if (!isRecord(value.sourceStatus) || !exactKeys(value.sourceStatus, [
+    "learningCandidates", "signals", "searchResolver", "profileChecks",
+  ])) return false;
+  if (!isSourceStatus(value.sourceStatus.learningCandidates)
+    || !isSourceStatus(value.sourceStatus.signals)
+    || !isSourceStatus(value.sourceStatus.searchResolver)
+    || !isSourceStatus(value.sourceStatus.profileChecks)) return false;
+  if (value.entityStatus === "available") {
+    return value.item !== null
+      && isTriageItem(value.item, "automatic", true)
+      && value.item.cardId === value.cardId
+      && value.item.noteId === value.expectedNoteId;
+  }
+  return value.item === null;
 }
 
 function isTriageReason(value: unknown): value is TriageReason {

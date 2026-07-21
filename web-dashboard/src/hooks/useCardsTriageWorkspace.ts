@@ -1,19 +1,54 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runReportAction, type ActionResponse } from "../lib/actionsApi";
+import { runCardEntityAction, EntityActionApiError } from "../lib/entityActionsApi";
 import { fetchSearchInspect, SearchApiError } from "../lib/searchApi";
-import { fetchTriageQuery, TriageApiError } from "../lib/triageApi";
+import { fetchTriageQuery, fetchTriageRecheck, TriageApiError } from "../lib/triageApi";
 import {
   MAX_ACCUMULATED_ITEMS,
   MAX_CONTENT_PAGES,
   mergeTriagePages,
 } from "../lib/triagePagination";
 import type { SearchInspectResponse } from "../types/search";
-import type { TriageItem, TriageQueryResponse, TriageScope } from "../types/triage";
+import type { CardEntityAction, EntityActionResponse } from "../types/entityActions";
+import type { TriageItem, TriageQueryResponse, TriageReason, TriageScope } from "../types/triage";
 
 export type CardsQueryStatus = "loading" | "ready" | "error";
 export type CardsInspectStatus = "idle" | "loading" | "ready" | "error";
 export type CardsContinuationStatus = "idle" | "loading" | "error" | "exhausted" | "capped";
 export type LearningPeriodDays = 7 | 30 | 90;
+export type CardsResolutionPhase =
+  | "idle"
+  | "action_pending"
+  | "action_failed"
+  | "awaiting_recheck"
+  | "rechecking"
+  | "still_active"
+  | "partially_resolved"
+  | "resolved"
+  | "recheck_failed"
+  | "evidence_stale"
+  | "entity_missing"
+  | "entity_changed";
+
+export interface CardsReasonReconciliation {
+  removed: TriageReason[];
+  remaining: TriageReason[];
+  added: TriageReason[];
+}
+
+export interface CardsResolutionState {
+  itemId: string;
+  phase: CardsResolutionPhase;
+  actionResult: EntityActionResponse | ActionResponse | null;
+  actionError: EntityActionApiError | null;
+  recheckError: TriageApiError | null;
+  reconciliation: CardsReasonReconciliation | null;
+}
+
+export interface CardsFocusRequest {
+  itemId: string | null;
+  version: number;
+}
 
 export interface CardsTriageWorkspace {
   queryStatus: CardsQueryStatus;
@@ -28,6 +63,10 @@ export interface CardsTriageWorkspace {
   inspectResponse: SearchInspectResponse<"cards"> | null;
   openPending: boolean;
   openResult: ActionResponse | null;
+  resolution: CardsResolutionState | null;
+  lastOutcome: CardsResolutionState | null;
+  focusRequest: CardsFocusRequest;
+  mutationPending: boolean;
   continuationStatus: CardsContinuationStatus;
   continuationError: TriageApiError | null;
   loadedContentPages: number;
@@ -40,6 +79,8 @@ export interface CardsTriageWorkspace {
   continueContentScan: () => Promise<void>;
   retryInspect: () => void;
   openInAnki: () => Promise<void>;
+  runSafeAction: (action: CardEntityAction) => Promise<void>;
+  recheckActive: () => Promise<void>;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -63,12 +104,20 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   const [continuationError, setContinuationError] = useState<TriageApiError | null>(null);
   const [loadedContentPages, setLoadedContentPages] = useState(0);
   const [lastContinuationAddedCount, setLastContinuationAddedCount] = useState<number | null>(null);
+  const [resolutionById, setResolutionById] = useState<Record<string, CardsResolutionState>>({});
+  const [lastOutcome, setLastOutcome] = useState<CardsResolutionState | null>(null);
+  const [focusRequest, setFocusRequest] = useState<CardsFocusRequest>({ itemId: null, version: 0 });
 
   const querySequence = useRef(0);
   const inspectSequence = useRef(0);
   const continuationSequence = useRef(0);
   const continuationController = useRef<AbortController | null>(null);
   const continuationInFlight = useRef(false);
+  const actionSequence = useRef(0);
+  const actionInFlight = useRef(false);
+  const openSequence = useRef(0);
+  const recheckSequence = useRef(0);
+  const recheckController = useRef<AbortController | null>(null);
   const activeIdRef = useRef<string | null>(null);
   const responseRef = useRef<TriageQueryResponse | null>(null);
   const scopeRef = useRef<TriageScope | null>(null);
@@ -93,10 +142,18 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     continuationController.current = null;
     continuationInFlight.current = false;
     continuationSequence.current += 1;
+    recheckController.current?.abort();
+    recheckController.current = null;
+    recheckSequence.current += 1;
+    openSequence.current += 1;
     setContinuationStatus("idle");
     setContinuationError(null);
     setLoadedContentPages(0);
     setLastContinuationAddedCount(null);
+    setOpenPending(false);
+    setOpenResult(null);
+    setResolutionById({});
+    setLastOutcome(null);
     setQueryStatus("loading");
     setQueryError(null);
     setResponse(null);
@@ -137,12 +194,21 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     return () => controller.abort();
   }, [learningPeriodDays, refreshVersion, stableDeckIds]);
 
-  useEffect(() => () => continuationController.current?.abort(), []);
+  useEffect(() => () => {
+    continuationController.current?.abort();
+    recheckController.current?.abort();
+  }, []);
 
   const activeItem = useMemo(
     () => response?.items.find((item) => item.itemId === activeId) ?? null,
     [activeId, response],
   );
+  const resolution = activeId ? resolutionById[activeId] ?? null : null;
+  const mutationPending = Object.values(resolutionById).some((value) => value.phase === "action_pending");
+
+  const writeResolution = useCallback((itemId: string, value: CardsResolutionState) => {
+    setResolutionById((current) => ({ ...current, [itemId]: value }));
+  }, []);
 
   useEffect(() => {
     const cardId = activeItem?.inspect?.cardId;
@@ -181,6 +247,10 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   }, [activeItem?.itemId, activeItem?.inspect?.cardId, inspectVersion]);
 
   const activate = useCallback((item: TriageItem) => {
+    openSequence.current += 1;
+    recheckController.current?.abort();
+    recheckSequence.current += 1;
+    setOpenPending(false);
     setOpenResult(null);
     const nextId = item.inspect ? item.itemId : null;
     setActiveId(nextId);
@@ -188,6 +258,10 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   }, []);
 
   const clearActive = useCallback(() => {
+    openSequence.current += 1;
+    recheckController.current?.abort();
+    recheckSequence.current += 1;
+    setOpenPending(false);
     setOpenResult(null);
     setActiveId(null);
     activeIdRef.current = null;
@@ -273,15 +347,187 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   }, []);
 
   const openInAnki = useCallback(async () => {
-    if (!activeItem?.inspect || openPending) return;
+    if (!activeItem?.inspect || openPending || mutationPending) return;
+    const itemId = activeItem.itemId;
+    const sequence = ++openSequence.current;
     setOpenPending(true);
-    const result = await runReportAction("open-search-selection", {
-      mode: "cards",
-      entityIds: [activeItem.inspect.cardId],
+    try {
+      const result = await runReportAction("open-search-selection", {
+        mode: "cards",
+        entityIds: [activeItem.inspect.cardId],
+      });
+      if (sequence !== openSequence.current) return;
+      setOpenResult(result);
+      writeResolution(itemId, {
+        itemId,
+        phase: result.ok ? "awaiting_recheck" : "action_failed",
+        actionResult: result,
+        actionError: null,
+        recheckError: null,
+        reconciliation: null,
+      });
+    } finally {
+      if (sequence === openSequence.current) setOpenPending(false);
+    }
+  }, [activeItem, mutationPending, openPending, writeResolution]);
+
+  const runSafeAction = useCallback(async (action: CardEntityAction) => {
+    if (!activeItem || actionInFlight.current || openPending) return;
+    if (["action_pending", "awaiting_recheck", "rechecking"].includes(resolutionById[activeItem.itemId]?.phase ?? "idle")) return;
+    if (!["suspend", "unsuspend", "bury", "unbury", "clear_flag"].includes(action)) return;
+    const item = activeItem;
+    const sequence = ++actionSequence.current;
+    actionInFlight.current = true;
+    writeResolution(item.itemId, {
+      itemId: item.itemId,
+      phase: "action_pending",
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
     });
-    setOpenResult(result);
-    setOpenPending(false);
-  }, [activeItem, openPending]);
+    try {
+      const result = await runCardEntityAction({
+        action,
+        cardIds: [item.cardId],
+        requestId: `cards-resolution-${sequence}`,
+      });
+      if (sequence !== actionSequence.current) return;
+      writeResolution(item.itemId, {
+        itemId: item.itemId,
+        phase: "awaiting_recheck",
+        actionResult: result,
+        actionError: null,
+        recheckError: null,
+        reconciliation: null,
+      });
+    } catch (error: unknown) {
+      if (sequence !== actionSequence.current) return;
+      writeResolution(item.itemId, {
+        itemId: item.itemId,
+        phase: "action_failed",
+        actionResult: null,
+        actionError: asEntityActionError(error),
+        recheckError: null,
+        reconciliation: null,
+      });
+    } finally {
+      actionInFlight.current = false;
+    }
+  }, [activeItem, openPending, resolutionById, writeResolution]);
+
+  const recheckActive = useCallback(async () => {
+    const item = activeItem;
+    const scope = scopeRef.current;
+    if (!item?.noteId || !scope || mutationPending) return;
+    const controller = new AbortController();
+    recheckController.current?.abort();
+    recheckController.current = controller;
+    const sequence = ++recheckSequence.current;
+    writeResolution(item.itemId, {
+      itemId: item.itemId,
+      phase: "rechecking",
+      actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
+    });
+    try {
+      const value = await fetchTriageRecheck({
+        schemaVersion: 1,
+        cardId: item.cardId,
+        expectedNoteId: item.noteId,
+        reasonIds: item.reasons.map((reason) => reason.reasonId),
+        scope,
+      }, controller.signal);
+      if (controller.signal.aborted || sequence !== recheckSequence.current) return;
+      if (value.entityStatus !== "available") {
+        const phase = value.entityStatus === "missing"
+          ? "entity_missing"
+          : value.entityStatus === "changed"
+            ? "entity_changed"
+            : "evidence_stale";
+        const outcome: CardsResolutionState = {
+          itemId: item.itemId,
+          phase,
+          actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+          actionError: null,
+          recheckError: null,
+          reconciliation: null,
+        };
+        writeResolution(item.itemId, outcome);
+        setLastOutcome(outcome);
+        return;
+      }
+      if (value.status !== "available" || !value.item) {
+        const outcome: CardsResolutionState = {
+          itemId: item.itemId,
+          phase: "evidence_stale",
+          actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+          actionError: null,
+          recheckError: null,
+          reconciliation: null,
+        };
+        writeResolution(item.itemId, outcome);
+        setLastOutcome(outcome);
+        return;
+      }
+
+      const reconciliation = reconcileReasons(item.reasons, value.item.reasons);
+      if (value.item.reasons.length > 0) {
+        const phase = reconciliation.removed.length > 0 ? "partially_resolved" : "still_active";
+        const outcome: CardsResolutionState = {
+          itemId: item.itemId,
+          phase,
+          actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+          actionError: null,
+          recheckError: null,
+          reconciliation,
+        };
+        setResponse((current) => replaceTriageItem(current, value.item!));
+        responseRef.current = replaceTriageItem(responseRef.current, value.item);
+        inspectCache.current.delete(item.cardId);
+        setInspectVersion((current) => current + 1);
+        writeResolution(item.itemId, outcome);
+        setLastOutcome(outcome);
+        return;
+      }
+
+      const current = responseRef.current;
+      const index = current?.items.findIndex((candidate) => candidate.itemId === item.itemId) ?? -1;
+      const nextResponse = removeTriageItem(current, item.itemId);
+      const nextItem = nextResponse?.items[Math.min(Math.max(index, 0), Math.max(nextResponse.items.length - 1, 0))] ?? null;
+      const outcome: CardsResolutionState = {
+        itemId: item.itemId,
+        phase: "resolved",
+        actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+        actionError: null,
+        recheckError: null,
+        reconciliation,
+      };
+      setResponse(nextResponse);
+      responseRef.current = nextResponse;
+      setActiveId(nextItem?.itemId ?? null);
+      activeIdRef.current = nextItem?.itemId ?? null;
+      setFocusRequest((currentFocus) => ({ itemId: nextItem?.itemId ?? null, version: currentFocus.version + 1 }));
+      writeResolution(item.itemId, outcome);
+      setLastOutcome(outcome);
+    } catch (error: unknown) {
+      if (controller.signal.aborted || sequence !== recheckSequence.current) return;
+      const outcome: CardsResolutionState = {
+        itemId: item.itemId,
+        phase: "recheck_failed",
+        actionResult: resolutionById[item.itemId]?.actionResult ?? null,
+        actionError: null,
+        recheckError: asTriageError(error),
+        reconciliation: null,
+      };
+      writeResolution(item.itemId, outcome);
+      setLastOutcome(outcome);
+    } finally {
+      if (sequence === recheckSequence.current) recheckController.current = null;
+    }
+  }, [activeItem, mutationPending, resolutionById, writeResolution]);
 
   const scannedNoteCount = response?.sourceStatus.contentCandidates.scannedNoteCount ?? 0;
   const hasMoreContent = continuationStatus !== "capped" && !!coherentNextCursor(response);
@@ -299,6 +545,10 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     inspectResponse,
     openPending,
     openResult,
+    resolution,
+    lastOutcome,
+    focusRequest,
+    mutationPending,
     continuationStatus,
     continuationError,
     loadedContentPages,
@@ -311,6 +561,37 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     continueContentScan,
     retryInspect,
     openInAnki,
+    runSafeAction,
+    recheckActive,
+  };
+}
+
+function reconcileReasons(previous: TriageReason[], current: TriageReason[]): CardsReasonReconciliation {
+  const previousIds = new Set(previous.map((reason) => reason.reasonId));
+  const currentIds = new Set(current.map((reason) => reason.reasonId));
+  return {
+    removed: previous.filter((reason) => !currentIds.has(reason.reasonId)),
+    remaining: current.filter((reason) => previousIds.has(reason.reasonId)),
+    added: current.filter((reason) => !previousIds.has(reason.reasonId)),
+  };
+}
+
+function replaceTriageItem(response: TriageQueryResponse | null, item: TriageItem): TriageQueryResponse | null {
+  if (!response) return null;
+  return { ...response, items: response.items.map((value) => value.itemId === item.itemId ? item : value) };
+}
+
+function removeTriageItem(response: TriageQueryResponse | null, itemId: string): TriageQueryResponse | null {
+  if (!response) return null;
+  const items = response.items.filter((item) => item.itemId !== itemId);
+  const removed = response.items.length - items.length;
+  const totalCount = Math.max(items.length, response.totalCount - removed);
+  return {
+    ...response,
+    items,
+    totalCount,
+    returnedCount: items.length,
+    truncated: totalCount > items.length,
   };
 }
 
@@ -333,4 +614,10 @@ function asSearchError(error: unknown): SearchApiError {
   return error instanceof SearchApiError
     ? error
     : new SearchApiError("Card details are unavailable.", { code: "search_failed", status: 0 });
+}
+
+function asEntityActionError(error: unknown): EntityActionApiError {
+  return error instanceof EntityActionApiError
+    ? error
+    : new EntityActionApiError("The Anki action failed.", { code: "entity_action_failed", status: 0 });
 }

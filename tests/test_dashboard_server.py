@@ -339,6 +339,60 @@ def test_triage_endpoint_maps_typed_failures_without_exception_leak(monkeypatch)
         manager.stop()
 
 
+def test_triage_recheck_endpoint_is_token_protected_post_json_only_and_bounded():
+    dashboard_server = import_addon_module("dashboard_server")
+    triage_runtime = import_addon_module("triage_runtime")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 1,
+        "cardId": "1",
+        "expectedNoteId": "10001",
+        "reasonIds": ["learning:learning.repeated_again"],
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+    }
+    manager.configure_triage_handler(
+        recheck_handler=lambda value: triage_runtime.run_triage_recheck_sync(None, value, signal_provider=lambda: [])
+    )
+    try:
+        status, _, body = fetch(f"{base_url}/api/triage/recheck", method="POST", json_body=payload)
+        assert status == 403
+        assert json.loads(body)["error"] == "invalid_dashboard_token"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}", method="POST")
+        assert status == 415
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}", method="POST", json_body=payload)
+        assert status == 200
+        response = json.loads(body)["response"]
+        assert response["schemaVersion"] == 1
+        assert response["cardId"] == "1"
+        assert response["status"] == "unavailable"
+
+        status, _, body = fetch(
+            f"{base_url}/api/triage/recheck?token={token}",
+            method="POST",
+            json_body={**payload, "rawSql": "select * from cards"},
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+
+        status, _, body = fetch_raw(
+            f"{base_url}/api/triage/recheck?token={token}", b'{"padding":"' + b"x" * 9000 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+    finally:
+        manager.stop()
+
+
 def test_inspection_profile_endpoints_are_token_protected_json_only_bounded_and_typed():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()

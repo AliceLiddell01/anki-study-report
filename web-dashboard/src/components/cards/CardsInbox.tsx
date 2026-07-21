@@ -71,6 +71,7 @@ function CardsInboxItem({
   return (
     <li className="cards-inbox-list-item" data-testid="cards-inbox-list-item">
       <button
+        id={`${itemKey}-button`}
         type="button"
         className={`cards-inbox-item${active ? " is-active" : ""}`}
         data-card-id={item.cardId}

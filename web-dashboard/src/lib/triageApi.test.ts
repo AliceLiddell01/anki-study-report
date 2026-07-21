@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchTriageQuery, parseTriageQueryResponse, TriageApiError } from "./triageApi";
+import { fetchTriageQuery, fetchTriageRecheck, parseTriageQueryResponse, parseTriageRecheckResponse, TriageApiError } from "./triageApi";
 
 const availableSource = {
   status: "available",
@@ -121,6 +121,23 @@ const worksetResponse = {
   items: [missingItem],
 };
 
+const recheckResponse = {
+  schemaVersion: 1,
+  cardId: "1001",
+  expectedNoteId: "2001",
+  status: "available",
+  entityStatus: "available",
+  generatedAtMs: 1_721_000_000_000,
+  sourceStatus: {
+    learningCandidates: availableSource,
+    signals: { ...availableSource, status: "empty", itemCount: 0 },
+    searchResolver: availableSource,
+    profileChecks: { ...availableSource, status: "empty", itemCount: 0 },
+  },
+  contentChecks: automaticResponse.contentChecks,
+  item,
+};
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Triage v4 read API contract", () => {
@@ -191,5 +208,23 @@ describe("Triage v4 read API contract", () => {
       scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] },
       limit: 100,
     })).rejects.toMatchObject({ code: "invalid_triage_response" });
+  });
+
+  it("strictly parses and posts one exact-card recheck without putting IDs in the URL", async () => {
+    expect(parseTriageRecheckResponse(recheckResponse)).toEqual(recheckResponse);
+    expect(() => parseTriageRecheckResponse({ ...recheckResponse, item: null })).toThrowError(TriageApiError);
+    expect(() => parseTriageRecheckResponse({ ...recheckResponse, future: true })).toThrowError(TriageApiError);
+    window.history.replaceState(null, "", "/?token=secret-token#/cards");
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true, response: recheckResponse }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = { schemaVersion: 1 as const, cardId: "1001", expectedNoteId: "2001", reasonIds: ["learning:learning.leech"], scope: { periodStartMs: 1, periodEndMs: 2, deckIds: [] } };
+    await expect(fetchTriageRecheck(request)).resolves.toEqual(recheckResponse);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/triage/recheck?token=secret-token");
+    expect(String(url)).not.toContain("1001");
+    expect(JSON.parse(String(init?.body))).toEqual(request);
   });
 });

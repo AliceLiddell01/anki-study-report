@@ -127,6 +127,28 @@ describe("Cards attention inbox", () => {
     const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
     expect(html).toContain("Card text unavailable");
   });
+
+  it("presents the reason-level resolution lifecycle without bulk or manual resolve controls", () => {
+    const partial = {
+      itemId: items[0]!.itemId,
+      phase: "partially_resolved" as const,
+      actionResult: { schemaVersion: 1 as const, entityType: "cards" as const, action: "suspend" as const, requestedCount: 1, affectedCount: 0, unchangedCount: 1, undoable: false, resultCode: "action.no_changes" as const, args: {} },
+      actionError: null,
+      recheckError: null,
+      reconciliation: { removed: [learningReason], remaining: [contentReason], added: [] },
+    };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), resolution: partial, lastOutcome: partial });
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Устранено частично");
+    expect(html).toContain("Anki не внёс изменений");
+    expect(html).toContain("Частые ответы «Снова»");
+    expect(html).toContain("Нет аудио");
+    expect(html).toContain("Перепроверить карточку");
+    expect(html).toContain("Успешное действие ещё не означает");
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).not.toContain(">Готово<");
+    expect(html).not.toContain(">Архивировать<");
+  });
 });
 
 function readyWorkspace(): CardsTriageWorkspace {
@@ -136,9 +158,10 @@ function readyWorkspace(): CardsTriageWorkspace {
     activeId: items[0]!.itemId, activeItem: items[0]!,
     inspectStatus: "ready", inspectError: null, inspectResponse,
     openPending: false, openResult: null,
+    resolution: null, lastOutcome: null, focusRequest: { itemId: null, version: 0 }, mutationPending: false,
     continuationStatus: "idle", continuationError: null, loadedContentPages: 0,
     scannedNoteCount: 500, hasMoreContent: true, lastContinuationAddedCount: null,
-    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined),
+    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined), runSafeAction: vi.fn(async () => undefined), recheckActive: vi.fn(async () => undefined),
   };
 }
 

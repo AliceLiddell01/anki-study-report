@@ -58,6 +58,14 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   useEffect(() => {
     if (workspace.queryStatus !== "ready") setDrawerOpen(false);
   }, [workspace.queryStatus]);
+  useEffect(() => {
+    if (!workspace.focusRequest.version) return;
+    const target = workspace.focusRequest.itemId
+      ? document.getElementById(`${safeInboxId(workspace.focusRequest.itemId)}-button`)
+      : null;
+    if (target instanceof HTMLElement) target.focus();
+    else queueHeadingRef.current?.focus();
+  }, [workspace.focusRequest]);
 
   const allItems = workspace.response?.items ?? [];
   const decks = useMemo(
@@ -125,7 +133,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           <h1>{t("title")}</h1>
           <p>{t("description")}</p>
         </div>
-        <span className="cards-inbox-readonly">{t("readOnly")}</span>
+        <span className="cards-inbox-readonly">{t("singleCard")}</span>
       </header>
 
       <section className="cards-inbox-controls panel-surface" aria-label={t("filters.label")}>
@@ -198,6 +206,12 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       </section>
 
       <CardsWorkspaceWarnings workspace={workspace} />
+      {workspace.lastOutcome ? (
+        <div className={`cards-inbox-warning cards-resolution-outcome is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
+          <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
+          <span>{t(`resolution.states.${workspace.lastOutcome.phase}.description`)}</span>
+        </div>
+      ) : null}
       <CoverageDisclosure workspace={workspace} />
 
       <div className="cards-inbox-workspace">
@@ -265,6 +279,10 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       ) : null}
     </div>
   );
+}
+
+function safeInboxId(value: string): string {
+  return `cards-inbox-${value.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
 function QueueState({

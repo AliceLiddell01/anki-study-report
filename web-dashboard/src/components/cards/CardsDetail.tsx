@@ -2,6 +2,7 @@ import { ExternalLink, Maximize2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnkiCardShadowPreview } from "../AnkiCardShadowPreview";
 import type { CardsTriageWorkspace } from "../../hooks/useCardsTriageWorkspace";
+import type { CardsResolutionState } from "../../hooks/useCardsTriageWorkspace";
 import { cardDisplayText } from "../../lib/cardDisplayText";
 import {
   evidenceLabel,
@@ -13,6 +14,7 @@ import {
 } from "../../lib/triagePresentation";
 import type { SearchCardDetails } from "../../types/search";
 import type { TriagePriority, TriageReason } from "../../types/triage";
+import type { CardEntityAction } from "../../types/entityActions";
 
 export interface CardsDetailProps {
   workspace: CardsTriageWorkspace;
@@ -25,6 +27,7 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const item = workspace.activeItem;
   const details = workspace.inspectResponse?.details;
+  const actionLocked = workspace.mutationPending || ["awaiting_recheck", "rechecking"].includes(workspace.resolution?.phase ?? "idle");
 
   if (!item) {
     return emptyAllowed ? (
@@ -90,8 +93,20 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
       <section className="cards-detail-section" aria-labelledby={`${headingId}-next`}>
         <h3 id={`${headingId}-next`}>{t("inspector.next")}</h3>
         <p className="cards-detail-next-copy">{recommendedStep(item, t)}</p>
+        <p className="cards-detail-resolution-rule">{t("resolution.rule")}</p>
         <div className="cards-detail-actions">
-          <button type="button" className="primary-button" onClick={() => void workspace.openInAnki()} disabled={workspace.openPending}>
+          {safeActions(item).map((action, index) => (
+            <button
+              key={action}
+              type="button"
+              className={index === 0 ? "primary-button" : "secondary-button"}
+              onClick={() => void workspace.runSafeAction(action)}
+              disabled={workspace.openPending || actionLocked}
+            >
+              {workspace.resolution?.phase === "action_pending" ? t("actions.working") : t(`actions.${action}`)}
+            </button>
+          ))}
+          <button type="button" className={safeActions(item).length ? "secondary-button" : "primary-button"} onClick={() => void workspace.openInAnki()} disabled={workspace.openPending || workspace.mutationPending || workspace.resolution?.phase === "rechecking"}>
             <ExternalLink size={16} aria-hidden="true" />
             {workspace.openPending ? t("actions.opening") : t("actions.open")}
           </button>
@@ -104,6 +119,7 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
             {workspace.openResult.ok ? t("actions.opened") : t("actions.failed")}
           </p>
         ) : null}
+        <ResolutionResult state={workspace.resolution} onRecheck={() => void workspace.recheckActive()} />
       </section>
 
       <details className="cards-detail-technical">
@@ -119,6 +135,52 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
       </details>
     </div>
   );
+}
+
+function ResolutionResult({ state, onRecheck }: { state: CardsResolutionState | null; onRecheck: () => void }) {
+  const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  if (!state) return null;
+  const canRecheck = ["awaiting_recheck", "still_active", "partially_resolved", "recheck_failed", "evidence_stale", "entity_missing", "entity_changed"].includes(state.phase);
+  const noChanges = state.actionResult && "resultCode" in state.actionResult && state.actionResult.resultCode === "action.no_changes";
+  const actionSucceeded = state.actionResult && "resultCode" in state.actionResult && !noChanges;
+  return (
+    <div className={`cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-state" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"}>
+      <strong>{t(`resolution.states.${state.phase}.title`)}</strong>
+      <p>{t(`resolution.states.${state.phase}.description`)}</p>
+      {actionSucceeded ? <p>{t("resolution.actionSucceeded")}</p> : null}
+      {noChanges ? <p>{t("resolution.noChanges")}</p> : null}
+      {state.reconciliation ? (
+        <div className="cards-resolution-reconciliation">
+          <ReasonChangeList title={t("resolution.removed")} reasons={state.reconciliation.removed} className="is-removed" />
+          <ReasonChangeList title={t("resolution.remaining")} reasons={state.reconciliation.remaining} />
+          <ReasonChangeList title={t("resolution.added")} reasons={state.reconciliation.added} className="is-added" />
+        </div>
+      ) : null}
+      {canRecheck ? (
+        <button type="button" className="secondary-button" onClick={onRecheck}>
+          <RotateCw size={16} aria-hidden="true" />{t("resolution.recheck")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ReasonChangeList({ title, reasons, className }: { title: string; reasons: TriageReason[]; className?: string }) {
+  const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  if (!reasons.length) return null;
+  return (
+    <div className={className}>
+      <span>{title}</span>
+      <ul>{reasons.map((reason) => <li key={reason.reasonId}>{reasonLabel(reason.code, t)}</li>)}</ul>
+    </div>
+  );
+}
+
+function safeActions(item: NonNullable<CardsTriageWorkspace["activeItem"]>): CardEntityAction[] {
+  if (!item.reasons.some((reason) => reason.family === "learning")) return [];
+  const actions: CardEntityAction[] = [item.cardState.suspended ? "unsuspend" : "suspend"];
+  actions.push(item.cardState.buried ? "unbury" : "bury");
+  return actions;
 }
 
 function ReasonCard({ reason, primary }: { reason: TriageReason; primary: boolean }) {

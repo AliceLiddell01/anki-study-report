@@ -262,6 +262,41 @@ def assert_inspection_profiles_contract(
     encoded_evidence = json.dumps(profile_evidence, ensure_ascii=False)
     assert_true("rawFields" not in encoded_evidence and ".mp3" not in encoded_evidence, "profile evidence excludes values and media filenames")
 
+    recheck_item = next(
+        (
+            item
+            for item in triage_items
+            if any(
+                str(reason.get("reasonId") or "").startswith("learning:")
+                for reason in item.get("reasons", [])
+                if isinstance(reason, dict)
+            )
+        ),
+        None,
+    )
+    assert_true(recheck_item is not None, "Cards fixture exposes one exact learning item for canonical recheck")
+    recheck = post_json(
+        base_url,
+        "/api/triage/recheck",
+        token,
+        {
+            "schemaVersion": 1,
+            "cardId": recheck_item["cardId"],
+            "expectedNoteId": recheck_item["noteId"],
+            "reasonIds": [reason["reasonId"] for reason in recheck_item["reasons"]],
+            "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+        },
+    )
+    assert_true(recheck.get("schemaVersion") == 1, "canonical exact-card recheck v1 is active")
+    assert_true(recheck.get("cardId") == recheck_item["cardId"], "recheck evaluates only the requested card")
+    assert_true(recheck.get("entityStatus") == "available", "recheck confirms the exact card identity")
+    rechecked_item = recheck.get("item") if isinstance(recheck.get("item"), dict) else None
+    assert_true(rechecked_item is not None, "recheck returns the authoritative current card projection")
+    assert_true(
+        any(str(reason.get("reasonId") or "").startswith("learning:") for reason in rechecked_item.get("reasons", [])),
+        "unchanged learning evidence remains active after exact recheck",
+    )
+
     proof = {
         "ok": True,
         "label": label,
@@ -273,6 +308,8 @@ def assert_inspection_profiles_contract(
         "japaneseAudioReasonCount": len(japanese_audio),
         "programmingAudioReasonCount": len(programming_audio),
         "learningReasonPreserved": True,
+        "exactRecheckStatus": recheck.get("status"),
+        "exactRecheckEntityStatus": recheck.get("entityStatus"),
         "profileEvidenceValueLeak": False,
         "samplePreviewV2": True,
     }

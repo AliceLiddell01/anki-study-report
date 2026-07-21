@@ -97,6 +97,9 @@ def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_sch
     assert '"schemaVersion": 4' in profile_smoke
     assert 'triage.get("schemaVersion") == 4' in profile_smoke
     assert "canonical triage v4 is active" in profile_smoke
+    assert '"/api/triage/recheck"' in profile_smoke
+    assert 'recheck.get("schemaVersion") == 1' in profile_smoke
+    assert "recheck evaluates only the requested card" in profile_smoke
     assert "canonical triage v2 is active" not in profile_smoke
 
 
@@ -200,6 +203,8 @@ def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
         'data-testid="cards-inbox-item"',
         'data-testid="cards-detail-drawer"',
         'name: "Развернуть ответ"',
+        'name: "Перепроверить карточку"',
+        "/api/triage/recheck",
         'summaryText.startsWith(`Показано ${expectation.filteredCardCount} из `)',
     ):
         assert current in active_contract

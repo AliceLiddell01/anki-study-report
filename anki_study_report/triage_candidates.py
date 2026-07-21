@@ -103,6 +103,71 @@ def collect_learning_triage_candidates_with_status(
     )
 
 
+def collect_exact_learning_triage_candidate_with_status(
+    col: Any,
+    card_id: int,
+    period_start_ms: int,
+    period_end_ms: int,
+    deck_ids: list[int],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Evaluate the canonical learning detectors for one exact current card."""
+
+    if col is None or getattr(col, "db", None) is None:
+        return [], source_status("unavailable", error_code="collection_unavailable")
+    exact_card_id = _positive_int(card_id)
+    if not exact_card_id:
+        return [], source_status("error", error_code="learning_card_invalid")
+    try:
+        expanded = expand_deck_ids(col, deck_ids) if deck_ids else None
+        deck_sql, deck_params = _deck_filter(expanded)
+        rows = col.db.all(
+            f"""
+            select
+                c.id,
+                c.nid,
+                c.lapses,
+                n.mid,
+                c.ord,
+                n.tags,
+                count(*) as total_reviews,
+                coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0) as again_count,
+                coalesce(sum(case when r.time < 0 then 0 when r.time > ? then ? else r.time end), 0) as total_ms,
+                max(r.id) as last_reviewed_ms
+            from cards c
+            join notes n on n.id = c.nid
+            join revlog r on r.cid = c.id
+                and r.id >= ? and r.id < ?
+                {REVLOG_REVIEW_FILTER_SQL}
+            where c.id = ?
+              {deck_sql}
+            group by c.id, c.nid, c.lapses, n.mid, c.ord, n.tags
+            """,
+            ANSWER_TIME_CAP_MS,
+            ANSWER_TIME_CAP_MS,
+            period_start_ms,
+            period_end_ms,
+            exact_card_id,
+            *deck_params,
+        )
+    except Exception:
+        return [], source_status("error", error_code="learning_source_failed")
+
+    if not rows:
+        return [], source_status("empty")
+    payload = _learning_payload(rows[0])
+    if payload is None:
+        return [], source_status(
+            "partial",
+            skipped_count=1,
+            error_code="learning_rows_skipped",
+        )
+    result = [payload] if payload["issues"] else []
+    return result, source_status(
+        "available" if result else "empty",
+        item_count=len(result),
+    )
+
+
 def collect_current_content_candidates(
     col: Any,
     deck_ids: list[int],

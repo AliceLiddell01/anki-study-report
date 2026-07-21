@@ -597,6 +597,54 @@
   gap: .48rem;
 }
 
+.cards-detail-resolution-rule {
+  margin: 0.7rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.cards-resolution-state {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.cards-resolution-state.is-action_failed,
+.cards-resolution-state.is-recheck_failed,
+.cards-resolution-state.is-evidence_stale,
+.cards-resolution-state.is-entity_missing,
+.cards-resolution-state.is-entity_changed {
+  border-color: var(--status-warning-border, var(--border-color));
+}
+
+.cards-resolution-state.is-resolved {
+  border-color: var(--status-success-border, var(--border-color));
+}
+
+.cards-resolution-state p,
+.cards-resolution-state ul {
+  margin: 0;
+}
+
+.cards-resolution-reconciliation {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cards-resolution-reconciliation > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: 0.65rem;
+}
+
+.cards-resolution-reconciliation ul {
+  padding-inline-start: 1.1rem;
+}
+
 .cards-detail-actions a {
   text-decoration: none;
 }

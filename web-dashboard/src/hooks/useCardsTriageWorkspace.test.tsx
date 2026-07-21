@@ -124,6 +124,116 @@ describe("useCardsTriageWorkspace", () => {
     expect(inspectCalls.filter((value) => value === "1002")).toHaveLength(1);
     await act(async () => root.unmount());
   });
+
+  it("keeps action success separate from recheck and removes only a canonically resolved card", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const calls: string[] = [];
+    const resolved = { ...first, priority: null, primaryReasonCode: null, reasons: [], sources: [], cardState: { ...first.cardState, state: "suspended" as const, suspended: true } };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}")); calls.push(url);
+      if (url.includes("/api/triage/query")) return ok(response([first, second], 0, null));
+      if (url.includes("/api/entities/cards/actions")) return ok({ schemaVersion: 1, entityType: "cards", action: "suspend", requestedCount: 1, affectedCount: 0, unchangedCount: 1, undoable: false, resultCode: "action.no_changes", args: {}, requestId: body.requestId });
+      if (url.includes("/api/triage/recheck")) return ok(recheck(resolved));
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    await act(async () => { await latestWorkspace!.runSafeAction("suspend"); });
+    expect(latestWorkspace!.resolution?.phase).toBe("awaiting_recheck");
+    expect(latestWorkspace!.response!.items).toHaveLength(2);
+    expect(calls.filter((url) => url.includes("/api/triage/recheck"))).toHaveLength(0);
+    await act(async () => { await latestWorkspace!.recheckActive(); });
+    expect(latestWorkspace!.lastOutcome?.phase).toBe("resolved");
+    expect(latestWorkspace!.lastOutcome?.reconciliation?.removed.map((value) => value.reasonId)).toEqual(["learning:1"]);
+    expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1002"]);
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1002");
+    expect(latestWorkspace!.focusRequest.itemId).toBe("card:1002");
+    await act(async () => root.unmount());
+  });
+
+  it("reconciles removed, remaining, and new reasons but fails closed on partial evidence", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const oldContent = reason("profile:old", "content.audio_missing", "medium");
+    const newContent = reason("profile:new", "content.image_missing", "low");
+    const combined: TriageItem = { ...first, reasons: [first.reasons[0]!, oldContent], sources: ["attention", "profile_checks"] };
+    let recheckCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([combined], 0, null));
+      if (url.includes("/api/triage/recheck")) {
+        recheckCount += 1;
+        if (recheckCount === 1) return ok(recheck({ ...combined, priority: "medium", primaryReasonCode: oldContent.code, reasons: [oldContent, newContent], sources: ["profile_checks"] }));
+        return ok(recheck({ ...combined, priority: null, primaryReasonCode: null, reasons: [], sources: [] }, "partial"));
+      }
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(combined));
+    await flush();
+    await act(async () => { await latestWorkspace!.recheckActive(); });
+    expect(latestWorkspace!.resolution?.phase).toBe("partially_resolved");
+    expect(latestWorkspace!.resolution?.reconciliation?.removed.map((value) => value.reasonId)).toEqual(["learning:1"]);
+    expect(latestWorkspace!.resolution?.reconciliation?.remaining.map((value) => value.reasonId)).toEqual(["profile:old"]);
+    expect(latestWorkspace!.resolution?.reconciliation?.added.map((value) => value.reasonId)).toEqual(["profile:new"]);
+    expect(latestWorkspace!.activeItem?.primaryReasonCode).toBe("content.audio_missing");
+    await act(async () => { await latestWorkspace!.recheckActive(); });
+    expect(latestWorkspace!.resolution?.phase).toBe("evidence_stale");
+    expect(latestWorkspace!.response!.items).toHaveLength(1);
+    await act(async () => root.unmount());
+  });
+
+  it("reports action failure without rechecking or removing the item", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}")); calls.push(url);
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/entities/cards/actions")) return new Response(JSON.stringify({ ok: false, error: "entity_action_stale", message: "stale" }), { status: 409, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    await act(async () => { await latestWorkspace!.runSafeAction("suspend"); });
+    expect(latestWorkspace!.resolution?.phase).toBe("action_failed");
+    expect(latestWorkspace!.resolution?.actionError?.code).toBe("entity_action_stale");
+    expect(latestWorkspace!.response!.items).toHaveLength(1);
+    expect(calls.some((url) => url.includes("/api/triage/recheck"))).toBe(false);
+    await act(async () => root.unmount());
+  });
+
+  it("prevents an older recheck response from overwriting the latest result", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let resolveOld: ((value: Response) => void) | null = null;
+    let count = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) return ok(response([first], 0, null));
+      if (url.includes("/api/triage/recheck")) {
+        count += 1;
+        if (count === 1) return new Promise<Response>((resolve) => { resolveOld = resolve; });
+        return ok(recheck(first));
+      }
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await flush();
+    let oldRequest!: Promise<void>;
+    await act(async () => { oldRequest = latestWorkspace!.recheckActive(); await Promise.resolve(); });
+    await act(async () => { await latestWorkspace!.recheckActive(); });
+    expect(latestWorkspace!.resolution?.phase).toBe("still_active");
+    const empty = { ...first, priority: null, primaryReasonCode: null, reasons: [], sources: [] };
+    await act(async () => { resolveOld?.(ok(recheck(empty))); await oldRequest; });
+    expect(latestWorkspace!.resolution?.phase).toBe("still_active");
+    expect(latestWorkspace!.response!.items).toHaveLength(1);
+    await act(async () => root.unmount());
+  });
 });
 
 async function mount() {
@@ -164,3 +274,4 @@ function response(values: TriageItem[], scanned: number, cursor: string | null):
 function source(status: "available" | "empty", itemCount: number) { return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null } as const; }
 function ok(responseValue: unknown) { return new Response(JSON.stringify({ ok: true, response: responseValue }), { status: 200, headers: { "Content-Type": "application/json" } }); }
 function searchDetails(cardId: string) { return { schemaVersion: 2, mode: "cards", requestId: `cards-${cardId}`, details: { cardId, noteId: `2${cardId}`, deckId: "3", deckName: "Deck", noteTypeId: "7", noteTypeName: "Basic", templateOrdinal: 0, templateName: "Card 1", displayText: cardId, displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 1, repetitions: 1, lapses: 0, flag: 0, tagSummary: [], deck: { deckId: "3", deckName: "Deck" }, noteType: { noteTypeId: "7", noteTypeName: "Basic" }, template: { ordinal: 0, name: "Card 1" }, queue: 2, tags: [], renderedPreview: { renderStatus: "sanitized", frontHtml: `<b>${cardId}</b>`, backHtml: `<i>${cardId}</i>`, frontPlainText: cardId, backPlainText: cardId, css: "", mediaRefs: [], cardOrd: 0, cardId: Number(cardId), renderSource: "anki_native" } } }; }
+function recheck(recheckItem: TriageItem, status: "available" | "partial" = "available") { return { schemaVersion: 1, cardId: recheckItem.cardId, expectedNoteId: recheckItem.noteId, status, entityStatus: "available", generatedAtMs: Date.now(), sourceStatus: { learningCandidates: source("empty", 0), signals: source("empty", 0), searchResolver: source("available", 1), profileChecks: status === "partial" ? { ...source("empty", 0), status: "partial", errorCode: "profile_structures_partial" } : source(recheckItem.reasons.length ? "available" : "empty", recheckItem.reasons.length) }, contentChecks: { status: status === "partial" ? "partial" : "available", confirmedProfileCount: 1, needsReviewProfileCount: status === "partial" ? 1 : 0, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 0, evaluatedNoteCount: 1, failedCheckCount: recheckItem.reasons.length, skippedCount: 0, truncated: false, nextCursor: null, errorCode: status === "partial" ? "profile_structures_partial" : null }, item: recheckItem }; }
