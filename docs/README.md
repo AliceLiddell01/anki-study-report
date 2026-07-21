@@ -46,5 +46,6 @@ Gamification research, telemetry admin tooling, optional identity and extension 
 - [ChatGPT and Codex work modes](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
 - [Codex work mode](codex-agent-rules.md)
+- [Codex local WSL environment](codex-local-environment.md)
 
 Historical evidence belongs in [reports/](../reports/README.md), not in `docs/`.
