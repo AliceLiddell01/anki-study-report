@@ -50,12 +50,12 @@ jobs:
               raise SystemExit('Expected exactly one stale Card details field list')
           source = source.replace(old_required, new_required, 1)
           old_assert = '  assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Card inspect returns every declared detail field.");'
-          new_assert = '''  assertBrowser(required.every((key) => Object.hasOwn(details || {}, key)), "Card inspect returns every declared detail field.");
-            assertBrowser(typeof details?.displayText === "string" && typeof details?.displayTruncated === "boolean", "Card inspect returns bounded display identity values.");
-            assertBrowser(["browser_question", "reviewer_front", "none"].includes(details?.displaySource), "Card inspect returns a current display source.");
-            assertBrowser(["available", "media_only", "unavailable"].includes(details?.displayStatus), "Card inspect returns a current display status.");'''
-          import textwrap
-          new_assert = textwrap.dedent(new_assert).rstrip()
+          new_assert = '\n'.join([
+              old_assert,
+              '  assertBrowser(typeof details?.displayText === "string" && typeof details?.displayTruncated === "boolean", "Card inspect returns bounded display identity values.");',
+              '  assertBrowser(["browser_question", "reviewer_front", "none"].includes(details?.displaySource), "Card inspect returns a current display source.");',
+              '  assertBrowser(["available", "media_only", "unavailable"].includes(details?.displayStatus), "Card inspect returns a current display status.");',
+          ])
           if source.count(old_assert) != 1:
               raise SystemExit('Expected exactly one Card details completeness assertion')
           source = source.replace(old_assert, new_assert, 1)
@@ -63,40 +63,29 @@ jobs:
 
           test_path = Path('tests/test_docker_smoke_helpers.py')
           tests = test_path.read_text(encoding='utf-8')
-          old_context = '''    action_contract = source.split("async function assertSafeEntityActions", 1)[1].split(
-                  "async function assertSearchWorkspaceUi", 1
-              )[0]
-
-              assert 'const cardRequest = {\\n    schemaVersion: 2,' in query_contract'''
-          new_context = '''    action_contract = source.split("async function assertSafeEntityActions", 1)[1].split(
-                  "async function assertSearchWorkspaceUi", 1
-              )[0]
-              card_details = source.split("function assertCompleteCardDetails", 1)[1].split(
-                  "function assertCompleteNoteDetails", 1
-              )[0]
-
-              assert 'const cardRequest = {\\n    schemaVersion: 2,' in query_contract'''
-          old_context = textwrap.dedent(old_context)
-          new_context = textwrap.dedent(new_context)
-          if tests.count(old_context) != 1:
+          context_marker = "    assert 'const cardRequest = {\\n    schemaVersion: 2,' in query_contract\n"
+          context_insert = (
+              '    card_details = source.split("function assertCompleteCardDetails", 1)[1].split(\n'
+              '        "function assertCompleteNoteDetails", 1\n'
+              '    )[0]\n\n'
+          )
+          if tests.count(context_marker) != 1:
               raise SystemExit('Search test context marker was not unique')
-          tests = tests.replace(old_context, new_context, 1)
+          tests = tests.replace(context_marker, context_insert + context_marker, 1)
 
-          old_tail = '''    assert '{ mode: "notes", noteId, requestId }' not in action_contract
-          '''
-          new_tail = '''    assert '{ mode: "notes", noteId, requestId }' not in action_contract
-
-              for field in ("displayText", "displaySource", "displayStatus", "displayTruncated"):
-                  assert f'"{field}"' in card_details
-              assert '"primaryText"' not in card_details
-              assert '"browser_question", "reviewer_front", "none"' in card_details
-              assert '"available", "media_only", "unavailable"' in card_details
-          '''
-          old_tail = textwrap.dedent(old_tail)
-          new_tail = textwrap.dedent(new_tail)
-          if tests.count(old_tail) != 1:
+          tail_marker = '    assert \'{ mode: "notes", noteId, requestId }\' not in action_contract\n'
+          tail_insert = (
+              tail_marker
+              + '\n'
+              + '    for field in ("displayText", "displaySource", "displayStatus", "displayTruncated"):\n'
+              + '        assert f\'"{field}"\' in card_details\n'
+              + '    assert \'"primaryText"\' not in card_details\n'
+              + '    assert \'"browser_question", "reviewer_front", "none"\' in card_details\n'
+              + '    assert \'"available", "media_only", "unavailable"\' in card_details\n'
+          )
+          if tests.count(tail_marker) != 1:
               raise SystemExit('Search test tail marker was not unique')
-          tests = tests.replace(old_tail, new_tail, 1)
+          tests = tests.replace(tail_marker, tail_insert, 1)
           test_path.write_text(tests, encoding='utf-8')
           PY
 
