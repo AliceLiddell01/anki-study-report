@@ -1,0 +1,430 @@
+name: R7 temporary Cards browser harness control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r7-cards-browser-harness-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-cards-browser-harness-fix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact task branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Guard exact task identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          test '${{ github.head_ref }}' = 'c1-5r-7-cards-browser-harness-fix'
+          test '${{ github.base_ref }}' = 'core'
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: web-dashboard/pnpm-lock.yaml
+
+      - name: Install focused dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          pnpm --dir web-dashboard install --frozen-lockfile
+
+      - name: Apply bounded Cards browser harness repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          smoke = Path("docker/anki-e2e/smoke-browser.mjs")
+          text = smoke.read_text(encoding="utf-8")
+
+          def replace_block(source: str, start: str, end: str, replacement: str) -> str:
+              if source.count(start) != 1:
+                  raise SystemExit(f"Expected exactly one start marker: {start}")
+              if source.count(end) != 1:
+                  raise SystemExit(f"Expected exactly one end marker: {end}")
+              prefix, remainder = source.split(start, 1)
+              _, suffix = remainder.split(end, 1)
+              return prefix + replacement.rstrip() + "\n\n" + end + suffix
+
+          cards_workspace = dedent(r'''
+          async function assertCardsV2Workspace(page, perf100Enabled) {
+            const inspectRequests = [];
+            const onInspectRequest = (request) => {
+              if (request.url().includes("/api/search/inspect")) {
+                let cardId = "";
+                try { cardId = JSON.parse(request.postData() || "{}").cardId || ""; } catch {}
+                inspectRequests.push(cardId);
+              }
+            };
+            page.on("request", onInspectRequest);
+            try {
+              await page.setViewportSize({ width: 1440, height: 1000 });
+              const beforeInitial = inspectRequests.length;
+              await prepareCardsPage(page, "workspace", "light");
+              await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+              await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+              const initial = await inspectCardsV2Layout(page);
+              assertBrowser(initial.inboxCount === 1, "Cards attention inbox renders one semantic list.");
+              assertBrowser(initial.itemCount > 0 && initial.listItemCount === initial.itemCount, "Cards attention inbox renders one list item per actionable card.");
+              assertBrowser(initial.invalidItemButtonCount === 0, "Each Cards attention item exposes exactly one native button.");
+              assertBrowser(initial.tableCount === 0 && initial.gridRoleCount === 0 && initial.listboxRoleCount === 0, "Cards attention inbox does not regress to table, grid, or listbox semantics.");
+              assertBrowser(initial.previewHostCount === 1, "Cards attention inbox renders one active-card preview only.");
+              assertBrowser(initial.inspectorCount === 1 && initial.drawerCount === 0, "Wide Cards workspace renders one persistent Inspector and no drawer.");
+              assertBrowser(initial.activeItemCount === 1, "Wide Cards workspace exposes exactly one current inbox item.");
+              assertBrowser(initial.legacyModeControlCount === 0, "Cards attention inbox removes legacy table, tiles, and Anki-preview modes.");
+              assertBrowser(initial.checkboxCount === 0, "Cards attention inbox does not render a dead bulk checkbox.");
+              assertBrowser(initial.riskScoreTextCount === 0, "Cards attention inbox does not expose legacy numeric risk scores.");
+              assertBrowser(inspectRequests.length - beforeInitial === 1, "Cards attention inbox requests Search inspect only for the initial active card.");
+              if (perf100Enabled) assertBrowser(initial.itemCount === 100, `Cards bounded performance queue renders 100 items: ${initial.itemCount}`);
+
+              const lightPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "light");
+              await ensureArtifactParent(lightPath);
+              await page.screenshot({ path: lightPath, fullPage: true });
+              const visualStates = [{ mode: "workspace", theme: "light", screenshot: relativeArtifactPath(artifactPaths, lightPath), details: initial }];
+
+              if (initial.itemCount > 1) {
+                const second = page.locator('[data-testid="cards-inbox-item"]').nth(1);
+                const beforeSecond = inspectRequests.length;
+                await second.focus();
+                await Promise.all([
+                  page.waitForResponse((response) => response.url().includes("/api/search/inspect") && response.request().method() === "POST", { timeout: 60000 }),
+                  second.press("Enter"),
+                ]);
+                await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length === 1, undefined, { timeout: 15000 });
+                await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+                assertBrowser(inspectRequests.length - beforeSecond === 1, "Keyboard inbox activation requests exactly one new active-card inspect.");
+              }
+
+              const expand = page.getByRole("button", { name: "Развернуть ответ", exact: true });
+              await expand.click();
+              await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "visible", timeout: 15000 });
+              await page.locator('[data-testid="cards-preview-modal"] [data-testid="anki-card-shadow-preview"][data-preview-side="back"]').waitFor({ state: "visible", timeout: 15000 });
+              const modalState = await page.evaluate(() => {
+                const shell = document.getElementById("dashboard-app-shell");
+                const modal = document.querySelector('[data-testid="cards-preview-modal"]');
+                return {
+                  shellInert: Boolean(shell?.inert),
+                  shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
+                  modalOutsideShell: Boolean(modal && shell && !shell.contains(modal)),
+                  dialogCount: document.querySelectorAll('[role="dialog"]').length,
+                  backPreviewCount: modal?.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-preview-side="back"]').length || 0,
+                };
+              });
+              assertBrowser((modalState.shellInert || modalState.shellAriaHidden) && modalState.modalOutsideShell && modalState.dialogCount === 1 && modalState.backPreviewCount === 1, "Expanded answer is one true modal outside the inert app shell.");
+              const expandedPath = artifactPaths.cardsScreenshot("synthetic", "expanded", "light");
+              await ensureArtifactParent(expandedPath);
+              await page.screenshot({ path: expandedPath, fullPage: true });
+              visualStates.push({ mode: "expanded", theme: "light", screenshot: relativeArtifactPath(artifactPaths, expandedPath), details: modalState });
+              await page.keyboard.press("Escape");
+              await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "hidden", timeout: 15000 });
+
+              const open = page.getByRole("button", { name: "Открыть в Anki", exact: true });
+              await open.focus();
+              await page.keyboard.press("Enter");
+              await page.getByText("Запрос на открытие Anki Browser принят. Проблема остаётся активной.").waitFor({ state: "visible", timeout: 15000 });
+
+              await prepareCardsPage(page, "workspace", "dark");
+              await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+              const darkPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "dark");
+              await ensureArtifactParent(darkPath);
+              await page.screenshot({ path: darkPath, fullPage: true });
+              const dark = await inspectCardsV2Layout(page);
+              assertBrowser(dark.inspectorCount === 1 && dark.drawerCount === 0 && dark.previewHostCount === 1, "Dark wide Cards workspace preserves the attention inbox and Inspector contract.");
+              visualStates.push({ mode: "workspace", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, darkPath), details: dark });
+
+              await page.setViewportSize({ width: 1024, height: 900 });
+              await prepareCardsPage(page, "workspace-1024", "light");
+              await page.waitForFunction(() => document.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length === 0 && !document.querySelector('[data-testid="cards-detail-drawer"]'), undefined, { timeout: 15000 });
+              const narrowClosed = await inspectCardsV2Layout(page);
+              assertBrowser(narrowClosed.documentOverflow <= 1, `Cards 1024 layout has no horizontal document overflow: ${narrowClosed.documentOverflow}`);
+              assertBrowser(narrowClosed.itemCount > 0 && narrowClosed.queueWidthRatio >= 0.95, `Cards 1024 queue remains full width before activation: ${JSON.stringify(narrowClosed)}`);
+              assertBrowser(narrowClosed.inspectorCount === 0 && narrowClosed.drawerCount === 0 && narrowClosed.previewHostCount === 0 && narrowClosed.activeItemCount === 0, "Cards 1024 starts with a full-width queue and no implicit detail surface.");
+
+              const first = page.locator('[data-testid="cards-inbox-item"]').first();
+              const firstCardId = await first.getAttribute("data-card-id");
+              await first.focus();
+              await Promise.all([
+                page.waitForResponse((response) => response.url().includes("/api/search/inspect") && response.request().method() === "POST", { timeout: 60000 }),
+                first.press("Enter"),
+              ]);
+              await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "visible", timeout: 15000 });
+              await page.waitForFunction(() => document.querySelector('[data-testid="cards-detail-drawer"] [data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+              const narrowOpen = await inspectCardsV2Layout(page);
+              assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null, "Cards 1024 opens one non-modal detail region.");
+              assertBrowser(!narrowOpen.shellInert && !narrowOpen.shellAriaHidden, "Cards 1024 drawer does not inert the dashboard shell.");
+              assertBrowser(narrowOpen.inspectorCount === 0 && narrowOpen.previewHostCount === 1 && narrowOpen.activeItemCount === 1, "Cards 1024 drawer renders one active detail preview without a wide Inspector.");
+              assertBrowser(narrowOpen.itemCount === narrowClosed.itemCount && narrowOpen.disabledItemCount === 0, "Cards 1024 queue remains operable while the drawer is open.");
+              const narrowPath = artifactPaths.cardsScreenshot("synthetic", "workspace-1024", "light");
+              await ensureArtifactParent(narrowPath);
+              await page.screenshot({ path: narrowPath, fullPage: true });
+              visualStates.push({ mode: "workspace-1024", theme: "light", screenshot: relativeArtifactPath(artifactPaths, narrowPath), details: narrowOpen });
+
+              await page.getByRole("button", { name: "Развернуть ответ", exact: true }).click();
+              await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "visible", timeout: 15000 });
+              assertBrowser(await page.locator('[data-testid="cards-detail-drawer"]').count() === 1, "Opening the answer modal preserves the underlying non-modal drawer.");
+              await page.keyboard.press("Escape");
+              await page.locator('[data-testid="cards-preview-modal"]').waitFor({ state: "hidden", timeout: 15000 });
+              assertBrowser(await page.locator('[data-testid="cards-detail-drawer"]').count() === 1, "The first Escape closes only the answer modal.");
+              await page.keyboard.press("Escape");
+              await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "hidden", timeout: 15000 });
+              await page.waitForFunction((cardId) => document.activeElement?.getAttribute("data-card-id") === cardId, firstCardId, { timeout: 15000 });
+
+              const importSummary = await readJsonIfExists(path.join(artifactPaths.reports, "apkg-import-summary.json"));
+              const apkg = { enabled: Boolean(importSummary.enabled), imported: Boolean(importSummary.imported), cardCount: Number(importSummary.cardCount || 0), activePreviewOnly: false };
+              if (apkg.enabled) {
+                assertBrowser(apkg.imported && apkg.cardCount > 0, "Cards APKG fixture was imported.");
+                const apkgDeckName = (importSummary.deckNames || [])[0];
+                assertBrowser(Boolean(apkgDeckName), "Cards APKG fixture exposes a deck name.");
+                await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+                await prepareCardsPage(page, "workspace", "light");
+                await applyDeckFilter(page, apkgDeckName);
+                await page.waitForFunction((deckName) => {
+                  const items = [...document.querySelectorAll('[data-testid="cards-inbox-item"]')];
+                  return items.length > 0 && items.every((item) => (item.textContent || "").includes(deckName));
+                }, apkgDeckName, { timeout: 60000 });
+                await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });
+                await page.waitForFunction(() => document.querySelector('[data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
+                const apkgLayout = await inspectCardsV2Layout(page);
+                assertBrowser(apkgLayout.previewHostCount === 1 && apkgLayout.activeItemCount === 1 && apkgLayout.inspectorCount === 1, "Cards APKG deck keeps one active preview in the wide Inspector.");
+                apkg.activePreviewOnly = true;
+                const apkgPath = artifactPaths.cardsScreenshot("apkg", "workspace", "light");
+                await ensureArtifactParent(apkgPath);
+                await page.screenshot({ path: apkgPath, fullPage: true });
+                visualStates.push({ mode: "workspace", theme: "light", fixture: "apkg", deckName: apkgDeckName, screenshot: relativeArtifactPath(artifactPaths, apkgPath), details: apkgLayout });
+              }
+
+              await page.setViewportSize({ width: baseViewport.width, height: baseViewport.height });
+              return { preview: { ...initial, activePreviewOnly: true, inspectRequestCount: inspectRequests.length }, apkg, visualStates };
+            } finally {
+              page.off("request", onInspectRequest);
+            }
+          }
+          ''').strip()
+
+          cards_layout = dedent(r'''
+          async function inspectCardsV2Layout(page) {
+            return page.evaluate(() => {
+              const pageRoot = document.querySelector('[data-testid="cards-inbox-page"]');
+              const workspace = pageRoot?.querySelector(".cards-inbox-workspace")?.getBoundingClientRect();
+              const queue = pageRoot?.querySelector(".cards-inbox-queue")?.getBoundingClientRect();
+              const inspector = pageRoot?.querySelector(".cards-inbox-inspector")?.getBoundingClientRect();
+              const drawer = document.querySelector('[data-testid="cards-detail-drawer"]');
+              const shell = document.getElementById("dashboard-app-shell");
+              const items = [...(pageRoot?.querySelectorAll('[data-testid="cards-inbox-item"]') || [])];
+              const listItems = [...(pageRoot?.querySelectorAll('[data-testid="cards-inbox-list-item"]') || [])];
+              const bodyText = pageRoot?.textContent || "";
+              return {
+                inboxCount: pageRoot?.querySelectorAll('[data-testid="cards-inbox"]').length || 0,
+                itemCount: items.length,
+                listItemCount: listItems.length,
+                invalidItemButtonCount: listItems.filter((item) => item.querySelectorAll("button").length !== 1 || item.querySelectorAll(":scope > button").length !== 1).length,
+                activeItemCount: pageRoot?.querySelectorAll('[data-testid="cards-inbox-item"][aria-current="true"]').length || 0,
+                disabledItemCount: items.filter((item) => item.disabled).length,
+                tableCount: pageRoot?.querySelectorAll("table").length || 0,
+                gridRoleCount: pageRoot?.querySelectorAll('[role="grid"]').length || 0,
+                listboxRoleCount: pageRoot?.querySelectorAll('[role="listbox"]').length || 0,
+                inspectorCount: pageRoot?.querySelectorAll('[data-testid="cards-inspector"]').length || 0,
+                drawerCount: drawer ? 1 : 0,
+                drawerRoleRegionCount: drawer?.getAttribute("role") === "region" ? 1 : 0,
+                drawerAriaModal: drawer?.getAttribute("aria-modal") ?? null,
+                previewHostCount: document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length,
+                checkboxCount: pageRoot?.querySelectorAll('input[type="checkbox"]').length || 0,
+                legacyModeControlCount: [...(pageRoot?.querySelectorAll("button") || [])].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,
+                riskScoreTextCount: (bodyText.match(/Риск\s+\d+|risk\s+\d+/gi) || []).length,
+                workspaceWidth: Math.round(workspace?.width || 0),
+                queueWidth: Math.round(queue?.width || 0),
+                queueWidthRatio: workspace?.width ? Number(((queue?.width || 0) / workspace.width).toFixed(3)) : 0,
+                inspectorWidth: Math.round(inspector?.width || 0),
+                documentOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+                pageHeight: document.documentElement.scrollHeight,
+                shellInert: Boolean(shell?.inert),
+                shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
+              };
+            });
+          }
+          ''').strip()
+
+          apkg_filter = dedent(r'''
+          async function applyApkgDeckFilter(page, deckName, expectation) {
+            assertBrowser(expectation.deckCardCount > 0, expectation.deckDiagnostic);
+            assertBrowser(expectation.futureCards.length === 0, expectation.dateDiagnostic);
+            assertBrowser(expectation.filteredCardCount > 0, expectation.filteredDiagnostic);
+            await applyDeckFilter(page, deckName);
+            const filterSummary = page.locator("p").filter({ hasText: /^Показано\s/ }).first();
+            await filterSummary.waitFor({ state: "visible", timeout: 15000 });
+            const summaryText = (await filterSummary.innerText()).replace(/\s+/g, " ").trim();
+            assertBrowser(
+              summaryText.startsWith(`Показано ${expectation.filteredCardCount} из `),
+              `APKG deck filter count mismatch before preview wait: deck=${deckName}, expected=${expectation.filteredCardCount}, actual=${summaryText}`,
+            );
+          }
+          ''').strip()
+
+          cards_ready = dedent(r'''
+          async function waitForCardsPageReady(page) {
+            await page.getByRole("heading", { name: "Карточки, требующие внимания", exact: true }).waitFor({ timeout: 60000 });
+            await page.waitForFunction(
+              () => !/Загружаем очередь внимания|Не удалось загрузить карточки|Карточки недоступны/.test(document.body.innerText),
+              undefined,
+              { timeout: 60000 },
+            );
+            await page.locator('[data-testid="cards-inbox-page"]').waitFor({ state: "visible", timeout: 60000 });
+            await page.locator('[data-testid="cards-inbox"]').waitFor({ state: "visible", timeout: 60000 });
+            await page.locator('[data-testid="cards-inbox-item"]').first().waitFor({ state: "visible", timeout: 60000 });
+            const errorText = await visibleErrorText(page);
+            if (errorText) {
+              throw new Error(`Cards page shows visible error: ${errorText}`);
+            }
+          }
+          ''').strip()
+
+          text = replace_block(text, "async function assertCardsV2Workspace", "async function inspectCardsV2Layout", cards_workspace)
+          text = replace_block(text, "async function inspectCardsV2Layout", "async function captureApkg", cards_layout)
+          text = replace_block(text, "async function applyApkgDeckFilter", "async function waitForCardsPageReady", apkg_filter)
+          text = replace_block(text, "async function waitForCardsPageReady", "async function waitForShadowFixture", cards_ready)
+          smoke.write_text(text, encoding="utf-8", newline="\n")
+
+          tests = Path("tests/test_docker_smoke_helpers.py")
+          tests_text = tests.read_text(encoding="utf-8")
+          marker = "def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():\n"
+          if tests_text.count(marker) != 1:
+              raise SystemExit("Could not locate the exact Cards browser regression insertion point.")
+          regression = dedent(
+              r'''
+              def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
+                  source = (
+                      Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"
+                  ).read_text(encoding="utf-8")
+                  workspace = source.split("async function assertCardsV2Workspace", 1)[1].split(
+                      "async function inspectCardsV2Layout", 1
+                  )[0]
+                  layout = source.split("async function inspectCardsV2Layout", 1)[1].split(
+                      "async function captureApkg", 1
+                  )[0]
+                  apkg_filter = source.split("async function applyApkgDeckFilter", 1)[1].split(
+                      "async function waitForCardsPageReady", 1
+                  )[0]
+                  readiness = source.split("async function waitForCardsPageReady", 1)[1].split(
+                      "async function waitForShadowFixture", 1
+                  )[0]
+                  active_contract = workspace + layout + apkg_filter + readiness
+
+                  for current in (
+                      'data-testid="cards-inbox-page"',
+                      'data-testid="cards-inbox"',
+                      'data-testid="cards-inbox-item"',
+                      'data-testid="cards-detail-drawer"',
+                      'name: "Развернуть ответ"',
+                      'summaryText.startsWith(`Показано ${expectation.filteredCardCount} из `)',
+                  ):
+                      assert current in active_contract
+
+                  for stale in (
+                      'data-testid="cards-triage-table"',
+                      'data-testid="cards-triage-row"',
+                      ".cards-v2-row-activate",
+                      'tr[aria-current="true"]',
+                      ".cards-v2-queue",
+                      ".cards-v2-inspector",
+                      "Развернуть превью",
+                      ".cards-v2-filter-row",
+                      "1024 split remains readable",
+                  ):
+                      assert stale not in active_contract
+
+
+              '''
+          ).lstrip()
+          tests.write_text(tests_text.replace(marker, regression + marker), encoding="utf-8", newline="\n")
+          PY
+
+      - name: Capture focused verification
+        id: verify
+        shell: bash
+        run: |
+          set +e
+          mkdir -p r7-cards-browser-diagnostic
+          {
+            set -euo pipefail
+            node --check docker/anki-e2e/smoke-browser.mjs
+            python -m pytest tests/test_docker_smoke_helpers.py
+            pnpm --dir web-dashboard exec vitest run src/pages/CardsPage.test.tsx src/components/cards/CardsInbox.test.tsx
+            git diff --check
+            mapfile -t changed < <(git diff --name-only | sort)
+            expected=(
+              docker/anki-e2e/smoke-browser.mjs
+              tests/test_docker_smoke_helpers.py
+            )
+            printf 'actual=%s\n' "${changed[*]}"
+            printf 'expected=%s\n' "${expected[*]}"
+            test "${changed[*]}" = "${expected[*]}"
+          } 2>&1 | tee r7-cards-browser-diagnostic/verification.log
+          status=${PIPESTATUS[0]}
+          git diff --name-only | sort > r7-cards-browser-diagnostic/changed-files.txt
+          git diff --check > r7-cards-browser-diagnostic/diff-check.txt 2>&1
+          git diff > r7-cards-browser-diagnostic/repair.patch
+          printf '{"schemaVersion":1,"exitCode":%s,"candidateSha":"%s"}\n' "$status" '${{ github.event.pull_request.head.sha }}' > r7-cards-browser-diagnostic/summary.json
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload bounded verification diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: r7-cards-browser-diagnostic-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: r7-cards-browser-diagnostic/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 9
+
+      - name: Restore verification result
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ steps.verify.outputs.exit_code }}' = '0'
+
+      - name: Commit and push bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docker/anki-e2e/smoke-browser.mjs tests/test_docker_smoke_helpers.py
+          git commit -m 'test: align Cards browser smoke with the attention inbox'
+          git push origin HEAD:c1-5r-7-cards-browser-harness-fix
