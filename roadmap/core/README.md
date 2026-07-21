@@ -2,22 +2,22 @@
 
 **Трек:** `C`  
 **Роль:** единственный обязательный последовательный путь основного add-on  
-**Текущий статус:** `C1 Complete`; `C1.6B Conditional`; `C2 Next, not started`
+**Текущий статус:** `C1 завершён`; `C1.6B — условный этап`; `C2 — следующий этап, не начат`
 
-Core не зависит от gamification, accounts, telemetry admin UI или extension packs. Параллельные треки могут развиваться независимо, но не меняют критерии завершения Core.
+Core не зависит от геймификации, аккаунтов, административного UI телеметрии или пакетов расширений. Параллельные треки могут развиваться независимо, но не меняют критерии завершения Core.
 
 ## Модель поставки
 
 Core разрабатывается в долгоживущей ветке `core`.
 
 - `C1` и `C2` выполняются последовательно;
-- merge в `master`, release tag, GitHub Release, `.ankiaddon`, deployment и публикация AnkiWeb требуют отдельного owner approval;
-- sync с `master` выполняется осознанно и документируется;
-- unrelated commits не merge/rebase/cherry-pick-ятся автоматически;
-- force-push запрещён без явного owner approval;
-- commit messages описывают фактическое изменение.
+- merge в `master`, release tag, GitHub Release, `.ankiaddon`, deployment и публикация на AnkiWeb требуют отдельного одобрения владельца;
+- синхронизация с `master` выполняется осознанно и документируется;
+- несвязанные коммиты не переносятся автоматически через merge, rebase или cherry-pick;
+- force-push запрещён без явного одобрения владельца;
+- сообщения коммитов описывают фактически выполненные изменения.
 
-Baselines:
+Исходные состояния:
 
 - [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md);
 - [`reports/core/c1-5r-0-recovery-baseline.md`](../../reports/core/c1-5r-0-recovery-baseline.md).
@@ -25,214 +25,214 @@ Baselines:
 ## Последовательность
 
 ```text
-C1 Cards v2 / Problem Triage — Complete
-→ C2 Core 1.0 Hardening — Next
+C1 Cards v2 / Problem Triage — завершён
+→ C2 Core 1.0 Hardening — следующий этап
 → C3 Contextual Additions — только при доказанном пробеле
 ```
 
 # C1 — Cards v2 / Problem Triage
 
-**Статус:** Complete
+**Статус:** завершён
 
-## Завершённые increments
+## Завершённые части
 
-| Increment | Статус | Основной источник |
+| Часть | Статус | Основной источник |
 | --- | --- | --- |
-| `C1.0 — Core branch baseline` | Complete | [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md) |
-| `C1.1 — Product contract` | Complete | [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md) |
-| `C1.2 — Canonical triage model and read API` | Complete | [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md) |
-| `C1.3 — Inspection Profiles: contract and runtime` | Complete | [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md) |
-| `C1.4 — Inspection Profiles: user configuration` | Complete | [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md) |
-| `C1.5 — Canonical Cards workspace` | Historical technical evidence; product acceptance withdrawn | [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md) |
-| `C1.5R — UX remediation` | R0–R7 Complete; owner accepted | reports C1.5R |
-| `C1.6 — Canonical single-card resolution loop` | Complete; owner accepted; merged | [`docs/cards-v2-resolution-loop.md`](../../docs/cards-v2-resolution-loop.md) |
-| `C1.6B — Bounded bulk actions` | Conditional; not started | отдельный activation decision |
+| `C1.0 — исходное состояние ветки Core` | завершено | [`reports/core/c1-0-baseline.md`](../../reports/core/c1-0-baseline.md) |
+| `C1.1 — продуктовый контракт` | завершено | [`docs/cards-v2-product-contract.md`](../../docs/cards-v2-product-contract.md) |
+| `C1.2 — каноническая модель Triage и API чтения` | завершено | [`docs/cards-v2-triage-read-api.md`](../../docs/cards-v2-triage-read-api.md) |
+| `C1.3 — Inspection Profiles: контракт и runtime` | завершено | [`docs/inspection-profiles-v1.md`](../../docs/inspection-profiles-v1.md) |
+| `C1.4 — Inspection Profiles: пользовательская настройка` | завершено | [`docs/inspection-profiles-ui.md`](../../docs/inspection-profiles-ui.md) |
+| `C1.5 — каноническое рабочее пространство Cards` | историческое техническое подтверждение; продуктовая приёмка отозвана | [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md) |
+| `C1.5R — исправление UX` | R0–R7 завершены; принято владельцем | отчёты C1.5R |
+| `C1.6 — канонический цикл решения проблемы одной карточки` | завершено; принято владельцем; влито | [`docs/cards-v2-resolution-loop.md`](../../docs/cards-v2-resolution-loop.md) |
+| `C1.6B — ограниченные массовые действия` | условный этап; не начат | отдельное решение об активации |
 
-## C1.5R decomposition
+## Разбиение C1.5R
 
 ```text
-C1.5R.0 Recovery and corrective baseline — Complete
-C1.5R.1 Canonical card display identity — Complete
-C1.5R.2 Declarative compact formatter runtime — Complete
-C1.5R.3 Front/back preview semantics — Complete
-C1.5R.4 Independent triage candidate sources — Complete
-C1.5R.5 Cards attention inbox redesign — Complete
-C1.5R.6 Guided Inspection Profiles UX — Complete
-C1.5R.7 Integrated acceptance and owner decision — Complete
+C1.5R.0 Восстановление и исходное состояние исправлений — завершено
+C1.5R.1 Каноническая идентичность отображения карточки — завершено
+C1.5R.2 Декларативный runtime компактного форматтера — завершено
+C1.5R.3 Семантика предпросмотра лицевой и обратной стороны — завершено
+C1.5R.4 Независимые источники кандидатов Triage — завершено
+C1.5R.5 Переработка очереди карточек, требующих внимания — завершено
+C1.5R.6 Пошаговая настройка Inspection Profiles — завершено
+C1.5R.7 Комплексная приёмка и решение владельца — завершено
 ```
 
-### C1.5R.1 — Canonical card display identity
+### C1.5R.1 — каноническая идентичность отображения карточки
 
-Одна backend-projected compact identity используется Search, Triage, Cards queue и Inspector. Search query/inspect schema v2; note mode сохраняет note `primaryText`; card alias удалён.
+Одна компактная идентичность, формируемая backend, используется в Search, Triage, очереди Cards и Inspector. Search использует schema v2 для запросов и просмотра; режим заметок сохраняет `primaryText` заметки; alias карточки удалён.
 
 Отчёт:
 
 - [`reports/core/c1-5r-1-canonical-card-display-identity.md`](../../reports/core/c1-5r-1-canonical-card-display-identity.md).
 
-### C1.5R.2 — Declarative compact formatter runtime
+### C1.5R.2 — декларативный runtime компактного форматтера
 
-Реализованы strict schema v1, profile-local atomic store, exact/default/disabled resolver, safe token runtime и formatter API. Arbitrary code и formatter UI не добавлены.
+Реализованы строгая schema v1, атомарное хранилище на уровне профиля, resolver для точного, стандартного и отключённого режимов, безопасный token runtime и API форматтера. Выполнение произвольного кода и UI форматтера не добавлены.
 
 Отчёт:
 
 - [`reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md).
 
-### C1.5R.3 — Front/back preview semantics
+### C1.5R.3 — семантика предпросмотра лицевой и обратной стороны
 
-Inspector показывает native sanitized front, expanded modal — answer/back. Сохраняются sanitizer, media validation, Shadow DOM и accessibility modal.
+Inspector показывает нативную санитизированную лицевую сторону, расширенный модальный диалог — обратную. Сохраняются sanitizer, проверка media, Shadow DOM и доступный модальный диалог.
 
 Отчёт:
 
 - [`reports/core/c1-5r-3-front-back-preview-semantics.md`](../../reports/core/c1-5r-3-front-back-preview-semantics.md).
 
-### C1.5R.4 — Independent triage candidate sources
+### C1.5R.4 — независимые источники кандидатов Triage
 
-Разделены period-bound learning candidates и bounded current-content candidates. Автоматически сканируются только authoritative confirmed Inspection Profiles. Triage query schema v4 использует explicit cursor continuation.
+Кандидаты по учебной активности за выбранный период отделены от кандидатов по текущему содержимому с ограниченным объёмом. Автоматически проверяются только подтверждённые и актуальные Inspection Profiles. Schema v4 запроса Triage использует явное продолжение через cursor.
 
 Отчёт:
 
 - [`reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../../reports/core/c1-5r-4-independent-triage-candidate-sources.md).
 
-### C1.5R.5 — Cards attention inbox redesign
+### C1.5R.5 — переработка очереди карточек, требующих внимания
 
-Реализован identity-led semantic inbox, persistent Inspector от 1200 px и non-modal drawer ниже breakpoint. Spreadsheet table удалена. Learning period явный; current-content continuation ручной и bounded.
+Реализованы семантическая очередь, построенная вокруг идентичности карточки, постоянный Inspector при ширине от 1200 px и немодальная выдвижная панель ниже этого breakpoint. Таблица в стиле электронной таблицы удалена. Период обучения указан явно; продолжение проверки текущего содержимого запускается вручную и имеет ограниченный объём.
 
 Отчёт:
 
 - [`reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
 
-### C1.5R.6 — Guided Inspection Profiles UX
+### C1.5R.6 — пошаговая настройка Inspection Profiles
 
-Suggestion сразу становится clean unsaved Basic draft. Strict editor находится в Advanced. Japanese/Programming defaults понятны без machine IDs.
+Предложение сразу превращается в чистый несохранённый черновик Basic. Строгий редактор находится в Advanced. Стандартные профили Japanese и Programming понятны без внутренних машинных ID.
 
 Отчёт:
 
 - [`reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../../reports/core/c1-5r-6-guided-inspection-profiles-ux.md).
 
-### C1.5R.7 — Integrated acceptance
+### C1.5R.7 — комплексная приёмка
 
-Candidate `df633563490f80346617871ec5640adf99154956` прошёл focused harness regression, canonical non-Docker и full real-Anki E2E с restart. Owner product acceptance получен.
+Кандидат `df633563490f80346617871ec5640adf99154956` прошёл профильную регрессионную проверку harness, каноническую проверку без Docker и полный real-Anki E2E с перезапуском. Продуктовая приёмка владельцем получена.
 
 Отчёт:
 
 - [`reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
 
-## C1.6 — Canonical single-card resolution loop
+## C1.6 — канонический цикл решения проблемы одной карточки
 
-**Статус:** Complete; owner accepted; merged into `core`
+**Статус:** завершён; принят владельцем; влит в `core`
 
-Implementation/runtime candidate:
+Кандидат реализации и runtime:
 
 ```text
 edaf9030dbba355593e52cf8922d4c7985ce4b75
 ```
 
-Final PR head:
+Финальный head PR:
 
 ```text
 9e4b74b0bc3a0a34590217550a7e8be4263c7fd6
 ```
 
-Merged core commit:
+Коммит после вливания в Core:
 
 ```text
 928e3fe749ce6aa4b9c414641c4ef66ac46a694b
 ```
 
-Lifecycle:
+Жизненный цикл:
 
 ```text
-issue
-→ existing Safe Action or Open in Anki
-→ action result
+проблема
+→ существующий Safe Action или Open in Anki
+→ результат действия
 → Awaiting recheck
-→ exact-card canonical bounded recheck
+→ каноническая ограниченная перепроверка конкретной карточки
 → Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
 ```
 
-C1.6 добавляет strict `POST /api/triage/recheck` schema v1, reason reconciliation и deterministic focus recovery.
+C1.6 добавляет строгую schema v1 для `POST /api/triage/recheck`, сопоставление причин и детерминированное восстановление фокуса.
 
 Сохраняются:
 
 - существующие Safe Actions и Open in Anki;
-- Triage query v4 detectors;
-- Search identity/inspect contracts;
-- fail-closed partial/unavailable/stale behavior;
-- single-card scope;
-- RU/EN и accessibility.
+- детекторы Triage query v4;
+- контракты идентичности и просмотра Search;
+- fail-closed-поведение при частичных, недоступных или устаревших данных;
+- scope одной карточки;
+- паритет RU/EN и доступность.
 
-Не добавлены bulk selection, manual resolve/archive/snooze, persistent completion state, second detector/action system и unbounded reevaluation.
+Не добавлены массовый выбор, ручные resolve, archive и snooze, постоянное состояние завершения, вторая система детекторов или действий и неограниченная повторная оценка.
 
-Verification:
+Проверка:
 
 ```text
-focused backend/E2E helpers: 81 tests PASS
-frontend: 324 tests PASS
-canonical non-Docker: 324 frontend, 802 Python, 5 skips
+профильные backend- и E2E-вспомогательные тесты: 81 тест, PASS
+frontend: 324 теста, PASS
+каноническая проверка без Docker: 324 frontend-теста, 802 Python-теста, 5 пропусков
 Fast CI 29862254960: PASS
-final-head Fast CI 29863609253: PASS
-targeted standard/cards 29862551442: PASS
-final standard/full 29862800106: PASS
+Fast CI для финального head 29863609253: PASS
+целевой standard/cards 29862551442: PASS
+финальный standard/full 29862800106: PASS
 ```
 
-Отдельная проверка на private Anki profile владельца не выполнялась. Local Docker не дублировал successful exact-package cloud E2E.
+Отдельная проверка на приватном профиле Anki владельца не выполнялась. Локальный Docker не дублировал успешный cloud E2E с точным пакетом.
 
-Контракты и evidence:
+Контракты и подтверждения:
 
 - [`docs/cards-v2-resolution-loop.md`](../../docs/cards-v2-resolution-loop.md);
 - [`reports/core/c1-6-canonical-single-card-resolution-loop.md`](../../reports/core/c1-6-canonical-single-card-resolution-loop.md).
 
-## C1.6B — Bounded bulk actions
+## C1.6B — ограниченные массовые действия
 
-**Статус:** Conditional; not started
+**Статус:** условный этап; не начат
 
-C1.6B активируется только после отдельного evidence, подтверждающего bounded multi-card task, и отдельного owner decision. Он не требуется для завершения C1.
+C1.6B активируется только после отдельного подтверждения необходимости ограниченной задачи для нескольких карточек и отдельного решения владельца. Этот этап не требуется для завершения C1.
 
 ## Критерии завершения C1
 
 Все обязательные критерии выполнены:
 
-- один canonical triage workflow;
-- parity backend/frontend/types/tests/docs;
-- bounded large-fixture behavior;
-- сохранены sanitizer, media, action, loopback, token и privacy boundaries;
-- C1.5R technical verification и owner acceptance завершены;
-- C1.6 single-card resolution loop реализован, проверен, принят и влит;
-- C1.6B остаётся optional.
+- существует один канонический workflow Triage;
+- сохранён паритет backend, frontend, типов, тестов и документации;
+- поведение на большой фикстуре имеет ограниченный объём;
+- сохранены границы sanitizer, media, действий, loopback-интерфейса, токена и конфиденциальности;
+- техническая проверка и приёмка владельцем C1.5R завершены;
+- цикл решения проблемы одной карточки C1.6 реализован, проверен, принят и влит;
+- C1.6B остаётся необязательным.
 
 # C2 — Core 1.0 Hardening
 
-**Статус:** Next; not started
+**Статус:** следующий этап; не начат
 
 ## Цель
 
-Стабилизировать существующий продукт как поддерживаемый Core 1.0 без новой delivery system и без feature expansion.
+Стабилизировать существующий продукт как поддерживаемый Core 1.0 без новой системы поставки и без расширения функций.
 
 ## Зависимости
 
 - Core C1 закрыт;
-- отсутствуют unresolved blockers C1.5R/C1.6;
-- Fast CI, exact-package GHCR E2E и manual gated release остаются authoritative.
+- отсутствуют нерешённые блокирующие проблемы C1.5R и C1.6;
+- Fast CI, E2E с точным пакетом и GHCR-образом, а также ручной выпуск с gate остаются авторитетными проверками.
 
 ## Scope
 
-- inventory API/schema, versioning и deprecation policy;
-- migrations, future-schema fail-closed, corruption quarantine и per-profile isolation;
-- matrix clean install, update, profile switch, restart и recovery;
-- performance, bundle, query и history budgets;
-- keyboard/accessibility closure;
-- packaging, rollback, security и release checklist validation.
+- инвентаризация API и schema, versioning и политика deprecation;
+- migrations, fail-closed-поведение для будущих schema, quarantine повреждённых данных и изоляция по профилям;
+- матрица чистой установки, обновления, переключения профиля, перезапуска и восстановления;
+- бюджеты производительности, bundle, запросов и истории;
+- завершение работы с клавиатурой и доступностью;
+- проверка сборки пакета, rollback, безопасности и release checklist.
 
 ## Вне scope
 
-- новые product features;
-- gamification, accounts, telemetry operations или extension ecosystem;
-- rebuild delivery infrastructure, уже покрытой Platform track.
+- новые продуктовые функции;
+- геймификация, аккаунты, эксплуатация телеметрии или экосистема расширений;
+- перестройка инфраструктуры поставки, уже покрытой платформенным треком.
 
 # C3 — Contextual Additions
 
-**Статус:** Conditional
+**Статус:** условный этап
 
-C3 закрывает только конкретные gaps, найденные через C1, Signals или реальное использование, на которые текущие Statistics, FSRS и Search не могут ответить.
+C3 закрывает только конкретные пробелы, найденные в C1, Signals или при реальном использовании, на которые текущие Statistics, FSRS и Search не могут ответить.
 
-Каждое addition обязано определить user decision, data availability, bounded query, placement, interpretation и verification scope. При отсутствии доказанного gap C3 закрывается без feature expansion.
+Каждое дополнение обязано определить пользовательское решение, доступность данных, ограниченный запрос, место в интерфейсе, правила интерпретации и scope проверки. При отсутствии доказанного пробела C3 закрывается без расширения функций.
