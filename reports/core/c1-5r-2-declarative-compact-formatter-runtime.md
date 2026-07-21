@@ -1,74 +1,69 @@
-# C1.5R.2 — Declarative compact formatter runtime
+# C1.5R.2 — декларативный runtime компактного форматтера
 
-## Status
+## Статус
 
-**Baseline branch:** `core`
+**Исходная ветка:** `core`
 
-**Initial HEAD:** `d9eed2d057a8c74ae8a694aa9f4a1e8309931421`
+**Начальный HEAD:** `d9eed2d057a8c74ae8a694aa9f4a1e8309931421`
 
-**Initial synchronization:** `origin/core 0 behind / 0 ahead`
+**Начальная синхронизация:** `origin/core: 0 позади / 0 впереди`
 
-**Initial master divergence:** `0 behind / 72 ahead`
+**Начальное расхождение с master:** `0 позади / 72 впереди`
 
-**Open PRs from core:** none
+**Открытые PR из core:** отсутствуют
 
-**Verified implementation commit:** `edad09e8ffae443b94e192b266084abb66c37adf`
+**Проверенный коммит реализации:** `edad09e8ffae443b94e192b266084abb66c37adf`
 
-**Post-push synchronization:** `origin/core 0 behind / 0 ahead`
+**Синхронизация после push:** `origin/core: 0 позади / 0 впереди`
 
-**Verified implementation master divergence:** `0 behind / 73 ahead`
+**Расхождение проверенной реализации с master:** `0 позади / 73 впереди`
 
-**Current stage status:** `Complete`
+**Текущий статус этапа:** `завершено`
 
-This report records the completed implementation and owner-checkout
-verification of C1.5R.2. The verified implementation tree was committed unchanged
-and pushed to `origin/core` as `edad09e8ffae443b94e192b266084abb66c37adf`. No PR, merge, release,
-deployment, AnkiWeb publication or work outside Core was performed.
+Этот отчёт фиксирует завершённую реализацию и проверку C1.5R.2 в checkout владельца. Проверенное дерево реализации было закоммичено без изменений и отправлено в `origin/core` как `edad09e8ffae443b94e192b266084abb66c37adf`. PR, merge, выпуск, deployment, публикация на AnkiWeb и работа за пределами Core не выполнялись.
 
-## Scope implemented
+## Реализованный scope
 
-### Independent schema and store
+### Независимая schema и хранилище
 
 - `schemas/card-display-formatter-v1.schema.json`, Draft 2020-12;
-- root/nested `additionalProperties: false`;
-- independent schema version and no Inspection Profile v1 extension;
-- strict positive signed-64 IDs, template ordinal/null coherence, enums,
-  timestamps and bounded strings/lines/characters;
-- duplicate `(noteTypeId, templateOrdinal)` and 33-per-note-type enforcement;
-- 1 MiB/1000-entry document bounds;
-- deterministic UTF-8 JSON and same-directory temp/flush/fsync/replace writes;
-- monotonic revision and expected-revision conflicts;
-- missing/empty, corrupt quarantine, future preserve/reject-write and unavailable
-  states.
+- `additionalProperties: false` на корневом и вложенных уровнях;
+- независимая версия schema без расширения Inspection Profile v1;
+- строгие положительные signed-64 ID, согласованность порядкового номера шаблона и `null`, enum, timestamps и ограничения строк, строк текста и символов;
+- запрет дубликатов `(noteTypeId, templateOrdinal)` и ограничение в 33 записи на тип заметки;
+- ограничения документа: 1 МиБ и 1000 записей;
+- детерминированный UTF-8 JSON и запись через временный файл в том же каталоге с flush, fsync и replace;
+- монотонная revision и конфликты ожидаемой revision;
+- состояния missing/empty, quarantine повреждённого файла, сохранение будущей версии с запретом записи и unavailable.
 
-### Resolver and compact runtime
+### Resolver и компактный runtime
 
-- immutable request snapshot resolver;
-- exact enabled precedence;
-- exact disabled inheritance suppression;
-- note-type default fallback;
-- canonical R1 fallback for absent/disabled/bad store or invalid/empty output;
-- ordered `text`, `line_break`, `image`, `audio` tokens;
-- allowlisted text/image/audio modes and fixed 🖼/🔊 markers;
-- bounded safe flat local media filename/stem extraction after entity decoding;
-- no file existence/read, path resolution or remote load;
-- Browser/reviewer render cache with at most one render per source;
-- no `card.answer()` call.
+- неизменяемый snapshot запроса для resolver;
+- приоритет точного включённого правила;
+- подавление наследования точным отключённым правилом;
+- fallback на стандартное правило типа заметки;
+- канонический fallback R1 при отсутствующем, отключённом или повреждённом хранилище либо недопустимом или пустом результате;
+- упорядоченные токены `text`, `line_break`, `image`, `audio`;
+- allowlist режимов text/image/audio и фиксированные маркеры 🖼/🔊;
+- безопасное ограниченное извлечение плоского локального имени или stem media-файла после декодирования entities;
+- отсутствие проверки существования и чтения файлов, разрешения путей и удалённой загрузки;
+- cache рендера Browser/reviewer не более чем с одним рендером на источник;
+- отсутствие вызова `card.answer()`.
 
-### Search/Triage integration
+### Интеграция Search и Triage
 
-- formatter store read once per Search query/inspect request;
-- formatter store read once per Triage request;
-- resolver explicitly threaded to Search exact-card projection;
-- Triage reuses Search-owned `resolve_card_rows()` path;
-- Search query/inspect remains schema v2;
-- Search metadata remains v1;
-- Triage remains schema v3;
-- no formatter keys or card `primaryText` alias added to wire payloads.
+- хранилище форматтера читается один раз на запрос поиска или просмотра Search;
+- хранилище форматтера читается один раз на запрос Triage;
+- resolver явно передаётся в проекцию конкретной карточки Search;
+- Triage переиспользует принадлежащий Search путь `resolve_card_rows()`;
+- запросы и просмотр Search остаются на schema v2;
+- metadata Search остаётся на v1;
+- Triage остаётся на schema v3;
+- в wire-payload не добавлены ключи форматтера или alias `primaryText` карточки.
 
-### Local API and frontend contract
+### Локальный API и контракт frontend
 
-Token-protected POST-only JSON endpoints:
+Защищённые токеном POST-only JSON endpoints:
 
 ```text
 /api/card-display-formatters/query
@@ -76,15 +71,13 @@ Token-protected POST-only JSON endpoints:
 /api/card-display-formatters/update
 ```
 
-They use exact schema v1, strict actions, 64 KiB cap, generic errors and current
-revision conflicts. Validate performs no collection read and no persistence.
+Они используют точную schema v1, строгие действия, ограничение 64 КиБ, обобщённые ошибки и конфликты актуальной revision. Validate не читает collection и ничего не сохраняет.
 
-Frontend adds strict types/parser/client and tests only. No route, page, hook,
-Settings navigation, form, suggestion, preview API or import/export UI is added.
+Frontend добавляет только строгие types, parser, client и тесты. Route, page, hook, навигация Settings, форма, предложение, API предпросмотра и UI import/export не добавлены.
 
-### Package integration
+### Интеграция с пакетом
 
-The package builder requires and includes:
+Сборщик пакета требует и включает:
 
 ```text
 card_display_formatter_store.py
@@ -93,142 +86,123 @@ card_display_formatter_runtime.py
 schemas/card-display-formatter-v1.schema.json
 ```
 
-Generated dashboard assets remain build outputs and are not edited manually.
+Сгенерированные assets dashboard остаются результатами сборки и не редактируются вручную.
 
-## Exact acceptance examples
+## Точные примеры приёмки
 
 ```text
-default:
+стандартное отображение:
 【に】（する）
 
-configured:
+настроенное отображение:
 【に】感謝（する）
 
-Programming note type without an ID-bound formatter:
-unchanged
+тип заметки Programming без форматтера, привязанного к ID:
+без изменений
 ```
 
-## Security properties
+## Свойства безопасности
 
 ```text
-no arbitrary code
-no regex/query language
-no dynamic import/callback/subprocess
-no media file reads or existence checks
-no remote loads
-no raw HTML/note values in formatter store
-no path or token leaks
-no filename/generated displayText telemetry
+нет выполнения произвольного кода
+нет regex или языка запросов
+нет динамического import, callback или subprocess
+нет чтения media-файлов или проверки их существования
+нет удалённых загрузок
+нет необработанного HTML или значений заметки в хранилище форматтера
+нет утечек путей или токенов
+нет телеметрии имён файлов или сгенерированного displayText
 ```
 
-## Verification
+## Проверка
 
-### Tracked-snapshot reconstruction
+### Восстановление отслеживаемого snapshot
 
-The initial implementation was reviewed against the exact tracked archive from
-`d9eed2d057a8c74ae8a694aa9f4a1e8309931421`. Before owner-checkout execution:
+Начальная реализация проверялась по точному отслеживаемому архиву из `d9eed2d057a8c74ae8a694aa9f4a1e8309931421`. До выполнения в checkout владельца:
 
 ```text
-Python compile: PASS
-Focused formatter/Search/Triage backend: 104 passed
-Formatter/Inspection HTTP subset: 2 passed, 20 deselected
-Existing Search/Triage regression contour: 61 passed
-Isolated strict production TypeScript check: PASS
+компиляция Python: PASS
+профильный backend форматтера/Search/Triage: 104 passed
+HTTP-подмножество форматтера/Inspection: 2 passed, 20 deselected
+существующий регрессионный контур Search/Triage: 61 passed
+изолированная строгая production-проверка TypeScript: PASS
 ```
 
-### Owner-checkout focused verification
+### Профильная проверка в checkout владельца
 
-The owner applied the baseline-specific patch on `core`. One legacy test double in
-`tests/test_search_metadata.py` still accepted two arguments while production now
-passes the explicit formatter resolver as a third argument. The correction changed
-the test only; production behavior did not change.
+Владелец применил patch, привязанный к исходному состоянию, в ветке `core`. Один устаревший test double в `tests/test_search_metadata.py` всё ещё принимал два аргумента, тогда как production-код теперь передаёт явный resolver форматтера третьим аргументом. Исправление затронуло только тест; production-поведение не изменилось.
 
 ```text
-Python compile: PASS — 162 ms
-Focused backend rerun: 142 passed — 12,103 ms
-Focused frontend: 6 files, 49 tests passed — 9,267 ms
-TypeScript typecheck: PASS — 11,086 ms
-Vite production build: PASS — 2,258 modules
-Bundle guard: PASS — 17 JS chunks
-Dashboard asset synchronization: PASS
+компиляция Python: PASS — 162 мс
+повторный запуск профильного backend: 142 passed — 12 103 мс
+профильный frontend: 6 файлов, 49 тестов passed — 9 267 мс
+TypeScript typecheck: PASS — 11 086 мс
+production-сборка Vite: PASS — 2 258 модулей
+ограничение bundle: PASS — 17 JS chunks
+синхронизация assets dashboard: PASS
 ```
 
-Independent package validation also passed:
+Независимая проверка пакета также прошла:
 
 ```text
-archive entries: 72
-missing required entries: []
-forbidden entries: []
-missing/empty/unreferenced linked assets: []
-asset graph/unsafe reference/CSS marker errors: []
-ZIP test result: None
-canonical package version: 1.2.0
-validated package SHA-256:
+записей в архиве: 72
+отсутствующие обязательные записи: []
+запрещённые записи: []
+отсутствующие, пустые или неиспользуемые связанные assets: []
+ошибки графа assets, небезопасных ссылок или CSS-маркеров: []
+результат проверки ZIP: None
+каноническая версия пакета: 1.2.0
+SHA-256 проверенного пакета:
 8B723B2E1ED5883B895A9A36018C8D7CE5E2388971C622CB47A0C076B3EF10C0
 ```
 
-### Canonical non-Docker gate
+### Канонический gate без Docker
 
-The first `run_full_check.ps1 -SkipDocker` attempt reached the full Python suite
-and reported one hygiene failure because the earlier explicit `compileall` command
-had created `anki_study_report/__pycache__`. The generated bytecode directory was
-removed; no production or test behavior was changed. The clean rerun passed:
+Первая попытка `run_full_check.ps1 -SkipDocker` дошла до полного набора Python-тестов и выявила одну проблему гигиены: предыдущая явная команда `compileall` создала `anki_study_report/__pycache__`. Сгенерированный каталог bytecode удалён; production- и тестовое поведение не менялись. Чистый повторный запуск прошёл:
 
 ```text
 frontend typecheck: PASS
-frontend tests: 55 files, 279 tests passed
-production build and bundle guard: PASS
-Python tests: 772 passed, 5 environment-only skips
-package build and verification: PASS
-full check exit code: 0
-duration: 68,916 ms
+frontend-тесты: 55 файлов, 279 тестов passed
+production-сборка и ограничение bundle: PASS
+Python-тесты: 772 passed, 5 пропусков только из-за окружения
+сборка и проверка пакета: PASS
+код завершения полной проверки: 0
+длительность: 68 916 мс
 git diff --check: PASS
 ```
 
-The remaining pytest cache warning was environment-only: Windows denied creation
-of the repository-level `.pytest_cache`. It did not affect the successful exit
-code or test results.
+Оставшееся предупреждение pytest относилось только к окружению: Windows запретила создание `.pytest_cache` в корне репозитория. Оно не повлияло на успешный код завершения или результаты тестов.
 
-### Git closeout
+### Завершение работы с Git
 
-The verified tree was staged through an explicit 42-path allowlist with no
-unexpected or missing paths and no unstaged tracked changes. It was committed and
-pushed as:
+Проверенное дерево было добавлено в staged-состояние через явный allowlist из 42 путей без неожиданных или отсутствующих путей и без незакоммиченных отслеживаемых изменений. Оно было закоммичено и отправлено как:
 
 ```text
 edad09e8ffae443b94e192b266084abb66c37adf — feat: add declarative compact formatter runtime
-origin/core synchronization: 0 behind / 0 ahead
-tracked working tree: clean
-index: clean
+синхронизация с origin/core: 0 позади / 0 впереди
+отслеживаемое рабочее дерево: чистое
+индекс: чистый
 ```
 
-Fast CI, Docker, real-Anki E2E, visual acceptance and owner private-profile review
-were not required for R2 and were deliberately not run. C1.5R.2 technical
-completion does not grant product acceptance to later C1.5R UI stages.
+Fast CI, Docker, real-Anki E2E, визуальная приёмка и проверка на приватном профиле владельца не требовались для R2 и намеренно не запускались. Техническое завершение C1.5R.2 не означает продуктовую приёмку последующих UI-этапов C1.5R.
 
-## Scope explicitly not implemented
+## Явно не реализованный scope
 
 ```text
-front/back preview semantics
-candidate-source changes
-Cards inbox/drawer redesign
-guided Inspection Profiles UX
-automatic formatter suggestions
-live formatter preview API
-C1.6 actions/recheck/resolution
-PR, merge, release or deployment
+семантика предпросмотра лицевой и обратной стороны
+изменения источников кандидатов
+переработка очереди и выдвижной панели Cards
+пошаговая настройка Inspection Profiles
+автоматические предложения форматтера
+API живого предпросмотра форматтера
+действия, перепроверка и определение результата C1.6
+PR, merge, выпуск или deployment
 ```
 
-## Git boundary
+## Границы Git
 
-The candidate is based only on exact tracked HEAD. The unrelated untracked
-Gamification helper scripts reported by the owner are outside the patch and must
-remain untouched. No PR, merge, rebase, force-push, release, deployment or
-AnkiWeb publication is part of this stage.
+Кандидат основан только на точном отслеживаемом HEAD. Несвязанные неотслеживаемые вспомогательные scripts геймификации, о которых сообщил владелец, находятся за пределами patch и должны остаться нетронутыми. PR, merge, rebase, force-push, выпуск, deployment или публикация на AnkiWeb не входят в этот этап.
 
-## Next stage
+## Следующий этап
 
-C1.5R.3 is now **Next, not started**. It owns front/back preview semantics while
-preserving sanitizer, media validation, Shadow DOM and single-active-card reads.
-C1.6 remains blocked until the complete C1.5R remediation and separate owner
-product acceptance are finished.
+C1.5R.3 теперь является **следующим этапом и не начат**. Он отвечает за семантику предпросмотра лицевой и обратной стороны при сохранении sanitizer, проверки media, Shadow DOM и чтения только активной карточки. C1.6 остаётся заблокированным до завершения всего комплекса исправлений C1.5R и отдельной продуктовой приёмки владельцем.
