@@ -1,0 +1,107 @@
+name: R7 temporary Inspection Profiles validation-success control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r7-inspection-success-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-inspection-success-fix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact task branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Guard exact task identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          test '${{ github.head_ref }}' = 'c1-5r-7-inspection-success-fix'
+          test '${{ github.base_ref }}' = 'core'
+          git cat-file -e '3bcf66190959339333d1ed0970783978a5ec674e^{commit}'
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install focused dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Apply exact validation-success repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          old = '  await page.getByRole("heading", { name: "Проверка и ограниченный пример" }).waitFor({ state: "visible", timeout: 30000 });\n'
+          new = '  await page.getByText("Профиль прошёл backend-проверку.", { exact: true }).waitFor({ state: "visible", timeout: 30000 });\n'
+
+          smoke = Path('docker/anki-e2e/smoke-browser.mjs')
+          text = smoke.read_text(encoding='utf-8')
+          workspace = text.split('async function assertInspectionProfilesWorkspace', 1)[1].split('async function captureZoomProof', 1)[0]
+          if workspace.count(old.strip()) != 1 or workspace.count(new.strip()) != 0:
+              raise SystemExit(f'Unexpected validation-success wait counts: old={workspace.count(old.strip())}, new={workspace.count(new.strip())}')
+          smoke.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+          tests = Path('tests/test_docker_smoke_helpers.py')
+          tests_text = tests.read_text(encoding='utf-8')
+          anchor = '    assert \'name: "Проверить профиль", exact: true\' not in workspace\n'
+          addition = (
+              '    assert \'getByText("Профиль прошёл backend-проверку.", { exact: true })\' in workspace\n'
+              '    assert "Проверка и ограниченный пример" not in workspace\n'
+          )
+          if tests_text.count(anchor) != 1 or addition in tests_text:
+              raise SystemExit('Unexpected validation-success regression insertion state.')
+          tests.write_text(tests_text.replace(anchor, anchor + addition), encoding='utf-8', newline='\n')
+          PY
+
+      - name: Verify focused repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check docker/anki-e2e/smoke-browser.mjs
+          python -m pytest tests/test_docker_smoke_helpers.py
+          git diff --check
+          mapfile -t changed < <(git diff --name-only | sort)
+          expected=(docker/anki-e2e/smoke-browser.mjs tests/test_docker_smoke_helpers.py)
+          test "${changed[*]}" = "${expected[*]}"
+
+      - name: Normalize and push one permanent commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          old_sha="$(git rev-parse HEAD)"
+          test -f .r7-inspection-success-trigger
+          rm .r7-inspection-success-trigger
+          git reset --mixed '3bcf66190959339333d1ed0970783978a5ec674e'
+          git add docker/anki-e2e/smoke-browser.mjs tests/test_docker_smoke_helpers.py
+          mapfile -t staged < <(git diff --cached --name-only | sort)
+          expected=(docker/anki-e2e/smoke-browser.mjs tests/test_docker_smoke_helpers.py)
+          test "${staged[*]}" = "${expected[*]}"
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test: wait for the current Inspection Profiles validation result'
+          test "$(git rev-list --count '3bcf66190959339333d1ed0970783978a5ec674e'..HEAD)" = '1'
+          git push --force-with-lease=refs/heads/c1-5r-7-inspection-success-fix:"$old_sha" origin HEAD:refs/heads/c1-5r-7-inspection-success-fix
