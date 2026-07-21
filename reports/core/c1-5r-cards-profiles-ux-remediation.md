@@ -1,151 +1,105 @@
-# C1.5R — Cards and Inspection Profiles UX remediation
+# C1.5R — исправление UX Cards и Inspection Profiles
 
-**Current status:** `C1.5R.0–R.7 Complete`; owner accepted; `C1.6 Next`; `C1.6B Conditional`
+**Текущий статус:** `C1.5R.0–R.7 завершены`; принято владельцем; `C1.6 — следующий этап`; `C1.6B — условный этап`
 
-**Product gate:** owner product acceptance is accepted for C1.5R.7; the complete C1.5R.0–R.7 line remains closed.
+**Продуктовый gate:** продуктовая приёмка владельцем для C1.5R.7 выполнена; вся последовательность C1.5R.0–R.7 остаётся закрытой.
 
-## Initial baseline
+## Начальное исходное состояние
 
-- branch: `core`;
-- initial HEAD: `101103585149aa0a30d411ad538fbcc06641a05b`;
-- initial divergence: `0 behind / 24 ahead` of `origin/master`;
-- `origin/core...HEAD`: `0 behind / 0 ahead`;
-- initial worktree: clean;
-- open pull requests from `core`: none;
-- C1.6 production work after the reference HEAD: not found.
+- ветка: `core`;
+- начальный HEAD: `101103585149aa0a30d411ad538fbcc06641a05b`;
+- начальное расхождение: `0 позади / 24 впереди` относительно `origin/master`;
+- `origin/core...HEAD`: `0 позади / 0 впереди`;
+- начальное рабочее дерево: чистое;
+- открытые pull requests из `core`: отсутствуют;
+- production-работа C1.6 после исходного HEAD: не найдена.
 
-The old C1.5 implementation and runs remain historical technical evidence.
-Owner product acceptance was withdrawn after screenshot and real-profile review,
-so they do not establish the correctness of the user model being remediated.
+Старая реализация C1.5 и её запуски остаются историческими техническими подтверждениями. После проверки скриншотов и реального профиля продуктовая приёмка владельцем была отозвана, поэтому эти материалы не подтверждают корректность исправляемой пользовательской модели.
 
-## Sources actually read so far
+## Фактически изученные источники
 
-Current production/tests and the C1.1–C1.5 contract/report line were inspected,
-including Search, triage, rendered preview, Cards workspace, Inspection Profiles,
-strict frontend parsers, E2E fixtures/workflows, roadmap and handoff sources named
-in the C1.5R contract. The final inventory will list every source used by the
-implementation and verification slices.
+Изучены актуальные production-код и тесты и линия контрактов и отчётов C1.1–C1.5, включая Search, Triage, отрендеренный предпросмотр, рабочее пространство Cards, Inspection Profiles, строгие parsers frontend, E2E-фикстуры и workflows, roadmap и источники handoff, перечисленные в контракте C1.5R. Финальная инвентаризация каждого этапа перечисляет все источники, использованные при реализации и проверке.
 
-Official sources read:
+Изученные официальные источники:
 
-- Anki Manual: Card Templates, Styling & HTML / Browser Appearance, Field
-  Replacements / FrontSide, Browsing and Searching;
-- Writing Anki Add-ons: the `anki` module, Background Operations and Reviewer
-  JavaScript;
-- W3C WAI: Forms, Grouping Controls, Multi-page Forms, Disclosure and Modal
-  Dialog patterns;
-- official Anki `26.05` source at
-  `e64c6b1aee3e8d668fb8bbe084beada8e070d985`.
+- Anki Manual: Card Templates, Styling & HTML и Browser Appearance, Field Replacements и FrontSide, Browsing and Searching;
+- Writing Anki Add-ons: модуль `anki`, Background Operations и Reviewer JavaScript;
+- W3C WAI: Forms, Grouping Controls, Multi-page Forms, паттерны Disclosure и Modal Dialog;
+- официальный исходный код Anki `26.05` на коммите `e64c6b1aee3e8d668fb8bbe084beada8e070d985`.
 
-## User evidence inventory
+## Инвентаризация пользовательских подтверждений
 
-Located evidence is intentionally kept outside git:
+Найденные подтверждения намеренно хранятся вне Git:
 
-- accepted C1.5 E2E ZIP
-  `ci-e2e-standard-29649071545-1.zip`;
-- two owner screenshots, `photo_2026-07-18_19-24-30.jpg` and
-  `photo_2026-07-18_19-24-43.jpg`;
-- historical baseline `artifacts/screenshots/cards.zip`;
-- earlier E2E ZIPs retained only for historical comparison.
+- принятый E2E ZIP C1.5 `ci-e2e-standard-29649071545-1.zip`;
+- два скриншота владельца: `photo_2026-07-18_19-24-30.jpg` и `photo_2026-07-18_19-24-43.jpg`;
+- историческое исходное состояние `artifacts/screenshots/cards.zip`;
+- прежние E2E ZIP, сохранённые только для исторического сравнения.
 
-Both owner JPGs were visually opened. They show the same normal Inspection
-Profiles path as an extremely long technical page: repeated mapping/check
-fieldsets dominate the page and the action area appears only after a roughly
-6000 px scroll. The accepted C1.5 ZIP is being inventoried image-by-image; the
-completed filename/surface/theme/viewport/fixture/state/observation table will
-be recorded before technical acceptance.
+Оба JPG владельца были открыты и изучены визуально. Они показывают один и тот же обычный путь Inspection Profiles как чрезвычайно длинную техническую страницу: повторяющиеся группы mappings и checks занимают основную часть страницы, а область действий появляется только после прокрутки примерно на 6000 px. Принятый ZIP C1.5 был инвентаризирован по изображениям; полная таблица имени файла, поверхности, темы, viewport, фикстуры, состояния и наблюдения зафиксирована до технической приёмки.
 
-## Defect reproduction before production changes
+## Воспроизведение дефектов до production-изменений
 
-1. `search_service._primary_text()` starts with the note sort field and then
-   scans arbitrary non-empty fields. Search card rows use it directly and
-   triage inherits it, allowing a media-heavy front to become the unrelated
-   `「Существительное」` field.
-2. `note_intelligence._call_native_render_output()` requests
-   `browser=True`; the same result supplies the full preview even though Anki
-   Browser Appearance is a compact Browser surface, not reviewer front/back.
-3. Cards renders `side="front"` in both the Inspector and expanded modal even
-   though Search inspect already carries `backHtml`.
-4. `useCardsTriageWorkspace` hardcodes a seven-day interval with no visible
-   period control.
-5. automatic profile candidates are the same period-bound revlog candidates
-   used for learning issues; zero recent reviews therefore produces zero
-   current-content candidates.
-6. an unconfigured Inspection Profile keeps `draft=null` until an explicit
-   suggestion-apply action.
-7. the normal profile editor exposes role slugs, check IDs/kinds/modes,
-   template ordinals, repeated mapping/check fieldsets and equal-weight actions.
-8. the C1.5 native table is product-rejected. At 1024 it remains a narrow split
-   and the preview's fit constraints weaken readability.
+1. `search_service._primary_text()` начинает с поля сортировки заметки, затем перебирает произвольные непустые поля. Строки карточек Search используют его напрямую, а Triage наследует это поведение, поэтому лицевая сторона с большим количеством media может превратиться в несвязанное поле `「Существительное」`.
+2. `note_intelligence._call_native_render_output()` запрашивает `browser=True`; тот же результат используется для полного предпросмотра, хотя Browser Appearance в Anki является компактной поверхностью Browser, а не семантикой лицевой и обратной стороны reviewer.
+3. Cards рендерит `side="front"` и в Inspector, и в расширенном модальном диалоге, хотя просмотр Search уже содержит `backHtml`.
+4. `useCardsTriageWorkspace` жёстко задаёт семидневный интервал без видимого управления периодом.
+5. Автоматические кандидаты профиля совпадают с ограниченными периодом кандидатами revlog для проблем обучения; при отсутствии недавних повторений кандидаты по текущему содержимому также отсутствуют.
+6. Для ненастроенного Inspection Profile `draft` остаётся `null` до явного применения suggestion.
+7. Обычный editor профиля показывает slugs ролей, ID, kinds и modes проверок, ordinal шаблонов, повторяющиеся groups mappings и checks и действия одинаковой визуальной важности.
+8. Нативная таблица C1.5 отклонена на продуктовом уровне. При 1024 px сохраняется узкая split-компоновка, а ограничения вписывания предпросмотра ухудшают читаемость.
 
-Focused red tests recorded before the fix:
+Профильные падающие тесты, зафиксированные до исправления:
 
-- reviewer-preview mode: FAIL because native preview called
-  `render_output(reload=True, browser=True)` instead of `browser=False`;
-- media-heavy compact identity: FAIL because the Search card row had no
-  canonical `displayText` and still exposed unrelated-field identity.
+- режим предпросмотра reviewer: FAIL, поскольку нативный предпросмотр вызывал `render_output(reload=True, browser=True)` вместо `browser=False`;
+- компактная идентичность карточки с большим количеством media: FAIL, поскольку строка карточки Search не имела канонического `displayText` и продолжала показывать идентичность из несвязанного поля.
 
-## Corrective architecture decisions
+## Решения исправляющей архитектуры
 
-1. One backend projector owns Search-card, triage, Cards-list and Inspector
-   compact identity.
-2. Browser Appearance is an identity source; reviewer/native front and answer
-   remain the full preview sources.
-3. Ordered bounded text/line/image/audio tokens precede compact collapse.
-4. The old arbitrary note-field fallback is removed for cards.
-5. Formatter v1 is declarative only and is stored in an independent strict,
-   profile-local, optimistic-concurrency document.
-6. Exact template override precedes a note-type default; mismatches fail closed
-   without fuzzy rebinding.
-7. Search/triage public shape changes are explicitly versioned and parsed
-   strictly in Python and TypeScript.
-8. Learning candidates remain period-bound; current-content candidates are a
-   separate bounded collection scan with explicit partial/truncated status.
-9. Cards becomes a dense structured inbox list plus persistent Inspector; the
-   rejected spreadsheet-like table is not retained as a hidden mode.
-10. Inspection Profiles defaults to a guided Basic workflow; the full runtime
-    editor remains behind Advanced disclosure.
-11. Inspector renders front; the expanded modal opens on answer/back.
-12. Only the active card receives a full preview; compact rows never read media.
+1. Один backend-projector отвечает за компактную идентичность карточки в Search, Triage, списке Cards и Inspector.
+2. Browser Appearance используется как источник идентичности; нативные лицевая сторона reviewer и ответ остаются источниками полного предпросмотра.
+3. До компактного свёртывания формируются упорядоченные ограниченные токены text, line, image и audio.
+4. Старый fallback карточки на произвольное поле заметки удаляется.
+5. Formatter v1 остаётся только декларативным и хранится в независимом строгом документе на уровне профиля с optimistic concurrency.
+6. Точное правило шаблона имеет приоритет над стандартом типа заметки; несоответствия работают по принципу fail closed без нечёткого повторного связывания.
+7. Изменения публичной структуры Search и Triage явно версионируются и строго разбираются в Python и TypeScript.
+8. Кандидаты обучения остаются ограниченными периодом; кандидаты по текущему содержимому собираются отдельной ограниченной проверкой collection с явным состоянием partial или truncated.
+9. Cards становится плотной структурированной очередью и постоянным Inspector; отклонённая таблица в стиле электронной таблицы не сохраняется как скрытый режим.
+10. Inspection Profiles по умолчанию использует пошаговый workflow Basic; полный runtime-editor остаётся за disclosure Advanced.
+11. Inspector рендерит лицевую сторону; расширенный модальный диалог открывается на ответе или обратной стороне.
+12. Полный предпросмотр получает только активная карточка; компактные строки никогда не читают media.
 
-The detailed display contract is
-[`docs/card-display-identity.md`](../../docs/card-display-identity.md).
+Подробный контракт отображения: [`docs/card-display-identity.md`](../../docs/card-display-identity.md).
 
-## Verification ledger
+## Журнал проверки
 
-| Gate | Result |
+| Gate | Результат |
 | --- | --- |
-| focused red tests before implementation | expected FAIL, recorded above |
-| R1–R4 focused and canonical gates | PASS; see increment reports |
-| R5 focused frontend/backend | PASS — 25 Vitest / 92 pytest |
-| R5 TypeScript/build/bundle/package | PASS — run `29740393142` |
-| R5 isolated visual matrix | PASS — run `29738841012`, artifact `8459497217` |
-| R5 canonical `run_full_check.ps1 -SkipDocker` | PASS — exact `a30f4db66e73f3f836e69ba90cfc06974ce3df47` |
-| R6 guided Inspection Profiles closeout | PASS — implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94`, merged `d2ee9703a2b841c0438fc07a43db3b701835a958` |
-| R7 focused harness regression | PASS — 30 tests on `df633563490f80346617871ec5640adf99154956` |
-| R7 canonical non-Docker | PASS — 318 frontend tests, 796 Python tests, package verified |
-| R7 clean full real-Anki E2E | PASS — Anki 26.05, restart, 50 pages, 2 navigation, 4 synthetic Cards, 1 APKG Cards screenshot |
-| owner product decision | Accepted |
+| профильные падающие тесты до реализации | ожидаемый FAIL, зафиксирован выше |
+| профильные и канонические gates R1–R4 | PASS; см. отчёты этапов |
+| профильные frontend/backend R5 | PASS — 25 Vitest и 92 pytest |
+| TypeScript, сборка, bundle и пакет R5 | PASS — запуск `29740393142` |
+| изолированная визуальная матрица R5 | PASS — запуск `29738841012`, артефакт `8459497217` |
+| канонический `run_full_check.ps1 -SkipDocker` R5 | PASS — точный `a30f4db66e73f3f836e69ba90cfc06974ce3df47` |
+| завершение пошаговой настройки Inspection Profiles R6 | PASS — реализация `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94`, влита как `d2ee9703a2b841c0438fc07a43db3b701835a958` |
+| профильная регрессия harness R7 | PASS — 30 тестов на `df633563490f80346617871ec5640adf99154956` |
+| каноническая проверка R7 без Docker | PASS — 318 frontend-тестов, 796 Python-тестов, пакет проверен |
+| чистый полный real-Anki E2E R7 | PASS — Anki 26.05, перезапуск, 50 скриншотов страниц, 2 навигации, 4 синтетических Cards, 1 скриншот APKG Cards |
+| продуктовое решение владельца | принято |
 
-## Delivery boundary
+## Границы поставки
 
-- implementation PR: #50 merged into `core` as
-  `d2ee9703a2b841c0438fc07a43db3b701835a958`;
-- merge to `master`: no;
-- release/tag: no;
-- deployment: no;
-- `.ankiaddon`/AnkiWeb publication: no;
-- owner private profile read/export: no;
-- C1.6 implementation: planned only after accepted R7; not started;
-- C1.6B bounded bulk actions: Conditional; not started.
+- PR реализации: #50 влит в `core` как `d2ee9703a2b841c0438fc07a43db3b701835a958`;
+- merge в `master`: нет;
+- выпуск и tag: нет;
+- deployment: нет;
+- публикация `.ankiaddon` или на AnkiWeb: нет;
+- чтение или экспорт приватного профиля владельца: нет;
+- реализация C1.6: планировалась только после принятого R7; не начата;
+- ограниченные массовые действия C1.6B: условный этап; не начат.
 
-## R6 remediation outcome
+## Результат исправления R6
 
-C1.5R.6 replaced the rejected machine-first normal path with an immediate generated
-draft, guided Basic field/requirement/scope workflow, lifecycle-aware actions,
-friendly bounded validation and collapsed Advanced/Profile tools. The strict v1
-runtime, confirmed-only authority, fail-closed lifecycle, conflict protection and
-security boundary remain unchanged. Final implementation
-`8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` and merged `core`
-`d2ee9703a2b841c0438fc07a43db3b701835a958` passed the required non-Docker and
-Chromium closeout gates. R7 integrated acceptance passed on `df633563490f80346617871ec5640adf99154956` and owner product acceptance is accepted. C1.5R is complete. C1.6 is Next and not started; C1.6B remains Conditional.
+C1.5R.6 заменил отклонённый обычный путь, ориентированный на машинные данные, на немедленно создаваемый черновик, пошаговый workflow Basic для полей, требований и scope, действия с учётом жизненного цикла, понятную ограниченную validation и свёрнутые Advanced и Profile tools. Строгий runtime v1, авторитетность только подтверждённых профилей, fail-closed-жизненный цикл, защита от конфликтов и границы безопасности не изменились.
+
+Финальная реализация `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` и влитый коммит `core` `d2ee9703a2b841c0438fc07a43db3b701835a958` прошли обязательные gates без Docker и проверки Chromium. Комплексная приёмка R7 прошла на `df633563490f80346617871ec5640adf99154956`, продуктовая приёмка владельцем выполнена. C1.5R завершён. C1.6 является следующим этапом и не начат; C1.6B остаётся условным.
