@@ -1,24 +1,24 @@
-# Dashboard API и payload contract
+# API dashboard и контракт payload
 
 **Снимок документации:** 2026-07-22
 
-Dashboard — локальное приложение, которое получает опубликованный report payload и несколько узких API. Frontend не читает Anki collection напрямую.
+Dashboard — локальное приложение, которое получает опубликованный payload отчёта и использует несколько узких API. Frontend не читает collection Anki напрямую.
 
-## Token model
+## Модель токена
 
-Все чувствительные endpoints требуют текущий dashboard token:
+Все чувствительные endpoints требуют текущий токен dashboard:
 
 ```text
 ?token=<dashboard-token>
 ```
 
-Dashboard открывается по loopback URL:
+Dashboard открывается по loopback-URL:
 
 ```text
 http://127.0.0.1:<port>/?token=<token>#/home
 ```
 
-Invalid token возвращает `403`. Token и полный token-bearing URL не попадают в normal logs, DOM dumps, public artifacts или telemetry.
+Недопустимый токен возвращает `403`. Токен и полный URL с токеном не попадают в обычные логи, DOM-dumps, публичные артефакты или телеметрию.
 
 ## Карта endpoints
 
@@ -44,7 +44,7 @@ Invalid token возвращает `403`. Token и полный token-bearing UR
 /api/telemetry/status
 ```
 
-### Основные POST/PUT
+### Основные POST и PUT
 
 ```text
 /api/cache/rebuild
@@ -78,20 +78,20 @@ Invalid token возвращает `403`. Token и полный token-bearing UR
 /api/telemetry/check-send
 ```
 
-Server/dashboard actions остаются allowlist, а не arbitrary RPC.
+Действия server и dashboard остаются allowlist, а не произвольным RPC.
 
-## Search query и inspect
+## Запрос и просмотр Search
 
 `POST /api/search/query` и `POST /api/search/inspect`:
 
-- token-protected;
-- POST-only;
-- JSON-only;
-- body cap 8 KiB.
+- защищены токеном;
+- принимают только POST;
+- принимают только JSON;
+- ограничены телом 8 КиБ.
 
-Normal query и inspect требуют exact `schemaVersion: 2`. Schema v1 не является alias. Query использует native Anki grammar, bounded filters, page sizes `25 | 50 | 100` и hard cap 2000. Inspect принимает ровно один decimal-string `cardId` или `noteId`.
+Обычные query и inspect требуют точное значение `schemaVersion: 2`. Schema v1 не является alias. Query использует нативную грамматику Anki, ограниченные фильтры, размеры страницы `25 | 50 | 100` и жёсткое ограничение 2000. Inspect принимает ровно один десятичный строковый `cardId` или `noteId`.
 
-Card rows/details v2:
+Строки и подробности карточек v2:
 
 ```text
 displayText
@@ -100,17 +100,17 @@ displayStatus      available | media_only | unavailable
 displayTruncated
 ```
 
-Card alias `primaryText` отсутствует. Note rows/details сохраняют note `primaryText` и не получают card display fields.
+Alias карточки `primaryText` отсутствует. Строки и подробности заметок сохраняют `primaryText` заметки и не получают поля отображения карточки.
 
-Frontend parser отклоняет old schemas, aliases, unknown keys, malformed IDs, count drift и incoherent display state.
+Parser frontend отклоняет старые schema, aliases, неизвестные ключи, повреждённые ID, расхождение количества и несогласованное состояние отображения.
 
-Search metadata остаётся отдельным request variant v1:
+Metadata Search остаётся отдельным вариантом запроса v1:
 
 ```json
 {"kind": "metadata", "requestId": "search-metadata-1"}
 ```
 
-Search errors:
+Ошибки Search:
 
 ```text
 400 invalid_search_request
@@ -122,30 +122,30 @@ Search errors:
 
 Полный контракт: [`search-v1-and-safe-actions.md`](search-v1-and-safe-actions.md).
 
-## Triage query v4
+## Запрос Triage v4
 
 `POST /api/triage/query`:
 
-- token-protected;
-- POST/JSON-only;
-- body cap 8 KiB;
-- exact `schemaVersion: 4`.
+- защищён токеном;
+- принимает только POST и JSON;
+- ограничен телом 8 КиБ;
+- требует точное значение `schemaVersion: 4`.
 
-Automatic query объединяет bounded period-learning, current-content, active Signal и Search identity sources. Current-content continuation является manual и cursor-bounded. Search workset принимает `1..200` exact card IDs и сохраняет first-seen order.
+Автоматический запрос объединяет ограниченные источники обучения за период, текущего содержимого, активных Signals и идентичности Search. Продолжение текущего содержимого запускается вручную и ограничено cursor. Рабочий набор Search принимает от 1 до 200 точных ID карточек и сохраняет порядок первого появления.
 
-Response содержит typed source/content status, counts, cursor coherence, stable reasons и Search-owned compact identity. Full preview/media, raw revlog, note values, arbitrary query, exception, token и runtime path отсутствуют.
+Ответ содержит типизированные состояния источников и содержимого, количества, согласованность cursor, стабильные причины и компактную идентичность, принадлежащую Search. Полный предпросмотр и media, необработанный revlog, значения заметок, произвольный query, исключения, токен и runtime-путь отсутствуют.
 
-## Exact-card recheck v1
+## Recheck конкретной карточки v1
 
 `POST /api/triage/recheck`:
 
-- token-protected;
-- POST/JSON-only;
-- body cap 8 KiB;
-- exact `schemaVersion: 1`;
-- serialized through `QueryOp`.
+- защищён токеном;
+- принимает только POST и JSON;
+- ограничен телом 8 КиБ;
+- требует точное значение `schemaVersion: 1`;
+- сериализован через `QueryOp`.
 
-Request содержит:
+Запрос содержит:
 
 ```text
 cardId
@@ -154,16 +154,16 @@ reasonIds (1..4)
 scope
 ```
 
-Recheck оценивает только exact card и переиспользует canonical sources Triage v4. Response возвращает typed source status, `entityStatus`, `contentChecks` и current canonical item либо `null`.
+Recheck оценивает только конкретную карточку и переиспользует канонические источники Triage v4. Ответ возвращает типизированное состояние источников, `entityStatus`, `contentChecks` и текущий канонический элемент либо `null`.
 
-Resolved допустим только при fully authoritative coverage и нуле current reasons. Partial/unavailable/error source, profile-authority change, identity mismatch, missing/changed entity или collection failure работают fail closed.
+Resolved допустим только при полностью авторитетном покрытии и отсутствии актуальных причин. Частичное, недоступное или ошибочное состояние источника, изменение authority профиля, несовпадение идентичности, отсутствующая или изменённая сущность и ошибка collection работают по принципу fail closed.
 
 Полные контракты:
 
 - [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
 - [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 
-## Card display formatter API
+## API formatter отображения карточки
 
 Endpoints:
 
@@ -173,19 +173,19 @@ Endpoints:
 /api/card-display-formatters/update
 ```
 
-Они token-protected, POST-only, используют exact schema v1 и body cap 64 KiB.
+Они защищены токеном, принимают только POST, используют точную schema v1 и ограничение тела 64 КиБ.
 
-Store statuses:
+Состояния store:
 
 ```text
 empty | available | corrupt | future_schema | unavailable
 ```
 
-`validate` ничего не сохраняет и не читает collection. `update` принимает только `save`/`delete` с `expectedRevision`. API не раскрывает raw HTML, note values, media contents, paths, renderer exceptions или arbitrary expression language.
+`validate` ничего не сохраняет и не читает collection. `update` принимает только `save` или `delete` с `expectedRevision`. API не раскрывает необработанный HTML, значения заметок, содержимое media, пути, исключения renderer или произвольный язык выражений.
 
 Полный контракт: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
 
-## Inspection Profiles API
+## API Inspection Profiles
 
 ```text
 POST /api/inspection-profiles/query
@@ -193,67 +193,67 @@ POST /api/inspection-profiles/validate
 POST /api/inspection-profiles/update
 ```
 
-Endpoints используют current token, strict JSON и cap 64 KiB.
+Endpoints используют текущий токен, строгий JSON и ограничение 64 КиБ.
 
-Query возвращает bounded structures, fingerprints, lifecycle, stored profile и non-authoritative suggestion. Validation read-only. Update изменяет local profile store с optimistic revision/fingerprint checks.
+Query возвращает ограниченные структуры, fingerprints, состояние жизненного цикла, сохранённый профиль и неавторитетное suggestion. Validation работает только на чтение. Update изменяет локальный store профилей с optimistic-проверками revision и fingerprint.
 
-Content reasons создают только confirmed/current profiles. Suggested, disabled, needs-review, missing, future, corrupt и unavailable states fail closed.
+Причины по содержимому создают только подтверждённые и актуальные профили. Состояния suggested, disabled, needs-review, missing, future, corrupt и unavailable работают по принципу fail closed.
 
 Полный контракт: [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
-## Entity actions API
+## API действий над сущностями
 
 ```text
 POST /api/entities/cards/actions
 POST /api/entities/notes/actions
 ```
 
-Требования: token, POST, JSON, body cap 8 KiB.
+Требования: токен, POST, JSON и ограничение тела 8 КиБ.
 
-Card allowlist:
+Allowlist карточек:
 
 ```text
 suspend | unsuspend | set_flag | clear_flag | bury | unbury | move_to_deck
 ```
 
-Note allowlist:
+Allowlist заметок:
 
 ```text
 add_tags | remove_tags
 ```
 
-Batch содержит `1..200` exact decimal IDs. Один stale ID отклоняет весь batch. Mutations используют official Anki wrappers и один native undo step.
+Пакет содержит от 1 до 200 точных десятичных ID. Один устаревший ID отклоняет весь пакет. Mutations используют официальные wrappers Anki и один нативный шаг undo.
 
-Action success, включая `action.no_changes`, не доказывает resolution Cards. Resolution определяется только явным `/api/triage/recheck`.
+Успех действия, включая `action.no_changes`, не доказывает устранение проблемы Cards. Оно определяется только явным `/api/triage/recheck`.
 
-## Settings и Profile API
+## API Settings и Profile
 
-`GET/POST /api/dashboard/settings` публикует normalized public settings и принимает только allowlisted partial patches.
+`GET/POST /api/dashboard/settings` публикует нормализованные публичные настройки и принимает только частичные изменения из allowlist.
 
-`GET/POST /api/profile` публикует public profile data. Writable fields:
+`GET/POST /api/profile` публикует публичные данные профиля. Доступные для записи поля:
 
 ```text
 customStudyStartedOn
 deckOverviewSort
 ```
 
-Computed identity и metrics read-only.
+Вычисляемые идентичность и метрики доступны только для чтения.
 
 ## Statistics и FSRS
 
-`POST /api/statistics/query` принимает typed scope/period/granularity/comparison.
+`POST /api/statistics/query` принимает типизированные scope, period, granularity и comparison.
 
-`POST /api/statistics/fsrs/query` принимает documented read-only FSRS operations.
+`POST /api/statistics/fsrs/query` принимает документированные read-only-операции FSRS.
 
-Arbitrary search/SQL и raw revlog/card/note rows запрещены.
+Произвольные Search, SQL и необработанные строки revlog, карточек и заметок запрещены.
 
-## Notifications и telemetry
+## Notifications и телеметрия
 
-Notification endpoints используют bounded schema v1 и local notification IDs. Telemetry endpoints принимают только opt-in bounded technical events.
+Endpoints Notification используют ограниченную schema v1 и локальные ID уведомлений. Endpoints телеметрии принимают только ограниченные технические события после явного согласия.
 
-Remote telemetry исключает collection content, field names/values, Search queries, card/note/deck IDs, compact display text, media filenames и token-bearing URLs.
+Удалённая телеметрия исключает содержимое collection, имена и значения полей, queries Search, ID карточек, заметок и колод, компактный текст отображения, имена media-файлов и URL с токеном.
 
-## Payload source of truth
+## Источники истины payload
 
 Backend:
 
@@ -267,26 +267,26 @@ Frontend:
 web-dashboard/src/types/report.ts
 ```
 
-Canonical Cards использует `/api/triage/query` и `/api/triage/recheck`. Legacy `attentionCards` остаётся compatibility surface для других consumers.
+Канонический Cards использует `/api/triage/query` и `/api/triage/recheck`. Устаревший `attentionCards` остаётся compatibility-поверхностью для других потребителей.
 
-## Preview и media
+## Предпросмотр и media
 
-Search inspect содержит sanitized `renderedPreview` рядом с compact identity. Full preview загружается только для active card.
+Просмотр Search содержит санитизированный `renderedPreview` рядом с компактной идентичностью. Полный предпросмотр загружается только для активной карточки.
 
-Media URL:
+URL media:
 
 ```text
 /api/media?name=<validated-media-name>&token=<token>
 ```
 
-Обязательны backend filename validation, sanitizer, Shadow DOM isolation и token checks. `file:`, `javascript:`, iframe и template JavaScript execution запрещены.
+Обязательны backend-проверка имени файла, sanitizer, изоляция Shadow DOM и проверка токена. Запрещены `file:`, `javascript:`, iframe и выполнение JavaScript шаблона.
 
 ## Текущий статус Core
 
 ```text
-C1.5R.0–R.7 — Complete; owner accepted
-C1.6 — Complete; owner accepted; merged into core
-C1.6B — Conditional; not started
-Core C1 — Complete
-C2 — Next; not started
+C1.5R.0–R.7 — завершено; принято владельцем
+C1.6 — завершено; принято владельцем; влито в core
+C1.6B — условный этап; не начат
+Core C1 — завершён
+C2 — следующий этап; не начат
 ```
