@@ -24,6 +24,8 @@ production code/tests
 - [c1-5r-3-front-back-preview-semantics.md](core/c1-5r-3-front-back-preview-semantics.md)
 - [c1-5r-4-independent-triage-candidate-sources.md](core/c1-5r-4-independent-triage-candidate-sources.md)
 - [c1-5r-5-cards-attention-inbox-redesign.md](core/c1-5r-5-cards-attention-inbox-redesign.md)
+- [c1-5r-6-guided-inspection-profiles-ux.md](core/c1-5r-6-guided-inspection-profiles-ux.md)
+- [c1-5r-7-integrated-acceptance-closeout.md](core/c1-5r-7-integrated-acceptance-closeout.md)
 
 ## Product reports
 

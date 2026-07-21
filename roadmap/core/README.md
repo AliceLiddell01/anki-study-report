@@ -4,7 +4,7 @@
 
 **Role:** the only mandatory sequential path for the main add-on
 
-**Current status:** `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional
+**Current status:** `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Next, not started; `C1.6B` Conditional
 
 Core does not depend on gamification, accounts, telemetry admin UI, or extension
 packs. Parallel tracks may advance independently but do not change core
@@ -41,7 +41,7 @@ implementation. Full contract freeze and release closure remain C2 work.
 
 ## C1 — Cards v2 / Problem Triage
 
-**Status:** In progress — C1.5R.7 integrated acceptance active; C1.6 planned after accepted R7
+**Status:** In progress — C1.5R complete; C1.6 Next, not started
 
 ### Completed and active increments
 
@@ -63,8 +63,8 @@ implementation. Full contract freeze and release closure remain C2 work.
   owner visual/product acceptance withdrawn —
   [`reports/core/c1-5-cards-workspace.md`](../../reports/core/c1-5-cards-workspace.md),
   Fast CI `29648956309` PASS, real-Anki `29649071545` PASS
-- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R6 complete; R7 in progress
-- `C1.6 — Canonical single-card resolution loop`: Planned after accepted R7; not started
+- `C1.5R — Cards and Inspection Profiles UX remediation`: R0–R7 complete; owner accepted
+- `C1.6 — Canonical single-card resolution loop`: Next; not started
 - `C1.6B — Bounded bulk actions`: Conditional; not started
 
 C1.5's green runs prove that the old implementation executed and produced the
@@ -82,7 +82,7 @@ C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
 C1.5R.5 Cards attention inbox redesign — Complete
 C1.5R.6 Guided Inspection Profiles UX — Complete
-C1.5R.7 Integrated acceptance and owner decision — In progress
+C1.5R.7 Integrated acceptance and owner decision — Complete
 ```
 
 #### C1.5R.0 — Recovery and corrective baseline
@@ -172,11 +172,11 @@ expectations are understandable without exposing machine IDs in the normal path.
 Final evidence is recorded in
 [`reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../../reports/core/c1-5r-6-guided-inspection-profiles-ux.md).
 
-#### C1.5R.7 — Integrated acceptance and owner review package
+#### C1.5R.7 — Integrated acceptance and owner decision
 
-**Status:** In progress
+**Status:** Complete
 
-Runs risk-appropriate integrated verification, freezes exact package provenance, prepares explicit owner evidence and stops for one of three owner decisions. Technical gates cannot grant owner product acceptance. R7 does not implement C1.6 or C1.6B.
+Candidate `df633563490f80346617871ec5640adf99154956` passed focused harness regression, canonical non-Docker verification and clean full real-Anki E2E with restart. Owner product acceptance is recorded. R7 did not implement C1.6 or C1.6B. Final evidence is recorded in [`reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
 
 ### C1 goal
 
@@ -226,7 +226,7 @@ Actions, Signals, and Notification Center foundations.
 
 ## C1.6 — Canonical single-card resolution loop
 
-**Status:** Planned after accepted C1.5R.7; not started
+**Status:** Next; not started
 
 ```text
 issue

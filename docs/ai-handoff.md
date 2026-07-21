@@ -45,10 +45,10 @@ C1.5R.3: Complete
 C1.5R.4: Complete
 C1.5R.5: Complete
 C1.5R.6: Complete
-C1.5R.7: In progress — integrated technical acceptance and owner decision
-C1.6: Planned after accepted R7; not started
+C1.5R.7: Complete
+Owner product acceptance: Accepted
+C1.6: Next; not started
 C1.6B: Conditional; not started
-Owner product acceptance: Pending
 ```
 
 Current reports:
@@ -59,6 +59,8 @@ Current reports:
 - [`../reports/core/c1-5r-3-front-back-preview-semantics.md`](../reports/core/c1-5r-3-front-back-preview-semantics.md)
 - [`../reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../reports/core/c1-5r-4-independent-triage-candidate-sources.md)
 - [`../reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md)
+- [`../reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md)
+- [`../reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../reports/core/c1-5r-7-integrated-acceptance-closeout.md)
 
 ## Historical C1.5 evidence
 
@@ -96,10 +98,10 @@ C1.5R.3 Front/back preview semantics — Complete
 C1.5R.4 Independent triage candidate sources — Complete
 C1.5R.5 Cards attention inbox redesign — Complete
 C1.5R.6 Guided Inspection Profiles UX — Complete
-C1.5R.7 Integrated acceptance and owner decision — In progress
+C1.5R.7 Integrated acceptance and owner decision — Complete
 ```
 
-C1.5R.0–R.6 are technically closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed focused frontend/backend, typecheck, production build, package validation and canonical non-Docker verification in run `29740393142`; isolated visual run `29738841012` passed the baseline/R5 matrix. R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958` and passed its merged-core gates. R7 is the only active Core increment. Do not begin C1.6 before accepted R7 owner review; C1.6B remains Conditional.
+C1.5R.0–R.7 are closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed its focused, build, package and canonical gates; R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958`; R7 candidate `df633563490f80346617871ec5640adf99154956` passed focused harness regression, canonical non-Docker verification and clean full real-Anki E2E with restart. Owner product acceptance is accepted. C1.6 is Next and not started; C1.6B remains Conditional.
 
 ## C1.5R.1 implementation
 
@@ -314,7 +316,7 @@ Programming: unchanged
 
 ## Exact next action
 
-C1.5R.7 — integrated acceptance and owner decision. Preserve the R5 inbox/list/drawer/period/continuation contract, Triage v4, Search v2, R1 identity, R3 preview semantics and R6 guided Inspection Profiles. Freeze one exact package/evidence chain and stop for owner review. Do not start C1.6 or C1.6B in parallel.
+C1.6 — canonical single-card resolution loop is Next, not started. Preserve the accepted R1–R7 identity, preview, candidate-source, Cards inbox and guided Inspection Profiles contracts. Do not activate C1.6B without its separate evidence and decision.
 
 ## Verification boundary
 
@@ -337,7 +339,7 @@ Do not:
 - edit generated dashboard assets manually;
 - commit logs, screenshots, cache, profile data, tokens, `.ankiaddon` or E2E output;
 - change correct production behavior for an obsolete test;
-- start C1.6 before C1.5R and owner acceptance.
+- claim C1.6 or C1.6B has started before a separate implementation task.
 
 ## Other tracks
 

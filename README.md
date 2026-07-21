@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-18**.
+Документация описывает текущий проект на **2026-07-21**.
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
@@ -46,8 +46,7 @@ The accepted product contour is complete through **Stage 9.5**. Future work is n
 
 Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI and extension packs do not block core maturity.
 
-Current Core status: `C1.5R` product remediation is in progress after owner
-review withdrew C1.5 product acceptance; `C1.6` is blocked and not started.
+Current Core status: `C1.5R` product remediation and integrated acceptance are complete; owner product acceptance is recorded. `C1.6` is next and not started.
 
 Current platform state:
 

@@ -22,7 +22,8 @@ The next mandatory add-on work remains inside Core:
 
 ```text
 C1 Cards v2 / Problem Triage
-  └─ C1.5R remediation is active
+  ├─ C1.5R remediation — Complete
+  └─ C1.6 canonical single-card resolution loop — Next, not started
 → C2 Core 1.0 Hardening
 → C3 Contextual Additions, only for a proven gap
 ```
@@ -32,19 +33,18 @@ Current core status:
 ```text
 C1.5 technical implementation evidence — retained historically
 C1.5 owner product acceptance — withdrawn
-C1.5R.0–R.6 — Complete
-C1.5R.7 Integrated acceptance and owner decision — In progress
-C1.6 Canonical single-card resolution loop — Planned after accepted R7
+C1.5R.0–R.7 — Complete
+Owner product acceptance — Accepted
+C1.6 Canonical single-card resolution loop — Next, not started
 C1.6B Bounded bulk actions — Conditional
 Core C1 — In progress
-Owner product acceptance — Pending
 ```
 
 See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md),
 the [C1.5R.1 implementation report](../reports/core/c1-5r-1-canonical-card-display-identity.md),
 the [C1.5R.2 implementation report](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md),
 the [C1.5R.3 implementation report](../reports/core/c1-5r-3-front-back-preview-semantics.md),
-and the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), and the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md).
+the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md), the [C1.5R.6 implementation report](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md), and the [C1.5R.7 closeout](../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
 
 Parallel tracks do not block `C1` or `C2`:
 
@@ -58,7 +58,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.6` Complete; `C1.5R.7` In progress; `C1.6` planned after accepted R7; `C1.6B` Conditional | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Next; `C1.6B` Conditional | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -72,10 +72,10 @@ Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
                            │
-                           ├─ C1.5R.0–R.6 are Complete; C1.5R.7 is In progress
-                           ├─ accepted R7 unlocks C1.6
-                           ├─ C1.6B remains Conditional and is not part of R7 or C1.6
-                           ├─ owner product acceptance is a separate C1.5R gate
+                           ├─ C1.5R.0–R.7 are Complete; owner acceptance is recorded
+                           ├─ C1.6 is Next, not started
+                           ├─ C1.6B remains Conditional and is not part of mandatory C1.6
+                           ├─ C1.5R is closed
                            └─ does not wait for G/O/I/E
 
 G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7?/G8?
@@ -156,17 +156,16 @@ reports/    historical handoff, audits, measurements and closeout evidence
 8. Verification follows `docs/test-matrix.md` and
    `docs/verification-run-policy.md`; docs-only work does not justify Docker E2E.
 
-## C1.5R.7 integrated acceptance
+## C1.5R complete
 
-Core C1 remains in progress. C1.5R.0–R.6 are complete. C1.5R.7 is now in progress and owns integrated technical acceptance, exact package provenance, real-Anki evidence and the separate owner decision. It does not implement C1.6 or C1.6B.
+C1.5R.0–R.7 are complete. Integrated technical acceptance passed on candidate `df633563490f80346617871ec5640adf99154956`, and owner product acceptance is recorded. C1.6 and C1.6B were not implemented by R7.
 
 ## Current Core position
 
 ```text
-C1.5R.0–R.6 — Complete
-C1.5R.7 — In progress
-C1.6 — Planned after accepted R7
+C1.5R.0–R.7 — Complete
+Owner product acceptance — Accepted
+C1.6 — Next, not started
 C1.6B — Conditional
 Core C1 — In progress
-Owner product acceptance — Pending
 ```
