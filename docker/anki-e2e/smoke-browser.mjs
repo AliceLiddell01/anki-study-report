@@ -1382,7 +1382,7 @@ async function assertInspectionProfilesWorkspace(page) {
   await page.getByRole("heading", { name: "E2E Generic Basic" }).waitFor({ state: "visible", timeout: 30000 });
   const sourceLifecycleText = await page.locator(".inspection-editor-header").innerText();
   assertBrowser(sourceLifecycleText.includes("Не настроен"), "Suggestion flow starts from a stable unconfigured fixture profile.");
-  await page.getByRole("button", { name: "Использовать подсказку", exact: true }).click();
+  await page.getByRole("button", { name: "Восстановить предложенную настройку", exact: true }).click();
   await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
   const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
   await page.getByRole("button", { name: "Проверить профиль", exact: true }).click();
