@@ -100,6 +100,48 @@ def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_sch
     assert "canonical triage v2 is active" not in profile_smoke
 
 
+def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
+    source = (
+        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"
+    ).read_text(encoding="utf-8")
+    workspace = source.split("async function assertCardsV2Workspace", 1)[1].split(
+        "async function inspectCardsV2Layout", 1
+    )[0]
+    layout = source.split("async function inspectCardsV2Layout", 1)[1].split(
+        "async function captureApkg", 1
+    )[0]
+    apkg_filter = source.split("async function applyApkgDeckFilter", 1)[1].split(
+        "async function waitForCardsPageReady", 1
+    )[0]
+    readiness = source.split("async function waitForCardsPageReady", 1)[1].split(
+        "async function waitForShadowFixture", 1
+    )[0]
+    active_contract = workspace + layout + apkg_filter + readiness
+
+    for current in (
+        'data-testid="cards-inbox-page"',
+        'data-testid="cards-inbox"',
+        'data-testid="cards-inbox-item"',
+        'data-testid="cards-detail-drawer"',
+        'name: "Развернуть ответ"',
+        'summaryText.startsWith(`Показано ${expectation.filteredCardCount} из `)',
+    ):
+        assert current in active_contract
+
+    for stale in (
+        'data-testid="cards-triage-table"',
+        'data-testid="cards-triage-row"',
+        ".cards-v2-row-activate",
+        'tr[aria-current="true"]',
+        ".cards-v2-queue",
+        ".cards-v2-inspector",
+        "Развернуть превью",
+        ".cards-v2-filter-row",
+        "1024 split remains readable",
+    ):
+        assert stale not in active_contract
+
+
 def test_smoke_api_selects_rich_media_fixture_when_multiple_japanese_cards_match():
     smoke_api = load_smoke_api_module()
     missing_audio = {
