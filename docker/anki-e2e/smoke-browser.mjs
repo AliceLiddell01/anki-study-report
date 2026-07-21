@@ -1365,31 +1365,41 @@ async function assertInspectionProfilesWorkspace(page) {
   await prepareDashboardRoute(page, "/settings/inspection-profiles", "light", "Профили проверки");
   const japanese = page.getByRole("button", { name: /E2E Japanese Vocabulary/ });
   const programming = page.getByRole("button", { name: /E2E Programming/ });
+  const suggestionSource = page.getByRole("button", { name: /E2E Generic Basic/ });
   await japanese.waitFor({ state: "visible", timeout: 30000 });
   await programming.waitFor({ state: "visible", timeout: 30000 });
+  await suggestionSource.waitFor({ state: "visible", timeout: 30000 });
   const listScreenshot = await saveStateScreenshot(page, "inspection-profiles", "list", "light");
+
   await japanese.click();
   await page.getByRole("heading", { name: "E2E Japanese Vocabulary" }).waitFor({ state: "visible", timeout: 30000 });
   const lifecycleText = await page.locator(".inspection-editor-header").innerText();
   const expectedState = label === "first" ? "Подтверждён" : "Нужна проверка";
   assertBrowser(lifecycleText.includes(expectedState), `Inspection Profiles editor shows ${expectedState}.`);
   const editorScreenshot = await saveStateScreenshot(page, "inspection-profiles", label === "first" ? "confirmed-editor" : "needs-review", "light");
-  await page.getByRole("button", { name: "Использовать подсказку" }).click();
+
+  await suggestionSource.click();
+  await page.getByRole("heading", { name: "E2E Generic Basic" }).waitFor({ state: "visible", timeout: 30000 });
+  const sourceLifecycleText = await page.locator(".inspection-editor-header").innerText();
+  assertBrowser(sourceLifecycleText.includes("Не настроен"), "Suggestion flow starts from a stable unconfigured fixture profile.");
+  await page.getByRole("button", { name: "Использовать подсказку", exact: true }).click();
   await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
   const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
-  await page.getByRole("button", { name: "Проверить профиль" }).click();
+  await page.getByRole("button", { name: "Проверить профиль", exact: true }).click();
   await page.getByRole("heading", { name: "Проверка и ограниченный пример" }).waitFor({ state: "visible", timeout: 30000 });
   const previewScreenshot = await saveStateScreenshot(page, "inspection-profiles", "validated-preview", "light");
+
   await programming.evaluate((element) => element.click());
   const unsavedDialog = page.getByTestId("inspection-unsaved-dialog");
   await unsavedDialog.waitFor({ state: "visible", timeout: 10000 });
   assertBrowser((await unsavedDialog.innerText()).includes("Отбросить несохранённые изменения?"), "Unsaved navigation dialog has the expected accessible title.");
-  await unsavedDialog.getByRole("button", { name: "Продолжить редактирование" }).click();
+  await unsavedDialog.getByRole("button", { name: "Продолжить редактирование", exact: true }).click();
   assertBrowser(await page.getByText("Есть несохранённые изменения").isVisible(), "Unsaved draft remains after cancelling note-type navigation.");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assertBrowser(overflow <= 2, "Inspection Profiles workspace has no horizontal page overflow.");
   return {
     expectedState,
+    suggestionSourceName: "E2E Generic Basic",
     suggestionCreatesDirtyDraft: true,
     validateV2PreviewVisible: true,
     unsavedNavigationProtected: true,
