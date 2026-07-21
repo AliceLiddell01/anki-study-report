@@ -175,7 +175,8 @@ jobs:
           old_sha="$(git rev-parse HEAD)"
           test -f .r7-inspection-browser-trigger
           rm .r7-inspection-browser-trigger
-          git reset --soft '4c0940904bc3586a8a61706863a151a40d4dcf47'
+          git reset --mixed '4c0940904bc3586a8a61706863a151a40d4dcf47'
+          git add docker/anki-e2e/smoke-browser.mjs tests/test_docker_smoke_helpers.py
           mapfile -t staged < <(git diff --cached --name-only | sort)
           expected=(
             docker/anki-e2e/smoke-browser.mjs
