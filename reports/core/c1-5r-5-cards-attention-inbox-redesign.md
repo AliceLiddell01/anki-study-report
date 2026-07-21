@@ -1,214 +1,166 @@
-# C1.5R.5 — Cards attention inbox redesign
+# C1.5R.5 — переработка очереди карточек, требующих внимания
 
-## Confirmed state
+## Подтверждённое состояние
 
-- initial `core` HEAD: `b2d812b4dd303965030108991858fb4bc779e73e`
-- tested implementation HEAD: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`
-- tested implementation tree: `ff771c1ad6dd50466b46af8ba66cfc50c0e57424`
-- final verification run: `29740393142` — PASS
-- post-transfer verification run: `29741098965` — PASS
-- pre-transfer closeout HEAD: `4324ecba6fa4b994fd7ea80f7230accf8776b369`
-- isolated visual run: `29738841012` — PASS
-- visual trigger: `5db6561f5467bd305cc01000317f61725928d1bb`
-- visual artifact: `8459497217`
-- visual artifact digest: `sha256:06073aa2578d750bcdc13409cd1f0cb29bc761dabf3459f8ba32b74f93ffb02d`
-- PR / merge to `master` / release / deployment / AnkiWeb publication: none
+- начальный HEAD `core`: `b2d812b4dd303965030108991858fb4bc779e73e`;
+- проверенный HEAD реализации: `a30f4db66e73f3f836e69ba90cfc06974ce3df47`;
+- проверенное дерево реализации: `ff771c1ad6dd50466b46af8ba66cfc50c0e57424`;
+- финальный запуск проверки: `29740393142` — PASS;
+- запуск проверки после переноса: `29741098965` — PASS;
+- HEAD завершения до переноса: `4324ecba6fa4b994fd7ea80f7230accf8776b369`;
+- изолированный визуальный запуск: `29738841012` — PASS;
+- trigger визуального запуска: `5db6561f5467bd305cc01000317f61725928d1bb`;
+- визуальный артефакт: `8459497217`;
+- digest визуального артефакта: `sha256:06073aa2578d750bcdc13409cd1f0cb29bc761dabf3459f8ba32b74f93ffb02d`;
+- PR, merge в `master`, выпуск, deployment и публикация на AnkiWeb: отсутствуют.
 
-## Sources actually read
+## Фактически изученные источники
 
-The implementation and closeout inspected the repository entrypoint, current AI
-handoff and Core roadmap; Cards product/UI/preview/candidate contracts; current
-Cards page/hook/types/parsers/styles/locales/tests; Search inspect and strict
-response validators; modal/Shadow DOM preview boundaries; verification policy,
-test matrix and prior R0–R4 reports. The R4 production code and tests remained
-authoritative for schema/source behavior.
+При реализации и завершении были изучены точка входа репозитория, актуальная передача контекста ИИ и Core roadmap; продуктовые контракты Cards, UI, предпросмотра и кандидатов; актуальные page, hook, types, parsers, styles, locales и tests Cards; просмотр Search и строгие validators ответов; границы модального диалога и предпросмотра Shadow DOM; политика проверок, матрица тестирования и предыдущие отчёты R0–R4. Production-код и тесты R4 оставались авторитетными для поведения schema и источников.
 
-The browser evidence was opened manually after the successful run. Failed
-attempt screenshots covered by the product What’s New modal were explicitly
-rejected as acceptance evidence.
+После успешного запуска подтверждения из browser были открыты вручную. Скриншоты неудачных попыток, перекрытые продуктовым модальным окном What’s New, явно отклонены как подтверждения приёмки.
 
-## Product and interaction result
+## Продуктовый результат и взаимодействие
 
-The product-rejected C1.5 spreadsheet table is removed. `#/cards` now implements
-Variant A:
+Отклонённая продуктом таблица C1.5 в стиле электронной таблицы удалена. `#/cards` теперь реализует вариант A:
 
 ```text
 >= 1200 CSS px
-semantic identity-led inbox | persistent Inspector
+семантическая очередь, построенная вокруг идентичности | постоянный Inspector
 
 < 1200 CSS px
-full-width inbox
-explicit activation → labelled non-modal detail drawer
+очередь на всю ширину
+явная активация → подписанная немодальная панель подробностей
 ```
 
-The queue is an ordinary ordered list with one native button per issue. It has no
-`table`, ARIA grid/listbox/option semantics, checkbox, nested row action or
-preview host. Priority, compact identity, primary reason, bounded evidence,
-deck/state and note scope form the stable scan path.
+Очередь — обычный упорядоченный список с одной нативной кнопкой на проблему. В ней нет `table`, семантики ARIA grid/listbox/option, checkbox, вложенного действия строки или host предпросмотра. Приоритет, компактная идентичность, основная причина, ограниченное подтверждение, колода и состояние, а также scope заметки образуют стабильный путь просмотра.
 
-Wide mode selects the first inspectable item without moving focus. Narrow mode
-starts with no active preview request. The drawer uses no backdrop, `aria-modal`,
-inert application shell or focus trap; Escape/close returns focus to the
-activator. The existing answer `AccessibleModal` remains the only modal.
+В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. В узком режиме начальный запрос предпросмотра отсутствует. Панель не использует backdrop, `aria-modal`, inert-оболочку приложения или focus trap; Escape или закрытие возвращает фокус активатору. Существующий `AccessibleModal` ответа остаётся единственным модальным диалогом.
 
-## Detail and preview
+## Подробности и предпросмотр
 
-`CardsDetail` is shared by Inspector and drawer. It shows all canonical reasons,
-bounded evidence, native sanitized front, recommended read-only next step,
-exact-ID Anki handoff and collapsed technical identity. The expanded modal uses
-the cached native answer/back. Queue rows perform no full preview or media reads.
+`CardsDetail` используется совместно Inspector и выдвижной панелью. Он показывает все канонические причины, ограниченное подтверждение, нативную санитизированную лицевую сторону, рекомендуемый read-only следующий шаг, передачу в Anki по точному ID и свёрнутую техническую идентичность. Расширенный модальный диалог использует закэшированный нативный ответ или обратную сторону. Строки очереди не выполняют полный предпросмотр и не читают media.
 
-At most one detail preview host exists in the normal workspace. While the true
-answer modal is open, the underlying front plus modal answer produce the expected
-two isolated Shadow DOM hosts.
+В обычном рабочем пространстве существует не более одного host подробного предпросмотра. Пока открыт настоящий модальный диалог ответа, нижележащая лицевая сторона и ответ в диалоге создают ожидаемые два изолированных host Shadow DOM.
 
-## Period and current-content continuation
+## Период и продолжение проверки текущего содержимого
 
-Learning scope is explicit session state with 7/30/90-day presets. It changes only
-period-bound learning evidence. Each scope change aborts stale work and starts one
-v4 automatic request with `contentCursor: null`; local filters are preserved.
+Scope обучения — явное состояние сессии с вариантами 7, 30 и 90 дней. Он меняет только подтверждения обучения, ограниченные периодом. Каждое изменение scope отменяет устаревшую работу и запускает один автоматический запрос v4 с `contentCursor: null`; локальные фильтры сохраняются.
 
-Current-content continuation is manual. One activation sends one request with the
-coherent current cursor. Accumulation deduplicates item/reason/source/evidence,
-retains deterministic backend-equivalent ordering and is bounded to 500 unique
-items and 10 additional pages. Failure preserves prior usable items and cursor;
-there is no automatic cursor loop.
+Продолжение проверки текущего содержимого выполняется вручную. Одна активация отправляет один запрос с согласованным текущим cursor. Накопление дедуплицирует элементы, причины, источники и подтверждения, сохраняет детерминированный порядок, эквивалентный backend, и ограничено 500 уникальными элементами и 10 дополнительными страницами. При ошибке прежние пригодные элементы и cursor сохраняются; автоматический цикл cursor отсутствует.
 
-## Accessibility and responsive behavior
+## Доступность и responsive-поведение
 
-- native list/button semantics and one tab stop per item;
-- focus is independent from active item;
-- textual active and priority state, not color alone;
-- labelled/described detail region;
-- 1200 px breakpoint chosen from measured queue/Inspector balance;
-- 1024 px queue remains full-width before activation;
-- drawer remains non-modal and queue remains operable;
-- answer modal preserves inert background, focus containment and Escape order;
-- light/dark and RU/EN copy are covered by focused tests and visual fixtures.
+- нативная семантика списка и кнопок, одна точка Tab на элемент;
+- фокус не зависит от активного элемента;
+- активное состояние и приоритет выражены текстом, а не только цветом;
+- подписанная и описанная область подробностей;
+- breakpoint 1200 px выбран по измеренному балансу очереди и Inspector;
+- при 1024 px очередь остаётся на всю ширину до активации;
+- панель остаётся немодальной, а очередь — доступной для взаимодействия;
+- модальный диалог ответа сохраняет inert-фон, удержание фокуса и порядок обработки Escape;
+- светлая и тёмная темы, а также RU/EN-текст покрыты профильными тестами и визуальными фикстурами.
 
-## Visual evidence
+## Визуальные подтверждения
 
-The successful artifact contains six historical baseline frames and twelve R5
-frames:
+Успешный артефакт содержит шесть исторических исходных кадров и двенадцать кадров R5:
 
-- 1440 light and dark inbox/Inspector;
-- 1280 with 100 items;
-- 1024 initial queue, light/dark drawer and answer modal;
-- partial coverage and Profiles-needs-review warnings;
-- continuation ready/loaded;
-- successful empty state.
+- очередь и Inspector при 1440 px в светлой и тёмной темах;
+- 1280 px со 100 элементами;
+- начальная очередь при 1024 px, светлая и тёмная панель и модальный диалог ответа;
+- предупреждения о частичном покрытии и состоянии Profiles needs review;
+- состояния готовности и загрузки продолжения;
+- успешное пустое состояние.
 
-Measured R5 frames all reported `documentWidth == bodyWidth == viewport width`.
-The 100-item frame rendered 100 semantic items and one active preview. The 1024
-initial queue rendered zero preview hosts; drawer frames rendered one. Manual
-continuation changed the loaded count from 10 to 15. Empty state rendered zero
-items and previews.
+Все измеренные кадры R5 сообщили `documentWidth == bodyWidth == viewport width`. Кадр со 100 элементами отрендерил 100 семантических элементов и один активный предпросмотр. Начальная очередь при 1024 px отрендерила ноль host предпросмотра; кадры панели — один. Ручное продолжение изменило количество загруженных элементов с 10 на 15. Пустое состояние отрендерило ноль элементов и предпросмотров.
 
-A real production defect was found by the visual assertion: the original drawer
-entry transform widened the document by 16 px at 1024. The animation was changed
-to opacity-only; the final visual matrix then passed without weakening the
-no-overflow assertion.
+Визуальная assertion обнаружила настоящий production-дефект: первоначальное преобразование входа панели расширяло документ на 16 px при ширине 1024. Анимация изменена на изменение только opacity; после этого финальная визуальная матрица прошла без ослабления проверки отсутствия overflow.
 
-## Focused verification
+## Профильная проверка
 
-- TypeScript typecheck: PASS
-- focused frontend: 9 files / 25 tests PASS
-- focused backend: 106 tests PASS (including package-marker regression)
-- production Vite build and bundle guard: PASS
-- bundle: 17 JS chunks; entry 487,382 bytes; total 1,321,380 bytes
-- package build/validation and `--check-only`: PASS
-- canonical `run_full_check.ps1 -SkipDocker`: PASS
-- git diff/denylist/hygiene: PASS
+- TypeScript typecheck: PASS;
+- профильный frontend: 9 файлов, 25 тестов PASS;
+- профильный backend: 106 тестов PASS, включая регрессию package-marker;
+- production-сборка Vite и ограничение bundle: PASS;
+- bundle: 17 JS chunks; entry 487 382 байта; общий размер 1 321 380 байт;
+- сборка и проверка пакета и `--check-only`: PASS;
+- канонический `run_full_check.ps1 -SkipDocker`: PASS;
+- `git diff`, denylist и гигиена: PASS.
 
-Exact contour timings and full canonical counts are retained in the final workflow
-status log for run `29740393142`.
+Точные длительности контуров и полные канонические количества сохранены в финальном status log workflow запуска `29740393142`.
 
-## Failure classification
+## Классификация ошибок
 
-Temporary attempts exposed harness/test-contract defects before producing valid
-evidence:
+Временные попытки выявили дефекты harness и тестовых контрактов до получения пригодных подтверждений:
 
-- stale table test mocks and strict fixture timing;
-- invalid synthetic `profileId` rejected by the strict parser;
-- baseline waiting for an R5 selector;
-- Vite preview process/port isolation;
-- same-document hash navigation retaining a prior fixture;
-- What’s New modal covering the intended page.
+- устаревшие table-mocks тестов и timing строгих фикстур;
+- недопустимый синтетический `profileId`, отклонённый строгим parser;
+- исходная проверка ожидала selector R5;
+- изоляция процесса и порта Vite preview;
+- навигация по hash в том же документе сохраняла предыдущую фикстуру;
+- модальное окно What’s New перекрывало целевую страницу.
 
-Those were fixed in disposable verification infrastructure. Runtime UI code
-changed only for the confirmed 16 px drawer overflow; the package validator and
-its regression fixture were migrated from the removed `.cards-v2-table` marker
-to `.cards-inbox-page`. No backend contract or security boundary was weakened.
+Эти проблемы исправлены в одноразовой инфраструктуре проверки. Runtime-код UI изменился только для подтверждённого overflow панели на 16 px; validator пакета и его регрессионная фикстура были перенесены с удалённого маркера `.cards-v2-table` на `.cards-inbox-page`. Контракт backend и границы безопасности не ослаблялись.
 
-## Cleanup
+## Очистка
 
-The post-transfer run `29741098965` verified exact `core` and then neutralized the
-surviving temporary refs by adding ordinary fast-forward commits whose tree is
-identical to the final clean Core tree. No force-push or ref deletion was used.
+Запуск после переноса `29741098965` проверил точный `core`, а затем нейтрализовал сохранившиеся временные refs обычными fast-forward-коммитами, дерево которых совпадает с финальным чистым деревом Core. Force-push и удаление refs не использовались.
 
 ```text
-c1-5r-5-cards-inbox — neutralized
-c1-5r-5-status — neutralized
-c1-5r-5-visual-status — neutralized
-c1-5r-5-final-status — neutralized
-c1-5r-5-verified — synchronized to final core
+c1-5r-5-cards-inbox — нейтрализована
+c1-5r-5-status — нейтрализована
+c1-5r-5-visual-status — нейтрализована
+c1-5r-5-final-status — нейтрализована
+c1-5r-5-verified — синхронизирована с финальным core
 ```
 
-The GitHub connector exposes no workflow-run/artifact deletion action. Completed
-run records and the seven-day visual artifact remain immutable until normal
-expiry; no temporary workflow remains runnable at a surviving R5 ref tip.
-Canonical workflows were not changed.
+GitHub connector не предоставляет действие удаления workflow-run или артефакта. Записи завершённых запусков и семидневный визуальный артефакт остаются неизменяемыми до обычного истечения срока; ни один временный workflow не остаётся исполняемым на вершине сохранившегося ref R5. Канонические workflows не изменялись.
 
-## Security and privacy
+## Безопасность и конфиденциальность
 
-- frontend still has no direct collection access;
-- Triage v4 and Search v2 strict parsing remain unchanged;
-- loopback/token/content-type/body-size enforcement remains backend-owned;
-- exact card IDs, not display text, drive inspect/Anki handoff;
-- sanitizer, trusted media validation and Shadow DOM isolation are unchanged;
-- no token-bearing URL, owner profile data, screenshots, logs or package output is
-  committed;
-- R5 adds no mutation, selection, manual resolve, editor or arbitrary query/code
-  surface.
+- frontend по-прежнему не имеет прямого доступа к collection;
+- строгий parsing Triage v4 и Search v2 не изменён;
+- соблюдение границ loopback, токена, content type и размера тела остаётся ответственностью backend;
+- просмотр и передача в Anki используют точные ID карточек, а не отображаемый текст;
+- sanitizer, проверка доверенных media и изоляция Shadow DOM не изменены;
+- URL с токеном, данные профиля владельца, скриншоты, логи и результат сборки пакета не коммитятся;
+- R5 не добавляет mutation, selection, ручной resolve, editor или поверхность произвольных запросов и кода.
 
-## Durable changed files
+## Долговечные изменённые файлы
 
-The clean implementation contains Cards frontend source, localized copy,
-focused tests, the package validator marker migration and current documentation.
-Disposable workflows, apply/closeout scripts, triggers, visual binaries, logs,
-generated package output and status files are excluded from the durable tree.
+Чистая реализация содержит исходники frontend Cards, локализованный текст, профильные тесты, перенос маркера validator пакета и актуальную документацию. Одноразовые workflows, scripts применения и завершения, triggers, визуальные бинарные файлы, логи, сгенерированный пакет и файлы статуса исключены из долговечного дерева.
 
-## Not verified
+## Не проверено
 
 - Fast CI;
-- Docker / real-Anki E2E;
-- owner private Anki profile;
-- owner product acceptance;
-- Guided Inspection Profiles UX (R6);
-- integrated R7 acceptance;
-- C1.6 action/resolution loop.
+- Docker и real-Anki E2E;
+- приватный профиль Anki владельца;
+- продуктовая приёмка владельцем;
+- пошаговая настройка Inspection Profiles R6;
+- комплексная приёмка R7;
+- цикл действий и определения результата C1.6.
 
-These omissions are intentional for R5 and must not be upgraded into claims.
+Эти пропуски являются намеренными для R5 и не должны превращаться в утверждения о выполнении.
 
-## Git boundary
+## Границы Git
 
 ```text
-pushed to origin/core: yes — ordinary fast-forward
-PR: no
-merge into master: no
-force-push: no
-release: no
-deployment: no
-AnkiWeb publication: no
+отправлено в origin/core: да — обычный fast-forward
+PR: нет
+merge в master: нет
+force-push: нет
+выпуск: нет
+deployment: нет
+публикация на AnkiWeb: нет
 ```
 
-## Status
+## Статус
 
 ```text
-C1.5R.0–R.5 — Complete
-C1.5R.6 — Next, not started
-C1.5R.7 — Not started
-C1.6 — Blocked
-Core C1 — In progress
-owner product acceptance — Pending
+C1.5R.0–R.5 — завершено
+C1.5R.6 — следующий этап, не начат
+C1.5R.7 — не начат
+C1.6 — заблокирован
+Core C1 — выполняется
+продуктовая приёмка владельцем — ожидается
 ```
