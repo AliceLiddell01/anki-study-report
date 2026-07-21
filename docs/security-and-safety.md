@@ -1,22 +1,22 @@
-# Модель безопасности и safety boundaries
+# Модель безопасности и границы защиты
 
 **Снимок документации:** 2026-07-22
 
-Проект работает локально, но обрабатывает HTML/CSS/media карточек и поднимает HTTP server. Поэтому security model является обязательным product contract.
+Проект работает локально, но обрабатывает HTML, CSS и media карточек и поднимает HTTP-server. Поэтому модель безопасности является обязательным продуктовым контрактом.
 
 ## Основные инварианты
 
 - server слушает только `127.0.0.1`;
-- все чувствительные API защищены dashboard token;
-- frontend не читает Anki collection или profile filesystem напрямую;
-- public payloads и API bounded и строго типизированы;
-- mutations доступны только через allowlisted operations;
-- card HTML/CSS/media проходят sanitizer и validation;
-- arbitrary SQL/RPC/JavaScript/Python/shell/template execution запрещены;
-- token, token-bearing URL, paths, content и identifiers не попадают в normal logs, public artifacts или remote telemetry;
-- runtime/generated artifacts не коммитятся.
+- все чувствительные API защищены токеном dashboard;
+- frontend не читает collection Anki или файловую систему профиля напрямую;
+- публичные payload и API ограничены и строго типизированы;
+- mutations доступны только через операции из allowlist;
+- HTML, CSS и media карточек проходят sanitizer и validation;
+- запрещено выполнение произвольных SQL, RPC, JavaScript, Python, shell и шаблонов;
+- токен, URL с токеном, пути, содержимое и идентификаторы не попадают в обычные логи, публичные артефакты или удалённую телеметрию;
+- runtime- и сгенерированные артефакты не коммитятся.
 
-## Loopback server и token
+## Loopback-server и токен
 
 `dashboard_server.py` слушает только:
 
@@ -24,9 +24,9 @@
 127.0.0.1
 ```
 
-Открытие server на external interface требует отдельного security review.
+Открытие server на внешнем интерфейсе требует отдельной проверки безопасности.
 
-Token создаётся через:
+Токен создаётся через:
 
 ```python
 secrets.token_urlsafe(32)
@@ -34,20 +34,20 @@ secrets.token_urlsafe(32)
 
 и проверяется `secrets.compare_digest(...)`.
 
-Invalid token возвращает HTTP `403` с generic error. Token и полный token-bearing URL запрещено сохранять в logs, screenshots, DOM dumps, reports и telemetry.
+Недопустимый токен возвращает HTTP `403` с обобщённой ошибкой. Токен и полный URL с токеном запрещено сохранять в логах, скриншотах, DOM-dumps, отчётах и телеметрии.
 
-## Public-safe artifacts
+## Публично безопасные артефакты
 
-Raw `e2e-artifacts/` не публикуются. Token-bearing readiness data заменяется redacted JSON. Token query parameters и private paths удаляются из text evidence.
+Необработанный каталог `e2e-artifacts/` не публикуется. Данные readiness с токеном заменяются отредактированным JSON. Параметры query с токеном и приватные пути удаляются из текстовых подтверждений.
 
 Exporter:
 
-- разрешает только ожидаемые artifact categories;
-- проверяет manifest relative paths;
-- отклоняет secrets, private home paths и token signatures;
-- не копирует environment dumps, credentials, local input, caches или layers.
+- разрешает только ожидаемые категории артефактов;
+- проверяет относительные пути manifest;
+- отклоняет secrets, приватные домашние пути и сигнатуры токена;
+- не копирует dumps окружения, credentials, локальные входные данные, caches или layers.
 
-Workflow использует только `permissions: contents: read`, не получает secrets/OIDC и хранит public-safe artifacts ограниченное время.
+Workflow использует только `permissions: contents: read`, не получает secrets или OIDC и хранит публично безопасные артефакты ограниченное время.
 
 Не коммитить:
 
@@ -61,9 +61,9 @@ anki_study_report/web_dashboard/
 *.ankiaddon
 ```
 
-## Frontend boundary
+## Граница frontend
 
-Frontend получает опубликованный JSON и вызывает narrow API. Он не читает напрямую:
+Frontend получает опубликованный JSON и вызывает узкие API. Он не читает напрямую:
 
 ```text
 collection.anki2
@@ -71,22 +71,22 @@ profile folder
 media directories
 ```
 
-Dashboard payloads публикуют только bounded projections и aggregates. Raw revlog, collection dump, card/note values, template source, tokens и runtime paths наружу не передаются.
+Payload dashboard публикует только ограниченные проекции и агрегаты. Необработанный revlog, dump collection, значения карточек и заметок, исходный код шаблонов, токены и runtime-пути наружу не передаются.
 
-## Search boundary
+## Граница Search
 
 ```text
 POST /api/search/query
 POST /api/search/inspect
 ```
 
-Endpoints token-protected, POST/JSON-only и bounded.
+Endpoints защищены токеном, принимают только POST и JSON и имеют строгие ограничения.
 
-Native query валидируется Anki. Structured filters строятся без ручной SQL-like конкатенации. Arbitrary SQL/sort отсутствуют.
+Нативный query валидируется Anki. Структурированные фильтры строятся без ручной SQL-подобной конкатенации. Произвольные SQL и sort отсутствуют.
 
-Search v2 возвращает только bounded Card/Note projections. Raw query и token не логируются и не попадают в E2E artifacts.
+Search v2 возвращает только ограниченные проекции Cards и Notes. Необработанный query и токен не логируются и не попадают в артефакты E2E.
 
-## Triage query и exact-card recheck
+## Запрос Triage и recheck конкретной карточки
 
 ```text
 POST /api/triage/query    schema v4
@@ -95,19 +95,19 @@ POST /api/triage/recheck  schema v1
 
 Оба endpoints:
 
-- token-protected;
-- POST/JSON-only;
-- body cap 8 KiB;
-- serialized through `QueryOp`;
-- принимают только strict bounded IDs, scope и schema fields.
+- защищены токеном;
+- принимают только POST и JSON;
+- ограничены телом 8 КиБ;
+- сериализованы через `QueryOp`;
+- принимают только строгие ограниченные ID, scope и поля schema.
 
-Recheck принимает одну card, expected note ID, `1..4` stable reason IDs и current scope.
+Recheck принимает одну карточку, ожидаемый ID заметки, от 1 до 4 стабильных ID причин и текущий scope.
 
-Он переиспользует canonical detectors Triage v4. Запрещены arbitrary query/SQL/HTML input, unbounded scan, second detector stack и client-side resolution inference.
+Он переиспользует канонические детекторы Triage v4. Запрещены произвольный query, SQL и HTML-ввод, неограниченная проверка, второй стек детекторов и клиентское определение устранения.
 
-Partial/unavailable/error evidence, profile-authority change, identity mismatch и missing/changed entity работают fail closed. Action success и `action.no_changes` не являются resolution evidence.
+Частичное, недоступное или ошибочное подтверждение, изменение authority профиля, несовпадение идентичности и отсутствующая или изменённая сущность работают по принципу fail closed. Успех действия и `action.no_changes` не являются подтверждением устранения.
 
-## Inspection Profiles boundary
+## Граница Inspection Profiles
 
 Endpoints:
 
@@ -117,42 +117,42 @@ POST /api/inspection-profiles/validate
 POST /api/inspection-profiles/update
 ```
 
-Они token-protected, POST-only, JSON-only и ограничены 64 KiB.
+Они защищены токеном, принимают только POST и JSON и ограничены 64 КиБ.
 
-Store path вычисляется только из active Anki profile. User-supplied path не принимается.
+Путь store вычисляется только из активного профиля Anki. Пользовательский путь не принимается.
 
-Document:
+Документ:
 
-- cap 1 MiB;
-- atomic write;
-- optimistic revision;
-- corruption quarantine;
-- future-schema preserve/fail-closed.
+- ограничен 1 МиБ;
+- записывается атомарно;
+- использует optimistic revision;
+- помещает повреждённые данные в quarantine;
+- сохраняет будущую schema и работает по принципу fail closed.
 
-Rules — только hard-coded declarative union. Запрещены arbitrary regex, code, SQL, shell, network, filesystem и media-existence checks.
+Правила представлены только жёстко заданным декларативным union. Запрещены произвольные regex, код, SQL, shell, network, filesystem и проверки существования media.
 
-Profile contents, field mappings, checks и note samples не отправляются в telemetry и не логируются. Evidence исключает raw values, HTML, filenames, template source, paths, tokens и exceptions.
+Содержимое профиля, mappings полей, checks и выборки заметок не отправляются в телеметрию и не логируются. Подтверждение исключает необработанные значения, HTML, имена файлов, исходный код шаблонов, пути, токены и исключения.
 
-## Card display formatter boundary
+## Граница formatter отображения карточки
 
-Formatter хранится отдельно в profile-local `card_display_formatters.json`.
+Formatter хранится отдельно в локальном для профиля `card_display_formatters.json`.
 
-Schema и API не содержат JavaScript, Python, SQL, shell, regex, selectors, expressions, callbacks, imports, paths, URLs, template HTML/CSS или remote endpoints.
+Schema и API не содержат JavaScript, Python, SQL, shell, regex, selectors, expressions, callbacks, imports, paths, URL, HTML или CSS шаблона и удалённые endpoints.
 
-Runtime не использует `eval`, `exec`, dynamic imports, subprocess или plugin callbacks.
+Runtime не использует `eval`, `exec`, динамические imports, subprocess или callbacks plugins.
 
-Media handling принимает только bounded flat local filenames. Formatter не открывает media, не проверяет существование files, не разрешает filesystem path и не выполняет remote load.
+Обработка media принимает только ограниченные плоские локальные имена файлов. Formatter не открывает media, не проверяет существование файлов, не разрешает путь файловой системы и не выполняет удалённую загрузку.
 
-## Mutation surface и action allowlists
+## Поверхность mutations и allowlists действий
 
 ```text
 POST /api/entities/cards/actions
 POST /api/entities/notes/actions
 ```
 
-Endpoints token-protected, POST-only, body cap 8 KiB и принимают только hard-coded action union.
+Endpoints защищены токеном, принимают только POST, ограничены телом 8 КиБ и принимают только жёстко заданный union действий.
 
-Card allowlist:
+Allowlist карточек:
 
 ```text
 suspend
@@ -164,25 +164,25 @@ unbury
 move_to_deck
 ```
 
-Note allowlist:
+Allowlist заметок:
 
 ```text
 add_tags
 remove_tags
 ```
 
-Bounds:
+Ограничения:
 
 ```text
-batch IDs          1..200
-tags               20 / 1000 characters
+ID в пакете      1..200
+tags              20 / 1000 символов
 ```
 
-Весь batch валидируется до mutation. Writes используют один official Anki wrapper и один native undo step.
+Весь пакет валидируется до mutation. Записи используют один официальный wrapper Anki и один нативный шаг undo.
 
-Generic method invocation, delete, arbitrary command и SQL запрещены.
+Generic method invocation, delete, произвольные команды и SQL запрещены.
 
-Report actions:
+Действия отчёта:
 
 ```text
 copy-markdown
@@ -198,7 +198,7 @@ open-dashboard
 open-native-stats
 ```
 
-Server actions:
+Действия server:
 
 ```text
 restart
@@ -207,81 +207,81 @@ open-dashboard
 copy-url
 ```
 
-Новые actions требуют allowlist, validation и tests.
+Новые действия требуют allowlist, validation и тестов.
 
-## Settings и Profile allowlists
+## Allowlists Settings и Profile
 
-`GET/POST /api/dashboard/settings` публикует и изменяет только allowlisted public sections. Unknown/internal fields, token/runtime paths, package identity и E2E settings отклоняются.
+`GET/POST /api/dashboard/settings` публикует и изменяет только публичные разделы из allowlist. Неизвестные и внутренние поля, токен, runtime-пути, идентичность пакета и настройки E2E отклоняются.
 
-`GET/POST /api/profile` принимает только bounded writable fields. Metrics, Anki profile identity, paths и unknown fields read-only/forbidden.
+`GET/POST /api/profile` принимает только ограниченные доступные для записи поля. Метрики, идентичность профиля Anki, пути и неизвестные поля доступны только для чтения или запрещены.
 
 ## Statistics и FSRS
 
-Statistics API принимает только typed scope/period/granularity/comparison. FSRS API read-only и принимает только documented operation union.
+API Statistics принимает только типизированные scope, period, granularity и comparison. API FSRS работает только на чтение и принимает документированный union операций.
 
-Запрещены arbitrary search, SQL, raw protobuf, parameter vectors и raw revlog/card/note rows.
+Запрещены произвольные Search, SQL, необработанный protobuf, vectors параметров и строки revlog, карточек и заметок.
 
-## Signals, Notifications и telemetry
+## Signals, Notifications и телеметрия
 
-Signals, evidence, entity IDs, notification history и preferences остаются в per-profile SQLite и не расширяют remote telemetry taxonomy.
+Signals, подтверждения, ID сущностей, история уведомлений и preferences остаются в SQLite на уровне профиля и не расширяют taxonomy удалённой телеметрии.
 
-Bounds:
+Ограничения:
 
 ```text
-evidence per code     2048 bytes
-history retention     180 дней / 5000 items
-repeated-Again query  максимум 50 cards
+подтверждение на код      2048 байт
+хранение истории          180 дней / 5000 элементов
+запрос repeated Again     максимум 50 карточек
 ```
 
-Remote telemetry исключает:
+Удалённая телеметрия исключает:
 
-- collection/card/note content;
-- field names/values;
-- Search queries;
-- card/note/deck IDs;
-- compact display text;
-- media filenames;
-- token-bearing URLs;
-- profile/check mappings;
-- raw diagnostics.
+- содержимое collection, карточек и заметок;
+- имена и значения полей;
+- queries Search;
+- ID карточек, заметок и колод;
+- компактный отображаемый текст;
+- имена media-файлов;
+- URL с токеном;
+- mappings профилей и проверок;
+- необработанную диагностику.
 
-Effective purposes по умолчанию и при read error отключены.
+Фактические purposes по умолчанию и при ошибке чтения отключены.
 
-## Media endpoint
+## Endpoint media
 
 ```text
 /api/media?name=<media-name>&token=<token>
 ```
 
-Filename validation отклоняет:
+Проверка имени файла отклоняет:
 
-- `file:` и `javascript:` schemes;
+- schemes `file:` и `javascript:`;
 - traversal `..`;
-- slash/backslash paths;
-- Windows drive paths;
-- unsupported extensions;
-- control characters.
+- пути со slash или backslash;
+- пути с диском Windows;
+- неподдерживаемые расширения;
+- управляющие символы.
 
-## HTML/CSS/media sanitizer
+## Sanitizer HTML, CSS и media
 
 Удаляются или нормализуются:
 
 - `script`, `style`, `iframe`, `object`, `embed`, `meta`, `link`;
-- inline event handlers;
+- inline-обработчики событий;
 - `srcset`;
-- dangerous CSS: `url(...)`, `@import`, `javascript:`, `vbscript:`, `data:`, `behavior`, `position`, `z-index`;
-- local paths и `file://`;
-- token query fragments.
+- опасный CSS: `url(...)`, `@import`, `javascript:`, `vbscript:`, `data:`, `behavior`, `position`, `z-index`;
+- локальные пути и `file://`;
+- fragments query с токеном.
 
-Safe inline styles ограничены allowlist. Media refs переписываются только в validated `/api/media` URLs.
+Безопасные inline-styles ограничены allowlist. Ссылки media переписываются только в проверенные URL `/api/media`.
 
-Sanitizer нельзя ослаблять ради visual fidelity. Если card после sanitizer выглядит хуже, добавляется точечный safe allowlist и regression test.
+Sanitizer нельзя ослаблять ради визуальной точности. Если карточка после sanitizer выглядит хуже, добавляется точечный безопасный allowlist и регрессионный тест.
 
-Cards preview не использует iframe и не выполняет card/template JavaScript. Shadow DOM не позволяет CSS карточки протекать в dashboard.
+Предпросмотр Cards не использует iframe и не выполняет JavaScript карточки или шаблона. Shadow DOM не позволяет CSS карточки влиять на dashboard.
 
-## Verification
+## Проверка
 
-Rendering/media:
+Рендер и media:
 
 ```powershell
 node scripts/run_python.mjs -m pytest tests/test_note_intelligence.py
@@ -289,7 +289,7 @@ cd web-dashboard
 pnpm run test:frontend
 ```
 
-Server/token/actions/Triage:
+Server, токен, действия и Triage:
 
 ```powershell
 node scripts/run_python.mjs -m pytest \
@@ -299,22 +299,22 @@ node scripts/run_python.mjs -m pytest \
   tests/test_triage_runtime.py
 ```
 
-Package:
+Пакет:
 
 ```powershell
 node scripts/run_python.mjs scripts/package_addon.py --check
 ```
 
-Native rendering, media, startup, restart и QueryOp integration финально проверяются live Anki или real-Anki Docker/cloud E2E по [`test-matrix.md`](test-matrix.md) и [`verification-run-policy.md`](verification-run-policy.md).
+Нативный рендер, media, startup, restart и интеграция QueryOp окончательно проверяются в live Anki или real-Anki Docker или cloud E2E по [`test-matrix.md`](test-matrix.md) и [`verification-run-policy.md`](verification-run-policy.md).
 
-## Release credentials
+## Credentials выпуска
 
-AnkiWeb credentials существуют только как protected environment secrets. Они не передаются через CLI args, не записываются в docs/reports/artifacts и не сохраняются в browser profile.
+Credentials AnkiWeb существуют только как защищённые secrets окружения. Они не передаются через аргументы CLI, не записываются в docs, reports или artifacts и не сохраняются в профиле browser.
 
-Publisher fail closed при challenge/2FA, changed DOM, ambiguity, branch mismatch или artifact/hash mismatch.
+Publisher работает по принципу fail closed при challenge или 2FA, изменившемся DOM, неоднозначности, несовпадении ветки или артефакта и hash.
 
-## License и public materials
+## Лицензия и публичные материалы
 
-Repository использует `GPL-3.0-only`; root `LICENSE` является source of terms.
+Репозиторий использует `GPL-3.0-only`; корневой `LICENSE` является источником условий.
 
-Third-party materials обязаны иметь совместимые условия и отдельные notices. Tracked E2E fixture является owner-authored/sanitized и разрешена для repository/tests/CI distribution.
+Материалы третьих сторон обязаны иметь совместимые условия и отдельные notices. Отслеживаемая E2E-фикстура создана владельцем или санитизирована и разрешена для распространения в репозитории, тестах и CI.
