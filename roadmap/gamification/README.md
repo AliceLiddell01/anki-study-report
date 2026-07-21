@@ -13,6 +13,14 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 - `chatgpt/gamification-concept-foundation` is historical read-only source and must not be merged/rebased wholesale.
 - Any production integration requires a separate explicit decision.
 
+## AI work mode for this track
+
+Shared rules are defined in [ChatGPT and Codex work modes](../../docs/ai-work-modes.md), with separate [ChatGPT](../../docs/chatgpt-work-mode.md), [Codex](../../docs/codex-agent-rules.md) and [Codex local environment](../../docs/codex-local-environment.md) contracts.
+
+The owner selects ChatGPT or Codex mode for each task. For work scoped to this track, the canonical target and PR base are `gamification`; any `origin/core` examples in the shared environment snapshot apply only to Core tasks and do not override the task target.
+
+In ChatGPT mode, downloaded scripts are separate files and require the documented `Unblock-File` command. In Codex mode, scripts are created and executed inside the local task worktree and do not use the download/unblock ritual.
+
 ## G0 — Research reconciliation
 
 **Status:** Complete.
