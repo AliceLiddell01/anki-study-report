@@ -149,6 +149,30 @@ describe("Cards attention inbox", () => {
     expect(html).not.toContain(">Готово<");
     expect(html).not.toContain(">Архивировать<");
   });
+
+  it("announces a global pending mutation and disables conflicting inspector controls", () => {
+    const awaiting = {
+      itemId: items[0]!.itemId,
+      phase: "awaiting_recheck" as const,
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
+    };
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      mutationPending: true,
+      resolution: awaiting,
+    });
+
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const pending = document.querySelector('[data-testid="cards-mutation-pending"]');
+    expect(pending?.getAttribute("aria-busy")).toBe("true");
+    expect(pending?.textContent).toContain("Действие выполняется");
+    const controls = Array.from(document.querySelectorAll("button"));
+    expect(controls.find((button) => button.textContent?.includes("Открыть в Anki"))?.disabled).toBe(true);
+    expect(controls.find((button) => button.textContent?.includes("Перепроверить карточку"))?.disabled).toBe(true);
+  });
 });
 
 function readyWorkspace(): CardsTriageWorkspace {

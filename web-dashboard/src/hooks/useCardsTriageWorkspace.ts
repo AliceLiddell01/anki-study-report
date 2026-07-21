@@ -4,6 +4,12 @@ import { runCardEntityAction, EntityActionApiError } from "../lib/entityActionsA
 import { fetchSearchInspect, SearchApiError } from "../lib/searchApi";
 import { fetchTriageQuery, fetchTriageRecheck, TriageApiError } from "../lib/triageApi";
 import {
+  canApplyOperationCompletion,
+  inspectCacheKey,
+  putBoundedInspectCache,
+  type GenerationBoundOperation,
+} from "../lib/cardsWorkspacePolicy";
+import {
   MAX_ACCUMULATED_ITEMS,
   MAX_CONTENT_PAGES,
   mergeTriagePages,
@@ -105,6 +111,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   const [loadedContentPages, setLoadedContentPages] = useState(0);
   const [lastContinuationAddedCount, setLastContinuationAddedCount] = useState<number | null>(null);
   const [resolutionById, setResolutionById] = useState<Record<string, CardsResolutionState>>({});
+  const [mutationOperation, setMutationOperation] = useState<GenerationBoundOperation | null>(null);
   const [lastOutcome, setLastOutcome] = useState<CardsResolutionState | null>(null);
   const [focusRequest, setFocusRequest] = useState<CardsFocusRequest>({ itemId: null, version: 0 });
 
@@ -115,6 +122,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   const continuationInFlight = useRef(false);
   const actionSequence = useRef(0);
   const actionInFlight = useRef(false);
+  const mutationOperationRef = useRef<GenerationBoundOperation | null>(null);
   const openSequence = useRef(0);
   const recheckSequence = useRef(0);
   const recheckController = useRef<AbortController | null>(null);
@@ -164,6 +172,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setInspectResponse(null);
     setInspectError(null);
     inspectSequence.current += 1;
+    inspectCache.current.clear();
 
     void fetchTriageQuery({
       schemaVersion: 4,
@@ -204,7 +213,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     [activeId, response],
   );
   const resolution = activeId ? resolutionById[activeId] ?? null : null;
-  const mutationPending = Object.values(resolutionById).some((value) => value.phase === "action_pending");
+  const mutationPending = mutationOperation !== null;
 
   const writeResolution = useCallback((itemId: string, value: CardsResolutionState) => {
     setResolutionById((current) => ({ ...current, [itemId]: value }));
@@ -218,7 +227,9 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       setInspectError(null);
       return;
     }
-    const cached = inspectCache.current.get(cardId);
+    const generation = querySequence.current;
+    const cacheKey = inspectCacheKey(generation, cardId);
+    const cached = inspectCache.current.get(cacheKey);
     if (cached) {
       setInspectResponse(cached);
       setInspectStatus("ready");
@@ -232,13 +243,21 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setInspectError(null);
     void fetchSearchInspect({ schemaVersion: 2, mode: "cards", cardId, requestId: `cards-${sequence}` }, controller.signal)
       .then((value) => {
-        if (controller.signal.aborted || sequence !== inspectSequence.current) return;
-        inspectCache.current.set(cardId, value);
+        if (
+          controller.signal.aborted
+          || sequence !== inspectSequence.current
+          || generation !== querySequence.current
+        ) return;
+        putBoundedInspectCache(inspectCache.current, cacheKey, value);
         setInspectResponse(value);
         setInspectStatus("ready");
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted || sequence !== inspectSequence.current) return;
+        if (
+          controller.signal.aborted
+          || sequence !== inspectSequence.current
+          || generation !== querySequence.current
+        ) return;
         setInspectError(asSearchError(error));
         setInspectResponse(null);
         setInspectStatus("error");
@@ -272,15 +291,18 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   }, []);
 
   const refresh = useCallback(() => {
+    querySequence.current += 1;
     setOpenResult(null);
     setRefreshVersion((value) => value + 1);
   }, []);
 
   const setLearningPeriodDays = useCallback((value: LearningPeriodDays) => {
     if (value !== 7 && value !== 30 && value !== 90) return;
+    if (value === learningPeriodDays) return;
+    querySequence.current += 1;
     setOpenResult(null);
     setLearningPeriodDaysState(value);
-  }, []);
+  }, [learningPeriodDays]);
 
   const continueContentScan = useCallback(async () => {
     const base = responseRef.current;
@@ -342,7 +364,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     const cardId = activeIdRef.current
       ? responseRef.current?.items.find((item) => item.itemId === activeIdRef.current)?.inspect?.cardId
       : null;
-    if (cardId) inspectCache.current.delete(cardId);
+    if (cardId) inspectCache.current.delete(inspectCacheKey(querySequence.current, cardId));
     setInspectVersion((value) => value + 1);
   }, []);
 
@@ -350,13 +372,14 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     if (!activeItem?.inspect || openPending || mutationPending) return;
     const itemId = activeItem.itemId;
     const sequence = ++openSequence.current;
+    const queryGeneration = querySequence.current;
     setOpenPending(true);
     try {
       const result = await runReportAction("open-search-selection", {
         mode: "cards",
         entityIds: [activeItem.inspect.cardId],
       });
-      if (sequence !== openSequence.current) return;
+      if (sequence !== openSequence.current || queryGeneration !== querySequence.current) return;
       setOpenResult(result);
       writeResolution(itemId, {
         itemId,
@@ -372,12 +395,20 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   }, [activeItem, mutationPending, openPending, writeResolution]);
 
   const runSafeAction = useCallback(async (action: CardEntityAction) => {
-    if (!activeItem || actionInFlight.current || openPending) return;
+    if (!activeItem || actionInFlight.current || mutationOperationRef.current || openPending) return;
     if (["action_pending", "awaiting_recheck", "rechecking"].includes(resolutionById[activeItem.itemId]?.phase ?? "idle")) return;
     if (!["suspend", "unsuspend", "bury", "unbury", "clear_flag"].includes(action)) return;
     const item = activeItem;
     const sequence = ++actionSequence.current;
+    const operation: GenerationBoundOperation = {
+      operationId: sequence,
+      itemId: item.itemId,
+      cardId: item.cardId,
+      queryGeneration: querySequence.current,
+    };
     actionInFlight.current = true;
+    mutationOperationRef.current = operation;
+    setMutationOperation(operation);
     writeResolution(item.itemId, {
       itemId: item.itemId,
       phase: "action_pending",
@@ -392,7 +423,10 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         cardIds: [item.cardId],
         requestId: `cards-resolution-${sequence}`,
       });
-      if (sequence !== actionSequence.current) return;
+      if (
+        sequence !== actionSequence.current
+        || !canApplyOperationCompletion(operation, querySequence.current)
+      ) return;
       writeResolution(item.itemId, {
         itemId: item.itemId,
         phase: "awaiting_recheck",
@@ -401,8 +435,13 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         recheckError: null,
         reconciliation: null,
       });
+      inspectCache.current.delete(inspectCacheKey(operation.queryGeneration, item.cardId));
+      setInspectVersion((current) => current + 1);
     } catch (error: unknown) {
-      if (sequence !== actionSequence.current) return;
+      if (
+        sequence !== actionSequence.current
+        || !canApplyOperationCompletion(operation, querySequence.current)
+      ) return;
       writeResolution(item.itemId, {
         itemId: item.itemId,
         phase: "action_failed",
@@ -413,6 +452,10 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       });
     } finally {
       actionInFlight.current = false;
+      if (mutationOperationRef.current?.operationId === operation.operationId) {
+        mutationOperationRef.current = null;
+        setMutationOperation(null);
+      }
     }
   }, [activeItem, openPending, resolutionById, writeResolution]);
 
@@ -424,6 +467,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     recheckController.current?.abort();
     recheckController.current = controller;
     const sequence = ++recheckSequence.current;
+    const queryGeneration = querySequence.current;
     writeResolution(item.itemId, {
       itemId: item.itemId,
       phase: "rechecking",
@@ -440,8 +484,13 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         reasonIds: item.reasons.map((reason) => reason.reasonId),
         scope,
       }, controller.signal);
-      if (controller.signal.aborted || sequence !== recheckSequence.current) return;
+      if (
+        controller.signal.aborted
+        || sequence !== recheckSequence.current
+        || queryGeneration !== querySequence.current
+      ) return;
       if (value.entityStatus !== "available") {
+        inspectCache.current.delete(inspectCacheKey(querySequence.current, item.cardId));
         const phase = value.entityStatus === "missing"
           ? "entity_missing"
           : value.entityStatus === "changed"
@@ -460,6 +509,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         return;
       }
       if (value.status !== "available" || !value.item) {
+        inspectCache.current.delete(inspectCacheKey(querySequence.current, item.cardId));
         const outcome: CardsResolutionState = {
           itemId: item.itemId,
           phase: "evidence_stale",
@@ -486,7 +536,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         };
         setResponse((current) => replaceTriageItem(current, value.item!));
         responseRef.current = replaceTriageItem(responseRef.current, value.item);
-        inspectCache.current.delete(item.cardId);
+        inspectCache.current.delete(inspectCacheKey(querySequence.current, item.cardId));
         setInspectVersion((current) => current + 1);
         writeResolution(item.itemId, outcome);
         setLastOutcome(outcome);
@@ -494,6 +544,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       }
 
       const current = responseRef.current;
+      inspectCache.current.delete(inspectCacheKey(querySequence.current, item.cardId));
       const index = current?.items.findIndex((candidate) => candidate.itemId === item.itemId) ?? -1;
       const nextResponse = removeTriageItem(current, item.itemId);
       const nextItem = nextResponse?.items[Math.min(Math.max(index, 0), Math.max(nextResponse.items.length - 1, 0))] ?? null;
@@ -513,7 +564,11 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       writeResolution(item.itemId, outcome);
       setLastOutcome(outcome);
     } catch (error: unknown) {
-      if (controller.signal.aborted || sequence !== recheckSequence.current) return;
+      if (
+        controller.signal.aborted
+        || sequence !== recheckSequence.current
+        || queryGeneration !== querySequence.current
+      ) return;
       const outcome: CardsResolutionState = {
         itemId: item.itemId,
         phase: "recheck_failed",

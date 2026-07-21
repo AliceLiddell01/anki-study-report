@@ -119,7 +119,11 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
             {workspace.openResult.ok ? t("actions.opened") : t("actions.failed")}
           </p>
         ) : null}
-        <ResolutionResult state={workspace.resolution} onRecheck={() => void workspace.recheckActive()} />
+        <ResolutionResult
+          state={workspace.resolution}
+          recheckDisabled={workspace.mutationPending}
+          onRecheck={() => void workspace.recheckActive()}
+        />
       </section>
 
       <details className="cards-detail-technical">
@@ -137,7 +141,15 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   );
 }
 
-function ResolutionResult({ state, onRecheck }: { state: CardsResolutionState | null; onRecheck: () => void }) {
+function ResolutionResult({
+  state,
+  recheckDisabled,
+  onRecheck,
+}: {
+  state: CardsResolutionState | null;
+  recheckDisabled: boolean;
+  onRecheck: () => void;
+}) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   if (!state) return null;
   const canRecheck = ["awaiting_recheck", "still_active", "partially_resolved", "recheck_failed", "evidence_stale", "entity_missing", "entity_changed"].includes(state.phase);
@@ -157,7 +169,7 @@ function ResolutionResult({ state, onRecheck }: { state: CardsResolutionState | 
         </div>
       ) : null}
       {canRecheck ? (
-        <button type="button" className="secondary-button" onClick={onRecheck}>
+        <button type="button" className="secondary-button" onClick={onRecheck} disabled={recheckDisabled}>
           <RotateCw size={16} aria-hidden="true" />{t("resolution.recheck")}
         </button>
       ) : null}
