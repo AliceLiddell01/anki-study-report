@@ -170,7 +170,7 @@ def test_rendered_preview_preserves_safe_inline_styles_class_and_media_order():
     assert 'style="color: rgb(255, 165, 0)"' in html
     assert 'class="word-focus"' in html
     assert html.index("asr-card-replay-button") < html.index("rgb(170, 170, 127)") < html.index("%E8%A6%81.gif") < html.index("%E6%9C%9B.gif") < html.index("word-focus")
-    assert rendered["css"].startswith(".word-focus")
+    assert rendered["css"].startswith("@scope (.card){.word-focus")
     assert rendered["cardOrd"] == 0
     assert rendered["mediaRefs"] == [
         {"name": "要.gif", "type": "image", "url": "/api/media?name=%E8%A6%81.gif"},
@@ -379,7 +379,7 @@ def test_native_full_preview_uses_reviewer_context_once():
     assert "answer-only" not in rendered["frontHtml"]
     assert "front-only" in rendered["backHtml"]
     assert "answer-only" in rendered["backHtml"]
-    assert rendered["css"] == ".card { color: red; }"
+    assert rendered["css"] == "@scope (.card){.card{color:red;}}"
 
 
 def test_native_question_answer_fallback_uses_reviewer_signatures():

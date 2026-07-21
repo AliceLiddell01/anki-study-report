@@ -3,6 +3,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AnkiCardShadowPreview, buildShadowPreviewDocument, calculateAdaptivePreviewLayout } from "./AnkiCardShadowPreview";
+import { cssWithMediaToken } from "./cards/CardsDetail";
 
 describe("AnkiCardShadowPreview layout", () => {
   it("never lets scaled content exceed a narrow host width", () => {
@@ -35,5 +36,15 @@ describe("AnkiCardShadowPreview layout", () => {
     const html = renderToStaticMarkup(<AnkiCardShadowPreview html="<b>answer</b>" mode="expanded" side="back" />);
     expect(html).toContain('data-preview-side="back"');
     expect(html).toContain('data-preview-mode="expanded"');
+  });
+
+  it("adds the dashboard token only to parser-approved local CSS media URLs", () => {
+    window.history.replaceState(null, "", "/?token=local-token#/cards");
+    const css = '@scope (.card){.card{background:url("/api/media?name=safe.png")}}';
+
+    expect(cssWithMediaToken(css)).toContain('/api/media?name=safe.png&token=local-token');
+    expect(cssWithMediaToken('.card{background:url("https://evil.invalid/a.png")}')).toBe(
+      '.card{background:url("https://evil.invalid/a.png")}',
+    );
   });
 });
