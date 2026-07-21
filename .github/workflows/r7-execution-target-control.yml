@@ -1,0 +1,93 @@
+name: R7 temporary execution target control
+
+on:
+  pull_request:
+    branches: [core]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r7-execution-target-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  update-target:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'c1-5r-7-execution-target-fix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact task branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Guard exact task identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          test '${{ github.head_ref }}' = 'c1-5r-7-execution-target-fix'
+          test '${{ github.base_ref }}' = 'core'
+
+      - name: Apply exact candidate SHA replacement
+        id: replace
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/r7-integrated-acceptance-v4.yml')
+          text = path.read_text(encoding='utf-8')
+          old = '5fd983dd88315ff1e83e8d62ca1802ac1bd4b393'
+          new = 'd5689557514025917bb888745a7bb3bb8dbf3d05'
+          old_count = text.count(old)
+          new_count = text.count(new)
+          if old_count == 2 and new_count == 0:
+              path.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+              changed = True
+          elif old_count == 0 and new_count == 2:
+              changed = False
+          else:
+              raise SystemExit(f'Unexpected candidate SHA counts: old={old_count}, new={new_count}')
+          with open(__import__('os').environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f"changed={'true' if changed else 'false'}\n")
+          PY
+
+      - name: Verify bounded workflow diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/r7-integrated-acceptance-v4.yml').read_text(encoding='utf-8')
+          old = '5fd983dd88315ff1e83e8d62ca1802ac1bd4b393'
+          new = 'd5689557514025917bb888745a7bb3bb8dbf3d05'
+          if old in text or text.count(new) != 2:
+              raise SystemExit('Execution workflow candidate SHA replacement is incoherent.')
+          PY
+          git diff --check
+          if [ '${{ steps.replace.outputs.changed }}' = 'true' ]; then
+            mapfile -t changed < <(git diff --name-only | sort)
+            expected=(.github/workflows/r7-integrated-acceptance-v4.yml)
+            test "${changed[*]}" = "${expected[*]}"
+          else
+            test -z "$(git diff --name-only)"
+          fi
+
+      - name: Commit and push bounded target update
+        if: steps.replace.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/r7-integrated-acceptance-v4.yml
+          git commit -m 'ci: bind R7 execution to the refreshed clean candidate'
+          git push origin HEAD:c1-5r-7-execution-target-fix
