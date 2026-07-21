@@ -80,17 +80,23 @@ const programming = noteType("2", "Programming Q&A", "programming", ["Question",
 const confirmed = noteType("3", "Confirmed Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
   { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
 ], "confirmed");
+const needsReview = noteType("4", "Changed Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+], "needs_review");
+const disabled = noteType("5", "Disabled Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+], "disabled");
 
 const queryResponse: InspectionProfilesQueryResponse = {
   schemaVersion: 1,
   status: "available",
   store,
-  totalCount: 3,
-  returnedCount: 3,
+  totalCount: 5,
+  returnedCount: 5,
   limit: 500,
   truncated: false,
   skippedCount: 0,
-  items: [japanese, programming, confirmed],
+  items: [japanese, programming, confirmed, needsReview, disabled],
 };
 
 describe("Inspection Profiles guided settings workspace", () => {
@@ -126,6 +132,7 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(container.textContent).not.toContain("Использовать подсказку");
     expect(container.textContent).not.toContain("Есть несохранённые изменения");
     expect(mocks.update).not.toHaveBeenCalled();
+    expect([...basic.querySelectorAll(".inspection-milestone")].map((node) => node.textContent)).toEqual(["2", "3", "4", "5"]);
 
     await click(noteButton("Programming Q&A"));
     expect(document.querySelector("[role='dialog']")).toBeNull();
@@ -149,6 +156,8 @@ describe("Inspection Profiles guided settings workspace", () => {
   it("validates with schema v2 and confirms with update schema v1", async () => {
     await renderPage();
     await click(noteButton("Japanese Vocabulary"));
+    await click(button("Проверить настройку"));
+    expect(milestones()).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
     await click(button("Подтвердить и включить"));
     await settle();
     expect(mocks.validate).toHaveBeenCalledWith(expect.objectContaining({ schemaVersion: 2, preview: { mode: "sample", limit: 10 } }), expect.any(AbortSignal));
@@ -174,6 +183,38 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(exactButton("Проверить настройку")).toBeDefined();
   });
 
+  it("keeps the summary informational and exposes one lifecycle primary action", async () => {
+    await renderPage();
+    expect(container.querySelector(".inspection-summary button")).toBeNull();
+    expect(container.querySelector(".inspection-summary")?.textContent).toContain("Всего типов5");
+    expect(container.querySelector(".inspection-empty-editor")?.textContent).toContain("не сохранится и не включит проверки автоматически");
+
+    await click(noteButton("Japanese Vocabulary"));
+    expect(primaryButtons().map((item) => item.textContent?.trim())).toEqual(["Подтвердить и включить"]);
+    expect(milestones()).toEqual(["1", "2", "3", "4", "5", "7"]);
+
+    await click(noteButton("Changed Basic"));
+    expect(primaryButtons().map((item) => item.textContent?.trim())).toEqual(["Проверить и подтвердить снова"]);
+
+    await click(noteButton("Disabled Basic"));
+    expect(primaryButtons().map((item) => item.textContent?.trim())).toEqual(["Проверить и включить"]);
+
+    await click(noteButton("Confirmed Basic"));
+    expect(primaryButtons()).toHaveLength(0);
+  });
+
+  it("separates destructive tools and keeps changed state visible when Advanced is collapsed", async () => {
+    await renderPage();
+    await click(noteButton("Confirmed Basic"));
+    const priority = container.querySelector<HTMLSelectElement>("#inspection-basic-priority-0")!;
+    await change(priority, "low");
+    expect(container.querySelector("#inspection-advanced-summary")?.textContent).toContain("Изменено");
+    expect(primaryButtons().map((item) => item.textContent?.trim())).toEqual(["Проверить и подтвердить изменения"]);
+    const tools = container.querySelector(".inspection-profile-tools")!;
+    expect(tools.querySelector(".inspection-profile-tool-group:not(.is-destructive)")?.textContent).toContain("Экспорт JSON");
+    expect(tools.querySelector(".inspection-profile-tool-group.is-destructive")?.textContent).toContain("Удалить профиль");
+  });
+
   it("renders the guided workflow in English", async () => {
     await i18n.changeLanguage("en");
     await renderPage();
@@ -188,7 +229,7 @@ describe("Inspection Profiles guided settings workspace", () => {
     await renderPage();
     await click(noteButton("Japanese Vocabulary"));
     expect(container.querySelector(".inspection-workspace-page.workspace-page")).toBeTruthy();
-    expect(container.querySelectorAll(".workspace-region").length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelectorAll(".workspace-region").length).toBe(2);
     expect(container.querySelector(".inspection-note-button.workspace-interactive.workspace-selected")).toBeTruthy();
     expect(container.querySelector(".inspection-state-guidance.workspace-state")).toBeTruthy();
     expect(container.querySelector(".inspection-editor.workspace-safe-area")).toBeTruthy();
@@ -201,5 +242,7 @@ describe("Inspection Profiles guided settings workspace", () => {
   async function change(element: HTMLSelectElement | HTMLInputElement, value: string) { await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); }); await settle(); }
   function button(text: string) { const match = exactButton(text); if (!match) throw new Error(`missing button ${text}`); return match; }
   function exactButton(text: string) { return [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text); }
+  function primaryButtons() { return [...container.querySelectorAll<HTMLButtonElement>(".inspection-primary-actions .primary-button")]; }
+  function milestones() { return [...container.querySelectorAll(".inspection-editor-stack .inspection-milestone")].map((node) => node.textContent); }
   function noteButton(text: string) { const match = [...container.querySelectorAll<HTMLButtonElement>(".inspection-note-button")].find((item) => item.textContent?.includes(text)); if (!match) throw new Error(`missing note ${text}`); return match; }
 });

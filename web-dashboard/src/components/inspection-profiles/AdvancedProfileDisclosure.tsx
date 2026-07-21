@@ -6,12 +6,13 @@ interface AdvancedProfileDisclosureProps {
   item: InspectionProfileSummary;
   draft: InspectionProfile;
   errors: Record<string, string>;
+  dirty?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (draft: InspectionProfile) => void;
 }
 
-export default function AdvancedProfileDisclosure({ item, draft, errors, open, onOpenChange, onChange }: AdvancedProfileDisclosureProps) {
+export default function AdvancedProfileDisclosure({ item, draft, errors, dirty = false, open, onOpenChange, onChange }: AdvancedProfileDisclosureProps) {
   const { i18n } = useTranslation("pages");
   const ru = i18n.resolvedLanguage?.startsWith("ru");
   const errorCount = Object.keys(errors).filter((path) => path.includes("fieldMappings") || path.includes("checks") || path.includes("appliesTo") || path.includes("displayName")).length;
@@ -26,7 +27,10 @@ export default function AdvancedProfileDisclosure({ item, draft, errors, open, o
           <strong>{ru ? "Расширенные настройки" : "Advanced settings"}</strong>
           <small>{ru ? "Точные роли, ordinal, check kind, mode и стабильные ID" : "Exact roles, ordinals, check kinds, modes, and stable IDs"}</small>
         </span>
-        {errorCount ? <span className="inspection-disclosure-errors" role="status">{ru ? `Ошибок: ${errorCount}` : `${errorCount} errors`}</span> : null}
+        <span className="inspection-disclosure-status">
+          {dirty ? <span className="inspection-disclosure-dirty">{ru ? "Изменено" : "Changed"}</span> : null}
+          {errorCount ? <span className="inspection-disclosure-errors" role="status">{ru ? `Ошибок: ${errorCount}` : `${errorCount} errors`}</span> : null}
+        </span>
       </summary>
       <div id="inspection-advanced-panel" className="inspection-advanced-panel">
         <section className="inspection-panel">

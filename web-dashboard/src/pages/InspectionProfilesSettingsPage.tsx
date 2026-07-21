@@ -1,4 +1,4 @@
-import { Download, FileCheck2, Search, ShieldCheck, Upload } from "lucide-react";
+import { Download, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
@@ -24,8 +24,6 @@ type ConfirmAction = "save_draft" | "disable" | "delete" | "replace_suggestion" 
 export default function InspectionProfilesSettingsPage() {
   const { t, i18n } = useTranslation("pages");
   const workspace = useInspectionProfilesWorkspace();
-  const language = profileLanguage(i18n.resolvedLanguage);
-  const copy = pageCopy(language);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<InspectionProfileState | "all">("all");
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
@@ -128,9 +126,7 @@ export default function InspectionProfilesSettingsPage() {
   return (
     <div className="inspection-workspace-page workspace-page">
       <header className="inspection-page-header">
-        <span className="brand-icon-badge"><ShieldCheck size={21} aria-hidden="true" /></span>
         <div>
-          <p className="inspection-eyebrow">{t("inspectionProfiles.eyebrow")}</p>
           <h1 className="workspace-page-title">{t("inspectionProfiles.title")}</h1>
           <p className="workspace-body">{t("inspectionProfiles.description")}</p>
           <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
@@ -152,13 +148,13 @@ export default function InspectionProfilesSettingsPage() {
         </section>
       ) : null}
 
-      <section className="inspection-summary workspace-region" aria-label={t("inspectionProfiles.summary.label")}>
-        <SummaryButton label={t("inspectionProfiles.summary.total")} value={summary.total} active={stateFilter === "all"} onClick={() => setStateFilter("all")} />
-        <SummaryButton label={t("inspectionProfiles.states.confirmed")} value={summary.confirmed} active={stateFilter === "confirmed"} onClick={() => setStateFilter("confirmed")} />
-        <SummaryButton label={t("inspectionProfiles.states.needs_review")} value={summary.needs_review} active={stateFilter === "needs_review"} onClick={() => setStateFilter("needs_review")} />
-        <SummaryButton label={t("inspectionProfiles.states.not_configured")} value={summary.not_configured} active={stateFilter === "not_configured"} onClick={() => setStateFilter("not_configured")} />
-        {summary.disabled ? <SummaryButton label={t("inspectionProfiles.states.disabled")} value={summary.disabled} active={stateFilter === "disabled"} onClick={() => setStateFilter("disabled")} /> : null}
-      </section>
+      <dl className="inspection-summary" aria-label={t("inspectionProfiles.summary.label")}>
+        <SummaryMetric label={t("inspectionProfiles.summary.total")} value={summary.total} />
+        <SummaryMetric label={t("inspectionProfiles.states.confirmed")} value={summary.confirmed} />
+        <SummaryMetric label={t("inspectionProfiles.states.needs_review")} value={summary.needs_review} />
+        <SummaryMetric label={t("inspectionProfiles.states.not_configured")} value={summary.not_configured} />
+        {summary.disabled ? <SummaryMetric label={t("inspectionProfiles.states.disabled")} value={summary.disabled} /> : null}
+      </dl>
 
       <div className="inspection-workspace">
         <aside className="inspection-catalog workspace-region" aria-labelledby="inspection-catalog-title">
@@ -166,7 +162,7 @@ export default function InspectionProfilesSettingsPage() {
             <h2 id="inspection-catalog-title" className="workspace-section-title">{t("inspectionProfiles.catalog.title")}</h2>
             <span>{workspace.catalog?.returnedCount ?? 0}/{workspace.catalog?.totalCount ?? 0}</span>
           </div>
-          <label className="inspection-search" htmlFor="inspection-profile-search"><Search size={16} aria-hidden="true" /><span>{t("inspectionProfiles.catalog.search")}</span><input id="inspection-profile-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+          <label className="inspection-search" htmlFor="inspection-profile-search"><span><Search size={16} aria-hidden="true" />{t("inspectionProfiles.catalog.search")}</span><input id="inspection-profile-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
           <label className="inspection-filter" htmlFor="inspection-profile-state-filter">{t("inspectionProfiles.catalog.stateFilter")}<select id="inspection-profile-state-filter" value={stateFilter} onChange={(event) => setStateFilter(event.target.value as InspectionProfileState | "all")}><option value="all">{t("inspectionProfiles.catalog.allStates")}</option>{Object.keys(STATE_ORDER).map((state) => <option key={state} value={state}>{t(`inspectionProfiles.states.${state}`)}</option>)}</select></label>
           {(search || stateFilter !== "all") ? <button type="button" className="inspection-clear-filters" onClick={() => { setSearch(""); setStateFilter("all"); }}>{t("inspectionProfiles.catalog.clearFilters")}</button> : null}
           {workspace.loadState === "loading" ? <p className="inspection-catalog-empty" role="status">{t("inspectionProfiles.load.loading")}</p> : null}
@@ -179,7 +175,7 @@ export default function InspectionProfilesSettingsPage() {
         </aside>
 
         <main className="inspection-editor workspace-region workspace-safe-area" aria-live="off">
-          {!workspace.selected ? <section className="inspection-empty-editor"><FileCheck2 size={34} aria-hidden="true" /><h2>{t("inspectionProfiles.editor.selectTitle")}</h2><p>{t("inspectionProfiles.editor.selectDescription")}</p></section> : workspace.draft ? (
+          {!workspace.selected ? <section className="inspection-empty-editor"><h2>{t("inspectionProfiles.editor.selectTitle")}</h2><p>{t("inspectionProfiles.editor.selectDescription")}</p><small>{t("inspectionProfiles.editor.selectSafety")}</small></section> : workspace.draft ? (
             <ProfileWorkspace
               item={workspace.selected}
               draft={workspace.draft}
@@ -236,6 +232,7 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
   const canMutate = workspace.catalog?.store.status === "available" || workspace.catalog?.store.status === "empty";
   const detectedKind = friendlyDetectedKind(item.suggestion.detectedKind, language);
   const blocking = hasBlockingIssue(item, draft);
+  const revisionBlocked = workspace.conflictRevision !== null;
   const confirmedUnchanged = item.effectiveState === "confirmed" && !workspace.dirty;
   const primaryLabel = item.effectiveState === "needs_review" ? copy.reviewConfirm
     : item.effectiveState === "disabled" ? copy.reviewEnable
@@ -262,59 +259,63 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
       </section>
 
       <section className={`inspection-state-guidance workspace-state is-${item.effectiveState}`} role={item.effectiveState === "needs_review" ? "alert" : "status"}>
-        <strong>{guidance.title}</strong>
+        <div className="inspection-milestone-title"><span className="inspection-milestone" aria-hidden="true">1</span><strong>{guidance.title}</strong></div>
         <p>{guidance.description}</p>
         {item.effectiveState === "needs_review" ? <p>{reasonLabel(item.stateReason, language)}</p> : null}
       </section>
-
-      {workspace.conflictRevision !== null ? (
-        <section className="inspection-conflict workspace-state" role="alert">
-          <h3>{t("inspectionProfiles.conflict.title")}</h3>
-          <p>{t("inspectionProfiles.conflict.description", { revision: workspace.conflictRevision })}</p>
-          <div>
-            <button type="button" className="secondary-button" onClick={() => void workspace.reload(true)}>{copy.reviewServer}</button>
-            <button type="button" className="danger-button" onClick={workspace.resetToServer}>{t("inspectionProfiles.conflict.reloadDiscard")}</button>
-          </div>
-        </section>
-      ) : null}
 
       <BasicProfileEditor item={item} draft={draft} onChange={workspace.setDraftFromUser} errors={workspace.fieldErrors} />
 
       {Object.keys(workspace.fieldErrors).length ? <ErrorSummary errors={workspace.fieldErrors} onNavigate={onRevealAdvancedError} /> : null}
       {workspace.validation ? <ProfileValidationResult item={item} draft={draft} validation={workspace.validation} /> : null}
 
+      {workspace.conflictRevision !== null ? (
+        <section className="inspection-conflict workspace-state" role="alert">
+          <h3>{t("inspectionProfiles.conflict.title")}</h3>
+          <p>{t("inspectionProfiles.conflict.description", { revision: workspace.conflictRevision })}</p>
+          <div className="workspace-state-actions">
+            <button type="button" className="secondary-button" onClick={() => void workspace.reload(true)}>{copy.reviewServer}</button>
+            <button type="button" className="danger-button" onClick={workspace.resetToServer}>{t("inspectionProfiles.conflict.reloadDiscard")}</button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="inspection-primary-actions" aria-label={copy.actionsLabel}>
         <div className="inspection-action-copy">
-          <strong>{confirmedUnchanged ? copy.enabled : primaryLabel}</strong>
+          <strong><span className="inspection-milestone" aria-hidden="true">7</span>{confirmedUnchanged ? copy.enabled : primaryLabel}</strong>
           <p>{confirmedUnchanged ? copy.enabledHelp : copy.primaryHelp}</p>
         </div>
         <div className="inspection-action-row">
-          <button type="button" className="secondary-button" disabled={workspace.busy} onClick={onValidate}>{copy.checkSetup}</button>
           {!confirmedUnchanged ? (
-            <button type="button" className="primary-button" disabled={workspace.busy || !canMutate || blocking} onClick={onConfirm}>
+            <button type="button" className="primary-button" disabled={workspace.busy || !canMutate || blocking || revisionBlocked} onClick={onConfirm}>
               {workspace.busy ? copy.working : primaryLabel}
             </button>
           ) : <span className="inspection-enabled-status">{copy.enabled}</span>}
+          <button type="button" className="secondary-button" disabled={workspace.busy} onClick={onValidate}>{copy.checkSetup}</button>
           {(workspace.generatedDraft || (item.effectiveState === "suggested" && workspace.dirty) || (item.effectiveState === "confirmed" && workspace.dirty)) ? (
-            <button type="button" className="secondary-button" disabled={workspace.busy || !canMutate} onClick={onSaveDraft}>{item.effectiveState === "suggested" ? copy.saveChanges : copy.saveDraft}</button>
+            <button type="button" className="secondary-button" disabled={workspace.busy || !canMutate || revisionBlocked} onClick={onSaveDraft}>{item.effectiveState === "suggested" ? copy.saveChanges : copy.saveDraft}</button>
           ) : null}
         </div>
         {blocking ? <p className="inspection-inline-error">{copy.blockingHelp}</p> : null}
       </section>
 
-      <AdvancedProfileDisclosure item={item} draft={draft} errors={workspace.fieldErrors} open={advancedOpen} onOpenChange={onAdvancedOpenChange} onChange={workspace.setDraftFromUser} />
+      <AdvancedProfileDisclosure item={item} draft={draft} errors={workspace.fieldErrors} dirty={workspace.dirty} open={advancedOpen} onOpenChange={onAdvancedOpenChange} onChange={workspace.setDraftFromUser} />
 
       <details className="inspection-major-disclosure inspection-tools-disclosure">
         <summary>
           <span><strong>{copy.profileTools}</strong><small>{copy.profileToolsHelp}</small></span>
         </summary>
         <div className="inspection-profile-tools">
-          {item.storedProfile ? <button type="button" className="secondary-button" onClick={onExport}><Download size={16} aria-hidden="true" />{t("inspectionProfiles.actions.export")}</button> : null}
-          <button type="button" className="secondary-button" onClick={onImport}><Upload size={16} aria-hidden="true" />{t("inspectionProfiles.actions.import")}</button>
-          <button type="button" className="secondary-button" onClick={onReplaceSuggestion}>{copy.resetSuggestion}</button>
-          <button type="button" className="secondary-button" onClick={onStartEmpty}>{t("inspectionProfiles.actions.startEmpty")}</button>
-          {item.storedProfile && item.effectiveState !== "disabled" ? <button type="button" className="secondary-button" disabled={workspace.busy || !canMutate} onClick={onDisable}>{t("inspectionProfiles.actions.disable")}</button> : null}
-          {item.storedProfile ? <button type="button" className="danger-button" disabled={workspace.busy || !canMutate} onClick={onDelete}>{t("inspectionProfiles.actions.delete")}</button> : null}
+          <div className="inspection-profile-tool-group">
+            {item.storedProfile ? <button type="button" className="secondary-button" onClick={onExport}><Download size={16} aria-hidden="true" />{t("inspectionProfiles.actions.export")}</button> : null}
+            <button type="button" className="secondary-button" onClick={onImport}><Upload size={16} aria-hidden="true" />{t("inspectionProfiles.actions.import")}</button>
+            <button type="button" className="tertiary-button" onClick={onReplaceSuggestion}>{copy.resetSuggestion}</button>
+          </div>
+          <div className="inspection-profile-tool-group is-destructive">
+            <button type="button" className="tertiary-button" onClick={onStartEmpty}>{t("inspectionProfiles.actions.startEmpty")}</button>
+            {item.storedProfile && item.effectiveState !== "disabled" ? <button type="button" className="secondary-button" disabled={workspace.busy || !canMutate || revisionBlocked} onClick={onDisable}>{t("inspectionProfiles.actions.disable")}</button> : null}
+            {item.storedProfile ? <button type="button" className="danger-button" disabled={workspace.busy || !canMutate || revisionBlocked} onClick={onDelete}>{t("inspectionProfiles.actions.delete")}</button> : null}
+          </div>
         </div>
       </details>
     </div>
@@ -328,8 +329,8 @@ function NoteTypeButton({ item, selected, onClick }: { item: InspectionProfileSu
   return <button type="button" className={`inspection-note-button workspace-interactive${selected ? " is-selected workspace-selected" : ""}`} aria-pressed={selected} title={item.structure.name} onClick={onClick}><span className="inspection-note-name">{item.structure.name}</span><span className={`inspection-state-badge is-${item.effectiveState}`}>{t(`inspectionProfiles.states.${item.effectiveState}`)}</span><small>{kind} · {t(`inspectionProfiles.stateHints.${item.effectiveState}`)}</small><span className="inspection-note-meta workspace-meta">{t("inspectionProfiles.catalog.structure", { fields: item.structure.fields.length, templates: item.structure.templates.length })}</span></button>;
 }
 
-function SummaryButton({ label, value, active, onClick }: { label: string; value: number; active: boolean; onClick: () => void }) {
-  return <button type="button" className={`workspace-interactive${active ? " is-active workspace-selected" : ""}`} aria-pressed={active} onClick={onClick}><span>{label}</span><strong>{value}</strong></button>;
+function SummaryMetric({ label, value }: { label: string; value: number }) {
+  return <div><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
 function ErrorSummary({ errors, onNavigate }: { errors: Record<string, string>; onNavigate: (path: string) => void }) {
