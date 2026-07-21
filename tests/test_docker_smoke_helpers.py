@@ -489,3 +489,16 @@ def test_restart_verifier_retriggers_only_an_idle_sender_with_pending_events():
     assert verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 1, "senderState": "idle"}})
     assert not verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 1, "senderState": "busy"}})
     assert not verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 0, "senderState": "idle"}})
+
+def test_restart_anki_mutates_inspection_profile_fixture_for_full_and_cards_scopes():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "docker"
+        / "anki-e2e"
+        / "restart-anki.sh"
+    ).read_text(encoding="utf-8")
+
+    assert 'case "${ANKI_E2E_SCOPE:-full}" in' in source
+    assert "full|cards)" in source
+    assert 'if [ "${ANKI_E2E_SCOPE:-full}" = "cards" ]' not in source
+    assert source.count("mutate-inspection-profile-fixture.py") == 1
