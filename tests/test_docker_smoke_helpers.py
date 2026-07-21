@@ -100,6 +100,26 @@ def test_smoke_api_inspection_profile_requests_use_current_search_and_triage_sch
     assert "canonical triage v2 is active" not in profile_smoke
 
 
+def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source():
+    source = (
+        Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"
+    ).read_text(encoding="utf-8")
+    workspace = source.split("async function assertInspectionProfilesWorkspace", 1)[1].split(
+        "async function captureZoomProof", 1
+    )[0]
+
+    assert 'name: /E2E Japanese Vocabulary/' in workspace
+    assert 'name: /E2E Generic Basic/' in workspace
+    assert 'sourceLifecycleText.includes("Не настроен")' in workspace
+    assert 'name: "Использовать подсказку", exact: true' in workspace
+    assert 'suggestionSourceName: "E2E Generic Basic"' in workspace
+
+    japanese_state = workspace.index("await japanese.click()")
+    unconfigured_source = workspace.index("await suggestionSource.click()")
+    apply_suggestion = workspace.index('name: "Использовать подсказку", exact: true')
+    assert japanese_state < unconfigured_source < apply_suggestion
+
+
 def test_smoke_browser_cards_workspace_uses_current_attention_inbox_contract():
     source = (
         Path(__file__).resolve().parents[1] / "docker" / "anki-e2e" / "smoke-browser.mjs"
