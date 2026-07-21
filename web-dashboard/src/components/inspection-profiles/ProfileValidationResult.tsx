@@ -31,7 +31,7 @@ export default function ProfileValidationResult({ item, draft, validation }: Pro
       <div className="inspection-validation-heading">
         {validation.valid ? <CheckCircle2 size={21} aria-hidden="true" /> : <AlertTriangle size={21} aria-hidden="true" />}
         <div>
-          <h3 id="inspection-validation-title">{validation.valid ? (ru ? "Настройка структурно корректна" : "The setup is structurally valid") : (ru ? "Настройку нужно исправить" : "The setup needs correction")}</h3>
+          <h3 id="inspection-validation-title"><span className="inspection-milestone" aria-hidden="true">6</span>{validation.valid ? (ru ? "Настройка структурно корректна" : "The setup is structurally valid") : (ru ? "Настройку нужно исправить" : "The setup needs correction")}</h3>
           <p>{!validation.valid
           ? (ru ? "Исправьте структурные ошибки перед включением профиля." : "Fix the structural errors before enabling the profile.")
           : noCards

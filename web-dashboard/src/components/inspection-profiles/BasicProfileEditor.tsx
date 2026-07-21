@@ -61,7 +61,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
     <div className="inspection-basic" data-testid="inspection-basic-editor">
       <section className="inspection-guided-summary" aria-labelledby="inspection-guided-summary-title">
         <div>
-          <p className="inspection-section-kicker">{copy.suggestedSetup}</p>
+          <p className="inspection-section-kicker"><span className="inspection-milestone" aria-hidden="true">2</span>{copy.suggestedSetup}</p>
           <h3 id="inspection-guided-summary-title">{view.detectedKind.label}</h3>
           <p>{view.detectedKind.description}</p>
         </div>
@@ -83,7 +83,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
       </section>
 
       <fieldset className="inspection-basic-section inspection-basic-fields">
-        <legend>{copy.fieldsTitle}</legend>
+        <legend><span className="inspection-milestone" aria-hidden="true">3</span>{copy.fieldsTitle}</legend>
         <p className="inspection-help">{copy.fieldsHelp}</p>
         <div className="inspection-basic-list">
           {view.roles.map((role, index) => {
@@ -126,7 +126,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
       </fieldset>
 
       <fieldset className="inspection-basic-section inspection-basic-requirements">
-        <legend>{copy.requirementsTitle}</legend>
+        <legend><span className="inspection-milestone" aria-hidden="true">4</span>{copy.requirementsTitle}</legend>
         <p className="inspection-help">{copy.requirementsHelp}</p>
         <div className="inspection-basic-list">
           {view.requirements.map((requirement, index) => {
@@ -240,7 +240,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
       </fieldset>
 
       <fieldset className="inspection-basic-section inspection-basic-scope">
-        <legend>{copy.scopeTitle}</legend>
+        <legend><span className="inspection-milestone" aria-hidden="true">5</span>{copy.scopeTitle}</legend>
         {item.structure.templates.length === 1 ? (
           <div className="inspection-one-template">
             <strong>{copy.allCards}</strong>
