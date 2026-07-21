@@ -223,6 +223,12 @@ sanitized `renderedPreview`; эти
 ограничения являются частью security contract, а не только визуальной
 реализации.
 
+C1.6 exact-card recheck is token-protected, POST/JSON-only, capped at 8 KiB and
+accepts only one card ID, expected note ID, bounded stable reason IDs and the
+current scope. It delegates through serialized `QueryOp` to canonical detectors;
+there is no arbitrary query/SQL/HTML input, unbounded scan or client-side
+resolution inference. Partial/unavailable/error evidence fails closed.
+
 ## Что проверять при изменениях
 
 Rendering/media:

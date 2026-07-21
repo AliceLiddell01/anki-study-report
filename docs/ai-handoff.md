@@ -1,6 +1,6 @@
 # AI handoff — Anki Study Report
 
-Snapshot: **2026-07-21**
+Snapshot: **2026-07-22**
 
 ## Start here
 
@@ -47,7 +47,7 @@ C1.5R.5: Complete
 C1.5R.6: Complete
 C1.5R.7: Complete
 Owner product acceptance: Accepted
-C1.6: Next; not started
+C1.6: Implemented / verification complete; owner acceptance pending
 C1.6B: Conditional; not started
 ```
 
@@ -61,6 +61,7 @@ Current reports:
 - [`../reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md)
 - [`../reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md)
 - [`../reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../reports/core/c1-5r-7-integrated-acceptance-closeout.md)
+- [`../reports/core/c1-6-canonical-single-card-resolution-loop.md`](../reports/core/c1-6-canonical-single-card-resolution-loop.md)
 
 ## Historical C1.5 evidence
 
@@ -101,7 +102,7 @@ C1.5R.6 Guided Inspection Profiles UX — Complete
 C1.5R.7 Integrated acceptance and owner decision — Complete
 ```
 
-C1.5R.0–R.7 are closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed its focused, build, package and canonical gates; R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958`; R7 candidate `df633563490f80346617871ec5640adf99154956` passed focused harness regression, canonical non-Docker verification and clean full real-Anki E2E with restart. Owner product acceptance is accepted. C1.6 is Next and not started; C1.6B remains Conditional.
+C1.5R.0–R.7 are closed. R5 implementation `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed its focused, build, package and canonical gates; R6 implementation `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged into `core` as `d2ee9703a2b841c0438fc07a43db3b701835a958`; R7 candidate `df633563490f80346617871ec5640adf99154956` passed focused harness regression, canonical non-Docker verification and clean full real-Anki E2E with restart. Owner product acceptance is accepted. C1.6 runtime candidate `edaf9030dbba355593e52cf8922d4c7985ce4b75` passed exact Fast CI, targeted Cards and final full real-Anki gates. C1.6 owner acceptance is pending; C1.6B remains Conditional.
 
 ## C1.5R.1 implementation
 
@@ -295,8 +296,9 @@ fallback. Exact disabled entries suppress inheritance.
 The compact parser preserves ordered text/line/image/audio tokens and supports
 only fixed allowlisted modes. Safe flat media filename/stem extraction never
 reads files or performs remote loads. Search reads one snapshot per request;
-Triage reads one snapshot and reuses Search card resolution. Search v2 and
-Triage v3 wire shapes remain unchanged.
+Triage reads one snapshot and reuses Search card resolution. In the historical
+R2 increment, Search v2 and then-current Triage v3 wire shapes were unchanged;
+current Triage query is v4 and exact recheck is v1.
 
 Local API:
 
@@ -316,7 +318,7 @@ Programming: unchanged
 
 ## Exact next action
 
-C1.6 — canonical single-card resolution loop is Next, not started. Preserve the accepted R1–R7 identity, preview, candidate-source, Cards inbox and guided Inspection Profiles contracts. Do not activate C1.6B without its separate evidence and decision.
+Owner product review of the C1.6 single-card resolution loop is next. Do not merge, close Core C1, start C2 or activate C1.6B without the separate owner decision.
 
 ## Verification boundary
 
@@ -353,16 +355,16 @@ merge/rebase to `master`, release, deploy, publish `.ankiaddon` or update AnkiWe
 as an implicit continuation. Avoid force-push, destructive reset, clean or stash
 deletion and preserve unrelated changes.
 
-## C1.5R.5 complete
+## Historical C1.5R.5 closeout
 
 C1.5R.5 is complete: the rejected table is removed; Cards uses the semantic
 identity-led inbox with wide Inspector and non-modal drawer; learning scope and
 manual content continuation are explicit and bounded. Exact implementation
 `a30f4db66e73f3f836e69ba90cfc06974ce3df47` passed the required technical gates.
-C1.5R.6 subsequently completed as recorded below; R7 is next and C1.6 remains
-blocked.
+C1.5R.6 subsequently completed as recorded below. At that snapshot R7 and C1.6
+were still pending; current status is recorded at the top of this file.
 
-## C1.5R.6 handoff
+## Historical C1.5R.6 handoff
 
 R6 is complete. The Inspection Profiles route uses immediate clean generated
 drafts, open Basic guidance, friendly exact field/requirement/template projection,
@@ -370,4 +372,6 @@ bounded validation, lifecycle-aware actions, collapsed strict Advanced and
 separated tools. No backend schema/runtime change was required. Final implementation
 `8d07bc6a3ab7d1e4f2395ebc52b01895aab96d94` was merged by PR #50 into `core` as
 `d2ee9703a2b841c0438fc07a43db3b701835a958`; exact merged-core non-Docker and
-Chromium gates passed, and the implementation branch was deleted. C1.5R.7 is in progress; C1.6 is planned only after accepted R7, C1.6B remains Conditional, and owner product acceptance is pending.
+Chromium gates passed, and the implementation branch was deleted. At that
+snapshot C1.5R.7 and C1.6 were still pending; current status is recorded at the
+top of this file. C1.6B remains Conditional.

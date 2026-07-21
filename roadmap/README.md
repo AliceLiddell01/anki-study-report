@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-Snapshot: **2026-07-21**.
+Snapshot: **2026-07-22**.
 
 The roadmap has one mandatory core path and several independent or conditional
 tracks. A larger stage number does not create a global queue across unrelated
@@ -23,7 +23,7 @@ The next mandatory add-on work remains inside Core:
 ```text
 C1 Cards v2 / Problem Triage
   ├─ C1.5R remediation — Complete
-  └─ C1.6 canonical single-card resolution loop — Next, not started
+  └─ C1.6 canonical single-card resolution loop — Implemented / verification complete; owner acceptance pending
 → C2 Core 1.0 Hardening
 → C3 Contextual Additions, only for a proven gap
 ```
@@ -35,7 +35,7 @@ C1.5 technical implementation evidence — retained historically
 C1.5 owner product acceptance — withdrawn
 C1.5R.0–R.7 — Complete
 Owner product acceptance — Accepted
-C1.6 Canonical single-card resolution loop — Next, not started
+C1.6 Canonical single-card resolution loop — Implemented / verification complete; owner acceptance pending
 C1.6B Bounded bulk actions — Conditional
 Core C1 — In progress
 ```
@@ -44,7 +44,7 @@ See the [C1.5R.0 recovery report](../reports/core/c1-5r-0-recovery-baseline.md),
 the [C1.5R.1 implementation report](../reports/core/c1-5r-1-canonical-card-display-identity.md),
 the [C1.5R.2 implementation report](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md),
 the [C1.5R.3 implementation report](../reports/core/c1-5r-3-front-back-preview-semantics.md),
-the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md), the [C1.5R.6 implementation report](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md), and the [C1.5R.7 closeout](../reports/core/c1-5r-7-integrated-acceptance-closeout.md).
+the [C1.5R.4 implementation report](../reports/core/c1-5r-4-independent-triage-candidate-sources.md), the [C1.5R.5 implementation report](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md), the [C1.5R.6 implementation report](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md), the [C1.5R.7 closeout](../reports/core/c1-5r-7-integrated-acceptance-closeout.md), and the [C1.6 implementation report](../reports/core/c1-6-canonical-single-card-resolution-loop.md).
 
 Parallel tracks do not block `C1` or `C2`:
 
@@ -58,7 +58,7 @@ Parallel tracks do not block `C1` or `C2`:
 
 | Track | Role | Current status | Does not block |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.7` Complete; owner accepted; `C1.6` Next; `C1.6B` Conditional | — |
+| [Core `C`](core/README.md) | only critical path for the add-on | `C1.5R.0–R.7` Complete; `C1.6` implemented/verified, owner pending; `C1.6B` Conditional | — |
 | [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0` Next; production not approved | C1, C2 |
 | [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
 | [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
@@ -73,7 +73,7 @@ Completed Stage 0–9.5
         └──────────────→ C1 → C2 → C3?
                            │
                            ├─ C1.5R.0–R.7 are Complete; owner acceptance is recorded
-                           ├─ C1.6 is Next, not started
+                           ├─ C1.6 is implemented and verification complete; owner acceptance is pending
                            ├─ C1.6B remains Conditional and is not part of mandatory C1.6
                            ├─ C1.5R is closed
                            └─ does not wait for G/O/I/E
@@ -165,7 +165,7 @@ C1.5R.0–R.7 are complete. Integrated technical acceptance passed on candidate 
 ```text
 C1.5R.0–R.7 — Complete
 Owner product acceptance — Accepted
-C1.6 — Next, not started
+C1.6 — Implemented / verification complete; owner acceptance pending
 C1.6B — Conditional
 Core C1 — In progress
 ```

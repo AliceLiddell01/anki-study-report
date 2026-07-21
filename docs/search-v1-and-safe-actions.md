@@ -105,8 +105,9 @@ action allowlists, sanitizer, media validation and preview isolation remain.
 Compact identity, queries, IDs, deck/note/template names, field values and media
 filenames are not added to remote telemetry.
 
-## Verification status
+## C1.6 reuse
 
-C1.5R.1 implementation is committed on `core`, but focused Python/Vitest/
-typecheck evidence is pending. Therefore the stage is not Complete and C1.5R.2
-and C1.6 remain blocked.
+C1.6 reuses this exact single-card action transport from the Cards Inspector.
+Action success and `action.no_changes` remain action results only; Cards requires
+its separate canonical exact-card recheck before declaring resolution. Search
+selection/bulk semantics and mutation scope are unchanged.
