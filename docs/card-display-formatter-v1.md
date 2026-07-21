@@ -1,11 +1,9 @@
-# Card display formatter v1
+# Formatter display identity карточки v1
 
-## Status
+## Статус
 
-**Stage:** `C1.5R.2 — Complete`
-
-**Branch:** `core`
-
+**Этап:** `C1.5R.2 — Complete`  
+**Ветка:** `core`  
 **Schema:** [`schemas/card-display-formatter-v1.schema.json`](../schemas/card-display-formatter-v1.schema.json)
 
 **Runtime:**
@@ -16,43 +14,46 @@ anki_study_report/card_display_formatter_service.py
 anki_study_report/card_display_formatter_runtime.py
 ```
 
-Card display formatter v1 is an independent local configuration contract for
-changing the compact identity of one exact Anki note type/template. It does not
-extend Inspection Profile v1, alter full Inspector/expanded preview, modify the
-collection, or execute user code.
+Card display formatter v1 — независимый локальный configuration contract для изменения compact identity точной пары Anki note type/template.
 
-## Exact purpose
+Он не:
 
-Without configuration, the canonical R1 identity remains:
+- расширяет Inspection Profile v1;
+- меняет полный preview Inspector или expanded preview;
+- изменяет collection;
+- выполняет пользовательский код.
+
+## Точное назначение
+
+Без configuration сохраняется каноническая identity R1:
 
 ```text
 【に】（する）
 ```
 
-For a configured Japanese note type whose rendered reviewer front contains:
+Для настроенного Japanese note type, reviewer front которого содержит:
 
 ```html
 【<b>に</b>】<img src="感.gif"><img src="謝.gif">（<b>する</b>）
 ```
 
-an enabled `imageMode: stem` formatter can produce:
+включённый formatter с `imageMode: stem` может вернуть:
 
 ```text
 【に】感謝（する）
 ```
 
-Programming and every other note type without an exact ID-bound formatter keep
-their existing canonical identity.
+Programming и любые другие note types без formatter, привязанного к точному ID, сохраняют существующую canonical identity.
 
-## Independent storage
+## Независимое хранение
 
-The document is stored per active Anki profile:
+Документ хранится отдельно для активного Anki profile:
 
 ```text
 <profile>/addon_data/<addon-id>/card_display_formatters.json
 ```
 
-It is separate from:
+Он отделён от:
 
 ```text
 inspection_profiles.json
@@ -62,24 +63,30 @@ collection
 note types/templates
 ```
 
-The store uses deterministic UTF-8 JSON, a same-directory temporary file,
-`flush`, `os.fsync`, and `os.replace`. Every successful save/delete increments a
-monotonic `revision`; callers supply `expectedRevision`.
+Store использует:
 
-Recovery states:
+- deterministic UTF-8 JSON;
+- temporary file в той же директории;
+- `flush`;
+- `os.fsync`;
+- `os.replace`.
 
-| State | Behavior |
+Каждый успешный save/delete увеличивает monotonic `revision`; caller передаёт `expectedRevision`.
+
+### Recovery states
+
+| State | Поведение |
 | --- | --- |
-| missing | empty revision 0 |
-| corrupt/invalid v1 | quarantine rename and canonical display fallback |
-| future schema | preserve bytes, reject writes, canonical display fallback |
-| inaccessible | unavailable, canonical display fallback |
+| `missing` | пустой документ revision 0 |
+| `corrupt` / invalid v1 | quarantine rename и fallback к canonical display |
+| future schema | bytes сохраняются, writes отклоняются, используется canonical display fallback |
+| inaccessible | `unavailable`, используется canonical display fallback |
 
-No path or document content is included in API errors or normal logs.
+API errors и normal logs не содержат path или document content.
 
-## Document and bounds
+## Document shape и ограничения
 
-Canonical empty document:
+Канонический пустой документ:
 
 ```json
 {
@@ -123,11 +130,16 @@ maxCharacters                    1..240
 noteTypeId                       positive signed-64 decimal string
 ```
 
-Root and nested objects reject unknown keys. Booleans are not integers.
-Duplicate `(noteTypeId, templateOrdinal)` keys, incoherent nullable template
-fields, invalid timestamps and future-schema writes fail closed.
+Root и nested objects отклоняют unknown keys. Booleans не считаются integers.
 
-## Identity and resolution
+Fail closed обрабатываются:
+
+- duplicate keys `(noteTypeId, templateOrdinal)`;
+- incoherent nullable template fields;
+- invalid timestamps;
+- writes в future schema.
+
+## Identity и resolution
 
 Binding key:
 
@@ -135,21 +147,25 @@ Binding key:
 (noteTypeId, templateOrdinal)
 ```
 
-Names are bounded display/diagnostic snapshots only. There is no binding by
-name, deck, field value or fuzzy similarity.
+Names являются только bounded display/diagnostic snapshots. Binding по name, deck, field value или fuzzy similarity отсутствует.
 
 Resolution:
 
 ```text
-exact enabled  → apply exact formatter
-exact disabled → suppress default inheritance and use canonical R1 fallback
-exact absent + note-type default enabled  → apply default
-exact absent + default disabled/absent    → canonical R1 fallback
+exact enabled  → применить exact formatter
+exact disabled → запретить default inheritance и использовать canonical R1 fallback
+exact отсутствует + note-type default enabled  → применить default
+exact отсутствует + default disabled/absent    → canonical R1 fallback
 ```
 
-The store is read once per Search/Triage request. One immutable resolver map is
-then reused for all projected cards. There are no per-card file reads, HTTP
-calls, collection scans, or mutable module-global formatter cache.
+Store читается один раз на Search/Triage request. После этого одна immutable resolver map переиспользуется для всех projected cards.
+
+Отсутствуют:
+
+- per-card file reads;
+- HTTP calls;
+- collection scans;
+- mutable module-global formatter cache.
 
 ## Declarative policies
 
@@ -163,23 +179,31 @@ imageMode: omit | filename | stem | marker
 audioMode: omit | filename | stem | marker
 ```
 
-Fixed markers:
+Фиксированные markers:
 
 ```text
 image: 🖼
 audio: 🔊
 ```
 
-Marker text is not configurable in v1.
+Marker text в v1 не настраивается.
 
-The schema/API contains no JavaScript, Python, SQL, shell, regex, selector,
-expression, callback, import, module, path, URL, field value, template HTML/CSS,
-or remote endpoint capability. Runtime uses no `eval`, `exec`, dynamic import,
-plugin callback, or subprocess.
+Schema и API не содержат capabilities для:
 
-## Ordered token stream
+- JavaScript, Python или SQL;
+- shell или regex;
+- selector, expression или callback;
+- import/module;
+- path или URL;
+- field value;
+- template HTML/CSS;
+- remote endpoint.
 
-The compact parser produces only:
+Runtime не использует `eval`, `exec`, dynamic import, plugin callback или subprocess.
+
+## Упорядоченный token stream
+
+Compact parser создаёт только:
 
 ```text
 text
@@ -188,23 +212,32 @@ image
 audio
 ```
 
-Source order is retained. Adjacent inline text/media tokens receive no invented
-separator. HTML entities are decoded, `<br>` and block boundaries emit line
-breaks, whitespace is normalized inside final lines, and blocked embedded
-content fails closed when malformed.
+Source order сохраняется. Между соседними inline text/media tokens не добавляется выдуманный separator. HTML entities декодируются. `<br>` и block boundaries создают line breaks. Whitespace нормализуется внутри итоговых строк. Malformed blocked embedded content fail closed.
 
-Audio recognition includes safe `[sound:filename]`, unnamed `[anki:play:...]`
-and safe rendered audio/source references. Unnamed audio emits only the fixed
-marker when `audioMode: marker`.
+Распознаётся безопасное audio:
 
-## Safe media filename rules
+- `[sound:filename]`;
+- unnamed `[anki:play:...]`;
+- безопасные rendered audio/source references.
 
-A media token may carry only a normalized flat local filename or `null`.
-Accepted names are bounded and contain no scheme, absolute path, slash,
-backslash, traversal or control character. Validation occurs after HTML entity
-decoding.
+Unnamed audio выдаёт только фиксированный marker, когда `audioMode: marker`.
 
-Rejected references include:
+## Правила безопасного имени media
+
+Media token может содержать только normalized flat local filename либо `null`.
+
+Разрешённое имя:
+
+- bounded;
+- без scheme;
+- без absolute path;
+- без slash/backslash;
+- без traversal;
+- без control characters.
+
+Validation выполняется после HTML entity decoding.
+
+Примеры отклоняемых ссылок:
 
 ```text
 ../x.png
@@ -217,29 +250,37 @@ data:...
 file:...
 ```
 
-Rejected/unnamed media may still emit a fixed marker. Raw unsafe text is never
-returned. Formatter processing never opens a media file, checks existence,
-resolves a filesystem path, or loads a remote resource.
+Отклонённый или unnamed media token всё ещё может вывести фиксированный marker. Raw unsafe text наружу не возвращается.
 
-## Line and truncation semantics
+Formatter processing никогда не:
 
-Processing order:
+- открывает media file;
+- проверяет существование file;
+- разрешает filesystem path;
+- загружает remote resource.
+
+## Семантика строк и truncation
+
+Порядок обработки:
 
 ```text
 tokenize
-→ apply text/media modes
-→ build lines
-→ discard empty lines
-→ select first maxLines meaningful lines
-→ normalize whitespace per line
-→ join with lineSeparator
-→ apply maxCharacters
+→ применить text/media modes
+→ построить lines
+→ удалить empty lines
+→ выбрать первые maxLines meaningful lines
+→ нормализовать whitespace каждой line
+→ объединить через lineSeparator
+→ применить maxCharacters
 ```
 
-Truncation adds one terminal ellipsis, never exceeds `maxCharacters`, and sets
-`displayTruncated` exactly.
+Truncation:
 
-A valid non-empty configured result uses:
+- добавляет один terminal ellipsis;
+- никогда не превышает `maxCharacters`;
+- точно устанавливает `displayTruncated`.
+
+Валидный non-empty configured result:
 
 ```text
 displayStatus = available
@@ -248,27 +289,28 @@ displayText = configured output
 displayTruncated = formatter truncation
 ```
 
-Search stays schema v2 and Triage stays schema v3. No public
-`formatterApplied`, formatter ID, alias, or formatter configuration is added to
-Search/Triage payloads.
+Search остаётся schema v2, Triage — schema v3 в этом contract snapshot. В Search/Triage payload не добавляются публичные fields `formatterApplied`, formatter ID, alias или formatter configuration.
 
-## Canonical fallback and render reuse
+## Canonical fallback и повторное использование render
 
-Without an active formatter:
+Без active formatter:
 
 ```text
 Browser question → reviewer front → media_only/unavailable
 ```
 
-With an active formatter, only its selected source is attempted. Render
-unavailable, invalid token stream, empty output, or policy-omitted-only output
-returns to the unchanged canonical R1 fallback.
+При active formatter сначала используется только выбранный source.
 
-Within one card projection each source is rendered at most once. A failed
-configured attempt is cached and reused by fallback. `card.answer()` is never
-called.
+Следующие состояния возвращают обработку к неизменённому canonical fallback R1:
 
-## Local dashboard API
+- render unavailable;
+- invalid token stream;
+- empty output;
+- output, полностью удалённый policy.
+
+В рамках projection одной card каждый source рендерится не более одного раза. Неудачный configured attempt кэшируется и переиспользуется fallback. `card.answer()` никогда не вызывается.
+
+## Локальный dashboard API
 
 Token-protected POST-only JSON endpoints:
 
@@ -278,15 +320,15 @@ Token-protected POST-only JSON endpoints:
 /api/card-display-formatters/update
 ```
 
-All use schema v1, exact keys and the existing 64 KiB body cap.
+Все endpoints используют schema v1, exact keys и существующий body cap 64 KiB.
 
 Query request:
 
 ```json
-{"schemaVersion":1}
+{"schemaVersion": 1}
 ```
 
-Query response contains:
+Query response содержит:
 
 ```text
 schemaVersion
@@ -297,8 +339,7 @@ errorCode
 quarantined
 ```
 
-Validate accepts one strict formatter, performs no persistence and no collection
-read, and returns its normalized value or bounded field errors.
+`validate` принимает один strict formatter, ничего не сохраняет и не читает collection. Возвращается normalized value либо bounded field errors.
 
 Update actions:
 
@@ -307,47 +348,50 @@ save   expectedRevision + formatter
 delete expectedRevision + exact noteTypeId/templateOrdinal key
 ```
 
-Delete cannot remove all formatters for a note type accidentally. Revision
-conflict returns current revision. Errors expose generic machine codes only.
+Delete не может случайно удалить все formatters note type. Revision conflict возвращает current revision. Errors раскрывают только generic machine codes.
 
 ## Frontend contract
 
-Strict types/parser/client live in:
+Strict types/parser/client:
 
 ```text
 web-dashboard/src/types/cardDisplayFormatters.ts
 web-dashboard/src/lib/cardDisplayFormattersApi.ts
 ```
 
-They reject old/future schemas, unknown keys, malformed IDs/timestamps, invalid
-enums/limits, duplicate keys, incoherent nullable template fields and malformed
-error envelopes.
+Они отклоняют:
 
-R2 adds no route, page, hook, Settings navigation or form. Guided formatter UX
-belongs to C1.5R.6.
+- old/future schemas;
+- unknown keys;
+- malformed IDs и timestamps;
+- invalid enums/limits;
+- duplicate keys;
+- incoherent nullable template fields;
+- malformed error envelopes.
 
-## Security and privacy
+C1.5R.2 не добавляет route, page, hook, Settings navigation или form. Guided formatter UX относится к C1.5R.6.
 
-Preserved boundaries:
+## Безопасность и приватность
+
+Сохраняются границы:
 
 ```text
 loopback-only server
 dashboard token
-frontend has no collection access
-no iframe/template JavaScript execution
-no arbitrary code or query language
-no media file reads or remote loads
-no raw HTML/note fields in formatter store
-no local paths or token-bearing URLs
-no formatter filename/displayText telemetry or normal logs
+frontend не имеет доступа к collection
+нет iframe/template JavaScript execution
+нет arbitrary code или query language
+нет чтения media files или remote loads
+нет raw HTML/note fields в formatter store
+нет local paths или token-bearing URLs
+нет telemetry/normal logs для formatter filename или displayText
 ```
 
-Configured `displayText` is returned only to the local dashboard as the explicit
-product output.
+Configured `displayText` возвращается только локальному dashboard как явный product output.
 
-## Deferred work
+## Отложенная работа
 
-Not part of formatter v1:
+В formatter v1 не входят:
 
 ```text
 Settings/guided UI

@@ -1,25 +1,27 @@
-# Triage candidate sources v4
+# Источники кандидатов Triage v4
 
-Triage v4 separates period-bound learning history from period-independent current
-collection content.
+Triage v4 разделяет зависящую от периода историю обучения и текущее содержимое коллекции, не зависящее от выбранного периода.
 
-## Source semantics
+## Семантика источников
 
-- `learningCandidates` reads bounded review history for the requested period.
-- `contentCandidates` scans current notes/cards independently of the review period.
-- `signals` remains an existing independent source.
-- `search_workset` remains exact-card mode and does not run either automatic loader.
+- `learningCandidates` читает ограниченную историю повторений за запрошенный период.
+- `contentCandidates` независимо от периода сканирует текущие notes/cards.
+- `signals` остаётся существующим независимым источником.
+- `search_workset` остаётся режимом точного набора карточек и не запускает автоматические loaders.
 
-## Authoritative profile boundary
+## Граница авторитетного профиля
 
-Only profiles whose stored state is `confirmed`, whose fingerprint matches the
-current note-type structure, and which contain at least one check can drive an
-automatic content scan. Suggested, disabled and needs-review profiles are reported
-but do not inspect note values.
+Автоматический content scan разрешён только для профилей, у которых:
 
-## Bounds and continuation
+- сохранённое состояние равно `confirmed`;
+- fingerprint совпадает с текущей структурой note type;
+- присутствует хотя бы одна проверка.
 
-The current-content loader scans at most 500 note IDs per request using:
+Профили в состояниях `suggested`, `disabled` и `needs_review` учитываются в status, но не читают значения полей заметок.
+
+## Ограничения и continuation
+
+Loader текущего содержимого сканирует не более 500 note IDs за один запрос:
 
 ```text
 note.id > contentCursor
@@ -27,38 +29,42 @@ order by note.id asc
 limit 501
 ```
 
-It then performs one batched card/note read. There is no offset pagination, no
-automatic continuation loop and no global total-count query. `nextCursor` is
-present exactly when the source is truncated.
+Затем выполняется одно пакетное чтение cards/notes. Offset pagination, автоматического continuation loop и глобального запроса общего количества нет. `nextCursor` присутствует только тогда, когда источник усечён.
 
-## Scope and representative card
+## Scope и representative card
 
-Empty `deckIds` means all decks. Selected parent decks include descendants through
-the existing deck-expansion semantics. Suspended and buried cards remain eligible
-because content quality is independent of scheduling state. A note is evaluated
-once and anchored to the lowest applicable in-scope card ID. Sibling count covers
-all current cards for the note.
+Пустой список `deckIds` означает все колоды. Выбранная родительская колода включает потомков через существующую семантику расширения deck scope. Suspended и buried cards остаются допустимыми, поскольку качество содержимого не зависит от scheduling state.
 
-## Merge and payload
+Каждая note проверяется один раз и привязывается к минимальному подходящему card ID внутри scope. Sibling count охватывает все текущие карточки этой note.
 
-Learning, signal and content reasons merge by card. Only cards with reasons are
-resolved through canonical Search display identity. Raw fields, HTML, media names,
-SQL, paths and exception text are not exposed.
+## Объединение и payload
 
-## R5 boundary
+Learning, signal и content reasons объединяются по card. Через каноническую Search display identity разрешаются только карточки, у которых есть reasons.
 
-R4 types and validates continuation state but does not add a visible load-more
-control or redesign the Cards inbox. That product work belongs to C1.5R.5.
+Наружу не передаются raw fields, HTML, названия медиафайлов, SQL, пути и текст исключений.
 
+## Граница R5
 
-## Verification closeout
+R4 типизирует и проверяет continuation state, но не добавляет видимый control загрузки следующей страницы и не перестраивает Cards inbox. Эта продуктовая работа относится к C1.5R.5.
 
-The exact implementation commit is
-`31b3b795e055f6be963c129b3edc1afdfc9dcd57`. Isolated run
-`29701478622` passed focused backend and frontend tests, typecheck, production
-build, package build/validation, API smoke, the canonical non-Docker gate, and
-Git hygiene. Post-transfer run `29701642665` repeated the affected focused
-checks on the exact `core` commit and passed.
+## Завершение проверки
 
-Fast CI and Docker/real-Anki E2E were not required. C1.5R.5 remains separate
-product work and is not started by this closeout.
+Точный implementation commit:
+
+```text
+31b3b795e055f6be963c129b3edc1afdfc9dcd57
+```
+
+Изолированный run `29701478622` успешно прошёл:
+
+- focused backend и frontend tests;
+- typecheck;
+- production build;
+- package build/validation;
+- API smoke;
+- canonical non-Docker gate;
+- Git hygiene.
+
+Post-transfer run `29701642665` повторил затронутые focused checks на точном commit ветки `core` и также прошёл успешно.
+
+Fast CI и Docker/real-Anki E2E для R4 не требовались. C1.5R.5 оставался отдельной продуктовой работой и не запускался этим closeout.

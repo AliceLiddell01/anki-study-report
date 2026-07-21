@@ -1,55 +1,74 @@
-# Cards v2 Product Contract
+# Продуктовый контракт Cards v2
 
-## Status and scope
+## Статус и scope
 
-**Status:** C1.5R accepted; C1.6 implemented / verification complete; C1.6 owner acceptance pending
-**Branch:** `core`
-**Production status:** the identity-led attention inbox and Guided Inspection Profiles are accepted; the canonical single-card action/recheck/reconciliation loop is implemented on the C1.6 candidate and awaits owner acceptance
+**Статус:** `C1.5R` и `C1.6` завершены и приняты владельцем  
+**Ветка:** `core`  
+**Merge C1.6:** `928e3fe749ce6aa4b9c414641c4ef66ac46a694b`  
+**Core C1:** Complete  
+**C1.6B:** Conditional; not started
 
-Technical contracts: [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md),
-[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md) and
-[`inspection-profiles-v1.md`](inspection-profiles-v1.md).
+Технические контракты:
 
-Cards is a local problem-triage workspace: it shows which cards require attention, explains why, provides safe context, and hands the user to an existing Safe Action or native Anki editing.
+- [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
+- [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md);
+- [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
 
-This contract defines the `#/cards` workflow. Current queue/Inspector/drawer behavior is fixed in [`cards-attention-inbox.md`](cards-attention-inbox.md); [`cards-v2-workspace-ui.md`](cards-v2-workspace-ui.md) is historical. Assignment, snooze/archive, remote collaboration and manual resolve are not adopted.
+Cards — локальное рабочее пространство problem triage. Оно показывает карточки, требующие внимания, объясняет причины, предоставляет безопасный context и ведёт к существующему Safe Action либо нативному редактированию Anki.
 
-## User problem
+Текущий workflow `#/cards` зафиксирован в [`cards-attention-inbox.md`](cards-attention-inbox.md). [`cards-v2-workspace-ui.md`](cards-v2-workspace-ui.md) является историческим документом отклонённого C1.5 UI.
 
-Cards v1 repeats one classification in hero copy, five KPIs, tabs, a problem filter and row chips. `Risk`, `Gaps`, `Patterns` and `Check` are overlapping views; numerical `riskScore` is unexplained; table/tiles/Anki preview repeat one queue at different densities; full previews create pages up to 18,329 px high.
+Не приняты assignment, snooze/archive, remote collaboration, manual resolve и persistent completion state.
 
-The outcome is not “finish an inbox”. The user understands an issue, acts safely or edits in Anki, then canonical reevaluation decides whether it remains active.
+## Пользовательская проблема
+
+Cards v1 повторял одну классификацию в hero copy, KPI, tabs, problem filter и row chips. Представления `Risk`, `Gaps`, `Patterns` и `Check` перекрывались; numeric `riskScore` не объяснялся; table/tiles/Anki preview дублировали одну очередь с разной плотностью; full previews создавали чрезмерно длинные страницы.
+
+Цель пользователя — не «закрыть inbox», а:
+
+1. понять проблему карточки;
+2. выбрать безопасное действие либо открыть карточку в Anki;
+3. явно перепроверить результат;
+4. получить канонический вывод о том, осталась ли проблема активной.
 
 ## Jobs to be done
 
-**Primary job:** understand a detected card problem and choose the next safe step without turning the dashboard into another editor.
+**Основная задача:** понять обнаруженную проблему карточки и выбрать следующий безопасный шаг, не превращая dashboard во второй editor Anki.
 
-Entry: direct navigation, card notification, explicit Search selection, or return from Anki Browser. Bounded bulk entry is not part of the mandatory loop and belongs only to conditional C1.6B.
+Точки входа:
+
+- прямой переход;
+- notification карточки;
+- explicit Search selection;
+- возврат из Anki Browser.
 
 Happy path:
 
-1. Open `Требуют внимания / Requires attention`.
-2. Scan priority, primary reason and short evidence.
-3. Activate a row; Inspector opens without moving keyboard focus.
-4. Inspect safe preview, all reasons and recommended next step.
-5. Run an existing Safe Action or open Anki Browser.
-6. See `Ожидает перепроверки / Awaiting recheck`.
-7. Recheck; item stays active or resolves canonically.
+1. Открыть `Требуют внимания / Requires attention`.
+2. Просмотреть priority, primary reason и short evidence.
+3. Активировать item; Inspector открывается без перемещения keyboard focus.
+4. Изучить safe preview, все reasons и recommended next step.
+5. Выполнить существующий Safe Action либо Open in Anki.
+6. Увидеть `Ожидает перепроверки / Awaiting recheck`.
+7. Запустить explicit recheck.
+8. Получить `Still active`, `Partially resolved`, `Resolved`, `Recheck failed` или `Evidence stale`.
 
-Opening/editing in Anki never marks resolved. On return, evidence may be stale; context/focus is restored when possible. Bulk actions operate only on explicitly selected bounded IDs. For unknown note types, learning issues remain; content-quality issues are suppressed until an Inspection Profile is confirmed.
+Opening/editing in Anki никогда автоматически не означает resolved. Успешная mutation и `action.no_changes` также не являются resolution proof.
 
-## Surface boundaries
+Для unknown note types learning issues сохраняются, а content-quality issues подавляются до confirmation Inspection Profile.
 
-| Surface | Primary task | Owns | Handoff | Must not duplicate |
+## Границы поверхностей
+
+| Surface | Основная задача | За что отвечает | Handoff | Что не должна дублировать |
 | --- | --- | --- | --- | --- |
-| Cards | triage detected card problems | bounded queue presentation, active Inspector, temporary Search workset | Safe Action or Anki Browser | general Search, full editor, notification history, arbitrary actions |
-| Search | find arbitrary cards/notes | query/results/selection/Search Inspector | Cards workset or Anki Browser | detector priority/lifecycle and Cards queue |
-| Notification Center | notify and preserve local history | notification/read/history state | Cards for card issues; Decks/Stats otherwise | triage/editing/manual resolve |
-| Anki Browser | native search/edit/advanced operations | authoritative collection UI/edit state | return to Cards/Search | dashboard diagnosis or duplicate web editor |
+| Cards | triage обнаруженных проблем | bounded queue, active Inspector/drawer, lifecycle action/recheck | Safe Action или Anki Browser | общий Search, full editor, notification history, arbitrary actions |
+| Search | поиск произвольных cards/notes | query, results, selection, Search Inspector | Cards workset или Anki Browser | detector priority/lifecycle и automatic queue |
+| Notification Center | уведомление и local history | notification/read/history state | Cards для card issues; Decks/Stats для остальных | triage, editing, manual resolve |
+| Anki Browser | native search/edit/advanced operations | authoritative collection UI/edit state | возврат в Cards/Search | dashboard diagnosis или web editor clone |
 
-Anki note types may have different fields, and templates determine generated cards/front/back. Cards cannot assume one universal schema or clone Anki's editor.
+Anki note types имеют разные fields и templates. Cards не предполагает universal card schema и не копирует Anki editor.
 
-## Canonical queue
+## Каноническая очередь
 
 Automatic dataset:
 
@@ -57,71 +76,91 @@ Automatic dataset:
 Требуют внимания / Requires attention
 ```
 
-It is one bounded queue with filters. Reason families are not tabs because they filter the same set/workflow.
+Это одна bounded queue с filters. Reason families не являются tabs, потому что фильтруют тот же dataset и тот же workflow.
 
-When Search explicitly hands off IDs, a second dataset selector appears:
+Search handoff создаёт отдельный selector:
 
 ```text
 Требуют внимания | Выбрано в поиске
 Requires attention | Selected in Search
 ```
 
-Automatic sources: canonical attention-card issues and active card-level Signals. Notification is activation context for a canonical issue, not another queue source. Search creates a separate session-only workset and never receives invented reason/priority.
+Automatic sources:
 
-Duplicate automatic card IDs become one card-anchored item with merged reasons and visible provenance. Equivalent evidence is deduplicated.
+- canonical attention-card learning issues;
+- active card-level Signals;
+- confirmed-profile current-content issues.
 
-## Item and reason model
+Notification является activation context, а не новым queue source. Search workset остаётся session-only и не получает invented reasons или priority.
 
-One row is anchored to one card and aggregates reasons. Primary reason is selected by priority and deterministic reason order; additional reasons appear by count and in Inspector.
+Duplicate automatic card IDs объединяются в один card-anchored item с merged reasons и visible provenance. Equivalent evidence дедуплицируется.
 
-Card-level reasons concern scheduling/review/card state. Note-level reasons concern shared content/profile requirements. A note-level-only issue uses one deterministic representative card and states sibling impact; siblings remain separate when they have independent card reasons. Note actions explicitly name note scope.
+## Модель item и reason
+
+Один item привязан к одной card и агрегирует до четырёх stable reasons.
+
+Primary reason выбирается по categorical priority и deterministic reason order. Additional reasons показываются count в queue и полностью в Inspector.
+
+Card-level reasons относятся к scheduling/review/card state. Note-level reasons относятся к shared content/profile requirements.
+
+Для note-level-only issue используется одна deterministic representative card с указанием sibling impact. Siblings остаются отдельными, если у них есть независимые card-level reasons.
 
 Reason families:
 
-| Family | Meaning | Examples |
+| Family | Значение | Примеры |
 | --- | --- | --- |
-| Learning behavior | observed review behavior | leech, repeated Again, low pass rate, slow answer |
-| Content quality | confirmed profile requirement unmet | missing meaning/audio/example/image/part of speech |
-| System/profile state | confidence/configuration incomplete | profile not configured/needs review, stale/unavailable source |
+| Learning behavior | наблюдаемое review behavior | leech, repeated Again, low pass rate, slow answer |
+| Content quality | нарушено confirmed profile requirement | missing text/audio/image, text too short |
+| System/profile state | configuration/evidence не authoritative | profile needs review, source unavailable/stale |
 | Manual context | explicit user workset | selected in Search |
 
-Canonical learning/content codes, stable reason identity and safe evidence are
-defined in triage schema v2; user meaning/scope remain fixed here.
+Stable IDs:
 
-## Priority and evidence
+```text
+learning:<code>
+profile:<profileId>:check:<checkId>
+```
 
-Visible priority is `Высокий / Средний / Низкий` (`High / Medium / Low`). It answers what to inspect first; reason answers why. No separate Critical level and no visible numeric score. Canonical sources assign priority; UI does not infer it.
+## Priority и evidence
 
-A row shows one evidence sentence. Inspector shows bounded details, window, freshness and source. Examples: `5 Again из 8 за 7 дней`; `успешность 42% при 12 ответах`; `Confirmed profile requires Audio; mapped field is empty/no [sound:…]`.
+Visible priority:
 
-Insufficient/stale/unavailable evidence is explicit. Raw queries, IDs, tokens, paths, card content and full evidence are excluded from normal logs/public artifacts/remote telemetry.
+```text
+Высокий / Средний / Низкий
+High / Medium / Low
+```
+
+Priority отвечает, что проверить первым; reason объясняет почему. Отдельного Critical и visible numeric score нет. Priority назначается canonical backend sources, а не вычисляется UI.
+
+Queue показывает одно bounded evidence sentence. Inspector показывает details, window, freshness и source.
+
+Insufficient, stale и unavailable evidence обозначается явно. Raw queries, IDs, tokens, paths, card content и full evidence исключены из normal logs, public artifacts и remote telemetry.
 
 Default order:
 
 ```text
-priority → reason order → evidence recency → stable entity tie-breaker
+priority → canonical reason order → evidence recency → stable card ID
 ```
 
-Rows do not jump due to focus/selection. Explicit refresh may reorder when evidence changes, while preserving the active card when possible. Stable user sorts may include priority, newest evidence, deck and primary text.
+Focus/selection не меняют order. Explicit refresh или authoritative recheck может обновить position при изменении reasons/priority.
 
-## Inspection Profile product model
+## Product model Inspection Profile
 
-Profiles are local, declarative, per-note-type requirements for content checks; they never execute user code.
+Profiles — local declarative requirements конкретного note type. Они не выполняют user code.
 
-| State | Meaning | Authoritative content issues |
+| State | Значение | Authoritative content issues |
 | --- | --- | --- |
-| Not configured | absent | no |
-| Suggested | inferred mapping awaiting review | no |
-| Confirmed | requirements/mapping accepted | yes |
-| Needs review | note-type structure changed incompatibly | no; fail closed |
-| Disabled | user disabled content checks | no |
+| Not configured | profile отсутствует | нет |
+| Suggested | inferred mapping ожидает review | нет |
+| Confirmed | requirements/mapping приняты | да |
+| Needs review | structure note type изменилась | нет; fail closed |
+| Disabled | content checks отключены | нет |
 
-Suggestion explains required roles and mapped fields; confirmation is explicit. Incompatible rename/add/remove/reorder/template-reference change moves to Needs review. Cards explains suppression and links to settings. Disabling content checks does not disable learning issues. C1.3 owns the versioned schema, fingerprint, profile-local store, allowlisted runtime and API; the final editor belongs to C1.4.
+Suggestion не становится authority автоматически. Confirmation явное. Несовместимые изменения fields/templates переводят profile в Needs review. Learning issues не зависят от profile lifecycle.
 
-## Main workspace
+## Основное рабочее пространство
 
-The canonical R5 workflow is one dense identity-led semantic inbox. The rejected
-spreadsheet table, tiles and equal display-mode switcher are absent.
+Канонический layout:
 
 ```text
 wide desktop >= 1200 px
@@ -131,88 +170,104 @@ semantic ordered inbox | persistent Inspector
 narrow desktop < 1200 px
 compact summary/filters
 full-width inbox
-non-modal detail drawer after explicit activation
+non-modal detail drawer после explicit activation
 ```
 
-The initial response remains bounded to 100 issues. Full preview loads only for
-the active item. Learning scope is explicit (7/30/90 days); current-content
-continuation is manual, cursor-coherent and client-bounded. See
-[`cards-attention-inbox.md`](cards-attention-inbox.md).
+Spreadsheet table, tiles и equal display-mode switcher отсутствуют.
 
-## Queue row
+Initial response ограничен 100 issues. Full preview загружается только для active item. Learning period явный: 7/30/90 дней. Current-content continuation ручной, cursor-coherent и client-bounded.
 
-Required in C1.5: compact front/primary text, deck, categorical priority,
-primary reason, additional-reason count, short evidence and relevant card state.
-The checkbox is intentionally absent; bounded bulk actions belong only to conditional C1.6B.
-
-Excluded from scan path: full answer preview, template catalog, opaque score, every metric, repeated query text and several always-visible actions. Row activation opens Inspector; checkbox changes bulk selection only. A quick row action is allowed only after usability/accessibility evidence.
+Checkbox отсутствует. Bounded bulk actions относятся только к conditional C1.6B.
 
 ## Inspector
 
-Wide desktop default: persistent right pane. Narrow desktop: stacked detail or non-modal drawer. Modal/inline expansion are not defaults.
+Sections:
 
-Sections: safe preview; card/note identity; all scoped reasons; evidence/freshness; Inspection Profile source; current state; recommended step; existing Safe Actions; Open in Anki; recheck/result.
+1. safe front preview;
+2. card/note identity;
+3. все scoped reasons;
+4. evidence и freshness;
+5. Inspection Profile source;
+6. current lifecycle state;
+7. recommended step;
+8. применимые Safe Actions;
+9. Open in Anki;
+10. explicit recheck и reconciliation result.
 
-No field/template editor. Preview reuses existing sanitized, token-protected Shadow DOM and renders fully only for the active item.
+Full answer открывается через существующий accessible modal. Field/template editor отсутствует.
 
-## Filters and summary
+## Search workset и Notification handoff
 
-One filter system replaces tabs/KPIs/dropdowns that classify the same set. Family and exact reason are dependent. Summary is compact and cap-aware. Filtered empty state preserves controls and offers clear/reset.
+Search workset является explicit session-only dataset, визуально отделённым от automatic queue. Он безопасно истекает, имеет return-to-Search и clear actions и получает canonical reasons только при independent detection.
 
-## Search workset
-
-`Выбрано в поиске / Selected in Search` is explicit, session-only, visually marked and separate from the automatic queue. It has return-to-Search and clear actions, expires safely, and gains canonical reasons/priority only when independently detected. Otherwise it is neutral manual context, not Low priority. Storage/TTL shape is deferred.
-
-## Notification handoff
+Notification handoff:
 
 ```text
 notification → Cards → referenced card active → matching reason expanded
 ```
 
-Reuse the existing session handoff; IDs do not enter URL/persistent storage. Changed/resolved/deleted state is explained rather than recreated. Deck signals stay in Decks; workload/retention stay in Statistics.
+Entity IDs не записываются в URL или persistent storage.
 
-## Resolution semantics
+## Resolution semantics C1.6
 
 ```text
-issue → existing Safe Action or Open in Anki → action result → Awaiting recheck → canonical bounded reevaluation → Still active | Resolved | Recheck failed | Evidence stale
+issue
+→ existing Safe Action or Open in Anki
+→ action result
+→ Awaiting recheck
+→ exact-card canonical bounded recheck
+→ Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
 ```
 
-Mutation success does not prove resolution. Native edits make evidence potentially stale. A row leaves the automatic queue only when canonical reevaluation no longer reports the reason. Brief session feedback is allowed; durable notification history remains. `Done`, `Resolve`, `Hide forever`, `Ignore permanently` are prohibited.
+Recheck использует `POST /api/triage/recheck` schema v1 и те же canonical detectors, что Triage v4.
 
-## Empty/error/stale states
+Reason reconciliation:
 
-| State | Behavior |
+- remaining reasons обновляют item на месте;
+- removed + remaining дают Partially resolved;
+- new reasons показываются явно;
+- zero reasons удаляют item только при fully authoritative response;
+- partial/unavailable/stale/missing/changed состояния работают fail closed.
+
+После удаления focus переходит на следующий item, затем предыдущий, затем queue heading.
+
+Запрещены actions `Done`, `Resolve`, `Hide forever`, `Ignore permanently`, `Archive`, `Snooze`.
+
+## Empty, error и stale states
+
+| State | Поведение |
 | --- | --- |
 | no problems | positive empty state + last successful evaluation |
-| no filtered results | preserve filters; clear/reset |
-| collection unavailable | blocking explanation/retry; do not present stale as current |
-| report/evidence stale | freshness warning + bounded refresh |
-| profile not configured/needs review | suppress affected content issues + settings path |
-| preview unavailable | keep text/reasons/actions |
-| detector unavailable | mark family unavailable; absence does not resolve |
-| Search workset expired | explain, clear safely, return to Search |
-| card deleted/changed | revalidate identity; preserve focus safely |
-| action pending | disable conflicting mutations; announce progress |
-| recheck failed | keep active/stale; retry; never claim resolved |
+| no filtered results | filters сохраняются; clear/reset доступен |
+| collection unavailable | blocking explanation/retry; stale не выдаётся за current |
+| evidence stale | warning + bounded recheck/refresh |
+| profile not configured/needs review | affected content issues suppressed + settings path |
+| preview unavailable | text/reasons/actions сохраняются |
+| detector unavailable | family unavailable; отсутствие не означает resolved |
+| Search workset expired | explanation, safe clear, return to Search |
+| card deleted/changed | exact identity revalidation и безопасное focus recovery |
+| action pending | conflicting mutations disabled; progress announced |
+| recheck failed | item остаётся active/stale; retry; resolved не заявляется |
 
-## Keyboard and accessibility contract
+## Keyboard и accessibility
 
-Focus and the active Inspector item are independent in C1.5. Any future C1.6B bulk selection must become a third independent state rather than reuse either one.
+Focus, active item и будущая bulk selection являются отдельными states.
 
-Tab order covers filters, queue and Inspector. Row activation does not move
-focus. Escape closes expanded preview and returns focus. Refresh keeps the
-active item when it survives and otherwise chooses the first inspectable row.
-Filters have persistent labels/state. C1.6 adds one-card mutation/recheck live
-status and deterministic focus recovery. Checkbox selection and bulk toolbar
-semantics remain outside mandatory C1.6 and belong only to conditional C1.6B.
-
-Do not assume `listbox`: options cannot accessibly contain required links/buttons/checkboxes. The selected structure is a semantic ordered list with one native button per item. `table`, ARIA `grid`, `listbox`, `option`, roving tabindex and arrow-key composite navigation are not used.
+- Tab order охватывает filters, queue и Inspector;
+- activation item не перемещает focus;
+- queue использует semantic ordered list и native buttons;
+- `table`, ARIA `grid`, `listbox`, `option`, roving tabindex не используются;
+- drawer non-modal и без focus trap;
+- answer modal сохраняет trap/inert semantics;
+- action/recheck используют busy state и polite live announcements;
+- post-resolution focus recovery deterministic;
+- state/priority не выражаются только цветом.
 
 ## Responsive boundary
 
 - `1200 CSS px+`: split inbox/Inspector;
-- below `1200 CSS px`: full-width inbox and non-modal drawer after activation;
-- mobile-first redesign remains out of scope.
+- ниже 1200 px: full-width inbox + non-modal drawer;
+- mobile-first redesign вне scope.
 
 ## RU/EN terminology
 
@@ -224,115 +279,33 @@ Do not assume `listbox`: options cannot accessibly contain required links/button
 | Основание | Evidence |
 | Выбрано в поиске | Selected in Search |
 | Перепроверить | Recheck |
-| Профиль проверки | Inspection Profile |
 | Ожидает перепроверки | Awaiting recheck |
 | Всё ещё требует внимания | Still active |
+| Частично устранено | Partially resolved |
 | Устранено после перепроверки | Resolved after recheck |
+| Не удалось перепроверить | Recheck failed |
+| Основание устарело | Evidence stale |
 
-`Основание` is the preferred user-facing Russian label; it sounds less forensic than a literal `Доказательства`.
+## Security, privacy и boundedness
 
-## Security and privacy boundaries
+Frontend не читает collection напрямую. Сохраняются loopback/token protection, sanitizer, media validation, Shadow DOM isolation и action allowlists.
 
-Frontend never reads collection directly; loopback/token protection stays. Reuse Search/Safe Actions/Signals/Notifications; no duplicate stack. No arbitrary SQL/RPC/JavaScript/Python/iframe. Sanitizer, media validation and Shadow DOM isolation remain. Profiles are local/declarative. IDs, raw queries, content, paths, tokens and full evidence stay out of normal logs/public artifacts/remote telemetry. Screenshot binaries/runtime artifacts are not committed.
+Запрещены arbitrary SQL/RPC/JavaScript/Python/iframe, second detector/action stack и client-side resolution inference.
 
-## Performance/boundedness expectations
+IDs, raw queries, content, paths, tokens и full evidence не попадают в normal logs, public artifacts или remote telemetry.
 
-Queue has explicit cap and cap-aware total/truncation. Details/full preview load for active item, not all rows. Pagination/windowing is chosen from measured fixtures. Typing/filtering does not start unbounded collection scans. Reads remain cancellable/latest-wins where relevant. Long collection work uses Anki background operations; writes reuse official serialized/undoable operations.
+Queue, continuation, recheck и result payloads имеют strict bounds. Reads latest-wins; mutations serialized; long collection work использует Anki background operations; writes используют official undoable wrappers.
 
-## Explicitly rejected alternatives
+## Явно отклонённые альтернативы
 
-- reason-family tabs;
-- mixed automatic/Search queue;
-- three equal table/tiles/Anki-preview modes as canonical Cards navigation;
-- preview for every row;
-- visible numeric score;
-- reason-only ordering;
-- manual Done/Resolve/Hide/Ignore;
-- universal/unconfirmed heuristic content checks;
+- tabs по reason families;
+- смешанная automatic/Search queue;
+- table/tiles/Anki-preview как равноправные modes;
+- preview для каждой строки;
+- visible numeric risk score;
+- manual resolve/hide/archive/snooze;
+- unconfirmed heuristic content checks;
 - arbitrary user rules/code;
-- full editor in Cards;
-- automatic listbox semantics;
-- modal/inline expansion as wide-desktop default.
-
-## Screenshot evidence matrix
-
-All files are original pre-change evidence and are not committed.
-
-| Decision | Evidence | Observation |
-| --- | --- | --- |
-| one queue + filters | all 12, especially table tops | KPIs/tabs/dropdown/chips repeat classification |
-| remove four tabs | all modes/themes + code | Gaps/Patterns are presets; Risk/Check overlap |
-| compact summary | all top sections | five KPIs delay first row |
-| queue + Inspector | table/tiles | context useful for one item; repetition harms scanning |
-| tiles are not required in C1 | APKG/synthetic tiles | larger area without a separate proven task; a future visual mode remains possible |
-| selected-card preview, expandable when needed | APKG preview 9,877 px; synthetic 18,328–18,329 px | full preview for every row creates extreme page length |
-| hide score | risk pills in all modes | exact values do not explain decisions |
-| preserve theme parity | every light/dark pair | same structural findings |
-| profile-aware content | synthetic set | heterogeneous Japanese/programming/fallback content |
-
-Inventory coverage: `APKG/synthetic × table/tiles/Anki preview × light/dark` = **12/12**. Heights: table 3,133/5,543 px; tiles 3,826/7,133 px; preview 9,877/18,328–18,329 px.
-
-## Decision log
-
-| Decision | Evidence | Alternatives | Why selected | Deferred implementation question |
-| --- | --- | --- | --- | --- |
-| one automatic queue | overlapping code/screens; tabs require distinct panels | family tabs | one job/set; filters express facets | exact filter controls |
-| separate Search workset | different provenance/semantics | merge/no handoff | avoids invented priority | TTL/transfer shape |
-| card-anchored aggregation | card scheduling + note content scopes | row per reason/note row | compact with explicit scope | representative/source precedence |
-| categorical priority | opaque score screenshots | numeric/reason-only/critical | understandable, localizable | mapping per reason |
-| confirmed profiles | arbitrary Anki fields/templates | universal/unconfirmed/code | explainable, fail closed | schema/fingerprint/editor |
-| detector resolution | action ≠ issue gone | Done/Hide/Ignore | preserves truth | recheck scheduling/failures |
-| queue form remains prototype-driven | table/list/grid accessibility trade-offs | freeze table or ban it | preserves the compact queue contract without prematurely fixing semantics | density, roles and focus model |
-| semantics after prototype | listbox conflict; grid complexity | freeze role now | avoids premature inaccessible choice | roles/focus/AT matrix |
-
-## Remaining open questions after C1.3
-
-1. Search TTL/return token without persistent IDs;
-2. optional quick row action;
-3. final list/table/grid semantics after accessibility tests;
-4. non-blocking recheck after Browser edits;
-5. C1.4 profile configuration UX and separately scoped import/export policy.
-
-## Acceptance criteria
-
-Accepted: one clear job/boundaries; automatic queue vs Search workset; aggregation/reason/priority/evidence/order; compact queue + Inspector; profile lifecycle/fail-closed checks; handoffs; detector-driven resolution; state/accessibility/security/boundedness contracts; 12/12 screenshot evidence; no production/test/workflow/release/E2E change.
-
-## Increment closure
-
-C1.2 established the bounded card-anchored read model. C1.3 completed the
-profile schema/store/fingerprint/runtime and triage v2 content source. C1.4 may
-build configuration UI on those APIs; it must not change authority, sibling,
-fail-closed or arbitrary-code boundaries without a versioned contract change.
-
-## External references
-
-- [Anki Manual — Getting Started](https://docs.ankiweb.net/getting-started.html)
-- [Anki Manual — Card Templates](https://docs.ankiweb.net/templates/intro.html)
-- [Anki Manual — Browsing](https://docs.ankiweb.net/browsing.html)
-- [Writing Anki Add-ons — Background Operations](https://addon-docs.ankiweb.net/background-ops.html)
-- [WAI-ARIA APG — Tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)
-- [WAI-ARIA APG — Listbox](https://www.w3.org/WAI/ARIA/apg/patterns/listbox/)
-- [WAI-ARIA APG — Table](https://www.w3.org/WAI/ARIA/apg/patterns/table/)
-- [WAI-ARIA APG — Grid](https://www.w3.org/WAI/ARIA/apg/patterns/grid/)
-- [WAI-ARIA APG — Toolbar](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/)
-- [Linear Docs — Triage](https://linear.app/docs/triage)
-- [Linear Docs — Inbox](https://linear.app/docs/inbox)
-- [Sentry Docs — Issue Details](https://docs.sentry.io/product/issues/issue-details/)
-
-## C1.5R.3 preview semantics
-
-See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.
-
-## C1.5R.4 independent candidate sources
-
-See `docs/triage-candidate-sources-v4.md`. Triage schema v4 separates bounded period learning candidates from bounded current-content candidates and keeps R5 UI work deferred.
-
-## Current delivery sequence
-
-```text
-C1.5R.0–R.7 — Complete; owner accepted
-C1.6 — Implemented / verification complete; owner acceptance pending
-C1.6B — Conditional: bounded bulk actions
-```
-
-C1.6 reuses existing single-card Safe Actions and Open in Anki, then requires an explicit exact-card canonical recheck before removal. It does not add bulk/manual resolution or persistent completion state.
+- full editor внутри Cards;
+- automatic cursor loop;
+- bulk actions без отдельного C1.6B activation decision.

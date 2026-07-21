@@ -1,37 +1,43 @@
 # Обзор проекта
 
-Снимок: **2026-07-18**.
+**Снимок:** 2026-07-18
 
-Anki Study Report — local add-on for Anki 26.05+ that explains study progress, workload and problems through a Markdown/HTML report and a React dashboard.
+Anki Study Report — локальное расширение для Anki 26.05+, которое объясняет прогресс обучения, нагрузку и проблемы через Markdown/HTML report и React dashboard.
 
-## Runtime contours
+## Контуры runtime
 
-1. Python add-on: `anki_study_report/`
-2. React/TypeScript dashboard: `web-dashboard/`
-3. tests/build/E2E: `tests/`, `scripts/`, `docker/anki-e2e/`
-4. separate private opt-in telemetry service: `anki-study-report-telemetry`
+1. Python add-on: `anki_study_report/`;
+2. React/TypeScript dashboard: `web-dashboard/`;
+3. tests/build/E2E: `tests/`, `scripts/`, `docker/anki-e2e/`;
+4. отдельный приватный opt-in telemetry service: `anki-study-report-telemetry`.
 
-Python owns collection access and server-side logic. Frontend receives bounded payloads and invokes allowlisted APIs; it never reads the Anki collection directly. Real-Anki Docker E2E verifies integration risks that unit tests cannot cover.
+Python отвечает за доступ к collection и server-side logic. Frontend получает bounded payloads и вызывает allowlisted API; он никогда не читает Anki collection напрямую.
 
-## Current product
+Real-Anki Docker E2E проверяет integration risks, которые невозможно покрыть unit tests.
 
-Settings route `#/settings/inspection-profiles` provides local declarative
-per-note-type quality configuration with explicit confirmation, bounded safe
-preview, revision conflicts, and strict import/export. It does not mutate Anki
-objects; the future Cards v2 queue/Inspector remains a separate C1.5 surface.
+## Текущий продукт
 
-The accepted product contour includes:
+Маршрут `#/settings/inspection-profiles` предоставляет локальную declarative конфигурацию качества для каждого note type с:
 
-- local report/dashboard and cache-backed history;
-- Profile, Activity and Deck hierarchy;
-- Statistics and read-only FSRS analytics;
+- явным confirmation;
+- bounded safe preview;
+- обработкой revision conflicts;
+- strict import/export.
+
+Inspection Profiles не изменяют объекты Anki. Cards queue/Inspector остаётся отдельной поверхностью Core C1.
+
+Принятый product contour включает:
+
+- локальный report/dashboard и cache-backed history;
+- Profile, Activity и hierarchy колод;
+- Statistics и read-only FSRS analytics;
 - native Cards/Notes Search;
 - allowlisted undoable Safe Actions;
-- isolated/sanitized card preview;
-- local per-profile Signals and Notification Center;
-- opt-in bounded technical telemetry through a separate service.
+- изолированный и санитизированный preview карточки;
+- local per-profile Signals и Notification Center;
+- opt-in bounded technical telemetry через отдельный service.
 
-Current primary navigation:
+Текущая primary navigation:
 
 ```text
 Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
@@ -39,61 +45,67 @@ Current primary navigation:
 
 ## Roadmap
 
-Completed product work remains recorded as Stage 0–9.5. Future work is multi-track:
+Завершённая продуктовая работа сохранена как Stage 0–9.5. Будущая работа разделена на независимые треки:
 
-- [Core](../roadmap/core/README.md): `C1 Cards v2`, then `C2 Core 1.0`; `C3` only for proven gaps.
-- [Gamification](../roadmap/gamification/README.md): parallel research/product direction, not production-ready.
-- [Telemetry operations](../roadmap/operations/README.md): separate protected internal tooling.
-- [Identity](../roadmap/identity/README.md): conditional continuity gate.
-- [Extensions](../roadmap/extensions/README.md): conditional/deferred first-party ecosystem.
-- [Platform](../roadmap/platform/README.md): independent CI/CD/E2E/release work.
+- [Core](../roadmap/core/README.md): `C1 Cards v2`, затем `C2 Core 1.0`; `C3` только для доказанных пробелов;
+- [Gamification](../roadmap/gamification/README.md): параллельное research/product направление, ещё не готовое для production;
+- [Telemetry operations](../roadmap/operations/README.md): отдельные защищённые внутренние tools;
+- [Identity](../roadmap/identity/README.md): conditional continuity gate;
+- [Extensions](../roadmap/extensions/README.md): conditional/deferred first-party ecosystem;
+- [Platform](../roadmap/platform/README.md): независимые CI/CD/E2E/release работы.
 
-Core does not depend on gamification, accounts, telemetry admin UI or extension packs.
+Core не зависит от gamification, accounts, telemetry admin UI или extension packs.
 
-## Source-of-truth boundaries
+## Границы source of truth
 
-Dashboard payload:
+### Dashboard payload
 
-- `anki_study_report/dashboard_payload.py`
-- `web-dashboard/src/types/report.ts`
-- payload/server/frontend tests
-- `docs/dashboard-api.md`
+- `anki_study_report/dashboard_payload.py`;
+- `web-dashboard/src/types/report.ts`;
+- payload/server/frontend tests;
+- `docs/dashboard-api.md`.
 
-Packaging:
+### Packaging
 
-- `scripts/package_addon.py`
-- `tests/test_package_build.py`
-- `docs/packaging-release.md`
+- `scripts/package_addon.py`;
+- `tests/test_package_build.py`;
+- `docs/packaging-release.md`.
 
-Real-Anki E2E:
+### Real-Anki E2E
 
-- `docker/anki-e2e/README.md`
-- `scripts/run_anki_e2e_docker.ps1`
-- `scripts/run_full_check.ps1`
-- reviewed workflow artifacts
+- `docker/anki-e2e/README.md`;
+- `scripts/run_anki_e2e_docker.ps1`;
+- `scripts/run_full_check.ps1`;
+- проверенные workflow artifacts.
 
-Signals/notifications:
+### Signals и notifications
 
-- `anki_study_report/signal_detection.py`
-- `anki_study_report/notification_store.py`
-- `docs/signals-foundation.md`
-- `docs/notification-center.md`
+- `anki_study_report/signal_detection.py`;
+- `anki_study_report/notification_store.py`;
+- `docs/signals-foundation.md`;
+- `docs/notification-center.md`.
 
-Telemetry:
+### Telemetry
 
-- local client contracts in this repo;
-- ingestion/retention/deletion/deployment contracts in the separate private telemetry repo.
+- local client contracts находятся в этом repository;
+- ingestion, retention, deletion и deployment contracts находятся в отдельном приватном telemetry repository.
 
-## Important invariants
+## Важные инварианты
 
-- no one-sided payload/public-contract changes;
-- no direct frontend collection access;
-- loopback/token boundary remains;
-- no arbitrary SQL/RPC/action/plugin surface;
-- no weakened sanitizer/media/preview isolation;
-- no generated/runtime artifacts in git/package;
-- local signal evidence is not telemetry;
-- research candidates are not production features;
-- release remains exact-artifact, manual and approval-gated.
+- запрещены односторонние изменения payload/public contract;
+- frontend не получает прямой доступ к collection;
+- loopback/token boundary сохраняется;
+- arbitrary SQL/RPC/action/plugin surface отсутствует;
+- sanitizer, media validation и preview isolation нельзя ослаблять;
+- generated/runtime artifacts не попадают в Git или package;
+- local signal evidence не является telemetry;
+- research candidates не считаются production features;
+- release использует exact artifact, выполняется вручную и требует approval.
 
-For current details use [Architecture](architecture.md), [Security](security-and-safety.md), [Decision log](decision-log.md), [Roadmap](../roadmap/README.md) and [AI handoff](ai-handoff.md).
+Актуальные подробности:
+
+- [Архитектура](architecture.md);
+- [Безопасность](security-and-safety.md);
+- [Decision log](decision-log.md);
+- [Roadmap](../roadmap/README.md);
+- [AI handoff](ai-handoff.md).

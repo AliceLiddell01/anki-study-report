@@ -1,20 +1,25 @@
-# Cards v2 canonical Triage API
+# Канонический API Cards v2 Triage
 
-## Current schemas
+## Текущие schemas
 
 ```text
-POST /api/triage/query   schemaVersion 4
-POST /api/triage/recheck schemaVersion 1
+POST /api/triage/query    schemaVersion 4
+POST /api/triage/recheck  schemaVersion 1
 ```
 
-Both endpoints are loopback-only, token-protected, `POST application/json`,
-capped at 8 KiB and serialized through Anki `QueryOp`. Requests accept only
-strict bounded IDs, scope and schema fields; they accept no query language,
-SQL, HTML, note values or arbitrary action input.
+Оба endpoints:
+
+- доступны только на loopback;
+- защищены dashboard token;
+- принимают `POST application/json`;
+- ограничены body 8 KiB;
+- сериализованы через Anki `QueryOp`.
+
+Requests принимают только strict bounded IDs, scope и schema fields. Query language, SQL, HTML, значения note и arbitrary action input запрещены.
 
 ## Query v4
 
-Automatic queue request:
+### Automatic queue
 
 ```json
 {
@@ -30,7 +35,7 @@ Automatic queue request:
 }
 ```
 
-Search workset request:
+### Search workset
 
 ```json
 {
@@ -46,26 +51,32 @@ Search workset request:
 }
 ```
 
-Automatic results combine independent bounded period-learning, current-content,
-active Signal and Search identity sources. Current-content pagination is
-explicit and bounded; the client never loops cursors automatically. Search
-worksets preserve explicit first-seen card order.
+Automatic result объединяет независимые bounded sources:
 
-The response exposes typed aggregate/source/content-check status, counts,
-cursor coherence and up to four stable reasons per item. Queue identity is the
-same Search-owned compact projection used by Search rows and Inspectors. Full
-preview HTML/media remains outside Triage; only the active card uses Search
-inspect.
+- period-bound learning candidates;
+- current-content candidates;
+- active Signals;
+- Search identity.
 
-Reason IDs are stable canonical strings:
+Pagination current-content является явной и bounded. Client никогда не запускает автоматический cursor loop. Search workset сохраняет explicit first-seen order карточек.
+
+Response публикует:
+
+- typed aggregate/source/content-check status;
+- counts;
+- cursor coherence;
+- до четырёх стабильных reasons на item.
+
+Queue identity использует ту же Search-owned compact projection, что Search rows и Inspectors. Full preview HTML/media не входит в Triage; Search inspect вызывается только для active card.
+
+Стабильные reason IDs:
 
 ```text
 learning:<code>
 profile:<profileId>:check:<checkId>
 ```
 
-Evidence is bounded and excludes raw note values, HTML, filenames, template
-source, filesystem paths, tokens and exceptions.
+Evidence bounded и исключает raw note values, HTML, filenames, template source, filesystem paths, tokens и exceptions.
 
 ## Exact-card recheck v1
 
@@ -85,12 +96,9 @@ Request:
 }
 ```
 
-`reasonIds` contains 1..4 unique bounded canonical IDs from the current item.
-It lets the server fail closed when a previously authoritative profile reason
-can no longer be evaluated. It is not a list of reasons to suppress.
+`reasonIds` содержит `1..4` уникальных bounded canonical IDs текущего item. Это позволяет server работать fail closed, когда прежний authoritative profile reason больше нельзя проверить. Это не список reasons, которые нужно скрыть.
 
-Abbreviated response shape (the wire response contains the complete strict
-`contentChecks` object and complete item):
+Сокращённая shape response:
 
 ```json
 {
@@ -101,44 +109,94 @@ Abbreviated response shape (the wire response contains the complete strict
   "entityStatus": "available",
   "generatedAtMs": 1721000000000,
   "sourceStatus": {
-    "learningCandidates": { "status": "available", "itemCount": 1, "skippedCount": 0, "truncated": false, "errorCode": null },
-    "signals": { "status": "empty", "itemCount": 0, "skippedCount": 0, "truncated": false, "errorCode": null },
-    "searchResolver": { "status": "available", "itemCount": 1, "skippedCount": 0, "truncated": false, "errorCode": null },
-    "profileChecks": { "status": "empty", "itemCount": 0, "skippedCount": 0, "truncated": false, "errorCode": null }
+    "learningCandidates": {
+      "status": "available",
+      "itemCount": 1,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "signals": {
+      "status": "empty",
+      "itemCount": 0,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "searchResolver": {
+      "status": "available",
+      "itemCount": 1,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    },
+    "profileChecks": {
+      "status": "empty",
+      "itemCount": 0,
+      "skippedCount": 0,
+      "truncated": false,
+      "errorCode": null
+    }
   },
-  "contentChecks": { "status": "no_confirmed_profiles" },
+  "contentChecks": {
+    "status": "no_confirmed_profiles"
+  },
   "item": {}
 }
 ```
 
-The real response contains the complete strict `contentChecks` counters and
-either the complete Triage item or `null`. Entity status is one of:
+Реальный response содержит полный strict `contentChecks` object и либо полный Triage item, либо `null`.
+
+`entityStatus`:
 
 ```text
 available | missing | changed | unavailable
 ```
 
-Top-level status is `available | partial | unavailable`. Resolution is allowed
-only when entity status and all required source coverage are authoritative and
-the returned available item has zero reasons. Partial/unavailable/error source
-status, profile authority change, identity mismatch or collection failure cannot
-produce a resolved result.
+Top-level `status`:
 
-## Parser and HTTP behavior
+```text
+available | partial | unavailable
+```
 
-The TypeScript parsers require exact top-level and nested keys, finite bounded
-numbers, decimal ID strings, enum values, coherent item identity and no future
-fields. Query v4 automatic items require at least one reason. Recheck v1 alone
-may return an available exact item with zero reasons as authoritative proof.
+Resolution допустим только тогда, когда:
 
-`GET` receives 405. Missing/invalid tokens receive 403. Wrong content type gets
-415. Invalid JSON/schema/fields get 400. Runtime unavailable/failure gets 503;
-timeout gets 504. Public errors are generic and never expose collection values,
-queries, paths or exceptions.
+- entity status authoritative;
+- все required sources authoritative;
+- возвращённый available item содержит ноль reasons.
+
+Partial/unavailable/error source status, изменение authority profile, mismatch identity и collection failure не могут дать resolved result.
+
+## Parser и HTTP behavior
+
+TypeScript parsers требуют:
+
+- exact top-level и nested keys;
+- finite bounded numbers;
+- decimal ID strings;
+- допустимые enum values;
+- coherent item identity;
+- отсутствие future fields.
+
+Automatic items Query v4 должны иметь хотя бы один reason. Только Recheck v1 может вернуть available exact item с нулём reasons как authoritative proof.
+
+HTTP behavior:
+
+```text
+GET                                      → 405
+missing/invalid token                    → 403
+wrong content type                       → 415
+invalid JSON/schema/fields               → 400
+runtime unavailable/failure              → 503
+timeout                                  → 504
+```
+
+Public errors остаются generic и не раскрывают collection values, queries, paths или exceptions.
 
 ## UI contract
 
-The C1.6 lifecycle and reason reconciliation rules are defined in
-[`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md). The automatic
-100-item queue cap is presentation boundedness, never proof that an issue was
-resolved.
+Lifecycle C1.6 и reconciliation reasons описаны в:
+
+- [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
+
+Automatic queue cap 100 — только bounded presentation. Он никогда не доказывает, что issue resolved.

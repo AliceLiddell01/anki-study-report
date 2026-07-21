@@ -1,47 +1,87 @@
 # Локализация web dashboard
 
-## Notifications namespace
+Web dashboard поддерживает две встроенные локали:
 
-Namespace `notifications` имеет полную RU/EN parity для bell/panel, Center,
-tabs, categories, signal evidence, context actions, settings, live regions и
-summary toast. Evidence форматируется только из bounded numeric/status fields;
-card/note text не попадает в notification payload. Real-browser evidence
-включает RU light и EN dark surfaces.
+```text
+ru
+en
+```
 
-Web dashboard поддерживает две встроенные локали: `ru` и `en`. Русский язык —
-детерминированный default и fallback. Browser language detector и сетевые
-translation-сервисы не используются: оба словаря входят во frontend bundle и
-работают офлайн внутри add-on.
+Русский — детерминированный default и fallback.
+
+Browser language detector и network translation services не используются. Оба словаря входят во frontend bundle и работают offline внутри add-on.
+
+## Namespace Notifications
+
+Namespace `notifications` имеет полную RU/EN parity для:
+
+- bell и panel;
+- Notification Center;
+- tabs;
+- categories;
+- signal evidence;
+- context actions;
+- settings;
+- live regions;
+- summary toast.
+
+Evidence форматируется только из bounded numeric/status fields. Card/note text не попадает в notification payload.
+
+Real-browser evidence включает RU light и EN dark surfaces.
 
 ## Runtime contract
 
-- i18n-слой: `web-dashboard/src/i18n/index.ts` на `i18next` и
-  `react-i18next`;
-- допустимые значения: `ru | en`;
+- i18n layer: `web-dashboard/src/i18n/index.ts` на `i18next` и `react-i18next`;
+- допустимые values: `ru | en`;
 - storage key: `anki-study-report-language`;
-- неизвестное или повреждённое значение нормализуется в `ru`;
-- выбор меняется без reload через `changeAppLanguage()` и сохраняется в
-  `localStorage`; ошибка storage не мешает сменить язык текущей сессии;
-- при смене языка обновляются `html[lang]`, `html[dir="ltr"]` и
-  `document.title`;
+- неизвестное или damaged value нормализуется в `ru`;
+- язык меняется без reload через `changeAppLanguage()` и сохраняется в `localStorage`;
+- ошибка storage не мешает сменить язык текущей session;
+- при смене языка обновляются `html[lang]`, `html[dir="ltr"]` и `document.title`;
 - theme storage и language storage независимы.
 
-Глобальный selector живёт рядом с theme toggle в `GlobalUtilityDock`. Он
-доступен с клавиатуры: Enter/Space открывают menu, стрелки и Home/End меняют
-focus, Escape закрывает menu и возвращает focus на trigger.
+Global selector находится рядом с theme toggle в `GlobalUtilityDock`.
 
-## Resources и ключи
+Keyboard behavior:
 
-Inspection Profiles UI хранит весь workflow copy в симметричном
-`pages.inspectionProfiles`: route title/description, lifecycle states, filters,
-roles, allowlisted check kinds, modes/priorities, validation/preview,
-save/confirm/disable/delete, import/export, conflicts и unsaved changes.
+- `Enter`/`Space` открывают menu;
+- arrows и `Home`/`End` перемещают focus;
+- `Escape` закрывает menu и возвращает focus на trigger.
+
+## Resources и keys
+
+Inspection Profiles UI хранит весь workflow copy в симметричном `pages.inspectionProfiles`:
+
+- route title/description;
+- lifecycle states;
+- filters;
+- roles;
+- allowlisted check kinds;
+- modes/priorities;
+- validation/preview;
+- save/confirm/disable/delete;
+- import/export;
+- conflicts;
+- unsaved changes.
+
 Settings label находится в `navigation.settings.inspectionProfiles`:
-`Проверка карточек` / `Card checks`. Unknown runtime/suggestion codes получают
-локализованный безопасный fallback и не становятся основным машинным label.
 
-Ресурсы находятся в `web-dashboard/src/i18n/locales/ru.ts` и `en.ts` и имеют
-одинаковую типизированную форму. Используются namespaces:
+```text
+Проверка карточек / Card checks
+```
+
+Unknown runtime/suggestion codes получают локализованный safe fallback и не становятся основным machine label.
+
+Resources:
+
+```text
+web-dashboard/src/i18n/locales/ru.ts
+web-dashboard/src/i18n/locales/en.ts
+```
+
+Они имеют одну typed shape.
+
+Namespaces:
 
 ```text
 common
@@ -49,102 +89,204 @@ navigation
 pages
 statistics
 fsrs
+notifications
 ```
 
-Ключ описывает назначение, а не исходную фразу: например,
-`navigation:primary.today` или `pages:cards.header.title`. Новый
-пользовательский UI-текст добавляется сначала в обе locale resources, затем
-используется через `t()`. Не следует собирать предложения из нескольких
-переводимых фрагментов, если порядок слов зависит от языка.
+Key описывает назначение, а не исходную фразу, например:
 
-Search v1 использует `pages.search.*`: query/filter/selection/inspector copy,
-action labels, temporary bury explanation и mappings stable backend result
-codes. Коды `cards.suspended`, `notes.tags_added` и другие не являются готовым
-UI-текстом и всегда преобразуются в RU/EN key.
+```text
+navigation:primary.today
+pages:cards.header.title
+```
 
-Canonical Cards workspace использует `pages.cards.workspace.*`: summary,
-filters, queue, Inspector, preview, reason/evidence mappings и read-only action
-status. Имена колод, типов записей, шаблонов, содержимое карточек и IDs всегда
-остаются пользовательскими данными и не переводятся.
+Новый пользовательский UI text сначала добавляется в обе locale resources, затем используется через `t()`.
 
-## UI-copy и данные
+Не следует собирать предложения из нескольких translated fragments, если word order зависит от языка.
 
-Переводятся product-owned headings, labels, buttons, hints, empty/error states,
-accessibility names и frontend-generated recommendations. Не переводятся
-пользовательские и технические значения из payload: имена профилей и колод,
-содержимое карточек, search queries, IDs, deck/tag names, имена полей/шаблонов и backend error
-details. Известный системный label локального профиля локализуется, но
-произвольный пользовательский label сохраняется дословно.
+Search использует `pages.search.*` для:
 
-Markdown/HTML report generation и Python payload contract в этот слой не
-входят.
+- query/filter/selection/Inspector copy;
+- action labels;
+- explanation temporary bury;
+- mappings stable backend result codes.
 
-## Pluralization и форматирование
+Codes вроде `cards.suspended` или `notes.tags_added` не являются готовым UI text и всегда преобразуются в RU/EN key.
 
-Plural forms задаются средствами i18next (`_one`, `_few`, `_many`, `_other`)
-и всегда получают числовой `count`. Числа, проценты, даты и durations проходят
-через общие helpers с locale `ru-RU` или `en-US`; компоненты не должны вручную
-подставлять русские разделители или английские единицы измерения.
+Canonical Cards workspace использует `pages.cards.workspace.*`:
+
+- summary;
+- filters;
+- queue;
+- Inspector;
+- preview;
+- reason/evidence mappings;
+- action и recheck status.
+
+Названия decks, note types, templates, card content и IDs являются user data и не переводятся.
+
+## UI copy и данные
+
+Переводятся product-owned:
+
+- headings;
+- labels;
+- buttons;
+- hints;
+- empty/error states;
+- accessibility names;
+- frontend-generated recommendations.
+
+Не переводятся пользовательские и технические values из payload:
+
+- profile и deck names;
+- card content;
+- Search queries;
+- IDs;
+- deck/tag names;
+- field/template names;
+- backend error details.
+
+Известный system label локального profile локализуется. Произвольный пользовательский label сохраняется дословно.
+
+Markdown/HTML report generation и Python payload contract не входят в этот layer.
+
+## Pluralization и formatting
+
+Plural forms задаются i18next:
+
+```text
+_one
+_few
+_many
+_other
+```
+
+Они всегда получают numeric `count`.
+
+Numbers, percentages, dates и durations проходят через shared helpers с locale:
+
+```text
+ru-RU
+en-US
+```
+
+Components не должны вручную подставлять русские separators или английские units.
 
 ## Как добавить язык
 
-1. Добавить код в `supportedLanguages` и mapping в `localeForLanguage()`.
-2. Создать ресурс с точной структурой русского source-of-truth и подключить его
-   в `i18n/index.ts`.
-3. Добавить вариант в `GlobalUtilityDock` и человекочитаемые названия во все
-   ресурсы.
+1. Добавить code в `supportedLanguages` и mapping в `localeForLanguage()`.
+2. Создать resource с точной structure русского source of truth и подключить его в `i18n/index.ts`.
+3. Добавить variant в `GlobalUtilityDock` и human-readable names во все resources.
 4. Расширить parity, pluralization, formatting и representative render tests.
-5. Расширить browser smoke: переключение, reload persistence, hash/theme
-   independence, `html lang`, title и screenshots.
+5. Расширить browser smoke: switching, reload persistence, independence hash/theme, `html lang`, title и screenshots.
 
 ## Проверки
 
-`resources.test.ts` рекурсивно проверяет совпадение ключей и непустые значения.
-`language.test.ts`, `GlobalUtilityDock.test.tsx`, `TopNav.test.tsx`,
-`LocalizationSmoke.test.tsx` и `formatters.localization.test.ts` покрывают
-default/fallback, storage, переключение, shell/pages, plural forms и locale
-formatting.
+`resources.test.ts` рекурсивно проверяет совпадение keys и non-empty values.
 
-Targeted browser contract в `docker/anki-e2e/smoke-browser.mjs` проходит
-RU/light → EN/light → EN/dark → RU/dark, проверяет сохранение hash, theme и
-language после reload, снимает четыре localization screenshots и требует ноль
-console/page errors. Финальный runtime proof выполняется exact-SHA cloud E2E.
+Тесты:
 
-Stage 7.7.1 закрыл остаточные frontend-owned подписи `Pass`/`Fail`/`Hard`/
-`Easy`/`Again`, FSRS state labels и технические labels. Today больше не
-показывает raw ISO date, а общие date/weekday/number/unit helpers всегда
-выбирают `ru-RU` или `en-US` через активный язык. Значения payload, имена
-пользовательских сущностей и backend narratives по-прежнему не переводятся.
+```text
+language.test.ts
+GlobalUtilityDock.test.tsx
+TopNav.test.tsx
+LocalizationSmoke.test.tsx
+formatters.localization.test.ts
+```
+
+Они покрывают:
+
+- default/fallback;
+- storage;
+- switching;
+- shell/pages;
+- plural forms;
+- locale formatting.
+
+Targeted browser contract в `docker/anki-e2e/smoke-browser.mjs` проходит последовательность:
+
+```text
+RU/light
+→ EN/light
+→ EN/dark
+→ RU/dark
+```
+
+Он проверяет сохранение hash, theme и language после reload, снимает четыре localization screenshots и требует ноль console/page errors.
+
+Финальный runtime proof выполняется exact-SHA cloud E2E.
+
+Stage 7.7.1 закрыл остаточные frontend-owned labels:
+
+```text
+Pass
+Fail
+Hard
+Easy
+Again
+FSRS states
+technical labels
+```
+
+Today больше не показывает raw ISO date. Shared helpers date/weekday/number/unit всегда выбирают `ru-RU` или `en-US` по active language.
+
+Payload values, user entity names и backend narratives не переводятся.
 
 ## Ограничения первой версии
 
-Telemetry state и ошибки не переводятся из произвольного backend text. UI
-сопоставляет allowlisted codes (`not_attempted`, `waiting_retry`, `failed`,
-`enrolled`, `network_error`, `service_disabled` и другие bounded codes) с
-typed RU/EN resources; неизвестное значение получает безопасную общую строку.
+Telemetry state и errors не переводятся из arbitrary backend text.
 
-Language menu не оставляет tooltip в DOM, пока открыт `role="menu"`; после
-Escape, выбора или outside click tooltip возвращается, а Escape возвращает
-фокус на trigger. Это исключает одновременно объявляемые tooltip и menu.
+UI сопоставляет allowlisted codes с typed RU/EN resources, например:
 
-- только `ru` и `en`, оба LTR;
+```text
+not_attempted
+waiting_retry
+failed
+enrolled
+network_error
+service_disabled
+```
+
+Unknown value получает safe generic string.
+
+Language menu не оставляет tooltip в DOM, пока открыт `role="menu"`. После `Escape`, selection или outside click tooltip возвращается. `Escape` возвращает focus на trigger.
+
+Это исключает одновременно объявляемые tooltip и menu.
+
+Ограничения:
+
+- только `ru` и `en`, обе LTR;
 - язык выбирается явно, без browser/profile detection;
 - preference browser-local и не синхронизируется через Python или Anki Sync;
 - backend/user content не переводится;
-- locale chunks не загружаются отдельно: оба словаря входят в bundle.
+- locale chunks не загружаются отдельно: оба dictionaries входят в bundle.
 
-What’s New и consent используют namespace `pages.whatsNew`/`pages.privacy`.
-Тексты changelog не дублируются в locale files: RU/EN пары генерируются из
-`release/changelog.json`. Переключение языка обновляет открытый modal, не
-сбрасывая раскрытые версии или выбранные purpose toggles.
+What’s New и consent используют namespaces:
 
-## C1.5R.3 preview semantics
+```text
+pages.whatsNew
+pages.privacy
+```
 
-See [`card-preview-semantics.md`](card-preview-semantics.md). Full preview uses reviewer/native front and answer; Inspector shows front, expanded dialog shows answer, and compact identity remains unchanged.
+Changelog text не дублируется в locale files. RU/EN pairs генерируются из `release/changelog.json`.
 
-## Guided Inspection Profiles terminology
+Переключение языка обновляет открытый modal и не сбрасывает expanded versions или selected purpose toggles.
 
-Friendly detected kinds, role purposes, requirement titles, priorities, lifecycle
-guidance, validation/no-card/conflict states, Advanced and Profile tools have RU/EN
-parity. Unknown backend kind/role/warning values use safe localized fallbacks rather
-than leaking machine identifiers as normal copy.
+## Preview semantics C1.5R.3
+
+См. [`card-preview-semantics.md`](card-preview-semantics.md). Full preview использует reviewer/native front и answer: Inspector показывает front, expanded dialog — answer, compact identity остаётся неизменной.
+
+## Терминология Guided Inspection Profiles
+
+Полную RU/EN parity имеют:
+
+- friendly detected kinds;
+- role purposes;
+- requirement titles;
+- priorities;
+- lifecycle guidance;
+- validation/no-card/conflict states;
+- Advanced;
+- Profile tools.
+
+Unknown backend kind/role/warning values используют safe localized fallbacks и не показывают machine identifiers как обычный UI copy.
