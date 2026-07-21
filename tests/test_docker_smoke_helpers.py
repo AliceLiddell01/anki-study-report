@@ -115,6 +115,8 @@ def test_smoke_browser_inspection_profiles_uses_unconfigured_suggestion_source()
     assert 'initialPriority === "high" ? "medium" : "high"' in workspace
     assert 'name: "Проверить настройку", exact: true' in workspace
     assert 'name: "Проверить профиль", exact: true' not in workspace
+    assert 'getByText("Профиль прошёл backend-проверку.", { exact: true })' in workspace
+    assert "Проверка и ограниченный пример" not in workspace
     assert "Восстановить предложенную настройку" not in workspace
     assert "Использовать подсказку" not in workspace
     assert 'suggestionSourceName: "E2E Generic Basic"' in workspace
