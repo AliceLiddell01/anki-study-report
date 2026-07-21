@@ -6,11 +6,11 @@
 #/settings/inspection-profiles
 ```
 
-Авторитетный interaction contract:
+Авторитетный контракт взаимодействия:
 
-- [Guided Inspection Profiles](guided-inspection-profiles.md).
+- [Пошаговая настройка Inspection Profiles](guided-inspection-profiles.md).
 
-Строгий persisted format:
+Строгий сохраняемый формат:
 
 - [Inspection Profiles v1](inspection-profiles-v1.md).
 
@@ -18,82 +18,82 @@
 
 Страница сохраняет:
 
-- Settings sidebar;
-- compact summary состояний;
-- searchable catalog.
+- боковую панель Settings;
+- компактную сводку состояний;
+- каталог с поиском.
 
-Произвольный note type автоматически не выбирается. Содержательные catalog entries остаются native buttons и показывают:
+Произвольный тип заметки автоматически не выбирается. Содержательные элементы каталога остаются нативными кнопками и показывают:
 
-- название note type;
-- effective state;
-- понятный detected kind;
-- количество fields/templates.
+- название типа заметки;
+- фактическое состояние;
+- понятный обнаруженный вид;
+- количество полей и шаблонов.
 
-Выбор unconfigured type немедленно создаёт детерминированный browser-only generated draft. Открытие или переключение clean generated draft не считается несохранённой пользовательской работой.
+Выбор ненастроенного типа немедленно создаёт детерминированный черновик только в browser. Открытие или переключение чистого созданного черновика не считается несохранённой пользовательской работой.
 
-В normal path отсутствует отдельное действие `Use suggestion`.
+В обычном пути отсутствует отдельное действие `Use suggestion`.
 
 ## Basic
 
 Basic открыт по умолчанию и содержит:
 
-1. понятную сводку suggested setup и категорию confidence;
-2. exact Anki field mappings, показанные через понятные roles;
-3. понятные requirements, проецируемые на каждый strict check kind v1;
-4. понятный scope card templates;
-5. bounded validation/sample result;
-6. одно lifecycle-aware primary action.
+1. понятную сводку предложенной настройки и категорию confidence;
+2. точные сопоставления полей Anki, показанные через понятные роли;
+3. понятные требования, проецируемые на каждый строгий вид проверки v1;
+4. понятный scope шаблонов карточек;
+5. ограниченный результат validation и выборки;
+6. одно основное действие с учётом жизненного цикла.
 
 Basic никогда не показывает:
 
-- role slugs;
-- template ordinals;
-- stable check IDs.
+- slugs ролей;
+- ordinal шаблонов;
+- стабильные ID проверок.
 
-Basic не создаёт вторую persisted model.
+Basic не создаёт вторую сохраняемую модель.
 
-## Advanced и tools
+## Advanced и инструменты
 
-Advanced — native disclosure со strict editors и machine-level identifiers.
+Advanced — нативный disclosure со строгими editors и машинными идентификаторами.
 
-Profile tools — отдельный disclosure, содержащий:
+Инструменты профиля — отдельный disclosure, содержащий:
 
 - import;
 - export;
-- deterministic reset;
+- детерминированный reset;
 - start empty;
 - disable;
 - delete.
 
-Эти tools не конкурируют визуально с confirmation.
+Эти инструменты не конкурируют визуально с подтверждением.
 
-Hidden Advanced errors обозначаются снаружи collapsed panel. После явного failed validation focus переходит на error summary; links раскрывают и фокусируют соответствующие strict controls.
+Скрытые ошибки Advanced обозначаются снаружи свёрнутой панели. После явной неудачной validation фокус переходит на сводку ошибок; ссылки раскрывают и фокусируют соответствующие строгие элементы управления.
 
-## Persistence и authority
+## Хранение и авторитетность
 
 - autosave отсутствует;
 - autoconfirm отсутствует;
-- перед confirmed update v1 выполняется validate v2;
-- авторитетны только `confirmed` и structurally current profiles;
-- `needs_review` и `disabled` работают fail closed;
-- revision conflicts сохраняют локальный пользовательский draft.
+- перед подтверждённым update v1 выполняется validate v2;
+- авторитетны только `confirmed` и структурно актуальные профили;
+- `needs_review` и `disabled` работают по принципу fail closed;
+- конфликты revision сохраняют локальный пользовательский черновик.
 
-## Responsive target
+## Responsive-цель
 
-Основная цель — desktop/laptop.
+Основная цель — desktop и laptop.
 
-На широких размерах используется split catalog/editor. На 1024 px layout складывается без horizontal overflow. Advanced остаётся collapsed, чтобы normal path не был подчинён strict editor.
+На широких размерах используется split-компоновка каталога и editor. При 1024 px компоновка складывается без горизонтального overflow. Advanced остаётся свёрнутым, чтобы обычный путь не был подчинён строгому editor.
 
 ## Граница проверки
 
 C1.5R.6 покрывает:
 
-- deterministic component/hook/projection tests;
-- backend regression;
+- детерминированные тесты компонентов, hook и проекции;
+- backend-регрессию;
 - typecheck;
-- production build;
-- package validation;
-- canonical non-Docker verification;
-- real Chromium light/dark matrix.
+- production-сборку;
+- проверку пакета;
+- каноническую проверку без Docker;
+- настоящую матрицу Chromium в светлой и тёмной темах.
 
-Docker/real-Anki и acceptance на приватном профиле владельца были выполнены в C1.5R.7.
+Docker и real-Anki и приёмка на приватном профиле владельца выполнены в C1.5R.7.
