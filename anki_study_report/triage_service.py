@@ -19,8 +19,9 @@ from .inspection_profile_service import (
     evaluate_profiles_for_triage,
     load_exact_inspection_candidates,
 )
-from .metrics import ATTENTION_CARD_LIMIT
+from .metrics import ATTENTION_CARD_LIMIT, expand_deck_ids
 from .triage_candidates import (
+    collect_exact_learning_triage_candidate_with_status,
     collect_current_content_candidates,
     collect_learning_triage_candidates_with_status,
     content_source_status,
@@ -30,6 +31,7 @@ from .search_service import resolve_card_rows, safe_plain_text
 
 
 TRIAGE_SCHEMA_VERSION = 4
+TRIAGE_RECHECK_SCHEMA_VERSION = 1
 AUTOMATIC_RESULT_LIMIT = ATTENTION_CARD_LIMIT
 SEARCH_WORKSET_LIMIT = 200
 SIGNAL_RESULT_LIMIT = 50
@@ -38,6 +40,7 @@ MAX_EVIDENCE_PER_REASON = 4
 MAX_ID = 9_223_372_036_854_775_807
 MAX_TIMESTAMP_MS = 9_007_199_254_740_991
 DECIMAL_ID = re.compile(r"[1-9]\d{0,18}")
+REASON_ID = re.compile(r"[a-z0-9:._-]{1,200}")
 
 DATASETS = {"automatic", "search_workset"}
 SOURCE_ORDER = {"search_workset": 0, "attention": 1, "signals": 2, "profile_checks": 3}
@@ -128,6 +131,222 @@ def normalize_triage_query_request(raw: object) -> dict[str, Any]:
         "limit": limit,
         "cardIds": card_ids,
         "contentCursor": content_cursor,
+    }
+
+
+def normalize_triage_recheck_request(raw: object) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise TriageValidationError({"request": "Expected a JSON object."})
+    expected = {"schemaVersion", "cardId", "expectedNoteId", "reasonIds", "scope"}
+    errors = {str(key): "Unexpected field." for key in raw if key not in expected}
+    for key in expected:
+        if key not in raw:
+            errors[key] = "Required field."
+    if raw.get("schemaVersion") != TRIAGE_RECHECK_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
+        errors["schemaVersion"] = "Expected schemaVersion 1."
+    card_ids = _normalize_ids([raw.get("cardId")], "cardId", errors, maximum=1, allow_empty=False)
+    note_ids = _normalize_ids([raw.get("expectedNoteId")], "expectedNoteId", errors, maximum=1, allow_empty=False)
+    raw_reason_ids = raw.get("reasonIds")
+    reason_ids: list[str] = []
+    if not isinstance(raw_reason_ids, list) or not 1 <= len(raw_reason_ids) <= MAX_REASON_COUNT:
+        errors["reasonIds"] = f"Expected 1 to {MAX_REASON_COUNT} stable reason IDs."
+    else:
+        for value in raw_reason_ids:
+            if not isinstance(value, str) or not REASON_ID.fullmatch(value) or value in reason_ids:
+                errors["reasonIds"] = "Reason IDs must be unique bounded canonical strings."
+                continue
+            reason_ids.append(value)
+    scope = _normalize_scope(raw.get("scope"), errors)
+    if errors:
+        raise TriageValidationError(errors)
+    return {
+        "schemaVersion": TRIAGE_RECHECK_SCHEMA_VERSION,
+        "cardId": card_ids[0],
+        "expectedNoteId": note_ids[0],
+        "reasonIds": reason_ids,
+        "scope": scope,
+    }
+
+
+def execute_triage_recheck(
+    col: Any,
+    raw: object,
+    *,
+    signal_rows: list[dict[str, Any]] | None = None,
+    signal_source_status: dict[str, Any] | None = None,
+    profile_store_snapshot: dict[str, Any] | None = None,
+    formatter_resolver: Any = None,
+    generated_at_ms: int | None = None,
+) -> dict[str, Any]:
+    """Run the canonical Triage evaluators for one exact card only."""
+
+    request = normalize_triage_recheck_request(raw)
+    card_id = request["cardId"]
+    snapshot = profile_store_snapshot or {
+        "status": "unavailable",
+        "revision": 0,
+        "profiles": [],
+        "errorCode": "profile_store_unavailable",
+    }
+    learning_rows, learning_status = collect_exact_learning_triage_candidate_with_status(
+        col,
+        card_id,
+        request["scope"]["periodStartMs"],
+        request["scope"]["periodEndMs"],
+        request["scope"]["deckIds"],
+    )
+    signals = [
+        row for row in (signal_rows if isinstance(signal_rows, list) else [])
+        if isinstance(row, dict) and _positive_int(row.get("entityId")) == card_id
+    ]
+    _supported, signal_skipped = _supported_signal_ids(signals)
+    signals_status = _signal_source_status(signal_source_status, signals, signal_skipped)
+
+    try:
+        resolution = (
+            resolve_card_rows(col, [card_id])
+            if formatter_resolver is None
+            else resolve_card_rows(col, [card_id], formatter_resolver)
+        )
+        resolved_rows = resolution.get("items") if isinstance(resolution.get("items"), list) else []
+        resolver_status = _source_status(
+            "available" if resolved_rows else "empty",
+            item_count=len(resolved_rows),
+            skipped_count=0 if resolved_rows else 1,
+            error_code=None if resolved_rows else "card_resolution_missing",
+        )
+    except Exception:
+        resolved_rows = []
+        resolver_status = _source_status("error", error_code="card_resolution_failed")
+
+    resolved = resolved_rows[0] if resolved_rows else None
+    current_note_id = _positive_int(resolved.get("noteId")) if isinstance(resolved, dict) else 0
+    if resolved is None:
+        entity_status = "missing"
+    elif current_note_id != request["expectedNoteId"]:
+        entity_status = "changed"
+    else:
+        entity_status = "available"
+
+    if entity_status == "available" and request["scope"]["deckIds"]:
+        try:
+            allowed_decks = set(expand_deck_ids(col, request["scope"]["deckIds"]))
+            current_deck_id = _positive_int(resolved.get("deckId")) if isinstance(resolved, dict) else 0
+            if current_deck_id not in allowed_decks:
+                entity_status = "unavailable"
+        except Exception:
+            entity_status = "unavailable"
+
+    if entity_status == "available":
+        exact_candidates = load_exact_inspection_candidates(col, [card_id])
+        profile_result = evaluate_profiles_for_triage(
+            col,
+            exact_candidates["items"],
+            snapshot,
+            dataset="search_workset",
+        )
+        content_state = str(profile_result.get("contentChecks", {}).get("status") or "unavailable")
+        had_content_reason = any(reason_id.startswith("profile:") for reason_id in request["reasonIds"])
+        if had_content_reason and content_state != "available":
+            profile_result["sourceStatus"] = _source_status(
+                "partial",
+                item_count=_non_negative_int(profile_result.get("sourceStatus", {}).get("itemCount")),
+                skipped_count=_non_negative_int(profile_result.get("sourceStatus", {}).get("skippedCount")),
+                error_code="profile_authority_changed",
+            )
+    else:
+        profile_result = {
+            "reasons": [],
+            "sourceStatus": _source_status(
+                "unavailable" if entity_status == "unavailable" else "not_applicable",
+                error_code="card_outside_scope" if entity_status == "unavailable" else None,
+            ),
+            "contentChecks": {
+                "status": "unavailable" if entity_status == "unavailable" else "no_confirmed_profiles",
+                "errorCode": "card_outside_scope" if entity_status == "unavailable" else None,
+            },
+        }
+
+    projection = build_triage_projection(
+        {
+            "schemaVersion": TRIAGE_SCHEMA_VERSION,
+            "dataset": "automatic",
+            "scope": request["scope"],
+            "limit": 1,
+            "cardIds": [],
+            "contentCursor": None,
+        },
+        attention_rows=learning_rows,
+        learning_source_status=learning_status,
+        content_candidate_source_status=content_source_status("not_applicable"),
+        signal_rows=signals,
+        signal_source_status=signals_status,
+        resolved_card_rows=resolved_rows,
+        resolver_source_status=resolver_status,
+        profile_reasons=profile_result["reasons"],
+        profile_source_status=profile_result["sourceStatus"],
+        content_checks=_normalize_content_checks(profile_result["contentChecks"]),
+        generated_at_ms=generated_at_ms,
+    )
+    item = next((value for value in projection["items"] if value["cardId"] == str(card_id)), None)
+    if entity_status == "available" and item is None and isinstance(resolved, dict):
+        item = _triage_item(
+            card_id,
+            dataset="automatic",
+            resolved=resolved,
+            attention=None,
+            reason_map={},
+        )
+
+    source_statuses = {
+        "learningCandidates": _normalize_source_status(learning_status),
+        "signals": _normalize_source_status(signals_status),
+        "searchResolver": _normalize_source_status(resolver_status),
+        "profileChecks": _normalize_source_status(profile_result["sourceStatus"]),
+    }
+    failing = any(
+        value["status"] in {"partial", "unavailable", "error"}
+        for value in source_statuses.values()
+    )
+    status = "unavailable" if source_statuses["searchResolver"]["status"] in {"unavailable", "error"} else "partial" if failing else "available"
+    return {
+        "schemaVersion": TRIAGE_RECHECK_SCHEMA_VERSION,
+        "cardId": str(card_id),
+        "expectedNoteId": str(request["expectedNoteId"]),
+        "status": status,
+        "entityStatus": entity_status,
+        "generatedAtMs": _generated_at_ms(generated_at_ms),
+        "sourceStatus": source_statuses,
+        "contentChecks": _normalize_content_checks(profile_result["contentChecks"]),
+        "item": item if entity_status == "available" else None,
+    }
+
+
+def build_unavailable_triage_recheck(
+    raw: object,
+    *,
+    generated_at_ms: int | None = None,
+) -> dict[str, Any]:
+    request = normalize_triage_recheck_request(raw)
+    unavailable = _source_status("unavailable", error_code="collection_unavailable")
+    return {
+        "schemaVersion": TRIAGE_RECHECK_SCHEMA_VERSION,
+        "cardId": str(request["cardId"]),
+        "expectedNoteId": str(request["expectedNoteId"]),
+        "status": "unavailable",
+        "entityStatus": "unavailable",
+        "generatedAtMs": _generated_at_ms(generated_at_ms),
+        "sourceStatus": {
+            "learningCandidates": unavailable,
+            "signals": unavailable,
+            "searchResolver": unavailable,
+            "profileChecks": unavailable,
+        },
+        "contentChecks": _normalize_content_checks({
+            "status": "unavailable",
+            "errorCode": "collection_unavailable",
+        }),
+        "item": None,
     }
 
 

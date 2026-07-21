@@ -121,3 +121,30 @@ export interface TriageQueryResponse {
   };
   items: TriageItem[];
 }
+
+export type TriageRecheckEntityStatus = "available" | "missing" | "changed" | "unavailable";
+
+export interface TriageRecheckRequest {
+  schemaVersion: 1;
+  cardId: string;
+  expectedNoteId: string;
+  reasonIds: string[];
+  scope: TriageScope;
+}
+
+export interface TriageRecheckResponse {
+  schemaVersion: 1;
+  cardId: string;
+  expectedNoteId: string;
+  status: TriageResponseStatus;
+  entityStatus: TriageRecheckEntityStatus;
+  generatedAtMs: number;
+  sourceStatus: {
+    learningCandidates: TriageSourceStatus;
+    signals: TriageSourceStatus;
+    searchResolver: TriageSourceStatus;
+    profileChecks: TriageSourceStatus;
+  };
+  contentChecks: TriageQueryResponse["contentChecks"];
+  item: TriageItem | null;
+}

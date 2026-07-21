@@ -11,8 +11,11 @@ from .extension_logging import log_event
 from .card_display_formatter_service import CardDisplayFormatterResolver
 from .triage_service import (
     TriageValidationError,
+    build_unavailable_triage_recheck,
     build_unavailable_triage_projection,
+    execute_triage_recheck,
     execute_triage_query,
+    normalize_triage_recheck_request,
     normalize_triage_query_request,
 )
 
@@ -94,6 +97,73 @@ def run_triage_query_sync(
         return _error("triage_timeout", "The triage request did not finish in time.")
     response = holder.get("response")
     return response if isinstance(response, dict) else _error("triage_failed", "The triage request failed.")
+
+
+def run_triage_recheck_sync(
+    mw: Any,
+    payload: object,
+    *,
+    signal_provider: Callable[[], list[dict[str, Any]]] | None = None,
+    profile_store_provider: Callable[[], dict[str, Any]] | None = None,
+    formatter_store_provider: Callable[[], dict[str, Any]] | None = None,
+    timeout_seconds: float = TRIAGE_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    try:
+        normalize_triage_recheck_request(payload)
+    except TriageValidationError as error:
+        return _error("invalid_triage_recheck_request", "Check the recheck request parameters.", fieldErrors=error.field_errors)
+
+    signal_rows, signal_status = _read_signals(signal_provider)
+    profile_snapshot = _read_profile_store(profile_store_provider)
+    formatter_resolver = _read_formatter_resolver(formatter_store_provider)
+    if mw is None or getattr(mw, "col", None) is None or not hasattr(mw, "taskman"):
+        return {"ok": True, "response": build_unavailable_triage_recheck(payload)}
+
+    event = threading.Event()
+    holder: dict[str, Any] = {}
+
+    def success(value: object) -> None:
+        holder["response"] = {"ok": True, "response": value}
+        event.set()
+
+    def failure(error: Exception) -> None:
+        if isinstance(error, TriageValidationError):
+            holder["response"] = _error(
+                "invalid_triage_recheck_request",
+                "Check the recheck request parameters.",
+                fieldErrors=error.field_errors,
+            )
+        else:
+            _log_safe_failure(error)
+            holder["response"] = _error("triage_recheck_failed", "The card recheck failed.")
+        event.set()
+
+    def start() -> None:
+        try:
+            operation = _query_op_type()(
+                parent=mw,
+                op=lambda col: execute_triage_recheck(
+                    col,
+                    payload,
+                    signal_rows=signal_rows,
+                    signal_source_status=signal_status,
+                    profile_store_snapshot=profile_snapshot,
+                    formatter_resolver=formatter_resolver,
+                ),
+                success=success,
+            )
+            operation.failure(failure).run_in_background()
+        except Exception as error:
+            failure(error)
+
+    try:
+        mw.taskman.run_on_main(start)
+    except Exception:
+        return _error("triage_recheck_unavailable", "Could not schedule the card recheck.")
+    if not event.wait(max(0.001, float(timeout_seconds))):
+        return _error("triage_recheck_timeout", "The card recheck did not finish in time.")
+    response = holder.get("response")
+    return response if isinstance(response, dict) else _error("triage_recheck_failed", "The card recheck failed.")
 
 
 def _read_signals(

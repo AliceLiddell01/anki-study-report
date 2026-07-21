@@ -1898,6 +1898,14 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     await open.focus();
     await page.keyboard.press("Enter");
     await page.getByText("Запрос на открытие Anki Browser принят. Проблема остаётся активной.").waitFor({ state: "visible", timeout: 15000 });
+    await page.getByText("Ожидает перепроверки", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+    const recheck = page.getByRole("button", { name: "Перепроверить карточку", exact: true });
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/api/triage/recheck") && response.request().method() === "POST", { timeout: 60000 }),
+      recheck.click(),
+    ]);
+    await page.getByText("Всё ещё требует внимания", { exact: true }).waitFor({ state: "visible", timeout: 60000 });
+    assertBrowser(await page.locator('[data-testid="cards-resolution-state"]').count() === 1, "Cards keeps the unchanged item active after canonical exact-card recheck.");
 
     await prepareCardsPage(page, "workspace", "dark");
     await page.locator('[data-testid="anki-card-shadow-preview"]').waitFor({ state: "visible", timeout: 60000 });

@@ -157,7 +157,7 @@ from .browser_actions import (
     open_browser_search,
 )
 from .search_runtime import run_search_inspect_sync, run_search_query_sync
-from .triage_runtime import run_triage_query_sync
+from .triage_runtime import run_triage_query_sync, run_triage_recheck_sync
 from .inspection_profile_runtime import (
     run_inspection_profile_query_sync,
     run_inspection_profile_update_sync,
@@ -2017,7 +2017,10 @@ def _configure_dashboard_cache_handlers() -> None:
         query_handler=_search_query_response,
         inspect_handler=_search_inspect_response,
     )
-    _DASHBOARD_SERVER.configure_triage_handler(_triage_query_response)
+    _DASHBOARD_SERVER.configure_triage_handler(
+        query_handler=_triage_query_response,
+        recheck_handler=_triage_recheck_response,
+    )
     _DASHBOARD_SERVER.configure_inspection_profile_handlers(
         query_handler=_inspection_profile_query_response,
         validate_handler=_inspection_profile_validate_response,
@@ -2432,6 +2435,16 @@ def _search_inspect_response(payload: dict) -> dict:
 
 def _triage_query_response(payload: dict) -> dict:
     return run_triage_query_sync(
+        mw,
+        payload,
+        signal_provider=_NOTIFICATION_STORE.list_active_card_signals,
+        profile_store_provider=_INSPECTION_PROFILE_STORE.read,
+        formatter_store_provider=_CARD_DISPLAY_FORMATTER_STORE.read,
+    )
+
+
+def _triage_recheck_response(payload: dict) -> dict:
+    return run_triage_recheck_sync(
         mw,
         payload,
         signal_provider=_NOTIFICATION_STORE.list_active_card_signals,

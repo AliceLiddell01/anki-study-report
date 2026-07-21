@@ -340,3 +340,127 @@ def test_triage_reuses_search_formatter_resolver_and_keeps_v4_wire_shape(monkeyp
     assert response["items"][0]["displayText"] == "【に】感謝（する）"
     assert seen == [([7], resolver)]
     assert "formatterApplied" not in response["items"][0]
+
+
+def recheck_request(card_id="1", expected_note_id="10001"):
+    return {
+        "schemaVersion": 1,
+        "cardId": card_id,
+        "expectedNoteId": expected_note_id,
+        "reasonIds": ["learning:learning.repeated_again"],
+        "scope": {"periodStartMs": 1_700_000_000_000, "periodEndMs": 1_700_604_800_000, "deckIds": []},
+    }
+
+
+def content_reason(reason_id="profile:note-type-7:check:audio-required", code="content.audio_missing"):
+    return {
+        "cardId": 1,
+        "noteId": 10001,
+        "reason": {
+            "reasonId": reason_id,
+            "code": code,
+            "family": "content",
+            "scope": "note",
+            "priority": "medium",
+            "sources": ["profile_checks"],
+            "evidence": [],
+            "detectedAtMs": None,
+        },
+    }
+
+
+def configure_exact_recheck(monkeypatch, *, learning=None, profile_reasons=None, profile_status="empty", resolved=None, content_status="available"):
+    monkeypatch.setattr(
+        triage,
+        "collect_exact_learning_triage_candidate_with_status",
+        lambda *_args, **_kwargs: (learning or [], source("available" if learning else "empty", items=len(learning or []))),
+    )
+    monkeypatch.setattr(
+        triage,
+        "load_exact_inspection_candidates",
+        lambda _col, ids: {"items": [{"cardId": ids[0], "noteId": 10001}], "missingCardIds": []},
+    )
+    monkeypatch.setattr(
+        triage,
+        "evaluate_profiles_for_triage",
+        lambda *_args, **_kwargs: {
+            "reasons": profile_reasons or [],
+            "sourceStatus": source(profile_status, items=len(profile_reasons or []), error="profile_structures_partial" if profile_status == "partial" else None),
+            "contentChecks": content_checks(content_status),
+        },
+    )
+    rows = [card_row(1)] if resolved is None else resolved
+    monkeypatch.setattr(triage, "resolve_card_rows", lambda *_args, **_kwargs: {"items": rows, "missingCardIds": [] if rows else [1]})
+
+
+def test_exact_recheck_request_is_strict_and_accepts_exactly_one_card():
+    assert triage.normalize_triage_recheck_request(recheck_request())["cardId"] == 1
+    for value in [
+        {**recheck_request(), "schemaVersion": 4},
+        {**recheck_request(), "cardId": "0"},
+        {**recheck_request(), "expectedNoteId": str(2**63)},
+        {**recheck_request(), "rawSql": "select * from cards"},
+    ]:
+        with pytest.raises(triage.TriageValidationError):
+            triage.normalize_triage_recheck_request(value)
+
+
+def test_exact_recheck_returns_current_reasons_and_full_resolution_without_queue_inference(monkeypatch):
+    configure_exact_recheck(
+        monkeypatch,
+        learning=[attention_row(1, ["repeated again"])],
+        profile_reasons=[content_reason()],
+        profile_status="available",
+    )
+    active = triage.execute_triage_recheck(object(), recheck_request(), signal_rows=[], signal_source_status={"status": "empty"})
+    assert active["status"] == "available"
+    assert active["entityStatus"] == "available"
+    assert [reason["reasonId"] for reason in active["item"]["reasons"]] == [
+        "learning:learning.repeated_again",
+        "profile:note-type-7:check:audio-required",
+    ]
+
+    configure_exact_recheck(monkeypatch, learning=[], profile_reasons=[], profile_status="empty")
+    resolved = triage.execute_triage_recheck(object(), recheck_request(), signal_rows=[], signal_source_status={"status": "empty"})
+    assert resolved["status"] == "available"
+    assert resolved["item"]["cardId"] == "1"
+    assert resolved["item"]["reasons"] == []
+
+
+def test_exact_recheck_fails_closed_for_partial_profiles_and_missing_or_changed_entity(monkeypatch):
+    configure_exact_recheck(monkeypatch, profile_status="partial", content_status="partial")
+    partial = triage.execute_triage_recheck(object(), recheck_request(), signal_rows=[], signal_source_status={"status": "empty"})
+    assert partial["status"] == "partial"
+    assert partial["item"] is not None
+
+    configure_exact_recheck(monkeypatch, resolved=[])
+    missing = triage.execute_triage_recheck(object(), recheck_request(), signal_rows=[], signal_source_status={"status": "empty"})
+    assert missing["entityStatus"] == "missing"
+    assert missing["item"] is None
+
+    configure_exact_recheck(monkeypatch)
+    changed = triage.execute_triage_recheck(object(), recheck_request(expected_note_id="999"), signal_rows=[], signal_source_status={"status": "empty"})
+    assert changed["entityStatus"] == "changed"
+    assert changed["item"] is None
+
+
+def test_exact_recheck_honors_current_deck_scope(monkeypatch):
+    configure_exact_recheck(monkeypatch)
+    monkeypatch.setattr(triage, "expand_deck_ids", lambda _col, ids: ids)
+    scoped = recheck_request()
+    scoped["scope"]["deckIds"] = ["99"]
+    result = triage.execute_triage_recheck(object(), scoped, signal_rows=[], signal_source_status={"status": "empty"})
+    assert result["status"] == "partial"
+    assert result["entityStatus"] == "unavailable"
+    assert result["sourceStatus"]["profileChecks"]["errorCode"] == "card_outside_scope"
+    assert result["item"] is None
+
+
+def test_exact_recheck_does_not_resolve_prior_content_reason_after_profile_authority_is_lost(monkeypatch):
+    configure_exact_recheck(monkeypatch, profile_status="empty", content_status="no_confirmed_profiles")
+    value = recheck_request()
+    value["reasonIds"] = ["profile:note-type-7:check:audio-required"]
+    result = triage.execute_triage_recheck(object(), value, signal_rows=[], signal_source_status={"status": "empty"})
+    assert result["status"] == "partial"
+    assert result["sourceStatus"]["profileChecks"]["errorCode"] == "profile_authority_changed"
+    assert result["item"]["reasons"] == []

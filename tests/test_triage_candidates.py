@@ -17,7 +17,7 @@ class FakeDb:
             return list(self.note_rows)
         if "with sibling_counts" in sql:
             return list(self.card_rows)
-        if "from revlog r" in sql:
+        if "from revlog r" in sql or "join revlog r" in sql:
             return list(self.note_rows)
         raise AssertionError(sql)
 
@@ -179,3 +179,19 @@ def test_learning_source_is_period_bound_and_reads_no_note_fields(monkeypatch):
     assert "n.flds" not in sql
     assert 1000 in params and 2000 in params
     assert status["status"] == "available"
+
+
+def test_exact_learning_recheck_is_one_card_period_bound_and_reuses_detector(monkeypatch):
+    monkeypatch.setattr(candidates, "expand_deck_ids", lambda _col, ids: ids)
+    row = (10, 100, 0, 7, 0, "", 4, 3, 4000, 1700)
+    db = FakeDb([row], [])
+    result, status = candidates.collect_exact_learning_triage_candidate_with_status(
+        FakeCol(db), 10, 1000, 2000, [3]
+    )
+    assert result[0]["issues"] == ["repeated_again", "low_pass_rate"]
+    sql, params = db.calls[0]
+    assert "where c.id = ?" in sql
+    assert "limit" not in sql.lower()
+    assert "n.flds" not in sql
+    assert 10 in params and 1000 in params and 2000 in params and 3 in params
+    assert status == candidates.source_status("available", item_count=1)

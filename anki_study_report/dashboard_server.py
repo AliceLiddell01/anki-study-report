@@ -111,6 +111,7 @@ class DashboardServerManager:
         self._search_query_handler = None
         self._search_inspect_handler = None
         self._triage_query_handler = None
+        self._triage_recheck_handler = None
         self._inspection_profile_query_handler = None
         self._inspection_profile_validate_handler = None
         self._inspection_profile_update_handler = None
@@ -364,9 +365,10 @@ class DashboardServerManager:
             self._search_query_handler = query_handler
             self._search_inspect_handler = inspect_handler
 
-    def configure_triage_handler(self, query_handler=None) -> None:
+    def configure_triage_handler(self, query_handler=None, recheck_handler=None) -> None:
         with self._lock:
             self._triage_query_handler = query_handler
+            self._triage_recheck_handler = recheck_handler
 
     def configure_inspection_profile_handlers(
         self,
@@ -693,6 +695,28 @@ class DashboardServerManager:
             )
             return {"ok": False, "error": "triage_failed", "message": "The triage request failed."}
 
+    def recheck_triage(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._triage_recheck_handler
+        if handler is None:
+            return {"ok": False, "error": "triage_recheck_unavailable", "message": "Card recheck is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "triage_recheck_failed",
+                "message": "The card recheck failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "triage.recheck.error",
+                "Triage recheck handler failed",
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "triage_recheck_failed", "message": "The card recheck failed."}
+
     def request_inspection_profiles(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         attribute = {
             "query": "_inspection_profile_query_handler",
@@ -955,7 +979,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.METHOD_NOT_ALLOWED,
                 )
             return
-        if path == "/api/triage/query":
+        if path in {"/api/triage/query", "/api/triage/recheck"}:
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
             else:
@@ -1092,6 +1116,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/triage/query":
             self._send_triage_query(_query_token(parsed))
+            return
+        if path == "/api/triage/recheck":
+            self._send_triage_recheck(_query_token(parsed))
             return
         if path.startswith("/api/inspection-profiles/"):
             operation = path.removeprefix("/api/inspection-profiles/").strip("/")
@@ -1874,6 +1901,38 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         elif error == "triage_timeout":
             status = HTTPStatus.GATEWAY_TIMEOUT
         elif error in {"triage_unavailable", "triage_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_triage_recheck(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_recheck_request", "message": "Use application/json."},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_recheck_request", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.recheck_triage(payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_triage_recheck_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "triage_recheck_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"triage_recheck_unavailable", "triage_recheck_failed"}:
             status = HTTPStatus.SERVICE_UNAVAILABLE
         else:
             status = HTTPStatus.BAD_REQUEST

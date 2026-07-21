@@ -48,6 +48,16 @@ def payload():
     }
 
 
+def recheck_payload():
+    return {
+        "schemaVersion": 1,
+        "cardId": "1",
+        "expectedNoteId": "10001",
+        "reasonIds": ["learning:learning.repeated_again"],
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+    }
+
+
 def test_triage_queryop_bridge_schedules_collection_read_and_supplies_signals(monkeypatch):
     taskman = FakeTaskman()
     mw = SimpleNamespace(col=object(), taskman=taskman)
@@ -141,3 +151,40 @@ def test_formatter_store_is_read_once_and_passed_to_triage(monkeypatch):
     assert result["ok"] is True
     assert reads == [True]
     assert len(seen) == 1
+
+
+def test_recheck_queryop_bridge_is_exact_and_collection_unavailable_is_typed(monkeypatch):
+    taskman = FakeTaskman()
+    mw = SimpleNamespace(col=object(), taskman=taskman)
+    monkeypatch.setattr(runtime, "_query_op_type", lambda: FakeQueryOp)
+    calls = []
+    monkeypatch.setattr(
+        runtime,
+        "execute_triage_recheck",
+        lambda col, value, **kwargs: calls.append((col, value, kwargs)) or {"schemaVersion": 1, "cardId": "1"},
+    )
+    FakeQueryOp.behavior = "success"
+    result = runtime.run_triage_recheck_sync(
+        mw,
+        recheck_payload(),
+        signal_provider=lambda: [],
+        profile_store_provider=lambda: {"status": "empty", "revision": 0, "profiles": []},
+    )
+    assert result == {"ok": True, "response": {"schemaVersion": 1, "cardId": "1"}}
+    assert calls[0][1] == recheck_payload()
+    assert taskman.calls == 1
+
+    unavailable = runtime.run_triage_recheck_sync(None, recheck_payload(), signal_provider=lambda: [])
+    assert unavailable["ok"] is True
+    assert unavailable["response"]["status"] == "unavailable"
+    assert unavailable["response"]["entityStatus"] == "unavailable"
+
+
+def test_invalid_recheck_never_reaches_task_manager():
+    taskman = FakeTaskman()
+    result = runtime.run_triage_recheck_sync(
+        SimpleNamespace(col=object(), taskman=taskman),
+        {**recheck_payload(), "cardIds": ["1"]},
+    )
+    assert result["error"] == "invalid_triage_recheck_request"
+    assert taskman.calls == 0
