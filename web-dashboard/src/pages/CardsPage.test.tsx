@@ -8,7 +8,7 @@ import i18n from "../i18n";
 import type { CardsTriageWorkspace } from "../hooks/useCardsTriageWorkspace";
 import type { SearchInspectResponse } from "../types/search";
 import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/triage";
-import CardsPage from "./CardsPage";
+import CardsPage, { CARDS_WIDE_WORKSPACE_QUERY } from "./CardsPage";
 
 const workspaceMock = vi.fn<() => CardsTriageWorkspace>();
 let wideMode = true;
@@ -58,6 +58,17 @@ describe("Cards attention inbox", () => {
     expect(html).toContain("+1 причина");
     expect(html).toContain("Период обучения");
     expect(html).toContain("Проверить следующие заметки");
+    expect(html).not.toContain("по одной карточке");
+    expect(html).toContain("Фильтры очереди");
+    expect(html).toContain("Область и обновление");
+    expect(html).toContain("cards-detail-metadata");
+    expect(html).toContain("cards-detail-reasons");
+    expect(html).not.toContain("cards-detail-reasons\"><article");
+    expect(html.indexOf("cards-detail-lifecycle")).toBeLessThan(html.indexOf("cards-detail-header"));
+    expect(html.indexOf("cards-detail-metadata")).toBeLessThan(html.indexOf("cards-detail-reasons"));
+    expect(html.indexOf("cards-detail-reasons")).toBeLessThan(html.indexOf("cards-detail-preview"));
+    expect(html.indexOf("cards-detail-preview")).toBeLessThan(html.indexOf("cards-detail-action-zone"));
+    expect(html.indexOf("cards-detail-action-zone")).toBeLessThan(html.indexOf("cards-detail-technical"));
     expect(html).toContain("workspace-page");
     expect(html).toContain("workspace-region");
     expect(html).toContain("workspace-interactive");
@@ -85,6 +96,7 @@ describe("Cards attention inbox", () => {
   });
 
   it("uses a full-width queue and opens a non-modal drawer on activation", async () => {
+    expect(CARDS_WIDE_WORKSPACE_QUERY).toBe("(min-width: 1200px)");
     wideMode = false;
     document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
     const root = createRoot(document.getElementById("root")!);
@@ -99,6 +111,7 @@ describe("Cards attention inbox", () => {
     expect(drawer).toBeTruthy();
     expect(drawer.getAttribute("role")).toBe("region");
     expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(drawer.textContent).toContain("Подробности карточки");
     expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
     expect(workspace.activate).toHaveBeenCalledWith(items[0]);
     const close = drawer.querySelector('button[aria-label*="Закрыть подробности"]') as HTMLButtonElement;

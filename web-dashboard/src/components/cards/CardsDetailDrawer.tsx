@@ -6,6 +6,7 @@ export interface CardsDetailDrawerProps {
   labelledBy: string;
   regionId: string;
   closeLabel: string;
+  contextLabel?: string;
   restoreFocusTo: HTMLElement | null;
   fallbackFocusTo: HTMLElement | null;
   onRequestClose: () => void;
@@ -17,6 +18,7 @@ export function CardsDetailDrawer({
   labelledBy,
   regionId,
   closeLabel,
+  contextLabel,
   restoreFocusTo,
   fallbackFocusTo,
   onRequestClose,
@@ -52,7 +54,7 @@ export function CardsDetailDrawer({
       data-testid="cards-detail-drawer"
     >
       <div className="cards-detail-drawer-bar">
-        <span className="cards-detail-drawer-context" aria-hidden="true" />
+        <span className="cards-detail-drawer-context">{contextLabel}</span>
         <button type="button" className="cards-detail-drawer-close" aria-label={closeLabel} onClick={closeAndRestore}>
           <X size={19} aria-hidden="true" />
         </button>
