@@ -4,8 +4,7 @@
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
-Settings также содержит локальный Inspection Profiles workspace для явной
-настройки декларативных проверок exact note types; он не изменяет коллекцию.
+Settings также содержит локальный Inspection Profiles workspace для явной настройки декларативных проверок exact note types; он не изменяет коллекцию.
 
 Signals, evidence, entity references и notification preferences остаются per-profile/local и не отправляются в remote telemetry. Отдельный private telemetry service принимает только opt-in bounded technical events.
 
@@ -24,29 +23,48 @@ reports/                 historical evidence
 
 Главный release artifact — flat `anki_study_report.ankiaddon`.
 
-Primary navigation:
+Current primary navigation:
 
 ```text
 Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-Profile, Tools, Settings and Support live outside the primary study navigation. Server, Sources and Logs remain diagnostic/settings surfaces.
+Profile, Tools, Settings and Support live outside the primary study navigation. Server, Sources and Logs remain current diagnostic/settings surfaces until the corresponding roadmap cleanup is implemented.
 
 ## Roadmap
 
-The accepted product contour is complete through **Stage 9.5**. Future work is no longer one global Stage 10–13 queue.
+The accepted product contour is complete through **Stage 9.5**. Future work is organized by independent tracks rather than one global Stage 10–13 queue.
 
 - [Roadmap map](roadmap/README.md)
-- [Core critical path](roadmap/core/README.md): `C1 Cards v2 → C2 Core 1.0 → C3?`
+- [Core critical path](roadmap/core/README.md): `C2 owner acceptance closure → C3 UI & Shell → C4 Data Independence → C5 Today v2 → C6 Profile v2 → Core 1.0`
 - [Gamification](roadmap/gamification/README.md): parallel research/product track; production not approved
 - [Telemetry operations](roadmap/operations/README.md): separate protected admin tooling
 - [Identity continuity](roadmap/identity/README.md): conditional opt-in gate
 - [Extension ecosystem](roadmap/extensions/README.md): conditional/deferred
 - [Platform / CI](roadmap/platform/README.md): independent delivery/E2E track
 
-Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI and extension packs do not block core maturity.
+Only the Core sequence is mandatory for Core 1.0. Gamification, accounts, telemetry admin UI, extension packs, `C1.6B` and contextual additions do not block it unless a documented dependency is introduced.
 
-Current Core status: Core C1 is complete and accepted. C2 implementation and exact-SHA Fast CI, targeted Cards and full real-Anki verification are complete on the candidate branch. PR #128 awaits an explicit merge decision; release has not started. `C1.6B` remains Conditional and was not activated.
+Current Core status:
+
+```text
+C1 — complete and accepted
+C2 — implemented, exact-SHA verified and merged into core
+core merge commit — edb140b1197910aae31500a40e4a8287cc46b760
+post-merge owner acceptance — reopened after manual Cards/Inspection Profiles review
+next action — bounded C2 manual acceptance remediation
+C3–C6 — mandatory future Core path
+Core 1.0 release — not started
+```
+
+The revised Core path explicitly requires:
+
+- a full-width desktop shell instead of one global narrow centered container;
+- a site-wide UI/content system with shared headers, surfaces, shapes, spacing and motion;
+- removal of obsolete Tools/Report surfaces;
+- first-party replacement of useful external data-source functionality before Sources is deleted;
+- a focused daily `Today v2`;
+- a full-width editable `Profile v2 Foundation` without fake gamification placeholders.
 
 Current platform state:
 
@@ -104,6 +122,7 @@ Start with:
 - [Architecture](docs/architecture.md)
 - [Dashboard API](docs/dashboard-api.md)
 - [Navigation / IA](docs/navigation-ia.md)
+- [UI prototyping and visual acceptance](docs/ui-prototype-visual-acceptance.md)
 - [Security and safety](docs/security-and-safety.md)
 - [Test matrix](docs/test-matrix.md)
 - [Verification policy](docs/verification-run-policy.md)
@@ -123,6 +142,8 @@ Start with:
 6. Production code is not changed to satisfy an outdated test when current behavior is correct.
 7. Research code/evidence is not silently added to Fast CI or package contents.
 8. Release remains manual, approval-gated and exact-artifact based.
+9. Desktop working pages must not be constrained by one global narrow `max-width`; width limits are local component decisions.
+10. New pages must reuse shared layout/content primitives instead of introducing another local visual grammar.
 
 ## Participation and safety
 
