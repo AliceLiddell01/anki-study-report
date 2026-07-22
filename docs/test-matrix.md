@@ -18,6 +18,7 @@
 | рендер, media и предпросмотр карточки | frontend-тесты предпросмотра и pytest sanitizer | целевой real-Anki smoke Cards | да для финальной проверки | нативный рендер, media и Shadow DOM требуют runtime |
 | server dashboard, токен и действия | pytest server и действий | frontend-тесты API и локальный smoke | иногда | токен, allowlist, ошибки HTTP и QueryOp |
 | Search и Safe Actions | тесты Search, runtime и entity actions и frontend | Fast CI и целевой `standard/global`; полный запуск при общем diff | да | чтения latest-wins, точные ID, отменяемые mutations и bridge Browser |
+| C2 hardening и UI remediation | parser/security, exact authority, generation/cache, Search/server, visual contract tests и benchmark | Fast CI, `standard/cards` с restart и финальный `standard/full` | да | CSS/CSP, общий server, Cards, Profiles, package и E2E visual contracts |
 | запрос Triage v4 | тесты candidates, service, runtime, dashboard, parser и hook | Fast CI и целевой `standard/cards` | да для финальной проверки | независимые источники, согласованность cursor и живые профили |
 | решение конкретной карточки C1.6 | тесты backend, API, parser, client, hook, page и фокуса | Fast CI, целевой `standard/cards` с restart и финальный `standard/full` при общем diff runtime | да | повторное использование детекторов, fail-closed-reconciliation, фокус и E2E-передача |
 | Inspection Profiles | store, service, runtime, schema, dashboard и frontend-editor | Fast CI и целевой `standard/cards` с restart | да | fingerprints, persistence, изоляция профиля и живые типы заметок |
@@ -134,6 +135,20 @@ Fast CI для финального head 29863609253: PASS
 ```
 
 Локальный Docker не повторялся после успешного cloud E2E с точным пакетом. Проверка на приватном профиле Anki владельца не выполнялась.
+
+## C2 Core hardening и C1 UI remediation
+
+Обязательный локальный контур:
+
+- parser-backed CSS policy, preview и CSP/security headers;
+- exact-card authority для релевантного note type;
+- deferred-promise tests поколений query, mutation и inspect cache;
+- Search runtime/server/status/idle и E2E behavior helpers;
+- Cards и Inspection Profiles visual contracts, RU/EN, light/dark и границы 1199/1200;
+- benchmark 100 000 ID с фиксацией времени, peak add-on memory и upstream materialization;
+- полный Python/frontend, typecheck, production build, bundle guard, package validation и `-SkipDocker`.
+
+После локального PASS выполняются Fast CI exact SHA, один `standard/cards` с restart и один `standard/full`. `strict-apkg`, `perf100`, warm repeats и локальный full Docker не требуются. Политика запусков не меняется; подробности остаются в [`verification-run-policy.md`](verification-run-policy.md).
 
 ## Поставка release
 

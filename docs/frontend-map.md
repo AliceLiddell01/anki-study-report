@@ -57,8 +57,8 @@ metadata Search: schema v1
 
 ```text
 CardsPage
-├─ компактная сводка и управление приоритетом, причиной, колодой, текстом и периодом
-├─ предупреждения об источниках и покрытии профилями
+├─ компактная сводка, локальные фильтры очереди и отдельный scope запроса
+├─ одно disclosure покрытия источников и профилей
 └─ CardsInbox — упорядоченный семантический список
    ├─ >= 1200 px: постоянный Inspector CardsDetail
    └─ < 1200 px: очередь на всю ширину + CardsDetailDrawer
@@ -72,6 +72,7 @@ components/cards/CardsDetail.tsx
 components/cards/CardsDetailDrawer.tsx
 hooks/useCardsTriageWorkspace.ts
 hooks/useMediaQuery.ts
+lib/cardsWorkspacePolicy.ts
 lib/triageApi.ts
 lib/triageOrdering.ts
 lib/triagePagination.ts
@@ -82,6 +83,8 @@ styles/cardsInbox.css
 Очередь — обычный `<ol>` с одной нативной кнопкой на элемент. Это не `table`, ARIA `grid`, `listbox` или составной элемент с roving tabindex. Фокус и активный элемент разделены.
 
 В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. При 1024 px постоянный Inspector и автоматический запрос предпросмотра отсутствуют; явная активация открывает подписанную немодальную панель без backdrop, `aria-modal`, inert-оболочки и focus trap.
+
+Граница layout точная: постоянный Inspector существует при `>= 1200 px`, drawer — при `< 1200 px`. Drawer имеет непрозрачную поверхность, явную левую границу, компактный sticky header и внутренний scroll; utility dock перемещается за пределы drawer.
 
 Предпросмотр ответа остаётся единственным модальным диалогом.
 
@@ -122,6 +125,9 @@ idle
 
 - mutations сериализуются и не отменяются;
 - чтения используют latest-wins и защищённые sequence ID;
+- mutation operation хранится независимо от query generation и остаётся глобально видимой до фактического завершения;
+- refresh, период и deck могут начать новое чтение, но не скрывают pending operation; конфликтующие actions/Open/Recheck остаются отключёнными;
+- inspect cache привязан к generation, ограничен 50 записями и очищается при refresh или изменении scope; устаревшее завершение не заселяет новую generation;
 - успех действия не удаляет элемент;
 - `recheckTriageCard()` вызывает строгий `/api/triage/recheck` v1;
 - reconciliation сравнивает стабильные `reasonId`;
@@ -142,6 +148,8 @@ AdvancedProfileDisclosure
 useInspectionProfilesWorkspace
 ```
 
+Catalog имеет ширину 280–320 px на широком layout и складывается над editor при 1024 px. Обычный Basic — одна поверхность с семью смысловыми разделами: состояние, suggestion, поля, требования, scope, validation и confirmation. Advanced и Profile tools остаются отдельными disclosures; lifecycle предоставляет не более одного primary action.
+
 `inspectionProfileBasicView.ts` — чистая понятная проекция строгого v1.
 
 Hook отвечает за происхождение черновика, исходное состояние и пользовательские изменения, чтения latest-wins, отмену validation, сериализованные mutations и конфликты revision.
@@ -160,6 +168,7 @@ Hook отвечает за происхождение черновика, исх
 
 ```text
 pages/CardsPage.test.tsx
+pages/CardsVisualContract.test.ts
 hooks/useCardsTriageWorkspace.test.tsx
 components/cards/CardsInbox.test.tsx
 components/cards/CardsDetailDrawer.test.tsx
@@ -168,16 +177,17 @@ lib/triagePagination.test.ts
 lib/triageOrdering.test.ts
 hooks/useMediaQuery.test.tsx
 components/AnkiCardShadowPreview.test.tsx
+pages/InspectionProfilesVisualContract.test.ts
 pages/LocalizationSmoke.test.tsx
 ```
 
 Набор frontend-тестов C1.6:
 
 ```text
-324 теста — PASS
+342 теста — PASS
 TypeScript typecheck — PASS
 production-сборка — PASS
-ограничение bundle — PASS, entry 429 516 байт
+ограничение bundle — PASS, entry 430 646 байт
 ```
 
 ## Текущий статус Core
@@ -187,5 +197,5 @@ C1.5R.0–R.7 — завершено; принято владельцем
 C1.6 — завершено; принято владельцем; влито в core
 C1.6B — условный этап; не начат
 Core C1 — завершён
-C2 — следующий этап; не начат
+C2 — implementation candidate; exact-SHA integration closeout pending
 ```

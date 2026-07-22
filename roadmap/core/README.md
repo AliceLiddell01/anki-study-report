@@ -2,7 +2,7 @@
 
 **Трек:** `C`  
 **Роль:** единственный обязательный последовательный путь основного add-on  
-**Текущий статус:** `C1 завершён`; `C1.6B — условный этап`; `C2 — следующий этап, не начат`
+**Текущий статус:** `C1 завершён`; `C1.6B — условный этап`; `C2 — implementation candidate, integration closeout pending`
 
 Core не зависит от геймификации, аккаунтов, административного UI телеметрии или пакетов расширений. Параллельные треки могут развиваться независимо, но не меняют критерии завершения Core.
 
@@ -26,7 +26,7 @@ Core разрабатывается в долгоживущей ветке `core
 
 ```text
 C1 Cards v2 / Problem Triage — завершён
-→ C2 Core 1.0 Hardening — следующий этап
+→ C2 Core 1.0 Hardening — implementation candidate
 → C3 Contextual Additions — только при доказанном пробеле
 ```
 
@@ -202,7 +202,7 @@ C1.6B активируется только после отдельного по
 
 # C2 — Core 1.0 Hardening
 
-**Статус:** следующий этап; не начат
+**Статус:** реализация hardening и C1 UI remediation завершена; exact-SHA integration closeout обязателен до решения о merge
 
 ## Цель
 
@@ -216,12 +216,17 @@ C1.6B активируется только после отдельного по
 
 ## Scope
 
-- инвентаризация API и schema, versioning и политика deprecation;
-- migrations, fail-closed-поведение для будущих schema, quarantine повреждённых данных и изоляция по профилям;
-- матрица чистой установки, обновления, переключения профиля, перезапуска и восстановления;
-- бюджеты производительности, bundle, запросов и истории;
-- завершение работы с клавиатурой и доступностью;
-- проверка сборки пакета, rollback, безопасности и release checklist.
+- parser-backed boundary пользовательского CSS и browser defense in depth;
+- local authority exact-card без влияния unrelated profiles;
+- generation-safe mutations и inspect cache;
+- bounded add-on Search work, минимальный public status и корректный idle lifecycle;
+- extraction только доказанных policy seams и behavior-based E2E helpers;
+- общий visual role system и targeted remediation Cards/Inspection Profiles;
+- единая verification campaign без изменения delivery infrastructure.
+
+Finding ledger, решения и residual risks:
+
+- [`reports/core/c2-core-hardening-ui-remediation.md`](../../reports/core/c2-core-hardening-ui-remediation.md).
 
 ## Вне scope
 

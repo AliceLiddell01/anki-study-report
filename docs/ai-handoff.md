@@ -41,13 +41,14 @@ Dashboard:
 Текущий статус Core:
 
 ```text
-ветка: core
+базовая ветка: core
+C2 candidate: c2-core-hardening-ui-remediation
 C1.5R.0–R.7: завершено
 продуктовая приёмка C1.5R владельцем: выполнена
 C1.6: завершено; принято владельцем; влито в core
 C1.6B: условный этап; не начат
 Core C1: завершён
-C2: следующий этап; не начат
+C2: реализация завершена; exact-SHA integration closeout определяет готовность candidate
 ```
 
 Head ветки Core после C1.6:
@@ -74,6 +75,7 @@ PR C1.6:
 - [`../reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md);
 - [`../reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../reports/core/c1-5r-7-integrated-acceptance-closeout.md);
 - [`../reports/core/c1-6-canonical-single-card-resolution-loop.md`](../reports/core/c1-6-canonical-single-card-resolution-loop.md).
+- [`../reports/core/c2-core-hardening-ui-remediation.md`](../reports/core/c2-core-hardening-ui-remediation.md).
 
 ## Исторический C1.5
 
@@ -266,13 +268,7 @@ Fast CI для финального head 29863609253: PASS
 
 ## Следующее точное действие
 
-Следующий обязательный этап Core:
-
-```text
-C2 — Core 1.0 Hardening
-```
-
-Перед реализацией C2 требуется отдельная задача на продуктовую и техническую проработку. Не начинать C1.6B без отдельного подтверждения необходимости и решения владельца.
+Завершить exact-SHA verification campaign для draft PR C2: Fast CI, один `standard/cards` с restart и один `standard/full`. После этого требуется отдельное решение владельца о merge; release и публикация не следуют автоматически. Не начинать C1.6B без отдельного подтверждения необходимости.
 
 Не выполнять как неявное продолжение:
 
@@ -306,7 +302,8 @@ C2 — Core 1.0 Hardening
 - менять корректное production-поведение ради устаревшего теста;
 - создавать второй стек запросов, действий, сигналов или детекторов;
 - определять устранение проблемы на клиенте только по успеху действия или исчезновению элемента из очереди;
-- начинать C1.6B, C2 или C3 без отдельной границы задачи.
+- начинать C1.6B или C3 без отдельной границы задачи;
+- считать C2 release-ready без закрытых release blockers, exact-SHA gates и проверки production tree после merge.
 
 ## Другие треки
 
