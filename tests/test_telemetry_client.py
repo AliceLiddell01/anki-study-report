@@ -510,6 +510,35 @@ def test_threshold_request_is_coalesced_while_enrollment_worker_is_busy(tmp_path
     assert [call["url"].rsplit("/", 1)[-1] for call in transport.calls].count("events") >= 1
 
 
+def test_background_worker_preserves_continuation_at_iteration_limit(tmp_path):
+    result = make_client(
+        tmp_path,
+        purposes={"reliabilityDiagnostics": True, "featureUsage": False},
+    )
+    client = result[6]
+    calls = 0
+
+    def request_again_through_iteration_limit(*, bypass_enrollment_backoff=False):
+        nonlocal calls
+        calls += 1
+        if calls <= 8:
+            with client._worker_lock:
+                client._send_again = True
+            return {"ok": True, "code": "telemetry.delivered"}
+        return {"ok": True, "code": "telemetry.queue_empty"}
+
+    client.send_once = request_again_through_iteration_limit
+    client._background_once(False)
+    deadline = time.monotonic() + 1
+    while calls < 9 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    worker = client._worker
+    if worker is not None:
+        worker.join(timeout=1)
+
+    assert calls == 9
+
+
 def test_enrollment_backoff_persists_and_manual_check_bypasses_it_once(tmp_path):
     holder = {}
     transport = FakeTransport(
