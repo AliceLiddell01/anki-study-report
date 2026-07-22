@@ -1,4 +1,5 @@
 import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { highlightJavaBlocks } from "../lib/cardCodeHighlighting";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview" | "expanded";
 export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
@@ -136,9 +137,7 @@ const SHADOW_BASE_CSS = `
 
 .asr-shadow-card-shell--preview {
   align-items: flex-start;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   padding: 10px;
 }
 
@@ -375,9 +374,8 @@ function AnkiCardShadowPreviewComponent({
   className = "",
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const [autoNightMode, setAutoNightMode] = useState(false);
   const [layout, setLayout] = useState<AdaptivePreviewLayout>(() => initialAdaptiveLayout(mode));
-  const resolvedNightMode = nightMode ?? autoNightMode;
+  const resolvedNightMode = nightMode ?? false;
   const shadowDocument = useMemo(
     () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, side, className }),
     [cardOrd, className, css, html, mode, resolvedNightMode, side, title],
@@ -387,24 +385,6 @@ function AnkiCardShadowPreviewComponent({
   useEffect(() => {
     setLayout(initialAdaptiveLayout(mode));
   }, [mode]);
-
-  useEffect(() => {
-    if (nightMode !== undefined || typeof document === "undefined") {
-      return;
-    }
-    const readTheme = () => {
-      const theme = document.documentElement.getAttribute("data-theme");
-      if (theme) {
-        setAutoNightMode(theme !== "light");
-        return;
-      }
-      setAutoNightMode(Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches));
-    };
-    readTheme();
-    const observer = new MutationObserver(readTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, [nightMode]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -499,6 +479,7 @@ function AnkiCardShadowPreviewComponent({
       });
     };
 
+    highlightJavaBlocks(shadowRoot);
     scheduleMeasure();
 
     const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleMeasure) : null;

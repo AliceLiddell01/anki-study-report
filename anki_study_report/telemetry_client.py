@@ -226,7 +226,7 @@ class TelemetryClient:
         try:
             delete_next = deletion_only
             bypass_next = bypass_enrollment_backoff
-            for _ in range(8):
+            for attempt in range(8):
                 if delete_next or self.privacy_store.read()["telemetry"]["deletionPending"]:
                     result = self.attempt_deletion()
                 else:
@@ -239,6 +239,11 @@ class TelemetryClient:
                         self._send_again = False
                         self._deletion_requested = False
                 if requested:
+                    if attempt == 7:
+                        with self._worker_lock:
+                            self._send_again = self._send_again or not delete_next
+                            self._deletion_requested = self._deletion_requested or delete_next
+                        break
                     continue
                 if not delete_next and result.get("code") in {"telemetry.delivered", "telemetry.queue_empty"}:
                     threading.Event().wait(0.1)

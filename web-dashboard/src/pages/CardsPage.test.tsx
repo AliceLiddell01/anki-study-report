@@ -73,7 +73,7 @@ describe("Cards attention inbox", () => {
     expect(html).toContain("workspace-region");
     expect(html).toContain("workspace-interactive");
     expect(html).toContain("workspace-selected");
-    expect(html).toContain("workspace-safe-area");
+    expect(html).not.toMatch(/cards-inbox-inspector[^>]*workspace-safe-area/);
   });
 
   it("keeps filter clearing separate from the learning period", async () => {
@@ -111,6 +111,8 @@ describe("Cards attention inbox", () => {
     expect(drawer).toBeTruthy();
     expect(drawer.getAttribute("role")).toBe("region");
     expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(drawer.parentElement).toBe(document.body);
+    expect(document.getElementById("dashboard-app-shell")!.contains(drawer)).toBe(false);
     expect(drawer.textContent).toContain("Подробности карточки");
     expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
     expect(workspace.activate).toHaveBeenCalledWith(items[0]);
@@ -195,7 +197,7 @@ describe("Cards attention inbox", () => {
 
 function readyWorkspace(): CardsTriageWorkspace {
   return {
-    queryStatus: "ready", queryError: null, response,
+    queryStatus: "ready", queryError: null, refreshStatus: "idle", response,
     learningPeriodDays: 7, setLearningPeriodDays: vi.fn(),
     activeId: items[0]!.itemId, activeItem: items[0]!,
     inspectStatus: "ready", inspectError: null, inspectResponse,

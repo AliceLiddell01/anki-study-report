@@ -104,7 +104,8 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                     id={selectId}
                     className="form-control"
                     value={role.mapping.fields[0]?.ordinal ?? ""}
-                    aria-describedby={error ? `${selectId}-error` : `${selectId}-help`}
+                    aria-describedby={error || role.blockingIssue ? `${selectId}-error` : `${selectId}-help`}
+                    aria-invalid={Boolean(error || role.blockingIssue) || undefined}
                     onChange={(event) => updateMapping(index, event.target.value)}
                   >
                     <option value="">{copy.chooseField}</option>

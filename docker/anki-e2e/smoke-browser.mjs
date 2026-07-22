@@ -1362,6 +1362,7 @@ async function saveStateScreenshot(page, pageName, stateName, theme = "light") {
 }
 
 async function assertInspectionProfilesWorkspace(page) {
+  const originalViewport = page.viewportSize();
   await prepareDashboardRoute(page, "/settings/inspection-profiles", "light", "Профили проверки");
   const japanese = page.getByRole("button", { name: /E2E Japanese Vocabulary/ });
   const programming = page.getByRole("button", { name: /E2E Programming/ });
@@ -1385,8 +1386,16 @@ async function assertInspectionProfilesWorkspace(page) {
   const priority = page.locator("#inspection-basic-priority-0");
   await priority.waitFor({ state: "visible", timeout: 10000 });
   const initialPriority = await priority.inputValue();
-  await priority.selectOption(initialPriority === "high" ? "medium" : "high");
+  const changedPriority = initialPriority === "high" ? "medium" : "high";
+  await priority.selectOption(changedPriority);
   await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
+  const advancedTab = page.getByRole("tab", { name: /Расширенное/ });
+  await advancedTab.click();
+  assertBrowser(await page.locator("#inspection-advanced-panel").isVisible(), "Inspection Profiles Advanced mode replaces Basic in the same editor.");
+  assertBrowser(await page.locator('[data-testid="inspection-basic-editor"]').count() === 0, "Inspection Profiles does not render both large editor modes simultaneously.");
+  const advancedScreenshot = await saveStateScreenshot(page, "inspection-profiles", "advanced-mode", "dark");
+  await page.getByRole("tab", { name: "Основное", exact: true }).click();
+  assertBrowser(await priority.inputValue() === changedPriority, "Inspection Profiles mode switching preserves the unsaved draft without autosave.");
   const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
   await page.getByRole("button", { name: "Проверить настройку", exact: true }).click();
   await page.getByText("Профиль прошёл backend-проверку.", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
@@ -1400,14 +1409,31 @@ async function assertInspectionProfilesWorkspace(page) {
   assertBrowser(await page.getByText("Есть несохранённые изменения").isVisible(), "Unsaved draft remains after cancelling note-type navigation.");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assertBrowser(overflow <= 2, "Inspection Profiles workspace has no horizontal page overflow.");
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await waitForLayoutStabilization(page);
+  const responsive = await page.evaluate(() => {
+    const editor = document.querySelector(".inspection-editor");
+    const basicRows = [...document.querySelectorAll(".inspection-basic-row")];
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      editorWidth: editor?.getBoundingClientRect().width || 0,
+      rowsFit: basicRows.every((row) => row.scrollWidth <= row.clientWidth + 1),
+    };
+  });
+  assertBrowser(responsive.overflow <= 2 && responsive.rowsFit, `Inspection Profiles 1024 container layout fits without overlap: ${JSON.stringify(responsive)}`);
+  const responsiveScreenshot = await saveStateScreenshot(page, "inspection-profiles", "workspace-1024", "light");
+  if (originalViewport) await page.setViewportSize(originalViewport);
   return {
     expectedState,
     suggestionSourceName: "E2E Generic Basic",
     suggestionCreatesDirtyDraft: true,
     validateV2PreviewVisible: true,
     unsavedNavigationProtected: true,
+    mutuallyExclusiveModes: true,
+    modeSwitchPreservesDraft: true,
+    responsive1024: responsive,
     noHorizontalOverflow: true,
-    screenshots: [listScreenshot, editorScreenshot, dirtyScreenshot, previewScreenshot],
+    screenshots: [listScreenshot, editorScreenshot, advancedScreenshot, dirtyScreenshot, previewScreenshot, responsiveScreenshot],
   };
 }
 
@@ -1852,11 +1878,13 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     assertBrowser(initial.riskScoreTextCount === 0, "Cards attention inbox does not expose legacy numeric risk scores.");
     assertBrowser(inspectRequests.length - beforeInitial === 1, "Cards attention inbox requests Search inspect only for the initial active card.");
     if (perf100Enabled) assertBrowser(initial.itemCount === 100, `Cards bounded performance queue renders 100 items: ${initial.itemCount}`);
+    const scopedRootStyles = await assertScopedCardRootComputedStyles(page);
+    const wideScrollOwnership = await assertCardsWideScrollOwnership(page);
 
     const lightPath = artifactPaths.cardsScreenshot("synthetic", "workspace", "light");
     await ensureArtifactParent(lightPath);
     await page.screenshot({ path: lightPath, fullPage: true });
-    const visualStates = [{ mode: "workspace", theme: "light", screenshot: relativeArtifactPath(artifactPaths, lightPath), details: initial }];
+    const visualStates = [{ mode: "workspace", theme: "light", screenshot: relativeArtifactPath(artifactPaths, lightPath), details: { ...initial, scopedRootStyles, wideScrollOwnership } }];
 
     if (initial.itemCount > 1) {
       const second = page.locator('[data-testid="cards-inbox-item"]').nth(1);
@@ -1878,15 +1906,21 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     const modalState = await page.evaluate(() => {
       const shell = document.getElementById("dashboard-app-shell");
       const modal = document.querySelector('[data-testid="cards-preview-modal"]');
+      const modalContent = modal?.querySelector(".product-modal-content");
+      const previewHost = modal?.querySelector('[data-testid="anki-card-shadow-preview"]');
+      const previewCard = previewHost?.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]');
       return {
         shellInert: Boolean(shell?.inert),
         shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
         modalOutsideShell: Boolean(modal && shell && !shell.contains(modal)),
         dialogCount: document.querySelectorAll('[role="dialog"]').length,
         backPreviewCount: modal?.querySelectorAll('[data-testid="anki-card-shadow-preview"][data-preview-side="back"]').length || 0,
+        nativeBackground: previewCard ? getComputedStyle(previewCard).backgroundColor : "",
+        modalScrollable: Boolean(modalContent && /(auto|scroll)/.test(getComputedStyle(modalContent).overflowY)),
       };
     });
     assertBrowser((modalState.shellInert || modalState.shellAriaHidden) && modalState.modalOutsideShell && modalState.dialogCount === 1 && modalState.backPreviewCount === 1, "Expanded answer is one true modal outside the inert app shell.");
+    assertBrowser(colorLuminance(modalState.nativeBackground) > 180 && modalState.modalScrollable, `Expanded answer preserves native light background and modal scroll: ${JSON.stringify(modalState)}.`);
     const expandedPath = artifactPaths.cardsScreenshot("synthetic", "expanded", "light");
     await ensureArtifactParent(expandedPath);
     await page.screenshot({ path: expandedPath, fullPage: true });
@@ -1897,7 +1931,7 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     const open = page.getByRole("button", { name: "Открыть в Anki", exact: true });
     await open.focus();
     await page.keyboard.press("Enter");
-    await page.getByText("Запрос на открытие Anki Browser принят. Проблема остаётся активной.").waitFor({ state: "visible", timeout: 15000 });
+    await page.getByText("Карточка открыта в Browser Anki. После редактирования вернитесь и перепроверьте её.").waitFor({ state: "visible", timeout: 15000 });
     await page.getByText("Ожидает перепроверки", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
     const recheck = page.getByRole("button", { name: "Перепроверить карточку", exact: true });
     await Promise.all([
@@ -1915,6 +1949,8 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     await page.screenshot({ path: darkPath, fullPage: true });
     const dark = await inspectCardsV2Layout(page);
     assertBrowser(dark.inspectorCount === 1 && dark.drawerCount === 0 && dark.previewHostCount === 1, "Dark wide Cards workspace preserves the attention inbox and Inspector contract.");
+    const darkPreview = await inspectActiveCardComputedStyles(page);
+    assertBrowser(colorLuminance(darkPreview.backgroundColor) > 180, `Dark dashboard preserves the native light card background: ${darkPreview.backgroundColor}.`);
     visualStates.push({ mode: "workspace", theme: "dark", screenshot: relativeArtifactPath(artifactPaths, darkPath), details: dark });
 
     await page.setViewportSize({ width: 1024, height: 900 });
@@ -1935,10 +1971,11 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "visible", timeout: 15000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="cards-detail-drawer"] [data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
     const narrowOpen = await inspectCardsV2Layout(page);
-    assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null, "Cards 1024 opens one non-modal detail region.");
+    assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null && narrowOpen.drawerOutsidePage, "Cards 1024 opens one portaled non-modal detail region.");
     assertBrowser(!narrowOpen.shellInert && !narrowOpen.shellAriaHidden, "Cards 1024 drawer does not inert the dashboard shell.");
     assertBrowser(narrowOpen.inspectorCount === 0 && narrowOpen.previewHostCount === 1 && narrowOpen.activeItemCount === 1, "Cards 1024 drawer renders one active detail preview without a wide Inspector.");
     assertBrowser(narrowOpen.itemCount === narrowClosed.itemCount && narrowOpen.disabledItemCount === 0, "Cards 1024 queue remains operable while the drawer is open.");
+    assertBrowser(narrowOpen.drawerScrollable, "Cards 1024 drawer retains its internal vertical scroll.");
     const narrowPath = artifactPaths.cardsScreenshot("synthetic", "workspace-1024", "light");
     await ensureArtifactParent(narrowPath);
     await page.screenshot({ path: narrowPath, fullPage: true });
@@ -2010,6 +2047,7 @@ async function inspectCardsV2Layout(page) {
       drawerCount: drawer ? 1 : 0,
       drawerRoleRegionCount: drawer?.getAttribute("role") === "region" ? 1 : 0,
       drawerAriaModal: drawer?.getAttribute("aria-modal") ?? null,
+      drawerOutsidePage: Boolean(drawer && pageRoot && !pageRoot.contains(drawer)),
       previewHostCount: document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length,
       checkboxCount: pageRoot?.querySelectorAll('input[type="checkbox"]').length || 0,
       legacyModeControlCount: [...(pageRoot?.querySelectorAll("button") || [])].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,
@@ -2022,8 +2060,104 @@ async function inspectCardsV2Layout(page) {
       pageHeight: document.documentElement.scrollHeight,
       shellInert: Boolean(shell?.inert),
       shellAriaHidden: shell?.getAttribute("aria-hidden") === "true",
+      drawerScrollable: drawer ? (() => {
+        const scroll = drawer.querySelector(".cards-detail-drawer-scroll");
+        return Boolean(scroll && /(auto|scroll)/.test(getComputedStyle(scroll).overflowY) && scroll.scrollHeight > scroll.clientHeight);
+      })() : false,
     };
   });
+}
+
+async function inspectActiveCardComputedStyles(page) {
+  return page.evaluate(() => {
+    const host = document.querySelector('[data-testid="anki-card-shadow-preview"]');
+    const card = host?.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]');
+    const term = card?.querySelector(".term, .main-word, .word-focus");
+    const style = card ? getComputedStyle(card) : null;
+    const termStyle = term ? getComputedStyle(term) : null;
+    return {
+      backgroundColor: style?.backgroundColor || "",
+      color: style?.color || "",
+      textAlign: style?.textAlign || "",
+      descendantFontWeight: termStyle?.fontWeight || "",
+    };
+  });
+}
+
+async function assertScopedCardRootComputedStyles(page) {
+  const externalRequests = [];
+  const onRequest = (request) => {
+    if (request.url().includes("evil.invalid")) externalRequests.push(request.url());
+  };
+  page.on("request", onRequest);
+  try {
+    const result = await page.evaluate(() => {
+      const host = document.createElement("div");
+      host.hidden = true;
+      const root = host.attachShadow({ mode: "open" });
+      const style = document.createElement("style");
+      style.textContent = '@scope (.card){:scope{background-color:rgb(250,240,220);color:rgb(20,30,40)}:scope.card1{text-align:center}:scope .term{font-weight:700}}';
+      const card = document.createElement("div");
+      card.className = "card card1";
+      card.innerHTML = '<span class="term">term</span>';
+      root.append(style, card);
+      document.body.append(host);
+      const cardStyle = getComputedStyle(card);
+      const termStyle = getComputedStyle(card.querySelector(".term"));
+      const computed = {
+        backgroundColor: cardStyle.backgroundColor,
+        color: cardStyle.color,
+        textAlign: cardStyle.textAlign,
+        descendantFontWeight: termStyle.fontWeight,
+      };
+      host.remove();
+      return computed;
+    });
+    assertBrowser(result.backgroundColor === "rgb(250, 240, 220)", `Scoped CSS applies the native root background: ${result.backgroundColor}.`);
+    assertBrowser(result.color === "rgb(20, 30, 40)", `Scoped CSS applies the native root color: ${result.color}.`);
+    assertBrowser(result.textAlign === "center", `Scoped CSS applies the card ordinal selector: ${result.textAlign}.`);
+    assertBrowser(Number(result.descendantFontWeight) >= 700, `Scoped CSS applies the descendant selector: ${result.descendantFontWeight}.`);
+    assertBrowser(externalRequests.length === 0, "Scoped computed-style regression emits no external requests.");
+    return { ...result, externalRequestCount: externalRequests.length };
+  } finally {
+    page.off("request", onRequest);
+  }
+}
+
+async function assertCardsWideScrollOwnership(page) {
+  const preview = page.locator('[data-testid="cards-inspector"] [data-testid="anki-card-shadow-preview"]');
+  await preview.scrollIntoViewIfNeeded();
+  const beforePreview = await page.evaluate(() => {
+    const host = document.querySelector('[data-testid="cards-inspector"] [data-testid="anki-card-shadow-preview"]');
+    const shell = host?.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]');
+    return { page: window.scrollY, preview: shell?.scrollTop || 0 };
+  });
+  await preview.hover();
+  await page.mouse.wheel(0, 320);
+  await page.waitForTimeout(80);
+  const afterPreview = await page.evaluate(() => {
+    const host = document.querySelector('[data-testid="cards-inspector"] [data-testid="anki-card-shadow-preview"]');
+    const shell = host?.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]');
+    return { page: window.scrollY, preview: shell?.scrollTop || 0, overflowY: shell ? getComputedStyle(shell).overflowY : "" };
+  });
+  assertBrowser(afterPreview.page > beforePreview.page && afterPreview.preview === 0 && afterPreview.overflowY === "hidden", `Wheel over compact preview belongs to the page: ${JSON.stringify({ beforePreview, afterPreview })}`);
+
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const list = document.querySelector(".cards-inbox-list");
+    if (list) list.scrollTop = 0;
+  });
+  const queue = page.locator(".cards-inbox-list");
+  await queue.hover();
+  const beforeQueuePage = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 320);
+  await page.waitForTimeout(80);
+  const afterQueue = await page.evaluate(() => ({
+    page: window.scrollY,
+    queue: document.querySelector(".cards-inbox-list")?.scrollTop || 0,
+  }));
+  assertBrowser(afterQueue.queue > 0 && afterQueue.page === beforeQueuePage, `Wheel over the wide queue belongs to the queue: ${JSON.stringify({ beforeQueuePage, afterQueue })}`);
+  return { preview: { before: beforePreview, after: afterPreview }, queue: afterQueue };
 }
 
 async function captureApkg(page, mode, theme, filePath, deckName, deckFilterExpectation) {

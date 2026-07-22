@@ -19,6 +19,7 @@ import type { CardEntityAction, EntityActionResponse } from "../types/entityActi
 import type { TriageItem, TriageQueryResponse, TriageReason, TriageScope } from "../types/triage";
 
 export type CardsQueryStatus = "loading" | "ready" | "error";
+export type CardsRefreshStatus = "idle" | "pending" | "success" | "error";
 export type CardsInspectStatus = "idle" | "loading" | "ready" | "error";
 export type CardsContinuationStatus = "idle" | "loading" | "error" | "exhausted" | "capped";
 export type LearningPeriodDays = 7 | 30 | 90;
@@ -59,6 +60,7 @@ export interface CardsFocusRequest {
 export interface CardsTriageWorkspace {
   queryStatus: CardsQueryStatus;
   queryError: TriageApiError | null;
+  refreshStatus: CardsRefreshStatus;
   response: TriageQueryResponse | null;
   learningPeriodDays: LearningPeriodDays;
   setLearningPeriodDays: (value: LearningPeriodDays) => void;
@@ -98,6 +100,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [queryStatus, setQueryStatus] = useState<CardsQueryStatus>("loading");
   const [queryError, setQueryError] = useState<TriageApiError | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<CardsRefreshStatus>("idle");
   const [response, setResponse] = useState<TriageQueryResponse | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [inspectStatus, setInspectStatus] = useState<CardsInspectStatus>("idle");
@@ -164,13 +167,14 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     setLastOutcome(null);
     setQueryStatus("loading");
     setQueryError(null);
-    setResponse(null);
-    responseRef.current = null;
-    setActiveId(null);
-    activeIdRef.current = null;
-    setInspectStatus("idle");
-    setInspectResponse(null);
-    setInspectError(null);
+    setInspectVersion((value) => value + 1);
+    if (!responseRef.current) {
+      setActiveId(null);
+      activeIdRef.current = null;
+      setInspectStatus("idle");
+      setInspectResponse(null);
+      setInspectError(null);
+    }
     inspectSequence.current += 1;
     inspectCache.current.clear();
 
@@ -185,6 +189,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       setResponse(value);
       responseRef.current = value;
       setQueryStatus("ready");
+      if (refreshVersion > 0) setRefreshStatus("success");
       const restored = previousActive && value.items.some((item) => item.itemId === previousActive && item.inspect)
         ? previousActive
         : null;
@@ -195,10 +200,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
       if (controller.signal.aborted || sequence !== querySequence.current) return;
       setQueryError(asTriageError(error));
       setQueryStatus("error");
-      setResponse(null);
-      responseRef.current = null;
-      setActiveId(null);
-      activeIdRef.current = null;
+      if (refreshVersion > 0) setRefreshStatus("error");
     });
     return () => controller.abort();
   }, [learningPeriodDays, refreshVersion, stableDeckIds]);
@@ -293,6 +295,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   const refresh = useCallback(() => {
     querySequence.current += 1;
     setOpenResult(null);
+    setRefreshStatus("pending");
     setRefreshVersion((value) => value + 1);
   }, []);
 
@@ -373,7 +376,16 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     const itemId = activeItem.itemId;
     const sequence = ++openSequence.current;
     const queryGeneration = querySequence.current;
+    setOpenResult(null);
     setOpenPending(true);
+    writeResolution(itemId, {
+      itemId,
+      phase: "action_pending",
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
+    });
     try {
       const result = await runReportAction("open-search-selection", {
         mode: "cards",
@@ -590,6 +602,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
   return {
     queryStatus,
     queryError,
+    refreshStatus,
     response,
     learningPeriodDays,
     setLearningPeriodDays,

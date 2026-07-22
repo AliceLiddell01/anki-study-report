@@ -166,8 +166,90 @@ def _sanitize_qualified_rule(rule: Any) -> str:
     declarations = _sanitize_declarations(getattr(rule, "content", ()) or ())
     if not declarations:
         return ""
-    selector = tinycss2.serialize(prelude).strip()
+    selector = _rewrite_scoped_selector_list(prelude)
+    if not selector:
+        return ""
     return f"{selector}{{{declarations}}}"
+
+
+def _rewrite_scoped_selector_list(tokens: Iterable[Any]) -> str:
+    """Map native Anki root selectors to the actual ``@scope`` root.
+
+    Anki applies ``.card`` and ordinal classes to the reviewer root itself.
+    Inside ``@scope (.card)``, keeping a leading ``.card`` would instead look
+    for a nested card.  Selector-list branches are rewritten independently so
+    an ambiguous branch can fail closed without changing another branch's
+    meaning.
+    """
+
+    branches: list[list[Any]] = [[]]
+    for token in tokens:
+        if getattr(token, "type", "") == "literal" and getattr(token, "value", "") == ",":
+            branches.append([])
+        else:
+            branches[-1].append(token)
+    rewritten: list[str] = []
+    for branch in branches:
+        value = _rewrite_scoped_selector(branch)
+        if not value:
+            return ""
+        rewritten.append(value)
+    return ",".join(rewritten)
+
+
+def _rewrite_scoped_selector(tokens: Iterable[Any]) -> str:
+    branch = list(tokens)
+    while branch and getattr(branch[0], "type", "") in {"comment", "whitespace"}:
+        branch.pop(0)
+    while branch and getattr(branch[-1], "type", "") in {"comment", "whitespace"}:
+        branch.pop()
+    if not branch:
+        return ""
+
+    # Document roots are not part of the isolated Shadow DOM preview.  Reject
+    # them instead of retaining a selector that could acquire new meaning.
+    for token in branch:
+        if getattr(token, "type", "") == "ident" and str(
+            getattr(token, "lower_value", getattr(token, "value", ""))
+        ).lower() in {"html", "body"}:
+            return ""
+
+    def class_name_at(index: int) -> str:
+        if index + 1 >= len(branch):
+            return ""
+        dot, name = branch[index], branch[index + 1]
+        if getattr(dot, "type", "") != "literal" or getattr(dot, "value", "") != ".":
+            return ""
+        if getattr(name, "type", "") != "ident":
+            return ""
+        return str(getattr(name, "value", "") or "")
+
+    def root_tail(value: Iterable[Any]) -> str:
+        tail = list(value)
+        serialized = tinycss2.serialize(tail).strip()
+        if serialized and tail and getattr(tail[0], "type", "") in {"comment", "whitespace"}:
+            return f" {serialized}"
+        return serialized
+
+    first_class = class_name_at(0)
+    if first_class.lower() == "card":
+        return f":scope{root_tail(branch[2:])}"
+    if first_class.lower().startswith("card") and first_class[4:].isdigit():
+        return f":scope{tinycss2.serialize(branch).strip()}"
+
+    # Native Anki styles commonly use `.nightMode .card`; the preview mirrors
+    # that context by placing nightMode on the exact card root.
+    if first_class.lower() == "nightmode":
+        index = 2
+        while index < len(branch) and getattr(branch[index], "type", "") in {"comment", "whitespace"}:
+            index += 1
+        nested_class = class_name_at(index)
+        if nested_class.lower() == "card":
+            return f":scope.nightMode{root_tail(branch[index + 2:])}"
+        if nested_class.lower().startswith("card") and nested_class[4:].isdigit():
+            return f":scope.nightMode{tinycss2.serialize(branch[index:]).strip()}"
+
+    return tinycss2.serialize(branch).strip()
 
 
 def _sanitize_declarations(tokens: Iterable[Any]) -> str:

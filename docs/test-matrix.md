@@ -150,6 +150,8 @@ Fast CI для финального head 29863609253: PASS
 
 После локального PASS выполняются Fast CI exact SHA, один `standard/cards` с restart и один `standard/full`. `strict-apkg`, `perf100`, warm repeats и локальный full Docker не требуются. Политика запусков не меняется; подробности остаются в [`verification-run-policy.md`](verification-run-policy.md).
 
+Post-merge manual acceptance remediation дополнительно фиксирует computed styles для `.card` root/background без внешних requests, ownership wheel/page/queue/drawer scroll, взаимоисключающие Basic/Advanced modes, container-query layout 3→2→1, сохранение current content и active item при refresh, pending/status feedback и reduced-motion path. Private-profile действия владельца остаются отдельным manual gate.
+
 ## Поставка release
 
 Изменения версии, пакета, publisher и workflow release требуют профильные тесты:

@@ -492,12 +492,7 @@
 }
 
 .cards-inbox-inspector {
-  position: sticky;
-  top: 82px;
-  max-height: calc(100vh - 102px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  overflow: visible;
 }
 
 .cards-detail-content,
@@ -532,7 +527,9 @@
 }
 
 .cards-detail-header {
-  padding-bottom: .1rem;
+  padding: .72rem .78rem;
+  border-radius: var(--radius-region, .85rem);
+  background: color-mix(in srgb, var(--accent-primary) 7%, var(--surface-3));
 }
 
 .cards-detail-heading-copy {
@@ -551,11 +548,15 @@
 }
 
 .cards-detail-lifecycle {
-  padding: .7rem .78rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: .35rem .6rem;
+  padding: .48rem .65rem;
   border-left: 3px solid var(--accent-primary);
 }
 
 .cards-detail-lifecycle p {
+  margin: 0;
   color: var(--text-secondary);
   font-size: .68rem;
 }
@@ -571,14 +572,16 @@
 .cards-detail-metadata {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .28rem .8rem;
+  gap: .45rem;
   margin: 0;
-  padding: .65rem 0;
-  border-block: 1px solid var(--border-subtle);
+  padding: 0;
 }
 
 .cards-detail-metadata > div {
   min-width: 0;
+  padding: .55rem .62rem;
+  border-radius: var(--radius-item, .7rem);
+  background: color-mix(in srgb, var(--surface-3) 72%, var(--surface-2));
 }
 
 .cards-detail-metadata dt {
@@ -623,7 +626,7 @@
 
 .cards-detail-reasons {
   display: grid;
-  gap: 0;
+  gap: .45rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -631,16 +634,10 @@
 
 .cards-detail-reasons li {
   min-width: 0;
-  padding: .58rem .15rem;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.cards-detail-reasons li:first-child {
-  padding-top: .15rem;
-}
-
-.cards-detail-reasons li:last-child {
-  border-bottom: 0;
+  padding: .62rem .68rem;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
+  border-radius: var(--radius-item, .7rem);
+  background: color-mix(in srgb, var(--surface-3) 54%, transparent);
 }
 
 .cards-detail-reasons li.is-primary .cards-detail-reason-heading strong {
@@ -675,7 +672,7 @@
   max-height: 480px;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: .68rem;
+  border-radius: var(--radius-region, .85rem);
   background: var(--surface-1);
   padding: .55rem;
 }
@@ -721,8 +718,11 @@
 }
 
 .cards-detail-action-zone {
-  padding: .7rem 0;
-  border-block: 1px solid var(--border-subtle);
+  min-height: 128px;
+  padding: .75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-region, .85rem);
+  background: color-mix(in srgb, var(--surface-3) 46%, transparent);
 }
 
 .cards-detail-actions {

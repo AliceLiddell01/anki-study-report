@@ -18,17 +18,11 @@ describe("AdvancedProfileDisclosure", () => {
   beforeEach(async () => { (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true; await i18n.changeLanguage("en"); container = document.createElement("div"); document.body.append(container); root = createRoot(container); });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
-  it("is collapsed by default and advertises hidden errors in its summary", async () => {
-    const onOpenChange = vi.fn();
-    const render = async (open: boolean) => act(async () => root.render(<AdvancedProfileDisclosure item={item} draft={draft} errors={{ "profile.checks.0.roles": "select_role" }} open={open} onOpenChange={onOpenChange} onChange={() => undefined} />));
-    await render(false);
-    const collapsed = container.querySelector<HTMLDetailsElement>("details")!;
-    expect(collapsed.open).toBe(false);
-    expect(collapsed.querySelector("summary")?.textContent).toContain("1 errors");
-    expect(collapsed.textContent).toContain("question-required");
-
-    await render(true);
-    expect(container.querySelector<HTMLDetailsElement>("details")?.open).toBe(true);
-    expect(container.querySelector("#inspection-advanced-panel")).not.toBeNull();
+  it("renders the exact editor as a standalone tab panel", async () => {
+    await act(async () => root.render(<AdvancedProfileDisclosure item={item} draft={draft} errors={{ "profile.checks.0.roles": "select_role" }} onChange={() => undefined} />));
+    const panel = container.querySelector<HTMLElement>("#inspection-advanced-panel")!;
+    expect(panel.getAttribute("role")).toBe("tabpanel");
+    expect(panel.getAttribute("aria-labelledby")).toBe("inspection-mode-advanced");
+    expect(panel.textContent).toContain("question-required");
   });
 });

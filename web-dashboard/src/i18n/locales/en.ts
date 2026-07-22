@@ -176,7 +176,7 @@ const en = {
       },
       status: {
         validation_succeeded: "The profile passed backend validation.", client_validation_failed: "Fix the highlighted fields.", server_validation_failed: "The backend rejected the profile; fix the highlighted fields.",
-        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.",
+        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.", catalog_refreshed: "The note type list was updated.",
         inspection_profile_revision_conflict: "A revision conflict was found; the draft was not overwritten.", invalid_inspection_profile_request: "The profile failed strict validation.", inspection_profiles_unavailable: "Inspection Profiles are temporarily unavailable.", inspection_profiles_timeout: "The operation timed out.", inspection_profiles_failed: "The profile operation failed.", inspection_profile_future_schema: "An unsupported future schema was found.", failed: "The operation failed.",
       },
       import: { fileLabel: "Choose an Inspection Profile JSON file", tooLarge: "The file is larger than 1 MiB.", invalid: "The file is not a strict Inspection Profile v1 document.", loaded: "The import was loaded into a local draft only; it was not saved or confirmed.", missing_note_type: "That note type does not exist in this collection.", unsaved_changes: "Save or discard the current changes first.", structure_mismatch: "The fingerprint or exact references do not match the current structure." },
@@ -891,6 +891,8 @@ const en = {
         readOnly: "read only",
         singleCard: "one card at a time",
         refresh: "Refresh",
+        refreshed: "Updated.",
+        refreshFailedStale: "Refresh failed. The previous inbox remains available.",
         retry: "Retry",
         summary: {
           items_one: "{{count}} card",
@@ -1003,7 +1005,7 @@ const en = {
         actions: {
           open: "Open in Anki",
           opening: "Opening…",
-          opened: "The Anki Browser open request was accepted. The issue remains active.",
+          opened: "The card opened in Anki Browser. Return after editing and recheck it.",
           failed: "The exact card could not be opened in Anki.",
           working: "Working…",
           suspend: "Suspend card",
@@ -1015,7 +1017,17 @@ const en = {
         resolution: {
           rule: "A successful action does not mean the issue is resolved. Only the exact-card recheck determines the outcome.",
           recheck: "Recheck card",
+          actionPending: "Running the command for this exact card…",
           actionSucceeded: "Anki completed the action for one card. The reason stays active until an explicit recheck.",
+          actionFailed: "Anki did not complete the command. The card was not changed; it is safe to retry.",
+          recheckFailed: "An authoritative result was not available. Previous reasons were preserved.",
+          actionResults: {
+            suspend: "The card was suspended in Anki. The command completed, but the reason has not been rechecked.",
+            unsuspend: "The card was unsuspended in Anki. The command completed, but the reason has not been rechecked.",
+            bury: "The card was buried in Anki. The command completed, but the reason has not been rechecked.",
+            unbury: "The card was unburied in Anki. The command completed, but the reason has not been rechecked.",
+            clear_flag: "The card flag was cleared in Anki. The command completed, but the reason has not been rechecked.",
+          },
           noChanges: "Anki made no changes. This is an action result, not proof that the reason is resolved.",
           removed: "Resolved",
           remaining: "Remaining",

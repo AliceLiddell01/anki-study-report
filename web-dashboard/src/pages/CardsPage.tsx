@@ -1,7 +1,8 @@
-import { RefreshCw, RotateCw, TriangleAlert } from "lucide-react";
+import { RotateCw, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
+import RefreshButton from "../components/RefreshButton";
 import { CardsDetail, CardPreview, hasUsableBackPreview } from "../components/cards/CardsDetail";
 import { CardsDetailDrawer } from "../components/cards/CardsDetailDrawer";
 import { CardsInbox } from "../components/cards/CardsInbox";
@@ -208,9 +209,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
               </label>
               <div className="cards-inbox-toolbar-actions">
                 {filtersActive ? <button type="button" className="tertiary-button" onClick={clearFilters}>{t("filters.clear")}</button> : null}
-                <button type="button" className="secondary-button" onClick={workspace.refresh} disabled={workspace.queryStatus === "loading"}>
-                  <RefreshCw size={16} aria-hidden="true" />{t("refresh")}
-                </button>
+                <RefreshButton label={t("refresh")} pending={workspace.refreshStatus === "pending"} onClick={workspace.refresh} />
               </div>
             </div>
             <p className="cards-inbox-period-help">{t("period.help")}</p>
@@ -232,7 +231,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       </section>
 
       <CardsWorkspaceWarnings workspace={workspace} />
-      {workspace.lastOutcome ? (
+      {workspace.lastOutcome && workspace.lastOutcome.itemId !== workspace.activeId ? (
         <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
           <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
           <span>{t(`resolution.states.${workspace.lastOutcome.phase}.description`)}</span>
@@ -241,7 +240,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       <CoverageDisclosure workspace={workspace} />
 
       <div className="cards-inbox-workspace">
-        <section className="cards-inbox-queue panel-surface workspace-region" aria-labelledby="cards-inbox-queue-title">
+        <section className={`cards-inbox-queue panel-surface workspace-region shared-refresh-region${workspace.queryStatus === "loading" && workspace.response ? " is-refreshing" : ""}`} aria-labelledby="cards-inbox-queue-title" aria-busy={workspace.queryStatus === "loading"}>
           <header className="cards-inbox-queue-header">
             <div>
               <h2 id="cards-inbox-queue-title" className="workspace-section-title" ref={queueHeadingRef} tabIndex={-1}>{t("queue.title")}</h2>
@@ -259,10 +258,12 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
             onActivate={activateItem}
           />
           <ContinuationFooter workspace={workspace} />
+          {workspace.refreshStatus === "success" ? <p className="shared-refresh-status" role="status">{t("refreshed")}</p> : null}
+          {workspace.refreshStatus === "error" && workspace.response ? <p className="shared-refresh-status is-error" role="alert">{t("refreshFailedStale")}</p> : null}
         </section>
 
         {isWide ? (
-          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region workspace-safe-area" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
+          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
             <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} />
           </aside>
         ) : null}
@@ -332,8 +333,8 @@ function QueueState({
   onActivate: (item: TriageItem, button: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
-  if (workspace.queryStatus === "loading") return <WorkspaceMessage status title={t("states.loadingTitle")} text={t("states.loading")} />;
-  if (workspace.queryStatus === "error") return <WorkspaceMessage alert title={t("states.errorTitle")} text={t("states.error")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}><RotateCw size={16} aria-hidden="true" />{t("retry")}</button>} />;
+  if (workspace.queryStatus === "loading" && !workspace.response) return <WorkspaceMessage status title={t("states.loadingTitle")} text={t("states.loading")} />;
+  if (workspace.queryStatus === "error" && !workspace.response) return <WorkspaceMessage alert title={t("states.errorTitle")} text={t("states.error")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}><RotateCw size={16} aria-hidden="true" />{t("retry")}</button>} />;
   if (workspace.response?.status === "unavailable") return <WorkspaceMessage alert title={t("states.unavailableTitle")} text={t("states.unavailable")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}>{t("retry")}</button>} />;
   if (!visibleItems.length) return <WorkspaceMessage title={filtersActive ? t("states.filteredTitle") : t("states.emptyTitle")} text={filtersActive ? t("states.filtered") : t("states.empty")} action={filtersActive ? <button type="button" className="secondary-button" onClick={onClear}>{t("filters.clear")}</button> : undefined} />;
   return <CardsInbox items={visibleItems} activeId={workspace.activeId} detailRegionId={detailRegionId} drawerMode={drawerMode} drawerOpen={drawerOpen} onActivate={onActivate} />;

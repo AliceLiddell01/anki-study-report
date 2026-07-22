@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export interface CardsDetailDrawerProps {
   open: boolean;
@@ -45,7 +46,7 @@ export function CardsDetailDrawer({
   }, [closeAndRestore, open]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <aside
       id={regionId}
       className="cards-detail-drawer workspace-region workspace-safe-area"
@@ -60,6 +61,7 @@ export function CardsDetailDrawer({
         </button>
       </div>
       <div className="cards-detail-drawer-scroll">{children}</div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

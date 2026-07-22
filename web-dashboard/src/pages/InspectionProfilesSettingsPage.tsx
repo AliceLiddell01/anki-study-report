@@ -2,6 +2,7 @@ import { Download, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
+import RefreshButton from "../components/RefreshButton";
 import AdvancedProfileDisclosure from "../components/inspection-profiles/AdvancedProfileDisclosure";
 import BasicProfileEditor from "../components/inspection-profiles/BasicProfileEditor";
 import ProfileValidationResult from "../components/inspection-profiles/ProfileValidationResult";
@@ -20,6 +21,7 @@ const STATE_ORDER: Record<InspectionProfileState, number> = {
 };
 
 type ConfirmAction = "save_draft" | "disable" | "delete" | "replace_suggestion" | "start_empty" | null;
+type EditorMode = "basic" | "advanced";
 
 export default function InspectionProfilesSettingsPage() {
   const { t, i18n } = useTranslation("pages");
@@ -29,10 +31,10 @@ export default function InspectionProfilesSettingsPage() {
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState<EditorMode>("basic");
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => setAdvancedOpen(false), [workspace.selectedNoteTypeId]);
+  useEffect(() => setEditorMode("basic"), [workspace.selectedNoteTypeId]);
 
   const filteredItems = useMemo(() => workspace.items
     .filter((item) => stateFilter === "all" || item.effectiveState === stateFilter)
@@ -131,6 +133,8 @@ export default function InspectionProfilesSettingsPage() {
           <p className="workspace-body">{t("inspectionProfiles.description")}</p>
           <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
         </div>
+        <RefreshButton label={copyForLanguage(profileLanguage(i18n.resolvedLanguage)).refreshCatalog} pending={workspace.loadState === "loading"} onClick={() => void workspace.reload(true, true)} />
+        {workspace.status === "catalog_refreshed" ? <p className="inspection-catalog-refresh-status" role="status">{statusLabel(t, workspace.status)}</p> : null}
       </header>
 
       {workspace.loadState === "error" ? (
@@ -174,14 +178,16 @@ export default function InspectionProfilesSettingsPage() {
           {workspace.catalog?.truncated ? <p className="inspection-truncated" role="status">{t("inspectionProfiles.catalog.truncated", { count: workspace.catalog.returnedCount, total: workspace.catalog.totalCount })}</p> : null}
         </aside>
 
-        <main className="inspection-editor workspace-region workspace-safe-area" aria-live="off">
+        <main className="inspection-editor workspace-region" aria-live="off" aria-busy={workspace.loadState === "loading"}>
           {!workspace.selected ? <section className="inspection-empty-editor"><h2>{t("inspectionProfiles.editor.selectTitle")}</h2><p>{t("inspectionProfiles.editor.selectDescription")}</p><small>{t("inspectionProfiles.editor.selectSafety")}</small></section> : workspace.draft ? (
             <ProfileWorkspace
               item={workspace.selected}
               draft={workspace.draft}
               workspace={workspace}
-              advancedOpen={advancedOpen}
-              onAdvancedOpenChange={setAdvancedOpen}
+              editorMode={editorMode}
+              onEditorModeChange={setEditorMode}
+              operationMessage={importMessage ?? (workspace.status === "catalog_refreshed" ? "" : statusLabel(t, workspace.status))}
+              operationError={Boolean(workspace.status?.includes("failed") || workspace.status?.includes("conflict"))}
               onValidate={() => void runValidate()}
               onConfirm={() => void runSave("confirmed")}
               onSaveDraft={() => workspace.selected?.effectiveState === "confirmed" ? setConfirmAction("save_draft") : void runSave("suggested")}
@@ -192,7 +198,7 @@ export default function InspectionProfilesSettingsPage() {
               onReplaceSuggestion={() => workspace.dirty ? setConfirmAction("replace_suggestion") : workspace.replaceWithSuggestion()}
               onStartEmpty={() => workspace.dirty ? setConfirmAction("start_empty") : workspace.startEmpty()}
               onRevealAdvancedError={(path) => {
-                setAdvancedOpen(true);
+                setEditorMode("advanced");
                 window.setTimeout(() => document.getElementById(controlIdForError(path))?.focus(), 0);
               }}
             />
@@ -201,20 +207,20 @@ export default function InspectionProfilesSettingsPage() {
       </div>
 
       <input ref={fileInput} className="sr-only" type="file" accept="application/json,.json" aria-label={t("inspectionProfiles.import.fileLabel")} onChange={(event) => void importProfile(event.target.files?.[0])} />
-      {(workspace.status || importMessage) ? <p className={workspace.status?.includes("failed") || workspace.status?.includes("conflict") ? "inspection-global-status is-error" : "inspection-global-status"} role={workspace.status?.includes("failed") ? "alert" : "status"}>{importMessage ?? statusLabel(t, workspace.status)}</p> : null}
-
       {pendingSelection ? <AccessibleModal portal testId="inspection-unsaved-dialog" title={t("inspectionProfiles.unsaved.title")} closeLabel={t("inspectionProfiles.actions.close")} onRequestClose={() => setPendingSelection(null)} footer={<div className="product-modal-actions"><button type="button" className="secondary-button" onClick={() => setPendingSelection(null)}>{t("inspectionProfiles.actions.keepEditing")}</button><button type="button" className="danger-button" onClick={() => { workspace.select(pendingSelection, true); setPendingSelection(null); }}>{t("inspectionProfiles.actions.discard")}</button></div>}><p className="product-modal-lead">{t("inspectionProfiles.unsaved.description")}</p></AccessibleModal> : null}
       {confirmAction ? <ActionConfirmation action={confirmAction} noteTypeName={workspace.selected?.structure.name ?? ""} onClose={() => setConfirmAction(null)} onConfirm={() => void executeConfirmAction()} /> : null}
     </div>
   );
 }
 
-function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpenChange, onValidate, onConfirm, onSaveDraft, onDisable, onDelete, onExport, onImport, onReplaceSuggestion, onStartEmpty, onRevealAdvancedError }: {
+function ProfileWorkspace({ item, draft, workspace, editorMode, onEditorModeChange, operationMessage, operationError, onValidate, onConfirm, onSaveDraft, onDisable, onDelete, onExport, onImport, onReplaceSuggestion, onStartEmpty, onRevealAdvancedError }: {
   item: InspectionProfileSummary;
   draft: InspectionProfile;
   workspace: ReturnType<typeof useInspectionProfilesWorkspace>;
-  advancedOpen: boolean;
-  onAdvancedOpenChange: (open: boolean) => void;
+  editorMode: EditorMode;
+  onEditorModeChange: (mode: EditorMode) => void;
+  operationMessage: string;
+  operationError: boolean;
   onValidate: () => void;
   onConfirm: () => void;
   onSaveDraft: () => void;
@@ -239,6 +245,7 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
       : item.effectiveState === "confirmed" ? copy.validateConfirmChanges
         : copy.confirmEnable;
   const guidance = lifecycleGuidance(item, language, workspace.generatedDraft);
+  const advancedErrorCount = Object.keys(workspace.fieldErrors).filter(isAdvancedError).length;
 
   return (
     <div className="inspection-editor-stack">
@@ -264,7 +271,20 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
         {item.effectiveState === "needs_review" ? <p>{reasonLabel(item.stateReason, language)}</p> : null}
       </section>
 
-      <BasicProfileEditor item={item} draft={draft} onChange={workspace.setDraftFromUser} errors={workspace.fieldErrors} />
+      <div className="inspection-mode-switch" role="tablist" aria-label={copy.editorModeLabel}>
+        <button id="inspection-mode-basic" type="button" role="tab" aria-selected={editorMode === "basic"} aria-controls="inspection-basic-mode-panel" tabIndex={editorMode === "basic" ? 0 : -1} className={editorMode === "basic" ? "is-active" : ""} onClick={() => onEditorModeChange("basic")}>{copy.basicMode}</button>
+        <button id="inspection-mode-advanced" type="button" role="tab" aria-selected={editorMode === "advanced"} aria-controls="inspection-advanced-panel" tabIndex={editorMode === "advanced" ? 0 : -1} className={editorMode === "advanced" ? "is-active" : ""} onClick={() => onEditorModeChange("advanced")}>
+          <span>{copy.advancedMode}</span>
+          {advancedErrorCount ? <span className="inspection-mode-error-count" aria-label={copy.advancedErrors(advancedErrorCount)}>{advancedErrorCount}</span> : null}
+          {workspace.dirty ? <span className="inspection-mode-dirty">{copy.changed}</span> : null}
+        </button>
+      </div>
+
+      {editorMode === "basic" ? (
+        <section id="inspection-basic-mode-panel" role="tabpanel" aria-labelledby="inspection-mode-basic">
+          <BasicProfileEditor item={item} draft={draft} onChange={workspace.setDraftFromUser} errors={workspace.fieldErrors} />
+        </section>
+      ) : <AdvancedProfileDisclosure item={item} draft={draft} errors={workspace.fieldErrors} onChange={workspace.setDraftFromUser} />}
 
       {Object.keys(workspace.fieldErrors).length ? <ErrorSummary errors={workspace.fieldErrors} onNavigate={onRevealAdvancedError} /> : null}
       {workspace.validation ? <ProfileValidationResult item={item} draft={draft} validation={workspace.validation} /> : null}
@@ -297,9 +317,8 @@ function ProfileWorkspace({ item, draft, workspace, advancedOpen, onAdvancedOpen
           ) : null}
         </div>
         {blocking ? <p className="inspection-inline-error">{copy.blockingHelp}</p> : null}
+        {operationMessage ? <p className={`inspection-operation-status${operationError ? " is-error" : ""}`} role={operationError ? "alert" : "status"}>{operationMessage}</p> : null}
       </section>
-
-      <AdvancedProfileDisclosure item={item} draft={draft} errors={workspace.fieldErrors} dirty={workspace.dirty} open={advancedOpen} onOpenChange={onAdvancedOpenChange} onChange={workspace.setDraftFromUser} />
 
       <details className="inspection-major-disclosure inspection-tools-disclosure">
         <summary>
@@ -336,6 +355,10 @@ function SummaryMetric({ label, value }: { label: string; value: number }) {
 function ErrorSummary({ errors, onNavigate }: { errors: Record<string, string>; onNavigate: (path: string) => void }) {
   const { t } = useTranslation("pages");
   return <section className="inspection-error-summary" role="alert" aria-labelledby="inspection-errors-title"><h3 id="inspection-errors-title" tabIndex={-1}>{t("inspectionProfiles.errors.title")}</h3><p>{t("inspectionProfiles.errors.description")}</p><ul>{Object.entries(errors).map(([path, value]) => <li key={path}><button type="button" onClick={() => onNavigate(path)}>{fieldLabel(t, path)}: {t(`inspectionProfiles.errors.${value}`, { defaultValue: value })}</button></li>)}</ul></section>;
+}
+
+function isAdvancedError(path: string): boolean {
+  return ["fieldMappings", "checks", "appliesTo", "displayName"].some((segment) => path.includes(segment));
 }
 
 function ActionConfirmation({ action, noteTypeName, onClose, onConfirm }: { action: Exclude<ConfirmAction, null>; noteTypeName: string; onClose: () => void; onConfirm: () => void }) {
@@ -384,10 +407,14 @@ function reasonLabel(reason: string | null, language: "ru" | "en"): string {
 
 function pageCopy(language: "ru" | "en") {
   return language === "ru" ? {
-    detectedKind: "Распознанный вид", actionsLabel: "Действия профиля", checkSetup: "Проверить настройку", confirmEnable: "Подтвердить и включить", reviewConfirm: "Проверить и подтвердить снова", reviewEnable: "Проверить и включить", validateConfirmChanges: "Проверить и подтвердить изменения", enabled: "Включено", enabledHelp: "Профиль уже authoritative; повторное подтверждение без изменений не требуется.", primaryHelp: "Backend сначала проверит структуру и ограниченный пример, затем сохранит профиль только при успехе.", saveDraft: "Сохранить как черновик", saveChanges: "Сохранить изменения", working: "Выполняется…", blockingHelp: "Разрешите неоднозначность или исправьте обязательные ссылки перед включением.", profileTools: "Инструменты профиля", profileToolsHelp: "Импорт, экспорт, сброс и destructive actions", resetSuggestion: "Восстановить предложенную настройку", reviewServer: "Обновить сведения о сервере",
+    detectedKind: "Распознанный вид", editorModeLabel: "Режим редактора профиля", basicMode: "Основное", advancedMode: "Расширенное", changed: "Изменено", advancedErrors: (count: number) => `Ошибок в расширенном режиме: ${count}`, actionsLabel: "Действия профиля", checkSetup: "Проверить настройку", confirmEnable: "Подтвердить и включить", reviewConfirm: "Проверить и подтвердить снова", reviewEnable: "Проверить и включить", validateConfirmChanges: "Проверить и подтвердить изменения", enabled: "Включено", enabledHelp: "Профиль уже authoritative; повторное подтверждение без изменений не требуется.", primaryHelp: "Backend сначала проверит структуру и ограниченный пример, затем сохранит профиль только при успехе.", saveDraft: "Сохранить как черновик", saveChanges: "Сохранить изменения", working: "Выполняется…", blockingHelp: "Разрешите неоднозначность или исправьте обязательные ссылки перед включением.", profileTools: "Инструменты профиля", profileToolsHelp: "Импорт, экспорт, сброс и destructive actions", resetSuggestion: "Восстановить предложенную настройку", reviewServer: "Обновить сведения о сервере",
   } : {
-    detectedKind: "Detected kind", actionsLabel: "Profile actions", checkSetup: "Check setup", confirmEnable: "Confirm and enable", reviewConfirm: "Review and confirm again", reviewEnable: "Review and enable", validateConfirmChanges: "Validate and confirm changes", enabled: "Enabled", enabledHelp: "The profile is already authoritative; unchanged profiles do not need reconfirmation.", primaryHelp: "The backend validates the structure and a bounded sample before saving only on success.", saveDraft: "Save as draft", saveChanges: "Save changes", working: "Working…", blockingHelp: "Resolve ambiguity or fix required references before enabling the profile.", profileTools: "Profile tools", profileToolsHelp: "Import, export, reset, and destructive actions", resetSuggestion: "Restore suggested setup", reviewServer: "Refresh server information",
+    detectedKind: "Detected kind", editorModeLabel: "Profile editor mode", basicMode: "Basic", advancedMode: "Advanced", changed: "Changed", advancedErrors: (count: number) => `Advanced mode errors: ${count}`, actionsLabel: "Profile actions", checkSetup: "Check setup", confirmEnable: "Confirm and enable", reviewConfirm: "Review and confirm again", reviewEnable: "Review and enable", validateConfirmChanges: "Validate and confirm changes", enabled: "Enabled", enabledHelp: "The profile is already authoritative; unchanged profiles do not need reconfirmation.", primaryHelp: "The backend validates the structure and a bounded sample before saving only on success.", saveDraft: "Save as draft", saveChanges: "Save changes", working: "Working…", blockingHelp: "Resolve ambiguity or fix required references before enabling the profile.", profileTools: "Profile tools", profileToolsHelp: "Import, export, reset, and destructive actions", resetSuggestion: "Restore suggested setup", reviewServer: "Refresh server information",
   };
+}
+
+function copyForLanguage(language: "ru" | "en") {
+  return { refreshCatalog: language === "ru" ? "Обновить список" : "Refresh list" };
 }
 
 function confirmationCopy(action: Exclude<ConfirmAction, null>, name: string, language: "ru" | "en") {
@@ -412,7 +439,7 @@ function controlIdForError(path: string): string {
   if (mapping) return `inspection-role-${mapping[1]}`;
   const check = path.match(/checks\.(\d+)\.(roles|minLength)/);
   if (check) return check[2] === "roles" ? `inspection-check-kind-${check[1]}` : `inspection-check-length-${check[1]}`;
-  if (path.includes("appliesTo")) return "inspection-advanced-summary";
+  if (path.includes("appliesTo")) return "inspection-advanced-panel";
   return "inspection-profile-display-name";
 }
 function safeFileName(value: string): string { return value.normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "profile"; }
