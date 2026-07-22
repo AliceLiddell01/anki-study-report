@@ -1971,7 +1971,7 @@ async function assertCardsV2Workspace(page, perf100Enabled) {
     await page.locator('[data-testid="cards-detail-drawer"]').waitFor({ state: "visible", timeout: 15000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="cards-detail-drawer"] [data-testid="anki-card-shadow-preview"]')?.getAttribute("data-preview-measured") === "true", undefined, { timeout: 60000 });
     const narrowOpen = await inspectCardsV2Layout(page);
-    assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null, "Cards 1024 opens one non-modal detail region.");
+    assertBrowser(narrowOpen.drawerCount === 1 && narrowOpen.drawerRoleRegionCount === 1 && narrowOpen.drawerAriaModal === null && narrowOpen.drawerOutsidePage, "Cards 1024 opens one portaled non-modal detail region.");
     assertBrowser(!narrowOpen.shellInert && !narrowOpen.shellAriaHidden, "Cards 1024 drawer does not inert the dashboard shell.");
     assertBrowser(narrowOpen.inspectorCount === 0 && narrowOpen.previewHostCount === 1 && narrowOpen.activeItemCount === 1, "Cards 1024 drawer renders one active detail preview without a wide Inspector.");
     assertBrowser(narrowOpen.itemCount === narrowClosed.itemCount && narrowOpen.disabledItemCount === 0, "Cards 1024 queue remains operable while the drawer is open.");
@@ -2047,6 +2047,7 @@ async function inspectCardsV2Layout(page) {
       drawerCount: drawer ? 1 : 0,
       drawerRoleRegionCount: drawer?.getAttribute("role") === "region" ? 1 : 0,
       drawerAriaModal: drawer?.getAttribute("aria-modal") ?? null,
+      drawerOutsidePage: Boolean(drawer && pageRoot && !pageRoot.contains(drawer)),
       previewHostCount: document.querySelectorAll('[data-testid="anki-card-shadow-preview"]').length,
       checkboxCount: pageRoot?.querySelectorAll('input[type="checkbox"]').length || 0,
       legacyModeControlCount: [...(pageRoot?.querySelectorAll("button") || [])].filter((button) => ["Таблица", "Плитки", "Превью Anki"].includes((button.textContent || "").trim())).length,

@@ -111,6 +111,8 @@ describe("Cards attention inbox", () => {
     expect(drawer).toBeTruthy();
     expect(drawer.getAttribute("role")).toBe("region");
     expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(drawer.parentElement).toBe(document.body);
+    expect(document.getElementById("dashboard-app-shell")!.contains(drawer)).toBe(false);
     expect(drawer.textContent).toContain("Подробности карточки");
     expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
     expect(workspace.activate).toHaveBeenCalledWith(items[0]);
