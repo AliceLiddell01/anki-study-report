@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { RefreshCw } from "lucide-react";
 
 interface RefreshButtonProps {
@@ -7,11 +8,26 @@ interface RefreshButtonProps {
   className?: string;
 }
 
-export default function RefreshButton({ label, pending, onClick, className = "secondary-button" }: RefreshButtonProps) {
+const RefreshButton = forwardRef<HTMLButtonElement, RefreshButtonProps>(function RefreshButton(
+  { label, pending, onClick, className = "secondary-button" },
+  ref,
+) {
   return (
-    <button type="button" className={`${className} shared-refresh-button`} onClick={onClick} disabled={pending} aria-busy={pending}>
+    <button
+      ref={ref}
+      type="button"
+      className={`${className} shared-refresh-button`}
+      onClick={() => {
+        if (!pending) onClick();
+      }}
+      aria-disabled={pending}
+      aria-busy={pending}
+      data-refresh-pending={pending ? "true" : "false"}
+    >
       <span className={`shared-refresh-icon${pending ? " is-pending" : ""}`} aria-hidden="true"><RefreshCw size={16} /></span>
       <span>{label}</span>
     </button>
   );
-}
+});
+
+export default RefreshButton;
