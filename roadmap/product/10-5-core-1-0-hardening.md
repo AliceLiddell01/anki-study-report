@@ -1,7 +1,9 @@
-# Compatibility pointer — former Stage 10.5
+# Указатель совместимости — прежний Stage 10.5
 
-This path is retained so historical links do not break.
+Этот путь сохранён, чтобы исторические ссылки не ломались.
 
-Core 1.0 Hardening is now **`C2`** in the authoritative [Core product track](../core/README.md). Selected prerequisite hardening may occur inside `C1`, while full contract freeze and release closure remain in `C2`.
+Core 1.0 Hardening теперь является этапом **C2** в авторитетном [треке Core](../core/README.md).
 
-This stage does not rebuild CI/CD; the independent [Platform / CI track](../platform/README.md) remains authoritative for delivery infrastructure.
+C2 реализован и прошёл exact-SHA Fast CI, targeted `standard/cards` с перезапуском и final `standard/full` на candidate branch. Merge в `core`, release и публикация выполняются только отдельными решениями владельца.
+
+Этот этап не перестраивает CI/CD. За инфраструктуру поставки по-прежнему отвечает независимый [трек Platform / CI](../platform/README.md).
