@@ -126,11 +126,6 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
             <a className="secondary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
           ) : null}
         </div>
-        {workspace.openResult ? (
-          <p className={workspace.openResult.ok ? "cards-detail-action-status" : "cards-detail-action-status is-error"} role="status">
-            {workspace.openResult.ok ? t("actions.opened") : t("actions.failed")}
-          </p>
-        ) : null}
       </section>
 
       <ResolutionResult
@@ -187,11 +182,18 @@ function ResolutionResult({
   const canRecheck = ["awaiting_recheck", "still_active", "partially_resolved", "recheck_failed", "evidence_stale", "entity_missing", "entity_changed"].includes(state.phase);
   const noChanges = state.actionResult && "resultCode" in state.actionResult && state.actionResult.resultCode === "action.no_changes";
   const actionSucceeded = state.actionResult && "resultCode" in state.actionResult && !noChanges;
+  const openResult = state.actionResult && "ok" in state.actionResult ? state.actionResult : null;
+  const isError = state.phase === "action_failed" || state.phase === "recheck_failed";
   return (
-    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-result" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
+    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-result" role={isError ? "alert" : "status"} aria-live={isError ? undefined : "polite"} aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
       <h3 id={headingId}>{t("inspector.result")}</h3>
-      {actionSucceeded ? <p>{t("resolution.actionSucceeded")}</p> : null}
+      {state.phase === "action_pending" ? <p>{t("resolution.actionPending")}</p> : null}
+      {actionSucceeded ? <p>{t(`resolution.actionResults.${state.actionResult!.action}`)}</p> : null}
       {noChanges ? <p>{t("resolution.noChanges")}</p> : null}
+      {openResult?.ok ? <p>{t("actions.opened")}</p> : null}
+      {openResult && !openResult.ok ? <p>{t("actions.failed")}</p> : null}
+      {state.actionError ? <p>{t("resolution.actionFailed")}</p> : null}
+      {state.recheckError ? <p>{t("resolution.recheckFailed")}</p> : null}
       {state.reconciliation ? (
         <div className="cards-resolution-reconciliation">
           <ReasonChangeList title={t("resolution.removed")} reasons={state.reconciliation.removed} className="is-removed" />

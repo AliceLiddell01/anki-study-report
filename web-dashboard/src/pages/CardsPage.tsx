@@ -232,7 +232,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       </section>
 
       <CardsWorkspaceWarnings workspace={workspace} />
-      {workspace.lastOutcome ? (
+      {workspace.lastOutcome && workspace.lastOutcome.itemId !== workspace.activeId ? (
         <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
           <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
           <span>{t(`resolution.states.${workspace.lastOutcome.phase}.description`)}</span>
@@ -262,7 +262,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
         </section>
 
         {isWide ? (
-          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region workspace-safe-area" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
+          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
             <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} />
           </aside>
         ) : null}

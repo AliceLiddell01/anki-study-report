@@ -1003,7 +1003,7 @@ const en = {
         actions: {
           open: "Open in Anki",
           opening: "Opening…",
-          opened: "The Anki Browser open request was accepted. The issue remains active.",
+          opened: "The card opened in Anki Browser. Return after editing and recheck it.",
           failed: "The exact card could not be opened in Anki.",
           working: "Working…",
           suspend: "Suspend card",
@@ -1015,7 +1015,17 @@ const en = {
         resolution: {
           rule: "A successful action does not mean the issue is resolved. Only the exact-card recheck determines the outcome.",
           recheck: "Recheck card",
+          actionPending: "Running the command for this exact card…",
           actionSucceeded: "Anki completed the action for one card. The reason stays active until an explicit recheck.",
+          actionFailed: "Anki did not complete the command. The card was not changed; it is safe to retry.",
+          recheckFailed: "An authoritative result was not available. Previous reasons were preserved.",
+          actionResults: {
+            suspend: "The card was suspended in Anki. The command completed, but the reason has not been rechecked.",
+            unsuspend: "The card was unsuspended in Anki. The command completed, but the reason has not been rechecked.",
+            bury: "The card was buried in Anki. The command completed, but the reason has not been rechecked.",
+            unbury: "The card was unburied in Anki. The command completed, but the reason has not been rechecked.",
+            clear_flag: "The card flag was cleared in Anki. The command completed, but the reason has not been rechecked.",
+          },
           noChanges: "Anki made no changes. This is an action result, not proof that the reason is resolved.",
           removed: "Resolved",
           remaining: "Remaining",

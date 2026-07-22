@@ -70,6 +70,34 @@ def test_card_css_policy_scopes_safe_visual_rules_and_rewrites_local_media():
     assert "@media" in sanitized
 
 
+def test_card_css_policy_rewrites_native_root_and_ordinal_selectors_per_branch():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    sanitized = note_intelligence.sanitize_card_css(
+        """
+        .card { background-color: rgb(250, 240, 220); color: rgb(20, 30, 40); }
+        .card.card1, .card1 { text-align: center; }
+        .card .term, .card.card1 .answer { font-weight: 700; }
+        .nightMode .card, .card.nightMode { color: white; }
+        @media (max-width: 700px) { .card.card1 .term { font-size: 20px; } }
+        """
+    )
+    compact = sanitized.replace(" ", "")
+
+    assert ":scope{background-color:rgb(250,240,220);color:rgb(20,30,40);}" in compact
+    assert ":scope.card1,:scope.card1{text-align:center;}" in compact
+    assert ":scope .term,:scope.card1 .answer{font-weight:700;}" in sanitized
+    assert ":scope.nightMode,:scope.nightMode{color:white;}" in compact
+    assert "@media (max-width: 700px){:scope.card1 .term{font-size:20px;}}" in sanitized
+    assert ".card.card1" not in sanitized
+
+
+@pytest.mark.parametrize("selector", ["body .card", "html .card", ":root .card"])
+def test_card_css_policy_rejects_document_root_selectors(selector):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    assert note_intelligence.sanitize_card_css(f"{selector}{{color:red}}") == ""
+
+
 def test_card_css_policy_allows_only_safe_local_font_faces():
     note_intelligence = fresh_import_addon_module("note_intelligence")
 

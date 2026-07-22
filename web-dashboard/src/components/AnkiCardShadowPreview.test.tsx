@@ -38,6 +38,24 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(html).toContain('data-preview-mode="expanded"');
   });
 
+  it("keeps compact preview clipped and independent from the dashboard theme", () => {
+    const lightCard = buildShadowPreviewDocument({
+      html: '<span class="term">front</span>',
+      css: '@scope (.card){:scope{background-color:rgb(250,240,220);color:rgb(20,30,40)}:scope.card1{text-align:center}:scope .term{font-weight:700}}',
+      cardOrd: 0,
+      nightMode: false,
+      mode: "preview",
+    });
+
+    expect(lightCard.cardClassName).toBe("card card1");
+    expect(lightCard.shellClassName).not.toContain("nightMode");
+    expect(lightCard.styleText).toContain(".asr-shadow-card-shell--preview");
+    expect(lightCard.styleText).toContain("overflow: hidden");
+    expect(lightCard.styleText).not.toContain("overflow-y: auto");
+    expect(lightCard.styleText).not.toContain("overscroll-behavior: contain");
+    expect(lightCard.styleText).toContain("background-color:rgb(250,240,220)");
+  });
+
   it("adds the dashboard token only to parser-approved local CSS media URLs", () => {
     window.history.replaceState(null, "", "/?token=local-token#/cards");
     const css = '@scope (.card){.card{background:url("/api/media?name=safe.png")}}';

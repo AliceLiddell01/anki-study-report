@@ -373,7 +373,16 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     const itemId = activeItem.itemId;
     const sequence = ++openSequence.current;
     const queryGeneration = querySequence.current;
+    setOpenResult(null);
     setOpenPending(true);
+    writeResolution(itemId, {
+      itemId,
+      phase: "action_pending",
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
+    });
     try {
       const result = await runReportAction("open-search-selection", {
         mode: "cards",

@@ -379,7 +379,7 @@ def test_native_full_preview_uses_reviewer_context_once():
     assert "answer-only" not in rendered["frontHtml"]
     assert "front-only" in rendered["backHtml"]
     assert "answer-only" in rendered["backHtml"]
-    assert rendered["css"] == "@scope (.card){.card{color:red;}}"
+    assert rendered["css"] == "@scope (.card){:scope{color:red;}}"
 
 
 def test_native_question_answer_fallback_uses_reviewer_signatures():
