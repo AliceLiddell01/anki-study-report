@@ -159,7 +159,12 @@ function LifecycleBanner({ state }: { state: CardsResolutionState | null }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const phase = state?.phase ?? "idle";
   return (
-    <section className={`cards-detail-lifecycle workspace-state is-${phase}`} role={state ? "status" : undefined} aria-live={state ? "polite" : undefined}>
+    <section
+      className={`cards-detail-lifecycle workspace-state is-${phase}`}
+      data-testid="cards-resolution-state"
+      role={state ? "status" : undefined}
+      aria-live={state ? "polite" : undefined}
+    >
       <strong>{t(`resolution.states.${phase}.title`)}</strong>
       <p>{t(`resolution.states.${phase}.description`)}</p>
     </section>
@@ -183,7 +188,7 @@ function ResolutionResult({
   const noChanges = state.actionResult && "resultCode" in state.actionResult && state.actionResult.resultCode === "action.no_changes";
   const actionSucceeded = state.actionResult && "resultCode" in state.actionResult && !noChanges;
   return (
-    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-state" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
+    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-result" role="status" aria-live="polite" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
       <h3 id={headingId}>{t("inspector.result")}</h3>
       {actionSucceeded ? <p>{t("resolution.actionSucceeded")}</p> : null}
       {noChanges ? <p>{t("resolution.noChanges")}</p> : null}
