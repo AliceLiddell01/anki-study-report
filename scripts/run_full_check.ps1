@@ -28,6 +28,7 @@ $TimingOutputPath = if ($TimingOutput) {
     ""
 }
 $TimingNode = $null
+$ResolvedGit = $null
 
 function Write-Section {
     param([string]$Message)
@@ -112,15 +113,29 @@ function Find-CommandPath {
 
     foreach ($name in $Names) {
         $command = Get-Command $name -ErrorAction SilentlyContinue
-        if ($command) {
-            return $command.Source
+        if (-not $command) {
+            continue
         }
+
+        $source = $command.Source
+        if ($IsLinux -and (
+            $source -match '^[A-Za-z]:[\\/]' -or
+            $source -match '^/mnt/[A-Za-z]/' -or
+            $source -match '\.(exe|cmd|bat)$'
+        )) {
+            continue
+        }
+
+        return $source
     }
 
     return $null
 }
 
 function Add-BundledNodeToPath {
+    if ($IsLinux) {
+        return
+    }
     if (-not $env:USERPROFILE) {
         return
     }
@@ -168,10 +183,12 @@ function Invoke-CheckedPowerShellScript {
 function Assert-RepositoryHygiene {
     Write-Section "Repository hygiene"
 
-    $git = Find-CommandPath @("git.exe", "git")
+    $gitNames = if ($IsLinux) { @("git") } else { @("git.exe", "git") }
+    $git = Find-CommandPath $gitNames
     if (-not $git) {
-        throw "Could not find git. Repository hygiene checks require Git."
+        throw "Could not find a native Git executable. Repository hygiene checks require Git."
     }
+    $script:ResolvedGit = $git
 
     & $git diff --check
     if ($LASTEXITCODE -ne 0) {
@@ -215,10 +232,10 @@ function Initialize-TimingIfNeeded {
     $repository = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AliceLiddell01/anki-study-report" }
     $eventName = if ($env:GITHUB_EVENT_NAME) { $env:GITHUB_EVENT_NAME } else { "local" }
     $ref = if ($env:GITHUB_REF) { $env:GITHUB_REF } else {
-        $branch = (& git branch --show-current).Trim()
+        $branch = (& $ResolvedGit branch --show-current).Trim()
         if ($branch) { "refs/heads/$branch" } else { "refs/heads/local" }
     }
-    $sha = if ($env:GITHUB_SHA) { $env:GITHUB_SHA } else { (& git rev-parse HEAD).Trim() }
+    $sha = if ($env:GITHUB_SHA) { $env:GITHUB_SHA } else { (& $ResolvedGit rev-parse HEAD).Trim() }
     $runId = if ($env:GITHUB_RUN_ID) { $env:GITHUB_RUN_ID } else { "1" }
     $runAttempt = if ($env:GITHUB_RUN_ATTEMPT) { $env:GITHUB_RUN_ATTEMPT } else { "1" }
 
@@ -238,15 +255,17 @@ Add-BundledNodeToPath
 Assert-RepositoryHygiene
 
 if (-not $DockerOnly) {
-    $node = Find-CommandPath @("node.exe", "node")
+    $nodeNames = if ($IsLinux) { @("node") } else { @("node.exe", "node") }
+    $node = Find-CommandPath $nodeNames
     if (-not $node) {
-        throw "Could not find node. Install Node.js or use the bundled Codex runtime."
+        throw "Could not find a native Node.js executable. Install Node.js or use the bundled Codex runtime on Windows."
     }
     $TimingNode = $node
 
-    $pnpm = Find-CommandPath @("pnpm.cmd", "pnpm")
+    $pnpmNames = if ($IsLinux) { @("pnpm") } else { @("pnpm.cmd", "pnpm") }
+    $pnpm = Find-CommandPath $pnpmNames
     if (-not $pnpm) {
-        throw "Could not find pnpm. Install pnpm or enable Corepack, then rerun this script."
+        throw "Could not find a native pnpm executable. Install pnpm or enable Corepack, then rerun this script."
     }
 
     Initialize-TimingIfNeeded
