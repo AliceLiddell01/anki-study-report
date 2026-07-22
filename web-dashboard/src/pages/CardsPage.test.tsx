@@ -195,7 +195,7 @@ describe("Cards attention inbox", () => {
 
 function readyWorkspace(): CardsTriageWorkspace {
   return {
-    queryStatus: "ready", queryError: null, response,
+    queryStatus: "ready", queryError: null, refreshStatus: "idle", response,
     learningPeriodDays: 7, setLearningPeriodDays: vi.fn(),
     activeId: items[0]!.itemId, activeItem: items[0]!,
     inspectStatus: "ready", inspectError: null, inspectResponse,

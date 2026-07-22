@@ -172,7 +172,7 @@ const ru = {
       },
       status: {
         validation_succeeded: "Профиль прошёл backend-проверку.", client_validation_failed: "Исправьте отмеченные поля.", server_validation_failed: "Backend отклонил профиль; исправьте отмеченные поля.",
-        profile_confirmed: "Профиль подтверждён и включён.", draft_saved: "Черновик сохранён; он не создаёт authoritative issues.", profile_disabled: "Профиль отключён.", profile_deleted: "Удалён только локальный профиль.",
+        profile_confirmed: "Профиль подтверждён и включён.", draft_saved: "Черновик сохранён; он не создаёт authoritative issues.", profile_disabled: "Профиль отключён.", profile_deleted: "Удалён только локальный профиль.", catalog_refreshed: "Список типов записей обновлён.",
         inspection_profile_revision_conflict: "Обнаружен конфликт revision; черновик не перезаписан.", invalid_inspection_profile_request: "Профиль не прошёл строгую проверку.", inspection_profiles_unavailable: "Профили временно недоступны.", inspection_profiles_timeout: "Операция не завершилась вовремя.", inspection_profiles_failed: "Операция с профилем не выполнена.", inspection_profile_future_schema: "Найдена неподдерживаемая будущая схема.", failed: "Операция не выполнена.",
       },
       import: { fileLabel: "Выбрать JSON-файл профиля", tooLarge: "Файл больше 1 МиБ.", invalid: "Файл не соответствует строгому документу Inspection Profile v1.", loaded: "Импорт загружен только в локальный черновик; сохранение и подтверждение не выполнены.", missing_note_type: "Такого типа записи нет в текущей коллекции.", unsaved_changes: "Сначала сохраните или отбросьте текущие изменения.", structure_mismatch: "Fingerprint или точные ссылки не совпадают с текущей структурой." },
@@ -887,6 +887,8 @@ const ru = {
         readOnly: "только чтение",
         singleCard: "по одной карточке",
         refresh: "Обновить",
+        refreshed: "Обновлено.",
+        refreshFailedStale: "Обновление не выполнено. Предыдущая очередь остаётся доступной.",
         retry: "Повторить",
         summary: {
           items_one: "{{count}} карточка",

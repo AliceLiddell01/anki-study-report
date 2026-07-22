@@ -1362,6 +1362,7 @@ async function saveStateScreenshot(page, pageName, stateName, theme = "light") {
 }
 
 async function assertInspectionProfilesWorkspace(page) {
+  const originalViewport = page.viewportSize();
   await prepareDashboardRoute(page, "/settings/inspection-profiles", "light", "Профили проверки");
   const japanese = page.getByRole("button", { name: /E2E Japanese Vocabulary/ });
   const programming = page.getByRole("button", { name: /E2E Programming/ });
@@ -1385,8 +1386,16 @@ async function assertInspectionProfilesWorkspace(page) {
   const priority = page.locator("#inspection-basic-priority-0");
   await priority.waitFor({ state: "visible", timeout: 10000 });
   const initialPriority = await priority.inputValue();
-  await priority.selectOption(initialPriority === "high" ? "medium" : "high");
+  const changedPriority = initialPriority === "high" ? "medium" : "high";
+  await priority.selectOption(changedPriority);
   await page.getByText("Есть несохранённые изменения").waitFor({ state: "visible", timeout: 10000 });
+  const advancedTab = page.getByRole("tab", { name: /Расширенное/ });
+  await advancedTab.click();
+  assertBrowser(await page.locator("#inspection-advanced-panel").isVisible(), "Inspection Profiles Advanced mode replaces Basic in the same editor.");
+  assertBrowser(await page.locator('[data-testid="inspection-basic-editor"]').count() === 0, "Inspection Profiles does not render both large editor modes simultaneously.");
+  const advancedScreenshot = await saveStateScreenshot(page, "inspection-profiles", "advanced-mode", "dark");
+  await page.getByRole("tab", { name: "Основное", exact: true }).click();
+  assertBrowser(await priority.inputValue() === changedPriority, "Inspection Profiles mode switching preserves the unsaved draft without autosave.");
   const dirtyScreenshot = await saveStateScreenshot(page, "inspection-profiles", "dirty-suggestion", "dark");
   await page.getByRole("button", { name: "Проверить настройку", exact: true }).click();
   await page.getByText("Профиль прошёл backend-проверку.", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
@@ -1400,14 +1409,31 @@ async function assertInspectionProfilesWorkspace(page) {
   assertBrowser(await page.getByText("Есть несохранённые изменения").isVisible(), "Unsaved draft remains after cancelling note-type navigation.");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assertBrowser(overflow <= 2, "Inspection Profiles workspace has no horizontal page overflow.");
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await waitForLayoutStabilization(page);
+  const responsive = await page.evaluate(() => {
+    const editor = document.querySelector(".inspection-editor");
+    const basicRows = [...document.querySelectorAll(".inspection-basic-row")];
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      editorWidth: editor?.getBoundingClientRect().width || 0,
+      rowsFit: basicRows.every((row) => row.scrollWidth <= row.clientWidth + 1),
+    };
+  });
+  assertBrowser(responsive.overflow <= 2 && responsive.rowsFit, `Inspection Profiles 1024 container layout fits without overlap: ${JSON.stringify(responsive)}`);
+  const responsiveScreenshot = await saveStateScreenshot(page, "inspection-profiles", "workspace-1024", "light");
+  if (originalViewport) await page.setViewportSize(originalViewport);
   return {
     expectedState,
     suggestionSourceName: "E2E Generic Basic",
     suggestionCreatesDirtyDraft: true,
     validateV2PreviewVisible: true,
     unsavedNavigationProtected: true,
+    mutuallyExclusiveModes: true,
+    modeSwitchPreservesDraft: true,
+    responsive1024: responsive,
     noHorizontalOverflow: true,
-    screenshots: [listScreenshot, editorScreenshot, dirtyScreenshot, previewScreenshot],
+    screenshots: [listScreenshot, editorScreenshot, advancedScreenshot, dirtyScreenshot, previewScreenshot, responsiveScreenshot],
   };
 }
 

@@ -176,7 +176,7 @@ const en = {
       },
       status: {
         validation_succeeded: "The profile passed backend validation.", client_validation_failed: "Fix the highlighted fields.", server_validation_failed: "The backend rejected the profile; fix the highlighted fields.",
-        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.",
+        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.", catalog_refreshed: "The note type list was updated.",
         inspection_profile_revision_conflict: "A revision conflict was found; the draft was not overwritten.", invalid_inspection_profile_request: "The profile failed strict validation.", inspection_profiles_unavailable: "Inspection Profiles are temporarily unavailable.", inspection_profiles_timeout: "The operation timed out.", inspection_profiles_failed: "The profile operation failed.", inspection_profile_future_schema: "An unsupported future schema was found.", failed: "The operation failed.",
       },
       import: { fileLabel: "Choose an Inspection Profile JSON file", tooLarge: "The file is larger than 1 MiB.", invalid: "The file is not a strict Inspection Profile v1 document.", loaded: "The import was loaded into a local draft only; it was not saved or confirmed.", missing_note_type: "That note type does not exist in this collection.", unsaved_changes: "Save or discard the current changes first.", structure_mismatch: "The fingerprint or exact references do not match the current structure." },
@@ -891,6 +891,8 @@ const en = {
         readOnly: "read only",
         singleCard: "one card at a time",
         refresh: "Refresh",
+        refreshed: "Updated.",
+        refreshFailedStale: "Refresh failed. The previous inbox remains available.",
         retry: "Retry",
         summary: {
           items_one: "{{count}} card",

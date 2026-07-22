@@ -32,7 +32,7 @@ export interface InspectionProfilesWorkspace {
   busy: boolean;
   status: string | null;
   conflictRevision: number | null;
-  reload: (preserveDraft?: boolean) => Promise<void>;
+  reload: (preserveDraft?: boolean, announce?: boolean) => Promise<void>;
   select: (noteTypeId: string | null, discardDirty?: boolean) => boolean;
   setDraftFromUser: (draft: InspectionProfile | null) => void;
   setImportedDraft: (draft: InspectionProfile) => void;
@@ -105,7 +105,7 @@ export function useInspectionProfilesWorkspace(): InspectionProfilesWorkspace {
     commitSnapshot({ profile: generated, baseline: cloneProfile(generated), origin: "generated", userEdited: false });
   }, [commitSnapshot]);
 
-  const reload = useCallback(async (preserveDraft = false) => {
+  const reload = useCallback(async (preserveDraft = false, announce = false) => {
     const sequence = ++querySequence.current;
     queryController.current?.abort();
     const controller = new AbortController();
@@ -117,6 +117,7 @@ export function useInspectionProfilesWorkspace(): InspectionProfilesWorkspace {
       if (sequence !== querySequence.current) return;
       setCatalog(response);
       setLoadState("ready");
+      if (announce) setStatus("catalog_refreshed");
       const currentSelectedId = selectedIdRef.current;
       if (!currentSelectedId) return;
       const current = response.items.find((item) => item.structure.noteTypeId === currentSelectedId) ?? null;

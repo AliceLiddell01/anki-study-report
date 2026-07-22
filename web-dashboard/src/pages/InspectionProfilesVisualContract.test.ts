@@ -24,7 +24,13 @@ describe("Inspection Profiles visual contract", () => {
   });
 
   it("keeps status inline and removes the overlapping sticky toast", () => {
-    expect(inspectionCss).toMatch(/\.inspection-global-status\s*\{[^}]*position:\s*static/s);
-    expect(inspectionCss).not.toMatch(/\.inspection-global-status\s*\{[^}]*box-shadow:/s);
+    expect(inspectionCss).toMatch(/\.inspection-operation-status\s*\{[^}]*grid-column:\s*1 \/ -1/s);
+    expect(inspectionCss).not.toMatch(/\.inspection-operation-status\s*\{[^}]*position:\s*(fixed|sticky)/s);
+  });
+
+  it("uses editor container width for dense internal grids", () => {
+    expect(inspectionCss).toMatch(/\.inspection-editor\s*\{[^}]*container:\s*inspection-editor \/ inline-size/s);
+    expect(inspectionCss).toContain("@container inspection-editor (max-width: 900px)");
+    expect(inspectionCss).toContain("@container inspection-editor (max-width: 640px)");
   });
 });

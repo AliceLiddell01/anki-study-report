@@ -6,33 +6,18 @@ interface AdvancedProfileDisclosureProps {
   item: InspectionProfileSummary;
   draft: InspectionProfile;
   errors: Record<string, string>;
-  dirty?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   onChange: (draft: InspectionProfile) => void;
 }
 
-export default function AdvancedProfileDisclosure({ item, draft, errors, dirty = false, open, onOpenChange, onChange }: AdvancedProfileDisclosureProps) {
+export default function AdvancedProfileDisclosure({ item, draft, errors, onChange }: AdvancedProfileDisclosureProps) {
   const { i18n } = useTranslation("pages");
   const ru = i18n.resolvedLanguage?.startsWith("ru");
-  const errorCount = Object.keys(errors).filter((path) => path.includes("fieldMappings") || path.includes("checks") || path.includes("appliesTo") || path.includes("displayName")).length;
   return (
-    <details
-      className="inspection-major-disclosure"
-      open={open}
-      onToggle={(event) => onOpenChange(event.currentTarget.open)}
-    >
-      <summary id="inspection-advanced-summary">
-        <span>
-          <strong>{ru ? "Расширенные настройки" : "Advanced settings"}</strong>
-          <small>{ru ? "Точные роли, ordinal, check kind, mode и стабильные ID" : "Exact roles, ordinals, check kinds, modes, and stable IDs"}</small>
-        </span>
-        <span className="inspection-disclosure-status">
-          {dirty ? <span className="inspection-disclosure-dirty">{ru ? "Изменено" : "Changed"}</span> : null}
-          {errorCount ? <span className="inspection-disclosure-errors" role="status">{ru ? `Ошибок: ${errorCount}` : `${errorCount} errors`}</span> : null}
-        </span>
-      </summary>
-      <div id="inspection-advanced-panel" className="inspection-advanced-panel">
+    <section id="inspection-advanced-panel" className="inspection-advanced-panel" role="tabpanel" aria-labelledby="inspection-mode-advanced" tabIndex={0}>
+      <div className="inspection-advanced-intro">
+        <strong>{ru ? "Точная структура профиля" : "Exact profile structure"}</strong>
+        <small>{ru ? "Роли, ordinal, check kind, mode и стабильные ID" : "Roles, ordinals, check kinds, modes, and stable IDs"}</small>
+      </div>
         <section className="inspection-panel">
           <label className="inspection-display-name" htmlFor="inspection-profile-display-name">
             {ru ? "Название профиля" : "Profile name"}
@@ -50,7 +35,6 @@ export default function AdvancedProfileDisclosure({ item, draft, errors, dirty =
         <TemplateScopeEditor item={item} draft={draft} onChange={onChange} errors={errors} />
         <FieldMappingsEditor item={item} draft={draft} onChange={onChange} errors={errors} />
         <ChecksEditor draft={draft} onChange={onChange} errors={errors} />
-      </div>
-    </details>
+    </section>
   );
 }

@@ -42,22 +42,36 @@
   --status-warning: rgb(var(--color-warning));
   --status-danger: rgb(var(--color-danger));
   --status-info: rgb(var(--color-info));
-  --motion-fast: 120ms;
-  --motion-normal: 180ms;
-  --motion-slow: 240ms;
+  --motion-instant: 90ms;
+  --motion-fast: 140ms;
+  --motion-normal: 190ms;
+  --motion-panel: 240ms;
+  --motion-slow: var(--motion-panel);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.15);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-emphasized: var(--ease-standard);
+  --radius-control: .5rem;
+  --radius-item: .7rem;
+  --radius-region: .9rem;
+  --radius-panel: 1.05rem;
+  --radius-pill: 999px;
   --workspace-space-1: .25rem;
   --workspace-space-2: .5rem;
   --workspace-space-3: .75rem;
   --workspace-space-4: 1rem;
   --workspace-space-5: 1.5rem;
-  --workspace-page-surface: transparent;
-  --workspace-region-surface: color-mix(in srgb, var(--surface-2) 96%, transparent);
-  --workspace-interactive-surface: color-mix(in srgb, var(--surface-3) 68%, transparent);
-  --workspace-selected-surface: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-3));
-  --workspace-region-radius: 1rem;
-  --workspace-interactive-radius: .7rem;
+  --surface-page-canvas: transparent;
+  --surface-primary-region: color-mix(in srgb, var(--surface-2) 96%, transparent);
+  --surface-interactive-item: color-mix(in srgb, var(--surface-3) 68%, transparent);
+  --surface-information-tile: color-mix(in srgb, var(--surface-3) 42%, transparent);
+  --surface-selected-item: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-3));
+  --surface-status-result: color-mix(in srgb, var(--surface-3) 54%, transparent);
+  --workspace-page-surface: var(--surface-page-canvas);
+  --workspace-region-surface: var(--surface-primary-region);
+  --workspace-interactive-surface: var(--surface-interactive-item);
+  --workspace-selected-surface: var(--surface-selected-item);
+  --workspace-region-radius: var(--radius-panel);
+  --workspace-interactive-radius: var(--radius-item);
   --workspace-safe-inline-end: 5.25rem;
   --workspace-safe-block-end: 5.25rem;
   color-scheme: dark;
@@ -121,9 +135,9 @@
 .statistics-header h1 { margin: .3rem 0 .3rem; font-size: clamp(1.65rem, 2.3vw, 2.25rem); font-weight: 680; line-height: 1.1; letter-spacing: -.02em; }
 .statistics-header p { color: var(--text-secondary); font-size: .9rem; }
 .statistics-section-marker { color: var(--accent-primary); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.secondary-button { min-height: 2.65rem; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .85rem; border: 1px solid var(--border-strong); border-radius: .7rem; background: color-mix(in srgb, var(--surface-3) 88%, transparent); color: var(--text-primary); font-size: .8rem; font-weight: 700; }
+.secondary-button { min-height: 2.65rem; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .85rem; border: 1px solid var(--border-strong); border-radius: var(--radius-item); background: color-mix(in srgb, var(--surface-3) 88%, transparent); color: var(--text-primary); font-size: .8rem; font-weight: 700; transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard), opacity var(--motion-instant) var(--ease-standard), transform var(--motion-instant) var(--ease-standard); }
 .secondary-button:hover, .secondary-button:focus-visible { border-color: var(--accent-primary); outline: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent); outline-offset: 2px; }
-.primary-button { min-height: 2.65rem; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .9rem; border: 1px solid color-mix(in srgb, var(--accent-primary) 72%, transparent); border-radius: .7rem; background: color-mix(in srgb, var(--accent-primary) 20%, var(--surface-3)); color: var(--text-primary); font-size: .8rem; font-weight: 700; }
+.primary-button { min-height: 2.65rem; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .9rem; border: 1px solid color-mix(in srgb, var(--accent-primary) 72%, transparent); border-radius: var(--radius-item); background: color-mix(in srgb, var(--accent-primary) 20%, var(--surface-3)); color: var(--text-primary); font-size: .8rem; font-weight: 700; transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard), opacity var(--motion-instant) var(--ease-standard), transform var(--motion-instant) var(--ease-standard); }
 .primary-button:hover, .primary-button:focus-visible { background: color-mix(in srgb, var(--accent-primary) 28%, var(--surface-3)); outline: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent); outline-offset: 2px; }
 .primary-button:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: .62; }
 .danger-button { min-height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; padding: .6rem .9rem; border: 1px solid color-mix(in srgb, var(--status-danger) 72%, transparent); border-radius: .7rem; background: color-mix(in srgb, var(--status-danger) 13%, var(--surface-3)); color: var(--text-primary); font-size: .8rem; font-weight: 700; }
@@ -132,6 +146,15 @@
 .tertiary-button { min-height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .75rem; border-radius: .65rem; color: var(--text-secondary); font-size: .8rem; font-weight: 700; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 42%, transparent); text-underline-offset: .2em; }
 .tertiary-button:hover, .tertiary-button:focus-visible { color: var(--text-primary); background: color-mix(in srgb, var(--accent-primary) 8%, transparent); outline: 2px solid color-mix(in srgb, var(--accent-primary) 34%, transparent); outline-offset: 2px; }
 .tertiary-button:disabled { cursor: not-allowed; opacity: .62; }
+
+.shared-refresh-button { min-width: 7.5rem; }
+.shared-refresh-icon { width: 1rem; height: 1rem; display: inline-grid; flex: none; place-items: center; }
+.shared-refresh-icon.is-pending { animation: shared-refresh-spin .8s linear infinite; }
+.shared-refresh-region { transition: opacity var(--motion-normal) var(--ease-standard); }
+.shared-refresh-region.is-refreshing { opacity: .78; }
+.shared-refresh-status { margin: .2rem .75rem .65rem; color: var(--status-good); font-size: .68rem; }
+.shared-refresh-status.is-error { color: var(--status-danger); }
+@keyframes shared-refresh-spin { to { transform: rotate(360deg); } }
 
 /* Shared workspace visual roles: page, region, interactive, and selected. */
 .workspace-page { min-width: 0; background: var(--workspace-page-surface); }
@@ -203,7 +226,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 1ms;
+    --motion-fast: 1ms;
+    --motion-normal: 1ms;
+    --motion-panel: 1ms;
+  }
   .product-modal-backdrop, .product-modal, .release-card-content { animation: none; transition: none; }
+  .shared-refresh-icon.is-pending { animation: none; }
+  .shared-refresh-region.is-refreshing { opacity: .9; }
+  :is(.primary-button, .secondary-button, .tertiary-button, .workspace-interactive, .utility-icon-button):active { transform: none; }
 }
 
 .statistics-query-surface { border: 1px solid var(--border-subtle); border-radius: 1rem; background: var(--surface-2); box-shadow: var(--shadow-panel); }

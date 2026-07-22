@@ -164,15 +164,16 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ schemaVersion: 1, action: "save", targetState: "confirmed", expectedRevision: 0 }));
   });
 
-  it("keeps strict identifiers inside a collapsed Advanced disclosure", async () => {
+  it("keeps Basic and Advanced mutually exclusive without mutating the draft", async () => {
     await renderPage();
     await click(noteButton("Japanese Vocabulary"));
-    const advanced = container.querySelector<HTMLDetailsElement>(".inspection-major-disclosure")!;
-    expect(advanced.open).toBe(false);
+    expect(container.querySelector("[role='tab'][aria-selected='true']")?.textContent).toContain("Основное");
     expect(container.querySelector("[data-testid='inspection-basic-editor']")?.textContent).not.toContain("meaning-required");
-    await click(advanced.querySelector("summary")!);
-    expect(advanced.open).toBe(true);
-    expect(advanced.textContent).toContain("meaning-required");
+    expect(container.querySelector("#inspection-advanced-panel")).toBeNull();
+    await click(button("Расширенное"));
+    expect(container.querySelector("[data-testid='inspection-basic-editor']")).toBeNull();
+    expect(container.querySelector("#inspection-advanced-panel")?.textContent).toContain("meaning-required");
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("does not require reconfirmation for an unchanged confirmed profile", async () => {
@@ -203,12 +204,12 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(primaryButtons()).toHaveLength(0);
   });
 
-  it("separates destructive tools and keeps changed state visible when Advanced is collapsed", async () => {
+  it("separates destructive tools and keeps changed state visible on the Advanced tab", async () => {
     await renderPage();
     await click(noteButton("Confirmed Basic"));
     const priority = container.querySelector<HTMLSelectElement>("#inspection-basic-priority-0")!;
     await change(priority, "low");
-    expect(container.querySelector("#inspection-advanced-summary")?.textContent).toContain("Изменено");
+    expect(container.querySelector("#inspection-mode-advanced")?.textContent).toContain("Изменено");
     expect(primaryButtons().map((item) => item.textContent?.trim())).toEqual(["Проверить и подтвердить изменения"]);
     const tools = container.querySelector(".inspection-profile-tools")!;
     expect(tools.querySelector(".inspection-profile-tool-group:not(.is-destructive)")?.textContent).toContain("Экспорт JSON");
@@ -222,7 +223,7 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(container.textContent).toContain("Suggested setup");
     expect(container.textContent).toContain("Question is required");
     expect(container.textContent).toContain("Confirm and enable");
-    expect(container.textContent).toContain("Advanced settings");
+    expect(container.textContent).toContain("Advanced");
   });
 
   it("uses the shared workspace roles without turning selection into focus", async () => {
@@ -232,7 +233,7 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(container.querySelectorAll(".workspace-region").length).toBe(2);
     expect(container.querySelector(".inspection-note-button.workspace-interactive.workspace-selected")).toBeTruthy();
     expect(container.querySelector(".inspection-state-guidance.workspace-state")).toBeTruthy();
-    expect(container.querySelector(".inspection-editor.workspace-safe-area")).toBeTruthy();
+    expect(container.querySelector(".inspection-editor.workspace-safe-area")).toBeNull();
     expect(document.activeElement?.classList.contains("workspace-selected")).toBe(false);
   });
 

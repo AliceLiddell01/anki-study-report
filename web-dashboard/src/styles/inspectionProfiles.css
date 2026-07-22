@@ -15,11 +15,17 @@
 }
 
 .inspection-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1rem;
   padding: .15rem .1rem .85rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 .inspection-page-header h1 { margin: 0 0 .35rem; }
 .inspection-page-header p { color: var(--text-secondary); }
+.inspection-page-header .shared-refresh-button { align-self: start; }
+.inspection-catalog-refresh-status { grid-column: 1 / -1; color: var(--status-good) !important; font-size: .68rem; }
 .inspection-safety-note { margin-top: .35rem; color: var(--text-muted) !important; }
 
 .inspection-summary { display: flex; flex-wrap: wrap; gap: .35rem 1rem; margin: 0; padding: 0 .1rem; }
@@ -59,7 +65,7 @@
 .inspection-catalog-empty,
 .inspection-truncated { color: var(--text-muted); font-size: .72rem; }
 
-.inspection-editor { min-width: 0; padding: 1rem; }
+.inspection-editor { min-width: 0; padding: 1rem; scroll-padding-block-end: var(--workspace-safe-block-end); container: inspection-editor / inline-size; }
 .inspection-empty-editor { min-height: 18rem; display: grid; place-content: center; justify-items: center; gap: .55rem; padding: 1.5rem; color: var(--text-muted); text-align: center; }
 .inspection-empty-editor h2 { color: var(--text-primary); font-size: 1.1rem; }
 .inspection-empty-editor p { max-width: 32rem; color: var(--text-secondary); font-size: .76rem; }
@@ -89,6 +95,16 @@
 .inspection-conflict div { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .25rem; }
 .inspection-milestone-title { display: flex; align-items: center; gap: .5rem; }
 .inspection-milestone { width: 1.45rem; height: 1.45rem; display: inline-grid; flex: none; place-items: center; margin-right: .42rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-3); color: var(--text-secondary); font-size: .65rem; font-weight: 780; line-height: 1; }
+
+.inspection-mode-switch { width: fit-content; max-width: 100%; display: inline-flex; gap: .2rem; padding: .22rem; border: 1px solid var(--border-subtle); border-radius: .72rem; background: var(--surface-3); }
+.inspection-mode-switch button { min-height: 2.4rem; display: inline-flex; align-items: center; gap: .42rem; padding: .45rem .72rem; border-radius: .56rem; color: var(--text-muted); font-size: .72rem; font-weight: 750; }
+.inspection-mode-switch button:hover,
+.inspection-mode-switch button:focus-visible { color: var(--text-primary); background: color-mix(in srgb, var(--accent-primary) 7%, var(--surface-2)); outline: 2px solid color-mix(in srgb, var(--accent-primary) 24%, transparent); }
+.inspection-mode-switch button.is-active { color: var(--text-primary); background: var(--surface-2); box-shadow: var(--shadow-soft); }
+.inspection-mode-error-count,
+.inspection-mode-dirty { display: inline-flex; align-items: center; min-height: 1.2rem; padding: .1rem .34rem; border: 1px solid color-mix(in srgb, var(--status-danger) 48%, transparent); border-radius: 999px; color: var(--status-danger); font-size: .58rem; }
+.inspection-mode-dirty { border-color: color-mix(in srgb, var(--status-warning) 48%, transparent); color: var(--status-warning); }
+#inspection-basic-mode-panel { min-width: 0; }
 
 .inspection-basic { min-width: 0; display: grid; gap: .8rem; }
 .inspection-validation-result,
@@ -171,6 +187,8 @@
 .inspection-action-copy p { color: var(--text-muted); font-size: .66rem; }
 .inspection-action-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 .inspection-primary-actions > .inspection-inline-error { grid-column: 1 / -1; }
+.inspection-operation-status { grid-column: 1 / -1; margin: 0; padding-top: .55rem; border-top: 1px solid var(--border-subtle); color: var(--status-good); font-size: .68rem; }
+.inspection-operation-status.is-error { color: var(--status-danger); }
 .inspection-enabled-status { min-height: 2.65rem; display: inline-flex; align-items: center; padding: .55rem .85rem; border: 1px solid color-mix(in srgb, var(--status-good) 52%, transparent); border-radius: .7rem; color: var(--status-good); font-size: .75rem; font-weight: 750; }
 
 .inspection-major-disclosure { padding: 0; overflow: hidden; }
@@ -181,8 +199,12 @@
 .inspection-major-disclosure > summary strong { font-size: .78rem; }
 .inspection-major-disclosure > summary small { color: var(--text-muted); font-size: .62rem; }
 .inspection-disclosure-errors { padding: .18rem .42rem; border: 1px solid color-mix(in srgb, var(--status-danger) 48%, transparent); border-radius: 999px; color: var(--status-danger); font-size: .62rem; }
-.inspection-advanced-panel { display: grid; gap: .7rem; padding: 0 .85rem .85rem; border-top: 1px solid var(--border-subtle); }
-.inspection-advanced-panel > :first-child { margin-top: .85rem; }
+.inspection-advanced-panel { min-width: 0; display: grid; gap: .7rem; padding: .85rem; border: 1px solid var(--border-subtle); border-radius: .8rem; background: color-mix(in srgb, var(--surface-3) 45%, transparent); }
+.inspection-advanced-panel:focus { outline: none; }
+.inspection-advanced-panel:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-primary) 38%, transparent); outline-offset: 2px; }
+.inspection-advanced-intro { display: grid; gap: .12rem; }
+.inspection-advanced-intro strong { color: var(--text-primary); font-size: .82rem; }
+.inspection-advanced-intro small { color: var(--text-muted); font-size: .64rem; }
 .inspection-profile-tools { display: grid; gap: .7rem; padding: 0 .85rem .85rem; border-top: 1px solid var(--border-subtle); }
 .inspection-profile-tools > * { margin-top: .85rem; }
 
@@ -215,6 +237,29 @@
 .inspection-machine-id { margin: .45rem 0; color: var(--text-muted); font-size: .6rem; }
 .inspection-role-group { margin: .45rem 0 0; padding: .45rem; border: 1px solid var(--border-subtle); border-radius: .55rem; }
 .inspection-role-group legend { padding: 0 .2rem; color: var(--text-muted); font-size: .6rem; }
+
+@container inspection-editor (max-width: 900px) {
+  .inspection-editor-header,
+  .inspection-guided-summary { display: grid; grid-template-columns: 1fr; }
+  .inspection-editor-header dl,
+  .inspection-guided-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .inspection-basic-row { grid-template-columns: 1fr; }
+  .inspection-requirement-controls,
+  .inspection-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inspection-primary-actions { grid-template-columns: 1fr; }
+  .inspection-action-row { justify-content: flex-start; }
+}
+
+@container inspection-editor (max-width: 640px) {
+  .inspection-editor-header dl,
+  .inspection-guided-summary dl,
+  .inspection-validation-metrics,
+  .inspection-requirement-controls,
+  .inspection-form-grid,
+  .inspection-checkbox-grid { grid-template-columns: 1fr; }
+  .inspection-add-requirement { grid-template-columns: 1fr; }
+  .inspection-action-row > button { width: 100%; }
+}
 
 @media (max-width: 1180px) {
   .inspection-workspace { grid-template-columns: 280px minmax(0, 1fr); }
