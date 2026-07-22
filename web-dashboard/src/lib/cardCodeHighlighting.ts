@@ -96,7 +96,8 @@ export function installCardCodeHighlighting(doc: Document = document): () => voi
     retries = 2;
     schedule();
   });
-  observer.observe(doc.documentElement, { childList: true, subtree: true, characterData: true });
+  const target = doc.getElementById("root") ?? doc.documentElement;
+  observer.observe(target, { childList: true, subtree: true });
   retries = 2;
   schedule();
   return () => {
