@@ -1,4 +1,5 @@
 import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { highlightJavaBlocks } from "../lib/cardCodeHighlighting";
 
 export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview" | "expanded";
 export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
@@ -478,6 +479,7 @@ function AnkiCardShadowPreviewComponent({
       });
     };
 
+    highlightJavaBlocks(shadowRoot);
     scheduleMeasure();
 
     const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleMeasure) : null;
