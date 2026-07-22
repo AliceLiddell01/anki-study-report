@@ -481,7 +481,7 @@ def suggest_inspection_profile(structure: dict[str, Any]) -> dict[str, Any]:
     analysis = analyze_note_type(model, None)
     mappings: list[dict[str, Any]] = []
     unresolved: list[dict[str, Any]] = []
-    roles_seen: set[str] = set()
+    mappings_by_role: dict[str, dict[str, Any]] = {}
     by_index = {index: item for index, item in enumerate(structure["fields"])}
     for field in analysis.get("fields", []):
         if not isinstance(field, dict):
@@ -493,17 +493,34 @@ def suggest_inspection_profile(structure: dict[str, Any]) -> dict[str, Any]:
         raw_role = str(field.get("detectedRole") or "unknown")
         role = ROLE_ALIASES.get(raw_role, raw_role)
         confidence = _bounded_confidence(field.get("confidence"))
-        if role == "unknown" or role not in STANDARD_ROLES or role in roles_seen:
+        front_templates = sum(structural["name"] in template["frontFields"] for template in structure["templates"])
+        back_templates = sum(structural["name"] in template["backFields"] for template in structure["templates"])
+        if role == "unknown" and front_templates and not back_templates:
+            role, confidence = "question", 0.62
+        elif role == "unknown" and back_templates and not front_templates:
+            role, confidence = "answer", 0.62
+        elif role in {"term", "question"} and front_templates:
+            confidence = min(0.99, confidence + 0.04)
+        elif role in {"meaning", "answer", "explanation"} and back_templates:
+            confidence = min(0.99, confidence + 0.04)
+        if role == "unknown" or role not in STANDARD_ROLES or confidence < 0.7:
             unresolved.append({"ordinal": structural["ordinal"], "name": structural["name"]})
             continue
-        roles_seen.add(role)
-        mappings.append(
-            {
+        existing = mappings_by_role.get(role)
+        if existing is not None:
+            if confidence >= 0.78 and existing["confidence"] >= 0.78:
+                existing["fields"].append({"ordinal": structural["ordinal"], "name": structural["name"]})
+                existing["confidence"] = min(existing["confidence"], confidence)
+            else:
+                unresolved.append({"ordinal": structural["ordinal"], "name": structural["name"]})
+            continue
+        mapping = {
                 "role": role,
                 "fields": [{"ordinal": structural["ordinal"], "name": structural["name"]}],
                 "confidence": confidence,
-            }
-        )
+        }
+        mappings.append(mapping)
+        mappings_by_role[role] = mapping
     kind = str(analysis.get("detectedKind") or "unknown")
     checks = _suggested_checks(kind, {item["role"] for item in mappings})
     warnings: list[str] = []

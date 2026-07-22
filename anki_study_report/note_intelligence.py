@@ -5,6 +5,7 @@ from __future__ import annotations
 from html import escape, unescape
 from html.parser import HTMLParser
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
@@ -62,18 +63,19 @@ UNSAFE_STYLE_VALUE_RE = re.compile(
 )
 
 _ROLE_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("reading", ("чтение", "reading", "kana", "furigana", "yomi", "pronunciation")),
-    ("partOfSpeech", ("часть речи", "part of speech", "pos", "speech")),
-    ("meaning", ("значение", "перевод", "meaning", "translation", "definition", "gloss", "back")),
-    ("example", ("пример", "sentence", "example", "context", "предложение")),
-    ("audio", ("audio", "sound", "звук", "аудио")),
-    ("pitch", ("pitch", "accent", "ударение", "акцент")),
-    ("kanjiGif", ("kanji gif", "kanjigif", "stroke", "gif")),
-    ("image", ("image", "picture", "photo", "img", "картинка", "изображение", "kanji")),
-    ("answer", ("answer", "ответ", "solution", "definition")),
-    ("explanation", ("explanation", "объяснение", "notes", "note", "комментарий")),
-    ("term", ("слово", "word", "expression", "term", "vocab", "выражение")),
-    ("question", ("front", "question", "вопрос", "title", "prompt")),
+    ("term", ("слово", "слова", "лексема", "выражение", "vocabulary", "vocab", "term", "word", "expression")),
+    ("reading", ("чтение", "кана", "произношение", "транскрипция", "reading", "kana", "furigana", "yomi", "pronunciation")),
+    ("meaning", ("значение", "перевод", "русский", "толкование", "meaning", "translation", "definition", "gloss")),
+    ("example", ("пример", "предложение", "контекст", "sentence", "example", "context")),
+    ("audio", ("аудио", "звук", "озвучка", "sound", "audio", "pronunciation audio")),
+    ("image", ("картинка", "изображение", "фото", "image", "picture", "photo", "img", "kanji image")),
+    ("partOfSpeech", ("часть речи", "частьречи", "pos", "part of speech", "grammatical category")),
+    ("pitch", ("питч", "акцент", "питч акцент", "pitch", "pitch accent", "accent")),
+    ("kanjiGif", ("kanji gif", "kanjigif", "порядок черт", "stroke order", "stroke gif")),
+    ("question", ("вопрос", "лицевая сторона", "front", "question", "prompt")),
+    ("answer", ("ответ", "обратная сторона", "back", "answer", "solution")),
+    ("explanation", ("объяснение", "заметки", "комментарий", "notes", "explanation", "comment")),
+    ("code", ("код", "code", "source", "snippet")),
 )
 
 
@@ -588,20 +590,40 @@ def split_field_values(raw_fields: Any) -> list[str]:
 
 def detect_field_role(name: Any, value: Any = "") -> tuple[str, float]:
     normalized = normalize_name(name)
+    tokens = tuple(normalized.split())
+    scores: dict[str, float] = {}
     for role, aliases in _ROLE_ALIASES:
-        if any(alias in normalized for alias in aliases):
-            return role, 0.92
+        for alias in aliases:
+            alias_normalized = normalize_name(alias)
+            alias_tokens = tuple(alias_normalized.split())
+            if not alias_tokens:
+                continue
+            score = 0.0
+            if normalized == alias_normalized:
+                score = 0.99
+            elif _contains_token_phrase(tokens, alias_tokens):
+                score = 0.91
+            elif len(alias_tokens) > 1 and set(alias_tokens).issubset(tokens):
+                score = 0.8
+            elif len(alias_tokens) == 1 and alias_tokens[0] in tokens:
+                score = 0.86
+            scores[role] = max(scores.get(role, 0.0), score)
     raw = str(value or "")
     lower = raw.lower()
     if "[sound:" in lower:
-        return "audio", 0.78
+        scores["audio"] = max(scores.get("audio", 0.0), 0.88)
     if "<img" in lower:
-        return "image", 0.72
+        scores["image"] = max(scores.get("image", 0.0), 0.84)
     if ".gif" in lower:
-        return "kanjiGif", 0.7
+        scores["kanjiGif"] = max(scores.get("kanjiGif", 0.0), 0.82)
     if _looks_like_code(raw):
-        return "question", 0.48
-    return "unknown", 0.2
+        scores["code"] = max(scores.get("code", 0.0), 0.58)
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    if not ranked or ranked[0][1] < 0.58:
+        return "unknown", 0.2
+    if len(ranked) > 1 and ranked[1][1] >= 0.58 and ranked[0][1] - ranked[1][1] < 0.07:
+        return "unknown", round(ranked[0][1] - ranked[1][1] + 0.3, 2)
+    return ranked[0][0], round(ranked[0][1], 2)
 
 
 def detect_media_badges(field_values: list[dict[str, Any]], profile: dict[str, Any]) -> list[str]:
@@ -825,9 +847,29 @@ def safe_plain_text(value: Any, limit: int | None = None) -> str:
 
 
 def normalize_name(value: Any) -> str:
-    text = str(value or "").strip().lower()
-    text = text.replace("_", " ").replace("-", " ")
-    return re.sub(r"\s+", " ", text)
+    text = unicodedata.normalize("NFKC", str(value or "").strip())
+    separated: list[str] = []
+    for index, char in enumerate(text):
+        previous = text[index - 1] if index else ""
+        following = text[index + 1] if index + 1 < len(text) else ""
+        boundary = bool(index and (
+            (previous.islower() and char.isupper())
+            or (previous.isalpha() and char.isdigit())
+            or (previous.isdigit() and char.isalpha())
+            or (previous.isupper() and char.isupper() and following.islower())
+        ))
+        if boundary:
+            separated.append(" ")
+        separated.append(char)
+    normalized = "".join(separated).casefold()
+    normalized = re.sub(r"[_\-./:]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _contains_token_phrase(tokens: tuple[str, ...], phrase: tuple[str, ...]) -> bool:
+    if len(phrase) > len(tokens):
+        return False
+    return any(tokens[index:index + len(phrase)] == phrase for index in range(len(tokens) - len(phrase) + 1))
 
 
 def _template_profiles(raw_templates: Any, fields: list[dict[str, Any]]) -> list[dict[str, Any]]:

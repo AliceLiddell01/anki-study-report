@@ -52,6 +52,30 @@ def test_detects_programming_and_basic_safely():
     assert basic["detectedKind"] == "basic"
 
 
+def test_role_detection_normalizes_camel_pascal_cyrillic_and_common_aliases():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    expected = {
+        "partOfSpeech": "partOfSpeech",
+        "ЧастьРечи": "partOfSpeech",
+        "kanjiGif": "kanjiGif",
+        "PitchAccent": "pitch",
+        "SentenceExample": "example",
+        "pronunciation_audio": "audio",
+    }
+
+    assert {name: note_intelligence.detect_field_role(name)[0] for name in expected} == expected
+
+
+def test_role_detection_avoids_substring_false_positives_and_reports_ambiguity():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    assert note_intelligence.detect_field_role("sword") == ("unknown", 0.2)
+    assert note_intelligence.detect_field_role("backstory") == ("unknown", 0.2)
+    role, confidence = note_intelligence.detect_field_role("word meaning")
+    assert role == "unknown"
+    assert confidence < 0.5
+
+
 def test_unknown_note_type_does_not_crash():
     note_intelligence = fresh_import_addon_module("note_intelligence")
     profile = note_intelligence.analyze_note_type(None, "Known text")
