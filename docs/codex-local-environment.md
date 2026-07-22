@@ -101,6 +101,74 @@ Docker context default
 process `PATH`, чтобы Windows executables не затеняли Linux tooling. Ожидаются
 Linux paths вроде `/usr/bin/git`, `/usr/bin/docker` и `/usr/bin/pwsh`.
 
+Canonical `scripts/run_full_check.ps1` сохраняет Windows candidates для Windows
+CI, но в Linux/WSL выбирает только native command names и отвергает `.exe`,
+`.cmd`, `.bat`, Windows-style и `/mnt/<drive>/...` executable paths.
+
+## Permanent environment preflight
+
+Каждая новая Codex task до чтения task checkout как актуального source of truth,
+branch creation, dependency setup, edits или tests выполняет:
+
+```bash
+bash scripts/codex-environment-preflight.sh \
+  --expected-base origin/core \
+  --fetch \
+  --require-clean
+```
+
+Preflight является read-only относительно tracked files и local branches. Он:
+
+- требует явные `CODEX_SOURCE_TREE_PATH` и `CODEX_WORKTREE_PATH` без fallback на
+  current directory;
+- требует, чтобы оба реальных пути находились под `/home/...` и не разрешались
+  через symlink в `/mnt/*`;
+- подтверждает exact repository identity для source checkout и task worktree;
+- отвергает Windows executables и mounted-drive tool paths;
+- проверяет Node, pnpm и Python versions по актуальным repository config;
+- проверяет HTTPS/SSH transport, `core.sshCommand`, `ssh.variant`, `GIT_SSH` и
+  `GIT_SSH_COMMAND` без вывода credentials;
+- при `--fetch` выполняет только `git fetch origin --prune`, проверяет
+  authentication и фиксирует exact SHA `origin/core`;
+- сообщает ahead/behind local `core`, но не fast-forward, reset или move branches;
+- при `--require-clean` блокирует tracked и untracked changes, ничего не удаляя.
+
+Canonical owner transport после локального repair:
+
+```text
+HTTPS origin
+GitHub CLI authentication
+GitHub CLI credential helper
+```
+
+`CODEX_SOURCE_TREE_PATH` и `CODEX_WORKTREE_PATH` являются repository environment
+contract, а не заявленным публичным OpenAI API. Факт того, что desktop Codex
+project/profile сохранил source folder и предоставляет dynamic worktree variable,
+остаётся owner-verified platform acceptance. Отсутствующая dynamic variable или
+повторное открытие `/mnt/*` является blocker; current directory не используется
+как неявная замена.
+
+Режимы:
+
+```text
+default    local environment/config checks, без network call
+--fetch    git fetch origin --prune и freshness/authentication checks
+--offline  запрет network calls для unit tests и локальной диагностики
+--require-clean  fail на tracked/untracked changes
+```
+
+Exit codes:
+
+```text
+0  PASS
+2  environment/path/tool/config blocker
+3  GitHub authentication или fetch blocker
+4  repository identity, expected-base или dirty-state blocker
+```
+
+Output имеет bounded machine-readable-ish summary и не содержит token, credential
+value, полного environment dump или token-bearing remote URL.
+
 ## Docker
 
 Используется native Docker Engine внутри Arch WSL:
