@@ -1,7 +1,18 @@
-# Compatibility pointer — former Stage 11
+# Указатель совместимости — прежний Stage 11
 
-This path is retained so historical links do not break.
+Этот путь сохранён, чтобы исторические ссылки не ломались.
 
-Contextual Analytics v1.1 is now **`C3 Contextual Additions`** in the authoritative [Core product track](../core/README.md).
+Прежний Stage 11 `Contextual Analytics v1.1` больше не является этапом `C3`.
 
-`C3` is conditional: every addition must answer a concrete user decision that current Statistics, FSRS, Search, Signals and Cards triage do not already cover. If no justified gap exists, it closes without feature expansion.
+Актуальный `C3` — обязательный этап **Core UI & Shell Consolidation** в [треке Core](../core/README.md).
+
+Contextual additions перенесены в evidence-triggered backlog. Каждое предложение обязано доказать:
+
+- конкретное пользовательское решение;
+- доступность и ограниченность данных;
+- место в IA;
+- правила интерпретации;
+- критерии проверки;
+- отсутствие ответа в существующих Today, Statistics, FSRS, Search, Cards и Triage.
+
+Если доказанного пробела нет, работа не активируется и не резервирует номер этапа.
