@@ -1,103 +1,237 @@
-# C2 — Core 1.0 Hardening and C1 UI Remediation
+# C2 — итоговый отчёт по усилению Core 1.0 и исправлению UI после C1
 
-**Дата:** 2026-07-22
+**Дата закрытия:** 2026-07-22  
+**Репозиторий:** `AliceLiddell01/anki-study-report`  
+**Базовая ветка:** `core`  
+**Базовый SHA:** `1e7beafae16c6259ad6e93f393cda39bd9449dbb`  
+**Рабочая ветка:** `c2-core-hardening-ui-remediation`  
+**Финальный проверенный head:** `9d5d7724aedac375fde3c9a6752baf1b4aee86ba`  
+**Pull request:** `#128`  
+**Статус:** реализация и обязательная exact-SHA verification campaign завершены; merge в `core` остаётся отдельным решением владельца.
 
-**Base:** `origin/core` at `1e7beafae16c6259ad6e93f393cda39bd9449dbb`
+## 1. Итог этапа
 
-**Branch:** `c2-core-hardening-ui-remediation`
+C2 завершил обязательное усиление уже существующего Core после C1 без добавления нового продуктового слоя. Работа закрыла известные технические, security- и UI/UX-findings, усилила границы предпросмотра карточек, устранила ошибки поколений запросов и операций, ограничила дополнительную память Search, сузила публичную диагностику локального сервера и привела Cards/Inspection Profiles к более последовательной визуальной и интерактивной модели.
 
-**Scope:** targeted remediation известных C1 findings; без C1.6B, новых функций, merge, release и deployment
+Финальная проверочная последовательность для текущего head выполнена успешно:
 
-## Исходные evidence
+```text
+Fast CI на exact SHA: PASS
+standard/cards с verify_restart=true: PASS
+standard/full: PASS
+```
 
-Фактически открыты входные отчёты:
+Успех трёх финальных запусков подтверждён владельцем проекта 2026-07-22. Номера этих трёх финальных GitHub Actions runs отсутствуют в доступном контексте, поэтому они не выдумываются. Исторические номера предыдущих запусков приведены только там, где они фактически известны.
+
+C2 не выполнял merge, release, deployment, публикацию `.ankiaddon` или обновление AnkiWeb.
+
+## 2. Основание и границы работы
+
+Работа выполнялась как точечная remediation известных findings из итоговых материалов C1:
 
 - `C1_FINAL_CODE_AND_SECURITY_REPORT.md`;
 - `C1_UI_UX_FINAL_REPORT.md`.
 
-Каждый finding был повторно сопоставлен с текущим production path от exact base. Новый полный security или UI audit не выполнялся.
+Каждый finding повторно сопоставлялся с актуальным production path от exact base. Новый полный аудит всего репозитория не выполнялся.
 
-## Реализация
+### В scope
 
-- Полный card stylesheet проходит parser-backed allowlist, selector scoping и safe local media rewrite; dashboard отправляет CSP и защитные headers.
-- Exact-card recheck использует authority только релевантного note type и прежних profile-dependent reasons.
-- Query generation, inspect generation и non-abortable mutation operation разделены; cache ограничен и не пересекает refresh.
-- Search сохраняет `O(cap)` add-on memory после native result, сериализует широкие queries и честно фиксирует upstream materialization.
-- Публичный status минимален, подробный status token-protected, failed auth не продлевает idle lifetime.
-- Cards и Inspection Profiles используют общие surface/type/spacing/action/state roles и переработанную hierarchy без изменения product model.
+- parser-backed политика пользовательского CSS карточек;
+- усиление browser boundary и response security headers;
+- authority точной карточки без влияния нерелевантных Inspection Profiles;
+- разделение поколений query, inspect, cache и non-abortable mutations;
+- ограничение дополнительной памяти и конкуренции широкого Search;
+- минимизация публичного server status и корректное владение idle timer;
+- extraction только доказанных policy seams;
+- behavior-based E2E helpers;
+- targeted UI remediation Cards и Inspection Profiles;
+- exact-SHA Fast CI → targeted real-Anki E2E → full real-Anki E2E.
 
-## Finding ledger — technical/security
+### Вне scope
 
-| ID | Status | Old root cause | Changed files | New invariant | Tests/evidence | Residual risk | Release blocker closed |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `U-C1-001` | fixed | Полный CSS типа заметки проходил regex denylist и попадал в Shadow DOM | `card_css_policy.py`, `note_intelligence.py`, `dashboard_server.py`, vendored `tinycss2`/`webencodings`, preview/package tests | Parser grammar, allowlist, `.card` scope, bounded fail-closed output, safe local media; CSP default deny | 146 focused Python tests; 11 preview tests; package validation; malicious/obfuscated grammar fixtures | Runtime browser request capture и exact-package real-Anki являются integration evidence | yes |
-| `U-C1-002` | fixed | Aggregate health всех profiles использовался как authority exact card | `exact_card_authority.py`, `inspection_profile_service.py`, `triage_service.py` и tests | Учитываются exact note type и только reasons, зависящие от profile authority | 73 authority/profile/triage tests; дополнительно 30 profile/triage tests; обязательный A/B scenario | Нет известного residual в изменённой границе | yes |
-| `U-C1-003` | fixed | Busy-state mutation принадлежал query generation и исчезал после refresh/scope change | `cardsWorkspacePolicy.ts`, `useCardsTriageWorkspace.ts`, `CardsPage.tsx` и tests | Non-abortable operation живёт до фактического completion независимо от чтений; конфликтующие actions блокированы | Deferred-promise regression suite, 25 focused и 21 integration frontend tests | Native completion всё ещё может быть долгим; UI честно остаётся busy | yes |
-| `U-C1-004` | fixed | Inspect cache мог восстановить preview предыдущей generation | те же workspace policy/hook/page files | Cache generation-keyed, max 50, очищается на refresh/scope; stale completion игнорируется | Deferred refresh/deck/stale-completion/cache-bound tests | Нет persistence между reload, что соответствует контракту | yes |
-| `U-C1-005` | mitigated with residual risk | Полный native ID result затем копировался в дополнительные full-size set/sort structures | `search_service.py`, `search_runtime.py`, benchmark и tests | После native return хранится не более cap лучших unique IDs; один широкий query одновременно; exact inspect отдельно | 100 000 IDs: 246.96 ms, 406 680 bytes peak, бюджеты 500 ms/2 MiB | Anki `find_cards/find_notes` уже возвращает полную `Sequence` и не имеет limit/streaming API | yes |
-| `U-C1-006` | mitigated with residual risk | Authority, orchestration и projection были сцеплены в широких модулях | `exact_card_authority.py`, `cardsWorkspacePolicy.ts`, `_SearchQueryGate` | Доказанные policy seams чистые и отдельно тестируются; broad rewrite не выполнен | Pure-policy unit tests и integration regressions | Legacy services остаются широкими вне доказанных seams | yes |
-| `U-C1-007` | fixed | Часть E2E proof зависела от сравнений исходного текста helper | `docker/anki-e2e/smoke-api.py`, `test_docker_smoke_helpers.py` | CSS asset и inspection request behavior проверяются исполняемыми helpers/contracts | Focused helper tests в составе 101 Search/server/E2E tests | Полный real-Anki smoke остаётся финальным integration proof | yes |
-| `U-C1-008` | fixed | Публичный status раскрывал подробную server/runtime диагностику и пути | `dashboard_server.py`, dashboard tests/docs | `/api/status` строго минимален; подробности требуют токен; пути сведены к basename | Status payload, auth и Windows/POSIX path-redaction tests | Process-level localhost observer всё ещё видит порт, что ожидаемо | yes |
-| `U-C1-009` | fixed | Общий request path обновлял idle timer до authentication | `dashboard_server.py` и tests | Idle touch происходит после valid auth либо для явно trusted public/static path; unknown path 404 | Failed-auth/unknown/trusted/valid lifecycle tests | Публичный readiness считается доверенной активностью по явному контракту | yes |
+- C1.6B и массовые действия;
+- новые продуктовые функции;
+- C3 Contextual Additions;
+- перестройка delivery infrastructure;
+- новая система аккаунтов, геймификации или расширений;
+- release, deployment и публикация;
+- широкая перепись legacy-модулей без доказанной необходимости.
 
-## Finding ledger — UI
+## 3. Основные изменения
 
-| ID | Status | Old root cause | Changed files | New invariant | Tests/evidence | Residual risk | Release blocker closed |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `C1-UI-001` | fixed | Вложенные panel/card поверхности размывали hierarchy | shared styles, Cards/Profiles pages и components | Page, region, interactive и selected surfaces имеют разные роли; обычные sections не становятся cards | `CardsVisualContract`, `InspectionProfilesVisualContract`, component tests | Финальная оценка raster/computed styles выполняется в browser E2E | yes |
-| `C1-UI-002` | fixed | Metadata и headings использовали несогласованные размеры/вес | `styles.css`, page-specific styles | Общие page/section/body/label/meta type roles | Visual contract tests и production build | Шрифтовой raster зависит от runtime platform | yes |
-| `C1-UI-003` | fixed | Basic читался как developer schema editor | Profiles page, Basic/Advanced components, styles, locale | Семь plain-language milestones; machine details только Advanced | Profiles visual/page/component tests RU/EN | Complex custom profiles по-прежнему требуют Advanced | yes |
-| `C1-UI-004` | fixed | Drawer просвечивал и конфликтовал с utility dock при 1024 | `CardsDetailDrawer.tsx`, `cardsInbox.css`, tests | `<1200` opaque non-modal drawer, sticky header/internal scroll; dock снаружи; 1199/1200 exact | Boundary, Escape, focus-return и containment tests | Platform scrollbar width проверяется integration browser | yes |
-| `C1-UI-005` | fixed | Queue row было трудно сканировать из-за повторов anatomy/scope | `CardsInbox.tsx`, `CardsPage.tsx`, styles | Priority/identity/evidence/meta имеют стабильный компактный порядок | Cards page/inbox/visual contract tests | Реальные длинные значения требуют browser fixture | yes |
-| `C1-UI-006` | fixed | Filters, summary, query scope и utilities конкурировали | `CardsPage.tsx`, styles, locales | Local queue filters отделены от scope; active filters явны; coverage одно disclosure | Cards page/visual contract/localization tests | При множестве активных фильтров используется wrapping | yes |
-| `C1-UI-007` | fixed | Lifecycle, result и actions фрагментировались по badges/panels | `CardsDetail.tsx`, Profiles action zone, styles/locales | Одна lifecycle surface и не более одного primary action; result операции не равен resolution | Lifecycle/action-label/state tests | Backend C1.6 semantics намеренно не изменены | yes |
-| `C1-UI-008` | fixed | Unselected Profiles выглядел как незаконченный placeholder | Profiles page/styles/locales | Одна спокойная empty surface объясняет выбор и отсутствие autosave/autoconfirm | Profiles visual/page tests RU/EN | Нет декоративной иллюстрации по design contract | yes |
-| `C1-UI-009` | mitigated with residual risk | Theme surfaces недостаточно разделялись | shared/page-specific tokens and styles | Light/dark roles разделяют page, region, interaction, selection и focus | Theme selectors/structural visual tests; production CSS build | Финальные contrast/raster screenshots ожидаются от browser E2E | yes |
-| `C1-UI-010` | fixed | Технический copy попадал в normal Profiles path | Basic/Advanced components и locales | ID/ordinal/mode находятся только в Advanced; Basic использует Anki terms | RU/EN visual and page tests | Exact field names остаются намеренно видимыми | yes |
-| `C1-UI-011` | fixed | Validation toast мог перекрыть form | Profiles page/result/styles | Результат persistent inline; toast статичен и вторичен; conflict блокирует рядом с actions | Validation success/error/conflict tests | Native browser zoom проверяется integration browser | yes |
-| `C1-UI-012` | fixed | Answer modal имел лишний chrome/dead space | Cards detail/modal styles and tests | Один preview frame, компактный chrome, visible close/X, Escape, trap и long-answer scroll | Cards visual/detail/accessibility tests | Security boundary preview не изменена | yes |
+### 3.1. Безопасная обработка CSS карточек
 
-## Security decisions
+Полный CSS типа заметки больше не контролируется преимущественно regex denylist. Добавлен parser-backed pipeline на базе vendored pure-Python `tinycss2` и `webencodings`:
 
-Vendored pure-Python `tinycss2` и `webencodings` выбраны для совместимости с embedded Python Anki без compiled extensions. Полные license files и third-party notices включены в пакет. Regex больше не является primary control stylesheet.
+- синтаксический разбор stylesheet;
+- allowlist допустимых правил и свойств;
+- scoping selectors в границу карточки;
+- ограничение размера и сложности результата;
+- fail-closed для malformed и неподдерживаемого CSS;
+- безопасная обработка локальных media/font URL;
+- запрет внешних и опасных ссылок;
+- полные лицензии и third-party notices в пакете.
 
-`style-src 'unsafe-inline'` сохранён только потому, что frontend создаёт runtime styles внутри Shadow DOM. Остальные источники default-deny и same-origin; parser policy остаётся primary boundary.
+Regex остаётся вспомогательным инструментом, но не является primary security control.
 
-## API/schema
+### 3.2. CSP и browser defense in depth
 
-Wire schema Search v2, Triage v4/recheck v1 и Inspection Profiles не менялись. Добавлен типизированный HTTP `409 search_busy`. Публичный `/api/status` сужен до `ok/status`; подробный `/api/server/status` остаётся token-protected.
+Локальный dashboard получил deny-by-default Content Security Policy и дополнительные headers:
 
-## UI before/after
+- `default-src 'none'`;
+- same-origin script/connect/media/font policy;
+- `object-src 'none'`;
+- `frame-src 'none'`;
+- `frame-ancestors 'none'`;
+- `base-uri 'none'`;
+- `form-action 'none'`;
+- `Referrer-Policy: no-referrer`;
+- `X-Content-Type-Options: nosniff`.
 
-Cards сохраняет semantic list, exact-card workflow и non-modal drawer, но отделяет local filters от query scope, уплотняет queue anatomy и строит Inspector вокруг одного lifecycle/action path. Inspection Profiles сохраняет single strict draft и Basic/Advanced model, но Basic теперь читается как guided configuration с одной action zone.
+`style-src 'unsafe-inline'` сохранён узко и осознанно, поскольку Shadow DOM preview создаёт runtime styles. Основной security boundary при этом остаётся parser-backed CSS policy.
 
-## Verification
+Во время targeted E2E был обнаружен конфликт строгого CSP с ранним inline theme bootstrap. Исправление не ослабило CSP: bootstrap перенесён в Vite-managed same-origin module, загружаемый до основного entry.
 
-Focused checks выполнялись после каждой независимой группы и перечислены в ledger.
+### 3.3. Authority точной карточки
 
-Финальный локальный контур:
+Aggregate health всех Inspection Profiles больше не используется как authority для перепроверки одной карточки. Recheck учитывает точный note type, только релевантные profile-dependent reasons и текущие revision/fingerprint. Stale, unavailable и partial evidence работают fail closed.
+
+### 3.4. Generation-safe Cards workspace
+
+Разделены независимые query generation, inspect generation, cache generation и non-abortable mutation operation. Результат операции больше не теряется из-за refresh, смены scope или нового query. Stale inspect completion игнорируется, а cache привязан к generation, ограничен 50 элементами и очищается на refresh/scope change.
+
+### 3.5. Ограниченный Search
+
+После возврата native Anki result add-on хранит не более cap лучших уникальных ID и не создаёт несколько полноразмерных копий результата. Одновременно выполняется не более одного широкого native query; конфликт возвращает `409 search_busy`.
+
+Benchmark на 100 000 ID:
+
+```text
+время: 246.96 ms
+peak additional memory: 406 680 bytes
+бюджет времени: 500 ms
+бюджет памяти: 2 MiB
+результат: PASS
+```
+
+Ограничение Anki остаётся: `find_cards` и `find_notes` уже материализуют полную `Sequence` и не предоставляют streaming/limit API.
+
+### 3.6. Локальный server status и idle lifecycle
+
+Публичный `/api/status` сужен до минимальной формы `ok/status`. Подробная диагностика остаётся только в token-protected `/api/server/status`; пути редактируются до безопасного basename-представления для Windows и POSIX.
+
+Idle timer больше не обновляется до authentication. Failed token requests и неизвестные routes не продлевают lifetime сервера.
+
+### 3.7. Behavior-based E2E contracts
+
+Проверки исходного текста helper-файлов заменены исполняемыми contracts и behavior assertions для CSS, inspection requests, server/security responses, exact package handoff и Cards lifecycle.
+
+### 3.8. UI remediation Cards
+
+Cards сохраняет semantic attention inbox, один Inspector, exact-card lifecycle, non-modal drawer ниже 1200 px и true modal для ответа. При этом local filters отделены от query scope, queue row получил стабильную anatomy, lifecycle/actions/result перестали конкурировать, metadata выделена семантически, а drawer стал непрозрачным и получил внутренний scroll.
+
+Targeted E2E выявил устаревший test hook после UI-рефакторинга. Production behavior было корректным, но browser test ожидал старую DOM-границу. `cards-resolution-state` возвращён авторитетному lifecycle banner, а result section получила отдельный `cards-resolution-result`.
+
+### 3.9. UI remediation Inspection Profiles
+
+Basic path представлен как семь последовательных пользовательских разделов. Machine IDs, ordinals и mappings остаются в Advanced. Сохранены один strict draft, явное подтверждение, отсутствие autosave/autoconfirm и fail-closed lifecycle. Validation стала persistent inline и не перекрывает форму.
+
+## 4. Finding ledger
+
+### Technical/security
+
+| ID | Итог | Краткий результат | Остаточный риск |
+| --- | --- | --- | --- |
+| `U-C1-001` | исправлено | Parser-backed CSS allowlist, selector scoping, safe media/font rewrite, CSP | Runtime browser остаётся integration boundary, закрытым real-Anki E2E |
+| `U-C1-002` | исправлено | Authority ограничена exact note type и релевантными reasons | Известного residual в изменённой границе нет |
+| `U-C1-003` | исправлено | Mutation отделена от query generation | Native operation может быть долгой, UI остаётся busy |
+| `U-C1-004` | исправлено | Generation-keyed bounded inspect cache | Cache не сохраняется между reload |
+| `U-C1-005` | смягчено | `O(cap)` additional memory и gate широкого Search | Полная materialization остаётся ограничением Anki API |
+| `U-C1-006` | смягчено | Выделены доказанные policy seams | Broad legacy services не переписаны полностью |
+| `U-C1-007` | исправлено | E2E proof переведён на behavior contracts | Full real-Anki остаётся авторитетным gate |
+| `U-C1-008` | исправлено | Минимальный public status и защищённая diagnostics projection | Local observer видит loopback port, что ожидаемо |
+| `U-C1-009` | исправлено | Idle activity принадлежит authenticated/trusted request | Public readiness доверен по контракту |
+
+### UI/UX
+
+| ID | Итог | Краткий результат | Остаточный риск |
+| --- | --- | --- | --- |
+| `C1-UI-001` | исправлено | Разведены page/region/interactive/selected surfaces | Platform raster зависит от браузера |
+| `C1-UI-002` | исправлено | Общие typography roles | Шрифтовой raster платформозависим |
+| `C1-UI-003` | исправлено | Basic стал guided path | Сложные профили требуют Advanced |
+| `C1-UI-004` | исправлено | Opaque non-modal drawer и boundary 1199/1200 | Scrollbar остаётся browser detail |
+| `C1-UI-005` | исправлено | Компактная anatomy queue row | Очень длинные данные зависят от wrapping |
+| `C1-UI-006` | исправлено | Filters отделены от scope | Много фильтров переносится строками |
+| `C1-UI-007` | исправлено | Один lifecycle/action path | Backend semantics C1.6 не расширялись |
+| `C1-UI-008` | исправлено | Понятный unselected state | Декоративная иллюстрация не добавлялась |
+| `C1-UI-009` | смягчено и проверено | Более различимые light/dark surfaces | Абсолютный contrast зависит от дисплея |
+| `C1-UI-010` | исправлено | Технический copy вынесен в Advanced | Реальные field names намеренно видимы |
+| `C1-UI-011` | исправлено | Inline validation | Native zoom остаётся browser behavior |
+| `C1-UI-012` | исправлено | Компактный answer modal | Security boundary preview не менялась |
+
+## 5. API и публичные контракты
+
+Wire schema Search v2, Triage v4/recheck v1 и Inspection Profiles v1 сохранены. Добавлены типизированный `409 search_busy`, минимальный `/api/status`, защищённый подробный status и безопасные локальные font media types. Backend, frontend, tests и docs синхронизированы в пределах изменённых контрактов.
+
+## 6. Проверка
 
 | Проверка | Результат |
 | --- | --- |
-| `git diff --check` | PASS |
 | TypeScript typecheck | PASS |
-| frontend Vitest | PASS — 342 tests |
+| frontend Vitest | PASS — 342 tests до финальных интеграционных исправлений; текущий head подтверждён новым Fast CI |
 | Vite production build | PASS — 2272 modules |
 | bundle guard | PASS — 20 JS chunks, entry 430 646 bytes, total 1 375 572 bytes |
-| Python full | PASS — 841 passed, 1 expected package-artifact skip |
+| Python full | PASS — 841 passed, 1 ожидаемый package-artifact skip |
 | Python compileall | PASS |
 | package build/check | PASS — 96 entries |
 | package check-only | PASS — 96 entries |
-| Search boundedness benchmark | PASS — 100 000 IDs, 246.96 ms, peak 406 680 bytes |
+| Search benchmark | PASS — 100 000 IDs, 246.96 ms, peak 406 680 bytes |
+| focused handoff contract | PASS — 35 tests |
+| final exact-SHA Fast CI | PASS — подтверждено владельцем для `9d5d7724...` |
+| targeted `standard/cards` + restart | PASS — подтверждено владельцем |
+| final `standard/full` | PASS — подтверждено владельцем |
 
-Canonical PowerShell entrypoint первоначально выбрал Windows `pnpm.cmd` из WSL `PATH`; после изоляции Linux PATH выполнил frontend/typecheck/build/bundle, но его Python helper выбрал системный Python без pytest. Оставшиеся идентичные шаги выполнены напрямую на `.venv/bin/python` с явным Linux temp и без bytecode junk. Эти ошибки классифицированы как local environment, а не PASS entrypoint; полный эквивалентный non-Docker набор команд имеет PASS выше.
+### История exact-package E2E
 
-Exact-SHA Fast CI, targeted `standard/cards` с restart и final `standard/full` фиксируются в draft PR и итоговом handoff; до их PASS C2 не объявляется release-ready.
+1. Fast CI `29882753539` создал exact package для предыдущего head `c7bfbf26600caac5c01ba798db690bbfe48761b8`.
+2. Targeted run `29882991519` прошёл handoff resolution, diagnostics validation, exact checkout, package validation, GHCR pull, Compose validation и Docker setup.
+3. Он упал в browser smoke из-за устаревшего Cards hook и одновременно выявил CSP error inline theme bootstrap.
+4. Оба дефекта исправлены без изменения product model и без ослабления CSP.
+5. Для текущего head `9d5d7724aedac375fde3c9a6752baf1b4aee86ba` новый Fast CI, targeted `standard/cards` с restart и final `standard/full` завершились успешно.
 
-## Residual risks и граница merge
+## 7. Остаточные риски
 
-- Native Search materialization остаётся upstream limitation; mitigations ограничивают add-on memory и concurrency.
-- Broad legacy modules не переписаны вне доказанных seams.
-- Light/dark raster, внешние network negative controls, native rendering, restart и live fixture требуют exact-package real-Anki evidence.
-- Merge в `core`, merge/rebase в `master`, release, deployment и AnkiWeb publish не выполняются этой задачей.
-- Даже после PASS candidate production tree после merge должен быть сопоставлен с проверенным tree; release требует отдельного решения владельца.
+- Anki native Search материализует полный result до add-on processing;
+- broad legacy services остаются широкими вне выделенных policy seams;
+- `style-src 'unsafe-inline'` требуется runtime Shadow DOM styles, но ограничен parser policy и deny-by-default CSP;
+- отдельная проверка на приватном профиле владельца не выполнялась;
+- после merge необходимо сопоставить production tree с проверенным candidate tree.
+
+## 8. Что не выполнялось
+
+- merge PR #128 в `core`;
+- merge/rebase `core` в `master`;
+- release tag, GitHub Release и production `.ankiaddon`;
+- deployment и AnkiWeb publish;
+- C1.6B и C3;
+- unrelated cleanup и broad legacy rewrite.
+
+## 9. Рекомендованное решение
+
+C2 candidate технически готов к отдельному решению владельца о merge PR #128 в `core`.
+
+После merge необходимо зафиксировать merge SHA, подтвердить соответствие production tree проверенному candidate tree и обновить handoff. Release, C1.6B и C3 не следуют автоматически.
+
+## 10. Финальная классификация
+
+```text
+C1: завершён и принят
+C2 implementation: завершена
+C2 findings: закрыты или документированно смягчены
+C2 exact-SHA Fast CI: PASS
+C2 targeted standard/cards + restart: PASS
+C2 final standard/full: PASS
+C2 candidate: готов к решению о merge
+merge в core: не выполнен
+release/deployment/publication: не выполнялись
+```
