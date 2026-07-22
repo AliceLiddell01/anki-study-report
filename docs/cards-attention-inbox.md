@@ -58,6 +58,8 @@
 
 ### Широкий Inspector
 
+Inspector участвует в естественной прокрутке страницы и не создаёт второй вертикальный scroll container. Собственный scroll остаётся у левой очереди; после технических сведений нет искусственного safe-area padding. Identity, metadata, причины и action zone образуют мягкие смысловые группы без набора одинаковых вложенных карточек.
+
 - постоянный семантический `aside`;
 - sticky и при необходимости независимо прокручиваемый;
 - ширина `clamp(380px, 34vw, 520px)`;
@@ -169,6 +171,8 @@ Query scope и utilities отделены от локальных фильтро
 После существующего Safe Action или Open in Anki элемент переходит в `Awaiting recheck`. Успех действия и `action.no_changes` не доказывают устранение проблемы.
 
 Pending mutation остаётся видимой глобальной операцией при новой query generation. Refresh и изменение scope разрешены как независимые чтения, но action/Open/Recheck остаются отключёнными до завершения mutation. Inspect cache ограничен, привязан к generation и очищается при refresh или изменении scope.
+
+Refresh не очищает текущую очередь: region получает `aria-busy`, control сохраняет размеры и фокус, а spinner вращается только во время pending. Reduced motion оставляет статичный progress indicator.
 
 Явный `POST /api/triage/recheck`:
 
