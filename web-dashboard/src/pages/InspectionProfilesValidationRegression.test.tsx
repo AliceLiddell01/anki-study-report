@@ -104,11 +104,15 @@ describe("Inspection Profiles controlled validation regression", () => {
     expect(mocks.validate).not.toHaveBeenCalled();
     expect(container.textContent).toContain("Исправьте профиль");
     expect(container.textContent).not.toContain("Черновик проверен");
+    meaning = container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")!;
+    expect(meaning.getAttribute("aria-invalid")).toBe("true");
     expect(document.activeElement?.id).toBe("inspection-errors-title");
     expect(document.activeElement).not.toBe(document.body);
 
     meaning = container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")!;
     await change(meaning, "1");
+    meaning = container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")!;
+    expect(meaning.getAttribute("aria-invalid")).toBeNull();
     expect(container.querySelector("#inspection-errors-title")).toBeNull();
 
     const secondCheck = button("Проверить настройку");
