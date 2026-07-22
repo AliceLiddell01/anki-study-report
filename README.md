@@ -122,6 +122,7 @@ Start with:
 - [Architecture](docs/architecture.md)
 - [Dashboard API](docs/dashboard-api.md)
 - [Navigation / IA](docs/navigation-ia.md)
+- [UI prototyping and visual acceptance](docs/ui-prototype-visual-acceptance.md)
 - [Security and safety](docs/security-and-safety.md)
 - [Test matrix](docs/test-matrix.md)
 - [Verification policy](docs/verification-run-policy.md)
