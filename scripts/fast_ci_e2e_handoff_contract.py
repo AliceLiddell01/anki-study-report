@@ -39,9 +39,9 @@ def resolve_source_run(
     run_head_sha = exact_sha(run_payload.get("head_sha"), "run.head_sha")
     source_ref = safe_text(run_payload.get("head_branch"), "run.head_branch")
 
-    pulls = run_payload.get("pull_requests") or []
     source_base_sha: str | None
     if event == "pull_request":
+        pulls = run_payload.get("pull_requests")
         if not isinstance(pulls, list) or len(pulls) != 1 or not isinstance(pulls[0], dict):
             raise HandoffError("Pull-request Fast CI run must expose exactly one unambiguous PR identity")
         pull = pulls[0]
@@ -61,8 +61,8 @@ def resolve_source_run(
         source_head_sha = exact_sha(head.get("sha"), "pull_request.head.sha")
         source_base_sha = exact_sha(base.get("sha"), "pull_request.base.sha")
     else:
-        if pulls:
-            raise HandoffError(f"{event} source run must not carry pull-request identity")
+        # GitHub REST may attach advisory PR associations independently of the
+        # actual workflow trigger event. Non-PR identity always comes from the run.
         source_head_sha = run_head_sha
         source_base_sha = None
 
@@ -287,4 +287,3 @@ def validate_package_handoff(
     for key, value in evidence.items():
         _assert_safe_public_value(value, key)
     return evidence
-
