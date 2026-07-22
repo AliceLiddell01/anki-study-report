@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "id": "words",
+      "path": "words-n1.apkg",
+      "sourceName": "Words__N1(2).apkg",
+      "sha256": "78dfab9424fcdb1f5da4005f7e5a2789a04c13414c5477bc647069a06ad10a9b",
+      "sizeBytes": 24979986,
+      "purpose": "words",
+      "expected": {
+        "notes": 718,
+        "cards": 718,
+        "noteTypes": 1,
+        "media": 2153,
+        "hasSchedulingData": false
+      }
+    },
+    {
+      "id": "grammar",
+      "path": "grammar-n5.apkg",
+      "sourceName": "文法__N5(2).apkg",
+      "sha256": "72f0d9707604dff2c7b51fbde4ace51f104f07a5671f608eb987c2067443c19d",
+      "sizeBytes": 116622,
+      "purpose": "grammar",
+      "expected": {
+        "notes": 133,
+        "cards": 133,
+        "noteTypes": 1,
+        "media": 0,
+        "hasSchedulingData": false
+      }
+    },
+    {
+      "id": "java",
+      "path": "java-core.apkg",
+      "sourceName": "Java(2).apkg",
+      "sha256": "3c7ee2fe3435d57c5ac5ff8fb8eb913d9406d9461f11975114d6e6ac52b041d3",
+      "sizeBytes": 74610,
+      "purpose": "java",
+      "expected": {
+        "notes": 70,
+        "cards": 70,
+        "noteTypes": 1,
+        "media": 0,
+        "hasSchedulingData": false
+      }
+    }
+  ],
+  "anchors": {
+    "words-preview": {
+      "purpose": "Words native front/back preview",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "D!TAYVuHi,",
+        "templateOrdinal": 0
+      },
+      "expectedNoteType": {
+        "name": "Слова",
+        "fingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+        "fieldNames": [
+          "Слово",
+          "Часть речи",
+          "Значение",
+          "Ударение",
+          "Пример",
+          "Похожие слова"
+        ]
+      },
+      "requiredMediaCapabilities": [
+        "audio",
+        "gif",
+        "image"
+      ],
+      "allowedScenarioMutations": []
+    },
+    "grammar-preview": {
+      "purpose": "Grammar native front/back preview",
+      "package": "grammar",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "@odJFCrn_*",
+        "templateOrdinal": 0
+      },
+      "expectedNoteType": {
+        "name": "Грамматика",
+        "fingerprint": "a9e5dd8f3839b5cef14d02c1949a5a961593c07f084d0d26fecdcf8c89c0f1a4",
+        "fieldNames": [
+          "Лицо",
+          "Грамматическая форма",
+          "Значение",
+          "Нюансы",
+          "Примеры",
+          "Похожие конструкции"
+        ]
+      },
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": []
+    },
+    "java-preview": {
+      "purpose": "Java native preview and syntax-highlighting contour",
+      "package": "java",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "nA-NULhYWq",
+        "templateOrdinal": 0
+      },
+      "expectedNoteType": {
+        "name": "Копия Основная",
+        "fingerprint": "f319f55ec3fa7a762086ad0d11533ca6b125c3d2f1878c824fe708a7d2da41e7",
+        "fieldNames": [
+          "Лицо",
+          "Оборот",
+          "Доп. информация",
+          "Пример"
+        ]
+      },
+      "requiredHtmlClasses": [
+        "language-java"
+      ],
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": []
+    },
+    "image-gif-media": {
+      "purpose": "Dynamic real image and GIF media route",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "D!TAYVuHi,",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [
+        "gif",
+        "image"
+      ],
+      "allowedScenarioMutations": []
+    },
+    "audio-media": {
+      "purpose": "Dynamic real audio media route",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "IHZ2@tp]y6",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [
+        "audio"
+      ],
+      "allowedScenarioMutations": []
+    },
+    "cards-action-recheck": {
+      "purpose": "Cards action, awaiting-recheck and authoritative recheck lifecycle",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "yVdIj0%iDV",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "revlog",
+        "suspended",
+        "buried"
+      ]
+    },
+    "cards-low-success": {
+      "purpose": "Deterministic low-success attention reason",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "3y|XNfCy<",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "revlog"
+      ]
+    },
+    "cards-suspended": {
+      "purpose": "Suspended card state",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "JsjN+xBq+j",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "suspended"
+      ]
+    },
+    "cards-buried": {
+      "purpose": "Buried card state",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "g%CO8ut=7e",
+        "templateOrdinal": 0
+      },
+      "expectedNoteTypeFingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "buried"
+      ]
+    },
+    "inspection-japanese": {
+      "purpose": "Inspection Profiles Japanese note type",
+      "package": "words",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "P/&?/#-te}",
+        "templateOrdinal": 0
+      },
+      "expectedNoteType": {
+        "name": "Слова",
+        "fingerprint": "c532d9cc008bdd491a01e5c60418394c5bea63ec38baf8bdc505248b74e8fb5e",
+        "fieldNames": [
+          "Слово",
+          "Часть речи",
+          "Значение",
+          "Ударение",
+          "Пример",
+          "Похожие слова"
+        ]
+      },
+      "inspectionProfile": {
+        "displayName": "Japanese vocabulary",
+        "mappings": [
+          {
+            "role": "meaning",
+            "field": "Значение"
+          },
+          {
+            "role": "audio",
+            "field": "Слово"
+          }
+        ],
+        "checks": [
+          {
+            "checkId": "meaning-required",
+            "kind": "non_empty",
+            "roles": [
+              "meaning"
+            ],
+            "mode": "any",
+            "priority": "high"
+          },
+          {
+            "checkId": "audio-required",
+            "kind": "contains_audio",
+            "roles": [
+              "audio"
+            ],
+            "mode": "any",
+            "priority": "medium"
+          }
+        ]
+      },
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "revlog"
+      ]
+    },
+    "inspection-programming": {
+      "purpose": "Inspection Profiles Programming note type",
+      "package": "java",
+      "selector": {
+        "kind": "noteGuidTemplate",
+        "noteGuid": "nA-NULhYWq",
+        "templateOrdinal": 0
+      },
+      "expectedNoteType": {
+        "name": "Копия Основная",
+        "fingerprint": "f319f55ec3fa7a762086ad0d11533ca6b125c3d2f1878c824fe708a7d2da41e7",
+        "fieldNames": [
+          "Лицо",
+          "Оборот",
+          "Доп. информация",
+          "Пример"
+        ]
+      },
+      "inspectionProfile": {
+        "displayName": "Programming",
+        "mappings": [
+          {
+            "role": "question",
+            "field": "Лицо"
+          },
+          {
+            "role": "answer",
+            "field": "Оборот"
+          }
+        ],
+        "checks": [
+          {
+            "checkId": "question-required",
+            "kind": "non_empty",
+            "roles": [
+              "question"
+            ],
+            "mode": "any",
+            "priority": "high"
+          },
+          {
+            "checkId": "answer-required",
+            "kind": "non_empty",
+            "roles": [
+              "answer"
+            ],
+            "mode": "any",
+            "priority": "high"
+          }
+        ]
+      },
+      "requiredMediaCapabilities": [],
+      "allowedScenarioMutations": [
+        "scheduling",
+        "revlog"
+      ]
+    }
+  }
+}
