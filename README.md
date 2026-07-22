@@ -46,7 +46,7 @@ The accepted product contour is complete through **Stage 9.5**. Future work is n
 
 Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI and extension packs do not block core maturity.
 
-Current Core status: Core C1 is complete and accepted. C2 Core 1.0 hardening and C1 UI remediation is implemented on its candidate branch; exact-SHA integration evidence remains the release boundary. `C1.6B` remains Conditional and was not activated.
+Current Core status: Core C1 is complete and accepted. C2 implementation and exact-SHA Fast CI, targeted Cards and full real-Anki verification are complete on the candidate branch. PR #128 awaits an explicit merge decision; release has not started. `C1.6B` remains Conditional and was not activated.
 
 Current platform state:
 
