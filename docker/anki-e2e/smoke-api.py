@@ -48,13 +48,25 @@ def main() -> int:
     assert_true(scenarios.get("contentMutation", {}).get("notesCreated") == 0 and scenarios.get("contentMutation", {}).get("cardsCreated") == 0, "scenario preparation created no content")
 
     asset_summary = assert_dashboard_assets(base_url, token)
-    card_candidates = collect_card_candidates(base_url, token, report, anchors)
     preview_summary = {}
     for anchor_id in PREVIEW_ANCHORS:
         anchor = anchors[anchor_id]
         card_id = str(anchor["cardId"])
-        card = card_candidates.get(card_id)
-        assert_true(card is not None, f"{anchor_id} card is available through canonical APIs")
+        inspected = post_json(
+            base_url,
+            "/api/search/inspect",
+            token,
+            {
+                "schemaVersion": 2,
+                "mode": "cards",
+                "cardId": card_id,
+                "requestId": f"real-deck-preview-{anchor_id}",
+            },
+        )
+        assert_true(inspected.get("schemaVersion") == 2 and inspected.get("mode") == "cards", f"{anchor_id} inspect contract is current")
+        card = inspected.get("details")
+        assert_true(isinstance(card, dict), f"{anchor_id} card is available through exact inspect")
+        assert_true(str(card.get("cardId")) == card_id, f"{anchor_id} inspect returns the requested card")
         preview_summary[anchor_id] = assert_native_preview(card, anchor_id, anchor)
 
     media_checked = assert_real_media(base_url, token, anchors)
@@ -85,39 +97,6 @@ def main() -> int:
     (reports / f"api-report-sample-{args.label}.json").write_text(json.dumps(redact(report), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"[real-decks] API smoke passed: packages=3 anchors={len(anchors)} media={len(media_checked)}", flush=True)
     return 0
-
-
-def collect_card_candidates(base_url: str, token: str, report: dict[str, Any], anchors: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    result: dict[str, dict[str, Any]] = {}
-    for item in report.get("attentionCards", []):
-        if isinstance(item, dict) and item.get("cardId") is not None:
-            result[str(item["cardId"])] = item
-    preview_ids = [str(anchors[anchor_id]["cardId"]) for anchor_id in PREVIEW_ANCHORS]
-    triage = post_json(base_url, "/api/triage/query", token, triage_request(preview_ids))
-    for item in triage.get("items", []):
-        if isinstance(item, dict) and item.get("cardId") is not None:
-            result[str(item["cardId"])] = item
-    note_type_ids = sorted({str(anchors[anchor_id]["noteTypeId"]) for anchor_id in PREVIEW_ANCHORS})
-    for note_type_id in note_type_ids:
-        response = post_json(
-            base_url,
-            "/api/search/query",
-            token,
-            {
-                "schemaVersion": 2,
-                "mode": "cards",
-                "query": "",
-                "filters": [{"type": "note_type", "noteTypeId": note_type_id}],
-                "sort": {"key": "entity_id", "direction": "asc"},
-                "page": 1,
-                "pageSize": 200,
-                "requestId": f"real-deck-preview-{note_type_id}",
-            },
-        )
-        for item in response.get("items", []):
-            if isinstance(item, dict) and item.get("cardId") is not None:
-                result.setdefault(str(item["cardId"]), item)
-    return result
 
 
 def assert_native_preview(card: dict[str, Any], anchor_id: str, anchor: dict[str, Any]) -> dict[str, Any]:
