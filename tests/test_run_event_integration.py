@@ -50,6 +50,13 @@ def test_public_export_validates_source_and_copied_stream() -> None:
     assert 'status == "success"' in source
 
 
+def test_successful_manifest_requires_and_indexes_run_event_stream() -> None:
+    source = (ROOT / "docker" / "anki-e2e" / "write-artifact-manifest.py").read_text(encoding="utf-8")
+    assert '"reports/run-events.jsonl"' in source
+    assert "report_paths = files_under(paths, paths.reports)" in source
+    assert '"reports": report_paths' in source
+
+
 def test_compose_ci_mode_is_plain_noninteractive_and_local_gated() -> None:
     source = (ROOT / "scripts" / "run_anki_e2e_docker.ps1").read_text(encoding="utf-8")
     assert '$PlainCompose = ($env:GITHUB_ACTIONS -eq "true" -or $env:CI -eq "true")' in source
