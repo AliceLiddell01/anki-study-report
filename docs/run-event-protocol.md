@@ -1,197 +1,75 @@
 # Единый протокол событий выполнения
 
-**Статус:** реализованный контракт `E2E-I1`, schema v1  
+**Статус:** реализованный контракт `E2E-I1` + browser item integration `E2E-I2`  
+**Schema:** global run-event schema v1  
 **Производители:** `fast-ci`, `docker-e2e`  
 **Дата подтверждения:** 2026-07-24
 
 ## Назначение
 
-Fast CI и real-Anki Docker E2E публикуют один и тот же жизненный цикл выполнения в двух представлениях:
+Fast CI и real-Anki Docker E2E публикуют жизненный цикл выполнения в двух согласованных представлениях:
 
 1. немедленная стабильная строка в консоли;
-2. одна детерминированная JSON-запись на строку в `run-events.jsonl`.
+2. детерминированная JSON-запись на строку в `run-events.jsonl`.
 
-Протокол решает две задачи:
+Протокол делает длительные операции наблюдаемыми и сохраняет машинно проверяемое evidence. Он дополняет, но не заменяет:
 
-- длительная операция больше не выглядит зависшей: начало и завершение каждой крупной фазы видны сразу;
-- итоговый artifact содержит машинно проверяемое доказательство последовательности фаз, статусов и длительностей.
+- Fast CI timing;
+- Docker E2E phase timing;
+- resource telemetry;
+- browser report;
+- screenshots;
+- raw diagnostics;
+- artifact manifest.
 
-`run-events.jsonl` дополняет существующие Fast CI timing, E2E phase/resource telemetry, raw logs, screenshots и artifact manifest. Он не заменяет их и не является внешней logging-системой.
+## Границы этапов
 
-## Границы этапа
+### E2E-I1
 
-В `E2E-I1` реализованы только события уровня run/phase и безопасные informational messages.
+Реализованы:
 
-Не входят в этот контракт:
+- run lifecycle;
+- stable phase lifecycle;
+- informational messages;
+- deterministic JSONL;
+- cross-process append;
+- security validation;
+- artifact/public-export integration;
+- plain non-interactive Compose output.
 
-- item-level прогресс маршрутов, тем и native previews внутри browser smoke — это `E2E-I2`;
-- стабильная таксономия failure codes и primary/secondary failure summary — это `E2E-I3`;
-- отдельный preflight/cancellation contract — это `E2E-I4`;
-- non-release build identity — это `E2E-I5`;
-- единый финальный summary и история производительности — это `E2E-I6`.
+### E2E-I2
 
-Поэтому `failureCode` в schema v1 зарезервирован, но в `E2E-I1` всегда равен `null`.
+Сохранена global schema v1. Внутри одной фазы `browser-smoke-first` добавлен безопасный item-level прогресс через `message/info`:
 
-## Поток данных
+- deterministic browser plan;
+- `current/total`;
+- item `START` / `PASS` / `FAIL`;
+- route/theme/anchor/telemetry identity;
+- per-item duration в bounded message;
+- machine-readable browser report schema v2.
 
-```text
-Fast CI command / Docker phase
-→ schema-validated event
-→ стабильная console line
-→ append-only JSONL
-→ финальная validation
-→ diagnostics/public artifact
-```
+### Остаётся вне текущего контракта
 
-Основная реализация:
+- stable global `failureCode` taxonomy и общий failure summary — `E2E-I3`;
+- cancellation/preflight redesign — `E2E-I4`;
+- unique non-release build identity — `E2E-I5`;
+- canonical final summary/history storage — `E2E-I6`.
 
-```text
-docker/anki-e2e/run_event_protocol.py
-```
+## Файлы evidence
 
-Интеграционные точки:
-
-```text
-.github/workflows/ci-fast.yml
-scripts/ci_fast_timing.py
-scripts/write_ci_fast_summary.ps1
-docker/anki-e2e/run-e2e.sh
-docker/anki-e2e/write-artifact-manifest.py
-scripts/run_anki_e2e_docker.ps1
-scripts/prepare_ci_e2e_artifacts.py
-```
-
-## Пути evidence
+### Fast CI
 
 ```text
-Fast CI:
-  ci-fast/run-events.jsonl
-
-Raw Docker E2E:
-  reports/run-events.jsonl
-
-Публичный E2E artifact:
-  artifacts/reports/run-events.jsonl
+private/live: ci-fast/run-events.jsonl
+artifact:     run-events.jsonl
 ```
 
-Fast CI stream входит в обычный diagnostics artifact `ci-fast-<run-id>-<attempt>`.
-
-Docker stream находится внутри `reports/`, поэтому автоматически индексируется artifact manifest. Успешный manifest обязан содержать `reports/run-events.jsonl`.
-
-Public artifact exporter:
-
-1. валидирует исходный Docker stream до копирования;
-2. копирует его через существующую redaction/allowlist boundary;
-3. повторно валидирует публичную копию;
-4. при успешном E2E отклоняет отсутствие stream fail closed.
-
-## Schema v1
-
-Каждая строка содержит ровно следующие поля и именно в таком порядке:
-
-```json
-{"schemaVersion":1,"timestampUtc":"2026-07-24T00:00:00.000Z","elapsedMs":0,"producer":"fast-ci","phaseId":"run","eventKind":"run","status":"start","durationMs":null,"current":null,"total":null,"message":"pipeline=canonical","failureCode":null}
-```
-
-| Поле | Контракт |
-| --- | --- |
-| `schemaVersion` | integer `1` |
-| `timestampUtc` | UTC ISO-8601 с миллисекундами и завершающим `Z` |
-| `elapsedMs` | неотрицательное целое число от инициализации run |
-| `producer` | `fast-ci` или `docker-e2e` |
-| `phaseId` | стабильный ID из registry соответствующего producer |
-| `eventKind` | `run`, `phase` или `message` |
-| `status` | закрытое значение lifecycle |
-| `durationMs` | неотрицательная длительность завершённого события либо `null` |
-| `current`, `total` | парные bounded progress counters либо оба `null` |
-| `message` | необязательная public-safe однострочная UTF-8 строка, максимум 512 bytes |
-| `failureCode` | зарезервирован для `E2E-I3`, в schema v1 этапа `E2E-I1` равен `null` |
-
-### Lifecycle values
+### Docker E2E
 
 ```text
-run:
-  start | pass | fail | cancel
-
-phase:
-  start | pass | fail | skip | cancel
-
-message:
-  info
+container/live: reports/run-events.jsonl
+public:         artifacts/reports/run-events.jsonl
 ```
-
-### Семантика завершённого stream
-
-Финализированный stream обязан:
-
-- начинаться ровно одним `run/start`;
-- содержать только одного producer;
-- использовать только зарегистрированные phase IDs;
-- иметь неубывающий `elapsedMs`;
-- заканчиваться ровно одним `run/pass`, `run/fail` или `run/cancel`;
-- не содержать событий после финального run result;
-- быть UTF-8 без BOM;
-- завершать каждую запись символом `\n`;
-- использовать compact deterministic JSON без произвольных пробелов и перестановки полей.
-
-## Консольное представление
-
-Пример Docker E2E:
-
-```text
-[00:37.842] [E2E] [browser-smoke-first] START
-[01:10.995] [E2E] [browser-smoke-first] PASS duration=33153ms
-```
-
-Пример Fast CI:
-
-```text
-[00:12.040] [FAST] [frontend-vitest] START
-[00:52.603] [FAST] [frontend-vitest] PASS duration=40563ms
-```
-
-Правила:
-
-- Fast CI использует domain marker `[FAST]`;
-- Docker E2E использует `[E2E]`;
-- ANSI-цвет не является частью контракта;
-- status печатается в верхнем регистре;
-- duration добавляется только к завершённому событию;
-- progress печатается как `[current/total]`, когда оба значения заданы;
-- message добавляется только после schema/security validation;
-- строка никогда не может начинаться с `::`, чтобы не превращаться в случайную GitHub workflow command.
-
-## Гарантии безопасности
-
-Validator отклоняет:
-
-- неизвестные `schemaVersion`, producer, event kind, status и phase ID;
-- отрицательные или логически несовместимые timing/progress values;
-- `current` без `total`, `total` без `current`, `current > total` или `total = 0`;
-- control characters, multiline values, tab и NUL;
-- сообщения длиннее 512 UTF-8 bytes;
-- строки события длиннее 2048 UTF-8 bytes;
-- token-bearing URLs;
-- `Authorization: Bearer ...`;
-- common GitHub/OpenAI-style secret forms и private-key markers;
-- Windows absolute paths, UNC paths и private Linux absolute paths;
-- BOM, partial line, malformed JSON и non-deterministic serialization;
-- непредусмотренный `failureCode` до `E2E-I3`.
-
-Протокол не разрешает логировать dashboard token, полный token-bearing URL, private profile path, credentials или collection data.
-
-## Гарантии append
-
-Writer использует:
-
-- cross-platform exclusive lock;
-- append-only UTF-8 запись;
-- один завершённый JSON object на одну запись;
-- `fsync` после append;
-- отдельный runtime state sidecar;
-- неубывающий `elapsedMs`, даже если несколько короткоживущих процессов пишут одновременно.
-
-Windows использует `msvcrt.locking`, Linux — `fcntl.flock`.
 
 Transient sidecars:
 
@@ -200,155 +78,366 @@ run-events.jsonl.lock
 run-events.jsonl.state.json
 ```
 
-Они не являются evidence, удаляются после финализации и не включаются в Fast CI `artifactFiles`.
+являются runtime coordination state и не входят в final evidence inventory.
 
-## Registry Fast CI
+## Schema v1
 
-Источник истины для Fast CI phase metadata:
+Каждая JSONL-строка имеет фиксированную форму:
 
-```text
-scripts/ci_fast_timing.py
+```json
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-07-23T22:16:53.608Z",
+  "elapsedMs": 31603,
+  "producer": "docker-e2e",
+  "phaseId": "browser-smoke-first",
+  "eventKind": "message",
+  "status": "info",
+  "durationMs": null,
+  "current": 3,
+  "total": 23,
+  "message": "item=start id=route.home.light kind=route-capture",
+  "failureCode": null
+}
 ```
 
-Registry timing и registry run events проверяются на равенство при импорте. Рассинхронизация является hard failure.
+### Поля
 
-Schema v1 допускает следующие IDs:
+| Поле | Тип | Назначение |
+| --- | --- | --- |
+| `schemaVersion` | integer | версия global schema; сейчас `1` |
+| `timestampUtc` | string | UTC timestamp в ISO-8601 |
+| `elapsedMs` | integer | неубывающее время от начала run |
+| `producer` | enum | `fast-ci` или `docker-e2e` |
+| `phaseId` | enum | stable ID из registry производителя |
+| `eventKind` | enum | `run`, `phase`, `message` |
+| `status` | enum | lifecycle status |
+| `durationMs` | integer/null | длительность завершённого run/phase |
+| `current` | integer/null | bounded progress position |
+| `total` | integer/null | bounded progress total |
+| `message` | string/null | безопасное краткое пояснение |
+| `failureCode` | null | зарезервировано для `E2E-I3` |
+
+## Lifecycle
+
+### Run
 
 ```text
-run
-install-python-dependencies
-install-frontend-dependencies
-changelog-check
-frontend-typecheck-tests
-frontend-vitest
-frontend-typecheck-build
-frontend-vite-build
-frontend-bundle-check
-frontend-addon-assets-copy
-python-pytest
-package-build-check
-package-check-only
-verification-planner
-ci-summary
-package-metadata-write
-package-staged-validation
-package-metadata-verify
+run/start
+...
+run/pass | run/fail | run/cancel
 ```
 
-Не каждая допустимая фаза обязана выполняться в каждом run: фактический набор определяется canonical Fast CI pipeline.
+Finalized stream содержит ровно один terminal run event и заканчивается им.
 
-## Registry Docker E2E
-
-Schema v1 допускает:
+### Phase
 
 ```text
-run
-workspace-copy
+phase/start
+phase/pass | phase/fail | phase/skip | phase/cancel
+```
+
+Phase IDs заранее перечислены в registry. Dynamic phase IDs запрещены.
+
+### Message
+
+```text
+eventKind=message
+status=info
+durationMs=null
+```
+
+Message не является отдельной глобальной фазой. Он используется для bounded progress внутри существующей phase.
+
+## Stable registries
+
+`docker/anki-e2e/run_event_protocol.py` хранит:
+
+```text
+FAST_CI_PHASES
+DOCKER_E2E_PHASES
+```
+
+Fast CI timing registry и run-event registry должны совпадать fail closed.
+
+Для Docker E2E сохраняются крупные orchestration phases, включая:
+
+```text
 exact-package-validation
-frontend-dependency-install
-frontend-build
-addon-package
 profile-bootstrap
-collection-bootstrap
+empty-collection-bootstrap
 real-deck-import
 scenario-preparation
-addon-install
 anki-start-first
-dashboard-ready-first
+readiness-first
 api-smoke-first
 browser-smoke-first
-anki-restart
-dashboard-ready-restart
+restart
+readiness-restart
 api-smoke-restart
 telemetry-restart
-artifact-manifest
+manifest
 ```
 
-`frontend-dependency-install`, `frontend-build` и `addon-package` относятся к local `source-build`. Cloud E2E с exact prebuilt package использует `exact-package-validation`.
+Наличие `browser-smoke-first` одной общей phase является сознательным контрактом `E2E-I2`.
 
-`browser-smoke-first` намеренно остаётся одной крупной фазой. Детализация routes/themes/previews должна добавляться только в `E2E-I2`, не через новые вложенные roadmap-этапы.
+## Console format
 
-## Интеграция с Fast CI timing
-
-`scripts/ci_fast_timing.py` остаётся каноническим источником structured timing и одновременно публикует run events.
-
-Соответствие статусов:
+Общий producer выводит строки вида:
 
 ```text
-Fast CI timing success  → run-event pass
-Fast CI timing failure  → run-event fail
-Fast CI skipped         → run-event skip
-Fast CI cancelled       → run-event cancel
+[00:12.731] [E2E] [browser-smoke-first] INFO [3/23] item=start id=route.home.light kind=route-capture
 ```
 
-CLI сохраняет прежний API:
+Browser entrypoint дополнительно выводит читаемый presentation-layer:
 
 ```text
-initialize
-start
-finish
-finalize
-validate
-render
+[BROWSER] PLAN items=23 screenshots=18 telemetry=true
+[BROWSER] [3/23] START route-capture item=route.home.light route=#/home theme=light
+[BROWSER] [3/23] PASS route-capture item=route.home.light duration=1566ms screenshots=1
 ```
 
-При `finalize` незавершённая timing-фаза закрывается как failure и получает соответствующее `phase/fail` событие. После этого публикуется финальный run result и выполняется полная validation stream.
+Presentation lines не заменяют structured evidence.
 
-## Интеграция с Docker E2E
+## Browser item integration
 
-`docker/anki-e2e/run-e2e.sh` использует пары:
+### Plan
+
+`docker/anki-e2e/browser-progress.mjs` строит plan до `chromium.launch()`:
 
 ```text
-phase_start <phase-id> <telemetry-name>
-phase_end <success|failed|skipped>
+schemaVersion
+label
+mode
+scope
+telemetryEnabled
+expectedScreenshotCount
+itemCount
+countsByKind
+items[]
 ```
 
-Run-event protocol и прежний `e2e-telemetry.py` работают параллельно:
-
-- run events отвечают за единый live lifecycle и machine-readable JSONL;
-- phase/resource telemetry сохраняет подробные timing/resource reports;
-- raw logs сохраняют stack traces и низкоуровневую диагностику.
-
-При shell failure cleanup:
-
-1. закрывает активную фазу как `phase/fail`;
-2. сохраняет прежний telemetry phase failure;
-3. останавливает Anki и background helpers;
-4. формирует manifest;
-5. завершает stream через `run/fail`;
-6. валидирует stream;
-7. сохраняет исходный canonical exit status.
-
-## Docker Compose output
-
-В CI `scripts/run_anki_e2e_docker.ps1` устанавливает:
+Фактический `standard/cards` plan:
 
 ```text
-COMPOSE_ANSI=never
-COMPOSE_PROGRESS=plain
-COMPOSE_MENU=0
-COMPOSE_STATUS_STDOUT=1
+items: 23
+screenshots: 18
+route-capture: 10
+telemetry: 4
+native-preview: 3
+cards-route: 2
 ```
 
-И запускает Compose как:
+### Stable item IDs
+
+Примеры:
 
 ```text
-docker compose --ansi never --progress plain run --no-TTY ...
+browser.launch
+dashboard.setup
+route.home.light
+route.cards.dark
+telemetry.reliability
+telemetry.feature
+preview.words-preview
+scenario.cards
+cards-route.light
+diagnostics.final
 ```
 
-Это отключает интерактивное меню, TTY animation и ANSI-зависимое оформление в GitHub Actions. Локальный интерактивный вывод не меняется, пока процесс явно не работает в `CI`/`GITHUB_ACTIONS` либо пользователь самостоятельно не задаёт эти переменные.
+Item IDs:
+
+- deterministic;
+- bounded;
+- не содержат token, URL, filesystem path или user-controlled values;
+- не регистрируются как global phase IDs.
+
+### Browser message grammar
+
+```text
+item=start id=<id> kind=<kind>
+item=pass id=<id> kind=<kind> durationMs=<n> screenshots=<n>
+item=fail id=<id> kind=<kind> durationMs=<n> errorType=<bounded-type>
+item=info id=<id> milestone=<bounded-marker>
+```
+
+`message` ограничен global validator. Raw stack и arbitrary exception message в stream не публикуются.
+
+### Node → Python adapter
+
+Browser adapter:
+
+- использует `execFile`;
+- не использует shell interpolation;
+- передаёт аргументы отдельными array elements;
+- вызывает общий `run_event_protocol.py`;
+- ждёт producer completion;
+- рассматривает non-zero exit как hard failure.
+
+JavaScript не дублирует Python schema/security validator.
+
+## Browser report schema v2
+
+`reports/browser-smoke-<label>.json` сохраняет прежние diagnostics и добавляет:
+
+```json
+{
+  "schemaVersion": 2,
+  "ok": true,
+  "plan": {
+    "schemaVersion": 1,
+    "itemCount": 23,
+    "expectedScreenshotCount": 18,
+    "countsByKind": {}
+  },
+  "progress": {
+    "completed": 23,
+    "total": 23,
+    "failedItemId": null,
+    "activeItemId": null,
+    "expectedScreenshotCount": 18,
+    "actualScreenshotCount": 18
+  },
+  "items": [],
+  "slowestItems": []
+}
+```
+
+Каждый item record содержит:
+
+```text
+id
+kind
+status
+order
+durationMs
+expectedScreenshots
+actualScreenshots
+screenshotPaths
+route/theme/anchorId/step — только когда применимо
+errorType/safeErrorSummary — только при failure
+```
+
+## Screenshot accounting
+
+Browser smoke работает fail closed:
+
+```text
+sum(plan.items.expectedScreenshots)
+= plan.expectedScreenshotCount
+= screenshots.length
+= 18
+```
+
+Каждый item отдельно проверяет screenshot delta.
+
+Сохраняются независимые wrapper guards:
+
+```text
+10 route screenshots
+6 native real-deck preview screenshots
+2 Cards state screenshots
+0 synthetic screenshots
+```
+
+## Determinism
+
+Требования к JSONL:
+
+- UTF-8 без BOM;
+- ровно одна JSON object на строку;
+- newline terminator;
+- deterministic key order/serialization;
+- bounded line size;
+- неубывающий `elapsedMs`;
+- один producer на stream;
+- один final run event.
+
+Browser plan:
+
+- строится из constant route/theme/anchor/kind registries;
+- имеет unique IDs и последовательный `order`;
+- `countsByKind` пересчитывается из `items`;
+- screenshot total пересчитывается из `items`.
+
+## Cross-process append
+
+Python producer:
+
+- использует platform-specific exclusive lock;
+- пишет через append descriptor;
+- выполняет `fsync`;
+- корректирует elapsed time только вверх;
+- удаляет sidecars после finalization.
+
+Focused test проверяет 24 concurrent writers без corruption.
+
+## Security и privacy
+
+Запрещено публиковать в progress/evidence:
+
+- dashboard token;
+- token-bearing URL;
+- Authorization headers;
+- telemetry credential;
+- absolute private path;
+- environment dump;
+- collection/profile content;
+- card HTML;
+- arbitrary raw stack в run-event message.
+
+Разрешены:
+
+- stable phase/item IDs;
+- known route ID;
+- theme;
+- known anchor ID;
+- known telemetry step;
+- duration;
+- screenshot count;
+- safe relative screenshot path;
+- bounded error type/summary в browser report.
+
+Public exporter валидирует source stream и скопированный public stream. Artifact text проходит current token/private-path/secret sanitizer.
+
+## Diagnostics semantics
+
+`E2E-I2` не меняет Playwright diagnostics:
+
+```text
+consoleEvents
+pageErrors
+failedRequests
+unexpectedExternalRequests
+```
+
+`requestfailed` означает network-level failure. HTTP 4xx/5xx response сам по себе не попадает в него. Favicon failure фильтруется прежним guard. Console failure проверяет `type === "error"`.
 
 ## Validation CLI
 
-Пример проверки завершённого Fast CI stream:
+Initialize:
 
 ```bash
-python docker/anki-e2e/run_event_protocol.py validate \
-  --output ci-fast/run-events.jsonl \
-  --producer fast-ci
+python docker/anki-e2e/run_event_protocol.py initialize \
+  --output reports/run-events.jsonl \
+  --producer docker-e2e
 ```
 
-Проверка Docker stream:
+Emit phase/message:
+
+```bash
+python docker/anki-e2e/run_event_protocol.py emit \
+  --output reports/run-events.jsonl \
+  --producer docker-e2e \
+  --phase-id browser-smoke-first \
+  --event-kind message \
+  --status info \
+  --current 3 \
+  --total 23 \
+  --message "item=start id=route.home.light kind=route-capture"
+```
+
+Validate:
 
 ```bash
 python docker/anki-e2e/run_event_protocol.py validate \
@@ -356,77 +445,62 @@ python docker/anki-e2e/run_event_protocol.py validate \
   --producer docker-e2e
 ```
 
-Проверка ещё выполняющегося stream допускается только явно:
+## Тестовое покрытие
 
-```bash
-python docker/anki-e2e/run_event_protocol.py validate \
-  --output reports/run-events.jsonl \
-  --producer docker-e2e \
-  --allow-running
-```
-
-## Правила расширения
-
-При добавлении новой крупной фазы необходимо одновременно:
-
-1. добавить стабильный kebab-case `phaseId` в registry нужного producer;
-2. подключить `start` и terminal status в orchestration;
-3. не передавать private/raw data через `message`;
-4. добавить focused contract/integration test;
-5. обновить этот документ;
-6. при изменении публичного artifact contract обновить manifest/exporter tests;
-7. не создавать новый roadmap substage только ради одной implementation-фазы.
-
-Нельзя:
-
-- динамически строить phase IDs из пользовательских данных;
-- использовать console text как единственный источник истины;
-- ослаблять validator для прохождения старого artifact;
-- включать transient lock/state sidecars в evidence inventory;
-- менять timing registry только на одной стороне;
-- публиковать item-level browser details под видом завершения `E2E-I2`.
-
-## Проверки контракта
-
-Focused tests покрывают:
-
-- schema и deterministic serialization;
-- unknown status/kind/phase rejection;
-- UTC/timing/progress bounds;
-- message/line limits;
-- token/path/secret/control-character rejection;
-- success и controlled failure lifecycle;
-- cross-process concurrent append без повреждённых строк;
-- Fast CI timing/registry parity;
-- Docker orchestration wiring;
-- обязательность stream в success manifest;
-- source/public stream validation в exporter;
-- deterministic non-interactive Compose mode;
-- отсутствие tracked generated JSONL;
-- исключение transient sidecars из Fast CI inventory.
-
-## Подтверждённая реализация
-
-Контракт подтверждён на exact commit:
+Основные tests:
 
 ```text
-a376a1e5556b26043d29fadcf01698972bd1b2ba
+tests/test_run_event_protocol.py
+tests/test_run_event_integration.py
+tests/test_run_event_controlled_failure.py
+tests/test_ci_fast_run_events.py
+tests/test_ci_fast_workflow.py
+tests/test_ci_e2e_workflow.py
+tests/test_prepare_ci_e2e_artifacts_reimport.py
+tests/browser_progress.test.mjs
+tests/test_browser_progress_node.py
+tests/test_e2e_screenshot_contract.py
+tests/test_docker_smoke_helpers.py
 ```
 
-Проверочные runs:
+Проверяются:
+
+- schema/security/determinism;
+- lifecycle success/failure;
+- registry parity;
+- concurrent append;
+- artifact double validation;
+- browser plan order/counts;
+- item lifecycle и original-error rethrow;
+- producer hard failure;
+- partial failure evidence;
+- screenshot accounting;
+- safe error summary;
+- direct Playwright architecture;
+- отсутствие retries/dynamic phases.
+
+## Подтверждение
+
+### E2E-I1
 
 ```text
-Fast CI:              30039103625 — PASS
-первый standard/full: 30039372012 — PASS
-финальный full:        30039708429 — PASS
+Fast CI: 30039103625 — PASS
+standard/full: 30039372012 — PASS
+standard/full: 30039708429 — PASS
 ```
 
-Оба E2E runs сформировали валидный stream из 34 событий:
+### E2E-I2
 
 ```text
-17 START
-17 PASS
-финал: run/pass
+implementation SHA: e25bd0b24e32ce4717ed2dbda138d802f707f6d5
+Fast CI: 30048028664 — PASS
+standard/cards: 30049216529 — PASS
+browser plan: 23/23 PASS
+screenshots: 18/18
+run-events: final run/pass
 ```
 
-Подробный исторический отчёт: [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+Исторические доказательства:
+
+- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
+- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
