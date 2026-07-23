@@ -114,10 +114,14 @@ def test_smoke_api_asset_contract_discovers_current_assets(monkeypatch) -> None:
 
 def test_browser_smoke_consumes_runtime_anchors_and_avoids_fixture_literals() -> None:
     source = (E2E / "smoke-browser.mjs").read_text(encoding="utf-8")
+    progress = (E2E / "browser-progress.mjs").read_text(encoding="utf-8")
     assert "anchor-resolution-report.json" in source
-    assert '"words-preview", "grammar-preview", "java-preview"' in source
+    assert "buildBrowserPlan" in source
+    assert 'candidate.kind === "native-preview"' in source
+    assert 'Object.freeze(["words-preview", "grammar-preview", "java-preview"])' in progress
     assert "renderSource === \"anki_native\"" in source
     assert "unexpectedExternalRequests" in source
+    combined = f"{source}\n{progress}"
     for stale in (
         "要望",
         "要.gif",
@@ -127,7 +131,7 @@ def test_browser_smoke_consumes_runtime_anchors_and_avoids_fixture_literals() ->
         "applyApkgDeckFilter",
         "captureApkg",
     ):
-        assert stale not in source
+        assert stale not in combined
 
 
 def test_artifact_paths_create_category_directories(tmp_path: Path) -> None:

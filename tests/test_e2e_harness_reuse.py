@@ -20,26 +20,30 @@ HARNESS = "b" * 40
 
 
 def test_harness_only_changes_can_reuse_exact_fast_ci_package() -> None:
+    changed_paths = [
+        ".github/workflows/ci-e2e.yml",
+        "docker/anki-e2e/browser-progress.mjs",
+        "docker/anki-e2e/smoke-browser.mjs",
+        "scripts/validate_e2e_harness_reuse.py",
+        "scripts/verify_fast_ci_e2e_handoff.py",
+        "tests/browser_progress.test.mjs",
+        "tests/test_browser_progress_node.py",
+        "tests/test_e2e_harness_reuse.py",
+        "tests/test_e2e_screenshot_contract.py",
+        "tests/test_notification_e2e_fixture.py",
+    ]
     result = MODULE.validate_harness_reuse(
         package_tested_sha=PACKAGE,
         harness_sha=HARNESS,
         workflow_source_sha=HARNESS,
-        changed_paths=[
-            ".github/workflows/ci-e2e.yml",
-            "docker/anki-e2e/smoke-browser.mjs",
-            "docker/anki-e2e/telemetry-pre-restart.mjs",
-            "scripts/validate_e2e_harness_reuse.py",
-            "scripts/verify_fast_ci_e2e_handoff.py",
-            "tests/test_e2e_harness_reuse.py",
-            "tests/test_notification_e2e_fixture.py",
-        ],
+        changed_paths=changed_paths,
     )
 
     assert result["reuseAllowed"] is True
     assert result["reuseMode"] == "harness-only"
     assert result["packageTestedCommitSha"] == PACKAGE
     assert result["e2eHarnessCommitSha"] == HARNESS
-    assert result["changedFileCount"] == 7
+    assert result["changedFileCount"] == len(changed_paths)
     assert len(result["changedPathsSha256"]) == 64
 
 
