@@ -22,7 +22,11 @@ validate_manifest = legacy.validate_manifest
 assert_safe_text = legacy.assert_safe_text
 utc_now = legacy.utc_now
 
-_ORIGINAL_WRITE_SUMMARY = legacy.write_summary
+# Keep one stable reference to the real legacy implementation even when this
+# wrapper is imported repeatedly under different module names by pytest.
+if not hasattr(legacy, "_ASR_ORIGINAL_WRITE_SUMMARY"):
+    legacy._ASR_ORIGINAL_WRITE_SUMMARY = legacy.write_summary
+_ORIGINAL_WRITE_SUMMARY = legacy._ASR_ORIGINAL_WRITE_SUMMARY
 
 
 def __getattr__(name: str):
@@ -128,35 +132,36 @@ def _rewrite_public_identity(output: Path, *, checkout_sha: str, reuse: dict) ->
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
-    # Keep monkeypatching and direct module users compatible with the historical
-    # public surface while the canonical implementation remains in legacy.
+    # Unit callers may monkeypatch this wrapper's clock. Apply it only for this
+    # call and restore the legacy module afterwards so repeated imports cannot
+    # leak timing state into one another.
+    previous_utc_now = legacy.utc_now
     legacy.utc_now = utc_now
+    try:
+        reuse = _read_reuse_evidence(args)
+        if reuse is None:
+            _ORIGINAL_WRITE_SUMMARY(output, args=args, manifest_status=manifest_status, artifact_files=artifact_files)
+            return
 
-    reuse = _read_reuse_evidence(args)
-    if reuse is None:
-        _ORIGINAL_WRITE_SUMMARY(output, args=args, manifest_status=manifest_status, artifact_files=artifact_files)
-        return
+        public_relative = "artifacts/reports/e2e-harness-reuse.json"
+        public_path = output / public_relative
+        public_path.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_json_file(public_path, reuse)
+        if public_relative not in artifact_files:
+            artifact_files.append(public_relative)
 
-    public_relative = "artifacts/reports/e2e-harness-reuse.json"
-    public_path = output / public_relative
-    public_path.parent.mkdir(parents=True, exist_ok=True)
-    legacy.write_json_file(public_path, reuse)
-    if public_relative not in artifact_files:
-        artifact_files.append(public_relative)
-
-    actual_checkout_sha = str(args.e2e_checkout_sha or args.commit_sha).strip().lower()
-    compatibility_args = argparse.Namespace(**vars(args))
-    compatibility_args.e2e_checkout_sha = str(args.source_fast_ci_tested_sha).strip().lower()
-    _ORIGINAL_WRITE_SUMMARY(
-        output,
-        args=compatibility_args,
-        manifest_status=manifest_status,
-        artifact_files=artifact_files,
-    )
-    _rewrite_public_identity(output, checkout_sha=actual_checkout_sha, reuse=reuse)
-
-
-legacy.write_summary = write_summary
+        actual_checkout_sha = str(args.e2e_checkout_sha or args.commit_sha).strip().lower()
+        compatibility_args = argparse.Namespace(**vars(args))
+        compatibility_args.e2e_checkout_sha = str(args.source_fast_ci_tested_sha).strip().lower()
+        _ORIGINAL_WRITE_SUMMARY(
+            output,
+            args=compatibility_args,
+            manifest_status=manifest_status,
+            artifact_files=artifact_files,
+        )
+        _rewrite_public_identity(output, checkout_sha=actual_checkout_sha, reuse=reuse)
+    finally:
+        legacy.utc_now = previous_utc_now
 
 
 def _load_run_event_protocol():
@@ -204,7 +209,13 @@ def main() -> int:
     elif status == "success":
         raise ValueError("Successful E2E artifacts require reports/run-events.jsonl")
 
-    result = legacy.main()
+    previous_write_summary = legacy.write_summary
+    legacy.write_summary = write_summary
+    try:
+        result = legacy.main()
+    finally:
+        legacy.write_summary = previous_write_summary
+
     public_stream = output / "artifacts" / "reports" / "run-events.jsonl"
     if source_stream.is_file():
         run_events.validate_stream(public_stream, expected_producer="docker-e2e", require_final=True)
