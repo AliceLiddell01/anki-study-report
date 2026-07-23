@@ -20,6 +20,7 @@ ALLOWED_EXACT_PATHS = {
     "tests/test_docker_smoke_helpers.py",
     "tests/test_e2e_artifact_harness_reuse.py",
     "tests/test_e2e_harness_reuse.py",
+    "tests/test_notification_e2e_fixture.py",
     "tests/test_telemetry_e2e_harness.py",
 }
 ALLOWED_PREFIXES = ("docker/anki-e2e/",)
