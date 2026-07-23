@@ -14,7 +14,7 @@ Platform work evolves GitHub Actions, packaging, release delivery and real-Anki 
 | [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Complete | timing and duplicate typecheck removal |
 | [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Complete** | digest-pinned GHCR-only cloud consumer |
 | Real-deck E2E foundation | **Complete on PR #133** | three committed working decks, no synthetic content, package/harness reuse |
-| [E2E observability and build identity](e2e-observability-build-identity.md) | **Planned** | six deliverable stages for live logs, browser progress, failure diagnostics, cancellation, preflight, CI build identity and performance history |
+| [E2E observability and build identity](e2e-observability-build-identity.md) | **In progress — E2E-I1 implemented** | unified live run protocol complete; E2E-I2–E2E-I6 remain planned |
 | [CI 7](ci-07-post-cutover-optimization.md) | Conditional | rolling baseline and one measured bottleneck |
 | [CI 8](ci-08-fast-ci-critical-path.md) | Conditional | Fast CI critical-path optimization |
 | [CI 9](ci-09-real-anki-e2e-efficiency.md) | Conditional | real-Anki E2E efficiency |
@@ -42,7 +42,7 @@ cloud BuildKit/GHA cache: removed
 
 Исторический closeout: [`../../reports/ci/real-deck-e2e-foundation-closeout.md`](../../reports/ci/real-deck-e2e-foundation-closeout.md).
 
-Следующий запланированный delivery contour: [`e2e-observability-build-identity.md`](e2e-observability-build-identity.md). Он состоит ровно из шести крупных этапов `E2E-I1`–`E2E-I6`; implementation tasks и commits внутри этапа не создают новые уровни roadmap.
+Текущий delivery contour: [`e2e-observability-build-identity.md`](e2e-observability-build-identity.md). `E2E-I1` реализован; следующая граница — `E2E-I2`. Контур состоит ровно из шести крупных этапов `E2E-I1`–`E2E-I6`; implementation tasks и commits внутри этапа не создают новые уровни roadmap.
 
 ## Activation
 
