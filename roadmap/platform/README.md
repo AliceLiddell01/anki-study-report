@@ -1,28 +1,28 @@
-# Platform / CI roadmap
+# Roadmap Platform / CI
 
-Platform work evolves GitHub Actions, packaging, release delivery and real-Anki E2E. It is an independent track: it neither renumbers product work nor blocks Core, Gamification, Operations, Identity or Extensions unless a specific stage names a delivery dependency.
+Platform-трек развивает GitHub Actions, packaging, release delivery и real-Anki E2E. Он независим: не перенумеровывает продуктовую работу и не блокирует Core, Gamification, Operations, Identity или Extensions, пока конкретный этап явно не вводит delivery dependency.
 
-## State
+## Состояние
 
-| Stage | Status | Result / goal |
+| Этап | Статус | Результат / цель |
 | --- | --- | --- |
-| [CI 1](ci-01-gated-delivery-baseline.md) | Complete | gated delivery baseline |
-| [CI 2](ci-02-exact-fast-package.md) | Complete | exact Fast CI package producer |
-| [CI 3](ci-03-exact-package-e2e-handoff.md) | Complete | exact-package E2E handoff |
-| [CI 4](ci-04-package-reuse-measurement.md) | Complete | package reuse measurement |
-| [CI 5](ci-05-ghcr-environment-image.md) | Complete | stable GHCR environment producer |
-| [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Complete | timing and duplicate typecheck removal |
-| [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Complete** | digest-pinned GHCR-only cloud consumer |
-| Real-deck E2E foundation | **Complete on PR #133** | three committed working decks, no synthetic content, package/harness reuse |
-| [E2E observability and build identity](e2e-observability-build-identity.md) | **In progress — E2E-I1 implemented** | unified live run protocol complete; E2E-I2–E2E-I6 remain planned |
-| [CI 7](ci-07-post-cutover-optimization.md) | Conditional | rolling baseline and one measured bottleneck |
-| [CI 8](ci-08-fast-ci-critical-path.md) | Conditional | Fast CI critical-path optimization |
-| [CI 9](ci-09-real-anki-e2e-efficiency.md) | Conditional | real-Anki E2E efficiency |
-| [CI 10](ci-10-reliability-and-flake-governance.md) | Conditional | failure/flake governance |
-| [CI 11](ci-11-release-reproducibility.md) | Conditional | reproducible release evidence |
-| [CI 12](ci-12-scale-and-delivery-operations.md) | Deferred / conditional | contributor/runner scale only when needed |
+| [CI 1](ci-01-gated-delivery-baseline.md) | Завершён | базовый gated delivery contour |
+| [CI 2](ci-02-exact-fast-package.md) | Завершён | producer exact Fast CI package |
+| [CI 3](ci-03-exact-package-e2e-handoff.md) | Завершён | handoff exact package в E2E |
+| [CI 4](ci-04-package-reuse-measurement.md) | Завершён | измерение повторного использования package |
+| [CI 5](ci-05-ghcr-environment-image.md) | Завершён | стабильный GHCR environment producer |
+| [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Завершён | timing и устранение duplicate typecheck |
+| [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Завершён** | cloud consumer только immutable GHCR digest |
+| Real-deck E2E foundation | **Завершён в PR #133** | три committed рабочие колоды, zero synthetic content, package/harness reuse |
+| [E2E observability и build identity](e2e-observability-build-identity.md) | **В работе; E2E-I1 завершён** | единый live run protocol подтверждён; следующий этап — E2E-I2 |
+| [CI 7](ci-07-post-cutover-optimization.md) | Условный | rolling baseline и один измеренный bottleneck |
+| [CI 8](ci-08-fast-ci-critical-path.md) | Условный | оптимизация critical path Fast CI |
+| [CI 9](ci-09-real-anki-e2e-efficiency.md) | Условный | эффективность real-Anki E2E |
+| [CI 10](ci-10-reliability-and-flake-governance.md) | Условный | governance failures/flakes |
+| [CI 11](ci-11-release-reproducibility.md) | Условный | reproducible release evidence |
+| [CI 12](ci-12-scale-and-delivery-operations.md) | Отложен / условный | contributor/runner scale только при реальной необходимости |
 
-## Current invariant
+## Текущие инварианты
 
 ```text
 cloud E2E environment: immutable GHCR digest only
@@ -34,43 +34,76 @@ E2E harness/workflow commit: independent identity
 harness-only reuse: ancestry + complete-diff fail-closed allowlist
 local Docker build: development/diagnostic fallback
 cloud BuildKit/GHA cache: removed
+live run evidence: schema-v1 run-events.jsonl for Fast CI and Docker E2E
 ```
 
-Новый Fast CI package создаётся только при package-impacting diff либо когда подходящий artifact недоступен/истёк/невалиден. Allowlisted E2E harness changes используют existing successful package без повторной сборки add-on.
+Новый Fast CI package создаётся только при package-impacting diff либо когда подходящий artifact недоступен, истёк или невалиден. Allowlisted E2E harness changes используют existing successful package без повторной сборки add-on.
 
-Актуальный контракт: [`../../docs/e2e-package-harness-reuse.md`](../../docs/e2e-package-harness-reuse.md).
+Актуальные контракты:
 
-Исторический closeout: [`../../reports/ci/real-deck-e2e-foundation-closeout.md`](../../reports/ci/real-deck-e2e-foundation-closeout.md).
+- [`../../docs/e2e-package-harness-reuse.md`](../../docs/e2e-package-harness-reuse.md);
+- [`../../docs/run-event-protocol.md`](../../docs/run-event-protocol.md).
 
-Текущий delivery contour: [`e2e-observability-build-identity.md`](e2e-observability-build-identity.md). `E2E-I1` реализован; следующая граница — `E2E-I2`. Контур состоит ровно из шести крупных этапов `E2E-I1`–`E2E-I6`; implementation tasks и commits внутри этапа не создают новые уровни roadmap.
+Исторические closeout reports:
 
-## Activation
+- [`../../reports/ci/real-deck-e2e-foundation-closeout.md`](../../reports/ci/real-deck-e2e-foundation-closeout.md);
+- [`../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
 
-`CI 7` is a measurement gate, not automatic permission to change caches, runners, retries, splitting or coverage.
+## Текущий delivery contour
+
+Контур [`e2e-observability-build-identity.md`](e2e-observability-build-identity.md) состоит ровно из шести крупных этапов:
+
+```text
+E2E-I1 — COMPLETE
+E2E-I2 — следующий, не начат
+E2E-I3 — запланирован
+E2E-I4 — запланирован
+E2E-I5 — запланирован
+E2E-I6 — запланирован
+```
+
+Implementation tasks и commits внутри этапа не создают новые уровни roadmap.
+
+Подтверждение `E2E-I1`:
+
+```text
+implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
+Fast CI:            30039103625 — PASS
+standard/full:      30039372012 — PASS
+final standard/full:30039708429 — PASS
+PR в core:          не создан
+merge в core:       не выполнен
+```
+
+## Активация оптимизационных этапов
+
+`CI 7` — measurement gate, а не автоматическое разрешение менять caches, runners, retries, splitting или coverage.
 
 ```text
 CI 7 measurement
-├─ Fast CI bottleneck       → consider CI 8
-├─ real-Anki/E2E bottleneck → consider CI 9
-├─ repeated flake/failures  → consider CI 10
-└─ no material problem      → defer
+├─ Fast CI bottleneck       → рассмотреть CI 8
+├─ real-Anki/E2E bottleneck → рассмотреть CI 9
+├─ повторяющиеся flakes     → рассмотреть CI 10
+└─ material problem нет     → отложить
 ```
 
-Choose at most one optimization candidate with a baseline, expected benefit, cost, risk and stop condition. `CI 11` may activate independently after release contracts stabilize. `CI 12` requires actual contributor/volume pressure and a security model.
+Выбирается не более одного optimization candidate с baseline, expected benefit, cost, risk и stop condition. `CI 11` может активироваться независимо после стабилизации release contracts. `CI 12` требует реального contributor/volume pressure и security model.
 
-Package/harness reuse is already an accepted delivery invariant and does not itself activate CI 7–10. Future optimization must measure a remaining bottleneck rather than возвращать бессмысленную пересборку неизменённого package.
+Package/harness reuse уже является принятым delivery invariant и сам по себе не активирует CI 7–10. Future optimization должна измерять оставшийся bottleneck, а не возвращать бессмысленную пересборку неизменённого package.
 
-The E2E observability roadmap improves evidence quality and execution UX. It does not by itself authorize cache, runner, retry, split, coverage or release changes from CI 7–12.
+E2E observability roadmap улучшает evidence quality и execution UX. Он не разрешает автоматически cache/runner/retry/split/coverage/release изменения из CI 7–12.
 
-## Shared rules
+## Общие правила
 
-- use ordinary run history before controlled runs;
-- separate scopes, direct savings and observational deltas;
-- track p50/p95, first-run pass rate, minutes and artifact footprint;
-- do not repeat a successful package-producing Fast CI for the same package bytes;
-- do not repeat a successful unchanged package/harness pair;
-- validate harness-only reuse fail closed;
-- a new cache/runner/retry/split must beat setup and maintenance cost;
-- never trade away Anki Desktop, exact identity, sanitizer/token/media/action/APKG or release gates.
+- сначала использовать ordinary run history, затем controlled runs;
+- разделять scopes, direct savings и observational deltas;
+- отслеживать p50/p95, first-run pass rate, minutes и artifact footprint;
+- не повторять successful package-producing Fast CI для тех же package bytes;
+- не повторять successful unchanged package/harness pair;
+- проверять harness-only reuse fail closed;
+- новый cache/runner/retry/split обязан окупать setup и maintenance cost;
+- не жертвовать Anki Desktop, exact identity, sanitizer/token/media/action/APKG или release gates;
+- docs-only commits после successful gates не требуют нового Fast CI/Docker без отдельной причины;
+- завершение одного E2E-I этапа не означает автоматический старт следующего.
 
-This track remains independent from [Core](../core/README.md), [Gamification](../gamification/README.md), [Operations](../operations/README.md), [Identity](../identity/README.md) and [Extensions](../extensions/README.md).
+Этот трек остаётся независимым от [Core](../core/README.md), [Gamification](../gamification/README.md), [Operations](../operations/README.md), [Identity](../identity/README.md) и [Extensions](../extensions/README.md).
