@@ -41,9 +41,9 @@ def test_run_e2e_has_no_external_apkg_switch_or_fallback() -> None:
 
 def test_dockerfile_copies_generic_real_deck_scripts() -> None:
     source = (E2E / "Dockerfile").read_text(encoding="utf-8")
-    assert "COPY docker/anki-e2e/*.py /e2e/bin/" in source
-    assert "COPY docker/anki-e2e/*.mjs /e2e/bin/" in source
-    assert "COPY docker/anki-e2e/run-e2e.sh /e2e/bin/run-e2e.sh" in source
+    assert "COPY docker/anki-e2e/*.sh docker/anki-e2e/*.py docker/anki-e2e/*.mjs /e2e/bin/" in source
+    assert "mv /e2e/bin/smoke-browser.mjs /e2e/bin/smoke-browser-core.mjs" in source
+    assert "mv /e2e/bin/smoke-browser-wrapper.mjs /e2e/bin/smoke-browser.mjs" in source
 
 
 def test_browser_and_api_smoke_read_runtime_anchor_report() -> None:
