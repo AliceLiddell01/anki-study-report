@@ -31,6 +31,7 @@ def test_harness_only_changes_can_reuse_exact_fast_ci_package() -> None:
             "scripts/validate_e2e_harness_reuse.py",
             "scripts/verify_fast_ci_e2e_handoff.py",
             "tests/test_e2e_harness_reuse.py",
+            "tests/test_notification_e2e_fixture.py",
         ],
     )
 
@@ -38,7 +39,7 @@ def test_harness_only_changes_can_reuse_exact_fast_ci_package() -> None:
     assert result["reuseMode"] == "harness-only"
     assert result["packageTestedCommitSha"] == PACKAGE
     assert result["e2eHarnessCommitSha"] == HARNESS
-    assert result["changedFileCount"] == 6
+    assert result["changedFileCount"] == 7
     assert len(result["changedPathsSha256"]) == 64
 
 
