@@ -33,11 +33,12 @@ fi
 export ANKI_BASE ANKI_PROFILE ANKI_PROFILE_DIR ANKI_STUDY_REPORT_E2E_ARTIFACTS
 export ANKI_STUDY_REPORT_E2E_RUNTIME_DIR ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR ANKI_STUDY_REPORT_E2E_REPORTS_DIR
 export ANKI_STUDY_REPORT_E2E_HTML_DIR ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR ANKI_STUDY_REPORT_E2E_PACKAGE_DIR
-export ANKI_STUDY_REPORT_E2E_READY_FILE
-export ANKI_STUDY_REPORT_E2E=1
+export ANKI_STUDY_REPORT_E2E_READY_FILE ANKI_STUDY_REPORT_E2E
 export E2E_MODE ANKI_E2E_SCOPE ANKI_E2E_SCREENSHOT_WORKERS ANKI_E2E_RESOURCE_TELEMETRY ANKI_E2E_VERIFY_RESTART
 export ANKI_E2E_PACKAGE_SOURCE ANKI_E2E_FAST_CI_RUN_ID ANKI_E2E_FAST_CI_TESTED_SHA ANKI_E2E_FAST_CI_PACKAGE_SHA256
+ANKI_STUDY_REPORT_E2E=1
 
+case "$E2E_MODE" in standard|perf100) ;; *) echo "Unsupported E2E mode: $E2E_MODE" >&2; exit 2;; esac
 case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|settings|notifications) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
 case "$ANKI_E2E_SCREENSHOT_WORKERS" in 1|2|3|4) ;; *) echo "Screenshot workers must be 1..4: $ANKI_E2E_SCREENSHOT_WORKERS" >&2; exit 2;; esac
 case "$ANKI_E2E_RESOURCE_TELEMETRY" in 0|1) ;; *) echo "Resource telemetry must be 0 or 1" >&2; exit 2;; esac
@@ -51,12 +52,21 @@ if [ -z "$ANKI_E2E_PREBUILT_ADDON_PATH" ] && [ "$ANKI_E2E_PACKAGE_SOURCE" != "so
   echo "Package source $ANKI_E2E_PACKAGE_SOURCE requires a prebuilt add-on path." >&2
   exit 2
 fi
+if [ "$E2E_MODE" = "perf100" ]; then
+  export ANKI_E2E_PERF100=1
+fi
 
 TOTAL_STARTED_MS=$(date +%s%3N)
 TOTAL_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
 RESOURCE_STOP_FILE="${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/resource-sampler.stop"
 RESOURCE_PID=""
 TELEMETRY_FAKE_PID=""
+run_status="failed"
+
+section() {
+  echo
+  echo "==> $*"
+}
 
 record_phase() {
   local name="$1" started_ms="$2" started_at="$3" status="${4:-success}" notes="${5:-}"
@@ -78,7 +88,6 @@ phase_end() {
   record_phase "$1" "$PHASE_STARTED_MS" "$PHASE_STARTED_AT" "${2:-success}" "${3:-}"
 }
 
-run_status="failed"
 cleanup() {
   local exit_status=$?
   /e2e/bin/stop-anki.sh || true
@@ -95,6 +104,7 @@ cleanup() {
   /e2e/bin/e2e-telemetry.py finalize --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --scope "$ANKI_E2E_SCOPE" --mode "$E2E_MODE" --workers "$ANKI_E2E_SCREENSHOT_WORKERS" \
     $([ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ] && echo --resource-telemetry) || true
+
   local manifest_started_ms manifest_started_at
   manifest_started_ms=$(date +%s%3N)
   manifest_started_at=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
@@ -111,16 +121,14 @@ cleanup() {
   /e2e/bin/e2e-telemetry.py finalize --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --scope "$ANKI_E2E_SCOPE" --mode "$E2E_MODE" --workers "$ANKI_E2E_SCREENSHOT_WORKERS" \
     $([ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ] && echo --resource-telemetry) || true
-  /e2e/bin/write-artifact-manifest.py --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" --status "$run_status" --anki-version "${ANKI_VERSION:-unknown}" || exit_status=1
+  /e2e/bin/write-artifact-manifest.py \
+    --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    --status "$run_status" \
+    --anki-version "${ANKI_VERSION:-unknown}" || exit_status=1
   trap - EXIT
   exit "$exit_status"
 }
 trap cleanup EXIT
-
-section() {
-  echo
-  echo "==> $*"
-}
 
 section "Prepare artifacts"
 case "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" in
@@ -185,6 +193,7 @@ ls -la
 ls -la web-dashboard || true
 test -f web-dashboard/package.json
 ADDON_INSTALL_SOURCE="$E2E_BUILD_DIR/anki_study_report"
+
 if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then
   section "Validate exact prebuilt add-on artifact"
   test -f "$ANKI_E2E_PREBUILT_ADDON_PATH"
@@ -226,7 +235,7 @@ else
   phase_end "add-on package"
 fi
 
-section "Create isolated Anki profile and fixture collection"
+section "Create isolated Anki profile"
 phase_start
 /e2e/bin/create-profile.sh
 bootstrap_prefs_args=(
@@ -239,19 +248,31 @@ if [ "${KEEP_E2E_DATA:-0}" != "1" ]; then
   bootstrap_prefs_args+=(--fresh)
 fi
 /e2e/bin/bootstrap-prefs.py "${bootstrap_prefs_args[@]}"
-/e2e/bin/seed-collection.py --profile-dir "$ANKI_PROFILE_DIR" --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-import_apkg_args=(
-  --profile-dir "$ANKI_PROFILE_DIR"
+phase_end "profile bootstrap"
+
+section "Create empty collection"
+phase_start
+/e2e/bin/seed-collection.py \
+  --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-)
-if [ "${ANKI_E2E_REQUIRE_APKG_FIXTURE:-0}" = "1" ]; then
-  import_apkg_args+=(--require)
-fi
+phase_end "empty collection bootstrap"
+
+section "Validate and import committed real decks"
+phase_start
 /e2e/bin/import-apkg-fixture.py \
-  "${import_apkg_args[@]}"
+  --profile-dir "$ANKI_PROFILE_DIR" \
+  --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
+phase_end "real deck checksum import inventory and anchors"
+
+section "Apply deterministic real-card scenarios"
+phase_start
 /e2e/bin/mark-apkg-cards-problematic.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
+phase_end "real card scenario preparation"
+
+section "Install add-on and optional non-collection fixtures"
+phase_start
 /e2e/bin/install-addon.sh "$ADDON_INSTALL_SOURCE"
 if [ "$ANKI_E2E_SCOPE" = "full" ] || [ "$ANKI_E2E_SCOPE" = "notifications" ]; then
   /e2e/bin/seed-notification-lifecycle.py \
@@ -259,7 +280,7 @@ if [ "$ANKI_E2E_SCOPE" = "full" ] || [ "$ANKI_E2E_SCOPE" = "notifications" ]; th
     --profile-dir "$ANKI_PROFILE_DIR" \
     --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 fi
-phase_end "fixture and profile preparation"
+phase_end "add-on install and auxiliary profile preparation"
 
 section "First Anki start"
 phase_start
@@ -273,7 +294,7 @@ phase_start
 phase_end "first API smoke"
 phase_start
 /e2e/bin/smoke-browser.mjs --label first
-phase_end "browser serial and parallel capture"
+phase_end "browser real-deck and dashboard capture"
 
 verify_restart="$ANKI_E2E_VERIFY_RESTART"
 if [ "$verify_restart" = "auto" ]; then
