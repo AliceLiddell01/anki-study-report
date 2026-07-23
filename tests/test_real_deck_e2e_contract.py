@@ -218,15 +218,19 @@ def test_generic_scripts_have_no_content_creation_or_fixture_hardcoding() -> Non
     assert "Collection.import_anki_package" in joined
 
 
-def test_entrypoints_have_no_optional_apkg_mode() -> None:
+def test_entrypoints_have_no_external_apkg_mode() -> None:
     compose = (E2E / "docker-compose.yml").read_text(encoding="utf-8")
     importer = (E2E / "import-apkg-fixture.py").read_text(encoding="utf-8")
     runner = (ROOT / "scripts" / "run_anki_e2e_docker.ps1").read_text(encoding="utf-8")
     full_check = (ROOT / "scripts" / "run_full_check.ps1").read_text(encoding="utf-8")
-    joined = "\n".join((compose, importer, runner, full_check))
-    for legacy in ("ANKI_E2E_APKG_FIXTURE_PATH", "ANKI_E2E_REQUIRE_APKG_FIXTURE", "ApkgFixture", "RequireApkgFixture"):
+    joined = "\n".join((compose, importer, runner))
+    for legacy in ("ANKI_E2E_APKG_FIXTURE_PATH", "ANKI_E2E_REQUIRE_APKG_FIXTURE", "ApkgFixture"):
         assert legacy not in joined
     assert "fixtures/real-decks" in importer
+    assert "[switch]$RequireApkgFixture" in full_check
+    assert "Compatibility input RequireApkgFixture accepted" in full_check
+    assert "ANKI_E2E_APKG_FIXTURE_PATH" not in full_check
+    assert "ANKI_E2E_REQUIRE_APKG_FIXTURE" not in full_check
 
 
 def test_failure_reports_include_required_diagnostics_contract() -> None:
