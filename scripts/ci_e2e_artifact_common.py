@@ -38,8 +38,8 @@ TOKEN_QUERY = re.compile(
     r"(?:[?&]|&amp;)token=(?:<redacted-token>|\[REDACTED\]|[^&\s\"'<>]+)",
     re.IGNORECASE,
 )
-WINDOWS_PRIVATE_PATH = re.compile(r"(?i)[A-Z]:[\\/]Users[\\/][^\\/\s\"'<>]+")
-LINUX_PRIVATE_PATH = re.compile(r"/home/(?!e2e(?:/|$))[^/\s\"'<>]+")
+WINDOWS_PRIVATE_PATH = re.compile(r"(?i)[A-Z]:[\\/]Users[\\/][^\s\"'<>]+")
+LINUX_PRIVATE_PATH = re.compile(r"/home/(?!e2e(?:/|$))[^\s\"'<>]+")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRODUCT_PHASES = {
@@ -97,6 +97,8 @@ def redact_text(text: str, *, known_tokens: Iterable[str], private_roots: Iterab
         variants = {root, root.replace("\\", "/"), root.replace("/", "\\")}
         for variant in variants:
             redacted = redacted.replace(variant, "[WORKSPACE]")
+    redacted = WINDOWS_PRIVATE_PATH.sub("[PRIVATE_PATH]", redacted)
+    redacted = LINUX_PRIVATE_PATH.sub("[PRIVATE_PATH]", redacted)
     return redacted
 
 
