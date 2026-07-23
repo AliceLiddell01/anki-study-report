@@ -48,6 +48,7 @@
 - [Stage 6B — переход cloud E2E на GHCR](ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
 - [Real-deck foundation и package/harness reuse — итоговый отчёт](ci/real-deck-e2e-foundation-closeout.md)
 - [E2E-I1 — единый live-протокол Fast CI и real-Anki Docker E2E](ci/e2e-i1-unified-live-run-protocol-closeout.md)
+- [E2E-I2 — детерминированный browser smoke progress и item-level evidence](ci/e2e-i2-browser-smoke-progress-closeout.md)
 
 ## Аудиты
 
