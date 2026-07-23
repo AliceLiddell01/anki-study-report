@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -130,8 +131,58 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 legacy.write_summary = write_summary
 
 
+def _load_run_event_protocol():
+    path = _SCRIPT_DIR.parent / "docker" / "anki-e2e" / "run_event_protocol.py"
+    spec = importlib.util.spec_from_file_location("asr_run_event_protocol_export", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load run event protocol from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+run_events = _load_run_event_protocol()
+
+
+def _argument_path(name: str, default: str) -> Path:
+    try:
+        index = sys.argv.index(name)
+    except ValueError:
+        return Path(default)
+    if index + 1 >= len(sys.argv):
+        raise ValueError(f"Missing value for {name}")
+    return Path(sys.argv[index + 1])
+
+
+def _manifest_status(source: Path) -> str:
+    path = source / "artifact-manifest.json"
+    if not path.is_file():
+        return "missing"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Artifact manifest is not valid JSON: {path}") from exc
+    return str(payload.get("status") or "unknown") if isinstance(payload, dict) else "unknown"
+
+
 def main() -> int:
-    return legacy.main()
+    source = _argument_path("--source", "e2e-artifacts").resolve()
+    output = _argument_path("--output", "ci-e2e").resolve()
+    source_stream = source / "reports" / "run-events.jsonl"
+    status = _manifest_status(source)
+    if source_stream.is_file():
+        run_events.validate_stream(source_stream, expected_producer="docker-e2e", require_final=True)
+    elif status == "success":
+        raise ValueError("Successful E2E artifacts require reports/run-events.jsonl")
+
+    result = legacy.main()
+    public_stream = output / "artifacts" / "reports" / "run-events.jsonl"
+    if source_stream.is_file():
+        run_events.validate_stream(public_stream, expected_producer="docker-e2e", require_final=True)
+    elif public_stream.exists():
+        raise ValueError("Public run event stream exists without validated source evidence")
+    return result
 
 
 if __name__ == "__main__":
