@@ -29,17 +29,19 @@ const startedAt = Date.now();
 
 console.log(`[real-decks] browser smoke: loading ${previewAnchorIds.length} preview anchors`);
 const browser = await chromium.launch({ headless: true });
-let dashboardPage;
 try {
-  dashboardPage = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+  const dashboardPage = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   attachDiagnostics(dashboardPage);
+  await installThemeBootstrap(dashboardPage);
   await captureDashboardRoutes(dashboardPage);
+
   const previewProofs = [];
   for (const anchorId of previewAnchorIds) {
     const anchor = anchors[anchorId];
     const card = await inspectCard(dashboardPage, anchorId, anchor);
     previewProofs.push(await captureNativePreview(anchorId, anchor, card));
   }
+
   const stateProof = await assertScenarioCards(dashboardPage);
   const cardsRouteProof = await inspectCardsRoute(dashboardPage);
 
@@ -112,22 +114,28 @@ function attachDiagnostics(page) {
   });
 }
 
+async function installThemeBootstrap(page) {
+  await page.addInitScript(() => {
+    const selectedTheme = new URLSearchParams(window.location.search).get("e2eTheme");
+    if (!selectedTheme) return;
+    localStorage.setItem("anki-study-report-theme", selectedTheme);
+    document.documentElement.dataset.theme = selectedTheme;
+    document.documentElement.style.colorScheme = selectedTheme;
+  });
+}
+
 async function captureDashboardRoutes(page) {
   const cases = [
-    ["home", "/home", "Сегодня"],
-    ["cards", "/cards", "Карточки"],
-    ["decks", "/decks", "Колоды"],
-    ["profile", "/profile", null],
-    ["settings", "/settings", null],
+    ["home", "/home"],
+    ["cards", "/cards"],
+    ["decks", "/decks"],
+    ["profile", "/profile"],
+    ["settings", "/settings"],
   ];
-  for (const [name, route, heading] of cases) {
+  for (const [name, route] of cases) {
     for (const theme of ["light", "dark"]) {
       await openDashboardRoute(page, route, theme);
-      if (heading) {
-        await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor({ state: "visible", timeout: 60000 });
-      } else {
-        await page.locator("main").waitFor({ state: "visible", timeout: 60000 });
-      }
+      await assertDashboardRoute(page, route);
       await dismissDialogs(page);
       const filePath = path.join(screenshotsDir, "pages", name, `${theme}.png`);
       await saveScreenshot(page, filePath, { fullPage: true, kind: "page", route: `#${route}`, theme });
@@ -136,13 +144,15 @@ async function captureDashboardRoutes(page) {
 }
 
 async function openDashboardRoute(page, route, theme) {
-  await page.goto(`${ready.baseUrl}/?token=${encodeURIComponent(ready.token)}#${route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.evaluate((selectedTheme) => {
-    localStorage.setItem("anki-study-report-theme", selectedTheme);
-    document.documentElement.dataset.theme = selectedTheme;
-    document.documentElement.style.colorScheme = selectedTheme;
-  }, theme);
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  const query = new URLSearchParams({ token: ready.token, e2eTheme: theme });
+  await page.goto(`${ready.baseUrl}/?${query.toString()}#${route}`, { waitUntil: "networkidle", timeout: 60000 });
+}
+
+async function assertDashboardRoute(page, route) {
+  await page.locator("main").waitFor({ state: "visible", timeout: 60000 });
+  const expectedHash = `#${route}`;
+  await page.waitForFunction((hash) => window.location.hash === hash, expectedHash, { timeout: 60000 });
+  assert(await page.evaluate((hash) => window.location.hash === hash, expectedHash), `Dashboard route mismatch: expected ${expectedHash}`);
 }
 
 async function dismissDialogs(page) {
@@ -215,7 +225,11 @@ async function captureNativePreview(anchorId, anchor, card) {
       }
     }, { frontHtml: rendered.frontHtml, backHtml: rendered.backHtml, css: rendered.css });
     await page.waitForTimeout(500);
-    const metrics = await page.evaluate(() => [...document.querySelectorAll(".host")].map((host) => ({ scrollHeight: host.shadowRoot?.documentElement?.scrollHeight || host.scrollHeight, clientHeight: host.clientHeight, scriptCount: host.shadowRoot?.querySelectorAll("script").length || 0 })));
+    const metrics = await page.evaluate(() => [...document.querySelectorAll(".host")].map((host) => ({
+      scrollHeight: host.shadowRoot?.documentElement?.scrollHeight || host.scrollHeight,
+      clientHeight: host.clientHeight,
+      scriptCount: host.shadowRoot?.querySelectorAll("script").length || 0,
+    })));
     assert(metrics.every((item) => item.scriptCount === 0), `${anchorId} preview contains no scripts`);
     const filePath = path.join(screenshotsDir, "cards", "real-decks", anchorId, `${theme}.png`);
     await saveScreenshot(page, filePath, { fullPage: true, kind: "cards", anchorId, theme, mode: "expanded-front-back" });
@@ -231,7 +245,13 @@ async function assertScenarioCards(page) {
     const response = await fetch(`/api/triage/query?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schemaVersion: 4, dataset: "search_workset", cardIds: selected.map((item) => String(item.cardId)), scope: { periodStartMs: 0, periodEndMs: 9007199254740991, deckIds: [] }, limit: selected.length }),
+      body: JSON.stringify({
+        schemaVersion: 4,
+        dataset: "search_workset",
+        cardIds: selected.map((item) => String(item.cardId)),
+        scope: { periodStartMs: 0, periodEndMs: 9007199254740991, deckIds: [] },
+        limit: selected.length,
+      }),
     });
     const body = await response.json();
     if (!response.ok || body?.ok !== true) throw new Error(`triage query failed: ${response.status}`);
@@ -251,8 +271,8 @@ async function inspectCardsRoute(page) {
   const result = {};
   for (const theme of ["light", "dark"]) {
     await openDashboardRoute(page, "/cards", theme);
+    await assertDashboardRoute(page, "/cards");
     await dismissDialogs(page);
-    await page.getByRole("heading", { name: /Карточки/ }).first().waitFor({ state: "visible", timeout: 60000 });
     await page.waitForTimeout(1000);
     const metrics = await page.evaluate(() => ({
       shadowHosts: document.querySelectorAll(".anki-card-shadow-preview").length,
