@@ -148,13 +148,13 @@ def assert_media_security(base_url: str, token: str) -> None:
 
 
 def assert_action_recheck(base_url: str, token: str, anchor: dict[str, Any]) -> dict[str, Any]:
-    triage = post_json(base_url, "/api/triage/query", token, triage_request([str(anchor["cardId"])]))
+    triage = post_json(base_url, "/api/triage/query", token, automatic_triage_request())
+    assert_true(triage.get("dataset") == "automatic", "action/recheck uses automatic triage reasons")
     items = [item for item in triage.get("items", []) if isinstance(item, dict)]
-    assert_true(len(items) == 1, "action/recheck anchor resolves to one triage item")
-    item = items[0]
-    assert_true(str(item.get("cardId")) == str(anchor["cardId"]), "triage item matches action anchor")
+    item = next((value for value in items if str(value.get("cardId")) == str(anchor["cardId"])), None)
+    assert_true(item is not None, "action/recheck anchor is present in automatic triage")
     reason_ids = [reason.get("reasonId") for reason in item.get("reasons", []) if isinstance(reason, dict) and reason.get("reasonId")]
-    assert_true(reason_ids, "action/recheck item has authoritative reasons")
+    assert_true("learning:learning.leech" in reason_ids, "action/recheck anchor has authoritative leech reason")
     response = post_json(
         base_url,
         "/api/triage/recheck",
@@ -170,7 +170,13 @@ def assert_action_recheck(base_url: str, token: str, anchor: dict[str, Any]) -> 
     assert_true(response.get("schemaVersion") == 1, "exact recheck v1 is active")
     assert_true(str(response.get("cardId")) == str(anchor["cardId"]), "exact recheck targets anchor card only")
     assert_true(response.get("entityStatus") == "available", "exact recheck confirms entity availability")
-    return {"cardId": anchor["cardId"], "reasonIds": reason_ids, "status": response.get("status"), "entityStatus": response.get("entityStatus")}
+    return {
+        "cardId": anchor["cardId"],
+        "reasonIds": reason_ids,
+        "sourceDataset": triage.get("dataset"),
+        "status": response.get("status"),
+        "entityStatus": response.get("entityStatus"),
+    }
 
 
 def assert_inspection_profiles(base_url: str, token: str, manifest: dict[str, Any], anchors: dict[str, Any], label: str) -> dict[str, Any]:
@@ -275,6 +281,16 @@ class DashboardAssetParser(HTMLParser):
             self.refs.append(str(values["src"]))
         if tag == "link" and values.get("href") and "stylesheet" in str(values.get("rel") or "").lower():
             self.refs.append(str(values["href"]))
+
+
+def automatic_triage_request() -> dict[str, Any]:
+    return {
+        "schemaVersion": 4,
+        "dataset": "automatic",
+        "scope": {"periodStartMs": 0, "periodEndMs": 9_007_199_254_740_991, "deckIds": []},
+        "limit": 100,
+        "contentCursor": None,
+    }
 
 
 def triage_request(card_ids: list[str]) -> dict[str, Any]:
