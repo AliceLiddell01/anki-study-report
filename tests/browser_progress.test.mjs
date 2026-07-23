@@ -92,6 +92,25 @@ test("FAIL records exact item and rethrows the original exception", async () => 
   assert.equal(snapshots.at(-1).progress.failedItemId, "preview.words-preview");
 });
 
+test("run-event producer failure hard-fails the item and preserves the original error", async () => {
+  const custom = { ...plan(false), items: [Object.freeze({ id: "diagnostics.final", kind: "diagnostics", label: "final", expectedScreenshots: 0, order: 1 })], itemCount: 1, countsByKind: { diagnostics: 1 }, expectedScreenshotCount: 0 };
+  const original = new Error("producer unavailable");
+  const progress = new BrowserProgress({
+    plan: custom,
+    screenshots: [],
+    log: () => {},
+    emitRunEvent: async () => { throw original; },
+    persist: async () => {},
+    now: () => 10,
+  });
+  await assert.rejects(progress.run("diagnostics.final", async () => {}), (error) => error === original);
+  const snapshot = progress.snapshot();
+  assert.equal(snapshot.progress.failedItemId, "diagnostics.final");
+  assert.equal(snapshot.progress.activeItemId, null);
+  assert.equal(snapshot.items.length, 1);
+  assert.equal(snapshot.items[0].status, "fail");
+});
+
 test("unknown and duplicate completion are rejected", async () => {
   const custom = { ...plan(false), items: [Object.freeze({ id: "diagnostics.final", kind: "diagnostics", label: "final", expectedScreenshots: 0, order: 1 })], itemCount: 1, countsByKind: { diagnostics: 1 }, expectedScreenshotCount: 0 };
   const { progress } = harness(custom);
