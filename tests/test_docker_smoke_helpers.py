@@ -249,23 +249,14 @@ def test_resource_reports_are_optional_only_when_telemetry_is_disabled(tmp_path:
         ("../secret.log", "traversal"),
     ],
 )
-def test_artifact_manifest_rejects_invalid_or_missing_indexed_paths(
-    tmp_path: Path,
-    bad_path: str,
-    message: str,
-) -> None:
+def test_artifact_manifest_rejects_invalid_or_missing_indexed_paths(tmp_path: Path, bad_path: str, message: str) -> None:
     manifest_module = load_e2e_module(
         "write-artifact-manifest.py",
         f"anki_study_report_artifact_manifest_bad_{message.replace(' ', '_')}",
     )
     paths = manifest_module.ArtifactPaths.from_root(tmp_path / "artifacts")
     paths.ensure()
-    manifest = {
-        "status": "failed",
-        "runtime": {"events": bad_path},
-        "artifacts": {},
-        "screenshots": [],
-    }
+    manifest = {"status": "failed", "runtime": {"events": bad_path}, "artifacts": {}, "screenshots": []}
 
     with pytest.raises(ValueError, match=message):
         manifest_module.validate_manifest(paths, manifest)
@@ -325,12 +316,7 @@ def test_browser_artifact_resolver_builds_deterministic_nested_paths(tmp_path: P
         relativeArtifactPath(paths, paths.cardsScreenshot('real-decks', 'words-preview', 'dark')),
       ]));
     """
-    result = subprocess.run(
-        [node, "--input-type=module", "--eval", script],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    result = subprocess.run([node, "--input-type=module", "--eval", script], check=True, capture_output=True, text=True)
 
     assert json.loads(result.stdout) == [
         "screenshots/pages/settings/server/dark.png",
@@ -349,10 +335,9 @@ def test_restart_verifier_retriggers_only_an_idle_sender_with_pending_events() -
     assert not verifier.delivery_needs_trigger({"telemetryClient": {"pendingEventCount": 0, "senderState": "idle"}})
 
 
-def test_restart_anki_mutates_inspection_profile_fixture_for_full_and_cards_scopes() -> None:
+def test_restart_anki_preserves_imported_note_type_content() -> None:
     source = (E2E / "restart-anki.sh").read_text(encoding="utf-8")
 
-    assert 'case "${ANKI_E2E_SCOPE:-full}" in' in source
-    assert "full|cards)" in source
-    assert 'if [ "${ANKI_E2E_SCOPE:-full}" = "cards" ]' not in source
-    assert source.count("mutate-inspection-profile-fixture.py") == 1
+    assert "mutate-inspection-profile-fixture.py" not in source
+    assert "without mutating imported note types, fields, templates, or media" in source
+    assert not (E2E / "mutate-inspection-profile-fixture.py").exists()
