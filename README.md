@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-22**.
+Документация описывает текущий проект на **2026-07-23**.
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
@@ -57,25 +57,21 @@ C3–C6 — mandatory future Core path
 Core 1.0 release — not started
 ```
 
-The revised Core path explicitly requires:
-
-- a full-width desktop shell instead of one global narrow centered container;
-- a site-wide UI/content system with shared headers, surfaces, shapes, spacing and motion;
-- removal of obsolete Tools/Report surfaces;
-- first-party replacement of useful external data-source functionality before Sources is deleted;
-- a focused daily `Today v2`;
-- a full-width editable `Profile v2 Foundation` without fake gamification placeholders.
-
-Current platform state:
+## Current platform state
 
 ```text
 CI Stage 6B: Complete
-cloud real-Anki E2E: immutable GHCR digest only
-manual E2E package: exact Fast CI artifact
+cloud real-Anki environment: immutable GHCR digest only
+manual E2E package: exact successful Fast CI artifact
 release E2E package: exact release artifact
+collection content: three committed real working APKG
+package/harness identities: separate and fail-closed
 local Docker build: development/diagnostic fallback
-future CI 7+: conditional on new measurements
 ```
+
+Docker E2E imports Words N1, Grammar N5 and Java working decks through the public Anki package importer. Synthetic notes/cards/templates/media and content fallback are prohibited.
+
+A new Fast CI package is required only when the diff can change `.ankiaddon` bytes or production behavior. Changes restricted to the validated E2E harness/orchestration/tests may reuse an existing successful package after ancestry and complete-diff validation. See [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md).
 
 ## Important commands
 
@@ -104,6 +100,22 @@ Full local Docker E2E, only when risk/policy requires it:
 .\scripts\run_full_check.ps1 -CleanDocker
 ```
 
+Manual cloud targeted E2E with a verified Fast CI package:
+
+```bash
+gh workflow run ci-e2e.yml \
+  --repo AliceLiddell01/anki-study-report \
+  --ref <branch> \
+  -f mode=standard \
+  -f scope=cards \
+  -f screenshot_workers=auto \
+  -f resource_telemetry=true \
+  -f verify_restart=true \
+  -f fast_ci_run_id=<successful-package-producing-run>
+```
+
+Do not start a new Fast CI only because an allowlisted E2E harness file changed. The consumer validates whether the old package may be reused and fails closed when package-impacting or unrelated paths are present.
+
 Manual gated release after merge:
 
 ```powershell
@@ -127,10 +139,13 @@ Start with:
 - [Test matrix](docs/test-matrix.md)
 - [Verification policy](docs/verification-run-policy.md)
 - [CI/CD](docs/ci-cd.md)
+- [Docker E2E](docs/docker-e2e.md)
+- [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md)
 - [GHCR E2E consumer](docs/ghcr-e2e-consumer.md)
 - [Decision log](docs/decision-log.md)
 - [AI handoff](docs/ai-handoff.md)
 - [Historical reports](reports/README.md)
+- [Real-deck E2E closeout report](reports/ci/real-deck-e2e-foundation-closeout.md)
 
 ## Contract rules
 
@@ -144,6 +159,7 @@ Start with:
 8. Release remains manual, approval-gated and exact-artifact based.
 9. Desktop working pages must not be constrained by one global narrow `max-width`; width limits are local component decisions.
 10. New pages must reuse shared layout/content primitives instead of introducing another local visual grammar.
+11. A verified package may be reused only through the fail-closed package/harness boundary; no source-build fallback is allowed in cloud E2E.
 
 ## Participation and safety
 

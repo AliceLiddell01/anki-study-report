@@ -1,38 +1,64 @@
 # Матрица проверок
 
-**Снимок документации:** 2026-07-23
+**Снимок документации:** 2026-07-23.
 
-Минимальная проверка — нижняя граница для небольшого изменения. Желательная проверка нужна перед merge или release либо когда diff затрагивает несколько слоёв.
+Минимальная проверка — нижняя граница для небольшого изменения. Желательная проверка нужна перед merge/release либо когда diff затрагивает несколько слоёв.
 
-Полный real-Anki E2E — интеграционный gate, а не обычный цикл разработки.
+Полный real-Anki E2E — integration gate, а не обычный цикл разработки.
+
+Перед выбором gate сначала определите тип изменения:
+
+```text
+package-impacting
+harness-only
+docs-only
+```
+
+Правила повторного использования package: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).
 
 ## Общая матрица
 
-| Изменение | Минимальная проверка | Желательная проверка | Docker или live Anki | Причина |
-| --- | --- | --- | --- | --- |
-| только документация | `git diff --check` | вручную проверить links, code fences и paths | нет | код и runtime не менялись |
-| чистая логика Python | профильный pytest | `compileall` затронутых модулей add-on | обычно нет | чистые модули тестируются без Anki |
-| hooks, startup и жизненный цикл профиля Anki | целевой pytest | smoke в live Anki или real-Anki E2E | да | `aqt`, hooks и restart не видны unit-тестам |
-| payload dashboard или публичная schema | backend-тесты контракта | parser и types frontend и сборка | иногда | backend, frontend и docs должны меняться синхронно |
-| UI и types frontend | профильный Vitest и typecheck | `pnpm run build:addon` | нет для чистого UI | типы, состояние и normalization |
-| рендер, media и предпросмотр карточки | frontend-тесты предпросмотра и pytest sanitizer | целевой real-Anki smoke Cards на committed real decks | да для финальной проверки | нативный рендер, media и Shadow DOM требуют runtime |
-| server dashboard, токен и действия | pytest server и действий | frontend-тесты API и локальный smoke | иногда | токен, allowlist, ошибки HTTP и QueryOp |
-| Search и Safe Actions | тесты Search, runtime и entity actions и frontend | Fast CI и целевой `standard/global`; полный запуск при общем diff | да | чтения latest-wins, точные ID, отменяемые mutations и bridge Browser |
-| C2 hardening и UI remediation | parser/security, exact authority, generation/cache, Search/server, visual contract tests и benchmark | Fast CI, `standard/cards` с restart и финальный `standard/full` | да | CSS/CSP, общий server, Cards, Profiles, package и E2E visual contracts |
-| запрос Triage v4 | тесты candidates, service, runtime, dashboard, parser и hook | Fast CI и целевой `standard/cards` | да для финальной проверки | независимые источники, согласованность cursor и живые профили |
-| решение конкретной карточки C1.6 | тесты backend, API, parser, client, hook, page и фокуса | Fast CI, целевой `standard/cards` с restart и финальный `standard/full` при общем diff runtime | да | повторное использование детекторов, fail-closed-reconciliation, фокус и E2E-передача |
-| Inspection Profiles | store, service, runtime, schema, dashboard и frontend-editor | Fast CI и целевой `standard/cards` с restart | да | fingerprints, persistence, изоляция профиля и живые типы заметок |
-| API Settings и Profile | тесты config, profile и dashboard и frontend | проверка пакета; real-Anki при изменении жизненного цикла | иногда | allowlists, атомарное хранение и reload |
-| Statistics и FSRS | service и dashboard и frontend | Fast CI и целевой `standard/stats`; финальный полный запуск при общем diff | да для финальной проверки | нативная конфигурация, память, simulator и скриншоты |
-| Signals и Notifications | detector, store, server и тесты Bell, Center и Settings | целевой `standard/notifications` с restart и один финальный полный запуск | да | App Shell, persistence и локальный API |
-| client телеметрии и privacy | тесты контракта, store, client и dashboard | `standard/settings` с fake loopback и restart | да при изменениях очереди, сети или удаления | consent, ограниченная очередь, повтор и удаление |
-| scripts упаковки и сборки | `package_addon.py --check` | сборка точного `.ankiaddon` | нет | запрещённые файлы, assets и metadata |
-| Docker E2E и поведение runtime | focused real-deck contract tests | exact-head Fast CI, затем один risk-required Docker proof | да | три committed APKG, официальный импорт, реальный Anki Desktop, restart и browser |
-| артефакты E2E и редактирование чувствительных данных | тесты helpers и exporter | один соответствующий E2E-запуск | да | manifest, real-deck reports, удаление токена и путей и публично безопасный артефакт |
-| workflows CI и передача артефактов | профильные тесты workflow и handoff и статические проверки YAML | одно ручное наблюдение точного SHA после локального PASS | по риску | идентичность checkout и пакета, hashes и семантика ошибок |
-| release и publisher | тесты release, package и publisher и `-SkipDocker` | точный release-артефакт и `standard/full` | да | паритет SHA сборки, E2E, GitHub и AnkiWeb |
+| Изменение | Минимальная проверка | Желательная проверка | Docker / Fast CI |
+| --- | --- | --- | --- |
+| только документация | `git diff --check`, links/paths/code fences | ручной просмотр индексов и терминологии | без Fast CI/Docker после уже успешных gates, если нет отдельного требования |
+| чистая логика Python | профильный pytest | `compileall` затронутых модулей | обычно без Docker |
+| hooks/startup/profile lifecycle | целевой pytest | live Anki или real-Anki E2E | новый Fast CI только при package impact |
+| dashboard payload/public schema | backend contract tests | frontend parser/types/build и docs | package-impacting; Fast CI обязателен |
+| чистый frontend UI/types | профильный Vitest/typecheck | `pnpm run build:addon` | Fast CI перед package E2E; Docker только по runtime risk |
+| card render/media/preview | frontend preview tests + sanitizer pytest | `standard/cards` на committed real decks | package-impacting изменения требуют Fast CI |
+| Search/Safe Actions | Search/runtime/action/frontend tests | `standard/global`; full при общем diff | по package impact |
+| Triage/Cards/Inspection Profiles | backend/API/frontend/profile tests | `standard/cards`, restart | по package impact |
+| Settings/privacy/telemetry | config/store/client/frontend tests | `standard/settings`, restart при queue/network/delete | по package impact |
+| Signals/Notifications | detector/store/server/frontend tests | `standard/notifications`, restart; full при shared contour | по package impact |
+| package/build scripts/dependencies | package tests/check | exact `.ankiaddon` Fast CI | новый Fast CI обязателен |
+| release/publisher | release/package/publisher tests | exact release-artifact `standard/full` | release package обязателен |
+| committed APKG/manifest/anchors | real-deck contract tests | targeted real-Anki proof | новый Fast CI нужен, если package tree или producer изменён; сам APKG не входит в add-on, но full risk оценивается отдельно |
+| только `docker/anki-e2e/` harness | focused harness tests | один risk-required Docker proof с reused package | новый Fast CI не нужен при allowlisted diff |
+| E2E artifact/sanitizer/handoff consumer | focused exporter/security/reuse tests | один соответствующий Docker proof | reused package разрешён fail closed |
+| `.github/workflows/ci-e2e.yml` | workflow/handoff tests | одно ручное наблюдение | reused package разрешён, если полный diff проходит allowlist |
+| Fast CI producer | workflow/package tests | новый exact package-producing Fast CI | обязателен |
 
-## Команды
+## Решение о новом Fast CI
+
+Новый Fast CI нужен, когда diff может изменить `.ankiaddon` bytes или production behavior.
+
+Примеры package-impacting paths:
+
+```text
+anki_study_report/
+web-dashboard/
+requirements/lockfiles
+package/build scripts
+manifest/config/changelog packaged assets
+release packaging
+Fast CI producer
+```
+
+Новый Fast CI не нужен, когда весь diff между package commit и current harness commit принят `scripts/validate_e2e_harness_reuse.py`.
+
+Allowlist — источник истины. Нельзя вручную объявить произвольный diff `harness-only`.
+
+## Основные команды
 
 ```powershell
 git diff --check
@@ -51,34 +77,55 @@ pnpm run build:addon
 ./scripts/run_full_check.ps1 -DockerOnly -Perf100
 ```
 
-В WSL точки входа `.ps1` запускаются через установленный PowerShell Core согласно контракту окружения репозитория.
+В WSL `.ps1` запускаются через PowerShell Core.
 
-Параметров `-ApkgFixture` и `-RequireApkgFixture` больше нет. Docker всегда импортирует три committed packages из `docker/anki-e2e/fixtures/real-decks/`.
+Cloud targeted E2E с existing package:
+
+```bash
+gh workflow run ci-e2e.yml \
+  --repo AliceLiddell01/anki-study-report \
+  --ref <branch> \
+  -f mode=standard \
+  -f scope=<scope> \
+  -f screenshot_workers=auto \
+  -f resource_telemetry=true \
+  -f verify_restart=<auto|true|false> \
+  -f fast_ci_run_id=<successful-package-producing-run>
+```
 
 ## Real-deck Docker foundation
 
-Focused minimum для изменения import/manifest/scenario harness:
+Docker всегда импортирует:
+
+```text
+docker/anki-e2e/fixtures/real-decks/words-n1.apkg
+docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
+docker/anki-e2e/fixtures/real-decks/java-core.apkg
+```
+
+Focused minimum для import/manifest/scenario harness:
 
 ```text
 tests/test_real_deck_e2e_contract.py
-Python compile новых/изменённых E2E scripts
+related orchestration/action/inspect/notification/reuse tests
+Python syntax/compile затронутых scripts
 Node syntax check browser smoke
 git diff --check
 ```
 
-Контракт focused tests включает:
+Контракт включает:
 
-- duplicate package ID/path;
+- package ID/path uniqueness;
 - missing package и checksum mismatch как hard failure;
-- уникальный deterministic anchor resolution;
-- missing и ambiguous anchor diagnostics;
-- dynamic media extraction без fixture filenames в generic code;
-- публичный `Collection.import_anki_package` без legacy/backend fallback;
-- отсутствие `insert into notes/cards` и cloning;
-- отсутствие optional APKG entrypoints;
-- 100 distinct existing cards для `perf100`.
+- public Anki package importer без fallback;
+- unique deterministic anchors;
+- media capabilities без hardcoded generic filenames;
+- отсутствие insert/clone notes/cards;
+- 100 distinct cards для `perf100`;
+- zero-synthetic inventory;
+- zero content mutations после import.
 
-Успешный Docker artifact обязан содержать PASS:
+Успешный artifact обязан содержать PASS:
 
 ```text
 real-deck-manifest-report.json
@@ -88,130 +135,56 @@ anchor-resolution-report.json
 scenario-application-report.json
 ```
 
-Collection inventory должен показывать `committed-real-apkg-only` и нулевые synthetic counts. Scenario report должен показывать нулевые content mutations.
+## Scope matrix
+
+| Scope | Основной риск |
+| --- | --- |
+| `global` | Search и Safe Actions |
+| `stats` | Statistics/FSRS |
+| `decks` | Decks |
+| `activity` | Calendar/Activity |
+| `cards` | Cards/Triage/native preview/media/Inspection Profiles |
+| `settings` | Settings/privacy/telemetry |
+| `notifications` | Notification lifecycle |
+| `full` | общий startup/server/package/artifact/restart contour |
+
+Targeted scope не отключает real-deck import/checksum/inventory/anchors/scenarios.
+
+## Restart
+
+Restart обязателен для:
+
+- `standard/full`;
+- persistent Cards/Inspection Profiles state, когда это acceptance criterion;
+- Notifications;
+- telemetry queue/network/delete lifecycle;
+- startup/profile persistence changes.
+
+## Artifact security
+
+Изменение artifact exporter/sanitizer требует focused tests на:
+
+- token query redaction;
+- private Linux/Windows absolute paths;
+- сохранение безопасных relative paths вроде `screenshots/pages/home/...`;
+- duplicate/traversal/missing paths;
+- secret-like text/private keys;
+- canonical result restoration после upload/cleanup.
+
+Один соответствующий Docker run нужен только после concrete fix. Новый Fast CI не нужен, если package не изменён и reuse boundary проходит.
 
 ## Stop-loss
 
-- после ошибки сначала анализируются артефакты, логи и первопричина;
-- повтор разрешён только после конкретного исправления или для отдельно подтверждённой инфраструктурной ошибки;
-- вторая одинаковая ошибка прекращает слепые перезапуски;
-- успешный запуск точного SHA не повторяется;
-- локальный полный Docker не дублирует успешный полный cloud-gate с точным пакетом;
-- повторы с тёплым cache и performance-workers не запускаются без отдельной задачи.
+- Сначала анализировать artifact/log/root cause.
+- Повторять gate только после конкретного исправления.
+- Не повторять successful Fast CI для тех же package bytes.
+- Не повторять successful E2E для неизменной package/harness пары.
+- Не запускать local full после successful cloud full.
+- Не запускать `perf100`, warm repeat или worker comparison без отдельной задачи.
+- Вторая одинаковая ошибка прекращает blind reruns.
 
-## Когда не запускать Docker E2E
+## Исторические подтверждения
 
-Не запускать Docker E2E для:
+Числа и run IDs завершённых этапов не являются частью текущей матрицы. Они хранятся в [`../reports/`](../reports/README.md).
 
-- изменений только документации;
-- небольших чистых helpers;
-- изменений, не затрагивающих startup, рендер, media, server, структуру пакета или поведение live collection.
-
-## Cards C1.5R.5
-
-Профильное завершение включает:
-
-- Vitest hook, page, components и helpers Cards;
-- pytest Triage, Search и dashboard;
-- typecheck;
-- production-сборку и ограничение bundle;
-- проверку пакета;
-- изолированное browser-подтверждение;
-- канонический gate без Docker.
-
-Матрица browser покрывает широкую компоновку light и dark, 100 элементов, очередь, панель и модальный диалог при 1024 px, частичные источники, профили needs-review, продолжение и пустое состояние.
-
-## Triage C1.5R.4
-
-Проверяются:
-
-- независимые источники обучения за период и текущего содержимого;
-- граница подтверждённого профиля;
-- keyset-ограничение 500 заметок;
-- явный согласованный cursor;
-- детерминированная representative card;
-- отсутствие чтения предпросмотра и media при поиске кандидатов.
-
-## Пошаговая настройка Inspection Profiles C1.5R.6
-
-Обязательный контур:
-
-- тесты page, hook, Basic, Advanced, validation, projection и API;
-- регрессии store, service, runtime, dashboard, Triage и package;
-- typecheck и production-сборка;
-- проверка пакета;
-- gate без Docker;
-- подтверждение Chromium для Japanese, Programming, жизненного цикла, light, dark и 1024 px.
-
-Real-Anki proof использует реальные note types `Слова` и Java note type из manifest, а не synthetic Inspection Profile fixtures.
-
-## Канонический цикл решения одной карточки C1.6
-
-Профильный контур:
-
-```text
-triage candidates/service/runtime/dashboard
-parser/client API Triage
-hook/page/detail/inbox Cards
-поведение гонок и latest-wins
-reconciliation причин
-восстановление фокуса
-E2E helpers и smoke-assertions
-```
-
-Зафиксированные финальные подтверждения предыдущего этапа:
-
-```text
-профильные backend- и E2E-вспомогательные тесты: 81 тест — PASS
-frontend: 324 теста — PASS
-Python compileall: PASS
-production-сборка и ограничение bundle: PASS — entry 429 516 байт
-пакет: PASS — 77 записей
-каноническая проверка без Docker: PASS — 324 frontend-теста, 802 Python-теста, 5 пропусков платформенных тестов
-Fast CI 29862254960: PASS
-Fast CI для финального head 29863609253: PASS
-целевой standard/cards с restart 29862551442: PASS
-финальный standard/full 29862800106: PASS
-```
-
-Локальный Docker не повторялся после успешного cloud E2E с точным пакетом. Проверка на приватном профиле Anki владельца не выполнялась.
-
-## C2 Core hardening и C1 UI remediation
-
-Обязательный локальный контур:
-
-- parser-backed CSS policy, preview и CSP/security headers;
-- exact-card authority для релевантного note type;
-- deferred-promise tests поколений query, mutation и inspect cache;
-- Search runtime/server/status/idle и E2E behavior helpers;
-- Cards и Inspection Profiles visual contracts, RU/EN, light/dark и границы 1199/1200;
-- benchmark 100 000 ID с фиксацией времени, peak add-on memory и upstream materialization;
-- полный Python/frontend, typecheck, production build, bundle guard, package validation и `-SkipDocker`.
-
-После локального PASS выполняются Fast CI exact SHA, один `standard/cards` с restart и один `standard/full`, если риск общего diff действительно требует полный gate. `perf100`, warm repeats и локальный full Docker не требуются без отдельной performance-задачи. Политика запусков не меняется; подробности остаются в [`verification-run-policy.md`](verification-run-policy.md).
-
-## Поставка release
-
-Изменения версии, пакета, publisher и workflow release требуют профильные тесты:
-
-```text
-test_release_automation.py
-test_ankiweb_publisher.py
-test_release_workflow.py
-test_package_build.py
-tests/publish_ankiweb.test.mjs
-```
-
-Финальный production-gate — `standard/full` на точном SHA release-артефакта. Тяжёлая задача release запускается только вручную из разрешённой ветки после отдельного решения владельца.
-
-## Product notices и consent
-
-Обязательны:
-
-- тесты product notices, changelog, dashboard, package и release;
-- тесты coordinator, API и frontend;
-- паритет RU/EN;
-- целевой `standard/settings`;
-- финальный `standard/full` только при общем diff App Shell, server, E2E или package.
-
-Real-Anki smoke проверяет порядок consent-first, отсутствие предварительного выбора, сохранение отказа, отсутствие повторного What’s New, ручное повторное открытие и маршрут Privacy.
+Closeout real-deck foundation: [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md).

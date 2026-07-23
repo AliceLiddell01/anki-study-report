@@ -1,57 +1,92 @@
 # GHCR E2E environment consumer
 
-Снимок контракта: **2026-07-17**.
+**Снимок контракта:** 2026-07-23.
 
 ## Текущее состояние
 
-После CI Stage 6B все cloud real-Anki E2E runs используют один environment path:
-точный immutable GHCR digest из
-`docker/anki-e2e/environment-image-lock.json`.
+Все cloud real-Anki E2E runs используют exact immutable GHCR digest из:
 
 ```text
-Fast CI artifact
-  → exact tested commit
-  → exact package SHA-256
-  → exact GHCR digest
-  → real Anki E2E
-
-Release artifact
-  → exact package SHA-256
-  → exact GHCR digest
-  → real Anki E2E
+docker/anki-e2e/environment-image-lock.json
 ```
 
-Cloud `environment_image_source`, BuildKit build/load, containerd setup,
-`docker/setup-buildx-action`, `docker/build-push-action` и `type=gha` cache
-удалены. Локальная Dockerfile/Compose build path сохранена для разработки и
-диагностики, но не является cloud fallback.
+Manual Fast CI path:
 
-## Immutable identity
+```text
+successful Fast CI package
+→ exact package tested commit + package SHA-256
+→ current E2E harness commit
+→ ancestry + complete-diff validation
+→ exact GHCR digest
+→ real Anki E2E
+```
 
-Source of truth: `docker/anki-e2e/environment-image-lock.json`.
+Release path:
 
-Consumer принимает только exact `linux/amd64` digest и проверяет environment
-contract, platform и bounded OCI labels до запуска Anki. Mutable tag, `latest`,
-второй hardcoded digest, PAT fallback и автоматическое изменение package
-visibility запрещены.
+```text
+exact current release artifact
+→ exact package SHA-256
+→ exact GHCR digest
+→ real Anki standard/full
+```
 
-## Package-source contract
+## Immutable environment identity
 
-Cloud workflow принимает только:
+Consumer принимает только exact `linux/amd64` digest и проверяет:
+
+- environment contract;
+- platform;
+- bounded OCI labels;
+- expected publication/reuse metadata.
+
+Mutable tag, `latest`, второй hardcoded digest, PAT fallback, cloud BuildKit build/load и automatic package visibility changes запрещены.
+
+Локальная Dockerfile/Compose build path сохранена только для development/diagnostics и не является cloud fallback.
+
+## Package sources
+
+Cloud workflow принимает:
 
 ```text
 manual/reusable E2E  → fast-ci-artifact
 release caller       → release-artifact
 ```
 
-Cloud `source-build` отклоняется до registry login. Fast CI handoff проверяет
-same-repository successful run, exact tested checkout, package metadata, size и
-внутренний SHA-256. Release handoff проверяет exact current-run package SHA-256
-до и после real-Anki execution.
+Cloud `source-build` отклоняется до registry login.
 
-## Permissions and mounts
+### Fast CI package
 
-Reusable workflow использует только:
+Проверяются:
+
+- same-repository successful run;
+- diagnostics artifact;
+- package artifact;
+- package tested commit;
+- package metadata;
+- package size и internal SHA-256;
+- artifact transport digest.
+
+### Package/harness split
+
+Current E2E checkout не обязан совпадать с package tested commit.
+
+Если SHA различаются, consumer обязан:
+
+1. проверить ancestry package commit → harness commit;
+2. получить полный changed-path diff;
+3. проверить каждый path через fail-closed allowlist;
+4. записать `reuseMode=harness-only`;
+5. сохранить обе SHA в public evidence.
+
+При package-impacting или unrelated path run завершается до Anki. Новый Fast CI нужен только тогда, когда package действительно может измениться либо existing artifact недоступен/истёк/невалиден.
+
+Подробности: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).
+
+### Release package
+
+Release handoff проверяет exact current-run artifact и SHA-256 до и после real-Anki execution. Harness-only reuse старого Fast CI package не применяется к release.
+
+## Permissions
 
 ```yaml
 permissions:
@@ -60,29 +95,67 @@ permissions:
   packages: read
 ```
 
-GHCR login использует `GITHUB_TOKEN`. Current checkout, tested `.ankiaddon`,
-environment image и E2E artifacts остаются разными identities. Workspace и
-package mounts сохраняют read-only boundary; runtime artifacts пишутся отдельно.
+GHCR login использует `GITHUB_TOKEN`. PAT, OIDC и write permission не нужны.
 
-## Current harness
+## Identity boundaries
 
-Environment image не содержит текущий product checkout, `.ankiaddon` или E2E
-harness. Harness staging-ится из exact read-only checkout через
-`docker/anki-e2e/bootstrap-current-harness.sh` и запускает тот же canonical
-real-Anki contour.
+Раздельные identities:
+
+```text
+workflow/harness checkout
+Fast CI package
+package tested commit
+release artifact
+environment image
+runtime profile
+public E2E artifact
+```
+
+Workspace и package mounts read-only. Runtime artifacts пишутся в отдельный disposable volume/path.
+
+## Harness staging
+
+Environment image не содержит current product checkout, `.ankiaddon` или E2E harness.
+
+Harness staging выполняется из current validated checkout. Exact prebuilt package монтируется отдельно. Поэтому harness-only fixes могут использовать старый verified package без rebuild environment или add-on.
+
+## Failure behavior
+
+Fail closed при:
+
+- invalid/expired/ambiguous Fast CI run;
+- diagnostics/package metadata mismatch;
+- package SHA/size mismatch;
+- non-ancestor package commit;
+- forbidden changed path;
+- GHCR digest/platform/label mismatch;
+- package hash mismatch после E2E.
+
+Никакого cloud source-build fallback нет.
 
 ## Verification evidence
 
-Stage 6A доказал equivalence opt-in consumer; Stage 6B завершил permanent cloud
-cutover. Финальная проверка Stage 6B включала exact Fast CI, targeted GHCR E2E и
-изолированный release-artifact `standard/full` rehearsal. Исторические записи:
+Final verified pair:
 
-- `../reports/ci/ci-optimization-stage-6a-ghcr-consumer-validation.md`
-- `../reports/ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md`
+```text
+Fast CI run: 30013925137
+package commit: bd0355c315197cfb659cb28b32b63a4931b73458
+package SHA-256: 3ae8439ba18cac82b7e8bb6b240223970cb6403130abf1f909168273ff39baf8
+
+final full E2E run: 30022393738
+harness commit: 1a84eabaacb5c368f92ae4952e732d8610619f95
+reuse mode: harness-only
+result: PASS
+```
+
+Исторические отчёты:
+
+- [`../reports/ci/ci-optimization-stage-6a-ghcr-consumer-validation.md`](../reports/ci/ci-optimization-stage-6a-ghcr-consumer-validation.md)
+- [`../reports/ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md`](../reports/ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
+- [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md)
 
 ## Дальнейшие изменения
 
-После Stage 6B нет второго cloud consumer для сравнения или fallback. Любая
-следующая оптимизация выполняется только по новым timing/flake measurements и
-не должна возвращать BuildKit/GHA cache в cloud contour без отдельного
-архитектурного решения.
+Не возвращать competing cloud consumer, mutable tags, BuildKit/GHA cache или source-build fallback без отдельного архитектурного решения и новых измерений.
+
+Не запускать новый Fast CI только из-за allowlisted harness-only изменения.
