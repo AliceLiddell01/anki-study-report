@@ -76,8 +76,11 @@ $environmentLines | Set-Content -LiteralPath (Join-Path $OutputPath "environment
 
 $artifactFiles = @(
     Get-ChildItem -LiteralPath $OutputPath -Recurse -File |
-        Where-Object { -not $_.Name.EndsWith(".state", [StringComparison]::OrdinalIgnoreCase) } |
-        ForEach-Object { $_.FullName.Substring($OutputPath.Length + 1).Replace("\", "/") }
+        ForEach-Object { $_.FullName.Substring($OutputPath.Length + 1).Replace("\", "/") } |
+        Where-Object {
+            (-not $_.EndsWith(".state", [StringComparison]::OrdinalIgnoreCase)) -and
+            ($_ -notmatch '(?i)(^|/)run-events\.jsonl\.(?:lock|state\.json)$')
+        }
 )
 $timingJson = Join-Path $OutputPath "timing\fast-ci-timing.json"
 if (Test-Path -LiteralPath $timingJson) {
@@ -134,7 +137,7 @@ $markdown = @"
 | Started (UTC) | $started |
 | Finished (UTC) | $finished |
 
-This diagnostics artifact contains logs, environment data, summaries, the verification plan, and schema-versioned Fast CI timing only.
+This diagnostics artifact contains logs, environment data, summaries, the verification plan, schema-versioned Fast CI timing, and the validated unified run-event JSONL stream.
 The exact non-release package is published separately with ``package-metadata.json`` after a successful run.
 Action setup, artifact upload, and post-job cache durations are external step timings obtained from the GitHub Jobs API.
 "@

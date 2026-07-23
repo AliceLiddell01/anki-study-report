@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -13,7 +14,27 @@ import prepare_ci_e2e_artifacts_legacy as legacy
 from verify_fast_ci_e2e_handoff import validate_package_reuse_boundary
 
 
-_ORIGINAL_WRITE_SUMMARY = legacy.write_summary
+# Preserve the established import surface for tests and callers that import this
+# wrapper as a module. The implementation remains owned by the legacy exporter.
+TEXT_SUFFIXES = legacy.TEXT_SUFFIXES
+copy_safe_artifacts = legacy.copy_safe_artifacts
+validate_manifest = legacy.validate_manifest
+assert_safe_text = legacy.assert_safe_text
+utc_now = legacy.utc_now
+
+# Keep one stable reference to the real legacy implementation even when this
+# wrapper is imported repeatedly under different module names by pytest.
+if not hasattr(legacy, "_ASR_ORIGINAL_WRITE_SUMMARY"):
+    legacy._ASR_ORIGINAL_WRITE_SUMMARY = legacy.write_summary
+_ORIGINAL_WRITE_SUMMARY = legacy._ASR_ORIGINAL_WRITE_SUMMARY
+
+
+def __getattr__(name: str):
+    """Delegate unchanged exporter helpers to the canonical legacy module."""
+    try:
+        return getattr(legacy, name)
+    except AttributeError as exc:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
 
 
 def _read_reuse_evidence(args: argparse.Namespace) -> dict | None:
@@ -23,7 +44,14 @@ def _read_reuse_evidence(args: argparse.Namespace) -> dict | None:
     if package_source != "fast-ci-artifact" or not package_sha or package_sha == checkout_sha:
         return None
 
-    evidence_path = args.raw_logs / "e2e-harness-reuse.json"
+    # Older direct unit/library callers do not carry the CLI-only raw_logs field.
+    # Preserve their exact-tree validation path; the production CLI always defines
+    # raw_logs and therefore still fails closed for harness-only reuse.
+    raw_logs = getattr(args, "raw_logs", None)
+    if raw_logs is None:
+        return None
+
+    evidence_path = Path(raw_logs) / "e2e-harness-reuse.json"
     try:
         actual = json.loads(evidence_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -104,34 +132,96 @@ def _rewrite_public_identity(output: Path, *, checkout_sha: str, reuse: dict) ->
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
-    reuse = _read_reuse_evidence(args)
-    if reuse is None:
-        _ORIGINAL_WRITE_SUMMARY(output, args=args, manifest_status=manifest_status, artifact_files=artifact_files)
-        return
+    # Unit callers may monkeypatch this wrapper's clock. Apply it only for this
+    # call and restore the legacy module afterwards so repeated imports cannot
+    # leak timing state into one another.
+    previous_utc_now = legacy.utc_now
+    legacy.utc_now = utc_now
+    try:
+        reuse = _read_reuse_evidence(args)
+        if reuse is None:
+            _ORIGINAL_WRITE_SUMMARY(output, args=args, manifest_status=manifest_status, artifact_files=artifact_files)
+            return
 
-    public_relative = "artifacts/reports/e2e-harness-reuse.json"
-    public_path = output / public_relative
-    legacy.write_json_file(public_path, reuse)
-    if public_relative not in artifact_files:
-        artifact_files.append(public_relative)
+        public_relative = "artifacts/reports/e2e-harness-reuse.json"
+        public_path = output / public_relative
+        public_path.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_json_file(public_path, reuse)
+        if public_relative not in artifact_files:
+            artifact_files.append(public_relative)
 
-    actual_checkout_sha = str(args.e2e_checkout_sha or args.commit_sha).strip().lower()
-    compatibility_args = argparse.Namespace(**vars(args))
-    compatibility_args.e2e_checkout_sha = str(args.source_fast_ci_tested_sha).strip().lower()
-    _ORIGINAL_WRITE_SUMMARY(
-        output,
-        args=compatibility_args,
-        manifest_status=manifest_status,
-        artifact_files=artifact_files,
-    )
-    _rewrite_public_identity(output, checkout_sha=actual_checkout_sha, reuse=reuse)
+        actual_checkout_sha = str(args.e2e_checkout_sha or args.commit_sha).strip().lower()
+        compatibility_args = argparse.Namespace(**vars(args))
+        compatibility_args.e2e_checkout_sha = str(args.source_fast_ci_tested_sha).strip().lower()
+        _ORIGINAL_WRITE_SUMMARY(
+            output,
+            args=compatibility_args,
+            manifest_status=manifest_status,
+            artifact_files=artifact_files,
+        )
+        _rewrite_public_identity(output, checkout_sha=actual_checkout_sha, reuse=reuse)
+    finally:
+        legacy.utc_now = previous_utc_now
 
 
-legacy.write_summary = write_summary
+def _load_run_event_protocol():
+    path = _SCRIPT_DIR.parent / "docker" / "anki-e2e" / "run_event_protocol.py"
+    spec = importlib.util.spec_from_file_location("asr_run_event_protocol_export", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load run event protocol from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+run_events = _load_run_event_protocol()
+
+
+def _argument_path(name: str, default: str) -> Path:
+    try:
+        index = sys.argv.index(name)
+    except ValueError:
+        return Path(default)
+    if index + 1 >= len(sys.argv):
+        raise ValueError(f"Missing value for {name}")
+    return Path(sys.argv[index + 1])
+
+
+def _manifest_status(source: Path) -> str:
+    path = source / "artifact-manifest.json"
+    if not path.is_file():
+        return "missing"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Artifact manifest is not valid JSON: {path}") from exc
+    return str(payload.get("status") or "unknown") if isinstance(payload, dict) else "unknown"
 
 
 def main() -> int:
-    return legacy.main()
+    source = _argument_path("--source", "e2e-artifacts").resolve()
+    output = _argument_path("--output", "ci-e2e").resolve()
+    source_stream = source / "reports" / "run-events.jsonl"
+    status = _manifest_status(source)
+    if source_stream.is_file():
+        run_events.validate_stream(source_stream, expected_producer="docker-e2e", require_final=True)
+    elif status == "success":
+        raise ValueError("Successful E2E artifacts require reports/run-events.jsonl")
+
+    previous_write_summary = legacy.write_summary
+    legacy.write_summary = write_summary
+    try:
+        result = legacy.main()
+    finally:
+        legacy.write_summary = previous_write_summary
+
+    public_stream = output / "artifacts" / "reports" / "run-events.jsonl"
+    if source_stream.is_file():
+        run_events.validate_stream(public_stream, expected_producer="docker-e2e", require_final=True)
+    elif public_stream.exists():
+        raise ValueError("Public run event stream exists without validated source evidence")
+    return result
 
 
 if __name__ == "__main__":

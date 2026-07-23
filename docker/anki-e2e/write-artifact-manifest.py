@@ -44,6 +44,7 @@ REQUIRED_SUCCESS_ARTIFACTS = (
     "reports/api-health-first.json",
     "reports/api-smoke-first.json",
     "reports/browser-smoke-first.json",
+    "reports/run-events.jsonl",
     "reports/e2e-phase-timings.json",
     "reports/e2e-phase-timings.md",
     "reports/screenshot-performance.json",

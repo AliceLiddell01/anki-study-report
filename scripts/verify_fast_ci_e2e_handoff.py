@@ -155,7 +155,7 @@ def _git_changed_paths(package_sha: str, harness_sha: str) -> list[str]:
     except OSError as exc:
         raise HandoffError(f"Could not execute git for E2E harness reuse validation: {exc}") from exc
     if ancestor.returncode != 0:
-        raise HandoffError("Fast CI package commit must be an ancestor of the E2E harness commit")
+        raise HandoffError("Fast CI package tested SHA must be an ancestor of the E2E harness commit")
     diff = subprocess.run(
         ["git", "diff", "--name-only", "--diff-filter=ACDMRT", f"{package_sha}..{harness_sha}"],
         check=False,
@@ -324,12 +324,6 @@ def main() -> int:
             ensure_workspace_diagnostics_dir()
             resolution = load_json(args.resolution)
             diagnostics = load_json(args.diagnostics)
-            reuse = validate_package_reuse_boundary(
-                package_tested_sha=diagnostics["testedCommitSha"],
-                e2e_workflow_source_sha=args.e2e_workflow_source_sha,
-                e2e_checkout_sha=args.e2e_checkout_sha,
-            )
-            write_json(Path("ci-e2e-raw") / "e2e-harness-reuse.json", reuse)
             result = validate_package_handoff(
                 resolution=resolution,
                 diagnostics=diagnostics,
@@ -337,6 +331,12 @@ def main() -> int:
                 e2e_workflow_source_sha=args.e2e_workflow_source_sha,
                 e2e_checkout_sha=args.e2e_checkout_sha,
             )
+            reuse = validate_package_reuse_boundary(
+                package_tested_sha=result["sourceTestedCommitSha"],
+                e2e_workflow_source_sha=args.e2e_workflow_source_sha,
+                e2e_checkout_sha=args.e2e_checkout_sha,
+            )
+            write_json(Path("ci-e2e-raw") / "e2e-harness-reuse.json", reuse)
             write_json(args.output, result)
             write_outputs(args.github_output, {
                 "package_sha256": result["packageSha256"],

@@ -1,6 +1,6 @@
 # Матрица проверок
 
-**Снимок документации:** 2026-07-23.
+**Снимок документации:** 2026-07-24.
 
 Минимальная проверка — нижняя граница для небольшого изменения. Желательная проверка нужна перед merge/release либо когда diff затрагивает несколько слоёв.
 
@@ -14,7 +14,10 @@ harness-only
 docs-only
 ```
 
-Правила повторного использования package: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).
+Связанные контракты:
+
+- package reuse: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
+- run events: [`run-event-protocol.md`](run-event-protocol.md).
 
 ## Общая матрица
 
@@ -35,8 +38,9 @@ docs-only
 | committed APKG/manifest/anchors | real-deck contract tests | targeted real-Anki proof | новый Fast CI нужен, если package tree или producer изменён; сам APKG не входит в add-on, но full risk оценивается отдельно |
 | только `docker/anki-e2e/` harness | focused harness tests | один risk-required Docker proof с reused package | новый Fast CI не нужен при allowlisted diff |
 | E2E artifact/sanitizer/handoff consumer | focused exporter/security/reuse tests | один соответствующий Docker proof | reused package разрешён fail closed |
+| run-event schema/registry/writer | schema/security/concurrency/integration tests | controlled failure + один затронутый Fast CI/E2E proof | новый Fast CI только при package/producer impact |
 | `.github/workflows/ci-e2e.yml` | workflow/handoff tests | одно ручное наблюдение | reused package разрешён, если полный diff проходит allowlist |
-| Fast CI producer | workflow/package tests | новый exact package-producing Fast CI | обязателен |
+| Fast CI producer | workflow/package/run-event tests | новый exact package-producing Fast CI | обязателен |
 
 ## Решение о новом Fast CI
 
@@ -78,6 +82,14 @@ pnpm run build:addon
 ```
 
 В WSL `.ps1` запускаются через PowerShell Core.
+
+Проверка завершённого run-event stream:
+
+```bash
+python docker/anki-e2e/run_event_protocol.py validate \
+  --output <run-events.jsonl> \
+  --producer <fast-ci|docker-e2e>
+```
 
 Cloud targeted E2E с existing package:
 
@@ -133,7 +145,39 @@ real-deck-import-report.json
 collection-inventory.json
 anchor-resolution-report.json
 scenario-application-report.json
+run-events.jsonl
 ```
+
+## Run-event focused minimum
+
+При изменении `run_event_protocol.py`, Fast CI timing adapter, Docker phase wiring или artifact boundary обязательны:
+
+```text
+tests/test_run_event_protocol.py
+tests/test_run_event_integration.py
+tests/test_run_event_controlled_failure.py
+tests/test_ci_fast_run_events.py
+```
+
+В зависимости от diff также запускаются:
+
+```text
+tests/test_ci_fast_workflow.py
+tests/test_ci_e2e_workflow.py
+tests/test_prepare_ci_e2e_artifacts_reimport.py
+tests/test_telemetry_e2e_harness.py
+tests/test_telemetry_threshold_delivery.py
+```
+
+Минимальные инварианты:
+
+- success и controlled failure stream валидны;
+- unknown/unsafe values отклоняются;
+- concurrent append не повреждает строки;
+- timing/phase registry не расходятся;
+- success manifest требует stream;
+- public exporter валидирует source и copied stream;
+- transient `.lock`/`.state.json` не входят в artifact inventory.
 
 ## Scope matrix
 
@@ -162,13 +206,16 @@ Restart обязателен для:
 
 ## Artifact security
 
-Изменение artifact exporter/sanitizer требует focused tests на:
+Изменение artifact exporter/sanitizer/run-event boundary требует focused tests на:
 
 - token query redaction;
 - private Linux/Windows absolute paths;
 - сохранение безопасных relative paths вроде `screenshots/pages/home/...`;
 - duplicate/traversal/missing paths;
 - secret-like text/private keys;
+- control characters/multiline/NUL;
+- deterministic UTF-8 JSONL без BOM/partial lines;
+- source/public stream validation;
 - canonical result restoration после upload/cleanup.
 
 Один соответствующий Docker run нужен только после concrete fix. Новый Fast CI не нужен, если package не изменён и reuse boundary проходит.
@@ -177,6 +224,7 @@ Restart обязателен для:
 
 - Сначала анализировать artifact/log/root cause.
 - Повторять gate только после конкретного исправления.
+- Не считать финальный wrapper exception автоматическим root cause.
 - Не повторять successful Fast CI для тех же package bytes.
 - Не повторять successful E2E для неизменной package/harness пары.
 - Не запускать local full после successful cloud full.
@@ -187,4 +235,7 @@ Restart обязателен для:
 
 Числа и run IDs завершённых этапов не являются частью текущей матрицы. Они хранятся в [`../reports/`](../reports/README.md).
 
-Closeout real-deck foundation: [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md).
+Closeout reports:
+
+- [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md);
+- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).

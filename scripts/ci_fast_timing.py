@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 from datetime import datetime, timezone
 import json
 import os
@@ -8,6 +9,7 @@ from pathlib import Path
 import re
 import tempfile
 import time
+import sys
 from typing import Any
 
 SCHEMA_VERSION = 1
@@ -337,46 +339,120 @@ def render_markdown(document: dict[str, Any]) -> str:
 validate_document = validate
 
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_REPOSITORY_ROOT = _SCRIPT_DIR.parent
+
+
+def _load_run_event_protocol():
+    path = _REPOSITORY_ROOT / "docker" / "anki-e2e" / "run_event_protocol.py"
+    spec = importlib.util.spec_from_file_location("asr_run_event_protocol", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load run event protocol from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+run_events = _load_run_event_protocol()
+if set(PHASES) != run_events.FAST_CI_PHASES - {"run"}:
+    missing_from_protocol = sorted(set(PHASES) - run_events.FAST_CI_PHASES)
+    missing_from_timing = sorted((run_events.FAST_CI_PHASES - {"run"}) - set(PHASES))
+    raise RuntimeError(
+        "Fast CI timing and run-event phase registries differ: "
+        f"missingFromProtocol={missing_from_protocol} missingFromTiming={missing_from_timing}"
+    )
+
+
+def _events_path(explicit: Path | None, timing_output: Path) -> Path:
+    if explicit is not None:
+        return explicit
+    value = str(os.environ.get("ASR_RUN_EVENTS_PATH") or "").strip()
+    if value:
+        return Path(value)
+    parent = timing_output.parent
+    root = parent.parent if parent.name == "timing" else parent
+    return root / "run-events.jsonl"
+
+
+def _phase_from_document(output: Path, phase_id: str) -> dict[str, Any]:
+    document = load_json(output)
+    phase = next((item for item in document.get("phases", []) if item.get("id") == phase_id), None)
+    if not isinstance(phase, dict):
+        raise TimingError(f"Phase is missing after timing update: {phase_id}")
+    return phase
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Structured Fast CI timing helper")
+    parser = argparse.ArgumentParser(description="Structured Fast CI timing and unified live run events")
     commands = parser.add_subparsers(dest="command", required=True)
     init = commands.add_parser("initialize")
     for name in ("output", "repository", "event-name", "ref", "tested-commit-sha", "run-id", "run-attempt"):
-        init.add_argument(f"--{name}", required=True, type=Path if name == "output" else int if name in {"run-id", "run-attempt"} else str)
+        init.add_argument(
+            f"--{name}",
+            required=True,
+            type=Path if name == "output" else int if name in {"run-id", "run-attempt"} else str,
+        )
+    init.add_argument("--events-output", type=Path)
     for command in ("start", "finish"):
         sub = commands.add_parser(command)
         sub.add_argument("--output", required=True, type=Path)
+        sub.add_argument("--events-output", type=Path)
         sub.add_argument("--phase-id", required=True, choices=sorted(PHASES))
         if command == "finish":
             sub.add_argument("--exit-code", required=True, type=int)
             sub.add_argument("--status", choices=sorted(PHASE_STATUSES))
     final = commands.add_parser("finalize")
     final.add_argument("--output", required=True, type=Path)
+    final.add_argument("--events-output", type=Path)
     final.add_argument("--result", required=True, choices=sorted(FINAL_RESULTS))
     final.add_argument("--markdown-output", type=Path)
     final.add_argument("--summary-output", type=Path)
     check = commands.add_parser("validate")
     check.add_argument("--output", required=True, type=Path)
+    check.add_argument("--events-output", type=Path)
     check.add_argument("--allow-running", action="store_true")
     render = commands.add_parser("render")
     render.add_argument("--output", required=True, type=Path)
     render.add_argument("--markdown-output", required=True, type=Path)
     args = parser.parse_args()
+    events = _events_path(getattr(args, "events_output", None), args.output)
     try:
         if args.command == "initialize":
             initialize(args.output, args.repository, args.event_name, args.ref, args.tested_commit_sha, args.run_id, args.run_attempt)
+            run_events.initialize_stream(events, "fast-ci", message="pipeline=canonical")
         elif args.command == "start":
             start_phase(args.output, args.phase_id)
+            run_events.emit(events, "fast-ci", args.phase_id, "phase", "start")
         elif args.command == "finish":
             finish_phase(args.output, args.phase_id, args.exit_code, args.status)
+            phase = _phase_from_document(args.output, args.phase_id)
+            status = {"success": "pass", "failure": "fail", "skipped": "skip"}[phase["status"]]
+            run_events.emit(events, "fast-ci", args.phase_id, "phase", status, duration_ms=int(phase["durationMs"]))
         elif args.command == "finalize":
-            finalize(args.output, args.result, args.markdown_output, args.summary_output)
+            before = validate(load_json(args.output), allow_running=True)
+            running = {item["id"] for item in before["phases"] if item["status"] == "running"}
+            document = finalize(args.output, args.result, args.markdown_output, args.summary_output)
+            for phase in document["phases"]:
+                if phase["id"] in running:
+                    run_events.emit(
+                        events,
+                        "fast-ci",
+                        phase["id"],
+                        "phase",
+                        "fail",
+                        duration_ms=int(phase["durationMs"]),
+                        message="phase ended during finalization",
+                    )
+            status = {"success": "pass", "failure": "fail", "cancelled": "cancel"}[document["result"]]
+            run_events.finish_run(events, "fast-ci", status, duration_ms=int(document["durationMs"]))
         elif args.command == "validate":
             validate(load_json(args.output), allow_running=args.allow_running)
+            run_events.validate_stream(events, expected_producer="fast-ci", require_final=not args.allow_running)
         else:
             atomic_write(args.markdown_output, render_markdown(load_json(args.output)))
         return 0
-    except TimingError as exc:
+    except (TimingError, run_events.RunEventError, RuntimeError) as exc:
         parser.exit(2, f"error: {exc}\n")
 
 

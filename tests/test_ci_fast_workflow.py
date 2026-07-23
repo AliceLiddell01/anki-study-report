@@ -58,9 +58,11 @@ def test_dependency_commands_and_cache_contract_are_unchanged() -> None:
 def test_pull_requests_plan_against_the_complete_base_branch_diff() -> None:
     plan = verification_step(workflow_text())
 
-    assert '$eventName = "${{ github.event_name }}"' in plan
+    assert "EVENT_NAME: ${{ github.event_name }}" in plan
+    assert "$eventName = $env:EVENT_NAME" in plan
     assert "$eventName -eq 'pull_request'" in plan
-    assert '$baseRef = "${{ github.base_ref }}"' in plan
+    assert "BASE_REF: ${{ github.base_ref }}" in plan
+    assert "$baseRef = $env:BASE_REF" in plan
     assert '$base = "origin/$baseBranch"' in plan
 
     pull_request_branch = plan.index("$eventName -eq 'pull_request'")
@@ -71,6 +73,8 @@ def test_pull_requests_plan_against_the_complete_base_branch_diff() -> None:
 def test_feature_branch_dispatch_plans_the_full_branch_not_only_event_before() -> None:
     plan = verification_step(workflow_text())
 
+    assert "REF_NAME: ${{ github.ref_name }}" in plan
+    assert "$refName = $env:REF_NAME" in plan
     assert "$refName -ne $defaultBranch" in plan
     assert '$base = "origin/$defaultBranch"' in plan
     assert "complete branch risk" in plan
@@ -79,9 +83,23 @@ def test_feature_branch_dispatch_plans_the_full_branch_not_only_event_before() -
 def test_default_branch_push_retains_safe_before_fallback() -> None:
     plan = verification_step(workflow_text())
 
-    assert '$before = "${{ github.event.before }}"' in plan
+    assert "EVENT_BEFORE: ${{ github.event.before }}" in plan
+    assert "$before = $env:EVENT_BEFORE" in plan
     assert 'git cat-file -e "${before}^{commit}"' in plan
     assert "if (-not $base) { $base = 'HEAD^' }" in plan
+
+
+def test_github_context_values_are_passed_through_environment() -> None:
+    text = workflow_text()
+    prepare = step(text, "Prepare diagnostics", "Install Python dependencies")
+    package = step(text, "Prepare exact Fast CI package", "Finalize structured timing")
+
+    for name in ("REPOSITORY", "EVENT_NAME", "WORKFLOW_REF", "TESTED_COMMIT_SHA", "RUN_ID", "RUN_ATTEMPT"):
+        assert f"$env:{name}" in prepare
+    assert "--repository '${{ github.repository }}'" not in prepare
+    assert "--ref '${{ github.ref }}'" not in prepare
+    assert "REPOSITORY: ${{ github.repository }}" in package
+    assert "--repository $env:REPOSITORY" in package
 
 
 def test_structured_timing_is_initialized_finalized_and_uploaded_only_with_diagnostics() -> None:
@@ -200,6 +218,7 @@ def test_fast_summary_script_describes_diagnostics_and_timing_only() -> None:
     assert "artifactFiles = $artifactFiles" in text
     assert "schemaVersion = 1" in text
     assert ".state" in text
+    assert "run-events\\.jsonl\\.(?:lock|state\\.json)" in text
 
 
 def test_atomic_package_scripts_preserve_existing_aggregate_semantics() -> None:

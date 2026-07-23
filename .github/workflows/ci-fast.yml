@@ -51,17 +51,24 @@ jobs:
 
       - name: Prepare diagnostics
         shell: pwsh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.ref }}
+          TESTED_COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           New-Item -ItemType Directory -Force ci-fast/logs, ci-fast/timing | Out-Null
           "CI_FAST_STARTED_AT=$([DateTime]::UtcNow.ToString('o'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           python scripts/ci_fast_timing.py initialize `
             --output ci-fast/timing/fast-ci-timing.json `
-            --repository '${{ github.repository }}' `
-            --event-name '${{ github.event_name }}' `
-            --ref '${{ github.ref }}' `
-            --tested-commit-sha '${{ github.sha }}' `
-            --run-id '${{ github.run_id }}' `
-            --run-attempt '${{ github.run_attempt }}'
+            --repository $env:REPOSITORY `
+            --event-name $env:EVENT_NAME `
+            --ref $env:WORKFLOW_REF `
+            --tested-commit-sha $env:TESTED_COMMIT_SHA `
+            --run-id $env:RUN_ID `
+            --run-attempt $env:RUN_ATTEMPT
           if ($LASTEXITCODE -ne 0) { throw 'Fast CI timing initialization failed.' }
           python --version
           node --version
@@ -109,15 +116,21 @@ jobs:
         id: verification_plan
         if: always()
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
         run: |
           python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id verification-planner
           if ($LASTEXITCODE -ne 0) { throw 'Verification planner timing start failed.' }
 
-          $eventName = "${{ github.event_name }}"
-          $defaultBranch = "${{ github.event.repository.default_branch }}"
-          $refName = "${{ github.ref_name }}"
-          $baseRef = "${{ github.base_ref }}"
-          $before = "${{ github.event.before }}"
+          $eventName = $env:EVENT_NAME
+          $defaultBranch = $env:DEFAULT_BRANCH
+          $refName = $env:REF_NAME
+          $baseRef = $env:BASE_REF
+          $before = $env:EVENT_BEFORE
 
           if ($eventName -eq 'pull_request') {
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
@@ -169,6 +182,7 @@ jobs:
         shell: pwsh
         env:
           ARTIFACT_NAME: ci-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          REPOSITORY: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           SOURCE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           SOURCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'null' }}
@@ -182,7 +196,7 @@ jobs:
           python scripts/write_ci_package_metadata.py `
             --package anki_study_report.ankiaddon `
             --output-directory ci-package `
-            --repository '${{ github.repository }}' `
+            --repository $env:REPOSITORY `
             --event-name $env:EVENT_NAME `
             --ref $env:WORKFLOW_REF `
             --tested-commit-sha $env:TESTED_COMMIT_SHA `
