@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 import shutil
 import sqlite3
-import time
 import traceback
 from typing import Any, Iterable
 
@@ -77,7 +76,7 @@ def main() -> int:
             "collection": "collection.anki2",
             "packageOrder": [str(item["id"]) for item in packages],
             "packages": [],
-            "runtimeImporter": "official Anki package importer/backend",
+            "runtimeImporter": "Collection.import_anki_package",
             "manualPackageExtraction": False,
             "syntheticFallback": False,
         }
@@ -174,6 +173,7 @@ def main() -> int:
             "media": inventory["totals"]["media"],
         }
         write_json(args.artifacts_dir / "real-deck-import-report.json", import_report)
+        last_completed_step = "anchors resolved"
         log(f"resolved {len(resolved)} anchors uniquely")
         log("collection import ready")
         return 0
@@ -214,57 +214,34 @@ def create_empty_collection(collection_path: Path) -> None:
 
 
 def import_package(collection_path: Path, package_path: Path) -> str:
-    from anki.collection import Collection
+    from anki import import_export_pb2
+    from anki.collection import Collection, ImportAnkiPackageRequest
 
     col = Collection(str(collection_path))
-    errors: list[str] = []
     try:
-        try:
-            from anki.importing.apkg import AnkiPackageImporter
-
-            importer = AnkiPackageImporter(col, str(package_path))
-            method = getattr(importer, "run", None)
-            if not callable(method):
-                raise RuntimeError("AnkiPackageImporter.run is unavailable")
-            method()
-            return "anki.importing.apkg.AnkiPackageImporter.run"
-        except Exception as error:
-            errors.append(f"AnkiPackageImporter.run: {type(error).__name__}: {error}")
-
-        try:
-            from anki import import_export_pb2
-
-            backend = getattr(col, "_backend", None)
-            method = getattr(backend, "import_anki_package", None)
-            if not callable(method):
-                raise RuntimeError("Collection backend import_anki_package is unavailable")
-            options = import_export_pb2.ImportAnkiPackageOptions(
-                merge_notetypes=True,
-                update_notes=import_export_pb2.IMPORT_ANKI_PACKAGE_UPDATE_CONDITION_IF_NEWER,
-                update_notetypes=import_export_pb2.IMPORT_ANKI_PACKAGE_UPDATE_CONDITION_IF_NEWER,
-                with_scheduling=False,
-                with_deck_configs=True,
-            )
-            method(package_path=str(package_path), options=options)
-            return "Collection._backend.import_anki_package"
-        except Exception as error:
-            errors.append(f"Collection._backend.import_anki_package: {type(error).__name__}: {error}")
+        options = import_export_pb2.ImportAnkiPackageOptions(
+            merge_notetypes=True,
+            update_notes=import_export_pb2.IMPORT_ANKI_PACKAGE_UPDATE_CONDITION_IF_NEWER,
+            update_notetypes=import_export_pb2.IMPORT_ANKI_PACKAGE_UPDATE_CONDITION_IF_NEWER,
+            with_scheduling=False,
+            with_deck_configs=True,
+        )
+        request = ImportAnkiPackageRequest(package_path=str(package_path), options=options)
+        col.import_anki_package(request)
+        return "Collection.import_anki_package"
+    except Exception as error:
+        raise RealDeckContractError(
+            f"Official Anki package import failed: {type(error).__name__}: {error}",
+            stage="package-import",
+            subject_id=package_path.name,
+        ) from error
     finally:
         close_collection(col)
-    raise RealDeckContractError(
-        "Official Anki package import failed: " + " | ".join(errors),
-        stage="package-import",
-        subject_id=package_path.name,
-    )
 
 
 def close_collection(col: Any) -> None:
     method = getattr(col, "close", None)
-    if not callable(method):
-        return
-    try:
-        method(save=True)
-    except TypeError:
+    if callable(method):
         method()
 
 
@@ -387,16 +364,17 @@ def build_inventory(
             }
             for deck_id in sorted(used_deck_ids)
         ]
-        package_inventory = [
-            {
-                "id": package_id,
-                "noteCount": len(package_note_ids[package_id]),
-                "cardCount": len(package_card_ids.get(package_id, set())),
-                "noteIds": sorted(package_note_ids[package_id]),
-                "cardIds": sorted(package_card_ids.get(package_id, set())),
-            }
-            for package_id in package_note_ids
-        ]
+        package_inventory = []
+        for package_id in package_note_ids:
+            package_inventory.append(
+                {
+                    "id": package_id,
+                    "noteCount": len(package_note_ids[package_id]),
+                    "cardCount": len(package_card_ids.get(package_id, set())),
+                    "noteIds": sorted(package_note_ids[package_id]),
+                    "cardIds": sorted(package_card_ids.get(package_id, set())),
+                }
+            )
         media = sorted(media_inventory(media_dir))
         return {
             "schemaVersion": 1,
@@ -464,48 +442,34 @@ def prune_unused_metadata(collection_path: Path) -> None:
             parts = name.split("::")
             keep_names.update("::".join(parts[:index]) for index in range(1, len(parts)))
         keep_ids = {deck_id for deck_id, name in names.items() if name in keep_names}
-        for deck_id in [deck_id for deck_id in names if deck_id not in keep_ids]:
+        removable = [deck_id for deck_id in names if deck_id not in keep_ids and deck_id != 1]
+        for deck_id in removable:
             call_deck_remove(col.decks, deck_id)
     finally:
         close_collection(col)
 
 
 def call_model_remove(manager: Any, model_id: int, model: dict[str, Any]) -> None:
-    errors = []
-    for name in ("remove", "rem"):
-        method = getattr(manager, name, None)
-        if not callable(method):
-            continue
-        for argument in (model_id, model):
-            try:
-                method(argument)
-                return
-            except Exception as error:
-                errors.append(f"{name}({type(argument).__name__}): {error}")
-    raise RealDeckContractError(
-        f"Could not remove unused bootstrap note type {model_id}: {' | '.join(errors)}",
-        stage="metadata-prune",
-        subject_id=str(model_id),
-    )
+    del model
+    method = getattr(manager, "remove", None)
+    if not callable(method):
+        raise RealDeckContractError(
+            f"Anki ModelManager.remove is unavailable for unused note type {model_id}.",
+            stage="metadata-prune",
+            subject_id=str(model_id),
+        )
+    method(model_id)
 
 
 def call_deck_remove(manager: Any, deck_id: int) -> None:
-    errors = []
-    for name in ("remove", "rem"):
-        method = getattr(manager, name, None)
-        if not callable(method):
-            continue
-        for positional in (([deck_id],), (deck_id,), (deck_id, False, False)):
-            try:
-                method(*positional)
-                return
-            except Exception as error:
-                errors.append(f"{name}{positional}: {error}")
-    raise RealDeckContractError(
-        f"Could not remove unused bootstrap deck {deck_id}: {' | '.join(errors)}",
-        stage="metadata-prune",
-        subject_id=str(deck_id),
-    )
+    method = getattr(manager, "remove", None)
+    if not callable(method):
+        raise RealDeckContractError(
+            f"Anki DeckManager.remove is unavailable for unused deck {deck_id}.",
+            stage="metadata-prune",
+            subject_id=str(deck_id),
+        )
+    method([deck_id])
 
 
 if __name__ == "__main__":
