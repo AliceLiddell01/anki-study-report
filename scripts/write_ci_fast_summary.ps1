@@ -134,7 +134,7 @@ $markdown = @"
 | Started (UTC) | $started |
 | Finished (UTC) | $finished |
 
-This diagnostics artifact contains logs, environment data, summaries, the verification plan, and schema-versioned Fast CI timing only.
+This diagnostics artifact contains logs, environment data, summaries, the verification plan, schema-versioned Fast CI timing, and the validated unified run-event JSONL stream.
 The exact non-release package is published separately with ``package-metadata.json`` after a successful run.
 Action setup, artifact upload, and post-job cache durations are external step timings obtained from the GitHub Jobs API.
 "@
