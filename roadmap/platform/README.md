@@ -88,8 +88,8 @@ standard/cards:      30049216529 — PASS
 browser plan:        23/23 items PASS
 screenshots:         18/18
 browser diagnostics: 0 page, request, external и console errors
-PR в core:           открывается после documentation closeout
-merge в core:        не выполнен
+PR #135:             открыт в core, не merged
+merge/auto-merge:    не выполнялись
 ```
 
 ## Активация оптимизационных этапов
