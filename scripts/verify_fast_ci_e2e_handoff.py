@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Any
 
@@ -11,14 +13,25 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from fast_ci_e2e_handoff_common import (
-    FAST_WORKFLOW_PATH, HANDOFF_PUBLIC_FIELDS, HandoffError, load_json,
-    positive_integer, safe_text, validate_source_inputs, write_json,
+    FAST_WORKFLOW_PATH,
+    HANDOFF_PUBLIC_FIELDS,
+    HandoffError,
+    exact_sha,
+    load_json,
+    positive_integer,
+    safe_text,
+    validate_source_inputs,
+    write_json,
     write_outputs,
 )
 from fast_ci_e2e_handoff_contract import (
     resolve_source_run as _resolve_source_run,
     validate_diagnostics,
-    validate_package_handoff,
+    validate_package_handoff as _validate_exact_package_handoff,
+)
+from validate_e2e_harness_reuse import (
+    HarnessReuseError,
+    validate_harness_reuse,
 )
 
 
@@ -104,7 +117,6 @@ def append_github_env(path: Path | None, values: dict[str, Any]) -> None:
 
 
 def ensure_workspace_diagnostics_dir(path: Path = Path("ci-e2e-raw")) -> None:
-    """Restore the untracked diagnostics directory removed by a clean checkout."""
     path.mkdir(parents=True, exist_ok=True)
 
 
@@ -123,6 +135,94 @@ def resolve_source_run(
     )
     result["sourceWorkflowPath"] = canonical_path
     return result
+
+
+def current_harness_sha(value: str | None = None) -> str:
+    candidate = value if value is not None else os.environ.get("E2E_WORKFLOW_SOURCE_SHA", "")
+    return exact_sha(candidate, "E2E workflow source SHA")
+
+
+def _git_changed_paths(package_sha: str, harness_sha: str) -> list[str]:
+    if package_sha == harness_sha:
+        return []
+    try:
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", package_sha, harness_sha],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise HandoffError(f"Could not execute git for E2E harness reuse validation: {exc}") from exc
+    if ancestor.returncode != 0:
+        raise HandoffError("Fast CI package commit must be an ancestor of the E2E harness commit")
+    diff = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=ACDMRT", f"{package_sha}..{harness_sha}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if diff.returncode != 0:
+        detail = (diff.stderr or diff.stdout).strip()
+        raise HandoffError(f"Could not determine E2E harness-only changed paths: {detail}")
+    return [line for line in diff.stdout.splitlines() if line.strip()]
+
+
+def validate_package_reuse_boundary(
+    *, package_tested_sha: str, e2e_workflow_source_sha: str, e2e_checkout_sha: str,
+) -> dict[str, Any]:
+    package_sha = exact_sha(package_tested_sha, "package tested SHA")
+    workflow_sha = exact_sha(e2e_workflow_source_sha, "E2E workflow source SHA")
+    checkout_sha = exact_sha(e2e_checkout_sha, "E2E checkout SHA")
+    if package_sha == checkout_sha:
+        return {
+            "schemaVersion": 1,
+            "reuseAllowed": True,
+            "reuseMode": "exact-tree",
+            "packageTestedCommitSha": package_sha,
+            "e2eHarnessCommitSha": checkout_sha,
+            "workflowSourceSha": workflow_sha,
+            "changedFileCount": 0,
+            "changedPathsSha256": hashlib.sha256(b"").hexdigest(),
+            "changedPaths": [],
+        }
+    paths = _git_changed_paths(package_sha, checkout_sha)
+    try:
+        return validate_harness_reuse(
+            package_tested_sha=package_sha,
+            harness_sha=checkout_sha,
+            workflow_source_sha=workflow_sha,
+            changed_paths=paths,
+        )
+    except HarnessReuseError as exc:
+        raise HandoffError(str(exc)) from exc
+
+
+def validate_package_handoff(
+    *, resolution: dict[str, Any], diagnostics: dict[str, Any], directory: Path,
+    e2e_workflow_source_sha: str, e2e_checkout_sha: str,
+) -> dict[str, Any]:
+    package_tested_sha = exact_sha(diagnostics.get("testedCommitSha"), "diagnostics tested SHA")
+    workflow_sha = exact_sha(e2e_workflow_source_sha, "E2E workflow source SHA")
+    checkout_sha = exact_sha(e2e_checkout_sha, "E2E checkout SHA")
+    validate_package_reuse_boundary(
+        package_tested_sha=package_tested_sha,
+        e2e_workflow_source_sha=workflow_sha,
+        e2e_checkout_sha=checkout_sha,
+    )
+
+    evidence = _validate_exact_package_handoff(
+        resolution=resolution,
+        diagnostics=diagnostics,
+        directory=directory,
+        e2e_workflow_source_sha=resolution["sourceHeadSha"],
+        e2e_checkout_sha=package_tested_sha,
+    )
+    evidence["e2eWorkflowSourceSha"] = workflow_sha
+    evidence["e2eCheckoutSha"] = checkout_sha
+    if set(evidence) != HANDOFF_PUBLIC_FIELDS:
+        raise HandoffError("Handoff evidence fields differ from the public allowlist")
+    return evidence
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -211,21 +311,28 @@ def main() -> int:
             resolution = load_json(args.resolution)
             result = validate_diagnostics(resolution=resolution, directory=args.directory)
             write_json(args.output, result)
+            harness_sha = current_harness_sha()
             write_outputs(args.github_output, {
-                "tested_sha": result["testedCommitSha"],
+                "tested_sha": harness_sha,
+                "package_tested_sha": result["testedCommitSha"],
                 "source_head_sha": result["sourceHeadSha"],
                 "source_base_sha": result["sourceBaseSha"],
                 "source_event": result["sourceEvent"],
                 "source_ref": result["sourceRef"],
             })
         elif args.command == "validate-package":
-            # The exact tested-commit checkout uses the checkout action's default clean
-            # behavior, which removes untracked ci-e2e-raw/. Recreate it before any
-            # package validation can fail so preflight and always() diagnostics remain writable.
             ensure_workspace_diagnostics_dir()
+            resolution = load_json(args.resolution)
+            diagnostics = load_json(args.diagnostics)
+            reuse = validate_package_reuse_boundary(
+                package_tested_sha=diagnostics["testedCommitSha"],
+                e2e_workflow_source_sha=args.e2e_workflow_source_sha,
+                e2e_checkout_sha=args.e2e_checkout_sha,
+            )
+            write_json(Path("ci-e2e-raw") / "e2e-harness-reuse.json", reuse)
             result = validate_package_handoff(
-                resolution=load_json(args.resolution),
-                diagnostics=load_json(args.diagnostics),
+                resolution=resolution,
+                diagnostics=diagnostics,
                 directory=args.directory,
                 e2e_workflow_source_sha=args.e2e_workflow_source_sha,
                 e2e_checkout_sha=args.e2e_checkout_sha,
