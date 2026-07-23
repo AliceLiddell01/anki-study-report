@@ -116,7 +116,8 @@ def test_browser_smoke_consumes_runtime_anchors_and_avoids_fixture_literals() ->
     source = (E2E / "smoke-browser.mjs").read_text(encoding="utf-8")
     progress = (E2E / "browser-progress.mjs").read_text(encoding="utf-8")
     assert "anchor-resolution-report.json" in source
-    assert "PREVIEW_ANCHOR_IDS" in source
+    assert "buildBrowserPlan" in source
+    assert 'candidate.kind === "native-preview"' in source
     assert 'Object.freeze(["words-preview", "grammar-preview", "java-preview"])' in progress
     assert "renderSource === \"anki_native\"" in source
     assert "unexpectedExternalRequests" in source
