@@ -66,6 +66,12 @@ TOTAL_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
 RESOURCE_STOP_FILE="${ANKI_STUDY_REPORT_E2E_RUNTIME_DIR}/resource-sampler.stop"
 RESOURCE_PID=""
 TELEMETRY_FAKE_PID=""
+RUN_EVENTS_PATH="${ANKI_STUDY_REPORT_E2E_REPORTS_DIR}/run-events.jsonl"
+RUN_EVENTS_INITIALIZED=0
+ACTIVE_PHASE_ID=""
+ACTIVE_PHASE_NAME=""
+ACTIVE_PHASE_STARTED_MS=""
+ACTIVE_PHASE_STARTED_AT=""
 run_status="failed"
 
 section() {
@@ -84,13 +90,34 @@ record_phase() {
     --scope "$ANKI_E2E_SCOPE" --mode "$E2E_MODE" --notes "$notes"
 }
 
+run_event() {
+  /e2e/bin/run_event_protocol.py "$@" --output "$RUN_EVENTS_PATH" --producer docker-e2e
+}
+
 phase_start() {
-  PHASE_STARTED_MS=$(date +%s%3N)
-  PHASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+  ACTIVE_PHASE_ID="$1"
+  ACTIVE_PHASE_NAME="$2"
+  ACTIVE_PHASE_STARTED_MS=$(date +%s%3N)
+  ACTIVE_PHASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+  run_event emit --phase-id "$ACTIVE_PHASE_ID" --event-kind phase --status start
 }
 
 phase_end() {
-  record_phase "$1" "$PHASE_STARTED_MS" "$PHASE_STARTED_AT" "${2:-success}" "${3:-}"
+  local status="${1:-success}" notes="${2:-}"
+  local finished_ms duration_ms event_status
+  finished_ms=$(date +%s%3N)
+  duration_ms=$((finished_ms - ACTIVE_PHASE_STARTED_MS))
+  record_phase "$ACTIVE_PHASE_NAME" "$ACTIVE_PHASE_STARTED_MS" "$ACTIVE_PHASE_STARTED_AT" "$status" "$notes"
+  case "$status" in
+    success) event_status=pass ;;
+    skipped) event_status=skip ;;
+    *) event_status=fail ;;
+  esac
+  run_event emit --phase-id "$ACTIVE_PHASE_ID" --event-kind phase --status "$event_status" --duration-ms "$duration_ms"
+  ACTIVE_PHASE_ID=""
+  ACTIVE_PHASE_NAME=""
+  ACTIVE_PHASE_STARTED_MS=""
+  ACTIVE_PHASE_STARTED_AT=""
 }
 
 cleanup() {
@@ -105,27 +132,53 @@ cleanup() {
     wait "$RESOURCE_PID" || true
     rm -f "$RESOURCE_STOP_FILE"
   fi
+  if [ "$RUN_EVENTS_INITIALIZED" = "1" ] && [ -n "$ACTIVE_PHASE_ID" ]; then
+    local failed_finished_ms failed_duration_ms
+    failed_finished_ms=$(date +%s%3N)
+    failed_duration_ms=$((failed_finished_ms - ACTIVE_PHASE_STARTED_MS))
+    record_phase "$ACTIVE_PHASE_NAME" "$ACTIVE_PHASE_STARTED_MS" "$ACTIVE_PHASE_STARTED_AT" "failed" || true
+    run_event emit --phase-id "$ACTIVE_PHASE_ID" --event-kind phase --status fail --duration-ms "$failed_duration_ms" --message "phase command failed" || true
+    ACTIVE_PHASE_ID=""
+  fi
   record_phase "total canonical E2E" "$TOTAL_STARTED_MS" "$TOTAL_STARTED_AT" "$([ "$exit_status" -eq 0 ] && echo success || echo failed)" || true
   /e2e/bin/e2e-telemetry.py finalize --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --scope "$ANKI_E2E_SCOPE" --mode "$E2E_MODE" --workers "$ANKI_E2E_SCREENSHOT_WORKERS" \
     $([ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ] && echo --resource-telemetry) || true
 
-  local manifest_started_ms manifest_started_at
-  manifest_started_ms=$(date +%s%3N)
-  manifest_started_at=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+  if [ "$RUN_EVENTS_INITIALIZED" = "1" ]; then
+    phase_start "artifact-manifest" "manifest generation and validation"
+  fi
   if ! /e2e/bin/write-artifact-manifest.py \
     --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --status "$run_status" \
     --anki-version "${ANKI_VERSION:-unknown}"; then
     echo "E2E artifact manifest generation or validation failed." >&2
+    if [ "$RUN_EVENTS_INITIALIZED" = "1" ]; then
+      phase_end "failed" || true
+    fi
     if [ "$exit_status" -eq 0 ]; then
       exit_status=1
     fi
+  elif [ "$RUN_EVENTS_INITIALIZED" = "1" ]; then
+    phase_end "success" || exit_status=1
   fi
-  record_phase "manifest generation and validation" "$manifest_started_ms" "$manifest_started_at" || true
+
   /e2e/bin/e2e-telemetry.py finalize --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --scope "$ANKI_E2E_SCOPE" --mode "$E2E_MODE" --workers "$ANKI_E2E_SCREENSHOT_WORKERS" \
     $([ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ] && echo --resource-telemetry) || true
+
+  if [ "$RUN_EVENTS_INITIALIZED" = "1" ]; then
+    local final_status final_duration_ms
+    final_duration_ms="$(($(date +%s%3N) - TOTAL_STARTED_MS))"
+    if [ "$exit_status" -eq 0 ] && [ "$run_status" = "success" ]; then
+      final_status=pass
+    else
+      final_status=fail
+    fi
+    run_event finish-run --status "$final_status" --duration-ms "$final_duration_ms" || exit_status=1
+    /e2e/bin/run_event_protocol.py validate --output "$RUN_EVENTS_PATH" --producer docker-e2e || exit_status=1
+  fi
+
   /e2e/bin/write-artifact-manifest.py \
     --root "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
     --status "$run_status" \
@@ -151,6 +204,8 @@ mkdir -p \
   "$ANKI_STUDY_REPORT_E2E_HTML_DIR" \
   "$ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR" \
   "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR"
+run_event initialize --message "mode=$E2E_MODE scope=$ANKI_E2E_SCOPE"
+RUN_EVENTS_INITIALIZED=1
 
 if [ -n "${ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT:-}" ]; then
   /e2e/bin/fake-telemetry-server.py \
@@ -173,7 +228,7 @@ if [ "$ANKI_E2E_RESOURCE_TELEMETRY" = "1" ]; then
 fi
 
 section "Copy workspace to writable build directory"
-phase_start
+phase_start "workspace-copy" "workspace copy"
 rm -rf "$E2E_BUILD_DIR"
 mkdir -p "$E2E_BUILD_DIR"
 rsync -a --delete \
@@ -188,7 +243,7 @@ rsync -a --delete \
   --exclude 'anki_study_report/web_dashboard/' \
   --exclude 'anki_study_report/user_files/' \
   "$WORKSPACE/" "$E2E_BUILD_DIR/"
-phase_end "workspace copy"
+phase_end
 
 FRONTEND_DIR="$E2E_BUILD_DIR/web-dashboard"
 echo "Workspace build dir: $E2E_BUILD_DIR"
@@ -202,7 +257,7 @@ ADDON_INSTALL_SOURCE="$E2E_BUILD_DIR/anki_study_report"
 if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then
   section "Validate exact prebuilt add-on artifact"
   test -f "$ANKI_E2E_PREBUILT_ADDON_PATH"
-  phase_start
+  phase_start "exact-package-validation" "exact prebuilt add-on validation and extraction"
   python3 scripts/package_addon.py --output "$ANKI_E2E_PREBUILT_ADDON_PATH" --check-only
   cp "$ANKI_E2E_PREBUILT_ADDON_PATH" "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon"
   PREBUILT_ADDON_DIR="$E2E_BUILD_DIR/prebuilt-addon"
@@ -210,7 +265,7 @@ if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then
   mkdir -p "$PREBUILT_ADDON_DIR"
   python3 -m zipfile -e "$ANKI_E2E_PREBUILT_ADDON_PATH" "$PREBUILT_ADDON_DIR"
   ADDON_INSTALL_SOURCE="$PREBUILT_ADDON_DIR"
-  phase_end "exact prebuilt add-on validation and extraction" "success" "packageSource=$ANKI_E2E_PACKAGE_SOURCE"
+  phase_end "success" "packageSource=$ANKI_E2E_PACKAGE_SOURCE"
 else
   section "Build frontend dashboard"
   "$PNPM_BIN" --version
@@ -222,26 +277,26 @@ else
     echo "web-dashboard/pnpm-workspace.yaml:"
     sed -n '1,40p' web-dashboard/pnpm-workspace.yaml
     if ! grep -Eq '^[[:space:]]*packages:' web-dashboard/pnpm-workspace.yaml; then
-      echo "web-dashboard/pnpm-workspace.yaml must declare packages; expected packages: [\".\"]" >&2
+      echo 'web-dashboard/pnpm-workspace.yaml must declare packages; expected packages: ["."]' >&2
       exit 1
     fi
   fi
-  phase_start
+  phase_start "frontend-dependency-install" "frontend dependency install"
   "$PNPM_BIN" --store-dir "$PNPM_STORE_DIR" --dir "$FRONTEND_DIR" install --offline --frozen-lockfile
-  phase_end "frontend dependency install" "success" "lockfile-driven offline install from the image pnpm store"
-  phase_start
+  phase_end "success" "lockfile-driven offline install from the image pnpm store"
+  phase_start "frontend-build" "frontend build"
   "$PNPM_BIN" --dir "$FRONTEND_DIR" run build:addon
-  phase_end "frontend build"
+  phase_end
 
   section "Build and validate add-on archive"
-  phase_start
+  phase_start "addon-package" "add-on package"
   cd "$E2E_BUILD_DIR"
   python3 scripts/package_addon.py --output "$ANKI_STUDY_REPORT_E2E_PACKAGE_DIR/anki_study_report.ankiaddon" --check
-  phase_end "add-on package"
+  phase_end
 fi
 
 section "Create isolated Anki profile"
-phase_start
+phase_start "profile-bootstrap" "profile bootstrap"
 /e2e/bin/create-profile.sh
 bootstrap_prefs_args=(
   --base-dir "$ANKI_BASE"
@@ -253,31 +308,31 @@ if [ "${KEEP_E2E_DATA:-0}" != "1" ]; then
   bootstrap_prefs_args+=(--fresh)
 fi
 /e2e/bin/bootstrap-prefs.py "${bootstrap_prefs_args[@]}"
-phase_end "profile bootstrap"
+phase_end
 
 section "Create empty collection"
-phase_start
+phase_start "collection-bootstrap" "empty collection bootstrap"
 /e2e/bin/seed-collection.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-phase_end "empty collection bootstrap"
+phase_end
 
 section "Validate and import committed real decks"
-phase_start
+phase_start "real-deck-import" "real deck checksum import inventory and anchors"
 /e2e/bin/import-apkg-fixture.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-phase_end "real deck checksum import inventory and anchors"
+phase_end
 
 section "Apply deterministic real-card scenarios"
-phase_start
+phase_start "scenario-preparation" "real card scenario preparation"
 /e2e/bin/mark-apkg-cards-problematic.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
-phase_end "real card scenario preparation"
+phase_end
 
 section "Install add-on and optional non-collection fixtures"
-phase_start
+phase_start "addon-install" "add-on install and auxiliary profile preparation"
 /e2e/bin/install-addon.sh "$ADDON_INSTALL_SOURCE"
 if [ "$ANKI_E2E_SCOPE" = "full" ] || [ "$ANKI_E2E_SCOPE" = "notifications" ]; then
   /e2e/bin/seed-notification-lifecycle.py \
@@ -285,21 +340,21 @@ if [ "$ANKI_E2E_SCOPE" = "full" ] || [ "$ANKI_E2E_SCOPE" = "notifications" ]; th
     --profile-dir "$ANKI_PROFILE_DIR" \
     --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
 fi
-phase_end "add-on install and auxiliary profile preparation"
+phase_end
 
 section "First Anki start"
-phase_start
+phase_start "anki-start-first" "first Anki start"
 /e2e/bin/start-anki.sh first
-phase_end "first Anki start"
-phase_start
+phase_end
+phase_start "dashboard-ready-first" "first readiness wait"
 /e2e/bin/wait-for-dashboard.py --label first
-phase_end "first readiness wait"
-phase_start
+phase_end
+phase_start "api-smoke-first" "first API smoke"
 /e2e/bin/smoke-api.py --label first
-phase_end "first API smoke"
-phase_start
+phase_end
+phase_start "browser-smoke-first" "browser real-deck and dashboard capture"
 /e2e/bin/smoke-browser.mjs --label first
-phase_end "browser real-deck and dashboard capture"
+phase_end
 
 verify_restart="$ANKI_E2E_VERIFY_RESTART"
 if [ "$verify_restart" = "auto" ]; then
@@ -307,22 +362,22 @@ if [ "$verify_restart" = "auto" ]; then
 fi
 if [ "$verify_restart" = "1" ]; then
   section "Restart Anki"
-  phase_start
+  phase_start "anki-restart" "Anki stop and restart"
   /e2e/bin/restart-anki.sh restart
-  phase_end "Anki stop and restart"
-  phase_start
+  phase_end
+  phase_start "dashboard-ready-restart" "restart readiness"
   /e2e/bin/wait-for-dashboard.py --label restart
-  phase_end "restart readiness"
-  phase_start
+  phase_end
+  phase_start "api-smoke-restart" "restart API smoke"
   /e2e/bin/smoke-api.py --label restart
-  phase_end "restart API smoke"
+  phase_end
   if [ -n "${ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT:-}" ]; then
-    phase_start
+    phase_start "telemetry-restart" "telemetry restart persistence and deletion"
     /e2e/bin/verify-telemetry-restart.py \
       --ready "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
       --fake-endpoint "$ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT" \
       --output "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR/telemetry-restart-proof.json"
-    phase_end "telemetry restart persistence and deletion"
+    phase_end
   fi
 else
   echo "Restart smoke skipped for targeted scope=$ANKI_E2E_SCOPE (policy=$ANKI_E2E_VERIFY_RESTART)."
