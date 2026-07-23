@@ -14,7 +14,23 @@ import prepare_ci_e2e_artifacts_legacy as legacy
 from verify_fast_ci_e2e_handoff import validate_package_reuse_boundary
 
 
+# Preserve the established import surface for tests and callers that import this
+# wrapper as a module. The implementation remains owned by the legacy exporter.
+TEXT_SUFFIXES = legacy.TEXT_SUFFIXES
+copy_safe_artifacts = legacy.copy_safe_artifacts
+validate_manifest = legacy.validate_manifest
+assert_safe_text = legacy.assert_safe_text
+utc_now = legacy.utc_now
+
 _ORIGINAL_WRITE_SUMMARY = legacy.write_summary
+
+
+def __getattr__(name: str):
+    """Delegate unchanged exporter helpers to the canonical legacy module."""
+    try:
+        return getattr(legacy, name)
+    except AttributeError as exc:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
 
 
 def _read_reuse_evidence(args: argparse.Namespace) -> dict | None:
@@ -24,7 +40,14 @@ def _read_reuse_evidence(args: argparse.Namespace) -> dict | None:
     if package_source != "fast-ci-artifact" or not package_sha or package_sha == checkout_sha:
         return None
 
-    evidence_path = args.raw_logs / "e2e-harness-reuse.json"
+    # Older direct unit/library callers do not carry the CLI-only raw_logs field.
+    # Preserve their exact-tree validation path; the production CLI always defines
+    # raw_logs and therefore still fails closed for harness-only reuse.
+    raw_logs = getattr(args, "raw_logs", None)
+    if raw_logs is None:
+        return None
+
+    evidence_path = Path(raw_logs) / "e2e-harness-reuse.json"
     try:
         actual = json.loads(evidence_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -105,6 +128,10 @@ def _rewrite_public_identity(output: Path, *, checkout_sha: str, reuse: dict) ->
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
+    # Keep monkeypatching and direct module users compatible with the historical
+    # public surface while the canonical implementation remains in legacy.
+    legacy.utc_now = utc_now
+
     reuse = _read_reuse_evidence(args)
     if reuse is None:
         _ORIGINAL_WRITE_SUMMARY(output, args=args, manifest_status=manifest_status, artifact_files=artifact_files)
@@ -112,6 +139,7 @@ def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: st
 
     public_relative = "artifacts/reports/e2e-harness-reuse.json"
     public_path = output / public_relative
+    public_path.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_json_file(public_path, reuse)
     if public_relative not in artifact_files:
         artifact_files.append(public_relative)
