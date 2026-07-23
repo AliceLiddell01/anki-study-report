@@ -11,6 +11,7 @@ import time
 from typing import Any
 
 DAY_MS = 86_400_000
+ACTION_RECHECK_ANCHOR = "cards-action-recheck"
 
 
 def main() -> int:
@@ -92,7 +93,19 @@ def shift_generated_revlog_ids(
     connection = sqlite3.connect(collection_path)
     try:
         old_ids = [int(row[0]) for row in connection.execute("select id from revlog order by id")]
-        new_ids = [value + offset_ms for value in old_ids]
+        mapping = {value: value + offset_ms for value in old_ids}
+        action_old_ids = _scenario_revlog_ids(report, ACTION_RECHECK_ANCHOR)
+        action_recent_ids = _recent_unique_ids(
+            count=len(action_old_ids),
+            reserved={value for key, value in mapping.items() if key not in action_old_ids},
+            scheduler_day_start_ms=scheduler_day_start_ms,
+            scheduler_day_cutoff_ms=scheduler_day_cutoff_ms,
+            now_ms=int(time.time() * 1000),
+        )
+        for old_id, recent_id in zip(action_old_ids, action_recent_ids, strict=True):
+            mapping[old_id] = recent_id
+
+        new_ids = [mapping[value] for value in old_ids]
         if len(new_ids) != len(set(new_ids)) or any(value <= 0 for value in new_ids):
             raise RuntimeError("Scheduler-day revlog normalization would create invalid or duplicate IDs.")
 
@@ -104,7 +117,6 @@ def shift_generated_revlog_ids(
     finally:
         connection.close()
 
-    mapping = dict(zip(old_ids, new_ids, strict=True))
     _rewrite_revlog_ids(report, mapping)
     report["schedulerDay"] = {
         "sourceUtcDayStartMs": utc_day_start_ms,
@@ -112,9 +124,58 @@ def shift_generated_revlog_ids(
         "cutoffMs": scheduler_day_cutoff_ms,
         "offsetMs": offset_ms,
         "revlogRowsShifted": len(old_ids),
+        "actionRecheckAnchor": ACTION_RECHECK_ANCHOR,
+        "actionRecheckRevlogRows": len(action_recent_ids),
+        "actionRecheckLastReviewedMs": max(action_recent_ids),
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return len(old_ids)
+
+
+def _scenario_revlog_ids(report: dict[str, Any], anchor_id: str) -> list[int]:
+    scenarios = report.get("scenarios")
+    if not isinstance(scenarios, list):
+        raise RuntimeError("Scenario report has no scenario list.")
+    scenario = next(
+        (
+            item
+            for item in scenarios
+            if isinstance(item, dict) and str(item.get("id") or item.get("anchorId") or "") == anchor_id
+        ),
+        None,
+    )
+    if not isinstance(scenario, dict):
+        raise RuntimeError(f"Scenario report is missing required anchor: {anchor_id}")
+    values = scenario.get("revlogIds")
+    if not isinstance(values, list) or not values:
+        raise RuntimeError(f"Scenario {anchor_id} has no generated revlog IDs.")
+    ids = [int(value) for value in values]
+    if len(ids) != len(set(ids)) or any(value <= 0 for value in ids):
+        raise RuntimeError(f"Scenario {anchor_id} has invalid generated revlog IDs.")
+    return ids
+
+
+def _recent_unique_ids(
+    *,
+    count: int,
+    reserved: set[int],
+    scheduler_day_start_ms: int,
+    scheduler_day_cutoff_ms: int,
+    now_ms: int,
+) -> list[int]:
+    if count <= 0:
+        raise RuntimeError("Action/recheck scenario must contain generated revlog rows.")
+    latest = min(now_ms - 1, scheduler_day_cutoff_ms - 1)
+    if latest <= 0:
+        raise RuntimeError("Cannot place action/recheck history before the scheduler cutoff.")
+    while True:
+        values = list(range(latest - count + 1, latest + 1))
+        if values[0] > 0 and not (set(values) & reserved):
+            break
+        latest -= count
+    if values[-1] < scheduler_day_start_ms - DAY_MS:
+        raise RuntimeError("Cannot place action/recheck history in the recent scheduler window.")
+    return values
 
 
 def _rewrite_revlog_ids(value: Any, mapping: dict[int, int]) -> None:
