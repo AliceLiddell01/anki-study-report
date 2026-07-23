@@ -34,12 +34,10 @@ try {
   dashboardPage = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   attachDiagnostics(dashboardPage);
   await captureDashboardRoutes(dashboardPage);
-  const cardCandidates = await collectCardCandidates(dashboardPage);
   const previewProofs = [];
   for (const anchorId of previewAnchorIds) {
     const anchor = anchors[anchorId];
-    const card = cardCandidates[String(anchor.cardId)];
-    assert(card, `${anchorId} is available through canonical dashboard APIs`);
+    const card = await inspectCard(dashboardPage, anchorId, anchor);
     previewProofs.push(await captureNativePreview(anchorId, anchor, card));
   }
   const stateProof = await assertScenarioCards(dashboardPage);
@@ -162,47 +160,28 @@ async function dismissDialogs(page) {
   }
 }
 
-async function collectCardCandidates(page) {
-  return page.evaluate(async ({ token, anchorValues }) => {
-    const result = {};
-    const post = async (route, payload) => {
-      const response = await fetch(`${route}?token=${encodeURIComponent(token)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const body = await response.json();
-      if (!response.ok || body?.ok !== true) throw new Error(`${route} failed: ${response.status}`);
-      return body.response;
-    };
-    const reportResponse = await fetch(`/api/report?token=${encodeURIComponent(token)}`, { cache: "no-store" });
-    const report = await reportResponse.json();
-    for (const item of report.attentionCards || []) if (item?.cardId != null) result[String(item.cardId)] = item;
-    const ids = anchorValues.map((item) => String(item.cardId));
-    const triage = await post("/api/triage/query", {
-      schemaVersion: 4,
-      dataset: "search_workset",
-      cardIds: ids,
-      scope: { periodStartMs: 0, periodEndMs: 9007199254740991, deckIds: [] },
-      limit: ids.length,
-    });
-    for (const item of triage.items || []) if (item?.cardId != null) result[String(item.cardId)] = item;
-    const noteTypes = [...new Set(anchorValues.map((item) => String(item.noteTypeId)))];
-    for (const noteTypeId of noteTypes) {
-      const search = await post("/api/search/query", {
+async function inspectCard(page, anchorId, anchor) {
+  return page.evaluate(async ({ token, selectedAnchorId, selectedAnchor }) => {
+    const response = await fetch(`/api/search/inspect?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         schemaVersion: 2,
         mode: "cards",
-        query: "",
-        filters: [{ type: "note_type", noteTypeId }],
-        sort: { key: "entity_id", direction: "asc" },
-        page: 1,
-        pageSize: 200,
-        requestId: `browser-real-deck-${noteTypeId}`,
-      });
-      for (const item of search.items || []) if (item?.cardId != null && !result[String(item.cardId)]) result[String(item.cardId)] = item;
+        cardId: String(selectedAnchor.cardId),
+        requestId: `browser-real-deck-${selectedAnchorId}`,
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok || body?.ok !== true || body?.response?.schemaVersion !== 2 || body?.response?.mode !== "cards") {
+      throw new Error(`/api/search/inspect failed for ${selectedAnchorId}: ${response.status}`);
     }
-    return result;
-  }, { token: ready.token, anchorValues: previewAnchorIds.map((id) => anchors[id]) });
+    const details = body.response.details;
+    if (!details || String(details.cardId) !== String(selectedAnchor.cardId)) {
+      throw new Error(`/api/search/inspect returned the wrong card for ${selectedAnchorId}`);
+    }
+    return details;
+  }, { token: ready.token, selectedAnchorId: anchorId, selectedAnchor: anchor });
 }
 
 async function captureNativePreview(anchorId, anchor, card) {
