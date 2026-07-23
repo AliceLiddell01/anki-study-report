@@ -33,6 +33,7 @@ services:
       WORKSPACE: /workspace
     volumes:
       - ../..:/workspace:ro
+      - ./local-input:/e2e/local-input:ro
       - anki-e2e-data:/e2e/anki-data
       - ../../e2e-artifacts:/e2e/artifacts
     shm_size: "2gb"
