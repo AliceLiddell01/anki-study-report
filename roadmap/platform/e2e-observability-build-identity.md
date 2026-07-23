@@ -1,6 +1,6 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** в работе; `E2E-I1` завершён и подтверждён, следующий этап — `E2E-I2`  
+**Статус:** в работе; `E2E-I1` и `E2E-I2` завершены, следующий этап — `E2E-I3`  
 **Трек:** Platform / CI  
 **База:** real-deck E2E foundation из PR #133  
 **Scope:** наблюдаемость Fast CI и real-Anki Docker E2E, диагностика, cancellation, preflight, non-release build identity и performance evidence.
@@ -16,372 +16,409 @@ Real-deck E2E foundation уже предоставляет сильный execut
 - structured Fast CI timing и E2E phase/resource telemetry;
 - разделение package/harness identities с fail-closed reuse.
 
-Оставшаяся проблема заключается не в отсутствии диагностики. Существующие данные распределены между GitHub workflow YAML, PowerShell, Bash, Python и Node.js. Разработчику всё ещё приходится вручную восстанавливать:
+Оставшаяся задача — сделать этот contour наблюдаемым и однозначным без ручного восстановления по нескольким слоям PowerShell, Bash, Python, Node.js и GitHub Actions.
 
-- что именно выполняется сейчас;
-- где произошёл первый функциональный failure;
-- корректно ли обработана отмена;
-- какой exact non-release build породил evidence;
-- какие измерения можно сравнивать между совместимыми runs.
-
-Этот roadmap объединяет существующие части в один согласованный run protocol. Он намеренно разделён ровно на шесть крупных поставляемых этапов. Нельзя создавать вложенные roadmap-уровни вроде `E2E-I2.1` или `E2E-I4a`: внутри этапа используются обычные implementation tasks и commits.
-
-## Порядок поставки
-
-```text
-E2E-I1 Единый live-протокол выполнения — COMPLETE
-→ E2E-I2 Прогресс browser smoke
-→ E2E-I3 Стабильная диагностика failures
-→ E2E-I4 Preflight и cancellation
-→ E2E-I5 Идентичность non-release build
-→ E2E-I6 Финальный summary и история производительности
-```
-
-Каждый этап обязан оставлять репозиторий в полезном, независимо проверяемом состоянии. Поздний этап может расширить schema раннего, но не должен делать ранний результат непригодным до завершения всех шести этапов.
+Roadmap разделён ровно на шесть крупных этапов. Implementation tasks и commits не создают дополнительных уровней `I2.1`, `I2a` и подобных.
 
 ## Общие инварианты
 
-Все этапы сохраняют существующие platform/security contracts:
+Ни один этап не должен:
 
-- реальный Anki Desktop остаётся integration boundary;
-- cloud E2E использует immutable GHCR digest;
-- package bytes остаются exact и проверяются SHA-256;
-- package/harness reuse остаётся ancestry- и full-diff-validated;
-- cloud E2E не имеет source-build fallback;
-- public evidence не содержит token-bearing URL, private absolute path, profile data или credentials;
-- synthetic notes/cards/templates/media не возвращаются;
-- release остаётся manual, approval-gated и exact-artifact based;
-- успешная неизменённая package/harness pair не перезапускается без конкретной причины;
-- runtime artifacts, metrics, logs и screenshots не коммитятся.
+- ослаблять exact package identity;
+- разрешать cloud source-build fallback;
+- менять production payload только на одной стороне;
+- открывать dashboard server наружу;
+- логировать dashboard token или token-bearing URL;
+- ослаблять sanitizer, media validation, action allowlists или APKG checks;
+- коммитить runtime artifacts, screenshots, logs, tokens или `.ankiaddon`;
+- заменять real-Anki gate synthetic-only tests;
+- добавлять retries вместо устранения root cause;
+- превращать item progress в dynamic global phase registry;
+- вводить performance threshold без отдельного measurement decision.
 
-## E2E-I1 — Единый live-протокол выполнения
+Внешние API подтверждают поведение инструментов, но внутренний контракт определяется production code, tests и этим roadmap.
 
-**Статус:** COMPLETE  
-**Дата подтверждения:** 2026-07-24  
-**Финальный implementation SHA:** `a376a1e5556b26043d29fadcf01698972bd1b2ba`
+## Текущее состояние
 
-**Цель:** заставить Fast CI и Docker E2E сообщать прогресс через одну стабильную event model, сохранив читаемый локальный console output.
+```text
+E2E-I1 — COMPLETE
+E2E-I2 — COMPLETE
+E2E-I3 — следующий, не начат
+E2E-I4 — запланирован
+E2E-I5 — запланирован
+E2E-I6 — запланирован
+```
+
+## E2E-I1 — Единый live run protocol
+
+**Статус:** `COMPLETE`.
+
+### Цель
+
+Создать один schema-versioned lifecycle contract для Fast CI и Docker E2E, чтобы крупные phases были видны live и сохранялись как deterministic JSONL evidence.
 
 ### Реализовано
 
-- Введён один schema-versioned run-event contract для Fast CI и real-Anki E2E.
-- Каждое событие записывается одновременно в:
-  - немедленный stdout/stderr output;
-  - structured `run-events.jsonl`.
-- Стандартизированы поля:
-  - UTC timestamp;
-  - elapsed duration;
-  - producer;
-  - phase ID;
-  - event kind;
-  - status;
-  - optional progress counters;
-  - optional bounded message;
-  - `failureCode`, зарезервированный для `E2E-I3`.
-- Использованы thin adapters существующих PowerShell/Bash/Python контуров без отдельного logging service.
-- Stable phase IDs общие для console output, timing и validation.
-- Docker/Compose output в CI переведён в plain non-interactive mode.
-- Raw diagnostics, timing, resource telemetry и screenshots сохранены.
-- Fast CI diagnostics и Docker public artifact содержат validated JSONL.
-- Success manifest требует `reports/run-events.jsonl` fail closed.
-- Добавлены security, controlled-failure и concurrent-append tests.
-- В ходе финального E2E обнаружена и исправлена production telemetry race после consent transition.
+- `docker/anki-e2e/run_event_protocol.py`;
+- producers `fast-ci` и `docker-e2e`;
+- stable run/phase registries;
+- immediate console output;
+- deterministic UTF-8 JSONL;
+- cross-process append и locking;
+- schema/security validation;
+- success/failure/cancel lifecycle;
+- artifact manifest/public exporter integration;
+- transient sidecar exclusion;
+- plain non-interactive Docker Compose output;
+- controlled failure и concurrency tests.
 
-### Фактическая форма console output
+### Evidence paths
 
 ```text
-[00:12.040] [FAST] [frontend-vitest] START
-[00:52.603] [FAST] [frontend-vitest] PASS duration=40563ms
-
-[00:10.112] [E2E] [browser-smoke-first] START
-[00:42.316] [E2E] [browser-smoke-first] PASS duration=32204ms
+Fast CI: ci-fast/run-events.jsonl
+Docker: reports/run-events.jsonl
+Public: artifacts/reports/run-events.jsonl
 ```
 
-### Completion criteria
+### Подтверждение
 
-| Критерий | Результат |
-| --- | --- |
-| Local/CI используют одинаковые phase names/statuses | PASS |
-| Validator отклоняет unknown/unsafe values | PASS |
-| Fast CI success stream | PASS |
-| Docker E2E success stream | PASS |
-| Controlled failure stream | PASS |
-| Existing package/sanitizer/real-deck semantics сохранены | PASS |
-| Exact package Fast CI | PASS — `30039103625` |
-| Первый `standard/full` | PASS — `30039372012` |
-| Финальный независимый `standard/full` | PASS — `30039708429` |
+```text
+implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
+Fast CI: 30039103625 — PASS
+standard/full: 30039372012 — PASS
+standard/full: 30039708429 — PASS
+PR #134: merged
+core merge SHA: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
+```
 
-### Out of scope
+### Не реализовано в I1
 
-- browser scenario expansion;
-- item-level route/theme/preview progress;
-- visual regression;
-- performance thresholds;
-- migration на external logging stack.
+- browser route/theme/preview item progress;
+- stable failure taxonomy;
+- cancellation/preflight redesign;
+- unique non-release build identity;
+- canonical final summary/history.
 
-Актуальный контракт: [`../../docs/run-event-protocol.md`](../../docs/run-event-protocol.md).
-
-Итоговый отчёт: [`../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+Closeout: [`../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
 
 ## E2E-I2 — Прогресс browser smoke
 
-**Статус:** следующий этап, не начат.
+**Статус:** `COMPLETE`.
 
-**Цель:** устранить длинный silent interval внутри `smoke-browser.mjs` и публиковать полезный item-level timing.
+### Цель
 
-### Deliverables
+Устранить длинный silent interval внутри direct Playwright Library browser smoke и показать точный route/theme/anchor/telemetry step без миграции на `@playwright/test`.
 
-- Печатать browser smoke plan до запуска Chromium:
-  - routes и themes;
-  - native previews;
-  - state checks;
-  - telemetry contour при включении;
-  - ожидаемое количество screenshots.
-- Публиковать START/PASS/FAIL и duration для каждого route/theme capture.
-- Публиковать START/PASS/FAIL и duration для каждого native preview anchor.
-- Показывать progress scenario-card checks, Cards route inspection и telemetry lifecycle.
-- Сохранять page errors, failed requests, console errors и external-request evidence.
-- Расширить browser performance evidence per-item durations и списком самых медленных items.
-- Сохранять direct Playwright API architecture, пока отдельное evidence-backed решение не обоснует миграцию на Playwright Test.
+### Реализовано
 
-### Completion criteria
+- deterministic plan до `chromium.launch()`;
+- stable item IDs и known kinds;
+- единый `BrowserProgress.run()` wrapper;
+- `PLAN`, `START`, `PASS`, `FAIL`, `[current/total]`;
+- monotonic `performance.now()` durations;
+- per-item screenshot contribution;
+- partial failure report;
+- exact active/failed item;
+- deterministic top-5 slowest items;
+- browser report schema v2;
+- screenshot performance schema v2;
+- schema-v1 `message/info` integration с `phaseId=browser-smoke-first`;
+- Node → Python `execFile` adapter без shell interpolation;
+- fail-closed 18-screenshot parity;
+- focused Node/Python tests;
+- один targeted real-Anki proof.
 
-- Ни одна browser smoke операция, которая обычно длится больше нескольких секунд, не остаётся silent.
-- Controlled browser failure указывает exact route, theme, anchor или telemetry step.
-- Screenshot count и browser plan совпадают fail closed.
-- Existing light/dark, native-preview и external-network assertions проходят.
-
-### Out of scope
-
-- новое route coverage;
-- pixel/perceptual baseline comparison;
-- automatic browser retries.
-
-## E2E-I3 — Стабильная диагностика failures
-
-**Статус:** запланирован после `E2E-I2`.
-
-**Цель:** заменить generic exit-status reconstruction стабильной machine-readable taxonomy и кратким human summary.
-
-### Deliverables
-
-- Ввести reviewed registry стабильных string failure codes, например:
-  - `ASR-E2E-PREFLIGHT-CONFIG`;
-  - `ASR-E2E-COMPOSE-INVALID`;
-  - `ASR-E2E-PACKAGE-HANDOFF`;
-  - `ASR-E2E-REAL-DECK-CONTRACT`;
-  - `ASR-E2E-ANKI-START`;
-  - `ASR-E2E-READY-TIMEOUT`;
-  - `ASR-E2E-API-SMOKE`;
-  - `ASR-E2E-BROWSER-SMOKE`;
-  - `ASR-E2E-RESTART`;
-  - `ASR-E2E-ARTIFACT-SANITIZE`;
-  - `ASR-E2E-CLEANUP`;
-  - `ASR-E2E-CANCELLED`;
-  - соответствующие Fast CI categories, где это полезно.
-- Оставить process exit codes грубыми и документированными; аналитическим источником истины сделать string code.
-- Фиксировать первый functional failure как primary.
-- Записывать cleanup/sanitizer/uploader/summary failures как secondary, не перезаписывая root cause.
-- На каждый failure формировать:
-  - `reports/failure-summary.json`;
-  - `reports/failure-summary.md`;
-  - короткую console/GitHub annotation.
-- Включать phase, elapsed time, last successful phase, safe message, exception type, cleanup status и relative evidence paths.
-- Full stack trace оставлять только в detailed diagnostics.
-
-### Completion criteria
-
-- Один controlled failure получает одинаковый stable code локально и в GitHub Actions.
-- Secondary cleanup failure не заменяет primary browser/API/runtime failure.
-- Failure summaries проходят redaction/public-artifact boundary.
-- Тесты блокируют случайное переименование или повторное использование published codes.
-
-### Out of scope
-
-- automatic rerun policy;
-- flake classification/quarantine;
-- автоматическое создание Issues.
-
-## E2E-I4 — Preflight и cancellation
-
-**Статус:** запланирован после `E2E-I3`.
-
-**Цель:** отклонять invalid runs до дорогой Docker-работы и чисто завершать cancelled runs, не маскируя cancellation обычным failure.
-
-### Deliverables
-
-- Добавить один host-side preflight для local wrappers и cloud workflows до Docker pull/build/run.
-- Проверять минимум:
-  - mode, scope, workers и restart policy;
-  - package-source combinations;
-  - required files и writable artifact directory;
-  - staged package metadata и SHA-256;
-  - real-deck manifest, packages, sizes и checksums;
-  - environment image lock и exact digest inputs;
-  - safe relative paths и mount sources;
-  - resolved `docker compose config --quiet` contract.
-- Писать bounded `preflight-report.json`.
-- Выполнять static validation до GHCR login/image pull, где это возможно.
-- Аудировать `if: always()` и оставлять только короткую emergency finalization.
-- Явно обрабатывать `SIGINT`, `SIGTERM`, Ctrl-C и PowerShell interruption.
-- Маркировать cancellation как `cancelled` + `ASR-E2E-CANCELLED`.
-- Делать cleanup idempotent и bounded:
-  - остановить Anki;
-  - остановить telemetry fake/resource sampler;
-  - убрать Compose resources;
-  - восстановить ownership, когда возможно;
-  - сохранить исходный cancellation/result.
-
-### Completion criteria
-
-- Invalid configuration завершается до запуска container.
-- Cancellation test не оставляет E2E containers/background helpers.
-- Cancellation создаёт partial valid summary без ненужной тяжёлой artifact-работы.
-- Original result восстанавливается после cleanup ровно один раз.
-
-### Out of scope
-
-- force-cancel через GitHub REST API;
-- self-hosted runner lifecycle;
-- broad Docker redesign.
-
-## E2E-I5 — Идентичность non-release build
-
-**Статус:** запланирован после `E2E-I4`.
-
-**Цель:** дать каждому успешному non-release Fast CI package уникальную traceable identity без изменения canonical release SemVer.
-
-### Модель
+### Фактический plan
 
 ```text
-canonicalVersion = release/product version из version.py
-buildIdentity     = exact non-release CI execution identity
+items: 23
+screenshots: 18
+browser-launch: 1
+dashboard-setup: 1
+route-capture: 10
+telemetry: 4
+native-preview: 3
+scenario-cards: 1
+cards-route: 2
+diagnostics: 1
 ```
 
-Display version может использовать SemVer pre-release/build metadata, например:
+Stable groups:
 
 ```text
-1.2.0-ci.842+run.30013925137.attempt.1.pr.133.branch.test-real-deck.sha.bd0355c3
+browser.launch
+dashboard.setup
+route.<route>.<theme>
+telemetry.<step>
+preview.<anchor>
+scenario.cards
+cards-route.<theme>
+diagnostics.final
 ```
 
-Числа выше — только пример.
-
-### Deliverables
-
-- Генерировать machine build ID вида `fast-<run-id>-a<attempt>`.
-- Безопасно разрешать:
-  - canonical version;
-  - event type;
-  - branch name;
-  - Fast CI run ID/number;
-  - run attempt;
-  - PR number, когда он однозначен;
-  - exact commit SHA.
-- Для PR events использовать номер из event payload.
-- Для branch/manual events записывать PR только при одном безопасном match; иначе `null`/`ambiguous`.
-- Добавить generated build info в package, например `build_info.json`.
-- Расширить `package-metadata.json` новой schema version.
-- Экспортировать bounded runtime build info, чтобы E2E доказал:
+### Coverage сохранён
 
 ```text
-package metadata identity
-= packaged build_info identity
-= running add-on identity
+5 routes × 2 themes = 10 screenshots
+3 native preview anchors × 2 themes = 6 screenshots
+Cards state light/dark = 2 screenshots
+Итого = 18
 ```
 
-- Сохранить release artifacts чистыми:
-  - `channel=release`;
-  - canonical version без изменения;
-  - без обязательной branch/PR/run-specific display version.
-- Документировать, что разные attempts намеренно дают разные package bytes.
+Сохраняются:
 
-### Completion criteria
+- `networkidle` route navigation;
+- structural/hash assertions;
+- theme bootstrap;
+- native render/Shadow DOM/script/AV checks;
+- Cards overflow checks;
+- page/request/external/console diagnostics;
+- token redaction;
+- direct `playwright` import.
 
-- Два Fast CI attempts одного commit имеют разные build identities и hashes.
-- E2E отклоняет mismatch metadata/package/runtime identity.
-- Release preparation/package identity не меняются.
-- Branch slugs/metadata bounded, deterministic и safe.
+### Run-event integration
+
+Global schema v1 не менялась:
+
+```text
+phaseId=browser-smoke-first
+eventKind=message
+status=info
+current/total=item position/plan count
+failureCode=null
+```
+
+Dynamic browser phase IDs не добавлены.
+
+### Structured evidence
+
+```text
+reports/browser-smoke-first.json    schema v2
+reports/screenshot-performance.json schema v2
+reports/run-events.jsonl             schema v1
+```
+
+Browser report содержит:
+
+```text
+plan
+progress
+items
+slowestItems
+```
+
+и сохраняет прежние diagnostics/proof fields.
+
+### Подтверждение
+
+```text
+implementation SHA: e25bd0b24e32ce4717ed2dbda138d802f707f6d5
+Fast CI: 30048028664 — PASS
+standard/cards: 30049216529 — PASS
+artifact ID: 8580366654
+artifact digest: sha256:04d3945e594c01cf292fb1f7a2a56e4734ccc37e27bd094cd27f9d5cb92127a7
+browser items: 23/23 PASS
+screenshots: 18/18
+page/request/external/console errors: 0
+```
+
+### Что намеренно не запускалось
+
+- `standard/full`;
+- restart;
+- `perf100`;
+- warm repeat;
+- worker comparison;
+- intentionally failing cloud run;
+- второй successful targeted run.
+
+Targeted `standard/cards` был достаточен: изменения затрагивали browser harness/report evidence, но не общий restart lifecycle.
+
+### Не реализовано в I2
+
+- stable global failure codes;
+- общий `failure-summary.json`;
+- cancellation/preflight redesign;
+- unique build identity;
+- canonical summary/history;
+- retries;
+- visual regression;
+- performance gates.
+
+Closeout: [`../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+
+## E2E-I3 — Stable failure diagnostics
+
+**Статус:** следующий, не начат.
+
+### Цель
+
+Сделать первичный функциональный failure однозначным между Fast CI, Docker orchestration, browser smoke, public artifact и GitHub summary.
+
+### В scope
+
+- bounded stable `failureCode` taxonomy;
+- primary failure vs secondary cleanup/upload failures;
+- один canonical `failure-summary.json`;
+- exact phase/item identity;
+- safe error category/summary;
+- links/paths на существующие raw diagnostics;
+- controlled tests для разных failure classes;
+- backward-compatible integration с schema-v1 events или явная schema migration.
+
+### Требования
+
+Failure summary должен различать минимум:
+
+```text
+validation
+package_identity
+environment_identity
+anki_startup
+readiness
+api_smoke
+browser_item
+telemetry
+restart
+artifact_manifest
+sanitization
+cleanup
+cancellation
+```
+
+Точная taxonomy определяется после аудита текущих failure paths. Не использовать arbitrary exception text как stable code.
 
 ### Out of scope
 
-- automatic canonical version bump;
-- изменение AnkiWeb release semantics;
-- замена exact package SHA-256 строкой версии.
-
-## E2E-I6 — Финальный summary и история производительности
-
-**Статус:** запланирован последним этапом контура.
-
-**Цель:** формировать один authoritative result summary и сохранять compact metrics для будущего trend analysis.
-
-### Deliverables
-
-- Заменить fragmented end-of-run summaries одним canonical aggregator, который читает доступные partial reports.
-- Генерировать:
-  - `run-summary.json`;
-  - `run-summary.md`;
-  - один compact `GITHUB_STEP_SUMMARY` block.
-- Включать:
-  - SUCCESS / FAILURE / CANCELLED;
-  - canonical version/build identity;
-  - branch, PR и SHA;
-  - package source и package SHA-256;
-  - mode, scope, workers, restart;
-  - completed checks;
-  - primary/secondary failure codes;
-  - last successful phase;
-  - total duration;
-  - slowest phases/browser items;
-  - peak CPU/memory;
-  - screenshot count;
-  - artifact/cleanup status.
-- Нормализовать Fast CI timing, E2E phase/browser timing, image preparation, resource telemetry и upload timing в `metrics/run-performance.json`.
-- Хранить dimensions:
-  - workflow;
-  - mode/scope;
-  - workers;
-  - package source;
-  - image digest/cache state;
-  - Anki version;
-  - build ID;
-  - commit, branch и PR.
-- Публиковать compact metrics artifact с более долгим retention, если policy разрешит.
-- Определить guidance для p50/p95 и first-run pass rate.
+- cancellation mechanics (`E2E-I4`);
+- build identity (`E2E-I5`);
+- historical performance dashboard (`E2E-I6`);
+- retries/quarantine.
 
 ### Completion criteria
 
-- Success, controlled failure и cancellation создают valid canonical summary.
-- Значения пересчитываются из source evidence, а не доверяют unchecked env strings.
-- Timing/resource metrics остаются informational.
-- Future analyzer сравнивает compatible runs без parsing console text.
+- first root cause не теряется за final wrapper exception;
+- primary и secondary failures различимы;
+- public summary не содержит secrets/private paths;
+- run-events/artifact remain valid;
+- controlled failure evidence покрывает taxonomy;
+- один risk-appropriate cloud proof после concrete implementation.
+
+## E2E-I4 — Cancellation и preflight
+
+**Статус:** запланирован.
+
+### Цель
+
+Сделать cancel/preflight отдельным однозначным lifecycle, не смешанным с функциональным failure.
+
+### В scope
+
+- explicit preflight result;
+- cancel propagation между workflow, PowerShell, Compose и container;
+- cleanup after cancellation;
+- terminal `run/cancel` consistency;
+- artifact policy для cancelled runs;
+- concurrency cancellation behavior.
 
 ### Out of scope
 
-- performance blocking thresholds;
-- внешний CI metrics dashboard/service;
-- scheduled trend analyzer;
-- automatic optimization по одному run.
+- changing product behavior;
+- automatic retries;
+- build identity;
+- performance history.
 
-## Verification policy этого roadmap
+## E2E-I5 — Non-release build identity
 
-После каждого небольшого commit не запускается полный Docker matrix. Для каждого этапа:
+**Статус:** запланирован.
 
-1. добавить focused unit/contract tests;
-2. выполнить relevant local non-Docker checks;
-3. использовать controlled negative case, если этап касается failure/cancellation;
-4. выполнить targeted real-Anki E2E затронутого contour;
-5. выполнить один final `standard/full`, если меняется end-to-end lifecycle, package identity или canonical summary boundary;
-6. не повторять успешную неизменённую package/harness pair.
+### Цель
 
-Docs-only commits после уже успешных gates не требуют нового Fast CI/Docker без отдельной причины.
+Назначить однозначную идентичность exact non-release build, независимо от workflow display names и человеческих labels.
 
-Весь roadmap завершён только после реализации, документирования и owner acceptance всех шести этапов. Это не активирует автоматически CI 7–12, visual regression или release publication.
+### В scope
 
-## Внешние источники, использованные при проектировании
+- build identity schema;
+- package tested SHA;
+- package artifact ID/digest;
+- inner package SHA-256;
+- harness SHA;
+- workflow source SHA;
+- GHCR environment digest;
+- source/reuse mode;
+- canonical identity in summaries/artifacts.
 
-- GitHub Actions workflow commands и job summaries: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
-- GitHub Actions cancellation behavior: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-cancellation
-- Docker Compose predefined output variables: https://docs.docker.com/compose/how-tos/environment-variables/envvars/
-- Docker Compose CLI/config: https://docs.docker.com/reference/cli/docker/compose/ и https://docs.docker.com/reference/cli/docker/compose/config/
-- Playwright steps/reporters как справочный материал, а не обязательная миграция: https://playwright.dev/docs/api/class-test и https://playwright.dev/docs/test-reporters
-- Semantic Versioning 2.0.0 pre-release/build metadata: https://semver.org/
+### Инварианты
+
+- package и harness identities остаются независимыми;
+- docs commit не притворяется package identity;
+- artifact transport digest не заменяет inner package hash;
+- release identity остаётся отдельным contract.
+
+## E2E-I6 — Canonical final summary и history
+
+**Статус:** запланирован.
+
+### Цель
+
+Свести compatible evidence в один canonical final summary и определить bounded history для измерений.
+
+### В scope
+
+- canonical run summary;
+- compatible-run comparison rules;
+- phase/item performance aggregation;
+- p50/p95 только для сопоставимых contours;
+- first-run pass rate;
+- artifact footprint;
+- retention/history format;
+- observational regression reporting.
+
+### Не входит автоматически
+
+- blocking performance thresholds;
+- runner upgrade;
+- cache/retry/split optimization;
+- external telemetry service.
+
+Любая оптимизация активируется отдельно через CI 7–10 после измеренного bottleneck.
+
+## Verification policy для всех E2E-I этапов
+
+1. Классифицировать diff: package-impacting, harness-only или docs-only.
+2. Запустить focused tests и syntax checks.
+3. Controlled failure проверять локально/focused, если cloud failure не нужен.
+4. Новый Fast CI запускать только по package/reuse boundary.
+5. Выполнить ровно один risk-required real-Anki proof после последнего concrete fix.
+6. После failure сначала изучить artifact/log/root cause.
+7. Не повторять successful unchanged package/harness pair.
+8. Docs-only closeout commits после successful gates не требуют нового Docker/Fast CI.
+
+## Security boundary
+
+Structured progress/failure/build evidence может содержать только:
+
+- stable IDs;
+- bounded enums;
+- durations/counts;
+- safe relative paths;
+- exact public SHA/digest identities;
+- sanitized summary.
+
+Запрещены:
+
+- token/credentials;
+- token-bearing URL;
+- authorization headers;
+- private absolute paths;
+- card HTML/user content;
+- arbitrary environment dump;
+- raw stack в live progress.
+
+## Следующий допустимый шаг
+
+```text
+E2E-I3 — Stable failure diagnostics
+```
+
+Он должен быть отдельной bounded веткой/задачей. Завершение `E2E-I2` не разрешает автоматически начинать `E2E-I4–I6` или CI optimization stages.
