@@ -157,32 +157,49 @@ export class BrowserProgress {
     const started = this.now();
     this.activeItemId = itemId;
     this.log(`[BROWSER] [${current}/${total}] START ${item.kind} item=${item.id}${formatItemContext(item)}`);
-    await this.#emit(current, total, `item=start id=${item.id} kind=${item.kind}`);
-    await this.#persist();
 
     try {
+      await this.#emit(current, total, `item=start id=${item.id} kind=${item.kind}`);
+      await this.#persist();
       const value = await operation();
       const durationMs = nonNegativeDuration(this.now() - started);
       const actualScreenshots = this.screenshots.length - screenshotStart;
       if (actualScreenshots !== item.expectedScreenshots) {
         throw new Error(`Screenshot contribution mismatch for ${item.id}: expected ${item.expectedScreenshots}, actual ${actualScreenshots}`);
       }
+      await this.#emit(current, total, `item=pass id=${item.id} kind=${item.kind} durationMs=${durationMs} screenshots=${actualScreenshots}`);
       this.#record(item, "pass", durationMs, screenshotStart, actualScreenshots, null);
       this.log(`[BROWSER] [${current}/${total}] PASS ${item.kind} item=${item.id} duration=${durationMs}ms screenshots=${actualScreenshots}`);
-      await this.#emit(current, total, `item=pass id=${item.id} kind=${item.kind} durationMs=${durationMs} screenshots=${actualScreenshots}`);
       await this.#persist();
       return value;
     } catch (error) {
       const durationMs = nonNegativeDuration(this.now() - started);
       const actualScreenshots = this.screenshots.length - screenshotStart;
       this.failedItemId = item.id;
-      this.#record(item, "fail", durationMs, screenshotStart, actualScreenshots, {
-        errorType: safeErrorType(error),
-        safeErrorSummary: safeErrorSummary(error),
-      });
+      if (!this.completedIds.has(item.id)) {
+        this.#record(item, "fail", durationMs, screenshotStart, actualScreenshots, {
+          errorType: safeErrorType(error),
+          safeErrorSummary: safeErrorSummary(error),
+        });
+      } else {
+        const record = this.items.find((candidate) => candidate.id === item.id);
+        if (record) {
+          record.status = "fail";
+          record.errorType = safeErrorType(error);
+          record.safeErrorSummary = safeErrorSummary(error);
+        }
+      }
       this.log(`[BROWSER] [${current}/${total}] FAIL ${item.kind} item=${item.id} duration=${durationMs}ms screenshots=${actualScreenshots} errorType=${safeErrorType(error)}`);
-      await this.#emit(current, total, `item=fail id=${item.id} kind=${item.kind} durationMs=${durationMs} errorType=${safeErrorType(error)}`);
-      await this.#persist();
+      try {
+        await this.#emit(current, total, `item=fail id=${item.id} kind=${item.kind} durationMs=${durationMs} errorType=${safeErrorType(error)}`);
+      } catch (secondary) {
+        this.log(`[BROWSER] [${current}/${total}] INFO ${item.kind} item=${item.id} secondary=run-event-producer`);
+      }
+      try {
+        await this.#persist();
+      } catch (secondary) {
+        this.log(`[BROWSER] [${current}/${total}] INFO ${item.kind} item=${item.id} secondary=progress-persist`);
+      }
       throw error;
     } finally {
       this.activeItemId = null;
