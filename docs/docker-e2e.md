@@ -1,392 +1,351 @@
 # Docker E2E
 
-Stage 7 expands `stats` to 20 page screenshots (five legacy + five FSRS routes,
-light/dark) and full to 40. New FSRS states and 125% proofs remain risk-based.
+**Снимок документации:** 2026-07-23
 
-Снимок документации: 2026-07-16.
+Подробная техническая инструкция находится в
+[`docker/anki-e2e/README.md`](../docker/anki-e2e/README.md). Эта страница
+фиксирует место real-Anki Docker E2E в общем verification process и решения,
+которые нельзя случайно откатить.
 
-Подробный технический README уже есть в `docker/anki-e2e/README.md`. Эта
-страница фиксирует, как Docker E2E вписывается в общий проект и какие решения
-нельзя случайно откатить.
-
-Для диагностики падений см. `docs/troubleshooting.md`.
-
-## Cloud GHCR-only и локальный build fallback
-
-Cloud workflow `.github/workflows/ci-e2e.yml` всегда использует exact digest из
-`environment-image-lock.json` через base Compose + `docker-compose.ghcr.yml`.
-Cloud run не строит environment image, не использует Buildx или `type=gha` и не
-может переключиться на source-build после registry/package failure. Manual
-workflow dispatch требует `fast_ci_run_id`; reusable release gate требует exact
-release artifact name и SHA-256.
-
-Локальные команды ниже сохраняют прежний Dockerfile/Compose build fallback,
-`BuildOnly` и `source-build`. Это development/diagnostic interface, а не второй
-cloud production contour. Полное решение:
-`docs/ci-optimization-stage-6b-ghcr-cloud-cutover.md`.
+Для диагностики падений см. [`troubleshooting.md`](troubleshooting.md), а правила
+запусков — [`verification-run-policy.md`](verification-run-policy.md).
 
 ## Назначение
 
-Docker E2E запускает add-on внутри реального Anki Desktop в изолированном Linux
-профиле. Это тяжелая проверка для случаев, когда обычных pytest/Vitest
-недостаточно:
+Docker E2E запускает exact add-on package внутри реального Anki Desktop в
+изолированном Linux-профиле. Он нужен для рисков, которые не закрываются только
+pytest/Vitest:
 
-- startup hooks Anki;
-- dashboard server readiness;
-- card preview rendering;
-- Shadow DOM / Anki-like preview modes;
-- media loading;
-- package install layout;
-- взаимодействие с реальным Anki profile manager.
+- startup hooks и profile lifecycle Anki;
+- dashboard readiness, token auth и loopback server;
+- public package installation layout;
+- native card rendering и Shadow DOM;
+- real audio/GIF/image media routes;
+- Cards, Triage, exact action/recheck и Inspection Profiles;
+- restart persistence;
+- browser console/page/request/network behavior;
+- redacted structured evidence.
+
+Это integration gate, а не обычный цикл разработки.
+
+## Единственный источник collection content
+
+Disposable collection строится только из committed рабочих колод:
+
+```text
+docker/anki-e2e/fixtures/real-decks/words-n1.apkg
+docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
+docker/anki-e2e/fixtures/real-decks/java-core.apkg
+```
+
+Контракт пакетов и сценарных якорей:
+
+```text
+docker/anki-e2e/fixtures/real-decks/manifest.json
+```
+
+В каждом mode обязательны:
+
+1. manifest schema validation;
+2. размер и SHA-256 каждого package;
+3. импорт всех трёх packages в manifest order;
+4. inventory notes/cards/note types/decks/media;
+5. уникальное разрешение anchors;
+6. zero-synthetic и zero-cloning proof.
+
+Запрещены:
+
+- generated synthetic notes/cards/note types/templates/media;
+- старый `asr-e2e-render-fixtures.apkg`;
+- external/local-only APKG path;
+- fallback после missing/checksum/import/anchor failure;
+- клонирование content для `perf100`;
+- изменение импортированных fields/templates/media при restart.
+
+Пустая системная Anki metadata без cards не считается test content. Harness не
+создаёт в ней notes/cards/templates/media.
+
+## Import и scenarios
+
+Harness создаёт empty disposable collection и импортирует packages через
+публичный Anki API:
+
+```text
+Collection.import_anki_package(ImportAnkiPackageRequest)
+```
+
+Concrete GUIDs, field names, structure fingerprints, media requirements и
+Inspection Profile mappings находятся только в manifest. Generic scripts
+работают с runtime inventory и resolved anchors.
+
+После импорта разрешены только bounded mutations существующих cards:
+
+- scheduling state;
+- due/interval/factor/reps/lapses;
+- revlog rows;
+- suspended state;
+- buried state.
+
+Количество notes/cards после import не должно меняться.
 
 ## Основные команды
 
-Полный прогон с очисткой Docker volume:
+PowerShell:
 
 ```powershell
-.\scripts\run_full_check.ps1 -CleanDocker
+./scripts/run_anki_e2e_docker.ps1
+./scripts/run_full_check.ps1 -DockerOnly
+./scripts/run_full_check.ps1 -DockerOnly -CleanDocker
 ```
 
-Только Docker E2E:
+WSL/Arch с PowerShell Core:
+
+```bash
+cd ~/projects/anki-study-report
+pwsh -NoProfile -File ./scripts/run_anki_e2e_docker.ps1
+```
+
+Только image build:
 
 ```powershell
-.\scripts\run_full_check.ps1 -DockerOnly
+./scripts/run_anki_e2e_docker.ps1 -BuildOnly
 ```
 
-Прямой runner:
+Уже подготовленный image:
 
 ```powershell
-.\scripts\run_anki_e2e_docker.ps1
+./scripts/run_anki_e2e_docker.ps1 -NoBuild
 ```
 
-## Источник проверяемого add-on package
+Входного параметра для произвольного `.apkg` или media directory нет.
 
-Docker E2E поддерживает три взаимоисключающих package-source режима.
+## Mode и scope
+
+Canonical modes:
+
+```text
+standard
+perf100
+```
+
+`standard` — acceptance mode.
+
+`perf100` разрешён только для отдельной performance-задачи. Он выбирает ровно
+100 distinct existing imported card IDs и применяет study-state без создания
+или клонирования notes/cards.
+
+Legacy cloud input `strict-apkg` временно принимается как compatibility alias и
+немедленно нормализуется в `standard`. Он не создаёт отдельный fixture source,
+не меняет import contract и не допускает fallback.
+
+Scopes:
+
+```text
+full
+global
+stats
+decks
+activity
+cards
+settings
+notifications
+```
+
+Scope меняет продуктовые assertions, но никогда не отключает три package imports,
+checksums, inventory, anchors и zero-synthetic proof.
+
+## Package source
+
+Docker E2E поддерживает три взаимоисключающих source add-on package:
 
 ### `source-build`
 
-Это только local/default fallback для `run_full_check.ps1` и
-`run_anki_e2e_docker.ps1`. Контейнер выполняет offline frontend dependency
-install, frontend build, сборку `.ankiaddon` и package validation. Cloud
-workflow отклоняет этот режим до GHCR login/pull.
-
-### `release-artifact`
-
-Reusable release caller передаёт current-run exact release artifact и
-обязательный SHA-256. Workflow проверяет hash, stage-ит package и выполняет
-validation/extraction в digest-pinned GHCR environment. Release flow остаётся
-независимым от Fast CI.
+Только local/default development contour. Контейнер выполняет offline frontend
+install, production build и package validation.
 
 ### `fast-ci-artifact`
 
-Manual cloud E2E требует `fast_ci_run_id`, который выбирает successful
-same-repository `Fast CI` run. Reusable callers также могут явно использовать
-этот source. Workflow разрешает diagnostics и package по exact artifact IDs, проверяет
-transport digests, identities, metadata, внутренний SHA-256 и размер, затем
-checkout-ит exact `testedCommitSha` и stage-ит package через
-`ANKI_E2E_PREBUILT_ADDON_PATH`. Frontend install/build и повторная упаковка в
-контейнере не выполняются.
+Cloud consumer получает exact successful Fast CI run, проверяет repository,
+tested SHA, artifact identity и внутренний SHA-256, затем устанавливает именно
+этот archive. Fallback на source build запрещён.
 
-`release_artifact_name` и `fast_ci_run_id` нельзя задавать одновременно.
-Неполный, invalid или неоднозначный explicit input завершает workflow ошибкой и
-не переключается автоматически на `source-build`.
+### `release-artifact`
 
-Stage 6B удалил BuildKit setup, image build/load и GHA cache из cloud workflow.
-Real-Anki lifecycle, API/browser/screenshots, package identity и redacted artifact
-export/upload сохранены. Historical BuildKit evidence остаётся в старых отчётах;
-текущий cloud artifact всегда сообщает `imageSource=ghcr`,
-`cacheState=ghcr-digest` и `dockerBuildDurationMs=0`.
+Release gate получает exact current release archive и обязательный SHA-256.
+Release flow не подменяется Fast CI artifact.
 
-## Ключевые пути внутри контейнера
+Cloud image берётся по exact GHCR digest. Mutable `latest`, fallback build и
+неоднозначный artifact запрещены.
+
+## Ключевые пути контейнера
 
 ```text
-/workspace                                      bind-mounted source checkout
+/workspace                                      read-only source checkout
 /e2e/workspace-build                            writable copied build tree
-/e2e/anki-data                                  Anki base profile directory
-/e2e/anki-data/prefs21.db                       base profile metadata DB
-/e2e/anki-data/E2E                              E2E profile folder
+/e2e/anki-data                                  disposable Anki base
+/e2e/anki-data/prefs21.db                       profile metadata
+/e2e/anki-data/E2E                              disposable profile
 /e2e/anki-data/addons21/anki_study_report_e2e   installed add-on
-/e2e/artifacts                                  E2E artifacts
+/e2e/artifacts                                  runtime evidence
 ```
 
-Важно: add-on устанавливается на base-level path:
+Add-on устанавливается на base-level path:
 
 ```text
 /e2e/anki-data/addons21/anki_study_report_e2e
 ```
 
-Не переносить его в:
+Не переносить его в profile-level `E2E/addons21/`.
+
+## Live progress и failure diagnostics
+
+Долгие package стадии выводят сообщения с префиксом:
 
 ```text
-/e2e/anki-data/E2E/addons21/...
+[real-decks]
 ```
 
-Для Anki 26.05 также важен base-level `prefs21.db` с `_global` и `E2E` rows в
-таблице `profiles`.
-
-## E2E env vars add-on
-
-Add-on включает E2E shortcuts только при:
+Пример ожидаемой последовательности:
 
 ```text
-ANKI_STUDY_REPORT_E2E=1
+validating manifest
+package 1/3 words: checksum PASS
+importing package 1/3: words
+imported words: ...
+resolving anchors
+applying scenarios
+collection ready
+browser smoke PASS
 ```
 
-Важные переменные:
+При ошибке создаётся `reports/real-deck-failure.json` с:
+
+- stage;
+- package/anchor/subject ID;
+- error type и message;
+- last completed step;
+- traceback.
+
+После ошибки нет fallback collection.
+
+## Обязательные evidence reports
+
+Успешный artifact manifest обязан индексировать PASS:
 
 ```text
-ANKI_STUDY_REPORT_E2E
-ANKI_STUDY_REPORT_E2E_ARTIFACTS
-ANKI_STUDY_REPORT_E2E_ARTIFACTS_DIR
-ANKI_STUDY_REPORT_E2E_READY_FILE
+reports/real-deck-manifest-report.json
+reports/real-deck-import-report.json
+reports/collection-inventory.json
+reports/anchor-resolution-report.json
+reports/scenario-application-report.json
 ```
 
-## Readiness artifacts
+Дополнительно обязательны API/browser/timing/package reports, перечисленные в
+техническом README.
 
-Generated outputs разделены по назначению:
+`collection-inventory.json` должен содержать:
 
 ```text
-e2e-artifacts/
-├─ artifact-manifest.json
-├─ runtime/
-│  ├─ dashboard-ready.json
-│  └─ addon-e2e-events.jsonl
-├─ diagnostics/                startup trees, logs and tails
-├─ reports/                    API/browser/APKG JSON summaries
-├─ html/                       redacted DOM dumps
-├─ package/                    exact .ankiaddon, проверенный real-Anki E2E
-└─ screenshots/
-   ├─ navigation/              avatar menu, light/dark
-   ├─ pages/                   current non-Cards routes, light/dark
-   └─ cards/
-      ├─ synthetic/            workspace light/dark, expanded and 1024 px
-      └─ apkg/                 canonical workspace at 1024 px
+contentSource = committed-real-apkg-only
+syntheticNotes = 0
+syntheticCards = 0
+syntheticMedia = 0
 ```
 
-Источник файла в `package/` фиксируется полем `packageSource` и может быть
-`source-build`, `release-artifact` или `fast-ci-artifact`. Это package,
-фактически установленный и проверенный real-Anki E2E, а не обязательно archive,
-собранный внутри Docker.
-
-Readiness readers и add-on E2E bootstrap используют `runtime/`. На
-timeout/failure в первую очередь полезны:
+`scenario-application-report.json` должен показывать:
 
 ```text
-e2e-artifacts/runtime/dashboard-ready.json
-e2e-artifacts/runtime/addon-e2e-events.jsonl
-e2e-artifacts/diagnostics/anki-data-tree.txt
-e2e-artifacts/diagnostics/addons-tree.txt
-e2e-artifacts/diagnostics/anki-startup-tail.txt
-e2e-artifacts/reports/browser-smoke-first.json
-e2e-artifacts/html/failures/
-e2e-artifacts/screenshots/failures/
+notesCreated = 0
+cardsCreated = 0
+notesOrCardsCloned = 0
 ```
 
-Эти файлы помогают диагностировать, дошел ли Anki до import, hook, report build,
-server start, publish и readiness write.
+## Browser evidence
 
-## Startup markers
-
-`addon-e2e-events.jsonl` должен показывать цепочку вроде:
+Canonical page proof:
 
 ```text
-import_start
-addon_folder_present
-e2e_env_detected
-hook_registered
-import_done
-hook_fired
-bootstrap_scheduled
-collection_available
-report_build_start
-report_build_done
-server_start_start
-server_start_done
-report_publish_start
-report_publish_done
-readiness_write_start
-readiness_write_done
+screenshots/pages/<route>/<light|dark>.png
 ```
 
-Если есть `addon_folder_present`, но нет `import_start`, Anki не импортировал
-add-on. Если есть import/hook, но нет server/readiness, смотреть report build
-или dashboard server. Если нет профиля, сначала проверять `prefs21.db` и layout.
-
-## Browser smoke coverage
-
-Statistics screenshot contract:
-
-- pages light/dark: `stats-overview`, `stats-quality`, `stats-load`,
-  `stats-progress`, `stats-decks`;
-- states: overview `sparse|comparison`, quality `low-confidence`, load
-  `future-due`, progress `current-state`, decks
-  `default-selection|custom-selection`;
-- zoom 125%: overview, quality, load, decks.
-
-Browser assertions дополнительно проверяют grouped controls, visible panel
-borders, no mixed-unit grouped chart, zero-origin bars, no chart/horizontal
-clipping, no dock overlap, default deck comparison, Russian user labels,
-console/page/request errors и token absence. После cloud run screenshots нужно
-просмотреть содержательно; одного manifest/count недостаточно.
-
-Cards workspace smoke проверяет одну native table queue и persistent Inspector:
-
-- automatic triage v2 запрашивается с limit 100; Perf100 доказывает 100 строк;
-- row activation работает мышью и клавиатурой, active row сохраняется;
-- обычный workspace содержит ровно один Shadow DOM preview host;
-- expanded modal находится вне inert/`aria-hidden` application shell,
-  удерживает фокус и переиспользует cached inspect detail;
-- legacy tabs, display modes, risk score и checkbox отсутствуют;
-- exact active card открывается через `open-search-selection`;
-- 1024 px layout не имеет document-level horizontal overflow.
-
-Browser smoke сохраняет workspace light/dark, expanded и 1024 px screenshots
-для synthetic fixture и 1024 px workspace для APKG fixture. Он также сохраняет
-  light/dark пары десяти текущих non-Cards routes (включая пять Settings Hub
-  pages) и открытого avatar menu. Profile smoke отдельно проверяет synthetic
-  identity `E2E`, шесть KPI, activity/recent/decks, сохраняет дату и сортировку,
-  перезагружает страницу и доказывает persistence через `/api/profile`.
-  Browser report отдельно публикует `requestFailures` и `consoleErrors` и
-  завершает smoke ошибкой, если они не пусты; `ERR_ABORTED` при намеренной
-  навигации между screenshots остаётся только в raw `networkEvents`.
-  Activity smoke сохраняет canonical `#/calendar`, проверяет heading/nav
-  «Активность», default 90 days, metric/day selection, inactive detail,
-  five-plus deck expansion, daily/weekly derived feed и explicit load-more.
-  Decks smoke проверяет normalized payload, filtered exclusion, collapsed
-  hierarchy, disclosure `aria-expanded`, nested search, status/sibling sort,
-  direct/subtree detail, descendant issues и обе typed Anki Browser actions.
-  `screenshots/pages/decks/light.png` и `dark.png` входят в manifest как обычная
-  light/dark page pair.
-
-  Stage 5.5 дополнительно проверяет persistent theme toggle на product/settings
-  routes, light/dark persistence после reload/navigation, отсутствие duplicate
-  dock и overlap с profile menu. State screenshots фиксируют expanded Activity
-  history и Decks root/parent/leaf. Отдельные zoom screenshots используют
-  изолированный Playwright context 1152×800 CSS px при deviceScaleFactor 1.25.
-
-  Stage 6 добавляет пять Statistics routes и light/dark screenshots
-  `stats-overview`, `stats-quality`, `stats-load`, `stats-progress`,
-  `stats-decks`. Smoke проверяет primary order/active state, direct reload,
-  90d default, finite/all-time/single-deck/direct controls, успешный typed
-  statistics query, native Stats callback и отсутствие token в DOM. Zoom 125%
-  дополнительно покрывает Overview и deck comparison.
-
-`artifact-manifest.json` индексирует только существующие relative paths, status,
-Anki version, timestamp, route/theme/mode/fixture metadata. Canonical add-on log
-— `diagnostics/anki_study_report.log`; alias с дефисами не создаётся. Validator
-отклоняет missing required, absolute, traversal и duplicate paths. Missing
-optional artifacts не индексируются. Token и полный dashboard URL туда не
-записываются; readiness file может содержать token, но manifest хранит только
-его путь. Runtime PID files намеренно не являются required manifest entries.
-
-Tracked APKG fixture находится здесь:
+Real native front/back proof:
 
 ```text
-docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
+screenshots/cards/real-decks/words-preview/<light|dark>.png
+screenshots/cards/real-decks/grammar-preview/<light|dark>.png
+screenshots/cards/real-decks/java-preview/<light|dark>.png
 ```
 
-Strict APKG прогон:
-
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
-```
-
-APKG-derived performance smoke на 100 карточек:
-
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
-```
-
-Этот режим не создает новую APKG fixture. После импорта tracked fixture Docker
-E2E клонирует импортированные notes/cards внутри изолированной коллекции до
-100 problematic cards и проверяет Cards page через тот же native render path.
-Perf100 не включает virtualization; timing values в JSON artifacts нужны для
-диагностики, а не как жесткие release thresholds. Цель проверки - подтвердить
-desktop/laptop dashboard layout и отсутствие clipping/raw HTML/console errors на
-100 APKG-derived карточках.
-
-Если smoke падает на Cards page, сначала проверить активный mode и текущую DOM
-форму. Не менять production component, пока не доказано, что проблема не в
-ожиданиях smoke script.
-
-## Package-source evidence и phases
-
-`ci-e2e-summary.json` сохраняет `packageSource`, `sourceFastCiRunId`,
-`sourceFastCiTestedSha`, `sourcePackageSha256` и `e2eCheckoutSha`. Для
-`fast-ci-artifact` public artifact дополнительно содержит sanitized
-`reports/fast-ci-handoff.json`; raw API JSON, token и локальные absolute paths в
-него не включаются.
-
-В prebuilt modes отсутствуют phases `frontend dependency install`, `frontend
-build` и `add-on package`. Вместо них выполняется и измеряется phase
-`exact prebuilt add-on validation and extraction`. Пропущенная работа не
-представляется как успешная фаза длительностью `0 ms`.
-
-## Ручная Stage 3 cloud-проверка
-
-1. Запустить Fast CI на exact HEAD Stage 3 branch.
-2. Скопировать ID успешного Fast CI run.
-3. Запустить `Full Docker / Anki E2E` на той же branch.
-4. Выбрать `mode=standard`, `scope=settings`, `screenshot_workers=auto`,
-   `resource_telemetry=false`, `verify_restart=false`.
-5. Передать Fast run ID через `fast_ci_run_id`.
-6. До интеграции проверить Fast и E2E artifacts, package identities и screenshots.
-
-Эта последовательность описывает требуемую проверку, но не утверждает, что
-Stage 3 handoff уже получил real-Anki cloud PASS.
-
-## Runtime artifacts не коммитить
-
-`e2e-artifacts/`, screenshots, DOM dumps, logs, local APKG input и token-bearing
-outputs нужны для диагностики, но должны оставаться вне git.
-
-## Scopes, parallel capture и telemetry
-
-`mode` (`standard` / `strict-apkg` / `perf100`) задаёт fixture semantics, а
-независимый `scope` — продуктовую область: `full`, `global`, `stats`, `decks`,
-`activity`, `cards`, `settings`. `global` включает Search UI/query/inspect,
-Browser bridge и reversible Safe Actions с deterministic fixture restore.
-Targeted scope сохраняет startup/readiness/API,
-token, browser-error, redaction и manifest core, но не заменяет final `full`.
-Restart при `auto` выполняется только для `full`.
-
-Manual workflow также принимает `screenshot_workers` (`auto` = 3, max 4),
-`resource_telemetry` и `verify_restart`. Read-only page captures выполняются
-одним Chromium через bounded BrowserContext pool; mutating/Profile/settings/
-Cards/APKG/restart операции остаются serial.
-
-Новые deterministic reports:
+Cards state proof:
 
 ```text
-reports/screenshot-performance.json|md
-reports/e2e-phase-timings.json|md
-reports/resource-samples.jsonl
-reports/resource-summary.json|md
-reports/e2e-performance-summary.json|md
+screenshots/states/cards/real-deck-inbox/<light|dark>.png
 ```
 
-Manifest schema v2 индексирует их и записывает mode/scope/workers. Resource
-files обязательны только при включённом sampler. Полный architecture,
-baseline и формулы описаны в `docs/e2e-performance.md`.
+Browser smoke проверяет:
 
-## GitHub-hosted Ubuntu compatibility
+- `renderSource = anki_native`;
+- непустой front/back HTML;
+- отсутствие raw `[sound:...]` и `[anki:play:...]`;
+- Java `language-java` contour;
+- real audio/GIF/image media;
+- action/recheck, low-success, suspended и buried states;
+- отсутствие console/page/request errors;
+- отсутствие unexpected external requests;
+- отсутствие document-level horizontal overflow на Cards route.
 
-Cloud E2E использует ту же цепочку `run_full_check.ps1` →
-`run_anki_e2e_docker.ps1` → Compose → `run-e2e.sh`. PowerShell wrapper вызывает
-вложенный `.ps1` через текущий PowerShell host, поэтому не зависит от Windows
-`powershell.exe`; executable lookup и paths остаются cross-platform.
+Screenshots после cloud run нужно просмотреть содержательно; одного manifest/count
+недостаточно.
 
-Artifacts mount нормализуется до абсолютного host path. Compose сохраняет
-read-only `/workspace`, writable `/e2e/workspace-build`, named profile volume и
-`shm_size: 2gb`; nested VM не требуется. Xvfb и software Qt/OpenGL работают
-внутри обычного Linux container. Local real-media mount включается только через
-явные локальные env vars и не активируется в cloud workflow.
+## Readiness и startup markers
 
-Root `.dockerignore` исключает Git metadata, caches, node_modules, generated
-dashboard/package/runtime и CI downloads, но сохраняет source и tracked
-owner-authorized APKG fixture. Cloud build требует официальный SHA-256 Anki
-26.05; Perf100 остаётся diagnostic smoke без performance threshold.
+Runtime files:
 
-Public Actions artifact создаётся отдельно в `ci-e2e/`. Raw readiness JSON с
-token остаётся локальным; exporter публикует только redacted readiness и
-проверенные manifest-relative evidence files.
+```text
+runtime/dashboard-ready.json
+runtime/addon-e2e-events.jsonl
+```
+
+Ожидаемая цепочка events включает import, hook, collection availability, report
+build, server start, publish и readiness write. Token может находиться в
+readiness file внутри artifact archive, но не должен попадать в logs, screenshots,
+DOM dumps или artifact manifest.
+
+## Restart
+
+`full` автоматически требует restart. Targeted Cards/Inspection Profiles proof
+задаёт `verify_restart=true`.
+
+Restart только останавливает и повторно запускает Anki. Он не изменяет real note
+types, fields, templates или media. После restart повторяется API smoke и
+проверяется persistence stored profiles/state.
+
+## Security и privacy
+
+- Dashboard слушает только loopback внутри disposable environment.
+- Checkout монтируется read-only; build выполняется в writable copy.
+- Token не логируется и не индексируется.
+- Media traversal и absolute paths отклоняются.
+- Templates не превращаются в произвольный iframe/JavaScript execution surface.
+- Runtime collection/profile/media/logs/screenshots/reports не коммитятся.
+- Artifact manifest принимает только существующие relative unique paths и
+  отклоняет traversal, missing files, duplicates и token-bearing URL.
+
+## Verification sequence
+
+```text
+focused tests
+→ Fast CI exact SHA
+→ один risk-required targeted Docker run
+→ один final standard/full только при matrix/policy escalation
+```
+
+Для полной замены collection foundation обязательны:
+
+1. focused contract tests;
+2. Fast CI exact head;
+3. один `standard/cards` с restart;
+4. один final `standard/full` exact tree.
+
+Успешный exact-tree gate не повторяется. После одинакового второго падения
+слепые reruns прекращаются; сначала анализируется первопричина и evidence.
