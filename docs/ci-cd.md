@@ -1,6 +1,6 @@
 # CI/CD
 
-**Снимок документации:** 2026-07-23.
+**Снимок документации:** 2026-07-24.
 
 Проект использует три независимых cloud-контура:
 
@@ -12,7 +12,10 @@ Gated Release Delivery          exact release artifact + standard/full + publica
 
 Fast CI публикует advisory verification plan, но не запускает тяжёлый E2E автоматически. Порядок запусков определён в [`verification-run-policy.md`](verification-run-policy.md).
 
-Контракт повторного использования package: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).
+Связанные контракты:
+
+- повторное использование package: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
+- единый live lifecycle: [`run-event-protocol.md`](run-event-protocol.md).
 
 ## Fast CI
 
@@ -39,7 +42,8 @@ Fast CI выполняет:
 - `.ankiaddon` build;
 - package validation;
 - verification planner;
-- structured timing/summary.
+- structured timing/summary;
+- schema-validated live run-event stream.
 
 Fast CI не запускает Docker или Anki Desktop.
 
@@ -55,12 +59,14 @@ pnpm 9.15.9
 
 Fast CI использует GitHub-hosted `windows-2025`, PowerShell 7 и read-only contents permission. Checkout выполняется с `persist-credentials: false`. Secrets, OIDC, deployment и self-hosted runner не нужны.
 
+Значения `github.*`, которые используются PowerShell, передаются через `env`, а не встраиваются в inline executable script text.
+
 ### Fast CI artifacts
 
-| Artifact | Condition | Contents | Retention |
+| Artifact | Условие | Содержимое | Retention |
 | --- | --- | --- | --- |
-| diagnostics | `if: always()` | logs, verification plan, summaries, environment, timing | 14 days |
-| exact package | только после полного Fast CI PASS | `anki_study_report.ankiaddon`, `package-metadata.json` | 7 days |
+| diagnostics | `if: always()` | logs, verification plan, summaries, environment, timing, `run-events.jsonl` | 14 дней |
+| exact package | только после полного Fast CI PASS | `anki_study_report.ankiaddon`, `package-metadata.json` | 7 дней |
 
 Package metadata schema v1 фиксирует:
 
@@ -73,6 +79,41 @@ packageSizeBytes
 ```
 
 Artifact transport digest и внутренний package SHA-256 являются разными identities и проверяются отдельно.
+
+Transient writer sidecars:
+
+```text
+run-events.jsonl.lock
+run-events.jsonl.state.json
+```
+
+не включаются в `ci-summary.json.artifactFiles` и не считаются evidence.
+
+### Live run protocol Fast CI
+
+Fast CI создаёт:
+
+```text
+ci-fast/run-events.jsonl
+```
+
+`scripts/ci_fast_timing.py` остаётся каноническим timing API и одновременно публикует:
+
+```text
+run/start
+phase/start
+phase/pass | phase/fail | phase/skip
+run/pass | run/fail | run/cancel
+```
+
+Registry timing и run-events проверяются на равенство при импорте. Финальный stream валидируется до загрузки diagnostics artifact.
+
+Пример console output:
+
+```text
+[00:12.040] [FAST] [frontend-vitest] START
+[00:52.603] [FAST] [frontend-vitest] PASS duration=40563ms
+```
 
 ## Full Docker / Anki E2E
 
@@ -186,6 +227,50 @@ docker/anki-e2e/environment-image-lock.json
 
 Mutable tags, cloud BuildKit/GHA cache, PAT fallback и automatic visibility changes запрещены. Локальная Dockerfile/Compose build path не является cloud fallback.
 
+### Live run protocol Docker E2E
+
+Raw E2E создаёт:
+
+```text
+reports/run-events.jsonl
+```
+
+Public artifact содержит:
+
+```text
+artifacts/reports/run-events.jsonl
+```
+
+`run-e2e.sh` публикует START/terminal status для каждой крупной phase и сохраняет прежний `e2e-telemetry.py` contour.
+
+Пример:
+
+```text
+[00:10.112] [E2E] [browser-smoke-first] START
+[00:42.316] [E2E] [browser-smoke-first] PASS duration=32204ms
+```
+
+Success manifest обязан индексировать `reports/run-events.jsonl`. Public exporter валидирует source stream до копирования и public copy после копирования. Missing/invalid stream при success является hard failure.
+
+### Compose output в CI
+
+В CI wrapper задаёт:
+
+```text
+COMPOSE_ANSI=never
+COMPOSE_PROGRESS=plain
+COMPOSE_MENU=0
+COMPOSE_STATUS_STDOUT=1
+```
+
+и запускает:
+
+```text
+docker compose --ansi never --progress plain run --no-TTY ...
+```
+
+Local interactive output сохраняется, если `CI`/`GITHUB_ACTIONS` не заданы.
+
 ## Public E2E artifact
 
 Raw readiness с token не загружается.
@@ -201,13 +286,14 @@ Raw readiness с token не загружается.
 - проверяет manifest duplicates/traversal/missing files;
 - публикует package и harness SHA отдельно;
 - независимо валидирует reuse evidence;
+- дважды валидирует run-event stream;
 - сохраняет canonical E2E exit code до upload/cleanup и восстанавливает его в конце.
 
 Artifact upload не может превратить functional failure в PASS.
 
 ## Real-deck collection contract
 
-Docker imports only:
+Docker импортирует только:
 
 ```text
 docker/anki-e2e/fixtures/real-decks/words-n1.apkg
@@ -253,7 +339,7 @@ Run сопоставляется с exact package и harness identities, а не
 
 ## Failure policy
 
-Project failure диагностируется по failed step, summary и artifact. Local PASS не отменяет red cloud run.
+Project failure диагностируется по первому failed step, summary и artifact. Финальные `Restore canonical result`/wrapper exceptions только возвращают ранее сохранённый код и не являются автоматически root cause.
 
 Infrastructure failure: runner provisioning/GitHub outage/queued stale/timed out/cancelled по инфраструктурной причине. Rerun допустим после классификации.
 
@@ -264,6 +350,7 @@ LOCAL FALLBACK PASS != GITHUB CI PASS
 NO SOURCE-BUILD FALLBACK IN CLOUD
 NO NEW FAST CI FOR VALIDATED HARNESS-ONLY DIFF
 NO REPEAT OF SUCCESSFUL PACKAGE/HARNESS PAIR
+CONSOLE TEXT != ЕДИНСТВЕННЫЙ ИСТОЧНИК ИСТИНЫ
 ```
 
 ## Gated release
@@ -283,23 +370,16 @@ exact release build
 
 Release package SHA-256 проверяется до и после real-Anki E2E. Production credentials доступны только защищённому publisher job.
 
-## Подтверждённая реализация
-
-Package producer:
+## Подтверждённая реализация E2E-I1
 
 ```text
-Fast CI run: 30013925137
-package commit: bd0355c315197cfb659cb28b32b63a4931b73458
-package SHA-256: 3ae8439ba18cac82b7e8bb6b240223970cb6403130abf1f909168273ff39baf8
+Implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
+Fast CI: 30039103625 — PASS
+First standard/full E2E: 30039372012 — PASS
+Final standard/full E2E: 30039708429 — PASS
+Package SHA-256: 9ac537e77ed32fb1dd65f79d5e84084a1b4f0e301c0215d9d5b61b8bf2d99fbf
+PR в core: не создан
+Merge в core: не выполнен
 ```
 
-Final full consumer:
-
-```text
-E2E run: 30022393738
-harness commit: 1a84eabaacb5c368f92ae4952e732d8610619f95
-reuse mode: harness-only
-result: PASS
-```
-
-Полный отчёт: [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md).
+Подробный отчёт: [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
