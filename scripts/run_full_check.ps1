@@ -3,6 +3,7 @@ param(
     [switch]$CleanDocker,
     [switch]$DockerOnly,
     [switch]$Perf100,
+    [switch]$RequireApkgFixture,
     [ValidateSet("full", "global", "stats", "decks", "activity", "cards", "settings", "notifications")]
     [string]$E2EScope = "full",
     [ValidateSet("auto", "1", "2", "3", "4")]
@@ -141,6 +142,10 @@ function Assert-RepositoryHygiene {
 Set-Location $Root
 Add-BundledNodeToPath
 Assert-RepositoryHygiene
+
+if ($RequireApkgFixture) {
+    Write-Host "Compatibility input RequireApkgFixture accepted; committed real-deck packages are mandatory in every Docker mode."
+}
 
 if (-not $DockerOnly) {
     $node = Find-CommandPath @("node.exe", "node")
