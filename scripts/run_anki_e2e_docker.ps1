@@ -10,9 +10,6 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $BaseComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
 $GhcrComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.ghcr.yml"
-$LocalInputDir = Join-Path $Root "docker\anki-e2e\local-input"
-$LocalApkgName = "asr-e2e-render-fixtures.apkg"
-$LocalApkgPath = Join-Path $LocalInputDir $LocalApkgName
 
 if (-not $PSBoundParameters.ContainsKey("ImageSource") -and $env:ANKI_E2E_IMAGE_SOURCE) {
     if ($env:ANKI_E2E_IMAGE_SOURCE -notin @("buildkit", "ghcr")) {
@@ -36,21 +33,8 @@ if ($ImageSource -eq "ghcr") {
 if (-not $ArtifactsDir) {
     $ArtifactsDir = Join-Path $Root "e2e-artifacts"
 }
-
 New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
-New-Item -ItemType Directory -Force -Path $LocalInputDir | Out-Null
 $ArtifactsDir = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $ArtifactsDir).Path)
-
-if ($env:ANKI_E2E_APKG_FIXTURE) {
-    $sourceApkg = Resolve-Path -LiteralPath $env:ANKI_E2E_APKG_FIXTURE -ErrorAction Stop
-    Copy-Item -LiteralPath $sourceApkg.Path -Destination $LocalApkgPath -Force
-    $env:ANKI_E2E_APKG_FIXTURE_PATH = "/e2e/local-input/$LocalApkgName"
-    Write-Host "Staged APKG fixture for Docker E2E: $($sourceApkg.Path) -> docker/anki-e2e/local-input/$LocalApkgName"
-} elseif (Test-Path -LiteralPath $LocalApkgPath) {
-    $env:ANKI_E2E_APKG_FIXTURE_PATH = "/e2e/local-input/$LocalApkgName"
-} elseif ($env:ANKI_E2E_APKG_FIXTURE_PATH -eq "/e2e/local-input/$LocalApkgName") {
-    Remove-Item Env:\ANKI_E2E_APKG_FIXTURE_PATH
-}
 
 function Invoke-DockerCompose {
     param([string[]]$Arguments)
@@ -83,17 +67,8 @@ function Restore-E2EArtifactOwnership {
     }
 
     Invoke-DockerCompose @(
-        "run",
-        "--rm",
-        "--no-deps",
-        "-v",
-        $Volume,
-        "--entrypoint",
-        "/bin/chown",
-        "anki-e2e",
-        "-R",
-        "$($uid):$($gid)",
-        "/e2e/artifacts"
+        "run", "--rm", "--no-deps", "-v", $Volume,
+        "--entrypoint", "/bin/chown", "anki-e2e", "-R", "$($uid):$($gid)", "/e2e/artifacts"
     )
 }
 
@@ -145,29 +120,62 @@ function Assert-E2EArtifactManifest {
         }
     }
 
-    $screenshots = @($manifest.screenshots)
-    $pageScreenshots = @($screenshots | Where-Object { $_.kind -eq "page" })
-    $navigationScreenshots = @($screenshots | Where-Object { $_.kind -eq "navigation" })
-    $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "synthetic" })
-    $apkgCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "apkg" })
-    $scope = if ($manifest.execution.scope) { [string]$manifest.execution.scope } else { "full" }
-    $expectedPages = @{ full = 50; global = 8; stats = 20; decks = 2; activity = 2; cards = 0; settings = 14; notifications = 4 }[$scope]
-    if ($null -eq $expectedPages -or $pageScreenshots.Count -ne $expectedPages) {
-        throw "Expected $expectedPages page screenshots for scope=$scope, found $($pageScreenshots.Count)."
-    }
-    $expectedNavigation = if ($scope -in @("full", "global")) { 2 } else { 0 }
-    if ($navigationScreenshots.Count -ne $expectedNavigation) {
-        throw "Expected $expectedNavigation avatar menu screenshots for scope=$scope, found $($navigationScreenshots.Count)."
-    }
-    $expectedCards = if ($scope -in @("full", "cards")) { 4 } else { 0 }
-    if ($syntheticCards.Count -ne $expectedCards) {
-        throw "Expected $expectedCards synthetic Cards screenshots for scope=$scope, found $($syntheticCards.Count)."
-    }
-    if ($env:ANKI_E2E_REQUIRE_APKG_FIXTURE -eq "1" -and $scope -in @("full", "cards") -and $apkgCards.Count -ne 1) {
-        throw "Expected 1 APKG Cards screenshot, found $($apkgCards.Count)."
+    $requiredReports = @(
+        "reports/real-deck-manifest-report.json",
+        "reports/real-deck-import-report.json",
+        "reports/collection-inventory.json",
+        "reports/anchor-resolution-report.json",
+        "reports/scenario-application-report.json",
+        "reports/api-smoke-first.json",
+        "reports/browser-smoke-first.json"
+    )
+    foreach ($relativePath in $requiredReports) {
+        if ($relativePath -notin $indexedPaths) {
+            throw "Required real-deck proof is absent from artifact manifest: $relativePath"
+        }
     }
 
-    Write-Host "Verified structured E2E artifacts: pages=$($pageScreenshots.Count), navigation=$($navigationScreenshots.Count), syntheticCards=$($syntheticCards.Count), apkgCards=$($apkgCards.Count)"
+    $realManifest = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/real-deck-manifest-report.json") | ConvertFrom-Json
+    $import = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/real-deck-import-report.json") | ConvertFrom-Json
+    $inventory = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/collection-inventory.json") | ConvertFrom-Json
+    $anchors = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/anchor-resolution-report.json") | ConvertFrom-Json
+    $scenarios = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/scenario-application-report.json") | ConvertFrom-Json
+    $api = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/api-smoke-first.json") | ConvertFrom-Json
+    $browser = Get-Content -Raw -LiteralPath (Join-Path $ArtifactsRoot "reports/browser-smoke-first.json") | ConvertFrom-Json
+
+    foreach ($proof in @($realManifest, $import, $inventory, $anchors, $scenarios)) {
+        if ($proof.status -ne "PASS") {
+            throw "A required real-deck report did not report PASS."
+        }
+    }
+    if ($realManifest.packageCount -ne 3 -or @($import.packages).Count -ne 3) {
+        throw "Expected exactly three validated and imported real-deck packages."
+    }
+    if ($inventory.contentSource -ne "committed-real-apkg-only" -or $inventory.syntheticNotes -ne 0 -or $inventory.syntheticCards -ne 0 -or $inventory.syntheticMedia -ne 0) {
+        throw "Collection inventory is not real-APKG-only."
+    }
+    if ($scenarios.contentMutation.notesCreated -ne 0 -or $scenarios.contentMutation.cardsCreated -ne 0 -or $scenarios.perf100.notesOrCardsCloned -ne 0) {
+        throw "Scenario preparation created or cloned collection content."
+    }
+    if ($api.ok -ne $true -or $browser.ok -ne $true) {
+        throw "API or browser real-deck smoke did not pass."
+    }
+
+    $screenshots = @($manifest.screenshots)
+    $pageScreenshots = @($screenshots | Where-Object { $_.kind -eq "page" })
+    $realDeckCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -eq "real-decks" })
+    $syntheticCards = @($screenshots | Where-Object { $_.kind -eq "cards" -and $_.fixture -in @("synthetic", "apkg") })
+    if ($pageScreenshots.Count -ne 10) {
+        throw "Expected 10 real-dashboard page screenshots, found $($pageScreenshots.Count)."
+    }
+    if ($realDeckCards.Count -ne 6) {
+        throw "Expected 6 real-deck preview screenshots, found $($realDeckCards.Count)."
+    }
+    if ($syntheticCards.Count -ne 0) {
+        throw "Synthetic/legacy APKG screenshots remain in the artifact set."
+    }
+
+    Write-Host "Verified real-deck E2E artifacts: packages=3 anchors=$($anchors.resolvedCount) pages=$($pageScreenshots.Count) previews=$($realDeckCards.Count) synthetic=0"
 }
 
 Push-Location $Root
@@ -202,7 +210,6 @@ try {
     if (-not $NoBuild) {
         Invoke-DockerCompose @("build")
     }
-
     if ($BuildOnly) {
         return
     }
@@ -215,19 +222,18 @@ try {
         "ANKI_E2E_PACKAGE_SOURCE",
         "ANKI_E2E_FAST_CI_RUN_ID",
         "ANKI_E2E_FAST_CI_TESTED_SHA",
-        "ANKI_E2E_FAST_CI_PACKAGE_SHA256"
+        "ANKI_E2E_FAST_CI_PACKAGE_SHA256",
+        "ANKI_E2E_PERF100",
+        "E2E_MODE",
+        "ANKI_E2E_SCOPE",
+        "ANKI_E2E_SCREENSHOT_WORKERS",
+        "ANKI_E2E_RESOURCE_TELEMETRY",
+        "ANKI_E2E_VERIFY_RESTART"
     )) {
         $value = if ($name -eq "ANKI_E2E_IMAGE_SOURCE") { $ImageSource } else { [Environment]::GetEnvironmentVariable($name) }
         if ($value) {
             $runArgs += @("-e", "$name=$value")
         }
-    }
-    if ($env:ANKI_E2E_REAL_MEDIA_DIR) {
-        $realMediaPath = Resolve-Path -LiteralPath $env:ANKI_E2E_REAL_MEDIA_DIR -ErrorAction Stop
-        $runArgs += @("-v", "$($realMediaPath.Path):/e2e/real-media:ro", "-e", "ANKI_E2E_REAL_MEDIA_DIR=/e2e/real-media")
-    }
-    if ($env:ANKI_E2E_REQUIRE_REAL_MEDIA) {
-        $runArgs += @("-e", "ANKI_E2E_REQUIRE_REAL_MEDIA=$($env:ANKI_E2E_REQUIRE_REAL_MEDIA)")
     }
     $runArgs += "anki-e2e"
     try {
