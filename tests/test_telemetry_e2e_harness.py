@@ -21,4 +21,4 @@ def test_restart_verifier_remains_strict() -> None:
 
     assert "Persistent telemetry queue was not restored after restart" in source
     assert "pendingEventCount" in source
-    assert ">= 25" in source
+    assert "pending_after_restart < 25" in source
