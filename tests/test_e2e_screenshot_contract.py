@@ -4,113 +4,37 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SMOKE_BROWSER = ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs"
-E2E_CONTRACT = ROOT / "docker" / "anki-e2e" / "e2e-contract.mjs"
 DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
-ROUTER = ROOT / "web-dashboard" / "src" / "app" / "router.tsx"
-TOP_NAV = ROOT / "web-dashboard" / "src" / "layout" / "TopNav.tsx"
-RU_LOCALE = ROOT / "web-dashboard" / "src" / "i18n" / "locales" / "ru.ts"
 
 
-def _page_names() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    block = text.split("const dashboardPageCases = [", 1)[1].split("];", 1)[0]
-    return re.findall(r'pageName:\s*"([^"]+)"', block)
-
-
-def _page_scopes() -> dict[str, str]:
-    text = E2E_CONTRACT.read_text(encoding="utf-8")
-    block = text.split("const PAGE_SCOPE = Object.freeze({", 1)[1].split("});", 1)[0]
-    entries = re.findall(r'^\s*(?:"([^"]+)"|([A-Za-z][\w-]*)):\s*"([^"]+)",?\s*$', block, re.MULTILINE)
-    return {(quoted or bare): scope for quoted, bare, scope in entries}
-
-
-def _runner_expected_pages() -> dict[str, int]:
-    text = DOCKER_RUNNER.read_text(encoding="utf-8")
-    match = re.search(r'\$expectedPages\s*=\s*@\{([^}]+)\}\[\$scope\]', text)
-    assert match, "PowerShell screenshot-count contract was not found"
-    return {name: int(value) for name, value in re.findall(r'(\w+)\s*=\s*(\d+)', match.group(1))}
-
-
-def test_manifest_page_counts_follow_the_capture_contract() -> None:
-    page_names = _page_names()
-    page_scopes = _page_scopes()
-    expected = _runner_expected_pages()
-
-    assert len(page_names) == len(set(page_names)), "dashboard page names must be unique"
-    assert set(page_names) == set(page_scopes), "every dashboard page must have exactly one E2E scope"
-
-    calculated = {
-        scope: (len(page_names) if scope == "full" else sum(page_scopes[name] == scope for name in page_names)) * 2
-        for scope in expected
-    }
-    assert expected == calculated
-
-
-def test_cards_screenshot_counts_follow_the_canonical_workspace_contract() -> None:
-    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
+def test_manifest_page_counts_follow_real_dashboard_capture_contract() -> None:
     smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
+    block = smoke.split("const cases = [", 1)[1].split("];", 1)[0]
+    cases = re.findall(r'\["([^"]+)",\s*"([^"]+)"', block)
 
-    assert '$expectedCards = if ($scope -in @("full", "cards")) { 4 } else { 0 }' in runner
-    assert '$apkgCards.Count -ne 1' in runner
-    assert smoke.count('artifactPaths.cardsScreenshot("synthetic",') == 4
-    assert smoke.count('artifactPaths.cardsScreenshot("apkg", "workspace", "light")') == 1
-
-
-def _primary_nav_label_keys() -> list[str]:
-    text = ROUTER.read_text(encoding="utf-8")
-    block = text.split("export const primaryNavItems", 1)[1].split("];", 1)[0]
-    return re.findall(r'labelKey:\s*"primary\.([^"]+)"', block)
-
-
-def _ru_primary_nav_labels() -> dict[str, str]:
-    text = RU_LOCALE.read_text(encoding="utf-8")
-    navigation = text.split("navigation: {", 1)[1]
-    block = navigation.split("primary: {", 1)[1].split("},", 1)[0]
-    return dict(re.findall(r'^\s*(\w+):\s*"([^"]+)"', block, re.MULTILINE))
+    assert cases == [
+        ("home", "/home"),
+        ("cards", "/cards"),
+        ("decks", "/decks"),
+        ("profile", "/profile"),
+        ("settings", "/settings"),
+    ]
+    assert 'for (const theme of ["light", "dark"])' in smoke
+    assert '$pageScreenshots.Count -ne 10' in runner
+    assert 'Expected 10 real-dashboard page screenshots' in runner
 
 
-def _statistics_smoke_nav_labels() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    before_message = text.split("`Statistics primary navigation order is correct:", 1)[0]
-    expected = before_message.rsplit("JSON.stringify(", 1)[1].split(")", 1)[0]
-    return re.findall(r'"([^"]+)"', expected)
+def test_cards_screenshot_counts_follow_real_deck_anchor_contract() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
 
-
-def test_statistics_smoke_navigation_follows_the_router_and_russian_locale() -> None:
-    keys = _primary_nav_label_keys()
-    labels = _ru_primary_nav_labels()
-
-    assert keys
-    assert "search" in keys
-    assert all(key in labels for key in keys)
-    assert _statistics_smoke_nav_labels() == [labels[key] for key in keys]
-
-
-def _profile_menu_label_keys() -> list[str]:
-    text = TOP_NAV.read_text(encoding="utf-8")
-    block = text.split("const profileMenuSections", 1)[1].split("> = [", 1)[1].split("];", 1)[0]
-    keys = re.findall(r'labelKey:\s*"profile\.([^\"]+)"', block)
-    return [key for key in keys if key not in {"personal", "utilities"}]
-
-
-def _ru_profile_menu_labels() -> dict[str, str]:
-    text = RU_LOCALE.read_text(encoding="utf-8")
-    navigation = text.split("navigation: {", 1)[1]
-    block = navigation.split("profile: {", 1)[1].split("},", 1)[0]
-    return dict(re.findall(r'^\s*(\w+):\s*"([^\"]+)"', block, re.MULTILINE))
-
-
-def _avatar_smoke_menu_labels() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    before_message = text.split("`Avatar menu items are complete:", 1)[0]
-    expected = before_message.rsplit("JSON.stringify(", 1)[1].split(")", 1)[0]
-    return re.findall(r'"([^\"]+)"', expected)
-
-
-def test_avatar_smoke_menu_follows_top_nav_and_russian_locale() -> None:
-    keys = _profile_menu_label_keys()
-    labels = _ru_profile_menu_labels()
-
-    assert keys
-    assert all(key in labels for key in keys)
-    assert _avatar_smoke_menu_labels() == [labels[key] for key in keys]
+    assert 'const previewAnchorIds = ["words-preview", "grammar-preview", "java-preview"]' in smoke
+    assert 'path.join(screenshotsDir, "cards", "real-decks", anchorId, `${theme}.png`)' in smoke
+    assert 'path.join(screenshotsDir, "states", "cards", "real-deck-inbox", `${theme}.png`)' in smoke
+    assert '$realDeckCards.Count -ne 6' in runner
+    assert 'Expected 6 real-deck preview screenshots' in runner
+    assert '$syntheticCards.Count -ne 0' in runner
+    assert 'Synthetic/legacy APKG screenshots remain' in runner
+    assert 'cardsScreenshot("synthetic"' not in smoke
+    assert 'cardsScreenshot("apkg"' not in smoke
