@@ -38,6 +38,15 @@ def test_dashboard_route_capture_uses_structure_and_hash_not_transient_copy() ->
         assert transient_heading not in smoke
 
 
+def test_theme_bootstrap_waits_for_the_document_root() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+
+    assert "const root = document.documentElement;" in smoke
+    assert "if (!root) return false;" in smoke
+    assert 'document.addEventListener("DOMContentLoaded", applyTheme, { once: true });' in smoke
+    assert "document.documentElement.dataset.theme = selectedTheme;" not in smoke
+
+
 def test_cards_screenshot_counts_follow_real_deck_anchor_contract() -> None:
     smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
     runner = DOCKER_RUNNER.read_text(encoding="utf-8")

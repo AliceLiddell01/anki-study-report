@@ -119,8 +119,16 @@ async function installThemeBootstrap(page) {
     const selectedTheme = new URLSearchParams(window.location.search).get("e2eTheme");
     if (!selectedTheme) return;
     localStorage.setItem("anki-study-report-theme", selectedTheme);
-    document.documentElement.dataset.theme = selectedTheme;
-    document.documentElement.style.colorScheme = selectedTheme;
+    const applyTheme = () => {
+      const root = document.documentElement;
+      if (!root) return false;
+      root.dataset.theme = selectedTheme;
+      root.style.colorScheme = selectedTheme;
+      return true;
+    };
+    if (!applyTheme()) {
+      document.addEventListener("DOMContentLoaded", applyTheme, { once: true });
+    }
   });
 }
 
