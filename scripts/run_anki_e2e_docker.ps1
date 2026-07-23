@@ -10,6 +10,14 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $BaseComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.yml"
 $GhcrComposeFile = Join-Path $Root "docker\anki-e2e\docker-compose.ghcr.yml"
+$PlainCompose = ($env:GITHUB_ACTIONS -eq "true" -or $env:CI -eq "true")
+
+if ($PlainCompose) {
+    $env:COMPOSE_ANSI = "never"
+    $env:COMPOSE_PROGRESS = "plain"
+    $env:COMPOSE_MENU = "0"
+    $env:COMPOSE_STATUS_STDOUT = "1"
+}
 
 if (-not $PSBoundParameters.ContainsKey("ImageSource") -and $env:ANKI_E2E_IMAGE_SOURCE) {
     if ($env:ANKI_E2E_IMAGE_SOURCE -notin @("buildkit", "ghcr")) {
@@ -40,6 +48,9 @@ function Invoke-DockerCompose {
     param([string[]]$Arguments)
 
     $composeArguments = @("compose")
+    if ($PlainCompose) {
+        $composeArguments += @("--ansi", "never", "--progress", "plain")
+    }
     foreach ($composeFile in $ComposeFiles) {
         $composeArguments += @("-f", $composeFile)
     }
@@ -121,6 +132,7 @@ function Assert-E2EArtifactManifest {
     }
 
     $requiredReports = @(
+        "reports/run-events.jsonl",
         "reports/real-deck-manifest-report.json",
         "reports/real-deck-import-report.json",
         "reports/collection-inventory.json",
@@ -215,7 +227,11 @@ try {
     }
 
     $volume = "$($ArtifactsDir):/e2e/artifacts"
-    $runArgs = @("run", "--rm", "-v", $volume)
+    $runArgs = @("run", "--rm")
+    if ($PlainCompose) {
+        $runArgs += "--no-TTY"
+    }
+    $runArgs += @("-v", $volume)
     foreach ($name in @(
         "ANKI_E2E_IMAGE_SOURCE",
         "ANKI_E2E_PREBUILT_ADDON_PATH",
