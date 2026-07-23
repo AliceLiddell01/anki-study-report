@@ -24,17 +24,19 @@ def test_run_e2e_uses_mandatory_real_deck_stages() -> None:
     assert "real card scenario preparation" in source
 
 
-def test_run_e2e_has_no_legacy_apkg_switch_or_fallback() -> None:
+def test_run_e2e_has_no_external_apkg_switch_or_fallback() -> None:
     source = (E2E / "run-e2e.sh").read_text(encoding="utf-8")
     forbidden = [
         "ANKI_E2E_REQUIRE_APKG_FIXTURE",
         "ANKI_E2E_APKG_FIXTURE_PATH",
-        "strict-apkg",
         "local-input",
         "asr-e2e-render-fixtures.apkg",
     ]
     for value in forbidden:
         assert value not in source
+    assert 'if [ "$E2E_MODE" = "strict-apkg" ]' in source
+    assert "strict-apkg compatibility mode maps to standard" in source
+    assert "E2E_MODE=standard" in source
 
 
 def test_dockerfile_copies_generic_real_deck_scripts() -> None:
