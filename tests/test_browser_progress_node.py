@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NODE_TEST = ROOT / "tests" / "browser_progress.test.mjs"
 SMOKE = ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs"
 PROGRESS = ROOT / "docker" / "anki-e2e" / "browser-progress.mjs"
+DOCKERFILE = ROOT / "docker" / "anki-e2e" / "Dockerfile"
 
 
 def test_browser_progress_node_contract() -> None:
@@ -72,3 +73,23 @@ def test_existing_browser_diagnostics_and_wait_contract_are_preserved() -> None:
         "unexpectedExternalRequests",
     ):
         assert token in smoke
+
+
+def test_browser_progress_module_is_copied_into_the_docker_image() -> None:
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "COPY docker/anki-e2e/*.sh docker/anki-e2e/*.py docker/anki-e2e/*.mjs /e2e/bin/" in dockerfile
+    assert "mv /e2e/bin/smoke-browser.mjs /e2e/bin/smoke-browser-core.mjs" in dockerfile
+    assert "browser-progress.mjs" not in dockerfile  # wildcard copy is the single source of truth
+
+
+def test_report_and_performance_evidence_are_machine_readable() -> None:
+    smoke = SMOKE.read_text(encoding="utf-8")
+
+    assert "schemaVersion: BROWSER_REPORT_SCHEMA_VERSION" in smoke
+    assert "plan: snapshot.plan" in smoke
+    assert "progress: snapshot.progress" in smoke
+    assert "items: snapshot.items" in smoke
+    assert "slowestItems: snapshot.slowestItems" in smoke
+    assert 'path.join(reportsDir, "screenshot-performance.json")' in smoke
+    assert 'path.join(reportsDir, `browser-smoke-${label}.json`)' in smoke
