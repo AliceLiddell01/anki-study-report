@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import sqlite3
 import sys
@@ -34,15 +33,6 @@ def package(package_id: str, path: str, sha256: str = "0" * 64, size: int = 1) -
     }
 
 
-def model() -> dict:
-    return {
-        "id": 10,
-        "name": "Words",
-        "flds": [{"ord": 0, "name": "Front"}, {"ord": 1, "name": "Back"}],
-        "tmpls": [{"ord": 0, "name": "Card 1"}],
-    }
-
-
 def anchor(package_id: str = "words", guid: str = "guid", ordinal: int = 0) -> dict:
     return {
         "purpose": "test",
@@ -64,6 +54,15 @@ def manifest(packages: list[dict] | None = None, anchors: dict | None = None) ->
         "fingerprintAlgorithm": FINGERPRINT_ALGORITHM,
         "packages": packages or [package("words", "words.apkg")],
         "anchors": anchors or {"words-preview": anchor()},
+    }
+
+
+def model() -> dict:
+    return {
+        "id": 10,
+        "name": "Words",
+        "flds": [{"ord": 0, "name": "Front"}, {"ord": 1, "name": "Back"}],
+        "tmpls": [{"ord": 0, "name": "Card 1"}],
     }
 
 
@@ -186,6 +185,7 @@ def test_perf100_selects_100_distinct_existing_cards() -> None:
     )
     assert len(selected) == 100
     assert len(set(selected)) == 100
+    assert set(selected) <= (set(range(1, 80)) | set(range(60, 130)) | set(range(200, 210)))
 
 
 def test_perf100_hard_fails_below_target() -> None:
@@ -213,6 +213,20 @@ def test_generic_scripts_have_no_content_creation_or_fixture_hardcoding() -> Non
     assert "insert into cards" not in lowered
     assert "clone_imported_cards" not in lowered
     assert "synthetic fixture" not in lowered
+    assert "AnkiPackageImporter" not in joined
+    assert "_backend.import_anki_package" not in joined
+    assert "Collection.import_anki_package" in joined
+
+
+def test_entrypoints_have_no_optional_apkg_mode() -> None:
+    compose = (E2E / "docker-compose.yml").read_text(encoding="utf-8")
+    importer = (E2E / "import-apkg-fixture.py").read_text(encoding="utf-8")
+    runner = (ROOT / "scripts" / "run_anki_e2e_docker.ps1").read_text(encoding="utf-8")
+    full_check = (ROOT / "scripts" / "run_full_check.ps1").read_text(encoding="utf-8")
+    joined = "\n".join((compose, importer, runner, full_check))
+    for legacy in ("ANKI_E2E_APKG_FIXTURE_PATH", "ANKI_E2E_REQUIRE_APKG_FIXTURE", "ApkgFixture", "RequireApkgFixture"):
+        assert legacy not in joined
+    assert "fixtures/real-decks" in importer
 
 
 def test_failure_reports_include_required_diagnostics_contract() -> None:
