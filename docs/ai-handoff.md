@@ -1,6 +1,6 @@
 # Передача контекста ИИ — Anki Study Report
 
-**Снимок:** 2026-07-22
+**Снимок:** 2026-07-24
 
 ## С чего начать
 
@@ -9,7 +9,7 @@
 1. [`../README.md`](../README.md);
 2. этот файл;
 3. [`../roadmap/README.md`](../roadmap/README.md);
-4. [`../roadmap/core/README.md`](../roadmap/core/README.md);
+4. профильный README соответствующего трека;
 5. актуальные production-код и тесты в пределах задачи;
 6. профильный контракт и последний отчёт соответствующего этапа.
 
@@ -53,6 +53,50 @@ post-C2 remediation branch/PR: ещё не созданы
 C3–C6: новый обязательный путь к Core 1.0
 release: не начат
 ```
+
+## Текущий статус Platform / CI
+
+```text
+рабочая ветка: platform/e2e-observability-roadmap
+base branch: core
+E2E-I1: COMPLETE ON FEATURE BRANCH
+финальный implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
+Fast CI: 30039103625 — PASS
+первый standard/full: 30039372012 — PASS
+финальный standard/full: 30039708429 — PASS
+E2E-I2: следующий этап, не начат
+PR в core: не создан
+merge в core: не выполнен
+release: не выполнялся
+```
+
+`E2E-I1` ввёл единый schema-v1 live lifecycle Fast CI и Docker E2E:
+
+```text
+Fast CI stream: ci-fast/run-events.jsonl
+Docker stream: reports/run-events.jsonl
+Public stream: artifacts/reports/run-events.jsonl
+```
+
+Актуальный контракт:
+
+- [`run-event-protocol.md`](run-event-protocol.md);
+- [`../roadmap/platform/e2e-observability-build-identity.md`](../roadmap/platform/e2e-observability-build-identity.md).
+
+Итоговый отчёт:
+
+- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+
+Важные инварианты:
+
+- Fast CI timing и run-event registry синхронизированы fail closed;
+- success artifact обязан содержать validated `run-events.jsonl`;
+- transient `.lock`/`.state.json` не являются evidence;
+- Docker Compose в CI использует plain non-interactive output;
+- browser item-level progress не реализован и относится к `E2E-I2`;
+- stable failure codes не реализованы и относятся к `E2E-I3`;
+- docs-only commits после successful gates не требуют повторного Fast CI/Docker без отдельной причины;
+- не создавать PR и не выполнять merge без прямой просьбы владельца.
 
 ## Почему C2 ещё не закрыт владельцем
 
@@ -257,53 +301,3 @@ Residual risks:
 - broad legacy services не переписаны вне доказанных policy seams;
 - `style-src 'unsafe-inline'` необходим для runtime Shadow DOM styles;
 - приватный пользовательский профиль владельца не является автоматическим CI gate.
-
-## Следующее точное действие
-
-```text
-создать одну ветку/PR post-C2 manual acceptance remediation
-→ исправить Cards, Inspection Profiles и shared motion/shape
-→ targeted + final real-Anki verification
-→ ручная owner acceptance
-→ начать C3 site-wide review
-```
-
-Не выполнять как неявное продолжение:
-
-- release или merge в `master`;
-- AnkiWeb publish;
-- C1.6B;
-- production Gamification;
-- C3 implementation до закрытия C2 owner acceptance;
-- несвязанный cleanup.
-
-## Границы проверки
-
-Используйте:
-
-- [`test-matrix.md`](test-matrix.md);
-- [`verification-run-policy.md`](verification-run-policy.md).
-
-Real-Anki Docker E2E — integration gate, а не обычный цикл разработки.
-
-## Технические инварианты
-
-Запрещено:
-
-- односторонне менять payload или schema;
-- предоставлять frontend прямой доступ к collection;
-- открывать локальный сервер наружу;
-- ослаблять token validation, sanitizer, media validation или action allowlists;
-- логировать token или полный token-bearing URL;
-- создавать iframe/JavaScript execution surface для карточек;
-- редактировать generated dashboard assets вручную;
-- коммитить логи, screenshots, cache, profile data, tokens, `.ankiaddon` или E2E outputs;
-- менять корректное production-поведение только ради устаревшего теста;
-- создавать второй стек запросов, действий или детекторов;
-- считать успех действия доказательством resolution;
-- использовать один глобальный узкий `max-width` для рабочих desktop routes;
-- добавлять placeholder gamification или future routes заранее.
-
-## Границы Git
-
-Начинайте новые Core tasks от актуального `origin/core`. По умолчанию одна цельная задача использует одну основную ветку и один PR. Не выполнять автоматически merge, force-push, destructive reset/clean, переписывание несвязанных изменений, release или публикацию.
