@@ -1,26 +1,24 @@
 from pathlib import Path
-import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SMOKE_BROWSER = ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs"
+BROWSER_PROGRESS = ROOT / "docker" / "anki-e2e" / "browser-progress.mjs"
 DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
 
 
 def test_manifest_page_counts_follow_real_dashboard_capture_contract() -> None:
     smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    progress = BROWSER_PROGRESS.read_text(encoding="utf-8")
     runner = DOCKER_RUNNER.read_text(encoding="utf-8")
-    block = smoke.split("const cases = [", 1)[1].split("];", 1)[0]
-    cases = re.findall(r'\["([^"]+)",\s*"([^"]+)"', block)
 
-    assert cases == [
-        ("home", "/home"),
-        ("cards", "/cards"),
-        ("decks", "/decks"),
-        ("profile", "/profile"),
-        ("settings", "/settings"),
-    ]
-    assert 'for (const theme of ["light", "dark"])' in smoke
+    assert 'Object.freeze({ name: "home", route: "/home" })' in progress
+    assert 'Object.freeze({ name: "cards", route: "/cards" })' in progress
+    assert 'Object.freeze({ name: "decks", route: "/decks" })' in progress
+    assert 'Object.freeze({ name: "profile", route: "/profile" })' in progress
+    assert 'Object.freeze({ name: "settings", route: "/settings" })' in progress
+    assert 'export const THEMES = Object.freeze(["light", "dark"])' in progress
+    assert 'candidate.kind === "route-capture"' in smoke
     assert '$pageScreenshots.Count -ne 10' in runner
     assert 'Expected 10 real-dashboard page screenshots' in runner
 
@@ -49,11 +47,14 @@ def test_theme_bootstrap_waits_for_the_document_root() -> None:
 
 def test_cards_screenshot_counts_follow_real_deck_anchor_contract() -> None:
     smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    progress = BROWSER_PROGRESS.read_text(encoding="utf-8")
     runner = DOCKER_RUNNER.read_text(encoding="utf-8")
 
-    assert 'const previewAnchorIds = ["words-preview", "grammar-preview", "java-preview"]' in smoke
+    assert 'export const PREVIEW_ANCHOR_IDS = Object.freeze(["words-preview", "grammar-preview", "java-preview"])' in progress
+    assert 'expectedScreenshots: 2' in progress
     assert 'path.join(screenshotsDir, "cards", "real-decks", anchorId, `${theme}.png`)' in smoke
     assert 'path.join(screenshotsDir, "states", "cards", "real-deck-inbox", `${theme}.png`)' in smoke
+    assert 'expectedScreenshotCount = items.reduce' in progress
     assert '$realDeckCards.Count -ne 6' in runner
     assert 'Expected 6 real-deck preview screenshots' in runner
     assert '$syntheticCards.Count -ne 0' in runner
