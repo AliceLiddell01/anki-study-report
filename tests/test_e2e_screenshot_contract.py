@@ -25,6 +25,19 @@ def test_manifest_page_counts_follow_real_dashboard_capture_contract() -> None:
     assert 'Expected 10 real-dashboard page screenshots' in runner
 
 
+def test_dashboard_route_capture_uses_structure_and_hash_not_transient_copy() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+
+    assert 'page.locator("main").waitFor' in smoke
+    assert "window.location.hash === hash" in smoke
+    assert "e2eTheme" in smoke
+    assert "page.addInitScript" in smoke
+    assert "page.reload(" not in smoke
+    assert 'getByRole("heading"' not in smoke
+    for transient_heading in ("Сегодня", "Карточки", "Колоды"):
+        assert transient_heading not in smoke
+
+
 def test_cards_screenshot_counts_follow_real_deck_anchor_contract() -> None:
     smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
     runner = DOCKER_RUNNER.read_text(encoding="utf-8")
