@@ -144,15 +144,15 @@ def test_release_current_run_path_and_local_source_build_remain_separate() -> No
     assert 'if [ -z "$ANKI_E2E_PREBUILT_ADDON_PATH" ] && [ "$ANKI_E2E_PACKAGE_SOURCE" != "source-build" ]; then' in shell
     assert 'if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then' in shell
     assert "install --offline --frozen-lockfile" in shell
-    assert 'phase_end "frontend build"' in shell
-    assert 'phase_end "add-on package"' in shell
+    assert 'phase_start "frontend-build" "frontend build"' in shell
+    assert 'phase_start "addon-package" "add-on package"' in shell
 
 
 def test_prebuilt_wording_and_phase_semantics_are_generic() -> None:
     shell = CONTAINER.read_text(encoding="utf-8")
 
     assert 'section "Validate exact prebuilt add-on artifact"' in shell
-    assert 'phase_end "exact prebuilt add-on validation and extraction"' in shell
+    assert 'phase_start "exact-package-validation" "exact prebuilt add-on validation and extraction"' in shell
     assert "exact prebuilt release artifact" not in shell
     assert "exact release add-on validation and extraction" not in shell
 
