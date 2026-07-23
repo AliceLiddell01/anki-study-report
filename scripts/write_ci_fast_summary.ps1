@@ -76,8 +76,11 @@ $environmentLines | Set-Content -LiteralPath (Join-Path $OutputPath "environment
 
 $artifactFiles = @(
     Get-ChildItem -LiteralPath $OutputPath -Recurse -File |
-        Where-Object { -not $_.Name.EndsWith(".state", [StringComparison]::OrdinalIgnoreCase) } |
-        ForEach-Object { $_.FullName.Substring($OutputPath.Length + 1).Replace("\", "/") }
+        ForEach-Object { $_.FullName.Substring($OutputPath.Length + 1).Replace("\", "/") } |
+        Where-Object {
+            (-not $_.EndsWith(".state", [StringComparison]::OrdinalIgnoreCase)) -and
+            ($_ -notmatch '(?i)(^|/)run-events\.jsonl\.(?:lock|state\.json)$')
+        }
 )
 $timingJson = Join-Path $OutputPath "timing\fast-ci-timing.json"
 if (Test-Path -LiteralPath $timingJson) {
