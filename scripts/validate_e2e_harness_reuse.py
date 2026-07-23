@@ -12,11 +12,13 @@ ALLOWED_EXACT_PATHS = {
     ".github/workflows/ci-e2e.yml",
     "scripts/ci_e2e_artifact_common.py",
     "scripts/prepare_ci_e2e_artifacts.py",
+    "scripts/prepare_ci_e2e_artifacts_legacy.py",
     "scripts/validate_e2e_harness_reuse.py",
     "scripts/verify_fast_ci_e2e_handoff.py",
     "tests/test_ci_e2e_artifacts.py",
     "tests/test_ci_e2e_private_path_redaction.py",
     "tests/test_docker_smoke_helpers.py",
+    "tests/test_e2e_artifact_harness_reuse.py",
     "tests/test_e2e_harness_reuse.py",
     "tests/test_telemetry_e2e_harness.py",
 }
@@ -53,11 +55,7 @@ def path_is_harness_only(path: str) -> bool:
 
 
 def validate_harness_reuse(
-    *,
-    package_tested_sha: str,
-    harness_sha: str,
-    workflow_source_sha: str,
-    changed_paths: list[str],
+    *, package_tested_sha: str, harness_sha: str, workflow_source_sha: str, changed_paths: list[str],
 ) -> dict:
     package_sha = exact_sha(package_tested_sha, "package tested SHA")
     current_sha = exact_sha(harness_sha, "E2E harness SHA")
@@ -76,8 +74,7 @@ def validate_harness_reuse(
         forbidden = [path for path in normalized if not path_is_harness_only(path)]
         if forbidden:
             raise HarnessReuseError(
-                "Package reuse is forbidden because package-impacting or unrelated files changed: "
-                + ", ".join(forbidden)
+                "Package reuse is forbidden because package-impacting or unrelated files changed: " + ", ".join(forbidden)
             )
         reuse_mode = "harness-only"
 
@@ -104,13 +101,7 @@ def write_outputs(path: Path | None, value: dict) -> None:
     if path is None:
         return
     with path.open("a", encoding="utf-8", newline="\n") as handle:
-        for key in (
-            "reuseMode",
-            "packageTestedCommitSha",
-            "e2eHarnessCommitSha",
-            "changedFileCount",
-            "changedPathsSha256",
-        ):
+        for key in ("reuseMode", "packageTestedCommitSha", "e2eHarnessCommitSha", "changedFileCount", "changedPathsSha256"):
             output_name = {
                 "reuseMode": "reuse_mode",
                 "packageTestedCommitSha": "package_tested_sha",
