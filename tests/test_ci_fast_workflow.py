@@ -218,6 +218,7 @@ def test_fast_summary_script_describes_diagnostics_and_timing_only() -> None:
     assert "artifactFiles = $artifactFiles" in text
     assert "schemaVersion = 1" in text
     assert ".state" in text
+    assert "run-events\\.jsonl\\.(?:lock|state\\.json)" in text
 
 
 def test_atomic_package_scripts_preserve_existing_aggregate_semantics() -> None:
