@@ -1,36 +1,33 @@
 # Docker E2E
 
-**Снимок документации:** 2026-07-23
+**Снимок документации:** 2026-07-23.
 
-Подробная техническая инструкция находится в
-[`docker/anki-e2e/README.md`](../docker/anki-e2e/README.md). Эта страница
-фиксирует место real-Anki Docker E2E в общем verification process и решения,
-которые нельзя случайно откатить.
+Подробная техническая инструкция: [`../docker/anki-e2e/README.md`](../docker/anki-e2e/README.md).
 
-Для диагностики падений см. [`troubleshooting.md`](troubleshooting.md), а правила
-запусков — [`verification-run-policy.md`](verification-run-policy.md).
+Правила запуска: [`verification-run-policy.md`](verification-run-policy.md).
+
+Package/harness reuse: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).
 
 ## Назначение
 
-Docker E2E запускает exact add-on package внутри реального Anki Desktop в
-изолированном Linux-профиле. Он нужен для рисков, которые не закрываются только
-pytest/Vitest:
+Docker E2E устанавливает exact add-on package в реальный Anki Desktop 26.05 внутри изолированного Linux-профиля и проверяет runtime-риски, которые не закрываются pytest/Vitest:
 
-- startup hooks и profile lifecycle Anki;
-- dashboard readiness, token auth и loopback server;
-- public package installation layout;
+- startup hooks и profile lifecycle;
+- loopback token-protected dashboard;
+- package installation layout;
 - native card rendering и Shadow DOM;
-- real audio/GIF/image media routes;
-- Cards, Triage, exact action/recheck и Inspection Profiles;
+- real audio/GIF/image media;
+- Cards, Triage, exact recheck и Inspection Profiles;
+- Notifications и telemetry lifecycle;
 - restart persistence;
 - browser console/page/request/network behavior;
-- redacted structured evidence.
+- публично безопасный artifact.
 
 Это integration gate, а не обычный цикл разработки.
 
-## Единственный источник collection content
+## Collection content
 
-Disposable collection строится только из committed рабочих колод:
+Единственный источник:
 
 ```text
 docker/anki-e2e/fixtures/real-decks/words-n1.apkg
@@ -38,105 +35,99 @@ docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
 docker/anki-e2e/fixtures/real-decks/java-core.apkg
 ```
 
-Контракт пакетов и сценарных якорей:
+Manifest:
 
 ```text
 docker/anki-e2e/fixtures/real-decks/manifest.json
 ```
 
-В каждом mode обязательны:
+Каждый run обязан:
 
-1. manifest schema validation;
-2. размер и SHA-256 каждого package;
-3. импорт всех трёх packages в manifest order;
-4. inventory notes/cards/note types/decks/media;
-5. уникальное разрешение anchors;
-6. zero-synthetic и zero-cloning proof.
+1. проверить manifest schema;
+2. проверить size/SHA-256 всех packages;
+3. импортировать три packages в manifest order;
+4. построить inventory;
+5. разрешить уникальные anchors;
+6. проверить note-type fingerprints/fields/templates/media;
+7. доказать zero synthetic content и zero cloning.
 
 Запрещены:
 
-- generated synthetic notes/cards/note types/templates/media;
-- старый `asr-e2e-render-fixtures.apkg`;
-- external/local-only APKG path;
-- fallback после missing/checksum/import/anchor failure;
-- клонирование content для `perf100`;
-- изменение импортированных fields/templates/media при restart.
-
-Пустая системная Anki metadata без cards не считается test content. Harness не
-создаёт в ней notes/cards/templates/media.
+- synthetic notes/cards/note types/templates/media;
+- внешний APKG override;
+- fallback collection;
+- legacy importer/backend fallback;
+- cloning для `perf100`;
+- content mutations после import.
 
 ## Import и scenarios
 
-Harness создаёт empty disposable collection и импортирует packages через
-публичный Anki API:
+Collection создаётся пустой. Import:
 
 ```text
 Collection.import_anki_package(ImportAnkiPackageRequest)
 ```
 
-Concrete GUIDs, field names, structure fingerprints, media requirements и
-Inspection Profile mappings находятся только в manifest. Generic scripts
-работают с runtime inventory и resolved anchors.
-
-После импорта разрешены только bounded mutations существующих cards:
+После import допускаются только bounded mutations существующих cards:
 
 - scheduling state;
 - due/interval/factor/reps/lapses;
-- revlog rows;
-- suspended state;
-- buried state.
+- revlog;
+- suspended;
+- buried.
 
-Количество notes/cards после import не должно меняться.
+Количество notes/cards не меняется.
 
-## Основные команды
+## Lifecycle
 
-PowerShell:
+Cloud/local canonical lifecycle:
 
-```powershell
-./scripts/run_anki_e2e_docker.ps1
-./scripts/run_full_check.ps1 -DockerOnly
-./scripts/run_full_check.ps1 -DockerOnly -CleanDocker
-```
+1. Подготовить current E2E harness.
+2. Получить exact prebuilt package либо выполнить local source build.
+3. Создать empty disposable profile/collection.
+4. Проверить и импортировать real decks.
+5. Разрешить anchors и применить study-state scenarios.
+6. Установить add-on.
+7. Для `full/notifications` создать notification lifecycle из real-deck anchors.
+8. Запустить Anki и дождаться readiness.
+9. Выполнить API/browser smoke.
+10. Подготовить offline telemetry queue.
+11. При необходимости перезапустить Anki.
+12. Проверить persistence/delivery/deletion.
+13. Проверить package hash.
+14. Сформировать redacted artifact.
+15. Восстановить canonical result после upload/cleanup.
 
-WSL/Arch с PowerShell Core:
+## Package sources
 
-```bash
-cd ~/projects/anki-study-report
-pwsh -NoProfile -File ./scripts/run_anki_e2e_docker.ps1
-```
+### `source-build`
 
-Только image build:
+Только local development/diagnostic contour. Контейнер устанавливает frontend dependencies из prepared store, собирает dashboard и package.
 
-```powershell
-./scripts/run_anki_e2e_docker.ps1 -BuildOnly
-```
+### `fast-ci-artifact`
 
-Уже подготовленный image:
+Manual/reusable cloud contour. Получает exact successful Fast CI package.
 
-```powershell
-./scripts/run_anki_e2e_docker.ps1 -NoBuild
-```
+Package commit и current E2E harness commit могут различаться. В таком случае обязательны ancestry и complete-diff validation с `reuseMode=harness-only`.
 
-Входного параметра для произвольного `.apkg` или media directory нет.
+Новый Fast CI не нужен, если весь diff разрешён E2E allowlist и package bytes не менялись.
 
-## Mode и scope
+Fallback на source build запрещён.
 
-Canonical modes:
+### `release-artifact`
+
+Release caller передаёт exact current release archive и SHA-256. Harness-only reuse старого Fast CI package не является release proof.
+
+## Modes и scopes
+
+Modes:
 
 ```text
 standard
 perf100
 ```
 
-`standard` — acceptance mode.
-
-`perf100` разрешён только для отдельной performance-задачи. Он выбирает ровно
-100 distinct existing imported card IDs и применяет study-state без создания
-или клонирования notes/cards.
-
-Legacy cloud input `strict-apkg` временно принимается как compatibility alias и
-немедленно нормализуется в `standard`. Он не создаёт отдельный fixture source,
-не меняет import contract и не допускает fallback.
+Legacy `strict-apkg` cloud input нормализуется в `standard`.
 
 Scopes:
 
@@ -151,84 +142,45 @@ settings
 notifications
 ```
 
-Scope меняет продуктовые assertions, но никогда не отключает три package imports,
-checksums, inventory, anchors и zero-synthetic proof.
+Scope не отключает real-deck import/checksum/inventory/anchors/scenarios.
 
-## Package source
+`full` автоматически требует restart. Targeted persistent scopes задают `verify_restart=true` по matrix.
 
-Docker E2E поддерживает три взаимоисключающих source add-on package:
+## Local commands
 
-### `source-build`
-
-Только local/default development contour. Контейнер выполняет offline frontend
-install, production build и package validation.
-
-### `fast-ci-artifact`
-
-Cloud consumer получает exact successful Fast CI run, проверяет repository,
-tested SHA, artifact identity и внутренний SHA-256, затем устанавливает именно
-этот archive. Fallback на source build запрещён.
-
-### `release-artifact`
-
-Release gate получает exact current release archive и обязательный SHA-256.
-Release flow не подменяется Fast CI artifact.
-
-Cloud image берётся по exact GHCR digest. Mutable `latest`, fallback build и
-неоднозначный artifact запрещены.
-
-## Ключевые пути контейнера
-
-```text
-/workspace                                      read-only source checkout
-/e2e/workspace-build                            writable copied build tree
-/e2e/anki-data                                  disposable Anki base
-/e2e/anki-data/prefs21.db                       profile metadata
-/e2e/anki-data/E2E                              disposable profile
-/e2e/anki-data/addons21/anki_study_report_e2e   installed add-on
-/e2e/artifacts                                  runtime evidence
+```powershell
+./scripts/run_anki_e2e_docker.ps1
+./scripts/run_full_check.ps1 -DockerOnly
+./scripts/run_full_check.ps1 -DockerOnly -CleanDocker
+./scripts/run_anki_e2e_docker.ps1 -BuildOnly
+./scripts/run_anki_e2e_docker.ps1 -NoBuild
 ```
 
-Add-on устанавливается на base-level path:
+WSL:
 
-```text
-/e2e/anki-data/addons21/anki_study_report_e2e
+```bash
+pwsh -NoProfile -File ./scripts/run_anki_e2e_docker.ps1
 ```
 
-Не переносить его в profile-level `E2E/addons21/`.
+Произвольный APKG/media input отсутствует.
 
-## Live progress и failure diagnostics
+## Cloud command
 
-Долгие package стадии выводят сообщения с префиксом:
-
-```text
-[real-decks]
+```bash
+gh workflow run ci-e2e.yml \
+  --repo AliceLiddell01/anki-study-report \
+  --ref <branch> \
+  -f mode=standard \
+  -f scope=<scope> \
+  -f screenshot_workers=auto \
+  -f resource_telemetry=true \
+  -f verify_restart=<auto|true|false> \
+  -f fast_ci_run_id=<successful-package-producing-run>
 ```
 
-Пример ожидаемой последовательности:
+Перед запуском не нужно создавать новый Fast CI, если изменён только allowlisted E2E harness. Consumer сам проверит reuse boundary.
 
-```text
-validating manifest
-package 1/3 words: checksum PASS
-importing package 1/3: words
-imported words: ...
-resolving anchors
-applying scenarios
-collection ready
-browser smoke PASS
-```
-
-При ошибке создаётся `reports/real-deck-failure.json` с:
-
-- stage;
-- package/anchor/subject ID;
-- error type и message;
-- last completed step;
-- traceback.
-
-После ошибки нет fallback collection.
-
-## Обязательные evidence reports
+## Required reports
 
 Успешный artifact manifest обязан индексировать PASS:
 
@@ -240,10 +192,9 @@ reports/anchor-resolution-report.json
 reports/scenario-application-report.json
 ```
 
-Дополнительно обязательны API/browser/timing/package reports, перечисленные в
-техническом README.
+Также обязательны API/browser/package/timing reports для выбранного scope.
 
-`collection-inventory.json` должен содержать:
+Inventory:
 
 ```text
 contentSource = committed-real-apkg-only
@@ -252,7 +203,7 @@ syntheticCards = 0
 syntheticMedia = 0
 ```
 
-`scenario-application-report.json` должен показывать:
+Scenario proof:
 
 ```text
 notesCreated = 0
@@ -262,90 +213,114 @@ notesOrCardsCloned = 0
 
 ## Browser evidence
 
-Canonical page proof:
-
 ```text
 screenshots/pages/<route>/<light|dark>.png
-```
-
-Real native front/back proof:
-
-```text
-screenshots/cards/real-decks/words-preview/<light|dark>.png
-screenshots/cards/real-decks/grammar-preview/<light|dark>.png
-screenshots/cards/real-decks/java-preview/<light|dark>.png
-```
-
-Cards state proof:
-
-```text
+screenshots/cards/real-decks/<preview>/<light|dark>.png
 screenshots/states/cards/real-deck-inbox/<light|dark>.png
 ```
 
 Browser smoke проверяет:
 
-- `renderSource = anki_native`;
-- непустой front/back HTML;
-- отсутствие raw `[sound:...]` и `[anki:play:...]`;
+- `renderSource=anki_native`;
+- non-empty front/back;
+- отсутствие raw AV markers;
 - Java `language-java` contour;
-- real audio/GIF/image media;
-- action/recheck, low-success, suspended и buried states;
-- отсутствие console/page/request errors;
-- отсутствие unexpected external requests;
-- отсутствие document-level horizontal overflow на Cards route.
+- real audio/GIF/image;
+- action/recheck и study states;
+- no page errors/failed requests/unexpected external requests;
+- no document-level horizontal overflow на Cards.
 
-Screenshots после cloud run нужно просмотреть содержательно; одного manifest/count
-недостаточно.
+## Notifications
 
-## Readiness и startup markers
-
-Runtime files:
+Notification fixture не создаёт synthetic collection content. Он использует resolved real anchors:
 
 ```text
-runtime/dashboard-ready.json
-runtime/addon-e2e-events.jsonl
+cards-action-recheck
+cards-low-success
 ```
 
-Ожидаемая цепочка events включает import, hook, collection availability, report
-build, server start, publish и readiness write. Token может находиться в
-readiness file внутри artifact archive, но не должен попадать в logs, screenshots,
-DOM dumps или artifact manifest.
+Timestamp берётся из scheduler-day evidence. Public proof schema v2 не содержит raw card/deck IDs.
 
-## Restart
+## Telemetry restart
 
-`full` автоматически требует restart. Targeted Cards/Inspection Profiles proof
-задаёт `verify_restart=true`.
+При включённой telemetry E2E проверяются:
 
-Restart только останавливает и повторно запускает Anki. Он не изменяет real note
-types, fields, templates или media. После restart повторяется API smoke и
-проверяется persistence stored profiles/state.
+- consent/purpose isolation;
+- bounded online delivery;
+- offline queue минимум 25 events;
+- persistence после restart;
+- post-restart delivery;
+- confirmed deletion;
+- credential destruction.
+
+## Package/harness evidence
+
+Для Fast CI handoff artifact содержит:
+
+```text
+sourceFastCiRunId
+sourceFastCiTestedSha
+sourcePackageSha256
+e2eCheckoutSha
+packageReuseMode
+packageReuseChangedFileCount
+packageReuseChangedPathsSha256
+artifacts/reports/e2e-harness-reuse.json
+```
+
+Summary writer повторно валидирует reuse report.
 
 ## Security и privacy
 
-- Dashboard слушает только loopback внутри disposable environment.
-- Checkout монтируется read-only; build выполняется в writable copy.
-- Token не логируется и не индексируется.
-- Media traversal и absolute paths отклоняются.
-- Templates не превращаются в произвольный iframe/JavaScript execution surface.
-- Runtime collection/profile/media/logs/screenshots/reports не коммитятся.
-- Artifact manifest принимает только существующие relative unique paths и
-  отклоняет traversal, missing files, duplicates и token-bearing URL.
+- Dashboard слушает только loopback.
+- Workspace/package mounts read-only.
+- Token и full token-bearing URL не логируются.
+- Raw readiness с token не публикуется.
+- Media traversal/absolute paths отклоняются.
+- Card templates не становятся iframe/JS execution surface.
+- Absolute private paths редактируются; безопасные relative paths сохраняются.
+- Secret-like text/private keys отклоняются fail closed.
+- Runtime profile, collection, logs, screenshots и package outputs не коммитятся.
+
+## Failure contract
+
+Run failed при:
+
+- missing/checksum/import/anchor/fingerprint error;
+- synthetic content или content mutation;
+- package/harness boundary failure;
+- package hash mismatch;
+- browser/API/restart/notification/telemetry failure;
+- missing/unsafe artifact path;
+- sanitizer failure;
+- canonical result failure.
+
+После failure нет collection/package fallback.
 
 ## Verification sequence
 
+Package-impacting:
+
 ```text
 focused tests
-→ Fast CI exact SHA
-→ один risk-required targeted Docker run
-→ один final standard/full только при matrix/policy escalation
+→ Fast CI package
+→ targeted E2E
+→ full по риску
 ```
 
-Для полной замены collection foundation обязательны:
+Harness-only:
 
-1. focused contract tests;
-2. Fast CI exact head;
-3. один `standard/cards` с restart;
-4. один final `standard/full` exact tree.
+```text
+focused harness tests
+→ reuse existing package
+→ targeted/full по риску
+```
 
-Успешный exact-tree gate не повторяется. После одинакового второго падения
-слепые reruns прекращаются; сначала анализируется первопричина и evidence.
+Docs-only после successful gates:
+
+```text
+git diff --check + links
+→ без Fast CI/Docker
+```
+
+Исторический closeout: [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md).
