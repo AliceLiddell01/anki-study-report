@@ -1,301 +1,155 @@
 # Политика проверочных запусков
 
-**Статус:** обязательная политика с 2026-07-13
+**Статус:** обязательная политика, актуализирована 2026-07-23
 
-Полный real-Anki E2E — финальный интеграционный gate, а не цикл разработки.
+Полный real-Anki E2E — интеграционный gate, а не обычный цикл разработки.
 
 ## Общая последовательность
 
-Для изменения продукта или runtime:
+Для изменения продукта, runtime или E2E-инфраструктуры:
 
 ```text
 локальные профильные тесты
 → commit и push
 → Fast CI для точного SHA — PASS
-→ один целевой scope real-Anki
-→ финальный standard/full только при эскалации planner или matrix
-→ rebase-merge проверенного patch или tree
+→ один целевой real-Anki scope, если его требует риск
+→ standard/full только при эскалации matrix или planner
+→ merge проверенного patch/tree
 → Fast CI на итоговом master
 ```
 
-Fast CI обязателен для `codex/**`, PR и `master`. До его PASS E2E не запускается.
+До успешного Fast CI для точного head SHA real-Anki E2E не запускается.
 
-Целевой gate выбирается по продуктовому scope.
+Успешный E2E для неизменного exact tree не повторяется. Новый commit требует новой оценки, потому что меняет проверяемое дерево.
 
-Финальный `standard/full` выполняется только тогда, когда его требует фактический diff по planner или matrix, а не автоматически после каждого целевого gate.
+## Real-deck E2E foundation
 
-`strict-apkg` нужен только при изменении контракта Cards или APKG. `perf100` — только для явной задачи производительности.
-
-## Search и Safe Actions
-
-Целевой gate:
+Docker collection всегда строится из трёх committed рабочих колод:
 
 ```text
-standard/global
+docker/anki-e2e/fixtures/real-decks/words-n1.apkg
+docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
+docker/anki-e2e/fixtures/real-decks/java-core.apkg
 ```
 
-Он выполняется один раз для точного готового SHA head после Fast CI и покрывает:
+Отдельного `strict-apkg` mode больше нет: строгий manifest/checksum/import/anchor contract является обязательной частью каждого Docker E2E.
 
-- маршрут и навигацию;
-- query и inspect;
-- bridge Browser;
-- обратимые mutations;
-- восстановление фикстуры.
+`perf100` разрешён только для явной performance-задачи. Он выбирает 100 distinct existing imported cards и не создаёт/клонирует notes или cards.
 
-Изменения общего server dashboard, runtime mutations или E2E-фикстуры эскалируют финальный gate до `standard/full`.
-
-`strict-apkg` и `perf100` не требуются, если контракты рендера Cards, APKG и производительности не менялись.
-
-## Inspection Profiles и Triage
-
-Целевой gate:
+Изменение real-deck importer, manifest, anchors, scenario applicator, browser/API smoke, artifact manifest или Docker runner классифицируется как E2E/runtime infrastructure и требует:
 
 ```text
-standard/cards
-verify_restart = true
+focused contract tests
+→ Fast CI exact SHA
+→ один standard/cards с restart
+→ standard/full только если общий diff затрагивает общий startup/server/package/artifact contour
 ```
 
-Он использует точный пакет Fast CI и подтверждает:
+Поскольку полная замена collection foundation затрагивает startup, import, media, Cards, Profiles, browser proof, package handoff и artifact contract, финальный `standard/full` для её готового exact head обязателен после успешного целевого proof.
 
-- живые структуры Japanese и Programming;
-- save и confirm через поддерживаемый API;
-- причину missing-audio только для Japanese;
-- независимую причину обучения;
-- локальную для профиля revision после restart;
-- fail-closed-состояние `needs_review` после изменения ссылки шаблона фикстуры.
+## Выбор целевого scope
 
-Это подтверждение контракта и runtime, а не приёмка по скриншотам.
+| Изменение | Целевой gate |
+| --- | --- |
+| Search и Safe Actions | `standard/global` |
+| Cards, native preview, media, Triage, Inspection Profiles | `standard/cards`, `verify_restart=true` |
+| Statistics и FSRS | `standard/stats` |
+| Decks | `standard/decks` |
+| Calendar/Activity | `standard/activity` |
+| Settings, privacy, telemetry | `standard/settings` |
+| Notifications | `standard/notifications`, `verify_restart=true` |
+| общий startup/server/package/E2E infrastructure | целевой scope по риску, затем `standard/full` |
+| release path | `standard/full` с exact release artifact |
 
-Для C1.3 `full`, `strict-apkg` и `perf100` не требуются только из-за самого этапа.
+Targeted scope не ослабляет real-deck foundation: все три packages, checksum/import/inventory/anchor/scenario reports остаются обязательными.
 
-Для C1.4 сохраняется тот же `standard/cards` с точным пакетом и restart. Browser-smoke дополнительно проверяет:
+## Exact SHA и Fast CI artifact
 
-- маршрут `#/settings/inspection-profiles`;
-- жизненный цикл confirmed и needs-review;
-- локальный изменённый черновик suggestion;
-- ограниченный предпросмотр validate v2;
-- защиту навигации при несохранённых изменениях;
-- отсутствие горизонтального overflow;
-- скриншоты списка, editor, dirty-состояния и предпросмотра.
+Готовый head PR должен иметь PASS Fast CI именно на своём SHA.
 
-Browser-smoke не сохраняет и не подтверждает черновик автоматически.
+Успешный Fast CI публикует:
 
-## Stage 9.3–9.5 — Notifications
+- диагностический artifact;
+- точный `.ankiaddon` package artifact только после успешных canonical checks;
+- metadata с tested SHA и package SHA-256.
 
-Порядок:
+Docker consumer обязан:
 
-```text
-профильные тесты
-→ -SkipDocker
-→ Fast CI для точного SHA
-→ один standard/notifications с restart
-→ один финальный standard/full
-```
+- получить явно указанный successful Fast CI run;
+- проверить repository, branch/head identity и tested SHA;
+- скачать точный package artifact;
+- проверить metadata и внутренний SHA-256;
+- завершиться ошибкой без fallback при несовпадении, истечении срока или неоднозначности.
 
-Целевой запуск повторяется только после значимого изменения или ошибки. Полный запуск не повторяется без изменения контракта.
+После merge Fast CI на `master` обязателен. Повтор E2E требуется только если rebase/conflict resolution изменил production tree или patch относительно проверенного head.
 
-Локальный Docker допускается только как явное исключение владельца и не заменяет Fast CI, CodeQL или cloud-подтверждение.
+## Stop-loss
 
-## Требование точного SHA
+После ошибки сначала изучаются reports, logs, screenshots и первопричина.
 
-Готовый SHA head PR обязан иметь PASS Fast CI и требуемого real-Anki gate именно на этом SHA.
+Разрешён максимум один повтор соответствующего gate после конкретного исправления. Вторая одинаковая ошибка прекращает слепые перезапуски.
 
-Разрешённый репозиторием rebase-merge создаёт новый SHA коммита даже при неизменном patch или tree.
+Запрещены без отдельной задачи:
 
-После merge сравниваются production-tree и patch с проверенным head PR.
+- warm-cache repeat;
+- worker comparison;
+- resource benchmark;
+- повтор успешного exact-tree gate;
+- локальный full Docker после cloud PASS;
+- full после каждого небольшого исправления;
+- fallback на сборку из исходников при ошибке package handoff;
+- `perf100` как обычный acceptance gate.
 
-Повтор real-Anki gate требуется только тогда, когда rebase или разрешение конфликтов изменили production-tree.
+Infrastructure failure отделяется от project failure по logs и artifact metadata. Автоматический rerun без такой классификации запрещён.
 
-Fast CI на итоговом `master` обязателен всегда. Новый SHA сам по себе не является причиной повторять успешный E2E.
+## Локальный Docker
 
-## Stop-loss при ошибке
+Локальный Docker допускается, когда:
 
-После ошибки сначала изучаются артефакты, логи и первопричина.
+- необходимо диагностировать изменение самого Docker/runtime harness;
+- cloud gate ещё не запускался для exact tree;
+- владелец явно выбрал локальный proof;
+- запуск не дублирует уже успешный cloud gate.
 
-Разрешён максимум один повтор соответствующего целевого или полного gate после конкретного исправления.
+Локальный запуск не заменяет Fast CI, CodeQL или обязательный cloud exact-package proof.
 
-Вторая одинаковая ошибка останавливает слепые перезапуски.
+## Verification planner
 
-Успешный запуск точного SHA не повторяется.
+`scripts/plan_verification.py` принимает base/head или список paths и формирует рекомендательный план.
 
-Запрещены:
+Planner:
 
-- повторы с тёплым cache;
-- benchmark workers без отдельной задачи;
-- benchmark ресурсной телеметрии без отдельной задачи;
-- локальный полный Docker после cloud PASS;
-- полный запуск после каждого исправления;
-- полный запуск после эквивалентного rebase-merge с неизменным production-tree.
+- детерминирован и покрыт тестами;
+- не запускает workflows;
+- не хранит состояние выполненных gates;
+- не может понизить изменение общего runtime, E2E, package или release;
+- может быть повышен человеком или agent по фактическому риску.
 
-Изменение только документации после gate требует только проверок документации и Fast CI. Unit-фикстура без влияния на runtime требует Fast CI. Локальные изменения UI или API FSRS требуют целевой `stats`. Общая оболочка, server, package или инфраструктура E2E требуют `full`.
+## Изменения только документации
 
-## Рекомендательный verification planner
+После уже успешного gate изменение только документации требует:
 
-`scripts/plan_verification.py` принимает:
+- `git diff --check`;
+- проверки links/code fences/paths;
+- Fast CI нового exact SHA, если изменение находится в PR;
+- без повторного Docker, если runtime tree не изменился.
 
-```text
---base
---head
---path — можно повторять
-```
+## Release
 
-Он записывает:
+Release infrastructure, version source, changelog, publisher и AnkiWeb adapter всегда классифицируются как `full`.
 
-```text
-verification-plan.json
-verification-plan.md
-GitHub Step Summary
-```
+Production workflow устанавливает exact final archive через `ANKI_E2E_PREBUILT_ADDON_PATH`. E2E package SHA-256 должен совпадать с release artifact. Публикация разрешена только после успешного exact release-artifact `standard/full`.
 
-Classifier:
+## Обязательная фиксация результата
 
-- основан на путях и правилах;
-- детерминирован;
-- покрыт тестами;
-- имеет только рекомендательный характер.
+Итоговый отчёт по gate должен содержать:
 
-Planner не запускает E2E, не хранит состояние и не может понизить изменение общего runtime, E2E или package. Человек или agent может повысить gate.
-
-Ожидаемый план Stage 7:
-
-```text
-Fast CI обязателен
-один целевой stats
-один финальный full
-телеметрия отключена
-без повторов с тёплым cache и локального дублирования
-```
-
-Поскольку фактический Stage 7 меняет server dashboard и E2E-фикстуру и контракт, planner корректно эскалирует финальное интеграционное требование, но не создаёт лишний ранний полный запуск.
-
-## Исходные измерения Fast CI
-
-Изменение только контракта измерений Fast CI сначала проходит:
-
-- профильные тесты helpers, workflow, summary и `run_full_check`;
-- канонический локальный `run_full_check.ps1 -SkipDocker`.
-
-После локального PASS для Stage 5A разрешён ровно один `workflow_dispatch` на точной ветке instrumentation.
-
-Этот запуск является наблюдением исходного состояния. Не выполняются:
-
-- пара до и после;
-- повтор с тёплым cache;
-- имитация trigger PR;
-- Docker E2E;
-- release.
-
-Внутренние монотонные измерения фаз анализируются вместе с timestamps действий и шагов Jobs API. Загрузка артефактов и post-job-работа cache не приписываются внутренним таймерам фаз.
-
-После PR #37 канонический контур содержит ровно один TypeScript typecheck. Нельзя возвращать удалённый `frontend-typecheck-build` или второй `pnpm run typecheck`.
-
-Runner, checkout и caches сохраняются без изменений.
-
-Если разрешённое измерение падает, автоматический повтор запрещён. Нужно скачать диагностику, классифицировать ошибку как project, instrumentation или infrastructure и вернуть `FAIL` или `PARTIAL`.
-
-Исправление и новый запуск требуют отдельного решения владельца.
-
-## Производитель быстрого пакета
-
-Успешный запуск Fast CI публикует диагностический артефакт отдельно от краткоживущего точного артефакта пакета.
-
-Диагностика загружается через `always()` и не содержит `.ankiaddon`.
-
-Артефакт пакета появляется только после успешных:
-
-- канонических проверок;
-- planner;
-- summary;
-- проверки пакета;
-- загрузки диагностики.
-
-Metadata producer обязаны различать:
-
-- проверенный `github.sha`;
-- исходный SHA head;
-- исходный SHA base.
-
-`packageSha256` относится к байтам внутреннего `.ankiaddon`. Digest артефакта GitHub относится к транспортному артефакту и не записывается внутрь неизменяемых metadata.
-
-Один ручной Fast CI `workflow_dispatch` на точной feature-ветке допустим для проверки контракта producer после локального PASS.
-
-Stage 2 не меняет контур E2E: Docker E2E продолжает сборку из исходников и не скачивает быстрый пакет. Передача между запусками требует отдельного решения и не добавляется побочным эффектом этапа producer.
-
-## Потребитель быстрого пакета
-
-Docker E2E может явно получить успешный точный быстрый пакет через `fast_ci_run_id`.
-
-Consumer обязан:
-
-- проверить исходный запуск и список артефактов через read-only API;
-- скачать диагностику и пакет по ID артефактов;
-- получить проверенный SHA из валидированной диагностики;
-- выполнить checkout точного проверенного коммита;
-- связать metadata исходного head с исходным SHA workflow E2E.
-
-Недопустимый ID запуска, fork, неоднозначность, истечение срока или несовпадение идентичности и hash завершаются ошибкой без fallback на сборку из исходников.
-
-Для Stage 3 разрешена одна пара cloud-наблюдений на точной ветке:
-
-```text
-один ручной Fast CI
-один standard/settings с отключёнными telemetry и restart и полученным ID запуска
-```
-
-Не выполняются сравнение со сборкой из исходников, тёплый повтор, full, strict APKG или Perf100.
-
-Stage 3 доказывает семантику передачи. Сравнение производительности A/B относится к Stage 4. Поток точного артефакта release остаётся отдельным gate текущего запуска.
-
-## Политика release
-
-Инфраструктура release, источник версии пакета, changelog, workflow release и adapter AnkiWeb всегда классифицируются как `full`.
-
-Production-workflow переиспользует `ci-e2e.yml` и устанавливает точный финальный архив через:
-
-```text
-ANKI_E2E_PREBUILT_ADDON_PATH
-```
-
-Подтверждение E2E обязано иметь тот же SHA-256.
-
-PR запускает `Validate release contract`. Тяжёлые задачи сборки и production сохраняют прежние идентичности checks, но получают состояние `skipped` через условия уровня job.
-
-Ручной dispatch из `master` выполняет точную сборку и полную цепочку release. Это отдельное явное решение владельца и не является автоматическим продолжением merge.
-
-## Product notices и privacy
-
-Целевой gate:
-
-```text
-standard/settings
-```
-
-Он запускается после Fast CI для точного готового SHA head.
-
-Изменение App Shell, server dashboard, E2E-smoke, проверки пакета или канонического входа release эскалирует финальный gate до `standard/full`.
-
-Повторный локальный полный запуск не заменяет cloud-подтверждение.
-
-Для Stage 9.0.1 порядок:
-
-```text
-профильные тесты
-→ -SkipDocker
-→ Fast CI для точного SHA
-→ один standard/settings с точным артефактом пакета
-```
-
-Planner может потребовать один финальный `standard/full` из-за общего server dashboard или E2E-smoke.
-
-Cloud-deployment телеметрии выполняется только после CI сервиса:
-
-```text
-migration и deployment staging
-→ санитизированный синтетический жизненный цикл
-→ ручной deployment production
-→ такой же жизненный цикл
-```
-
-Автоматические тесты не обращаются к production.
-
-Реальный профиль требует отдельной явной контрольной точки владельца и не считается принятым по синтетическому подтверждению.
+- exact commit SHA;
+- Fast CI run ID и status;
+- Docker mode/scope/restart policy;
+- package artifact identity и SHA-256;
+- PASS/FAIL пяти real-deck reports;
+- artifact ID/digest;
+- что не запускалось;
+- причину любого пропуска или остановки;
+- подтверждение отсутствия повторного exact-tree run.
