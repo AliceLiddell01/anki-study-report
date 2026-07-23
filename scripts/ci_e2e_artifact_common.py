@@ -39,7 +39,9 @@ TOKEN_QUERY = re.compile(
     re.IGNORECASE,
 )
 WINDOWS_PRIVATE_PATH = re.compile(r"(?i)[A-Z]:[\\/]Users[\\/][^\s\"'<>]+")
-LINUX_PRIVATE_PATH = re.compile(r"/home/(?!e2e(?:/|$))[^\s\"'<>]+")
+LINUX_PRIVATE_PATH = re.compile(
+    r"(?:(?<![A-Za-z0-9_./-])|(?<=file://))/home/(?!e2e(?:/|$))[^\s\"'<>]+"
+)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRODUCT_PHASES = {
