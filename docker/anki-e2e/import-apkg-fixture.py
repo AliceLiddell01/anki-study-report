@@ -8,6 +8,9 @@ import subprocess
 import sys
 
 
+REAL_DECK_FIXTURE_PATH = "docker/anki-e2e/fixtures/real-decks"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Import all committed real working deck fixtures.")
     parser.add_argument("--profile-dir", required=True, type=Path)
@@ -16,7 +19,7 @@ def main() -> int:
     args = parser.parse_args()
 
     workspace = Path(os.environ.get("WORKSPACE") or "/workspace")
-    fixture_dir = workspace / "docker" / "anki-e2e" / "fixtures" / "real-decks"
+    fixture_dir = workspace / REAL_DECK_FIXTURE_PATH
     manifest = fixture_dir / "manifest.json"
     command = [
         sys.executable,
