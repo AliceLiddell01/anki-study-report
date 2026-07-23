@@ -13,6 +13,7 @@ from artifact_paths import ArtifactPaths, CANONICAL_ADDON_LOG_NAME
 
 
 PAGE_ROUTES = {
+    "home": "#/home",
     "today": "#/home",
     "calendar": "#/calendar",
     "cards": "#/cards",
