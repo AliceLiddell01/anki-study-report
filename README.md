@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-23**.
+Документация описывает текущий проект на **2026-07-24**.
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
@@ -57,21 +57,40 @@ C3–C6 — mandatory future Core path
 Core 1.0 release — not started
 ```
 
-## Current platform state
+## Текущее состояние Platform / CI
 
 ```text
 CI Stage 6B: Complete
+real-deck E2E foundation: Complete
+E2E-I1 unified live run protocol: Complete
+E2E-I2 browser smoke progress: next, not started
 cloud real-Anki environment: immutable GHCR digest only
 manual E2E package: exact successful Fast CI artifact
 release E2E package: exact release artifact
 collection content: three committed real working APKG
 package/harness identities: separate and fail-closed
+Fast CI live evidence: ci-fast/run-events.jsonl
+Docker E2E live evidence: reports/run-events.jsonl
+public E2E live evidence: artifacts/reports/run-events.jsonl
 local Docker build: development/diagnostic fallback
 ```
 
 Docker E2E imports Words N1, Grammar N5 and Java working decks through the public Anki package importer. Synthetic notes/cards/templates/media and content fallback are prohibited.
 
 A new Fast CI package is required only when the diff can change `.ankiaddon` bytes or production behavior. Changes restricted to the validated E2E harness/orchestration/tests may reuse an existing successful package after ancestry and complete-diff validation. See [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md).
+
+`E2E-I1` ввёл единый schema-v1 lifecycle Fast CI и Docker E2E. Технический контракт: [Единый протокол событий выполнения](docs/run-event-protocol.md). Исторический closeout: [E2E-I1 — итоговый отчёт](reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+
+Подтверждение этапа:
+
+```text
+implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
+Fast CI: 30039103625 — PASS
+standard/full E2E: 30039372012 — PASS
+final standard/full E2E: 30039708429 — PASS
+PR в core: не создан
+merge в core: не выполнен
+```
 
 ## Important commands
 
@@ -140,12 +159,14 @@ Start with:
 - [Verification policy](docs/verification-run-policy.md)
 - [CI/CD](docs/ci-cd.md)
 - [Docker E2E](docs/docker-e2e.md)
+- [Unified Fast CI / Docker E2E run-event protocol](docs/run-event-protocol.md)
 - [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md)
 - [GHCR E2E consumer](docs/ghcr-e2e-consumer.md)
 - [Decision log](docs/decision-log.md)
 - [AI handoff](docs/ai-handoff.md)
 - [Historical reports](reports/README.md)
 - [Real-deck E2E closeout report](reports/ci/real-deck-e2e-foundation-closeout.md)
+- [E2E-I1 closeout report](reports/ci/e2e-i1-unified-live-run-protocol-closeout.md)
 
 ## Contract rules
 
@@ -160,6 +181,7 @@ Start with:
 9. Desktop working pages must not be constrained by one global narrow `max-width`; width limits are local component decisions.
 10. New pages must reuse shared layout/content primitives instead of introducing another local visual grammar.
 11. A verified package may be reused only through the fail-closed package/harness boundary; no source-build fallback is allowed in cloud E2E.
+12. Fast CI и Docker E2E обязаны сохранять schema-validated run-event stream; transient lock/state sidecars не являются evidence.
 
 ## Participation and safety
 
