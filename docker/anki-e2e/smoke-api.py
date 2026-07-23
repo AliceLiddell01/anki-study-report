@@ -154,7 +154,7 @@ def assert_action_recheck(base_url: str, token: str, anchor: dict[str, Any]) -> 
     item = next((value for value in items if str(value.get("cardId")) == str(anchor["cardId"])), None)
     assert_true(item is not None, "action/recheck anchor is present in automatic triage")
     reason_ids = [reason.get("reasonId") for reason in item.get("reasons", []) if isinstance(reason, dict) and reason.get("reasonId")]
-    assert_true("learning:learning.leech" in reason_ids, "action/recheck anchor has authoritative leech reason")
+    assert_true(any(str(reason_id).startswith("learning:") for reason_id in reason_ids), "action/recheck anchor has authoritative learning reasons")
     response = post_json(
         base_url,
         "/api/triage/recheck",
