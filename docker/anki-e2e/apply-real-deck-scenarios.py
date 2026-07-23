@@ -9,7 +9,7 @@ from pathlib import Path
 import sqlite3
 import time
 import traceback
-from typing import Any
+from typing import Any, Iterable
 
 from real_deck_contract import RealDeckContractError, select_distinct_cards, write_json
 
@@ -67,29 +67,71 @@ def main() -> int:
             results: list[dict[str, Any]] = []
 
             plans = {
-                "cards-action-recheck": {
-                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 4,
-                    "factor": 1800, "reviews": [1, 1, 3, 1, 2, 3], "lapses": 3,
-                },
-                "cards-low-success": {
-                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 2,
-                    "factor": 1700, "reviews": [1, 1, 1, 3, 1, 1, 2, 1, 3, 1], "lapses": 7,
-                },
-                "cards-suspended": {
-                    "mutations": {"scheduling", "suspended"}, "queue": -1, "type": 2, "ivl": 12,
-                    "factor": 2100, "reviews": [], "lapses": 1,
-                },
-                "cards-buried": {
-                    "mutations": {"scheduling", "buried"}, "queue": -2, "type": 2, "ivl": 7,
-                    "factor": 2050, "reviews": [], "lapses": 1,
-                },
-                "inspection-japanese": {
-                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 6,
+                "words-preview": {
+                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 5,
                     "factor": 2000, "reviews": [1, 3, 2, 3], "lapses": 1,
                 },
+                "grammar-preview": {
+                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 3,
+                    "factor": 1950, "reviews": [1, 1, 3, 2], "lapses": 2,
+                },
+                "java-preview": {
+                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 7,
+                    "factor": 2150, "reviews": [1, 3, 2, 3], "lapses": 1,
+                },
+                "cards-action-recheck": {
+                    "mutations": {"scheduling", "revlog"},
+                    "queue": 2,
+                    "type": 2,
+                    "ivl": 4,
+                    "factor": 1800,
+                    "reviews": [1, 1, 3, 1, 2, 3],
+                    "lapses": 3,
+                },
+                "cards-low-success": {
+                    "mutations": {"scheduling", "revlog"},
+                    "queue": 2,
+                    "type": 2,
+                    "ivl": 2,
+                    "factor": 1700,
+                    "reviews": [1, 1, 1, 3, 1, 1, 2, 1, 3, 1],
+                    "lapses": 7,
+                },
+                "cards-suspended": {
+                    "mutations": {"scheduling", "suspended"},
+                    "queue": -1,
+                    "type": 2,
+                    "ivl": 12,
+                    "factor": 2100,
+                    "reviews": [],
+                    "lapses": 1,
+                },
+                "cards-buried": {
+                    "mutations": {"scheduling", "buried"},
+                    "queue": -2,
+                    "type": 2,
+                    "ivl": 7,
+                    "factor": 2050,
+                    "reviews": [],
+                    "lapses": 1,
+                },
+                "inspection-japanese": {
+                    "mutations": {"scheduling", "revlog"},
+                    "queue": 2,
+                    "type": 2,
+                    "ivl": 6,
+                    "factor": 2000,
+                    "reviews": [1, 3, 2, 3],
+                    "lapses": 1,
+                },
                 "inspection-programming": {
-                    "mutations": {"scheduling", "revlog"}, "queue": 2, "type": 2, "ivl": 8,
-                    "factor": 2200, "reviews": [3, 2, 3, 4], "lapses": 0,
+                    "mutations": {"scheduling", "revlog"},
+                    "queue": 2,
+                    "type": 2,
+                    "ivl": 8,
+                    "factor": 2200,
+                    "reviews": [3, 2, 3, 4],
+                    "lapses": 0,
                 },
             }
             scenario_card_ids: set[int] = set()
@@ -150,12 +192,19 @@ def main() -> int:
                 ease = 1 if index % 7 == 0 else 2 if index % 5 == 0 else 3 if index % 3 else 4
                 review_ms = day_start_ms - (index % 120) * DAY_MS + 7_200_000 + (index // 120) * 1000
                 plan = {
-                    "queue": 2, "type": 2, "ivl": 1 + (index % 45),
-                    "factor": 1900 + (index % 5) * 100, "reviews": [ease],
+                    "queue": 2,
+                    "type": 2,
+                    "ivl": 1 + (index % 45),
+                    "factor": 1900 + (index % 5) * 100,
+                    "reviews": [ease],
                     "lapses": 1 if ease == 1 else 0,
                 }
                 next_revlog_id, revlog_ids = apply_card_plan(
-                    conn, card_id, plan, next_revlog_id=next_revlog_id, first_review_ms=review_ms
+                    conn,
+                    card_id,
+                    plan,
+                    next_revlog_id=next_revlog_id,
+                    first_review_ms=review_ms,
                 )
                 history_revlog_ids.extend(revlog_ids)
 
@@ -166,7 +215,9 @@ def main() -> int:
                 perf100_cards = select_distinct_cards(package_cards, package_order, 100)
                 for index, card_id in enumerate(perf100_cards):
                     plan = {
-                        "queue": 2, "type": 2, "ivl": 1 + (index % 20),
+                        "queue": 2,
+                        "type": 2,
+                        "ivl": 1 + (index % 20),
                         "factor": 1800 + (index % 4) * 100,
                         "reviews": [1, 3] if index % 4 == 0 else [2, 3],
                         "lapses": 1 if index % 4 == 0 else 0,
@@ -186,9 +237,7 @@ def main() -> int:
                     "Scenario applicator changed note/card counts; content cloning is forbidden.", stage="scenario"
                 )
             if not set(perf100_cards).issubset(imported_cards) or len(perf100_cards) != len(set(perf100_cards)):
-                raise RealDeckContractError(
-                    "perf100 selection is not distinct imported cards.", stage="scenario", subject_id="perf100"
-                )
+                raise RealDeckContractError("perf100 selection is not distinct imported cards.", stage="scenario", subject_id="perf100")
         finally:
             conn.close()
 
@@ -197,8 +246,11 @@ def main() -> int:
             "status": "PASS",
             "generatedAtUtc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "contentMutation": {
-                "notesCreated": 0, "cardsCreated": 0, "templatesChanged": 0,
-                "fieldsChanged": 0, "mediaChanged": 0,
+                "notesCreated": 0,
+                "cardsCreated": 0,
+                "templatesChanged": 0,
+                "fieldsChanged": 0,
+                "mediaChanged": 0,
             },
             "before": before,
             "after": after,
@@ -218,6 +270,7 @@ def main() -> int:
             },
         }
         write_json(args.artifacts_dir / "scenario-application-report.json", report)
+        last_completed_step = "scenario report written"
         log(
             f"scenarios applied to {len(results)} anchors; history cards={len(history_cards)}; "
             f"perf100={'PASS' if perf100_enabled else 'disabled'}"
@@ -265,7 +318,9 @@ def verify_cards_exist(conn: sqlite3.Connection, card_ids: set[int]) -> None:
     found = {int(row[0]) for row in conn.execute(f"select id from cards where id in ({placeholders})", sorted(card_ids))}
     missing = sorted(card_ids - found)
     if missing:
-        raise RealDeckContractError(f"Imported card IDs are missing: {missing[:5]}", stage="scenario")
+        raise RealDeckContractError(
+            f"Imported card IDs are missing from collection: {missing[:5]}", stage="scenario"
+        )
 
 
 def card_state(conn: sqlite3.Connection, card_id: int) -> dict[str, int]:
@@ -275,8 +330,13 @@ def card_state(conn: sqlite3.Connection, card_id: int) -> dict[str, int]:
     if row is None:
         raise RealDeckContractError(f"Card is missing: {card_id}", stage="scenario", subject_id=str(card_id))
     return {
-        "queue": int(row[0]), "type": int(row[1]), "due": int(row[2]),
-        "interval": int(row[3]), "factor": int(row[4]), "reps": int(row[5]), "lapses": int(row[6]),
+        "queue": int(row[0]),
+        "type": int(row[1]),
+        "due": int(row[2]),
+        "interval": int(row[3]),
+        "factor": int(row[4]),
+        "reps": int(row[5]),
+        "lapses": int(row[6]),
     }
 
 
@@ -298,9 +358,15 @@ def apply_card_plan(
         where id = ?
         """,
         (
-            int(plan.get("queue", 2)), int(plan.get("type", 2)), 1 + (card_id % 5000),
-            int(plan.get("ivl", 1)), int(plan.get("factor", 2100)), len(reviews),
-            int(plan.get("lapses", 0)), int(time.time()), card_id,
+            int(plan.get("queue", 2)),
+            int(plan.get("type", 2)),
+            1 + (card_id % 5000),
+            int(plan.get("ivl", 1)),
+            int(plan.get("factor", 2100)),
+            len(reviews),
+            int(plan.get("lapses", 0)),
+            int(time.time()),
+            card_id,
         ),
     )
     revlog_ids: list[int] = []
@@ -314,8 +380,13 @@ def apply_card_plan(
             values (?, ?, -1, ?, ?, ?, ?, ?, 1)
             """,
             (
-                next_revlog_id, card_id, ease, int(plan.get("ivl", 1)),
-                max(0, int(plan.get("ivl", 1)) - 1), int(plan.get("factor", 2100)), answer_ms,
+                next_revlog_id,
+                card_id,
+                ease,
+                int(plan.get("ivl", 1)),
+                max(0, int(plan.get("ivl", 1)) - 1),
+                int(plan.get("factor", 2100)),
+                answer_ms,
             ),
         )
         revlog_ids.append(next_revlog_id)
