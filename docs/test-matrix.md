@@ -17,7 +17,7 @@ docs-only
 Связанные контракты:
 
 - package reuse: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
-- run events: [`run-event-protocol.md`](run-event-protocol.md).
+- run events и browser items: [`run-event-protocol.md`](run-event-protocol.md).
 
 ## Общая матрица
 
@@ -37,6 +37,7 @@ docs-only
 | release/publisher | release/package/publisher tests | exact release-artifact `standard/full` | release package обязателен |
 | committed APKG/manifest/anchors | real-deck contract tests | targeted real-Anki proof | новый Fast CI нужен, если package tree или producer изменён; сам APKG не входит в add-on, но full risk оценивается отдельно |
 | только `docker/anki-e2e/` harness | focused harness tests | один risk-required Docker proof с reused package | новый Fast CI не нужен при allowlisted diff |
+| browser plan/item/report contract | Node unit tests + static pytest + screenshot/run-event tests | один `standard/cards` proof; full только при shared runner lifecycle change | reused package разрешён fail closed; package Fast CI только по complete diff |
 | E2E artifact/sanitizer/handoff consumer | focused exporter/security/reuse tests | один соответствующий Docker proof | reused package разрешён fail closed |
 | run-event schema/registry/writer | schema/security/concurrency/integration tests | controlled failure + один затронутый Fast CI/E2E proof | новый Fast CI только при package/producer impact |
 | `.github/workflows/ci-e2e.yml` | workflow/handoff tests | одно ручное наблюдение | reused package разрешён, если полный diff проходит allowlist |
@@ -89,6 +90,14 @@ pnpm run build:addon
 python docker/anki-e2e/run_event_protocol.py validate \
   --output <run-events.jsonl> \
   --producer <fast-ci|docker-e2e>
+```
+
+Browser syntax/unit contract:
+
+```bash
+node --check docker/anki-e2e/browser-progress.mjs
+node --check docker/anki-e2e/smoke-browser.mjs
+node --test tests/browser_progress.test.mjs
 ```
 
 Cloud targeted E2E с existing package:
@@ -179,6 +188,67 @@ tests/test_telemetry_threshold_delivery.py
 - public exporter валидирует source и copied stream;
 - transient `.lock`/`.state.json` не входят в artifact inventory.
 
+## Browser progress focused minimum
+
+При изменении `browser-progress.mjs`, `smoke-browser.mjs`, browser report schema или screenshot accounting обязательны:
+
+```text
+tests/browser_progress.test.mjs
+tests/test_browser_progress_node.py
+tests/test_e2e_screenshot_contract.py
+tests/test_docker_smoke_helpers.py
+tests/test_telemetry_e2e_harness.py
+tests/test_run_event_protocol.py
+tests/test_run_event_integration.py
+tests/test_run_event_controlled_failure.py
+```
+
+Если затронуты exporter/manifest/reuse boundaries, также:
+
+```text
+tests/test_prepare_ci_e2e_artifacts_reimport.py
+tests/test_ci_e2e_workflow.py
+tests/test_e2e_harness_reuse.py
+artifact manifest/sanitizer tests
+```
+
+Минимальные browser invariants:
+
+- plan создаётся и печатается до Chromium launch;
+- stable unique item IDs и known kinds;
+- deterministic order/counts;
+- telemetry items только при enabled endpoint;
+- 10 route screenshots;
+- 3 preview items × 2 screenshots;
+- 2 Cards state screenshots;
+- total 18;
+- START предшествует operation;
+- PASS/FAIL содержат exact item и duration;
+- original exception rethrown;
+- unknown/duplicate item fail closed;
+- producer failure hard-fails;
+- partial failure report сохраняется;
+- slowest sorting deterministic;
+- direct `playwright` import сохранён;
+- `@playwright/test`, retries и dynamic phase IDs отсутствуют;
+- existing diagnostics semantics сохранены;
+- final run-event stream валиден.
+
+### Required cloud proof
+
+Обычный harness-only browser progress diff требует одного:
+
+```text
+mode=standard
+scope=cards
+verify_restart=false или auto для targeted scope
+resource_telemetry=true
+```
+
+`standard/full` нужен только при изменении общего runner/artifact/run-event/restart lifecycle.
+
+После одного успешного targeted proof не запускаются второй run «для уверенности», perf100, warm repeat, worker comparison или local full.
+
 ## Scope matrix
 
 | Scope | Основной риск |
@@ -187,7 +257,7 @@ tests/test_telemetry_threshold_delivery.py
 | `stats` | Statistics/FSRS |
 | `decks` | Decks |
 | `activity` | Calendar/Activity |
-| `cards` | Cards/Triage/native preview/media/Inspection Profiles |
+| `cards` | Cards/Triage/native preview/media/Inspection Profiles/browser progress |
 | `settings` | Settings/privacy/telemetry |
 | `notifications` | Notification lifecycle |
 | `full` | общий startup/server/package/artifact/restart contour |
@@ -204,9 +274,11 @@ Restart обязателен для:
 - telemetry queue/network/delete lifecycle;
 - startup/profile persistence changes.
 
+Browser plan/report/screenshot progress без изменения persistence допускает targeted `cards` с `verify_restart=false`.
+
 ## Artifact security
 
-Изменение artifact exporter/sanitizer/run-event boundary требует focused tests на:
+Изменение artifact exporter/sanitizer/run-event/browser-report boundary требует focused tests на:
 
 - token query redaction;
 - private Linux/Windows absolute paths;
@@ -216,6 +288,8 @@ Restart обязателен для:
 - control characters/multiline/NUL;
 - deterministic UTF-8 JSONL без BOM/partial lines;
 - source/public stream validation;
+- safe item IDs/context/error summaries;
+- отсутствие raw stack в progress message;
 - canonical result restoration после upload/cleanup.
 
 Один соответствующий Docker run нужен только после concrete fix. Новый Fast CI не нужен, если package не изменён и reuse boundary проходит.
@@ -230,6 +304,7 @@ Restart обязателен для:
 - Не запускать local full после successful cloud full.
 - Не запускать `perf100`, warm repeat или worker comparison без отдельной задачи.
 - Вторая одинаковая ошибка прекращает blind reruns.
+- Не менять production code ради устаревшего structural test; обновлять тест на фактический контракт.
 
 ## Исторические подтверждения
 
@@ -238,4 +313,5 @@ Restart обязателен для:
 Closeout reports:
 
 - [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md);
-- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
+- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
