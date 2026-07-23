@@ -14,6 +14,7 @@ Platform work evolves GitHub Actions, packaging, release delivery and real-Anki 
 | [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Complete | timing and duplicate typecheck removal |
 | [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Complete** | digest-pinned GHCR-only cloud consumer |
 | Real-deck E2E foundation | **Complete on PR #133** | three committed working decks, no synthetic content, package/harness reuse |
+| [E2E observability and build identity](e2e-observability-build-identity.md) | **Planned** | six deliverable stages for live logs, browser progress, failure diagnostics, cancellation, preflight, CI build identity and performance history |
 | [CI 7](ci-07-post-cutover-optimization.md) | Conditional | rolling baseline and one measured bottleneck |
 | [CI 8](ci-08-fast-ci-critical-path.md) | Conditional | Fast CI critical-path optimization |
 | [CI 9](ci-09-real-anki-e2e-efficiency.md) | Conditional | real-Anki E2E efficiency |
@@ -41,6 +42,8 @@ cloud BuildKit/GHA cache: removed
 
 Исторический closeout: [`../../reports/ci/real-deck-e2e-foundation-closeout.md`](../../reports/ci/real-deck-e2e-foundation-closeout.md).
 
+Следующий запланированный delivery contour: [`e2e-observability-build-identity.md`](e2e-observability-build-identity.md). Он состоит ровно из шести крупных этапов `E2E-I1`–`E2E-I6`; implementation tasks и commits внутри этапа не создают новые уровни roadmap.
+
 ## Activation
 
 `CI 7` is a measurement gate, not automatic permission to change caches, runners, retries, splitting or coverage.
@@ -56,6 +59,8 @@ CI 7 measurement
 Choose at most one optimization candidate with a baseline, expected benefit, cost, risk and stop condition. `CI 11` may activate independently after release contracts stabilize. `CI 12` requires actual contributor/volume pressure and a security model.
 
 Package/harness reuse is already an accepted delivery invariant and does not itself activate CI 7–10. Future optimization must measure a remaining bottleneck rather than возвращать бессмысленную пересборку неизменённого package.
+
+The E2E observability roadmap improves evidence quality and execution UX. It does not by itself authorize cache, runner, retry, split, coverage or release changes from CI 7–12.
 
 ## Shared rules
 
