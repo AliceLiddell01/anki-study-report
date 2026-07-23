@@ -72,9 +72,10 @@ base branch: core
 merge base: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
 E2E-I1: COMPLETE, merged через PR #134
 E2E-I2: COMPLETE на feature branch
+E2E-I2 PR: #135, open, not merged
 E2E-I3: следующий, не начат
 E2E-I4–I6: запланированы
-merge E2E-I2 в core: не выполнен
+merge/auto-merge E2E-I2: не выполнялись
 release: не выполнялся
 ```
 
@@ -109,6 +110,7 @@ core merge SHA: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
 SHA: e25bd0b24e32ce4717ed2dbda138d802f707f6d5
 Fast CI: 30048028664 — PASS
 standard/cards: 30049216529 — PASS
+PR: #135 — OPEN
 ```
 
 Exact Fast CI package:
