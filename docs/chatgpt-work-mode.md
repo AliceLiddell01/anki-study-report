@@ -1,6 +1,6 @@
 # Режим работы ChatGPT
 
-Снимок правил: **2026-07-21**.
+Снимок правил: **2026-07-25**.
 
 Этот документ применяется, когда работа идёт в обычном чате ChatGPT, репозиторий
 доступен через GitHub connector, а локальные команды при необходимости выполняет
@@ -8,7 +8,8 @@
 
 Общие инварианты и выбор режима описаны в
 [`ai-work-modes.md`](ai-work-modes.md). Codex-specific правила находятся в
-[`codex-agent-rules.md`](codex-agent-rules.md).
+[`codex-agent-rules.md`](codex-agent-rules.md). Пошаговое ручное сопровождение
+описано в [`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
 
 ## Назначение режима
 
@@ -108,10 +109,29 @@ Unblock-File -LiteralPath "$HOME\Downloads\script-name.ps1"
 - не добавлять интерактивность без необходимости;
 - команды короче нескольких строк предпочтительно выдавать как команды, а не как
   новый скрипт;
-- не создавать второй скрипт, если существующий можно безопасно исправить.
+- не создавать второй скрипт, если существующий можно безопасно исправить;
+- давать длинному runner уникальное имя с task/step/short SHA;
+- публиковать SHA-256 и не запускать файл при mismatch;
+- не повторять исходный patcher после partial application — использовать state-aware continuation.
 
 `Unblock-File` относится только к скачанным файлам ChatGPT mode. Файлы, созданные
 локально Codex внутри checkout, не требуют этого ритуала.
+
+## Пошаговая ручная работа после implementation
+
+Для задач, где владелец последовательно запускает WSL/PowerShell checkpoints,
+используется постоянный runbook:
+[`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
+
+Основные правила:
+
+- exact branch/HEAD/dirty-set guard до каждой mutation;
+- один checkpoint не смешивает все оставшиеся стадии без необходимости;
+- локальный output возвращается полностью;
+- cloud failure сначала локализуется по первому failed step и artifact;
+- source и sanitized public evidence валидируются на разных уровнях;
+- controlled cancellation доказывается successor run в той же concurrency group;
+- docs-only closeout не повторяет уже зелёный unchanged production gate.
 
 ## Реализация и Git
 

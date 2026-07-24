@@ -14,7 +14,7 @@ Platform-трек развивает GitHub Actions, packaging, release delivery
 | [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Завершён | timing и устранение duplicate typecheck |
 | [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Завершён** | cloud consumer только immutable GHCR digest |
 | Real-deck E2E foundation | **Завершён в PR #133** | три committed рабочие колоды, zero synthetic content, package/harness reuse |
-| [E2E observability и build identity](e2e-observability-build-identity.md) | **В работе; E2E-I1–E2E-I3 завершены** | stable failure diagnostics подтверждены; следующий planned stage — E2E-I4 |
+| [E2E observability и build identity](e2e-observability-build-identity.md) | **В работе; E2E-I1–E2E-I4 завершены** | cancellation/preflight подтверждены; следующий planned stage — E2E-I5 |
 | [CI 7](ci-07-post-cutover-optimization.md) | Условный | rolling baseline и один измеренный bottleneck |
 | [CI 8](ci-08-fast-ci-critical-path.md) | Условный | оптимизация critical path Fast CI |
 | [CI 9](ci-09-real-anki-e2e-efficiency.md) | Условный | эффективность real-Anki E2E |
@@ -36,6 +36,8 @@ local Docker build: development/diagnostic fallback
 cloud BuildKit/GHA cache: removed
 live run evidence: current schema-v2 run-events.jsonl; historical v1 validated
 failure evidence: canonical failure-summary schema v1, failure-only
+cancellation evidence: canonical cancellation-summary schema v1 + run/cancel
+preflight evidence: deterministic 20-check static/runtime report
 browser evidence: deterministic plan schema v1 + browser report schema v3
 browser screenshot contract: 10 route + 6 native preview + 2 Cards state = 18
 ```
@@ -54,7 +56,8 @@ browser screenshot contract: 10 route + 6 native preview + 2 Cards state = 18
 - [`../../reports/ci/real-deck-e2e-foundation-closeout.md`](../../reports/ci/real-deck-e2e-foundation-closeout.md);
 - [`../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
 - [`../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
-- [`../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).
+- [`../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md);
+- [`../../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Текущий delivery contour
 
@@ -64,8 +67,8 @@ browser screenshot contract: 10 route + 6 native preview + 2 Cards state = 18
 E2E-I1 — COMPLETE
 E2E-I2 — COMPLETE
 E2E-I3 — COMPLETE
-E2E-I4 — следующий planned stage
-E2E-I5 — запланирован
+E2E-I4 — COMPLETE
+E2E-I5 — следующий planned stage
 E2E-I6 — запланирован
 ```
 
@@ -106,7 +109,22 @@ failure schema:      v1
 run-event schema:    current v2, historical v1 validated
 browser report:      v3, 23/23 items PASS
 screenshots:         18/18
-E2E-I4:              не начат
+E2E-I4:              COMPLETE на PR #137
+```
+
+### Подтверждение E2E-I4
+
+```text
+implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+Fast CI:             30125233072 — PASS
+controlled A:        30126100944 — CANCELLED
+controlled B:        30126228749 — PASS
+preflight:           20/20 PASS
+browser:             23/23 PASS
+screenshots:         18/18
+PR #137:             ready after docs-only closeout
+merge:               not performed
+E2E-I5:              not started
 ```
 
 ## Активация оптимизационных этапов

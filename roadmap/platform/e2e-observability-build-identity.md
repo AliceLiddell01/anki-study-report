@@ -1,8 +1,8 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** в работе; `E2E-I1–E2E-I3` завершены, следующий planned stage — `E2E-I4`
-**Трек:** Platform / CI  
-**База:** real-deck E2E foundation из PR #133  
+**Статус:** в работе; `E2E-I1–E2E-I4` завершены, следующий planned stage — `E2E-I5`
+**Трек:** Platform / CI
+**База:** real-deck E2E foundation из PR #133
 **Scope:** наблюдаемость Fast CI и real-Anki Docker E2E, диагностика, cancellation, preflight, non-release build identity и performance evidence.
 
 ## Зачем существует этот roadmap
@@ -44,8 +44,8 @@ Roadmap разделён ровно на шесть крупных этапов.
 E2E-I1 — COMPLETE
 E2E-I2 — COMPLETE
 E2E-I3 — COMPLETE
-E2E-I4 — следующий planned stage
-E2E-I5 — запланирован
+E2E-I4 — COMPLETE
+E2E-I5 — следующий planned stage
 E2E-I6 — запланирован
 ```
 
@@ -322,27 +322,74 @@ Closeout: [`../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../
 
 ## E2E-I4 — Cancellation и preflight
 
-**Статус:** запланирован.
+**Статус:** `COMPLETE`.
 
 ### Цель
 
-Сделать cancel/preflight отдельным однозначным lifecycle, не смешанным с функциональным failure.
+Сделать preflight и cancellation отдельными однозначными lifecycle, не смешанными
+с functional failure.
 
-### В scope
+### Реализовано
 
-- explicit preflight result;
-- cancel propagation между workflow, PowerShell, Compose и container;
-- cleanup after cancellation;
-- terminal `run/cancel` consistency;
-- artifact policy для cancelled runs;
-- concurrency cancellation behavior.
+- deterministic static/runtime preflight;
+- fail-fast до Docker execution;
+- canonical `preflight-report.json`;
+- separate `cancellation-summary.json`;
+- stable `ASR-E2E-CANCELLED` / `ASR-FAST-CANCELLED`;
+- `SIGINT → 130`, `SIGTERM → 143`;
+- `phase/cancel → run/cancel`;
+- owned process-group forwarding и bounded escalation;
+- run-scoped Compose identity;
+- `!cancelled()` normal tail и `cancelled()` bounded tail;
+- minimal cancellation artifact;
+- bind-mount ownership restoration;
+- preservation preflight evidence через inner cleanup;
+- PowerShell parser regression;
+- controlled same-concurrency A/B acceptance.
 
-### Out of scope
+### Подтверждение
 
-- changing product behavior;
+```text
+implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+Fast CI: 30125233072 — PASS
+run A: 30126100944 — CANCELLED
+run B: 30126228749 — PASS
+preflight: 20/20
+browser: 23/23
+screenshots: 18/18
+```
+
+Artifacts:
+
+```text
+Fast package: 8609019098
+A cancellation: 8609322435
+B success: 8609400578
+```
+
+### Что намеренно не запускалось
+
+- `perf100`;
+- warm repeat;
+- worker comparison;
+- visual regression;
+- retries;
+- source-build cloud;
+- третий successful full;
+- docs-only heavy rerun.
+
+### Out of scope preserved
+
+- product behavior;
 - automatic retries;
-- build identity;
+- non-release build identity;
 - performance history.
+
+Contract:
+[`../../docs/e2e-preflight-cancellation.md`](../../docs/e2e-preflight-cancellation.md).
+
+Closeout:
+[`../../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## E2E-I5 — Non-release build identity
 

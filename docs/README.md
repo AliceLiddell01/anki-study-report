@@ -68,6 +68,7 @@ reports/    исторические аудиты, измерения и ито�
 - [CI/CD](ci-cd.md)
 - [Docker real-Anki E2E](docker-e2e.md)
 - [Единый протокол событий выполнения Fast CI и Docker E2E](run-event-protocol.md)
+- [Preflight и cancellation contract](e2e-preflight-cancellation.md)
 - [Повторное использование Fast CI package при изменениях E2E harness](e2e-package-harness-reuse.md)
 - [Потребитель GHCR-образа для E2E](ghcr-e2e-consumer.md)
 - [Fixtures и тестовые данные](fixtures-and-test-data.md)
@@ -80,6 +81,7 @@ reports/    исторические аудиты, измерения и ито�
 - [Передача контекста ИИ](ai-handoff.md)
 - [Режимы работы ChatGPT и Codex](ai-work-modes.md)
 - [Режим ChatGPT](chatgpt-work-mode.md)
+- [Ручное сопровождение ChatGPT mode](chatgpt-manual-operations.md)
 - [Режим Codex](codex-agent-rules.md)
 - [Локальное WSL-окружение Codex](codex-local-environment.md)
 
@@ -97,16 +99,26 @@ harness-only package reuse: fail-closed ancestry + complete-diff allowlist
 Fast CI live evidence: ci-fast/run-events.jsonl
 Docker live evidence: reports/run-events.jsonl
 public E2E evidence: artifacts/reports/run-events.jsonl
+preflight evidence: reports/preflight-report.json
+functional failure evidence: reports/failure-summary.json
+cancellation evidence: reports/cancellation-summary.json
 E2E-I1: complete
-E2E-I2: next, not started
+E2E-I2: complete
+E2E-I3: complete
+E2E-I4: complete on PR #137
+E2E-I5: next planned stage, not started
 ```
 
-Новый Fast CI не запускается только из-за allowlisted E2E harness change. Package-impacting diff требует новый exact package. Docs-only commit после successful gates не требует повторного Fast CI/Docker без отдельной причины.
+Docs-only commits после successful gates не требуют повторного Fast CI/Docker без
+отдельной причины.
 
 Исторические closeout reports:
 
 - [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md);
-- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
+- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
+- [`../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md);
+- [`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Текущий статус Core
 

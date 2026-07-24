@@ -1,6 +1,6 @@
 # Передача контекста ИИ — Anki Study Report
 
-**Снимок:** 2026-07-24
+**Снимок:** 2026-07-25
 
 ## С чего начать
 
@@ -67,17 +67,34 @@ Platform/CI не должен автоматически менять или б�
 ## Текущий Platform / CI
 
 ```text
-working branch: platform/e2e-i3-stable-failure-diagnostics
+working branch: platform/e2e-i4-cancellation-preflight
 base branch: core
-core head / merge base: d9899d13c135ccbe1c51322082231b9baab344fd
+implementation head: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
 E2E-I1: COMPLETE, merged через PR #134
 E2E-I2: COMPLETE, merged через PR #135
-E2E-I3: COMPLETE на feature branch; PR в core открывается closeout-коммитом
-E2E-I4: следующий planned stage, не начат
-E2E-I5–I6: запланированы
-merge/auto-merge E2E-I3: не выполнялись
+E2E-I3: COMPLETE
+E2E-I4: COMPLETE на PR #137; docs-only closeout переводит PR в ready
+E2E-I5–I6: запланированы, не начаты
+merge/auto-merge E2E-I4: не выполнялись
 release: не выполнялся
 ```
+
+E2E-I4 acceptance:
+
+```text
+Fast CI: 30125233072 — PASS
+controlled A: 30126100944 — CANCELLED
+controlled B: 30126228749 — PASS
+browser: 23/23
+screenshots: 18/18
+preflight: 20/20
+```
+
+Contract:
+[`e2e-preflight-cancellation.md`](e2e-preflight-cancellation.md).
+
+Manual ChatGPT-mode runbook:
+[`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
 
 ### E2E-I1
 
@@ -178,6 +195,39 @@ browser report schema: v3
 - successful artifacts без `failure-summary.json`.
 
 Canonical doc: [`failure-diagnostics.md`](failure-diagnostics.md).
+
+### E2E-I4
+
+Cancellation и preflight являются отдельным lifecycle:
+
+```text
+preflight PASS → execution
+preflight FAIL → no Docker execution
+functional failure → failure-summary.json + run/fail
+cancellation → cancellation-summary.json + run/cancel + 130/143
+success → run/pass
+```
+
+Final evidence:
+
+```text
+implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+Fast CI: 30125233072 — PASS
+A: 30126100944 — CANCELLED, SIGTERM/143, ASR-E2E-CANCELLED
+A artifact: 8609322435
+B: 30126228749 — PASS
+B artifact: 8609400578
+browser: 23/23
+screenshots: 18/18
+```
+
+Normal artifact tail использует `!cancelled()`, cancellation tail — `cancelled()`.
+Cancellation artifact ограничен summary, preflight, run-events и bounded host log.
+Inner summary может фиксировать artifact unavailable в момент signal, а host
+workflow позже публикует bounded artifact после ownership restoration.
+
+Closeout:
+[`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Browser smoke contract
 

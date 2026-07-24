@@ -1,6 +1,6 @@
 # CI/CD
 
-**Снимок документации:** 2026-07-24.
+**Снимок документации:** 2026-07-25.
 
 Проект использует три независимых cloud-контура:
 
@@ -15,7 +15,8 @@ Fast CI публикует advisory verification plan, но не запуска�
 Связанные контракты:
 
 - повторное использование package: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
-- единый live lifecycle: [`run-event-protocol.md`](run-event-protocol.md).
+- единый live lifecycle: [`run-event-protocol.md`](run-event-protocol.md);
+- preflight/cancellation: [`e2e-preflight-cancellation.md`](e2e-preflight-cancellation.md).
 
 ## Fast CI
 
@@ -65,7 +66,8 @@ Fast CI использует GitHub-hosted `windows-2025`, PowerShell 7 и read-
 
 | Artifact | Условие | Содержимое | Retention |
 | --- | --- | --- | --- |
-| diagnostics | `if: always()` | logs, verification plan, summaries, environment, timing, `run-events.jsonl` | 14 дней |
+| normal diagnostics | `if: !cancelled()` | logs, verification plan, summaries, environment, timing, `run-events.jsonl` | 14 дней |
+| cancellation diagnostics | `if: cancelled()` | bounded cancellation/run-event evidence без package | 7 дней |
 | exact package | только после полного Fast CI PASS | `anki_study_report.ankiaddon`, `package-metadata.json` | 7 дней |
 
 Package metadata schema v1 фиксирует:
@@ -227,6 +229,36 @@ docker/anki-e2e/environment-image-lock.json
 
 Mutable tags, cloud BuildKit/GHA cache, PAT fallback и automatic visibility changes запрещены. Локальная Dockerfile/Compose build path не является cloud fallback.
 
+### Canonical preflight и cancellation
+
+Static preflight выполняется до registry login/pull и проверяет inputs, package
+source exclusivity, required files, artifact root, environment lock/spec и
+Compose declarations.
+
+Runtime preflight проверяет staged package, Docker/Compose CLI, daemon/platform и
+resolved model. Canonical report:
+
+```text
+reports/preflight-report.json
+```
+
+Cancellation:
+
+```text
+SIGINT → 130
+SIGTERM → 143
+cancellation-summary.json
+phase/cancel → run/cancel
+no failure-summary.json
+```
+
+Normal tail выполняется только при `!cancelled()`. Cancellation-only tail
+выполняет bounded exact-project cleanup, scoped artifact ownership restoration,
+minimal artifact preparation и required upload.
+
+Подробный контракт:
+[`e2e-preflight-cancellation.md`](e2e-preflight-cancellation.md).
+
 ### Live run protocol Docker E2E
 
 Raw E2E создаёт:
@@ -287,6 +319,7 @@ Raw readiness с token не загружается.
 - публикует package и harness SHA отдельно;
 - независимо валидирует reuse evidence;
 - дважды валидирует run-event stream;
+- сохраняет semantic validity public JSON после redaction/pretty-print;
 - сохраняет canonical E2E exit code до upload/cleanup и восстанавливает его в конце.
 
 Artifact upload не может превратить functional failure в PASS.
@@ -369,6 +402,31 @@ exact release build
 ```
 
 Release package SHA-256 проверяется до и после real-Anki E2E. Production credentials доступны только защищённому publisher job.
+
+## Подтверждённая реализация E2E-I4
+
+```text
+Implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+Fast CI: 30125233072 — PASS
+Controlled A: 30126100944 — CANCELLED
+Controlled B: 30126228749 — PASS
+Preflight: 20/20 PASS
+Browser: 23/23 PASS
+Screenshots: 18/18
+PR: #137
+Merge в core: не выполнен
+```
+
+Artifacts:
+
+```text
+Fast package: 8609019098
+A cancellation: 8609322435
+B success: 8609400578
+```
+
+Подробный отчёт:
+[`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Подтверждённая реализация E2E-I1
 

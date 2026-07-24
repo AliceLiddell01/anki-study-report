@@ -1,96 +1,68 @@
 # E2E preflight и cancellation contract
 
-**Статус:** implementation in progress; acceptance не завершён  
-**Дата:** 2026-07-24  
+**Статус:** `COMPLETE` и cloud-accepted
+**Дата:** 2026-07-25
+**Implementation HEAD:** `5e52faee5cd97af8e7760e2c5041c782ce4273fa`
 **Ветка:** `platform/e2e-i4-cancellation-preflight`
 
-Этот документ описывает уже опубликованную часть E2E-I4. До cloud verification и workflow-level integration он не заменяет финальный closeout и не означает `COMPLETE`.
+Этот документ является актуальным техническим контрактом E2E-I4. Историческое
+подтверждение находится в
+[`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Цель
 
-E2E lifecycle должен различать четыре состояния:
+E2E lifecycle различает:
 
 ```text
 preflight PASS  → execution starts
-preflight FAIL  → no pull/build/run; validation evidence
+preflight FAIL  → Docker pull/build/run не начинается; validation evidence
 functional fail → failure-summary.json + run/fail
 cancellation    → cancellation-summary.json + run/cancel + 130/143
+success         → run/pass + success manifest
 ```
 
-Cancellation не является functional failure и не должна создавать `failure-summary.json`.
-
-## Lifecycle map
-
-Опубликованный контур:
-
-```text
-GitHub workflow step
-→ PowerShell run_full_check.ps1
-→ PowerShell run_anki_e2e_docker.ps1
-→ docker compose run
-→ container bootstrap
-→ run-e2e-failure-wrapper.sh
-→ owned process group for run-e2e.sh
-→ Anki/Xvfb/telemetry/resource sampler children
-→ bounded cancellation cleanup
-→ cancellation-summary.json + run/cancel
-```
-
-Ключевые точки владения:
-
-- PowerShell сохраняет native exit `130`/`143` и не превращает его в generic `1`;
-- Compose project name включает `github.run_id` и `github.run_attempt`;
-- outer wrapper запускает core runner через `setsid`;
-- signal пересылается только owned process group;
-- bounded escalation: original signal, затем `SIGTERM`, затем `SIGKILL` только для owned group;
-- functional non-zero остаётся functional failure.
+Cancellation не является functional failure и не создаёт
+`failure-summary.json`.
 
 ## Canonical preflight
 
-CLI:
+### Files
 
 ```text
 scripts/e2e_preflight.py
-```
-
-Importable modules:
-
-```text
 scripts/e2e_preflight_contract.py
 scripts/e2e_preflight_checks.py
-```
-
-Report:
-
-```text
 reports/preflight-report.json
 ```
 
-Schema v1:
+### Schema v1
 
-```json
-{
-  "schemaVersion": 1,
-  "status": "PASS",
-  "producer": "docker-e2e",
-  "executionContext": "github-actions",
-  "startedAtUtc": "2026-07-24T00:00:00.000Z",
-  "finishedAtUtc": "2026-07-24T00:00:01.000Z",
-  "durationMs": 1000,
-  "checks": [],
-  "failedCheckId": null
-}
+```text
+schemaVersion
+status
+producer
+executionContext
+startedAtUtc
+finishedAtUtc
+durationMs
+checks
+failedCheckId
 ```
 
-Properties:
+Source report:
 
-- deterministic field and check order;
-- first failure stops the validator;
-- stable non-user-derived IDs;
-- bounded public-safe summaries;
-- no tokens, control characters or private absolute paths;
-- UTF-8 without BOM, LF, deterministic serialization;
-- atomic report replacement.
+- UTF-8 без BOM;
+- LF;
+- deterministic field/check order;
+- atomic replacement;
+- bounded size;
+- first failure stops execution;
+- safe summaries без secrets, control characters и private absolute paths;
+- byte-canonical serialization.
+
+Public sanitized copy сохраняет schema semantics, но может быть pretty-printed
+после redaction. Поэтому source copy проходит byte+semantic validation, public
+copy — semantic+sanitizer validation.
 
 ### Static checks
 
@@ -107,7 +79,9 @@ environment-lock.exact-reference
 compose.files
 ```
 
-Static checks do not invoke Docker. Cloud `source-build`, non-exclusive package inputs, unsafe artifact roots, missing files, mutable/non-exact image references and lock/spec mismatches fail before runtime checks.
+Static layer не вызывает Docker. Invalid inputs, non-exclusive package source,
+missing files, unsafe artifact root и mutable/inconsistent environment identity
+завершаются до registry login/pull/build/run.
 
 ### Runtime checks
 
@@ -124,30 +98,49 @@ compose.safe-mounts
 compose.no-external-ports
 ```
 
-Runtime validation uses:
+Runtime layer требует успешный canonical static report и использует resolved
+Compose model. Cloud environment обязан быть exact immutable GHCR digest.
 
-```text
-docker compose config --quiet
-docker compose config --format json
-```
+### Preservation
 
-The resolved model must contain only `anki-e2e`, use the expected immutable image source, keep the workspace read-only, avoid Docker socket/root mounts and expose no external ports.
+Host workflow создаёт `reports/preflight-report.json` до container execution.
+Inner artifact reset сохраняет только этот canonical report и удаляет остальные
+stale outputs. Success manifest и cancellation artifact обязаны включать
+preflight evidence.
 
-## Cancellation summary
+## Cancellation protocol
 
-Protocol:
+### Files
 
 ```text
 docker/anki-e2e/cancellation_protocol.py
-```
-
-Canonical path:
-
-```text
+docker/anki-e2e/run-e2e-failure-wrapper.sh
+docker/anki-e2e/run_event_runtime.py
+docker/anki-e2e/run_event_validate.py
+scripts/prepare_ci_e2e_cancellation.py
 reports/cancellation-summary.json
 ```
 
-Schema v1 records:
+### Stable codes
+
+```text
+docker-e2e → ASR-E2E-CANCELLED
+fast-ci    → ASR-FAST-CANCELLED
+```
+
+`ASR-E2E-UNKNOWN` остаётся fail-closed fallback только когда functional failure
+произошёл до persistence известного failure path. Он не используется как
+нормальная cancellation category.
+
+### Signal parity
+
+```text
+SIGINT  → originalExitCode=130, originalSignal=SIGINT
+SIGTERM → originalExitCode=143, originalSignal=SIGTERM
+unknown signal → originalSignal=null при exit 130 или 143
+```
+
+### Summary schema v1
 
 ```text
 schemaVersion
@@ -164,62 +157,108 @@ artifact
 evidencePaths
 ```
 
-Stable codes:
+Summary:
+
+- atomic;
+- immutable после создания;
+- bounded;
+- public-safe;
+- не может сосуществовать с `failure-summary.json`.
+
+## Process ownership и signal forwarding
+
+Outer wrapper:
+
+1. запускает core runner в owned process group через `setsid`;
+2. хранит child PID/process-group identity;
+3. пересылает исходный signal только owned group;
+4. ждёт bounded grace;
+5. выполняет scoped TERM/KILL escalation только внутри owned group;
+6. сохраняет cancellation summary и run events;
+7. возвращает исходный `130/143`.
+
+Unrelated процессы не завершаются. Compose project изолирован:
 
 ```text
-docker-e2e → ASR-E2E-CANCELLED
-fast-ci    → ASR-FAST-CANCELLED
+asr-e2e-<github.run_id>-<github.run_attempt>
 ```
-
-Signal parity:
-
-```text
-SIGINT  → 130
-SIGTERM → 143
-unknown signal → null with exit 130 or 143
-```
-
-The document is bounded, atomically written, immutable after creation and cannot coexist with `failure-summary.json`.
 
 ## Run-event parity
 
-The current schema-v2 runtime supports:
+Cancellation lifecycle:
 
 ```text
 active phase → phase/cancel
 run          → run/cancel
-failureCode  → cancellation code
+failureCode  → producer cancellation code
 message      → exact exit/signal pair
 ```
 
-Validation rejects:
+Validator запрещает:
 
-- cancellation with `failure-summary.json`;
-- cancellation without `cancellation-summary.json`;
-- different producer/code/exit/signal;
-- multiple phase/cancel events;
+- cancellation без cancellation summary;
+- cancellation вместе с failure summary;
+- code/producer/exit/signal mismatch;
+- больше одного `phase/cancel`;
 - active phase mismatch;
-- later `run/fail` or `run/pass`.
+- последующий `run/fail` или `run/pass`.
 
-Historical schema v1 and existing success/failure behavior remain accepted by their existing contracts.
+## Workflow condition policy
 
-## Cleanup and artifacts
+Normal success/failure finalization использует:
 
-Cancellation cleanup is:
+```yaml
+if: ${{ !cancelled() }}
+```
 
-- idempotent;
-- bounded;
-- valid after partial startup;
-- scoped to current process group and Compose project;
-- tolerant of already absent processes/resources.
+Cancellation-only bounded tail использует:
 
-Cancellation artifact policy:
+```yaml
+if: ${{ cancelled() }}
+```
+
+Heavy public artifact preparation не выполняется после cancellation.
+
+Fast CI также сохраняет `run/cancel`, а normal package/diagnostic finalization не
+должна превращать cancellation в generic failure.
+
+## Cancellation cleanup и ownership
+
+Порядок host cancellation tail:
+
+```text
+write host log to RUNNER_TEMP
+→ bounded docker compose down for exact project
+→ scoped ownership restoration for e2e-artifacts
+→ copy bounded host log into artifact tree
+→ prepare minimal cancellation artifact
+→ upload required artifact
+```
+
+Нельзя писать host log непосредственно в root-owned bind-mounted tree до
+ownership restoration.
+
+Required cancellation upload использует:
+
+```yaml
+if-no-files-found: error
+```
+
+`continue-on-error` допустим для diagnostics step, чтобы overall GitHub
+conclusion оставался `cancelled`, но отсутствие required evidence не выглядело
+успехом.
+
+## Artifact policy
+
+### Cancellation
+
+Policy:
 
 ```text
 best-effort-minimal
 ```
 
-Allowlisted evidence:
+Allowlist:
 
 ```text
 reports/cancellation-summary.json
@@ -228,41 +267,145 @@ reports/run-events.jsonl
 diagnostics/cancellation-host.log
 ```
 
-Full screenshots, package bytes and unbounded raw Docker logs are excluded from the minimal cancellation artifact.
+Запрещены full screenshots, package bytes, readiness token, unbounded raw logs и
+private paths.
 
-## Verification performed for published code
+Inner summary фиксирует состояние в момент signal handling. Host workflow может
+позже завершить cleanup и опубликовать artifact. Поэтому
+`artifact.status=unavailable` внутри historical inner summary не противоречит
+последующему существованию GitHub artifact.
+
+### Success
+
+Success artifact содержит:
+
+- `artifact-manifest.json` со status `success`;
+- source-derived sanitized preflight report;
+- valid `run-events.jsonl` с terminal `run/pass`;
+- browser/API/restart/telemetry evidence;
+- package/harness identities;
+- redacted readiness;
+- no `failure-summary.json`;
+- no `cancellation-summary.json`.
+
+## Package identity
+
+Cloud manual E2E принимает exact successful Fast CI artifact. Если complete diff
+не проходит fail-closed harness reuse allowlist, allowlist не расширяется ради
+текущей задачи: создаётся новый package-producing Fast CI.
+
+E2E summary фиксирует независимо:
 
 ```text
-python -m pytest -q \
-  tests/test_e2e_i4_contracts.py \
-  tests/test_e2e_process_supervision.py
-
-python -m py_compile <published Python modules>
-bash -n docker/anki-e2e/run-e2e-failure-wrapper.sh
-bash -n docker/anki-e2e/stop-anki.sh
+source Fast CI run ID
+source tested commit SHA
+inner package SHA-256
+current E2E checkout/harness SHA
+environment image digest
 ```
 
-Published-head focused result:
+## Cloud acceptance
+
+### Fast CI
 
 ```text
-13 PASS
-Python compile PASS
-Bash syntax PASS
+run: 30125233072
+conclusion: success
+tested SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+
+package artifact:
+id: 8609019098
+name: ci-package-5e52faee5cd97af8e7760e2c5041c782ce4273fa-30125233072-1
+digest: sha256:5001e6e1ef480325b1ea9cd214ac8cce157d35f75dbbb9d5a8153acb46fdd882
+
+diagnostics artifact:
+id: 8609018407
+name: ci-fast-30125233072-1
+digest: sha256:9a1d7ab5bf1db8a92fd8c99124e63fffe682a7f072655c2c21855418b3a53fa7
 ```
 
-A broader local candidate contour, including workflow and inner runner changes that were not published, produced `89 PASS`. It is not a remote/cloud proof.
+### Controlled run A
 
-## Acceptance gaps
+```text
+run: 30126100944
+conclusion: cancelled
+signal/exit: SIGTERM / 143
+code: ASR-E2E-CANCELLED
+active phase: browser-smoke-first
+last successful phase: api-smoke-first
+preflight: 20/20 PASS
 
-The following are not yet proven or published on the branch:
+artifact:
+id: 8609322435
+name: ci-e2e-cancelled-30126100944-1
+digest: sha256:9389b791b41bf6829b499f1dc491bc750725030f682ab7c4a63c7000901edaf1
+```
 
-- `.github/workflows/ci-e2e.yml` `always()` audit and cancellation-only steps;
-- `.github/workflows/ci-fast.yml` cancellation finalization;
-- inner `run-e2e.sh` cancellation trap changes;
-- PowerShell execution on a Windows runner;
-- Fast CI package-producing PASS for the final diff;
-- controlled concurrency run A with GitHub conclusion `cancelled`;
-- successful `standard/full` successor run B;
-- artifact IDs/digests and orphan-resource proof.
+### Controlled run B
 
-Therefore E2E-I4 remains `PARTIAL`; roadmap completion must not be marked until those gates exist.
+```text
+run: 30126228749
+conclusion: success
+manifest: success, 62 indexed paths
+preflight: 20/20 PASS
+browser items: 23/23 PASS
+screenshots: 18/18
+API/restart/readiness/telemetry phases: PASS
+terminal event: run/pass
+
+artifact:
+id: 8609400578
+name: ci-e2e-standard-30126228749-1
+digest: sha256:93133537cb8aff08a792da5475d6c5676fafd314cadf639936a731f8d0ad3dca
+
+inner package SHA-256:
+9b3bfcdc019e870579563b2be9eaa75220f6b732ee6b4f8fc6e524288b1c0862
+```
+
+B был запущен с той же concurrency identity после входа A в canonical Docker
+step. Он автоматически отменил A; ручной cancel не использовался.
+
+## Verification
+
+Final implementation candidate:
+
+```text
+focused contour: 83 PASS
+full Python suite: 981 PASS
+PowerShell parser regression: PASS
+workflow YAML parse: PASS
+Bash syntax: PASS
+git diff --check: PASS
+Fast CI: PASS
+controlled A/B: PASS
+```
+
+## Не запускалось
+
+- `perf100`;
+- warm repeat;
+- worker comparison;
+- visual regression;
+- retries/quarantine;
+- source-build cloud fallback;
+- третий successful full;
+- docs-only Fast CI/Docker rerun.
+
+Эти проверки не входят в completion criteria E2E-I4.
+
+## Out of scope
+
+- E2E-I5 non-release build identity;
+- E2E-I6 canonical summary/history;
+- retries/quarantine;
+- visual regression;
+- performance thresholds;
+- product/API/UI behavior;
+- release/publication.
+
+Завершение E2E-I4 не означает автоматический старт E2E-I5.
+
+## Operations
+
+Пошаговый manual ChatGPT-mode runbook:
+[`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
