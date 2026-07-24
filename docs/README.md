@@ -1,133 +1,77 @@
 # Индекс документации
 
-Каталог `docs/` содержит актуальные контракты архитектуры, API, UX, безопасности, конфигурации, тестирования и эксплуатации.
-
-## Границы каталогов
+`docs/` содержит **актуальные контракты** проекта. Текущие планы находятся в `roadmap/`, а исторические аудиты, измерения и closeout — в `reports/`.
 
 ```text
-docs/       актуальное поведение и обязательные контракты
-roadmap/    состояние треков, зависимости и критерии активации/завершения
-reports/    исторические аудиты, измерения и итоговые подтверждения
+docs/       текущее поведение, архитектура и обязательные правила
+roadmap/    будущие этапы, зависимости и criteria
+reports/    исторические evidence и завершённые проверки
 ```
 
-Будущее развитие разделено на независимые треки. Карта: [`roadmap/README.md`](../roadmap/README.md).
-
-- [Core](../roadmap/core/README.md)
-- [Геймификация](../roadmap/gamification/README.md)
-- [Эксплуатация телеметрии](../roadmap/operations/README.md)
-- [Непрерывность идентификации](../roadmap/identity/README.md)
-- [Экосистема расширений](../roadmap/extensions/README.md)
-- [Платформа и CI](../roadmap/platform/README.md)
-
-Наличие roadmap не превращает исследование или условный трек в production contract.
-
-## Основные актуальные контракты
-
-### Обзор и архитектура
+## Начать отсюда
 
 - [Обзор проекта](project-overview.md)
 - [Архитектура](architecture.md)
-- [Dashboard API](dashboard-api.md)
-- [Карта frontend](frontend-map.md)
+- [Передача актуального контекста ИИ](ai-handoff.md)
+- [Карта roadmap](../roadmap/README.md)
+- [Исторические отчёты](../reports/README.md)
+
+## Product и UX
+
 - [Навигация и информационная архитектура](navigation-ia.md)
+- [UI prototyping и visual acceptance](ui-prototype-visual-acceptance.md)
+- [Settings Hub](settings-hub.md)
+- [Statistics v1](statistics-v1.md)
+- [FSRS analytics](fsrs-analytics.md)
+- [Search и Safe Actions](search-v1-and-safe-actions.md)
+- [Signals foundation](signals-foundation.md)
+- [Notification center](notification-center.md)
+- [Privacy и telemetry](privacy-telemetry.md)
 
-### UI foundation и визуальная приёмка
+### Cards и Inspection Profiles
 
-- [Процесс UI-прототипирования и визуальной приёмки](ui-prototype-visual-acceptance.md)
-
-### Core: Cards и Inspection Profiles
-
-- [Продуктовый контракт Cards v2](cards-v2-product-contract.md)
-- [API чтения Triage для Cards v2](cards-v2-triage-read-api.md)
-- [Канонический цикл решения проблемы одной карточки](cards-v2-resolution-loop.md)
-- [Очередь карточек, требующих внимания](cards-attention-inbox.md)
-- [Исторический UI рабочего пространства C1.5](cards-v2-workspace-ui.md)
-- [Идентичность отображения карточки](card-display-identity.md)
-- [Декларативный форматтер отображения v1](card-display-formatter-v1.md)
-- [Семантика предпросмотра карточки](card-preview-semantics.md)
-- [Источники кандидатов Triage v4](triage-candidate-sources-v4.md)
+- [Cards v2 product contract](cards-v2-product-contract.md)
+- [Triage read API](cards-v2-triage-read-api.md)
+- [Canonical single-card resolution loop](cards-v2-resolution-loop.md)
+- [Cards attention inbox](cards-attention-inbox.md)
+- [Card display identity](card-display-identity.md)
+- [Declarative formatter v1](card-display-formatter-v1.md)
+- [Card preview semantics](card-preview-semantics.md)
+- [Triage candidate sources v4](triage-candidate-sources-v4.md)
 - [Inspection Profiles v1](inspection-profiles-v1.md)
-- [UI настроек Inspection Profiles](inspection-profiles-ui.md)
-- [Пошаговая настройка Inspection Profiles](guided-inspection-profiles.md)
+- [Inspection Profiles UI](inspection-profiles-ui.md)
+- [Guided Inspection Profiles](guided-inspection-profiles.md)
 
-### Остальные продуктовые контракты
+Исторический C1.5 UI сохранён отдельно: [Cards workspace UI](cards-v2-workspace-ui.md).
 
-- [Центр настроек](settings-hub.md)
-- [Статистика](statistics-v1.md)
-- [Аналитика FSRS](fsrs-analytics.md)
-- [Поиск и Safe Actions](search-v1-and-safe-actions.md)
-- [Сигналы](signals-foundation.md)
-- [Центр уведомлений](notification-center.md)
-- [Конфиденциальность и телеметрия](privacy-telemetry.md)
+## Architecture и API
 
-### Безопасность, тестирование и поставка
+- [Dashboard API](dashboard-api.md)
+- [Frontend map](frontend-map.md)
+- [Configuration reference](config-reference.md)
+- [Fixtures и test data](fixtures-and-test-data.md)
+- [Decision log](decision-log.md)
 
-- [Безопасность и модель защиты](security-and-safety.md)
-- [Матрица тестирования](test-matrix.md)
-- [Политика проверочных запусков](verification-run-policy.md)
+## Security, testing и delivery
+
+- [Security and safety](security-and-safety.md)
+- [Test matrix](test-matrix.md)
+- [Verification run policy](verification-run-policy.md)
 - [CI/CD](ci-cd.md)
 - [Docker real-Anki E2E](docker-e2e.md)
-- [Единый протокол событий выполнения Fast CI и Docker E2E](run-event-protocol.md)
-- [Preflight и cancellation contract](e2e-preflight-cancellation.md)
-- [Повторное использование Fast CI package при изменениях E2E harness](e2e-package-harness-reuse.md)
-- [Потребитель GHCR-образа для E2E](ghcr-e2e-consumer.md)
-- [Fixtures и тестовые данные](fixtures-and-test-data.md)
-- [Справочник конфигурации](config-reference.md)
-- [Сборка пакета и выпуск](packaging-release.md)
-- [Журнал решений](decision-log.md)
+- [Run-event protocol](run-event-protocol.md)
+- [Failure diagnostics](failure-diagnostics.md)
+- [Preflight и cancellation](e2e-preflight-cancellation.md)
+- [Fast CI package / E2E harness reuse](e2e-package-harness-reuse.md)
+- [GHCR E2E consumer](ghcr-e2e-consumer.md)
+- [Packaging и release](packaging-release.md)
 
-### Контекст для агентов
+## Работа ИИ-агентов
 
-- [Передача контекста ИИ](ai-handoff.md)
-- [Режимы работы ChatGPT и Codex](ai-work-modes.md)
-- [Режим ChatGPT](chatgpt-work-mode.md)
-- [Ручное сопровождение ChatGPT mode](chatgpt-manual-operations.md)
-- [Режим Codex](codex-agent-rules.md)
-- [Локальное WSL-окружение Codex](codex-local-environment.md)
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
+- [Codex agent rules](codex-agent-rules.md)
+- [Codex local WSL environment](codex-local-environment.md)
 
-Исторические подтверждения находятся в [`reports/`](../reports/README.md), а не в `docs/`.
-
-## Текущий platform/E2E contract
-
-```text
-collection source: three committed real APKG
-cloud environment: immutable GHCR digest
-manual package source: exact successful Fast CI artifact
-release package source: exact release artifact
-package tested commit and E2E harness commit: separate identities
-harness-only package reuse: fail-closed ancestry + complete-diff allowlist
-Fast CI live evidence: ci-fast/run-events.jsonl
-Docker live evidence: reports/run-events.jsonl
-public E2E evidence: artifacts/reports/run-events.jsonl
-preflight evidence: reports/preflight-report.json
-functional failure evidence: reports/failure-summary.json
-cancellation evidence: reports/cancellation-summary.json
-E2E-I1: complete
-E2E-I2: complete
-E2E-I3: complete
-E2E-I4: complete on PR #137
-E2E-I5: next planned stage, not started
-```
-
-Docs-only commits после successful gates не требуют повторного Fast CI/Docker без
-отдельной причины.
-
-Исторические closeout reports:
-
-- [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md);
-- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
-- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
-- [`../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md);
-- [`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
-
-## Текущий статус Core
-
-```text
-C1 — завершён
-C2 implementation/integration — завершены и влиты в core
-C2 owner acceptance — повторно открыта после ручной проверки
-следующее действие — одна bounded post-C2 manual acceptance remediation
-C3–C6 — обязательный будущий путь к Core 1.0
-```
-
-Точное состояние и ограничения смотрите в [`ai-handoff.md`](ai-handoff.md) и актуальном production-коде.
+`ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/`, а не дублироваться в этом индексе.
