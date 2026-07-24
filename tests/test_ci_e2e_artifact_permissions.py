@@ -11,6 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
+WORKFLOW = ROOT / ".github" / "workflows" / "ci-e2e.yml"
 
 
 def test_linux_artifact_ownership_is_restored_before_host_validation():
@@ -55,3 +56,27 @@ def test_runner_is_valid_powershell_syntax():
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+def test_cancelled_workflow_restores_ownership_before_preparing_evidence():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    cleanup_start = text.index("- name: Clean cancelled Docker E2E state")
+    prepare_start = text.index("- name: Prepare bounded cancellation artifact", cleanup_start)
+    upload_start = text.index("- name: Upload bounded cancellation evidence", prepare_start)
+    preflight_upload = text.index("- name: Upload canonical preflight failure evidence", upload_start)
+
+    cleanup = text[cleanup_start:prepare_start]
+    upload = text[upload_start:preflight_upload]
+
+    temp_log = cleanup.index("$hostLog = Join-Path $env:RUNNER_TEMP")
+    compose_down = cleanup.index("'down', '-v', '--remove-orphans'")
+    ownership = cleanup.index("sudo chown -R -- $owner e2e-artifacts")
+    copy_log = cleanup.index(
+        "Copy-Item -LiteralPath $hostLog -Destination "
+        "e2e-artifacts/diagnostics/cancellation-host.log -Force"
+    )
+
+    assert temp_log < compose_down < ownership < copy_log
+    assert "Tee-Object -FilePath $hostLog" in cleanup
+    assert "Tee-Object -FilePath e2e-artifacts/diagnostics" not in cleanup
+    assert "/usr/bin/timeout 10s sudo chown -R --" in cleanup
+    assert "if-no-files-found: error" in upload

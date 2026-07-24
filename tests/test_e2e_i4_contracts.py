@@ -142,3 +142,21 @@ def test_inner_runner_and_fast_timing_preserve_cancel_semantics():
     assert "trap 'handle_signal SIGTERM 143' TERM" in runner
     assert "run_event cancel-run --original-exit-code" in runner
     assert "run_events.cancel_run(" in timing
+
+def test_inner_artifact_reset_preserves_only_canonical_preflight_report():
+    runner = (ROOT / "docker/anki-e2e/run-e2e.sh").read_text(encoding="utf-8")
+    prepare = runner[
+        runner.index('section "Prepare artifacts"'):
+        runner.index("run_event initialize", runner.index('section "Prepare artifacts"'))
+    ]
+
+    assert (
+        'preflight_report="${ANKI_STUDY_REPORT_E2E_REPORTS_DIR}/'
+        'preflight-report.json"'
+    ) in prepare
+    assert '! -path "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"' in prepare
+    assert '! -name "preflight-report.json"' in prepare
+    assert prepare.index('if [ -f "$preflight_report" ]; then') < prepare.index(
+        '! -name "preflight-report.json"'
+    )
+    assert 'mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"' in prepare

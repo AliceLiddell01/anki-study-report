@@ -647,7 +647,8 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force e2e-artifacts/diagnostics | Out-Null
+          $hostLog = Join-Path $env:RUNNER_TEMP 'e2e-cancellation-host.log'
+          Remove-Item -LiteralPath $hostLog -Force -ErrorAction SilentlyContinue
           $arguments = @(
             '30s', 'docker', 'compose',
             '--project-name', $env:COMPOSE_PROJECT_NAME,
@@ -655,8 +656,25 @@ jobs:
             '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
             'down', '-v', '--remove-orphans'
           )
-          & /usr/bin/timeout @arguments *>&1 | Tee-Object -FilePath e2e-artifacts/diagnostics/cancellation-host.log
-          if ($LASTEXITCODE -ne 0) { Write-Warning "Bounded cancellation cleanup exited with $LASTEXITCODE." }
+          & /usr/bin/timeout @arguments *>&1 | Tee-Object -FilePath $hostLog
+          $cleanupExit = [int]$LASTEXITCODE
+          if ($cleanupExit -ne 0) { Write-Warning "Bounded cancellation cleanup exited with $cleanupExit." }
+
+          $uid = (& id -u).Trim()
+          $gid = (& id -g).Trim()
+          if ($uid -match '^\d+$' -and $gid -match '^\d+$') {
+            $owner = "${uid}:${gid}"
+            & /usr/bin/timeout 10s sudo chown -R -- $owner e2e-artifacts
+            $ownershipExit = [int]$LASTEXITCODE
+            if ($ownershipExit -ne 0) { Write-Warning "Cancellation artifact ownership restoration exited with $ownershipExit." }
+          } else {
+            Write-Warning 'Could not resolve the hosted-runner UID/GID for cancellation evidence.'
+          }
+
+          New-Item -ItemType Directory -Force e2e-artifacts/diagnostics | Out-Null
+          if (Test-Path -LiteralPath $hostLog -PathType Leaf) {
+            Copy-Item -LiteralPath $hostLog -Destination e2e-artifacts/diagnostics/cancellation-host.log -Force
+          }
 
       - name: Prepare bounded cancellation artifact
         if: ${{ cancelled() }}
@@ -674,7 +692,7 @@ jobs:
         with:
           name: ci-e2e-cancelled-${{ github.run_id }}-${{ github.run_attempt }}
           path: ci-e2e-cancelled/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
           compression-level: 0
 

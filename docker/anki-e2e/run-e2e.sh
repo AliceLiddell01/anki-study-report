@@ -223,7 +223,21 @@ case "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" in
     ;;
 esac
 mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
-find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+preflight_report="${ANKI_STUDY_REPORT_E2E_REPORTS_DIR}/preflight-report.json"
+if [ -f "$preflight_report" ]; then
+  find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    -mindepth 1 -maxdepth 1 \
+    ! -path "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+    -exec rm -rf -- {} +
+  find "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+    -mindepth 1 -maxdepth 1 \
+    ! -name "preflight-report.json" \
+    -exec rm -rf -- {} +
+else
+  find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    -mindepth 1 -maxdepth 1 \
+    -exec rm -rf -- {} +
+fi
 mkdir -p \
   "$ANKI_STUDY_REPORT_E2E_RUNTIME_DIR" \
   "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR" \

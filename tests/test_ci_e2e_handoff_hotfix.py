@@ -202,7 +202,7 @@ def test_workflow_preserves_early_failure_and_split_cancellation_upload_contract
     ]
     assert "if: ${{ cancelled() }}" in cancel_upload_block
     assert "continue-on-error: true" in cancel_upload_block
-    assert "if-no-files-found: warn" in cancel_upload_block
+    assert "if-no-files-found: error" in cancel_upload_block
 
 def test_early_fast_handoff_failure_creates_safe_public_artifact(tmp_path: Path, monkeypatch):
     source = tmp_path / "missing-e2e-artifacts"
