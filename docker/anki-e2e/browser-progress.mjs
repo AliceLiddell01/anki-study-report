@@ -3,125 +3,32 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 
-export const BROWSER_PLAN_SCHEMA_VERSION = 1;
-export const BROWSER_REPORT_SCHEMA_VERSION = 2;
-export const THEMES = Object.freeze(["light", "dark"]);
-export const ROUTE_CASES = Object.freeze([
-  Object.freeze({ name: "home", route: "/home" }),
-  Object.freeze({ name: "cards", route: "/cards" }),
-  Object.freeze({ name: "decks", route: "/decks" }),
-  Object.freeze({ name: "profile", route: "/profile" }),
-  Object.freeze({ name: "settings", route: "/settings" }),
-]);
-export const PREVIEW_ANCHOR_IDS = Object.freeze(["words-preview", "grammar-preview", "java-preview"]);
-export const KNOWN_ITEM_KINDS = Object.freeze([
-  "browser-launch",
-  "dashboard-setup",
-  "route-capture",
-  "telemetry",
-  "native-preview",
-  "scenario-cards",
-  "cards-route",
-  "diagnostics",
-]);
+import {
+  BROWSER_PLAN_SCHEMA_VERSION,
+  BROWSER_REPORT_SCHEMA_VERSION,
+  KNOWN_ITEM_KINDS,
+  PREVIEW_ANCHOR_IDS,
+  ROUTE_CASES,
+  THEMES,
+  buildBrowserPlan,
+  validateBrowserPlan,
+  safeIdentifier,
+} from "./browser-plan.mjs";
 
-const ITEM_ID_RE = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
+export {
+  BROWSER_PLAN_SCHEMA_VERSION,
+  BROWSER_REPORT_SCHEMA_VERSION,
+  KNOWN_ITEM_KINDS,
+  PREVIEW_ANCHOR_IDS,
+  ROUTE_CASES,
+  THEMES,
+  buildBrowserPlan,
+  validateBrowserPlan,
+};
+
+
 const SAFE_ERROR_MAX = 240;
 const SLOWEST_ITEM_COUNT = 5;
-
-export function buildBrowserPlan({ label, mode, scope, telemetryEnabled }) {
-  const items = [];
-  const add = (item) => items.push(Object.freeze({ ...item, order: items.length + 1 }));
-
-  add({ id: "browser.launch", kind: "browser-launch", label: "launch Chromium", expectedScreenshots: 0 });
-  add({ id: "dashboard.setup", kind: "dashboard-setup", label: "create dashboard page", expectedScreenshots: 0 });
-
-  for (const { name, route } of ROUTE_CASES) {
-    for (const theme of THEMES) {
-      add({
-        id: `route.${name}.${theme}`,
-        kind: "route-capture",
-        label: `route=#${route} theme=${theme}`,
-        route: `#${route}`,
-        theme,
-        expectedScreenshots: 1,
-      });
-    }
-  }
-
-  if (telemetryEnabled) {
-    add({ id: "telemetry.declined", kind: "telemetry", label: "declined baseline", step: "declined", expectedScreenshots: 0 });
-    add({ id: "telemetry.reliability", kind: "telemetry", label: "reliability-only delivery", step: "reliability", expectedScreenshots: 0 });
-    add({ id: "telemetry.feature", kind: "telemetry", label: "feature-only delivery", step: "feature", expectedScreenshots: 0 });
-    add({ id: "telemetry.offline", kind: "telemetry", label: "offline queue proof", step: "offline", expectedScreenshots: 0 });
-  }
-
-  for (const anchorId of PREVIEW_ANCHOR_IDS) {
-    add({
-      id: `preview.${anchorId}`,
-      kind: "native-preview",
-      label: `anchor=${anchorId}`,
-      anchorId,
-      expectedScreenshots: 2,
-    });
-  }
-
-  add({ id: "scenario.cards", kind: "scenario-cards", label: "scenario card checks", expectedScreenshots: 0 });
-  for (const theme of THEMES) {
-    add({
-      id: `cards-route.${theme}`,
-      kind: "cards-route",
-      label: `route=#/cards theme=${theme}`,
-      route: "#/cards",
-      theme,
-      expectedScreenshots: 1,
-    });
-  }
-  add({ id: "diagnostics.final", kind: "diagnostics", label: "final browser diagnostics", expectedScreenshots: 0 });
-
-  const countsByKind = {};
-  for (const item of items) countsByKind[item.kind] = (countsByKind[item.kind] || 0) + 1;
-  const expectedScreenshotCount = items.reduce((total, item) => total + item.expectedScreenshots, 0);
-  const plan = Object.freeze({
-    schemaVersion: BROWSER_PLAN_SCHEMA_VERSION,
-    label: safeIdentifier(label, "label"),
-    mode: safeIdentifier(mode, "mode"),
-    scope: safeIdentifier(scope, "scope"),
-    telemetryEnabled: Boolean(telemetryEnabled),
-    expectedScreenshotCount,
-    itemCount: items.length,
-    countsByKind: Object.freeze(countsByKind),
-    items: Object.freeze(items),
-  });
-  validateBrowserPlan(plan);
-  return plan;
-}
-
-export function validateBrowserPlan(plan) {
-  if (!plan || plan.schemaVersion !== BROWSER_PLAN_SCHEMA_VERSION) throw new Error("Browser plan schemaVersion must be 1");
-  if (!Array.isArray(plan.items) || plan.items.length === 0) throw new Error("Browser plan items must be a non-empty array");
-  if (plan.itemCount !== plan.items.length) throw new Error("Browser plan itemCount differs from items length");
-  const knownKinds = new Set(KNOWN_ITEM_KINDS);
-  const ids = new Set();
-  const counts = {};
-  let screenshotTotal = 0;
-  for (const [index, item] of plan.items.entries()) {
-    if (!ITEM_ID_RE.test(item.id)) throw new Error(`Invalid browser item id: ${item.id}`);
-    if (ids.has(item.id)) throw new Error(`Duplicate browser item id: ${item.id}`);
-    ids.add(item.id);
-    if (!knownKinds.has(item.kind)) throw new Error(`Unknown browser item kind: ${item.kind}`);
-    if (item.order !== index + 1) throw new Error(`Browser item order mismatch: ${item.id}`);
-    if (!Number.isInteger(item.expectedScreenshots) || item.expectedScreenshots < 0) {
-      throw new Error(`Invalid expectedScreenshots for ${item.id}`);
-    }
-    screenshotTotal += item.expectedScreenshots;
-    counts[item.kind] = (counts[item.kind] || 0) + 1;
-    validatePublicItemFields(item);
-  }
-  if (screenshotTotal !== plan.expectedScreenshotCount) throw new Error("Browser plan screenshot total mismatch");
-  if (JSON.stringify(counts) !== JSON.stringify(plan.countsByKind)) throw new Error("Browser plan countsByKind mismatch");
-  return plan;
-}
 
 export class BrowserProgress {
   constructor({ plan, screenshots, emitRunEvent, persist, log = console.log, now = () => performance.now() }) {
@@ -135,9 +42,14 @@ export class BrowserProgress {
     this.now = now;
     this.items = [];
     this.itemById = new Map(plan.items.map((item) => [item.id, item]));
-    this.completedIds = new Set();
+    this.terminalIds = new Set();
     this.activeItemId = null;
     this.failedItemId = null;
+    this.producerMetrics = {
+      runEventProducerCalls: 0,
+      runEventProducerDurationMs: 0,
+      runEventProducerFailures: 0,
+    };
   }
 
   printPlan() {
@@ -148,56 +60,67 @@ export class BrowserProgress {
     const item = this.itemById.get(itemId);
     if (!item) throw new Error(`Unknown or unplanned browser item: ${itemId}`);
     if (this.activeItemId) throw new Error(`Browser item is already active: ${this.activeItemId}`);
-    if (this.completedIds.has(itemId)) throw new Error(`Browser item already completed: ${itemId}`);
+    if (this.terminalIds.has(itemId)) throw new Error(`Browser item already terminal: ${itemId}`);
     if (typeof operation !== "function") throw new Error(`Browser item operation must be callable: ${itemId}`);
 
     const current = item.order;
     const total = this.plan.itemCount;
     const screenshotStart = this.screenshots.length;
-    const started = this.now();
+    let operationStarted = null;
+    let operationDurationMs = null;
+    let failureStage = "start-run-event";
     this.activeItemId = itemId;
     this.log(`[BROWSER] [${current}/${total}] START ${item.kind} item=${item.id}${formatItemContext(item)}`);
 
     try {
       await this.#emit(current, total, `item=start id=${item.id} kind=${item.kind}`);
+      failureStage = "start-persist";
       await this.#persist();
+      failureStage = "operation";
+      operationStarted = this.now();
       const value = await operation();
-      const durationMs = nonNegativeDuration(this.now() - started);
+      operationDurationMs = nonNegativeDuration(this.now() - operationStarted);
       const actualScreenshots = this.screenshots.length - screenshotStart;
       if (actualScreenshots !== item.expectedScreenshots) {
         throw new Error(`Screenshot contribution mismatch for ${item.id}: expected ${item.expectedScreenshots}, actual ${actualScreenshots}`);
       }
-      await this.#emit(current, total, `item=pass id=${item.id} kind=${item.kind} durationMs=${durationMs} screenshots=${actualScreenshots}`);
-      this.#record(item, "pass", durationMs, screenshotStart, actualScreenshots, null);
-      this.log(`[BROWSER] [${current}/${total}] PASS ${item.kind} item=${item.id} duration=${durationMs}ms screenshots=${actualScreenshots}`);
+      failureStage = "pass-run-event";
+      await this.#emit(current, total, `item=pass id=${item.id} kind=${item.kind} operationDurationMs=${operationDurationMs} screenshots=${actualScreenshots}`);
+      this.#record(item, "pass", operationDurationMs, screenshotStart, actualScreenshots, null, null);
+      this.log(`[BROWSER] [${current}/${total}] PASS ${item.kind} item=${item.id} operation=${operationDurationMs}ms screenshots=${actualScreenshots}`);
+      failureStage = "pass-persist";
       await this.#persist();
       return value;
     } catch (error) {
-      const durationMs = nonNegativeDuration(this.now() - started);
+      if (operationStarted !== null && operationDurationMs === null) {
+        operationDurationMs = nonNegativeDuration(this.now() - operationStarted);
+      }
       const actualScreenshots = this.screenshots.length - screenshotStart;
       this.failedItemId = item.id;
-      if (!this.completedIds.has(item.id)) {
-        this.#record(item, "fail", durationMs, screenshotStart, actualScreenshots, {
+      if (!this.terminalIds.has(item.id)) {
+        this.#record(item, "fail", operationDurationMs, screenshotStart, actualScreenshots, {
           errorType: safeErrorType(error),
           safeErrorSummary: safeErrorSummary(error),
-        });
+        }, failureStage);
       } else {
         const record = this.items.find((candidate) => candidate.id === item.id);
         if (record) {
           record.status = "fail";
+          record.failureStage = failureStage;
           record.errorType = safeErrorType(error);
           record.safeErrorSummary = safeErrorSummary(error);
         }
       }
-      this.log(`[BROWSER] [${current}/${total}] FAIL ${item.kind} item=${item.id} duration=${durationMs}ms screenshots=${actualScreenshots} errorType=${safeErrorType(error)}`);
+      const durationText = operationDurationMs === null ? "n/a" : `${operationDurationMs}ms`;
+      this.log(`[BROWSER] [${current}/${total}] FAIL ${item.kind} item=${item.id} operation=${durationText} screenshots=${actualScreenshots} stage=${failureStage} errorType=${safeErrorType(error)}`);
       try {
-        await this.#emit(current, total, `item=fail id=${item.id} kind=${item.kind} durationMs=${durationMs} errorType=${safeErrorType(error)}`);
-      } catch (secondary) {
+        await this.#emit(current, total, `item=fail id=${item.id} kind=${item.kind} stage=${failureStage} errorType=${safeErrorType(error)}`);
+      } catch {
         this.log(`[BROWSER] [${current}/${total}] INFO ${item.kind} item=${item.id} secondary=run-event-producer`);
       }
       try {
         await this.#persist();
-      } catch (secondary) {
+      } catch {
         this.log(`[BROWSER] [${current}/${total}] INFO ${item.kind} item=${item.id} secondary=progress-persist`);
       }
       throw error;
@@ -217,8 +140,8 @@ export class BrowserProgress {
   finalize() {
     if (this.activeItemId) throw new Error(`Browser item remains active: ${this.activeItemId}`);
     if (this.failedItemId) throw new Error(`Browser progress contains failed item: ${this.failedItemId}`);
-    if (this.completedIds.size !== this.plan.itemCount) {
-      throw new Error(`Browser progress incomplete: ${this.completedIds.size}/${this.plan.itemCount}`);
+    if (this.terminalIds.size !== this.plan.itemCount) {
+      throw new Error(`Browser progress incomplete: ${this.terminalIds.size}/${this.plan.itemCount}`);
     }
     if (this.screenshots.length !== this.plan.expectedScreenshotCount) {
       throw new Error(`Browser screenshot total mismatch: expected ${this.plan.expectedScreenshotCount}, actual ${this.screenshots.length}`);
@@ -227,6 +150,31 @@ export class BrowserProgress {
   }
 
   snapshot() {
+    const passedItems = this.items.filter((item) => item.status === "pass").length;
+    const failedItems = this.items.filter((item) => item.status === "fail").length;
+    const skippedItems = this.items.filter((item) => item.status === "skip").length;
+    const terminalItems = passedItems + failedItems + skippedItems;
+    const progress = {
+      terminalItems,
+      passedItems,
+      failedItems,
+      skippedItems,
+      remainingItems: this.plan.itemCount - terminalItems,
+      totalItems: this.plan.itemCount,
+      failedItemId: this.failedItemId,
+      activeItemId: this.activeItemId,
+      expectedScreenshotCount: this.plan.expectedScreenshotCount,
+      actualScreenshotCount: this.screenshots.length,
+      runEventProducerCalls: this.producerMetrics.runEventProducerCalls,
+      runEventProducerDurationMs: this.producerMetrics.runEventProducerDurationMs,
+      runEventProducerFailures: this.producerMetrics.runEventProducerFailures,
+    };
+    // Non-enumerable runtime aliases keep the unchanged smoke orchestrator readable
+    // while schema v3 JSON deliberately omits the ambiguous legacy fields.
+    Object.defineProperties(progress, {
+      completed: { value: terminalItems, enumerable: false },
+      total: { value: this.plan.itemCount, enumerable: false },
+    });
     return {
       plan: {
         schemaVersion: this.plan.schemaVersion,
@@ -239,30 +187,25 @@ export class BrowserProgress {
         countsByKind: this.plan.countsByKind,
         items: this.plan.items,
       },
-      progress: {
-        completed: this.items.length,
-        total: this.plan.itemCount,
-        failedItemId: this.failedItemId,
-        activeItemId: this.activeItemId,
-        expectedScreenshotCount: this.plan.expectedScreenshotCount,
-        actualScreenshotCount: this.screenshots.length,
-      },
+      progress,
+      producerMetrics: { ...this.producerMetrics },
       items: this.items.map((item) => ({ ...item, screenshotPaths: [...item.screenshotPaths] })),
       slowestItems: slowestItems(this.items),
     };
   }
 
-  #record(item, status, durationMs, screenshotStart, actualScreenshots, error) {
+  #record(item, status, operationDurationMs, screenshotStart, actualScreenshots, error, failureStage) {
     const screenshotPaths = this.screenshots.slice(screenshotStart).map((entry) => entry.path);
     const record = {
       id: item.id,
       kind: item.kind,
       status,
       order: item.order,
-      durationMs,
+      operationDurationMs,
       expectedScreenshots: item.expectedScreenshots,
       actualScreenshots,
       screenshotPaths,
+      ...(failureStage ? { failureStage } : {}),
       ...(item.route ? { route: item.route } : {}),
       ...(item.theme ? { theme: item.theme } : {}),
       ...(item.anchorId ? { anchorId: item.anchorId } : {}),
@@ -270,18 +213,29 @@ export class BrowserProgress {
       ...(error || {}),
     };
     this.items.push(record);
-    this.completedIds.add(item.id);
+    this.terminalIds.add(item.id);
     return record;
   }
 
   async #emit(current, total, message) {
-    if (typeof this.emitRunEvent === "function") await this.emitRunEvent({ current, total, message });
+    if (typeof this.emitRunEvent !== "function") return;
+    const started = this.now();
+    this.producerMetrics.runEventProducerCalls += 1;
+    try {
+      await this.emitRunEvent({ current, total, message });
+    } catch (error) {
+      this.producerMetrics.runEventProducerFailures += 1;
+      throw error;
+    } finally {
+      this.producerMetrics.runEventProducerDurationMs += nonNegativeDuration(this.now() - started);
+    }
   }
 
   async #persist() {
     if (typeof this.persist === "function") await this.persist(this.snapshot());
   }
 }
+
 
 export function createRunEventEmitter({ outputPath, producerPath } = {}) {
   const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -306,8 +260,14 @@ export function createRunEventEmitter({ outputPath, producerPath } = {}) {
       (error, stdout, stderr) => {
         if (stdout) process.stdout.write(stdout);
         if (stderr) process.stderr.write(stderr);
-        if (error) reject(new Error(`Run-event producer failed for browser progress: ${error.message}`));
-        else resolve();
+        if (error) {
+          const wrapped = new Error(`Run-event producer failed for browser progress: ${error.message}`, { cause: error });
+          wrapped.code = error.code ?? null;
+          wrapped.signal = error.signal ?? null;
+          reject(wrapped);
+        } else {
+          resolve();
+        }
       },
     );
     child.stdin?.end();
@@ -326,28 +286,12 @@ export function safeErrorSummary(error) {
   return value.slice(0, SAFE_ERROR_MAX);
 }
 
-function safeErrorType(error) {
+export function safeErrorType(error) {
   const value = String(error?.name || "Error").replace(/[^A-Za-z0-9_.-]/g, "");
   return value.slice(0, 80) || "Error";
 }
 
-function safeIdentifier(value, label) {
-  const normalized = String(value || "").trim();
-  if (!/^[A-Za-z0-9_.-]+$/.test(normalized)) throw new Error(`${label} contains unsafe characters`);
-  return normalized;
-}
-
-function validatePublicItemFields(item) {
-  for (const [key, value] of Object.entries(item)) {
-    if (typeof value !== "string") continue;
-    if (/[\r\n\0]/.test(value) || /[?&](?:access_)?token=/i.test(value)) throw new Error(`Unsafe browser item field: ${key}`);
-    if (/(?:[A-Za-z]:[\\/]|\\\\|(?:^|[\s'"(])\/(?:home|Users|workspace|mnt|tmp|var|etc|root)(?:\/|$))/i.test(value)) {
-      throw new Error(`Private path in browser item field: ${key}`);
-    }
-  }
-}
-
-function formatItemContext(item) {
+export function formatItemContext(item) {
   const parts = [];
   if (item.route) parts.push(`route=${item.route}`);
   if (item.theme) parts.push(`theme=${item.theme}`);
@@ -356,14 +300,19 @@ function formatItemContext(item) {
   return parts.length ? ` ${parts.join(" ")}` : "";
 }
 
-function nonNegativeDuration(value) {
+export function nonNegativeDuration(value) {
   if (!Number.isFinite(value)) throw new Error("Browser item duration is not finite");
   return Math.max(0, Math.round(value));
 }
 
-function slowestItems(items) {
-  return [...items]
-    .sort((left, right) => right.durationMs - left.durationMs || left.order - right.order || left.id.localeCompare(right.id))
+export function slowestItems(items) {
+  return items
+    .filter((item) => Number.isInteger(item.operationDurationMs))
+    .sort((left, right) => right.operationDurationMs - left.operationDurationMs || left.order - right.order || left.id.localeCompare(right.id))
     .slice(0, SLOWEST_ITEM_COUNT)
-    .map(({ id, kind, status, order, durationMs }) => ({ id, kind, status, order, durationMs }));
+    .map(({ id, kind, status, order, operationDurationMs }) => {
+      const item = { id, kind, status, order, operationDurationMs };
+      Object.defineProperty(item, "durationMs", { value: operationDurationMs, enumerable: false });
+      return item;
+    });
 }
