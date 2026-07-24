@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,3 +31,27 @@ def test_linux_artifact_ownership_is_restored_before_host_validation():
     assert re.search(r'"--entrypoint"\s*,\s*"/bin/chown"', restore_block)
     assert '"$($uid):$($gid)"' in restore_block
     assert '"/e2e/artifacts"' in restore_block
+
+def test_runner_is_valid_powershell_syntax():
+    pwsh = shutil.which("pwsh")
+    if pwsh is None:
+        pytest.skip("PowerShell is unavailable")
+
+    env = os.environ.copy()
+    env["ASR_PARSE_TARGET"] = str(RUNNER)
+    command = (
+        "$tokens = $null; $errors = $null; "
+        "[System.Management.Automation.Language.Parser]::ParseFile("
+        "$env:ASR_PARSE_TARGET, [ref]$tokens, [ref]$errors) | Out-Null; "
+        "if ($errors.Count -gt 0) { "
+        "$errors | ForEach-Object { Write-Error $_.Message }; exit 1 }"
+    )
+    completed = subprocess.run(
+        [pwsh, "-NoProfile", "-NonInteractive", "-Command", command],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr

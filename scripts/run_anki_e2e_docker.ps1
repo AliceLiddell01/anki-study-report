@@ -85,7 +85,7 @@ function Invoke-DockerComposeChecked {
     param([string[]]$Arguments)
     $code = Invoke-DockerComposeRaw -Arguments $Arguments
     if ($code -ne 0) {
-        throw "docker compose failed with exit code $code: $($Arguments -join ' ')"
+        throw "docker compose failed with exit code ${code}: $($Arguments -join ' ')"
     }
 }
 
