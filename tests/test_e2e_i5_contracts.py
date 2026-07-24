@@ -83,6 +83,8 @@ def test_workflow_uses_job_workflow_identity_not_trigger_sha():
     assert "E2E_WORKFLOW_SOURCE_REPOSITORY=${{ job.workflow_repository }}" in text
     assert "E2E_WORKFLOW_SOURCE_PATH=${{ job.workflow_file_path }}" in text
     assert "E2E_WORKFLOW_SOURCE_REF=${{ job.workflow_ref }}" in text
+    assert "ref: ${{ job.workflow_sha }}" in text
+    assert "EXPECTED_HARNESS_SHA: ${{ job.workflow_sha }}" in text
     assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" not in text
     assert "--trigger-sha $env:GITHUB_SHA" in text
 
