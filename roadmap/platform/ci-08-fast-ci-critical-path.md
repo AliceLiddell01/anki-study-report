@@ -40,13 +40,26 @@ artifact path меняется только отдельным release-stage р�
 
 ### Python test execution
 
-Исследовать `pytest` parallelism или bounded sharding только после аудита:
+Core-side test architecture, fixture isolation, bounded `pytest-xdist` pilot,
+acceptance thresholds и rollback описаны в
+[Python test performance roadmap](../core/python-test-performance.md). Это одна
+supporting initiative внутри Core, а не новый numbered `C` stage.
+
+Stage 8 отвечает только за workflow-level adoption после того, как CI 7 выбрал
+Python как один измеренный Fast CI bottleneck. Parallelism или bounded sharding
+рассматриваются только после аудита:
 
 - shared process/global state;
 - temporary paths и SQLite files;
 - monkeypatch/environment isolation;
 - ordering assumptions;
-- Anki stubs и platform-specific skips.
+- Anki stubs и platform-specific skips;
+- repeated per-worker session fixtures и collection overhead.
+
+Initial comparison сохраняет serial baseline и fixed bounded worker counts.
+`-n auto` не является допустимым initial CI default. Parallelism, runner migration,
+coverage changes, cache experiment и job splitting не объединяются в один
+performance experiment.
 
 Любой worker-dependent failure считается regression. Нельзя скрывать его rerun
 или увеличением timeout.
@@ -112,11 +125,19 @@ Package job должен собирать ровно один exact artifact и�
 6. проверка exact package metadata/inventory/hash contract;
 7. отсутствие роста failure/flake rate в последующих обычных runs.
 
+Для Python execution change evidence дополнительно включает:
+
+- serial/optimized collection parity;
+- fixed worker/distribution configuration;
+- worker-isolation audit;
+- serial rollback command.
+
 ## Completion criteria
 
 - direct saving доказан, а не выведен из случайного workflow delta;
 - p50 улучшается без ухудшения p95;
 - test count и mandatory checks не сокращены;
+- Python execution change удовлетворяет Core-side acceptance criteria;
 - exact package producer остаётся единственным источником manual E2E package;
 - local canonical command и cloud command graph остаются согласованными;
 - изменение документировано в `docs/ci-cd.md`, test matrix и reports.
