@@ -220,7 +220,7 @@ jobs:
         if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ env.E2E_WORKFLOW_SOURCE_SHA }}
+          ref: ${{ job.workflow_sha }}
           persist-credentials: false
           fetch-depth: 0
 
@@ -228,7 +228,7 @@ jobs:
         if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
         shell: pwsh
         env:
-          EXPECTED_HARNESS_SHA: ${{ env.E2E_WORKFLOW_SOURCE_SHA }}
+          EXPECTED_HARNESS_SHA: ${{ job.workflow_sha }}
         run: |
           $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
           if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_HARNESS_SHA) {
