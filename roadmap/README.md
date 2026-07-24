@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-Снимок: **2026-07-20**.
+Снимок: **2026-07-25**.
 
 Roadmap состоит из одного обязательного core path и нескольких независимых или условных tracks. Номер больше не означает глобальную очередь между несвязанными направлениями. При конфликте production code/tests и current contracts имеют приоритет над roadmap и historical reports.
 
@@ -22,6 +22,8 @@ C1 Cards v2 / Problem Triage
 → C2 Core 1.0 Hardening
 → C3 Contextual Additions, только если выявлен доказанный gap
 ```
+
+Core также содержит одну supporting engineering roadmap: [Python test performance](core/python-test-performance.md). Она активируется только по измерениям, поддерживает `C2`, не становится новым `C`-этапом и согласуется с условным `CI 7 → CI 8`.
 
 Параллельные направления не блокируют `C1`/`C2`:
 
@@ -48,7 +50,7 @@ C1 Cards v2 / Problem Triage
 Completed Stage 0–9.5
         │
         └──────────────→ C1 → C2 → C3?
-                           │
+                           │    └─ Python test performance, only by measured need
                            ├─ enables stable production architecture work when needed
                            └─ does not wait for G/O/I/E
 
@@ -76,6 +78,8 @@ E1 starts only with a concrete reference pack and stable C2 contracts.
 CI 7 measurement → at most one justified CI 8/9/10 optimization.
 CI 11/12 remain independently conditional.
 ```
+
+Python test performance owns suite architecture, fixture isolation, bounded parallel pilot and acceptance/rollback criteria. Platform `CI 8` owns any later change to the mandatory Fast CI execution graph. Neither side may silently adopt parallelism without the shared measurement gate.
 
 ## Operations direction accepted on 2026-07-20
 
