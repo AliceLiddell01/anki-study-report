@@ -146,8 +146,10 @@ serial
 -n 2
 -n 4
 -n 4 --dist=worksteal
--n 4 --dist=loadscope, only when fixture locality may matter
+-n 4 --dist=loadscope
 ```
+
+The `loadscope` candidate is included only when the audit shows that fixture locality may matter.
 
 Rules:
 
