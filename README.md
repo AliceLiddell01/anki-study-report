@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-18**.
+Документация описывает текущий проект на **2026-07-25**.
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
@@ -35,13 +35,14 @@ The accepted product contour is complete through **Stage 9.5**. Future work is n
 
 - [Roadmap map](roadmap/README.md)
 - [Core critical path](roadmap/core/README.md): `C1 Cards v2 → C2 Core 1.0 → C3?`
+- [Python test performance](roadmap/core/python-test-performance.md): measurement-gated Core support initiative coordinated with `CI 7 → CI 8`
 - [Gamification](roadmap/gamification/README.md): parallel research/product track; production not approved
 - [Telemetry operations](roadmap/operations/README.md): separate protected admin tooling
 - [Identity continuity](roadmap/identity/README.md): conditional opt-in gate
 - [Extension ecosystem](roadmap/extensions/README.md): conditional/deferred
 - [Platform / CI](roadmap/platform/README.md): independent delivery/E2E track
 
-Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI and extension packs do not block core maturity.
+Only `C1 → C2` is the mandatory core path. Gamification, accounts, telemetry admin UI, extension packs and the conditional test-performance initiative do not block core maturity without an explicit measured dependency.
 
 Current platform state:
 
