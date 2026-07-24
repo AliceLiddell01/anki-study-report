@@ -490,3 +490,19 @@ page/request/external/console errors: 0
 ```
 
 Итоговый отчёт: [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+
+## Stable failure diagnostics
+
+E2E-I3 adds a canonical bounded failure index without replacing raw diagnostics:
+
+```text
+container: reports/failure-summary.json
+public:    artifacts/reports/failure-summary.json
+markdown:  failure-summary.md
+```
+
+The first primary failure is immutable. Manifest, sanitizer and cleanup failures are stored as bounded secondary entries. Terminal run-event schema-v2 codes must match the canonical primary code.
+
+A successful run must not contain `failure-summary.json`; the final `standard/full` proof `30098237291` satisfied this invariant and ended with schema-v2 `run/pass`.
+
+See [`failure-diagnostics.md`](failure-diagnostics.md) and the [E2E-I3 closeout](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).

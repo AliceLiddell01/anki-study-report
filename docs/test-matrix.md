@@ -17,7 +17,8 @@ docs-only
 Связанные контракты:
 
 - package reuse: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
-- run events и browser items: [`run-event-protocol.md`](run-event-protocol.md).
+- run events и browser items: [`run-event-protocol.md`](run-event-protocol.md);
+- stable failure diagnostics: [`failure-diagnostics.md`](failure-diagnostics.md).
 
 ## Общая матрица
 
@@ -40,6 +41,7 @@ docs-only
 | browser plan/item/report contract | Node unit tests + static pytest + screenshot/run-event tests | один `standard/cards` proof; full только при shared runner lifecycle change | reused package разрешён fail closed; package Fast CI только по complete diff |
 | E2E artifact/sanitizer/handoff consumer | focused exporter/security/reuse tests | один соответствующий Docker proof | reused package разрешён fail closed |
 | run-event schema/registry/writer | schema/security/concurrency/integration tests | controlled failure + один затронутый Fast CI/E2E proof | новый Fast CI только при package/producer impact |
+| failure taxonomy/summary/cleanup/public exporter | registry/schema/store/security/integration tests | controlled primary+secondary failures + один shared-lifecycle `standard/full` | package Fast CI по complete-diff boundary; allowlist не ослаблять |
 | `.github/workflows/ci-e2e.yml` | workflow/handoff tests | одно ручное наблюдение | reused package разрешён, если полный diff проходит allowlist |
 | Fast CI producer | workflow/package/run-event tests | новый exact package-producing Fast CI | обязателен |
 
@@ -249,6 +251,38 @@ resource_telemetry=true
 
 После одного успешного targeted proof не запускаются второй run «для уверенности», perf100, warm repeat, worker comparison или local full.
 
+## Stable failure diagnostics focused minimum
+
+При изменении taxonomy, canonical summary, failure/run-event parity, wrapper cleanup или public exporter обязательны:
+
+```text
+tests/test_failure_registry.py
+tests/test_failure_summary.py
+tests/test_failure_security.py
+tests/test_failure_browser.py
+tests/test_failure_artifact_protocol.py
+tests/test_failure_integration_contract.py
+tests/test_run_event_schema.py
+tests/test_run_event_concurrency.py
+tests/test_run_event_failure_integration.py
+```
+
+Минимальные инварианты:
+
+- first primary immutable;
+- secondary entries bounded/deduplicated;
+- exact phase/item сохранены;
+- original exit/signal и exit class согласованы;
+- token/private path/control characters запрещены;
+- browser telemetry item использует telemetry code;
+- sanitizer/cleanup не заменяют root cause;
+- public summary равен validated source;
+- schema-v2 phase/run code совпадает с canonical primary;
+- historical schema v1 остаётся валидируемой;
+- successful artifact не содержит failure summary.
+
+Поскольку общий cleanup/artifact lifecycle является shared contour, его изменение требует одного `standard/full` после последнего concrete implementation fix. После PASS неизменённую package/harness pair не повторять.
+
 ## Scope matrix
 
 | Scope | Основной риск |
@@ -314,4 +348,5 @@ Closeout reports:
 
 - [`../reports/ci/real-deck-e2e-foundation-closeout.md`](../reports/ci/real-deck-e2e-foundation-closeout.md);
 - [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
-- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
+- [`../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).

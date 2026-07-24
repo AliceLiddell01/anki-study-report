@@ -49,6 +49,7 @@
 - [Real-deck foundation и package/harness reuse — итоговый отчёт](ci/real-deck-e2e-foundation-closeout.md)
 - [E2E-I1 — единый live-протокол Fast CI и real-Anki Docker E2E](ci/e2e-i1-unified-live-run-protocol-closeout.md)
 - [E2E-I2 — детерминированный browser smoke progress и item-level evidence](ci/e2e-i2-browser-smoke-progress-closeout.md)
+- [E2E-I3 — стабильная taxonomy и canonical failure diagnostics](ci/e2e-i3-stable-failure-diagnostics-closeout.md)
 
 ## Аудиты
 

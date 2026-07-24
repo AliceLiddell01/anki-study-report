@@ -1,6 +1,6 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** в работе; `E2E-I1` и `E2E-I2` завершены, следующий этап — `E2E-I3`  
+**Статус:** в работе; `E2E-I1–E2E-I3` завершены, следующий planned stage — `E2E-I4`
 **Трек:** Platform / CI  
 **База:** real-deck E2E foundation из PR #133  
 **Scope:** наблюдаемость Fast CI и real-Anki Docker E2E, диагностика, cancellation, preflight, non-release build identity и performance evidence.
@@ -43,8 +43,8 @@ Roadmap разделён ровно на шесть крупных этапов.
 ```text
 E2E-I1 — COMPLETE
 E2E-I2 — COMPLETE
-E2E-I3 — следующий, не начат
-E2E-I4 — запланирован
+E2E-I3 — COMPLETE
+E2E-I4 — следующий planned stage
 E2E-I5 — запланирован
 E2E-I6 — запланирован
 ```
@@ -249,60 +249,76 @@ Closeout: [`../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../../r
 
 ## E2E-I3 — Stable failure diagnostics
 
-**Статус:** следующий, не начат.
+**Статус:** `COMPLETE`.
 
 ### Цель
 
 Сделать первичный функциональный failure однозначным между Fast CI, Docker orchestration, browser smoke, public artifact и GitHub summary.
 
-### В scope
+### Реализовано
 
-- bounded stable `failureCode` taxonomy;
-- primary failure vs secondary cleanup/upload failures;
-- один canonical `failure-summary.json`;
+- единый reviewed registry stable codes;
+- canonical `failure-summary.json` schema v1;
+- immutable first primary failure;
+- bounded/deduplicated secondary failures;
 - exact phase/item identity;
-- safe error category/summary;
-- links/paths на существующие raw diagnostics;
-- controlled tests для разных failure classes;
-- backward-compatible integration с schema-v1 events или явная schema migration.
+- safe error type/summary и relative evidence paths;
+- original exit code/signal и stable exit class;
+- Fast CI и Docker outer-wrapper integration;
+- manifest/sanitizer/cleanup classification;
+- source/public canonical validation;
+- одна primary GitHub annotation;
+- current run-event schema v2 и historical v1 validation;
+- failure code parity между phase/run/canonical summary;
+- browser report schema v3;
+- operation-only item timing;
+- explicit terminal/pass/fail/skip/remaining counters;
+- bounded producer call/duration/failure metrics;
+- focused controlled failure/security/concurrency tests.
 
-### Требования
-
-Failure summary должен различать минимум:
+### Taxonomy
 
 ```text
-validation
-package_identity
-environment_identity
-anki_startup
-readiness
-api_smoke
-browser_item
-telemetry
-restart
-artifact_manifest
-sanitization
-cleanup
-cancellation
+Fast CI: 8 stable codes
+Docker E2E: 15 stable codes
+categories: 14
+exit classes: 2, 3, 4, 5, 6, 7, 130, 143
 ```
 
-Точная taxonomy определяется после аудита текущих failure paths. Не использовать arbitrary exception text как stable code.
+Canonical contract: [`../../docs/failure-diagnostics.md`](../../docs/failure-diagnostics.md).
+
+### Подтверждение
+
+```text
+implementation SHA: 2ee3c238bd0db2866abb1b97e399baf4fd256136
+Fast CI: 30090001597 — PASS
+standard/full: 30098237291 — PASS
+package SHA-256: 336ed74353b07388a6dbe99a1160a9d1b3e7e5e70eeb490ac9b35d81df4329d5
+artifact: ci-e2e-standard-30098237291-1
+browser items: 23/23 PASS
+screenshots: 18/18
+run-events final: schema v2 run/pass
+failure summary in success artifact: absent
+```
+
+### Что намеренно не запускалось
+
+- intentionally failing cloud run;
+- `perf100`;
+- warm repeat;
+- worker comparison;
+- visual regression;
+- второй successful full;
+- local full после cloud PASS.
 
 ### Out of scope
 
-- cancellation mechanics (`E2E-I4`);
-- build identity (`E2E-I5`);
-- historical performance dashboard (`E2E-I6`);
+- cancellation/preflight mechanics (`E2E-I4`);
+- non-release build identity (`E2E-I5`);
+- canonical final summary/history (`E2E-I6`);
 - retries/quarantine.
 
-### Completion criteria
-
-- first root cause не теряется за final wrapper exception;
-- primary и secondary failures различимы;
-- public summary не содержит secrets/private paths;
-- run-events/artifact remain valid;
-- controlled failure evidence покрывает taxonomy;
-- один risk-appropriate cloud proof после concrete implementation.
+Closeout: [`../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).
 
 ## E2E-I4 — Cancellation и preflight
 
@@ -418,7 +434,7 @@ Structured progress/failure/build evidence может содержать тол�
 ## Следующий допустимый шаг
 
 ```text
-E2E-I3 — Stable failure diagnostics
+E2E-I4 — Cancellation и preflight
 ```
 
-Он должен быть отдельной bounded веткой/задачей. Завершение `E2E-I2` не разрешает автоматически начинать `E2E-I4–I6` или CI optimization stages.
+Он должен быть отдельной bounded веткой/задачей после отдельного решения владельца. Завершение `E2E-I3` не разрешает автоматически начинать `E2E-I4–I6` или CI optimization stages.
