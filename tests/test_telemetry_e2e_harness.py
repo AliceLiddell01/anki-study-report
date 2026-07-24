@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_real_deck_browser_smoke_prepares_persistent_telemetry_before_restart() -> None:
     source = (ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs").read_text(encoding="utf-8")
-    progress = (ROOT / "docker" / "anki-e2e" / "browser-progress.mjs").read_text(encoding="utf-8")
+    plan = (ROOT / "docker" / "anki-e2e" / "browser-plan.mjs").read_text(encoding="utf-8")
 
     assert "ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT" in source
     assert "createTelemetryHarness" in source
@@ -21,7 +21,7 @@ def test_real_deck_browser_smoke_prepares_persistent_telemetry_before_restart() 
         "telemetry.feature",
         "telemetry.offline",
     ):
-        assert item_id in progress
+        assert item_id in plan
 
 
 def test_restart_verifier_remains_strict() -> None:

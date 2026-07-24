@@ -367,3 +367,42 @@ diagnostics errors: 0
 ```
 
 Closeout: [`../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+
+## Stable failure diagnostics
+
+E2E-I3 wraps the shared Docker runner with `run-e2e-failure-wrapper.sh` and stores the first root cause in:
+
+```text
+reports/failure-summary.json
+```
+
+Public export:
+
+```text
+artifacts/reports/failure-summary.json
+failure-summary.md
+```
+
+Rules:
+
+- first primary failure is immutable;
+- later manifest/sanitizer/cleanup failures are secondary;
+- exact phase/item, original exit code/signal and safe relative evidence paths are preserved;
+- token-bearing URLs, secrets and private absolute paths are rejected;
+- successful runs must not contain a failure summary;
+- public summary must equal the validated source summary;
+- GitHub receives one primary annotation.
+
+Run-event schema v2 carries the same stable failure code in terminal phase/run events. Historical schema v1 remains readable.
+
+Final proof:
+
+```text
+implementation: 2ee3c238bd0db2866abb1b97e399baf4fd256136
+Fast CI: 30090001597 — PASS
+standard/full: 30098237291 — PASS
+artifact: ci-e2e-standard-30098237291-1
+browser: 23/23 items, 18/18 screenshots
+```
+
+Canonical contract: [`failure-diagnostics.md`](../../docs/failure-diagnostics.md).

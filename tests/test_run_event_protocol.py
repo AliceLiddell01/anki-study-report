@@ -69,7 +69,7 @@ def test_valid_schema_v1_event_and_deterministic_serialization() -> None:
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("schemaVersion", 2, "schemaVersion"),
+        ("schemaVersion", 3, "schemaVersion"),
         ("status", "success", "unknown status"),
         ("eventKind", "step", "unknown eventKind"),
         ("phaseId", "not-registered", "unknown phaseId"),
@@ -165,8 +165,8 @@ def test_stream_rejects_partial_nondeterministic_and_mixed_lines(tmp_path: Path)
         protocol.validate_stream(output, require_final=False)
 
 
-def test_failure_code_is_reserved_for_e2e_i3() -> None:
-    with pytest.raises(protocol.RunEventError, match="reserved"):
+def test_historical_schema_v1_rejects_failure_code() -> None:
+    with pytest.raises(protocol.RunEventError, match="historical schema v1"):
         protocol.validate_event(event(failureCode="ASR-E2E-EXAMPLE"))
 
 

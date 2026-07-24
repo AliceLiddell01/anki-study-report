@@ -67,15 +67,15 @@ Platform/CI не должен автоматически менять или б�
 ## Текущий Platform / CI
 
 ```text
-working branch: platform/e2e-i2-browser-smoke-progress
+working branch: platform/e2e-i3-stable-failure-diagnostics
 base branch: core
-merge base: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
+core head / merge base: d9899d13c135ccbe1c51322082231b9baab344fd
 E2E-I1: COMPLETE, merged через PR #134
-E2E-I2: COMPLETE на feature branch
-E2E-I2 PR: #135, open, not merged
-E2E-I3: следующий, не начат
-E2E-I4–I6: запланированы
-merge/auto-merge E2E-I2: не выполнялись
+E2E-I2: COMPLETE, merged через PR #135
+E2E-I3: COMPLETE на feature branch; PR в core открывается closeout-коммитом
+E2E-I4: следующий planned stage, не начат
+E2E-I5–I6: запланированы
+merge/auto-merge E2E-I3: не выполнялись
 release: не выполнялся
 ```
 
@@ -152,12 +152,41 @@ console errors: 0
 run-events final: run/pass
 ```
 
-## Browser smoke contract
+### E2E-I3
 
-Source of truth:
+Stable failure diagnostics для Fast CI и Docker E2E.
 
 ```text
+implementation SHA: 2ee3c238bd0db2866abb1b97e399baf4fd256136
+Fast CI: 30090001597 — PASS
+standard/full: 30098237291 — PASS
+failure summary schema: v1
+run-event current schema: v2
+historical run-event schema: v1 validated
+browser report schema: v3
+```
+
+Контракт:
+
+- reviewed stable codes в `failure_registry.py`;
+- immutable first primary;
+- bounded secondary manifest/sanitizer/cleanup failures;
+- exact phase/item и original exit/signal;
+- safe summary/relative paths;
+- source/public canonical validation;
+- одна primary GitHub annotation;
+- successful artifacts без `failure-summary.json`.
+
+Canonical doc: [`failure-diagnostics.md`](failure-diagnostics.md).
+
+## Browser smoke contract
+
+Sources of truth:
+
+```text
+docker/anki-e2e/browser-plan.mjs
 docker/anki-e2e/browser-progress.mjs
+docker/anki-e2e/browser-report-contract.mjs
 ```
 
 Plan создаётся до `chromium.launch()` и содержит stable IDs/kinds/order/counts.
@@ -223,14 +252,13 @@ offline
 
 ## Run-event integration
 
-Global schema остаётся v1:
+Current global schema — v2; historical v1 остаётся валидируемой:
 
 ```text
-phaseId=browser-smoke-first
-eventKind=message
-status=info
-current/total=item order/plan count
-failureCode=null
+failure: phase/run failureCode == canonical primary failureCode
+success/info: failureCode=null
+browser items: bounded message/info внутри browser-smoke-first
+mixed v1/v2 stream: rejected
 ```
 
 Dynamic browser phase IDs не добавлены.
@@ -240,9 +268,10 @@ Node adapter использует `execFile`, array arguments и `shell: false`.
 ## Evidence paths
 
 ```text
-reports/browser-smoke-first.json     schema v2
-reports/screenshot-performance.json  schema v2
-reports/run-events.jsonl              schema v1
+reports/browser-smoke-first.json     schema v3
+reports/screenshot-performance.json  schema v3
+reports/run-events.jsonl              schema v2
+reports/failure-summary.json          schema v1, failure only
 artifact-manifest.json                schema v2
 ```
 
@@ -401,6 +430,7 @@ Unconfirmed/stale/corrupt profiles работают fail closed.
 ## Актуальные документы Platform
 
 - [`run-event-protocol.md`](run-event-protocol.md);
+- [`failure-diagnostics.md`](failure-diagnostics.md);
 - [`docker-e2e.md`](docker-e2e.md);
 - [`test-matrix.md`](test-matrix.md);
 - [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
@@ -410,19 +440,20 @@ Unconfirmed/stale/corrupt profiles работают fail closed.
 Closeout:
 
 - [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
-- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
+- [`../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).
 
 ## Следующий допустимый Platform stage
 
 ```text
-E2E-I3 — Stable failure diagnostics
+E2E-I4 — Cancellation и preflight
 ```
 
-Он должен начинаться как отдельная bounded задача. Не реализовывать в рамках текущей ветки:
+E2E-I4 должен начинаться отдельной bounded задачей после отдельного решения владельца. Не продолжать его в E2E-I3 PR.
 
-- stable global failure codes;
-- общий `failure-summary.json`;
-- cancellation/preflight redesign;
-- build identity;
+Остаются вне завершённого E2E-I3:
+
+- cancellation/preflight mechanics;
+- non-release build identity;
 - canonical final summary/history;
 - retries/visual regression/performance thresholds.

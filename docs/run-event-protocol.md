@@ -1,7 +1,7 @@
 # Единый протокол событий выполнения
 
-**Статус:** реализованный контракт `E2E-I1` + browser item integration `E2E-I2`  
-**Schema:** global run-event schema v1  
+**Статус:** реализованный контракт `E2E-I1–E2E-I3`
+**Schema:** current global run-event schema v2; historical v1 валидируется
 **Производители:** `fast-ci`, `docker-e2e`  
 **Дата подтверждения:** 2026-07-24
 
@@ -48,9 +48,18 @@ Fast CI и real-Anki Docker E2E публикуют жизненный цикл �
 - per-item duration в bounded message;
 - machine-readable browser report schema v2.
 
+### E2E-I3
+
+Current writers перешли на schema v2:
+
+- stable `failureCode` taxonomy;
+- parity между terminal phase/run events и canonical primary failure;
+- historical schema v1 остаётся валидируемой;
+- mixed v1/v2 streams отклоняются;
+- canonical contract описан в [`failure-diagnostics.md`](failure-diagnostics.md).
+
 ### Остаётся вне текущего контракта
 
-- stable global `failureCode` taxonomy и общий failure summary — `E2E-I3`;
 - cancellation/preflight redesign — `E2E-I4`;
 - unique non-release build identity — `E2E-I5`;
 - canonical final summary/history storage — `E2E-I6`.
@@ -80,7 +89,19 @@ run-events.jsonl.state.json
 
 являются runtime coordination state и не входят в final evidence inventory.
 
-## Schema v1
+## Current schema v2
+
+Schema v2 сохраняет тот же фиксированный field order, но активирует `failureCode`:
+
+```text
+phase/fail | phase/cancel → known failureCode
+run/fail   | run/cancel   → тот же failureCode
+pass/info/start/skip      → failureCode=null
+```
+
+Terminal failure code должен совпадать с `failure-summary.json.primary.failureCode`.
+
+## Historical schema v1
 
 Каждая JSONL-строка имеет фиксированную форму:
 
@@ -105,7 +126,7 @@ run-events.jsonl.state.json
 
 | Поле | Тип | Назначение |
 | --- | --- | --- |
-| `schemaVersion` | integer | версия global schema; сейчас `1` |
+| `schemaVersion` | integer | `2` для current writers; historical `1` остаётся валидируемой |
 | `timestampUtc` | string | UTC timestamp в ISO-8601 |
 | `elapsedMs` | integer | неубывающее время от начала run |
 | `producer` | enum | `fast-ci` или `docker-e2e` |
@@ -116,7 +137,7 @@ run-events.jsonl.state.json
 | `current` | integer/null | bounded progress position |
 | `total` | integer/null | bounded progress total |
 | `message` | string/null | безопасное краткое пояснение |
-| `failureCode` | null | зарезервировано для `E2E-I3` |
+| `failureCode` | string/null | stable code для terminal fail/cancel в schema v2; `null` в historical v1 и non-failure events |
 
 ## Lifecycle
 
@@ -203,7 +224,7 @@ Presentation lines не заменяют structured evidence.
 
 ### Plan
 
-`docker/anki-e2e/browser-progress.mjs` строит plan до `chromium.launch()`:
+`docker/anki-e2e/browser-plan.mjs` строит plan до `chromium.launch()`, а `browser-progress.mjs` исполняет и измеряет его:
 
 ```text
 schemaVersion
@@ -276,13 +297,13 @@ Browser adapter:
 
 JavaScript не дублирует Python schema/security validator.
 
-## Browser report schema v2
+## Browser report schema v3
 
 `reports/browser-smoke-<label>.json` сохраняет прежние diagnostics и добавляет:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "ok": true,
   "plan": {
     "schemaVersion": 1,
@@ -291,12 +312,19 @@ JavaScript не дублирует Python schema/security validator.
     "countsByKind": {}
   },
   "progress": {
-    "completed": 23,
-    "total": 23,
+    "terminalItems": 23,
+    "passedItems": 23,
+    "failedItems": 0,
+    "skippedItems": 0,
+    "remainingItems": 0,
+    "totalItems": 23,
     "failedItemId": null,
     "activeItemId": null,
     "expectedScreenshotCount": 18,
-    "actualScreenshotCount": 18
+    "actualScreenshotCount": 18,
+    "runEventProducerCalls": 55,
+    "runEventProducerDurationMs": 4419,
+    "runEventProducerFailures": 0
   },
   "items": [],
   "slowestItems": []
@@ -412,6 +440,19 @@ unexpectedExternalRequests
 ```
 
 `requestfailed` означает network-level failure. HTTP 4xx/5xx response сам по себе не попадает в него. Favicon failure фильтруется прежним guard. Console failure проверяет `type === "error"`.
+
+## E2E-I3 verification
+
+```text
+implementation SHA: 2ee3c238bd0db2866abb1b97e399baf4fd256136
+Fast CI: 30090001597 — PASS
+standard/full: 30098237291 — PASS
+Fast final event: schema v2 run/pass
+Docker final event: schema v2 run/pass
+browser report: schema v3, 23/23 PASS
+```
+
+Successful artifacts do not contain `failure-summary.json`. Failure schema and taxonomy are documented in [`failure-diagnostics.md`](failure-diagnostics.md).
 
 ## Validation CLI
 
