@@ -196,6 +196,8 @@ def finish_run(
     if duration_ms is None:
         duration_ms = _elapsed_ms(output, producer)
     if status == "cancel":
+        if message is None:
+            message = f"exit={original_exit_code} signal={original_signal or 'unknown'}"
         _ensure_cancellation_summary(
             output,
             producer,
@@ -293,4 +295,3 @@ def cancel_run(
         original_signal=original_signal,
         echo=echo,
     )
-

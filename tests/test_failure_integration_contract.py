@@ -17,12 +17,16 @@ def test_docker_image_uses_outer_failure_wrapper() -> None:
     dockerfile = text("docker/anki-e2e/Dockerfile")
     wrapper = text("docker/anki-e2e/run-e2e-failure-wrapper.sh")
     assert 'CMD ["/e2e/bin/run-e2e-failure-wrapper.sh"]' in dockerfile
-    assert 'core="/e2e/bin/run-e2e.sh"' in wrapper
+    assert ': "${ASR_E2E_CORE:=/e2e/bin/run-e2e.sh}"' in wrapper
+    assert 'core="$ASR_E2E_CORE"' in wrapper
     assert 'status=$?' in wrapper
     assert "ASR-E2E-UNKNOWN" in wrapper
-    assert "ASR-E2E-CANCELLED" in wrapper
+    assert 'cancellation_path="${reports_dir}/cancellation-summary.json"' in wrapper
+    assert '"$cancellation_protocol" record' in wrapper
+    assert '"$run_event_protocol" cancel-run' in wrapper
     assert 'failure-summary.json' in wrapper
-    assert 'run_event_protocol.py validate' in wrapper
+    assert 'run_event_protocol="/e2e/bin/run_event_protocol.py"' in wrapper
+    assert '"$run_event_protocol" validate' in wrapper
 
 
 def test_cleanup_failure_is_recorded_without_overwriting_primary() -> None:

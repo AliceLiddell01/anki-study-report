@@ -46,7 +46,7 @@ def ensure_failure_summary(
         code=code,
         phase_id=phase_id,
         error_type="ProcessFailure",
-        summary=message or failure_protocol.definition(code).default_sumary,
+        summary=message or failure_protocol.definition(code).default_summary,
         elapsed_ms=_elapsed_ms(output, producer),
         original_exit_code=original_exit_code,
         original_signal=original_signal,

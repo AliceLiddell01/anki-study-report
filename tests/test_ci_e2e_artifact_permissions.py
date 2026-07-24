@@ -11,12 +11,13 @@ RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
 def test_linux_artifact_ownership_is_restored_before_host_validation():
     text = RUNNER.read_text(encoding="utf-8")
 
-    run = text.index("Invoke-DockerCompose $runArgs")
+    run = text.index("$scriptExit = Invoke-DockerComposeRaw -Arguments $runArgs")
     restore = text.index("Restore-E2EArtifactOwnership -Volume $volume", run)
     validate = text.index("Assert-E2EArtifactManifest -ArtifactsRoot $ArtifactsDir", restore)
 
     assert run < restore < validate
-    assert "try {\n        Invoke-DockerCompose $runArgs\n    } finally {" in text
+    assert "if ($scriptExit -notin @(130, 143)) {" in text
+    assert "if ($scriptExit -eq 0) {" in text
     assert "if (-not $IsLinux)" in text
     restore_block = text.split("function Restore-E2EArtifactOwnership", 1)[1].split(
         "function Assert-E2EArtifactManifest", 1
