@@ -132,7 +132,10 @@ def validate_public_contract(source_summary: Path | None, output: Path) -> Path 
             raise ValueError("Public failure summary exists without validated source summary")
         return None
     source_document = failure_protocol.load_document(source_summary)
-    public_document = failure_protocol.load_document(public)
+    try:
+        public_document = failure_protocol.load_document(public)
+    except ValueError as exc:
+        raise ValueError("Public failure summary differs from validated source summary") from exc
     if public_document != source_document:
         raise ValueError("Public failure summary differs from validated source summary")
     return public

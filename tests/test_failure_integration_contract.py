@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import subprocess
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -69,13 +72,17 @@ def test_no_generated_failure_summary_is_tracked() -> None:
         assert completed.stdout.strip() == ""
 
 
-def test_shell_and_node_syntax() -> None:
+@pytest.mark.skipif(os.name == "nt", reason="Bash syntax is validated on Linux/WSL runners")
+def test_shell_syntax() -> None:
     for relative in (
         "docker/anki-e2e/run-e2e-failure-wrapper.sh",
         "docker/anki-e2e/stop-anki.sh",
     ):
         completed = subprocess.run(["bash", "-n", str(ROOT / relative)], text=True, capture_output=True, check=False)
         assert completed.returncode == 0, completed.stderr
+
+
+def test_node_syntax() -> None:
     for relative in (
         "docker/anki-e2e/browser-progress.mjs",
         "docker/anki-e2e/browser-report-contract.mjs",

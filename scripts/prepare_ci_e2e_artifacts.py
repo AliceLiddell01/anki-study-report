@@ -244,6 +244,8 @@ def main() -> int:
         run_events.validate_stream(public_stream, expected_producer="docker-e2e", require_final=True)
     elif public_stream.exists():
         raise ValueError("Public run event stream exists without validated source evidence")
+    if source_summary is not None:
+        failure_artifacts.publish_minimal_failure(output, source_summary)
     public_summary = failure_artifacts.validate_public_contract(source_summary, output)
     if public_summary is not None:
         failure_artifacts.emit_github_failure(public_summary)
