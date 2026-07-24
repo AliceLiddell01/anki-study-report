@@ -92,7 +92,7 @@ def test_default_branch_push_retains_safe_before_fallback() -> None:
 def test_github_context_values_are_passed_through_environment() -> None:
     text = workflow_text()
     prepare = step(text, "Prepare diagnostics", "Install Python dependencies")
-    package = step(text, "Prepare exact Fast CI package", "Finalize structured timing")
+    package = step(text, "Prepare exact Fast CI package", "Finalize cancelled Fast CI")
 
     for name in ("REPOSITORY", "EVENT_NAME", "WORKFLOW_REF", "TESTED_COMMIT_SHA", "RUN_ID", "RUN_ATTEMPT"):
         assert f"$env:{name}" in prepare
@@ -105,21 +105,29 @@ def test_github_context_values_are_passed_through_environment() -> None:
 def test_structured_timing_is_initialized_finalized_and_uploaded_only_with_diagnostics() -> None:
     text = workflow_text()
     prepare = step(text, "Prepare diagnostics", "Install Python dependencies")
+    cancelled_finalize = step(text, "Finalize cancelled Fast CI", "Finalize structured timing")
     finalize = step(text, "Finalize structured timing", "Upload Fast CI diagnostics")
-    diagnostics = step(text, "Upload Fast CI diagnostics", "Upload exact Fast CI package")
+    diagnostics = step(text, "Upload Fast CI diagnostics", "Upload bounded cancelled Fast CI evidence")
+    cancelled_upload = step(text, "Upload bounded cancelled Fast CI evidence", "Upload exact Fast CI package")
     package = step(text, "Upload exact Fast CI package", "Summarize exact Fast CI package")
 
     assert "scripts/ci_fast_timing.py initialize" in prepare
     assert "ci-fast/timing/fast-ci-timing.json" in prepare
-    assert "if: always()" in finalize
+    assert "if: ${{ cancelled() }}" in cancelled_finalize
+    assert "--result cancelled" in cancelled_finalize
+    assert "cancellation-summary.json" in cancelled_finalize
+    assert "if: ${{ !cancelled() }}" in finalize
     assert "--markdown-output ci-fast/timing/fast-ci-timing.md" in finalize
     assert "--summary-output $env:GITHUB_STEP_SUMMARY" in finalize
     assert "scripts/ci_fast_timing.py validate" in finalize
-    assert "if: always()" in diagnostics
+    assert "if: ${{ !cancelled() }}" in diagnostics
     assert "path: ci-fast/" in diagnostics
+    assert "if: ${{ cancelled() }}" in cancelled_upload
+    assert "ci-fast-cancelled-${{ github.run_id }}-${{ github.run_attempt }}" in cancelled_upload
+    assert "cancellation-summary.json" in cancelled_upload
+    assert "if-no-files-found: warn" in cancelled_upload
     assert "timing/" not in package
     assert "path: ci-package/" in package
-
 
 def test_required_current_internal_phases_are_measured() -> None:
     text = workflow_text()
@@ -145,24 +153,29 @@ def test_required_current_internal_phases_are_measured() -> None:
     assert "frontend-typecheck-build" not in full_check
 
 
-def test_diagnostics_artifact_remains_always_available_and_contains_no_package() -> None:
+def test_diagnostics_artifacts_are_split_between_normal_and_cancelled_paths() -> None:
     text = workflow_text()
     prepare = step(text, "Prepare diagnostics", "Install Python dependencies")
-    diagnostics = step(text, "Upload Fast CI diagnostics", "Upload exact Fast CI package")
+    diagnostics = step(text, "Upload Fast CI diagnostics", "Upload bounded cancelled Fast CI evidence")
+    cancelled = step(text, "Upload bounded cancelled Fast CI evidence", "Upload exact Fast CI package")
 
     assert "ci-fast/logs" in prepare
     assert "ci-fast/package" not in prepare
-    assert "if: always()" in diagnostics
+    assert "if: ${{ !cancelled() }}" in diagnostics
     assert "name: ci-fast-${{ github.run_id }}-${{ github.run_attempt }}" in diagnostics
     assert "path: ci-fast/" in diagnostics
     assert "if-no-files-found: error" in diagnostics
     assert "retention-days: 14" in diagnostics
+    assert "if: ${{ cancelled() }}" in cancelled
+    assert "continue-on-error: true" in cancelled
+    assert "name: ci-fast-cancelled-${{ github.run_id }}-${{ github.run_attempt }}" in cancelled
+    assert "if-no-files-found: warn" in cancelled
+    assert "ci-fast/logs" not in cancelled
     assert "anki_study_report-ci.ankiaddon" not in text
-
 
 def test_exact_package_preparation_preserves_commit_identity_fields() -> None:
     text = workflow_text()
-    prepare = step(text, "Prepare exact Fast CI package", "Finalize structured timing")
+    prepare = step(text, "Prepare exact Fast CI package", "Finalize cancelled Fast CI")
 
     assert "if: success()" in prepare
     assert "scripts/write_ci_package_metadata.py" in prepare

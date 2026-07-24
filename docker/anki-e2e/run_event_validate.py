@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+import cancellation_protocol
 from run_event_contract import *
 from run_event_context import summary_primary_code
-from run_event_storage import failure_summary_path
+from run_event_storage import cancellation_summary_path, failure_summary_path
 
 
 def validate_stream(
@@ -56,7 +57,11 @@ def validate_stream(
         raise RunEventError("run event stream contains multiple final run results")
     if SCHEMA_VERSION in versions and final_events:
         final = final_events[0]
+        failure_file = failure_summary_path(output)
+        cancellation_file = cancellation_summary_path(output)
         if final["status"] == "fail":
+            if cancellation_file.exists():
+                raise RunEventError("failed run must not contain cancellation-summary.json")
             phase_failures = [
                 event for event in events if event["eventKind"] == "phase" and event["status"] == "fail"
             ]
@@ -65,6 +70,35 @@ def validate_stream(
             )
             if final["failureCode"] != expected:
                 raise RunEventError("run/fail failureCode differs from primary failure code")
-        if final["status"] == "pass" and failure_summary_path(output).exists():
-            raise RunEventError("successful run must not contain failure-summary.json")
+        elif final["status"] == "cancel":
+            if failure_file.exists():
+                raise RunEventError("cancelled run must not contain failure-summary.json")
+            if not cancellation_file.is_file():
+                raise RunEventError("cancelled run requires cancellation-summary.json")
+            document = cancellation_protocol.load_document(cancellation_file)
+            if document["producer"] != producer:
+                raise RunEventError("cancellation summary producer differs from run/cancel")
+            if document["cancellationCode"] != final["failureCode"]:
+                raise RunEventError("run/cancel code differs from cancellation summary")
+            phase_cancels = [
+                event for event in events if event["eventKind"] == "phase" and event["status"] == "cancel"
+            ]
+            if len(phase_cancels) > 1:
+                raise RunEventError("cancelled stream contains multiple phase/cancel events")
+            if phase_cancels and phase_cancels[0]["failureCode"] != final["failureCode"]:
+                raise RunEventError("phase/cancel code differs from run/cancel")
+            expected_message = (
+                f"exit={document['originalExitCode']} "
+                f"signal={document['originalSignal'] or 'unknown'}"
+            )
+            if final["message"] != expected_message:
+                raise RunEventError("run/cancel exit and signal differ from cancellation summary")
+            if phase_cancels and phase_cancels[0]["message"] != expected_message:
+                raise RunEventError("phase/cancel exit and signal differ from cancellation summary")
+            active_phase = document["context"]["activePhaseId"]
+            if phase_cancels and active_phase != phase_cancels[0]["phaseId"]:
+                raise RunEventError("phase/cancel phase differs from cancellation summary context")
+        else:
+            if failure_file.exists() or cancellation_file.exists():
+                raise RunEventError("successful run must not contain terminal summary evidence")
     return events

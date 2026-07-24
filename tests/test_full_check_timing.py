@@ -60,7 +60,12 @@ def test_failure_preserves_primary_error_and_attempts_timing_finish() -> None:
     assert "$commandError = $_" in source
     assert "if ($exitCode -eq 0)" in source
     assert "Timing finalization failed after the canonical command failure" in source
-    assert "if ($commandError) {\n        throw $commandError\n    }" in source
+    assert (
+        "if ($commandError) {\n"
+        "        if ($exitCode -in @(130, 143)) { exit $exitCode }\n"
+        "        throw $commandError\n"
+        "    }"
+    ) in source
 
 
 def test_timing_is_initialized_locally_or_validated_when_preinitialized() -> None:

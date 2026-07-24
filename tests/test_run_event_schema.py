@@ -143,12 +143,30 @@ def test_cancellation_uses_producer_specific_reserved_code(tmp_path: Path):
     protocol.initialize_stream(fast, "fast-ci")
     final = protocol.finish_run(fast, "fast-ci", "cancel", original_exit_code=130)
     assert final["failureCode"] == "ASR-FAST-CANCELLED"
-    fast_summary = protocol.failure_protocol.load_document(protocol.failure_summary_path(fast))
-    assert fast_summary["primary"]["originalExitCode"] == 130
+    assert final["message"] == "exit=130 signal=unknown"
+    assert not protocol.failure_summary_path(fast).exists()
+    fast_summary = protocol.cancellation_protocol.load_document(
+        protocol.cancellation_summary_path(fast)
+    )
+    assert fast_summary["cancellationCode"] == final["failureCode"]
+    assert fast_summary["originalExitCode"] == 130
+    assert fast_summary["originalSignal"] is None
 
     e2e = tmp_path / "reports" / "run-events.jsonl"
     protocol.initialize_stream(e2e, "docker-e2e")
-    final = protocol.finish_run(e2e, "docker-e2e", "cancel", original_exit_code=143, original_signal="SIGTERM")
+    final = protocol.finish_run(
+        e2e,
+        "docker-e2e",
+        "cancel",
+        original_exit_code=143,
+        original_signal="SIGTERM",
+    )
     assert final["failureCode"] == "ASR-E2E-CANCELLED"
-    e2e_summary = protocol.failure_protocol.load_document(protocol.failure_summary_path(e2e))
-    assert e2e_summary["primary"]["originalSignal"] == "SIGTERM"
+    assert final["message"] == "exit=143 signal=SIGTERM"
+    assert not protocol.failure_summary_path(e2e).exists()
+    e2e_summary = protocol.cancellation_protocol.load_document(
+        protocol.cancellation_summary_path(e2e)
+    )
+    assert e2e_summary["cancellationCode"] == final["failureCode"]
+    assert e2e_summary["originalExitCode"] == 143
+    assert e2e_summary["originalSignal"] == "SIGTERM"

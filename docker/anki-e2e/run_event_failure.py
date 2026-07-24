@@ -17,7 +17,7 @@ def ensure_failure_summary(
     original_exit_code: int | None,
     original_signal: str | None,
 ) -> None:
-    if phase_id == "run":
+    if phase_id == "run" or code in {"ASR-FAST-CANCELLED", "ASR-E2E-CANCELLED"}:
         return
     path = failure_summary_path(output)
     if original_exit_code is None:
@@ -97,12 +97,9 @@ def create_run_level_summary(
     original_signal: str | None,
 ) -> None:
     summary_file = failure_summary_path(output)
-    if summary_file.is_file() or status not in {"fail", "cancel"}:
+    if summary_file.is_file() or status != "fail":
         return
-    if status == "cancel":
-        code = "ASR-FAST-CANCELLED" if producer == "fast-ci" else "ASR-E2E-CANCELLED"
-    else:
-        code = failure_code or ("ASR-FAST-UNKNOWN" if producer == "fast-ci" else "ASR-E2E-UNKNOWN")
+    code = failure_code or ("ASR-FAST-UNKNOWN" if producer == "fast-ci" else "ASR-E2E-UNKNOWN")
     entry = failure_protocol.build_failure(
         code=code,
         error_type="ProcessFailure",

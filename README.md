@@ -1,6 +1,6 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-24**.
+Документация описывает текущий проект на **2026-07-25**.
 
 Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
 
@@ -63,7 +63,10 @@ Core 1.0 release — not started
 CI Stage 6B: Complete
 real-deck E2E foundation: Complete
 E2E-I1 unified live run protocol: Complete
-E2E-I2 browser smoke progress: next, not started
+E2E-I2 browser smoke progress: Complete
+E2E-I3 stable failure diagnostics: Complete
+E2E-I4 cancellation and preflight: Complete on PR #137
+E2E-I5 non-release build identity: next planned stage, not started
 cloud real-Anki environment: immutable GHCR digest only
 manual E2E package: exact successful Fast CI artifact
 release E2E package: exact release artifact
@@ -72,6 +75,8 @@ package/harness identities: separate and fail-closed
 Fast CI live evidence: ci-fast/run-events.jsonl
 Docker E2E live evidence: reports/run-events.jsonl
 public E2E live evidence: artifacts/reports/run-events.jsonl
+cancellation evidence: cancellation-summary.json + bounded minimal artifact
+preflight evidence: deterministic static/runtime report
 local Docker build: development/diagnostic fallback
 ```
 
@@ -79,18 +84,30 @@ Docker E2E imports Words N1, Grammar N5 and Java working decks through the publi
 
 A new Fast CI package is required only when the diff can change `.ankiaddon` bytes or production behavior. Changes restricted to the validated E2E harness/orchestration/tests may reuse an existing successful package after ancestry and complete-diff validation. See [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md).
 
-`E2E-I1` ввёл единый schema-v1 lifecycle Fast CI и Docker E2E. Технический контракт: [Единый протокол событий выполнения](docs/run-event-protocol.md). Исторический closeout: [E2E-I1 — итоговый отчёт](reports/ci/e2e-i1-unified-live-run-protocol-closeout.md).
+## Подтверждённые этапы E2E-I1–E2E-I4
 
-Подтверждение этапа:
+Технические контракты:
+
+- [Единый протокол событий выполнения](docs/run-event-protocol.md);
+- [Stable failure diagnostics](docs/failure-diagnostics.md);
+- [Preflight и cancellation](docs/e2e-preflight-cancellation.md);
+- [Ручное сопровождение ChatGPT mode](docs/chatgpt-manual-operations.md).
+
+Последний завершённый этап:
 
 ```text
-implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
-Fast CI: 30039103625 — PASS
-standard/full E2E: 30039372012 — PASS
-final standard/full E2E: 30039708429 — PASS
-PR в core: не создан
-merge в core: не выполнен
+E2E-I4 implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+Fast CI: 30125233072 — PASS
+controlled run A: 30126100944 — CANCELLED
+controlled run B: 30126228749 — PASS
+browser items: 23/23
+screenshots: 18/18
+PR: #137, ready after docs-only closeout
+merge: not performed
 ```
+
+Финальный отчёт:
+[E2E-I4 cancellation/preflight closeout](reports/ci/e2e-i4-cancellation-preflight-closeout.md).
 
 ## Important commands
 
@@ -160,13 +177,16 @@ Start with:
 - [CI/CD](docs/ci-cd.md)
 - [Docker E2E](docs/docker-e2e.md)
 - [Unified Fast CI / Docker E2E run-event protocol](docs/run-event-protocol.md)
+- [E2E preflight and cancellation contract](docs/e2e-preflight-cancellation.md)
 - [Package and E2E harness reuse](docs/e2e-package-harness-reuse.md)
 - [GHCR E2E consumer](docs/ghcr-e2e-consumer.md)
 - [Decision log](docs/decision-log.md)
 - [AI handoff](docs/ai-handoff.md)
+- [ChatGPT manual operations and recovery](docs/chatgpt-manual-operations.md)
 - [Historical reports](reports/README.md)
 - [Real-deck E2E closeout report](reports/ci/real-deck-e2e-foundation-closeout.md)
 - [E2E-I1 closeout report](reports/ci/e2e-i1-unified-live-run-protocol-closeout.md)
+- [E2E-I4 closeout report](reports/ci/e2e-i4-cancellation-preflight-closeout.md)
 
 ## Contract rules
 

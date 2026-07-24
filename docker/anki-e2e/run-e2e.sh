@@ -73,6 +73,8 @@ ACTIVE_PHASE_NAME=""
 ACTIVE_PHASE_STARTED_MS=""
 ACTIVE_PHASE_STARTED_AT=""
 run_status="failed"
+CANCEL_EXIT_CODE=""
+CANCEL_SIGNAL=""
 
 section() {
   echo
@@ -120,8 +122,21 @@ phase_end() {
   ACTIVE_PHASE_STARTED_AT=""
 }
 
+handle_signal() {
+  local signal="$1" exit_code="$2"
+  if [ -z "$CANCEL_EXIT_CODE" ]; then
+    CANCEL_SIGNAL="$signal"
+    CANCEL_EXIT_CODE="$exit_code"
+  fi
+  exit "$CANCEL_EXIT_CODE"
+}
+
 cleanup() {
   local exit_status=$?
+  trap '' INT TERM
+  if [ -n "$CANCEL_EXIT_CODE" ]; then
+    exit_status="$CANCEL_EXIT_CODE"
+  fi
   /e2e/bin/stop-anki.sh || true
   if [ -n "$TELEMETRY_FAKE_PID" ]; then
     kill "$TELEMETRY_FAKE_PID" >/dev/null 2>&1 || true
@@ -131,6 +146,16 @@ cleanup() {
     touch "$RESOURCE_STOP_FILE"
     wait "$RESOURCE_PID" || true
     rm -f "$RESOURCE_STOP_FILE"
+  fi
+  if [ "$exit_status" -eq 130 ] || [ "$exit_status" -eq 143 ]; then
+    if [ "$RUN_EVENTS_INITIALIZED" = "1" ]; then
+      signal_args=()
+      [ -n "$CANCEL_SIGNAL" ] && signal_args+=(--original-signal "$CANCEL_SIGNAL")
+      run_event cancel-run --original-exit-code "$exit_status" "${signal_args[@]}" || true
+      /e2e/bin/run_event_protocol.py validate --output "$RUN_EVENTS_PATH" --producer docker-e2e || true
+    fi
+    trap - EXIT
+    exit "$exit_status"
   fi
   if [ "$RUN_EVENTS_INITIALIZED" = "1" ] && [ -n "$ACTIVE_PHASE_ID" ]; then
     local failed_finished_ms failed_duration_ms
@@ -186,6 +211,8 @@ cleanup() {
   trap - EXIT
   exit "$exit_status"
 }
+trap 'handle_signal SIGINT 130' INT
+trap 'handle_signal SIGTERM 143' TERM
 trap cleanup EXIT
 
 section "Prepare artifacts"
@@ -196,7 +223,21 @@ case "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" in
     ;;
 esac
 mkdir -p "$ANKI_STUDY_REPORT_E2E_ARTIFACTS"
-find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+preflight_report="${ANKI_STUDY_REPORT_E2E_REPORTS_DIR}/preflight-report.json"
+if [ -f "$preflight_report" ]; then
+  find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    -mindepth 1 -maxdepth 1 \
+    ! -path "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+    -exec rm -rf -- {} +
+  find "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+    -mindepth 1 -maxdepth 1 \
+    ! -name "preflight-report.json" \
+    -exec rm -rf -- {} +
+else
+  find "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    -mindepth 1 -maxdepth 1 \
+    -exec rm -rf -- {} +
+fi
 mkdir -p \
   "$ANKI_STUDY_REPORT_E2E_RUNTIME_DIR" \
   "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR" \

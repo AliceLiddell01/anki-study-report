@@ -11,6 +11,7 @@ from typing import Any, Iterator
 from run_event_contract import *
 from run_event_contract import _require_non_negative_int
 
+
 def _sidecar_directory(output: Path) -> Path:
     return output.parent.parent / "runtime" if output.parent.name == "reports" else output.parent
 
@@ -25,6 +26,10 @@ def lock_path(output: Path) -> Path:
 
 def failure_summary_path(output: Path) -> Path:
     return output.parent / "failure-summary.json"
+
+
+def cancellation_summary_path(output: Path) -> Path:
+    return output.parent / "cancellation-summary.json"
 
 
 def _atomic_write(path: Path, text: str) -> None:
