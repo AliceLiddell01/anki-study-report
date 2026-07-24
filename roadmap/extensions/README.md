@@ -1,106 +1,43 @@
-# Extension ecosystem track
+# Трек Extension Ecosystem
 
-**Track:** `E`
-**Role:** parallel/deferred first-party extension work
-**Current status:** `E1` is Conditional
+**Трек:** `E`  
+**Роль:** условная first-party extension architecture  
+**Текущий статус:** `E1` — conditional
 
-The core add-on is complete and releasable without an extension system. This track starts only from a concrete first-party need; it is not the automatic continuation of Statistics or Core 1.0.
+Core должен оставаться полноценным и releasable без extension system. Трек начинается только с конкретного first-party reference pack.
 
-## Sequence
+## Карта
 
-```text
-E1 Extension contract discovery with one reference pack
-→ E2 Minimal Extension Pack Foundation
-→ E3 First-party Analytics Pack (conditional)
-→ E4 Additional first-party packs (evidence-based only)
+```mermaid
+flowchart LR
+    N{Есть named reference pack?}
+    N -->|нет| D[Track deferred]
+    N -->|да| E1[E1 Contract discovery]
+    E1 --> G{Minimal contract justified?}
+    G -->|нет| C[Оставить workflow в Core или отказаться]
+    G -->|да| E2[E2 Pack foundation]
+    E2 -. concrete analytics need .-> E3[E3 Analytics pack]
+    E2 -. separate evidence .-> E4[E4 Additional packs]
 ```
 
-## E1 — Contract discovery
+## Этапы
 
-**Status:** Conditional
+| Этап | Статус | Цель | Completion |
+| --- | --- | --- | --- |
+| **E1 Contract discovery** | Conditional | Вывести минимальный contract из одного approved reference pack | proposal доказывает каждую capability и отклоняет speculative surface |
+| **E2 Minimal foundation** | После E1 | Реализовать versioned fail-closed first-party extension points | install/update/uninstall/recovery проходят; Core работает без pack |
+| **E3 Analytics pack** | Conditional | Вынести один optional/expensive analytical workflow | pack отдельно удаляем, metrics canonical, Core performance/data не затронуты |
+| **E4 Additional packs** | Deferred | Добавлять один evidence-backed first-party pack за раз | у каждого pack есть owner, security review и maintenance case |
 
-### Goal
+## Invariants
 
-Use one approved first-party reference pack to discover the smallest required extension contract.
+- никаких unsigned remote code, generic iframe/JavaScript plugins или arbitrary UI slots;
+- frontend pack не получает прямой collection access;
+- capability allowlist и compatibility versioned;
+- package/tests/lifecycle отделены от Core;
+- token, sanitizer, action и media boundaries сохраняются;
+- marketplace и third-party ecosystem не подразумеваются.
 
-### Dependencies
+## Activation criteria
 
-C2 Core 1.0 contracts sufficiently stable; a concrete workflow cannot reasonably live in core.
-
-### Scope
-
-Capability inventory, data/query needs, lifecycle, compatibility, packaging, uninstall/recovery and threat model.
-
-### Out of scope
-
-Generic marketplace, hypothetical APIs, placeholders, remote code execution and arbitrary UI slots.
-
-### Activation criteria
-
-A named reference pack has a justified user workflow, ownership, maintenance plan and reason not to remain core.
-
-### Completion criteria
-
-A reviewed contract proposal proves each capability against the reference pack and rejects speculative surface.
-
-## E2 — Minimal Extension Pack Foundation
-
-**Status:** Planned only after E1
-
-### Goal
-
-Implement fail-closed, versioned first-party extension points required by the reference pack.
-
-### Dependencies
-
-E1 accepted; stable core migrations and package boundaries.
-
-### Scope
-
-Versioned manifest, capability allowlist, local lifecycle, compatibility negotiation, bounded Python-side data/query access, typed contribution slots, separate package/tests and uninstall/recovery.
-
-### Out of scope
-
-Unsigned remote code, generic iframe/JavaScript plugins, direct frontend collection access, arbitrary network privilege and account/sync.
-
-### Activation criteria
-
-E1 demonstrates that the foundation is necessary and minimal.
-
-### Completion criteria
-
-Reference pack passes install/update/uninstall/recovery; core works without it; token/sanitizer/action/media boundaries remain intact; artifacts stay separate.
-
-## E3 — First-party Analytics Pack
-
-**Status:** Conditional
-
-### Goal
-
-Host a specific optional/expensive analytical workflow that should not increase core startup/payload for everyone.
-
-### Dependencies
-
-E2 complete and a concrete unanswered analytical question with metric definitions and a performance budget.
-
-### Scope
-
-Only the approved workflow; local computation by default; typed extension contracts.
-
-### Out of scope
-
-Duplicating Statistics/FSRS, arbitrary dashboards, scheduler mutation or remote study-data telemetry.
-
-### Activation criteria
-
-A reference analytics workflow justifies E2 and cannot be delivered as a bounded contextual core addition.
-
-### Completion criteria
-
-Pack is separately installable/removable, metrics are canonical and tested, and core performance/data remain unaffected.
-
-## E4 — Additional first-party packs
-
-**Status:** Deferred
-
-Each pack requires its own evidence, owner, security review and maintenance case. No marketplace or third-party ecosystem is implied.
+E1 требует named workflow, ownership, maintenance plan и доказательство, что функция не должна оставаться bounded Core addition. E2–E4 не активируются заранее.

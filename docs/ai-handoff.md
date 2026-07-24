@@ -1,509 +1,107 @@
-# Передача контекста ИИ — Anki Study Report
+# Передача актуального контекста ИИ
 
 **Снимок:** 2026-07-25
 
-## С чего начать
+Этот файл — короткая точка входа для нового рабочего чата. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
-Читайте источники в таком порядке:
+## Порядок чтения
 
-1. [`../README.md`](../README.md);
+1. [`../README.md`](../README.md)
 2. этот файл;
-3. [`../roadmap/README.md`](../roadmap/README.md);
-4. профильный README соответствующего трека;
-5. актуальные production-код и тесты в пределах задачи;
-6. профильный контракт и последний closeout соответствующего этапа.
+3. профильный roadmap;
+4. профильный contract в `docs/`;
+5. актуальные production code и tests;
+6. свежий closeout или artifact только когда это необходимо задаче.
 
 При противоречиях:
 
 ```text
-актуальные production-код и тесты
-→ актуальные README и профильные документы
-→ свежие отчёты и артефакты
+production code и tests
+→ актуальные contracts в docs/
+→ roadmap/
+→ свежие reports/artifacts
 → старые планы и сообщения
 → предположения
 ```
 
-Не утверждайте, что файл, artifact или участок кода изучен, если он фактически не был открыт.
+Не утверждайте, что файл, код, run или artifact изучен, если он фактически не был открыт.
 
 ## Проект
 
 Anki Study Report — локальный add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard.
 
-Dashboard:
+Ключевые границы:
 
-- доступен только через loopback;
-- защищён token;
-- получает ограниченные JSON/API-проекции;
-- не предоставляет frontend прямой доступ к collection;
-- рендерит карточки через sanitizer и Shadow DOM без JavaScript execution surface.
+- dashboard доступен только через loopback и защищён token;
+- frontend получает bounded JSON/API projections и не читает collection напрямую;
+- preview использует sanitizer и Shadow DOM без JavaScript execution surface;
+- profile/study data остаются локальными, кроме явно opt-in bounded technical telemetry;
+- payload/public behavior меняются синхронно между слоями, tests и docs.
 
-## Текущий Core
+Подробности: [architecture.md](architecture.md), [dashboard-api.md](dashboard-api.md), [security-and-safety.md](security-and-safety.md).
 
-```text
-base branch: core
-current core head: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
-C1: завершён
-C2 implementation/integration: завершены
-C2 owner acceptance: повторно открыта после ручной UI-проверки
-post-C2 manual acceptance remediation: отдельная задача, не входит в Platform
-C3–C6: обязательный будущий путь к Core 1.0
-release: не начат
-```
-
-Обязательный продуктовый путь:
+## Текущее состояние Core
 
 ```text
-post-C2 manual acceptance remediation
-→ C3 Core UI & Shell Consolidation
-→ C4 First-party Data Independence
-→ C5 Today v2
-→ C6 Profile v2 Foundation
-→ Core 1.0 owner acceptance
-→ отдельное решение о release
+C1 — завершён и принят
+C2 implementation/integration — завершены и влиты в core
+C2 owner acceptance — повторно открыта после ручной UI-проверки
+следующая работа — bounded post-C2 manual acceptance remediation
+C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
+release — не начат
 ```
 
-Platform/CI не должен автоматически менять или блокировать эту очередь без явно документированной dependency.
+Параллельные Platform, Gamification, Operations, Identity и Extensions не блокируют Core без явно документированной зависимости.
 
-## Текущий Platform / CI
+Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
+
+## Текущее состояние Platform / CI
 
 ```text
-working branch: platform/e2e-i4-cancellation-preflight
-base branch: core
-implementation head: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
-E2E-I1: COMPLETE, merged через PR #134
-E2E-I2: COMPLETE, merged через PR #135
-E2E-I3: COMPLETE
-E2E-I4: COMPLETE на PR #137; docs-only closeout переводит PR в ready
-E2E-I5–I6: запланированы, не начаты
-merge/auto-merge E2E-I4: не выполнялись
-release: не выполнялся
+real-deck E2E foundation — COMPLETE / merged
+E2E-I1 — COMPLETE / merged через PR #134
+E2E-I2 — COMPLETE / merged через PR #135
+E2E-I3 — COMPLETE / merged через PR #136
+E2E-I4 — COMPLETE / merged через PR #137
+E2E-I5 — следующий planned stage, не начат
+E2E-I6 — запланирован
 ```
 
-E2E-I4 acceptance:
+E2E-I4 merge:
 
 ```text
-Fast CI: 30125233072 — PASS
-controlled A: 30126100944 — CANCELLED
-controlled B: 30126228749 — PASS
-browser: 23/23
-screenshots: 18/18
-preflight: 20/20
+PR: #137
+feature implementation: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
+docs head: 37b0a569b3a11de6af84e2cdb675f98e97dcd30b
+core merge commit: 8924987de31da64203855f5b15019b5075945650
 ```
 
-Contract:
-[`e2e-preflight-cancellation.md`](e2e-preflight-cancellation.md).
+Актуальные Platform contracts:
 
-Manual ChatGPT-mode runbook:
-[`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
+- [run-event-protocol.md](run-event-protocol.md)
+- [failure-diagnostics.md](failure-diagnostics.md)
+- [e2e-preflight-cancellation.md](e2e-preflight-cancellation.md)
+- [e2e-package-harness-reuse.md](e2e-package-harness-reuse.md)
+- [docker-e2e.md](docker-e2e.md)
 
-### E2E-I1
+Исторические run IDs, package hashes и artifact digests находятся в [`../reports/README.md`](../reports/README.md).
 
-Единый schema-v1 lifecycle Fast CI и Docker E2E:
+## Текущие рабочие решения
 
-```text
-Fast CI stream: ci-fast/run-events.jsonl
-Docker stream: reports/run-events.jsonl
-Public stream: artifacts/reports/run-events.jsonl
-```
+- Desktop/laptop — основной target dashboard; mobile не является приоритетом без отдельной задачи.
+- Не добавлять placeholder routes, future DLC surfaces или вымышленные integrations.
+- Не возвращать legacy aliases и routes без доказанной compatibility необходимости.
+- Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Successful unchanged exact-SHA gates не повторять.
+- Не создавать вложенную лестницу этапов вместо одной цельной задачи.
+- Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
 
-Подтверждение:
+## Режим работы
 
-```text
-implementation SHA: a376a1e5556b26043d29fadcf01698972bd1b2ba
-Fast CI: 30039103625 — PASS
-standard/full: 30039372012 — PASS
-standard/full: 30039708429 — PASS
-PR #134: merged
-core merge SHA: 38483b3c6ff59f7bc71b03806e9dcdaadb255fa3
-```
+Выбор между ChatGPT и Codex определяется фактической средой, а не названием модели:
 
-### E2E-I2
+- [ai-work-modes.md](ai-work-modes.md)
+- [chatgpt-work-mode.md](chatgpt-work-mode.md)
+- [codex-agent-rules.md](codex-agent-rules.md)
 
-Детерминированный item-level browser smoke progress без миграции на `@playwright/test`.
-
-Финальный implementation:
-
-```text
-SHA: e25bd0b24e32ce4717ed2dbda138d802f707f6d5
-Fast CI: 30048028664 — PASS
-standard/cards: 30049216529 — PASS
-PR: #135 — OPEN
-```
-
-Exact Fast CI package:
-
-```text
-artifact ID: 8579972839
-artifact name: ci-package-e25bd0b24e32ce4717ed2dbda138d802f707f6d5-30048028664-1
-artifact digest: sha256:47674f11d057c32139e121672129291e09581db30041dc3f83cc558b3ed06a3b
-inner .ankiaddon SHA-256: 5cff912c3ea9ae03b1c495b28699c3c93d7ac9c12b84832d1765d77fe518ddc2
-```
-
-Targeted E2E artifact:
-
-```text
-artifact ID: 8580366654
-artifact name: ci-e2e-standard-30049216529-1
-artifact digest: sha256:04d3945e594c01cf292fb1f7a2a56e4734ccc37e27bd094cd27f9d5cb92127a7
-mode/scope: standard/cards
-restart: false
-resource telemetry: true
-screenshot workers: 3
-workflow duration: 102 s
-canonical duration: 31.377 s
-```
-
-Browser proof:
-
-```text
-plan schema: 1
-browser report schema: 2
-items: 23/23 PASS
-screenshots: 18/18
-failedItemId: null
-activeItemId: null
-pageErrors: 0
-failedRequests: 0
-unexpectedExternalRequests: 0
-console errors: 0
-run-events final: run/pass
-```
-
-### E2E-I3
-
-Stable failure diagnostics для Fast CI и Docker E2E.
-
-```text
-implementation SHA: 2ee3c238bd0db2866abb1b97e399baf4fd256136
-Fast CI: 30090001597 — PASS
-standard/full: 30098237291 — PASS
-failure summary schema: v1
-run-event current schema: v2
-historical run-event schema: v1 validated
-browser report schema: v3
-```
-
-Контракт:
-
-- reviewed stable codes в `failure_registry.py`;
-- immutable first primary;
-- bounded secondary manifest/sanitizer/cleanup failures;
-- exact phase/item и original exit/signal;
-- safe summary/relative paths;
-- source/public canonical validation;
-- одна primary GitHub annotation;
-- successful artifacts без `failure-summary.json`.
-
-Canonical doc: [`failure-diagnostics.md`](failure-diagnostics.md).
-
-### E2E-I4
-
-Cancellation и preflight являются отдельным lifecycle:
-
-```text
-preflight PASS → execution
-preflight FAIL → no Docker execution
-functional failure → failure-summary.json + run/fail
-cancellation → cancellation-summary.json + run/cancel + 130/143
-success → run/pass
-```
-
-Final evidence:
-
-```text
-implementation SHA: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
-Fast CI: 30125233072 — PASS
-A: 30126100944 — CANCELLED, SIGTERM/143, ASR-E2E-CANCELLED
-A artifact: 8609322435
-B: 30126228749 — PASS
-B artifact: 8609400578
-browser: 23/23
-screenshots: 18/18
-```
-
-Normal artifact tail использует `!cancelled()`, cancellation tail — `cancelled()`.
-Cancellation artifact ограничен summary, preflight, run-events и bounded host log.
-Inner summary может фиксировать artifact unavailable в момент signal, а host
-workflow позже публикует bounded artifact после ownership restoration.
-
-Closeout:
-[`../reports/ci/e2e-i4-cancellation-preflight-closeout.md`](../reports/ci/e2e-i4-cancellation-preflight-closeout.md).
-
-## Browser smoke contract
-
-Sources of truth:
-
-```text
-docker/anki-e2e/browser-plan.mjs
-docker/anki-e2e/browser-progress.mjs
-docker/anki-e2e/browser-report-contract.mjs
-```
-
-Plan создаётся до `chromium.launch()` и содержит stable IDs/kinds/order/counts.
-
-Фактические kinds:
-
-```text
-browser-launch
-dashboard-setup
-route-capture
-telemetry
-native-preview
-scenario-cards
-cards-route
-diagnostics
-```
-
-Coverage:
-
-```text
-5 dashboard routes × light/dark = 10 screenshots
-3 native preview anchors × light/dark = 6 screenshots
-Cards state light/dark = 2 screenshots
-Итого = 18
-```
-
-Routes:
-
-```text
-home
-cards
-decks
-profile
-settings
-```
-
-Preview anchors:
-
-```text
-words-preview
-grammar-preview
-java-preview
-```
-
-Telemetry stages:
-
-```text
-declined
-reliability
-feature
-offline
-```
-
-`BrowserProgress.run()`:
-
-- запрещает unknown и duplicate item;
-- печатает START до operation;
-- использует `performance.now()`;
-- проверяет screenshot delta;
-- сохраняет PASS/FAIL и partial report;
-- повторно бросает исходную ошибку;
-- не выполняет retries.
-
-## Run-event integration
-
-Current global schema — v2; historical v1 остаётся валидируемой:
-
-```text
-failure: phase/run failureCode == canonical primary failureCode
-success/info: failureCode=null
-browser items: bounded message/info внутри browser-smoke-first
-mixed v1/v2 stream: rejected
-```
-
-Dynamic browser phase IDs не добавлены.
-
-Node adapter использует `execFile`, array arguments и `shell: false`. Non-zero producer exit hard-fails browser item.
-
-## Evidence paths
-
-```text
-reports/browser-smoke-first.json     schema v3
-reports/screenshot-performance.json  schema v3
-reports/run-events.jsonl              schema v2
-reports/failure-summary.json          schema v1, failure only
-artifact-manifest.json                schema v2
-```
-
-Browser report содержит:
-
-```text
-plan
-progress
-items
-slowestItems
-```
-
-и сохраняет прежние anchors/scenarios/Cards/telemetry/screenshots/diagnostics fields.
-
-## Fail-closed screenshot accounting
-
-```text
-sum(item.expectedScreenshots)
-= plan.expectedScreenshotCount
-= screenshots.length
-= 18
-```
-
-Дополнительно PowerShell wrapper независимо проверяет:
-
-```text
-10 page screenshots
-6 real-deck preview screenshots
-0 synthetic screenshots
-Cards state screenshots в общем artifact contract
-```
-
-## Diagnostics semantics
-
-Сохраняются:
-
-```text
-consoleEvents
-pageErrors
-failedRequests
-unexpectedExternalRequests
-```
-
-- favicon failure фильтруется;
-- HTTP 4xx/5xx сам по себе не считается Playwright `requestfailed`;
-- external origin запрещён;
-- console failure — только `type === "error"`;
-- token удаляется из URL evidence.
-
-## Package/harness policy
-
-Новый package-producing Fast CI нужен, если diff может изменить `.ankiaddon` bytes/production behavior либо complete-diff reuse validator отклоняет reuse.
-
-Harness-only reuse разрешён только через:
-
-```text
-scripts/validate_e2e_harness_reuse.py
-```
-
-Нельзя вручную объявить arbitrary diff безопасным.
-
-Docs-only commits после успешного required proof не требуют повторного Fast CI/Docker без отдельной причины.
-
-## Verification policy
-
-Для browser progress changes минимум:
-
-```text
-node --check docker/anki-e2e/browser-progress.mjs
-node --check docker/anki-e2e/smoke-browser.mjs
-node --test tests/browser_progress.test.mjs
-pytest профильных browser/run-event/screenshot/reuse tests
-git diff --check
-```
-
-Обычный harness-only browser change требует одного risk-appropriate:
-
-```text
-mode=standard
-scope=cards
-verify_restart=false
-resource_telemetry=true
-```
-
-Full нужен только при изменении shared runner/artifact/restart lifecycle.
-
-Не запускать без отдельной задачи:
-
-- второй successful run «для уверенности»;
-- `perf100`;
-- warm repeat;
-- worker comparison;
-- intentionally failing cloud run.
-
-## Security invariants
-
-Не ослаблять:
-
-- loopback-only server;
-- token validation;
-- sanitizer и parser-backed CSS policy;
-- media validation;
-- action allowlists;
-- APKG checksum/inventory/anchor validation;
-- exact package/GHCR identity;
-- public artifact redaction.
-
-Не публиковать:
-
-- token/credential;
-- token-bearing URL;
-- Authorization headers;
-- absolute private paths;
-- card HTML/user content;
-- environment dump;
-- raw stack в live progress.
-
-## Cards и Inspection Profiles — краткие продуктовые инварианты
-
-Card identity:
-
-```text
-Browser question
-→ reviewer front
-→ media_only | unavailable
-```
-
-Используются:
-
-```text
-displayText
-displaySource
-displayStatus
-displayTruncated
-```
-
-Preview:
-
-- compact — санитизированная native front;
-- expanded modal — санитизированная native back;
-- full preview только для active card;
-- queue rows не читают media и не рендерят полный HTML;
-- JavaScript карточек не выполняется.
-
-Inspection Profiles:
-
-```text
-note type
-→ Basic draft
-→ bounded validation/sample
-→ explicit confirmation
-```
-
-Unconfirmed/stale/corrupt profiles работают fail closed.
-
-## Актуальные документы Platform
-
-- [`run-event-protocol.md`](run-event-protocol.md);
-- [`failure-diagnostics.md`](failure-diagnostics.md);
-- [`docker-e2e.md`](docker-e2e.md);
-- [`test-matrix.md`](test-matrix.md);
-- [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md);
-- [`../roadmap/platform/README.md`](../roadmap/platform/README.md);
-- [`../roadmap/platform/e2e-observability-build-identity.md`](../roadmap/platform/e2e-observability-build-identity.md).
-
-Closeout:
-
-- [`../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md`](../reports/ci/e2e-i1-unified-live-run-protocol-closeout.md);
-- [`../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../reports/ci/e2e-i2-browser-smoke-progress-closeout.md);
-- [`../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md`](../reports/ci/e2e-i3-stable-failure-diagnostics-closeout.md).
-
-## Следующий допустимый Platform stage
-
-```text
-E2E-I4 — Cancellation и preflight
-```
-
-E2E-I4 должен начинаться отдельной bounded задачей после отдельного решения владельца. Не продолжать его в E2E-I3 PR.
-
-Остаются вне завершённого E2E-I3:
-
-- cancellation/preflight mechanics;
-- non-release build identity;
-- canonical final summary/history;
-- retries/visual regression/performance thresholds.
+Для текущей задачи сначала определите трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.
