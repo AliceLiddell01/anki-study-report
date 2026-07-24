@@ -119,6 +119,7 @@ function Invoke-CheckedCommand {
         }
     }
     if ($commandError) {
+        if ($exitCode -in @(130, 143)) { exit $exitCode }
         throw $commandError
     }
 }
@@ -205,10 +206,13 @@ if (-not $SkipDocker) {
     if ($NoDockerBuild) { $env:ANKI_E2E_NO_BUILD = "1" }
     if ($Perf100) { $env:ANKI_E2E_PERF100 = "1" }
 
+    $dockerExit = 0
     try {
         Write-Section "Docker E2E with committed real working decks"
-        & $DockerRunner
-        if ($LASTEXITCODE -ne 0) { throw "$DockerRunner failed with exit code $LASTEXITCODE" }
+        $pwsh = Find-CommandPath @("pwsh", "pwsh.exe")
+        if (-not $pwsh) { throw "Could not find pwsh for isolated Docker E2E execution." }
+        & $pwsh -NoLogo -NoProfile -File $DockerRunner
+        $dockerExit = [int]$LASTEXITCODE
     } finally {
         foreach ($name in $previous.Keys) {
             $value = $previous[$name]
@@ -216,6 +220,8 @@ if (-not $SkipDocker) {
             else { Set-Item "Env:$name" $value }
         }
     }
+    if ($dockerExit -in @(130, 143)) { exit $dockerExit }
+    if ($dockerExit -ne 0) { throw "$DockerRunner failed with exit code $dockerExit" }
 }
 
 Write-Host ""

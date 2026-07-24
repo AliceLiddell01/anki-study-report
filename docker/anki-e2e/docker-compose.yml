@@ -9,6 +9,8 @@ services:
         ANKI_SHA256: ${ANKI_SHA256:-}
         ANKI_REQUIRE_SHA256: ${ANKI_REQUIRE_SHA256:-0}
         ANKI_PYTHON_PACKAGE: ${ANKI_PYTHON_PACKAGE:-anki==26.5}
+    init: true
+    stop_grace_period: 5s
     environment:
       ANKI_BASE: /e2e/anki-data
       ANKI_PROFILE: E2E
@@ -27,7 +29,7 @@ services:
       ANKI_E2E_CACHE_STATE: ${ANKI_E2E_CACHE_STATE:-unknown}
       ANKI_E2E_PREBUILT_ADDON_PATH: ${ANKI_E2E_PREBUILT_ADDON_PATH:-}
       GITHUB_RUN_ID: ${GITHUB_RUN_ID:-local}
-      GITHUB_SHA: ${GITHUB_SHA:-local}
+      GITHUB_RUN_ATTEMPT: ${GITHUB_RUN_ATTEMPT:-1}
       DISPLAY: ":99"
       HOME: /e2e/home
       WORKSPACE: /workspace

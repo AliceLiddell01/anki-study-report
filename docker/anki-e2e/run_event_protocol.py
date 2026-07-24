@@ -10,6 +10,7 @@ if str(_DIR) not in sys.path:
     sys.path.insert(0, str(_DIR))
 from run_event_runtime import *
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Schema-validated live run event protocol")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -40,6 +41,12 @@ def main() -> int:
     finish.add_argument("--failure-code", choices=sorted(failure_protocol.REGISTRY))
     finish.add_argument("--original-exit-code", type=int)
     finish.add_argument("--original-signal", choices=sorted(item for item in failure_protocol.ALLOWED_SIGNALS if item))
+    cancel = commands.add_parser("cancel-run")
+    cancel.add_argument("--output", required=True, type=Path)
+    cancel.add_argument("--producer", required=True, choices=sorted(PRODUCERS))
+    cancel.add_argument("--duration-ms", type=int)
+    cancel.add_argument("--original-exit-code", type=int, choices=(130, 143), required=True)
+    cancel.add_argument("--original-signal", choices=("SIGINT", "SIGTERM"))
     validate_parser = commands.add_parser("validate")
     validate_parser.add_argument("--output", required=True, type=Path)
     validate_parser.add_argument("--producer", choices=sorted(PRODUCERS))
@@ -74,10 +81,23 @@ def main() -> int:
                 original_exit_code=args.original_exit_code,
                 original_signal=args.original_signal,
             )
+        elif args.command == "cancel-run":
+            cancel_run(
+                args.output,
+                args.producer,
+                duration_ms=args.duration_ms,
+                original_exit_code=args.original_exit_code,
+                original_signal=args.original_signal,
+            )
         else:
             validate_stream(args.output, expected_producer=args.producer, require_final=not args.allow_running)
         return 0
-    except (RunEventError, failure_protocol.FailureProtocolError, RuntimeError) as exc:
+    except (
+        RunEventError,
+        failure_protocol.FailureProtocolError,
+        cancellation_protocol.CancellationProtocolError,
+        RuntimeError,
+    ) as exc:
         parser.exit(2, f"error: {exc}\n")
 
 
