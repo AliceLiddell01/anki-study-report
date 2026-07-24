@@ -10,27 +10,23 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
+import failure_artifact_protocol as failure_artifacts
 import prepare_ci_e2e_artifacts_legacy as legacy
 from verify_fast_ci_e2e_handoff import validate_package_reuse_boundary
 
 
-# Preserve the established import surface for tests and callers that import this
-# wrapper as a module. The implementation remains owned by the legacy exporter.
 TEXT_SUFFIXES = legacy.TEXT_SUFFIXES
 copy_safe_artifacts = legacy.copy_safe_artifacts
 validate_manifest = legacy.validate_manifest
 assert_safe_text = legacy.assert_safe_text
 utc_now = legacy.utc_now
 
-# Keep one stable reference to the real legacy implementation even when this
-# wrapper is imported repeatedly under different module names by pytest.
 if not hasattr(legacy, "_ASR_ORIGINAL_WRITE_SUMMARY"):
     legacy._ASR_ORIGINAL_WRITE_SUMMARY = legacy.write_summary
 _ORIGINAL_WRITE_SUMMARY = legacy._ASR_ORIGINAL_WRITE_SUMMARY
 
 
 def __getattr__(name: str):
-    """Delegate unchanged exporter helpers to the canonical legacy module."""
     try:
         return getattr(legacy, name)
     except AttributeError as exc:
@@ -44,9 +40,6 @@ def _read_reuse_evidence(args: argparse.Namespace) -> dict | None:
     if package_source != "fast-ci-artifact" or not package_sha or package_sha == checkout_sha:
         return None
 
-    # Older direct unit/library callers do not carry the CLI-only raw_logs field.
-    # Preserve their exact-tree validation path; the production CLI always defines
-    # raw_logs and therefore still fails closed for harness-only reuse.
     raw_logs = getattr(args, "raw_logs", None)
     if raw_logs is None:
         return None
@@ -132,9 +125,6 @@ def _rewrite_public_identity(output: Path, *, checkout_sha: str, reuse: dict) ->
 
 
 def write_summary(output: Path, *, args: argparse.Namespace, manifest_status: str, artifact_files: list[str]) -> None:
-    # Unit callers may monkeypatch this wrapper's clock. Apply it only for this
-    # call and restore the legacy module afterwards so repeated imports cannot
-    # leak timing state into one another.
     previous_utc_now = legacy.utc_now
     legacy.utc_now = utc_now
     try:
@@ -188,6 +178,26 @@ def _argument_path(name: str, default: str) -> Path:
     return Path(sys.argv[index + 1])
 
 
+def _argument_value(name: str, default: str = "") -> str:
+    try:
+        index = sys.argv.index(name)
+    except ValueError:
+        return default
+    if index + 1 >= len(sys.argv):
+        raise ValueError(f"Missing value for {name}")
+    return str(sys.argv[index + 1])
+
+
+def _argument_int(name: str, default: int) -> int:
+    try:
+        index = sys.argv.index(name)
+    except ValueError:
+        return default
+    if index + 1 >= len(sys.argv):
+        raise ValueError(f"Missing value for {name}")
+    return int(sys.argv[index + 1])
+
+
 def _manifest_status(source: Path) -> str:
     path = source / "artifact-manifest.json"
     if not path.is_file():
@@ -202,8 +212,15 @@ def _manifest_status(source: Path) -> str:
 def main() -> int:
     source = _argument_path("--source", "e2e-artifacts").resolve()
     output = _argument_path("--output", "ci-e2e").resolve()
+    e2e_exit_code = _argument_int("--e2e-exit-code", 1)
     source_stream = source / "reports" / "run-events.jsonl"
     status = _manifest_status(source)
+    source_summary = failure_artifacts.ensure_source_contract(
+        source,
+        manifest_status=status,
+        e2e_exit_code=e2e_exit_code,
+        package_source=_argument_value("--package-source", ""),
+    )
     if source_stream.is_file():
         run_events.validate_stream(source_stream, expected_producer="docker-e2e", require_final=True)
     elif status == "success":
@@ -212,7 +229,13 @@ def main() -> int:
     previous_write_summary = legacy.write_summary
     legacy.write_summary = write_summary
     try:
-        result = legacy.main()
+        try:
+            result = legacy.main()
+        except BaseException as exc:
+            source_summary = failure_artifacts.record_sanitization_failure(source, exc)
+            public_summary = failure_artifacts.publish_minimal_failure(output, source_summary)
+            failure_artifacts.emit_github_failure(public_summary)
+            raise
     finally:
         legacy.write_summary = previous_write_summary
 
@@ -221,6 +244,9 @@ def main() -> int:
         run_events.validate_stream(public_stream, expected_producer="docker-e2e", require_final=True)
     elif public_stream.exists():
         raise ValueError("Public run event stream exists without validated source evidence")
+    public_summary = failure_artifacts.validate_public_contract(source_summary, output)
+    if public_summary is not None:
+        failure_artifacts.emit_github_failure(public_summary)
     return result
 
 
