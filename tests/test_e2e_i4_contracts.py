@@ -116,3 +116,29 @@ def test_powershell_uses_single_validator_and_run_scoped_resources():
     assert "scripts\\e2e_preflight.py" in runner
     assert "COMPOSE_PROJECT_NAME" in runner
     assert "exit $scriptExit" in runner
+
+def test_workflow_preflight_and_cancellation_conditions_are_bounded():
+    e2e = (ROOT / ".github/workflows/ci-e2e.yml").read_text(encoding="utf-8")
+    fast = (ROOT / ".github/workflows/ci-fast.yml").read_text(encoding="utf-8")
+    assert "if: always()" not in e2e
+    assert "if: always()" not in fast
+    assert e2e.index("Run canonical static E2E preflight") < e2e.index("Log in to GHCR")
+    assert e2e.index("Run canonical runtime E2E preflight") < e2e.index("Pull and verify exact GHCR environment image")
+    assert "if: ${{ cancelled() }}" in e2e
+    assert "if: ${{ !cancelled() }}" in e2e
+    assert "Prepare redacted public E2E artifact\n        if: ${{ !cancelled() }}" in e2e
+    assert "Upload redacted E2E diagnostics\n        id: artifact_upload\n        if: ${{ !cancelled() }}" in e2e
+    assert "Clean Docker E2E state\n        if: ${{ !cancelled() }}" in e2e
+    assert "Prepare bounded cancellation artifact" in e2e
+    assert "Upload bounded cancellation evidence" in e2e
+    assert "Finalize cancelled Fast CI" in fast
+    assert "Upload bounded cancelled Fast CI evidence" in fast
+
+
+def test_inner_runner_and_fast_timing_preserve_cancel_semantics():
+    runner = (ROOT / "docker/anki-e2e/run-e2e.sh").read_text(encoding="utf-8")
+    timing = (ROOT / "scripts/ci_fast_timing.py").read_text(encoding="utf-8")
+    assert "trap 'handle_signal SIGINT 130' INT" in runner
+    assert "trap 'handle_signal SIGTERM 143' TERM" in runner
+    assert "run_event cancel-run --original-exit-code" in runner
+    assert "run_events.cancel_run(" in timing

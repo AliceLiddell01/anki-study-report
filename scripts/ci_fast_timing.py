@@ -433,19 +433,31 @@ def main() -> int:
             before = validate(load_json(args.output), allow_running=True)
             running = {item["id"] for item in before["phases"] if item["status"] == "running"}
             document = finalize(args.output, args.result, args.markdown_output, args.summary_output)
-            for phase in document["phases"]:
-                if phase["id"] in running:
-                    run_events.emit(
-                        events,
-                        "fast-ci",
-                        phase["id"],
-                        "phase",
-                        "fail",
-                        duration_ms=int(phase["durationMs"]),
-                        message="phase ended during finalization",
-                    )
-            status = {"success": "pass", "failure": "fail", "cancelled": "cancel"}[document["result"]]
-            run_events.finish_run(events, "fast-ci", status, duration_ms=int(document["durationMs"]))
+            if document["result"] == "cancelled":
+                cancellation = run_events.cancellation_protocol.load_document(
+                    events.with_name("cancellation-summary.json")
+                )
+                run_events.cancel_run(
+                    events,
+                    "fast-ci",
+                    duration_ms=int(document["durationMs"]),
+                    original_exit_code=int(cancellation["originalExitCode"]),
+                    original_signal=cancellation["originalSignal"],
+                )
+            else:
+                for phase in document["phases"]:
+                    if phase["id"] in running:
+                        run_events.emit(
+                            events,
+                            "fast-ci",
+                            phase["id"],
+                            "phase",
+                            "fail",
+                            duration_ms=int(phase["durationMs"]),
+                            message="phase ended during finalization",
+                        )
+                status = {"success": "pass", "failure": "fail"}[document["result"]]
+                run_events.finish_run(events, "fast-ci", status, duration_ms=int(document["durationMs"]))
         elif args.command == "validate":
             validate(load_json(args.output), allow_running=args.allow_running)
             run_events.validate_stream(events, expected_producer="fast-ci", require_final=not args.allow_running)

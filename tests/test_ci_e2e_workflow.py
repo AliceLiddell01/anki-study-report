@@ -129,7 +129,7 @@ def test_fast_package_validation_binds_source_head_and_stages_prebuilt_env() -> 
 def test_release_current_run_path_and_local_source_build_remain_separate() -> None:
     text = workflow_text()
     release_download = step(text, "Download exact release artifact", "Stage and verify exact release artifact")
-    release_stage = step(text, "Stage and verify exact release artifact", "Capture runner and Docker preflight")
+    release_stage = step(text, "Stage and verify exact release artifact", "Capture runner context")
 
     assert "if: steps.source_mode.outputs.package_source == 'release-artifact'" in release_download
     assert "name: ${{ inputs.release_artifact_name }}" in release_download
@@ -201,24 +201,29 @@ def test_cloud_buildkit_and_gha_cache_contour_is_removed() -> None:
 def test_ghcr_preparation_and_compose_are_unconditional() -> None:
     text = workflow_text()
     lock = step(text, "Validate environment consumer lock", "Expose exact GHCR environment identity")
-    identity = step(text, "Expose exact GHCR environment identity", "Log in to GHCR")
+    identity = step(text, "Expose exact GHCR environment identity", "Run canonical runtime E2E preflight")
+    runtime = step(text, "Run canonical runtime E2E preflight", "Log in to GHCR")
     login = step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
-    pull = step(text, "Pull and verify exact GHCR environment image", "Validate resolved GHCR Compose contract")
-    compose = step(text, "Validate resolved GHCR Compose contract", "Run canonical Docker-only E2E")
+    pull = step(text, "Pull and verify exact GHCR environment image", "Run canonical Docker-only E2E")
 
-    for block in (lock, identity, login, pull):
+    for block in (lock, identity, runtime, login, pull):
         assert "if: env.ANKI_E2E_IMAGE_SOURCE" not in block
     assert "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" in identity
     assert "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" in identity
     assert "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" in identity
     assert "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" in identity
+    assert "scripts/e2e_preflight.py run" in runtime
+    assert "--layer runtime" in runtime
+    assert "--execution-context github-actions" in runtime
+    assert "ANKI_E2E_PREFLIGHT_COMPLETE=1" in runtime
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "password: ${{ github.token }}" in login
     assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in pull
     assert "RepoDigests" in pull
-    assert "docker-compose.yml" in compose
-    assert "docker-compose.ghcr.yml" in compose
-    assert "if ($env:ANKI_E2E_IMAGE_SOURCE" not in compose
+    assert "Validate resolved GHCR Compose contract" not in text
+    checks = (ROOT / "scripts" / "e2e_preflight_checks.py").read_text(encoding="utf-8")
+    assert '"config", "--quiet"' in checks
+    assert '"config", "--format", "json"' in checks
 
 
 def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payloads() -> None:
@@ -247,8 +252,10 @@ def test_early_failure_diagnostics_and_cleanup_do_not_require_exact_image_identi
     capture = step(text, "Capture final Docker state", "Prepare redacted public E2E artifact")
     cleanup = step(text, "Clean Docker E2E state", "Restore canonical result")
 
+    assert "if: ${{ !cancelled() }}" in capture
     assert "if ($env:ANKI_E2E_IMAGE)" in capture
     assert "exact GHCR image identity was not exposed before failure" in capture
+    assert "if: ${{ !cancelled() }}" in cleanup
     assert "if ($env:ANKI_E2E_IMAGE)" in cleanup
     assert "Skipping Docker E2E cleanup because exact GHCR image identity was not exposed" in cleanup
 
