@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок: **2026-07-18**.
+Снимок: **2026-07-25**.
 
 ## Начать отсюда
 
@@ -53,6 +53,8 @@ Only `C1 → C2` is the mandatory add-on path.
 
 `C1 Cards v2 / Problem Triage` remains the recommended next core stage. It must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
 
+`roadmap/core/python-test-performance.md` is one supporting, measurement-gated initiative for the nearly one-thousand-test Python suite. It is not a new numbered `C` stage and does not block C1 by default. Core owns fixture/isolation/test-architecture work; Platform `CI 7 → CI 8` owns any adoption in mandatory Fast CI. Parallelism has not been approved merely by documenting the roadmap.
+
 ### Gamification
 
 The source branch `chatgpt/gamification-concept-foundation` is research-only and materially diverged from `master`. Do not merge/rebase it wholesale.
@@ -93,7 +95,7 @@ local Docker build: diagnostic fallback
 cloud BuildKit/GHA cache: removed
 ```
 
-CI 7 is a measurement gate. CI 8/9/10 activate only for one proven bottleneck/flake class. Release remains manual and approval-gated.
+CI 7 is a measurement gate. CI 8/9/10 activate only for one proven bottleneck/flake class. If Python execution is selected, follow the Core test-performance roadmap: preserve serial inventory, audit shared state first, evaluate one bounded candidate and keep rollback explicit. Release remains manual and approval-gated.
 
 ## Technical invariants
 
