@@ -16,6 +16,10 @@ C1 Cards v2 / Problem Triage
 
 Часть hardening work может выполняться внутри `C1`, если она непосредственно нужна для безопасной реализации triage. Полный contract freeze и release closure остаются в `C2`, чтобы не замораживать API до завершения следующего крупного пользовательского workflow.
 
+## Supporting engineering roadmap
+
+[Python test performance](python-test-performance.md) — одна measurement-gated инициатива по ускорению почти тысячного Python test suite. Она поддерживает `C2`, но не является новым `C`-этапом и не блокирует `C1` без доказанного bottleneck. Test architecture и fixture isolation описаны в Core; изменение mandatory Fast CI координируется с `CI 7 → CI 8` в Platform track.
+
 ## C1 — Cards v2 / Problem Triage
 
 **Status:** Next
@@ -81,6 +85,7 @@ Stabilize the existing product as a supportable 1.0 core without adding a second
 - migrations, future-schema fail-closed behavior, corruption quarantine and per-profile isolation;
 - clean install, update, profile switch, restart and recovery matrix;
 - performance and bundle/query/history budgets;
+- measurement-gated [Python test performance](python-test-performance.md) when suite cost is a proven Core feedback-loop bottleneck;
 - keyboard/accessibility closure across current core;
 - packaging, rollback, security and release checklist validation.
 
