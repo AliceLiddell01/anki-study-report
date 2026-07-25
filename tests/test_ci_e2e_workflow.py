@@ -63,7 +63,11 @@ def test_package_source_inputs_fail_closed_before_registry_work() -> None:
     assert "--release-artifact-name" in validation
     assert "--release-artifact-sha256" in validation
     assert "--fast-ci-run-id" in validation
-    assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_SHA=${{ job.workflow_sha }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_REPOSITORY=${{ job.workflow_repository }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_PATH=${{ job.workflow_file_path }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_REF=${{ job.workflow_ref }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" not in validation
     assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
     assert "Unsupported cloud package source" in validation
     assert "github.event_name" not in validation
@@ -91,21 +95,22 @@ def test_fast_run_is_resolved_by_api_and_artifacts_are_downloaded_by_id() -> Non
         assert "name:" not in block.split("with:", 1)[1]
 
 
-def test_diagnostics_precedes_exact_checkout_and_package_download_follows_it() -> None:
+def test_diagnostics_precedes_exact_harness_checkout_and_package_download_follows_it() -> None:
     text = workflow_text()
     diagnostics_download = text.index("Download exact Fast CI diagnostics by artifact ID")
     diagnostics_validation = text.index("Validate Fast CI diagnostics and derive tested commit")
-    exact_checkout = text.index("Check out exact Fast CI tested commit")
-    checkout_validation = text.index("Verify exact tested commit checkout")
+    exact_checkout = text.index("Check out exact E2E workflow and harness commit")
+    checkout_validation = text.index("Verify exact E2E harness checkout")
     package_download = text.index("Download exact Fast CI package by artifact ID")
     package_validation = text.index("Validate and stage exact Fast CI package")
 
     assert diagnostics_download < diagnostics_validation < exact_checkout < checkout_validation < package_download < package_validation
-    checkout = step(text, "Check out exact Fast CI tested commit", "Verify exact tested commit checkout")
-    assert "ref: ${{ steps.fast_diagnostics.outputs.tested_sha }}" in checkout
+    checkout = step(text, "Check out exact E2E workflow and harness commit", "Verify exact E2E harness checkout")
+    assert "ref: ${{ job.workflow_sha }}" in checkout
     assert "persist-credentials: false" in checkout
     assert "fetch-depth: 0" in checkout
-    verify = step(text, "Verify exact tested commit checkout", "Download exact Fast CI package by artifact ID")
+    verify = step(text, "Verify exact E2E harness checkout", "Download exact Fast CI package by artifact ID")
+    assert "EXPECTED_HARNESS_SHA: ${{ job.workflow_sha }}" in verify
     assert "git rev-parse HEAD" in verify
     assert "E2E_CHECKOUT_SHA=$actual" in verify
 

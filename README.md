@@ -11,7 +11,7 @@
 - token-protected dashboard только на `127.0.0.1`;
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
 - Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
-- schema-validated evidence для progress, failures, preflight и cancellation.
+- доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки.
 
 ## Куда идти дальше
 
@@ -54,7 +54,7 @@ reports/             исторические отчёты и evidence
 ## Текущее направление
 
 - **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
-- **Platform / CI:** E2E-I1–E2E-I4 завершены и влиты; следующий запланированный этап — E2E-I5.
+- **Platform / CI:** E2E-I1–E2E-I5 завершены; следующий запланированный этап — E2E-I6.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
 Точные статусы и критерии находятся в [roadmap](roadmap/README.md); run IDs, SHA и исторические результаты — в [reports](reports/README.md).

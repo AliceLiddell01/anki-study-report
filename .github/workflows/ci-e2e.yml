@@ -126,7 +126,14 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ci-e2e-raw | Out-Null
+          New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
+          Remove-Item -LiteralPath e2e-artifacts/reports/non-release-build-identity.json -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath ci-e2e-raw/non-release-build-identity.json -Force -ErrorAction SilentlyContinue
           $started = [DateTime]::UtcNow.ToString('o')
+          $initialCheckout = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $initialCheckout -notmatch '^[0-9a-f]{40}$') {
+            throw 'Could not resolve the initial E2E checkout SHA.'
+          }
           "CI_E2E_STARTED_AT=$started" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_PWSH_VERSION=$($PSVersionTable.PSVersion)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -142,9 +149,11 @@ jobs:
           "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_ENVIRONMENT_PUBLICATION_RUN_ID=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_ENVIRONMENT_REUSE_VERIFICATION_RUN_ID=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "E2E_WORKFLOW_SOURCE_REF=${{ github.ref }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
-          "E2E_CHECKOUT_SHA=${{ github.sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_SHA=${{ job.workflow_sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_REPOSITORY=${{ job.workflow_repository }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_PATH=${{ job.workflow_file_path }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_WORKFLOW_SOURCE_REF=${{ job.workflow_ref }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_CHECKOUT_SHA=$initialCheckout" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           python scripts/verify_fast_ci_e2e_handoff.py validate-inputs `
             --release-artifact-name "$env:RELEASE_ARTIFACT_NAME_INPUT" `
             --release-artifact-sha256 "$env:RELEASE_ARTIFACT_SHA256_INPUT" `
@@ -207,23 +216,23 @@ jobs:
             --github-output $env:GITHUB_OUTPUT
           if ($LASTEXITCODE -ne 0) { throw 'Fast CI diagnostics validation failed.' }
 
-      - name: Check out exact Fast CI tested commit
+      - name: Check out exact E2E workflow and harness commit
         if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ steps.fast_diagnostics.outputs.tested_sha }}
+          ref: ${{ job.workflow_sha }}
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Verify exact tested commit checkout
+      - name: Verify exact E2E harness checkout
         if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
         shell: pwsh
         env:
-          EXPECTED_TESTED_SHA: ${{ steps.fast_diagnostics.outputs.tested_sha }}
+          EXPECTED_HARNESS_SHA: ${{ job.workflow_sha }}
         run: |
           $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
-          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_TESTED_SHA) {
-            throw "Exact Fast CI tested commit checkout mismatch: $actual"
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_HARNESS_SHA) {
+            throw "Exact E2E harness checkout mismatch: $actual"
           }
           "E2E_CHECKOUT_SHA=$actual" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -304,6 +313,8 @@ jobs:
             "imageOs=$env:ImageOS"
             "imageVersion=$env:ImageVersion"
             "workflowSourceSha=$env:E2E_WORKFLOW_SOURCE_SHA"
+            "workflowSourceRepository=$env:E2E_WORKFLOW_SOURCE_REPOSITORY"
+            "workflowSourcePath=$env:E2E_WORKFLOW_SOURCE_PATH"
             "e2eCheckoutSha=$env:E2E_CHECKOUT_SHA"
             "packageSource=$env:ANKI_E2E_PACKAGE_SOURCE"
             "imageSource=$env:ANKI_E2E_IMAGE_SOURCE"
@@ -429,6 +440,44 @@ jobs:
           "ANKI_E2E_IMAGE_SIZE_BYTES=$size" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_CACHE_STATE=ghcr-digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Build canonical non-release build identity
+        if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
+        shell: pwsh
+        run: |
+          $identityPath = 'ci-e2e-raw/non-release-build-identity.json'
+          python scripts/non_release_build_identity.py build `
+            --handoff "$env:RUNNER_TEMP/fast-ci-handoff.json" `
+            --reuse ci-e2e-raw/e2e-harness-reuse.json `
+            --environment-lock docker/anki-e2e/environment-image-lock.json `
+            --package docker/anki-e2e/local-input/anki_study_report.ankiaddon `
+            --repository '${{ github.repository }}' `
+            --harness-sha $env:E2E_CHECKOUT_SHA `
+            --checkout-sha $env:E2E_CHECKOUT_SHA `
+            --workflow-repository $env:E2E_WORKFLOW_SOURCE_REPOSITORY `
+            --workflow-path $env:E2E_WORKFLOW_SOURCE_PATH `
+            --workflow-source-sha $env:E2E_WORKFLOW_SOURCE_SHA `
+            --image-reference $env:ANKI_E2E_IMAGE_REFERENCE `
+            --image-digest $env:ANKI_E2E_IMAGE_DIGEST `
+            --image-platform $env:ANKI_E2E_IMAGE_PLATFORM `
+            --run-id $env:GITHUB_RUN_ID `
+            --run-attempt $env:GITHUB_RUN_ATTEMPT `
+            --trigger-sha $env:GITHUB_SHA `
+            --ref $env:GITHUB_REF `
+            --output $identityPath
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical non-release build identity generation failed.' }
+          python scripts/non_release_build_identity.py validate-cross-evidence `
+            --input $identityPath `
+            --handoff "$env:RUNNER_TEMP/fast-ci-handoff.json" `
+            --reuse ci-e2e-raw/e2e-harness-reuse.json `
+            --environment-lock docker/anki-e2e/environment-image-lock.json `
+            --package docker/anki-e2e/local-input/anki_study_report.ankiaddon
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical non-release build identity validation failed.' }
+          python scripts/non_release_build_identity.py render-summary `
+            --input $identityPath `
+            --output $env:GITHUB_STEP_SUMMARY
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical non-release build identity summary failed.' }
+          Copy-Item -LiteralPath $identityPath -Destination e2e-artifacts/reports/non-release-build-identity.json -Force
+
       - name: Run canonical Docker-only E2E
         id: canonical_e2e
         shell: pwsh
@@ -451,6 +500,26 @@ jobs:
           }
           "CI_E2E_EXIT_CODE=$exitCode" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           if ($exitCode -in @(130, 143)) { exit $exitCode }
+
+      - name: Restore canonical non-release build identity evidence
+        if: ${{ !cancelled() && steps.source_mode.outputs.package_source == 'fast-ci-artifact' }}
+        shell: pwsh
+        run: |
+          $staged = 'ci-e2e-raw/non-release-build-identity.json'
+          $canonical = 'e2e-artifacts/reports/non-release-build-identity.json'
+          if (-not (Test-Path -LiteralPath $staged -PathType Leaf)) {
+            throw 'Staged canonical non-release build identity is missing.'
+          }
+          New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
+          Copy-Item -LiteralPath $staged -Destination $canonical -Force
+          python scripts/non_release_build_identity.py validate --input $canonical
+          if ($LASTEXITCODE -ne 0) { throw 'Restored non-release build identity is invalid.' }
+          $manifestStatus = if ([int]$env:CI_E2E_EXIT_CODE -eq 0) { 'success' } else { 'failed' }
+          python docker/anki-e2e/write-artifact-manifest.py `
+            --root e2e-artifacts `
+            --status $manifestStatus `
+            --anki-version $env:ANKI_VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Identity-aware artifact manifest regeneration failed.' }
 
       - name: Verify tested release artifact hash
         if: ${{ !cancelled() && steps.source_mode.outputs.package_source == 'release-artifact' }}
@@ -582,6 +651,14 @@ jobs:
               --source-package-sha256 "$env:ANKI_E2E_FAST_CI_PACKAGE_SHA256" `
               --e2e-checkout-sha $env:E2E_CHECKOUT_SHA
             if ($LASTEXITCODE -ne 0) { throw "Artifact preparation exited with $LASTEXITCODE" }
+            if ($env:ANKI_E2E_PACKAGE_SOURCE -eq 'fast-ci-artifact') {
+              python scripts/non_release_build_identity.py validate-pair `
+                --raw e2e-artifacts/reports/non-release-build-identity.json `
+                --public ci-e2e/artifacts/reports/non-release-build-identity.json
+              if ($LASTEXITCODE -ne 0) { throw 'Public non-release build identity validation failed.' }
+            } elseif (Test-Path -LiteralPath ci-e2e/artifacts/reports/non-release-build-identity.json -PathType Leaf) {
+              throw 'Release E2E must not emit non-release build identity evidence.'
+            }
           } catch {
             $artifactExit = 1
             Write-Error $_ -ErrorAction Continue
@@ -671,9 +748,13 @@ jobs:
             Write-Warning 'Could not resolve the hosted-runner UID/GID for cancellation evidence.'
           }
 
-          New-Item -ItemType Directory -Force e2e-artifacts/diagnostics | Out-Null
+          New-Item -ItemType Directory -Force e2e-artifacts/diagnostics, e2e-artifacts/reports | Out-Null
           if (Test-Path -LiteralPath $hostLog -PathType Leaf) {
             Copy-Item -LiteralPath $hostLog -Destination e2e-artifacts/diagnostics/cancellation-host.log -Force
+          }
+          $stagedIdentity = 'ci-e2e-raw/non-release-build-identity.json'
+          if (Test-Path -LiteralPath $stagedIdentity -PathType Leaf) {
+            Copy-Item -LiteralPath $stagedIdentity -Destination e2e-artifacts/reports/non-release-build-identity.json -Force
           }
 
       - name: Prepare bounded cancellation artifact

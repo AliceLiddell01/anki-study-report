@@ -63,6 +63,7 @@ reports/    исторические evidence и завершённые пров
 - [Failure diagnostics](failure-diagnostics.md)
 - [Preflight и cancellation](e2e-preflight-cancellation.md)
 - [Fast CI package / E2E harness reuse](e2e-package-harness-reuse.md)
+- [Идентичность нерелизной сборки](non-release-build-identity.md)
 - [GHCR E2E consumer](ghcr-e2e-consumer.md)
 - [Packaging и release](packaging-release.md)
 

@@ -7,9 +7,12 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 
+from non_release_build_identity import CANONICAL_FILENAME, load_document
+
 ALLOWED = (
     "reports/cancellation-summary.json",
     "reports/preflight-report.json",
+    f"reports/{CANONICAL_FILENAME}",
     "reports/run-events.jsonl",
     "diagnostics/cancellation-host.log",
 )
@@ -49,10 +52,14 @@ def prepare(source: Path, output: Path) -> list[str]:
         candidate = source / PurePosixPath(relative)
         if not candidate.is_file():
             continue
+        if candidate.name == CANONICAL_FILENAME:
+            load_document(candidate)
         raw = _safe_text(candidate)
         destination = output / PurePosixPath(relative)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(raw)
+        if candidate.name == CANONICAL_FILENAME:
+            load_document(destination)
         copied.append(relative)
     required = "reports/cancellation-summary.json"
     if required not in copied:
@@ -80,7 +87,7 @@ def main() -> int:
         copied = prepare(args.source, args.output)
         print(f"[CANCEL-ARTIFACT] files={len(copied)}", flush=True)
         return 0
-    except (MinimalCancellationArtifactError, OSError) as exc:
+    except (MinimalCancellationArtifactError, OSError, ValueError) as exc:
         parser.exit(2, f"cancelled artifact error: {exc}\n")
 
 

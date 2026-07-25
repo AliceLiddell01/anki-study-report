@@ -63,8 +63,8 @@ E2E-I1 — COMPLETE / merged через PR #134
 E2E-I2 — COMPLETE / merged через PR #135
 E2E-I3 — COMPLETE / merged через PR #136
 E2E-I4 — COMPLETE / merged через PR #137
-E2E-I5 — следующий planned stage, не начат
-E2E-I6 — запланирован
+E2E-I5 — ЗАВЕРШЕНО / облачная приёмка пройдена в PR #141
+E2E-I6 — следующий запланированный этап, не начат
 ```
 
 E2E-I4 merge:
@@ -76,12 +76,26 @@ docs head: 37b0a569b3a11de6af84e2cdb675f98e97dcd30b
 core merge commit: 8924987de31da64203855f5b15019b5075945650
 ```
 
+Принятый кандидат E2E-I5:
+
+```text
+PR: #141
+HEAD принятого кандидата: 92354870970956ed5d2e9216efca5058aa8addf3
+Fast CI: 30149481485 — ПРОЙДЕНО
+standard/full: 30150971581 — ПРОЙДЕНО
+ID артефакта: 8617629796
+хэш идентичности: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
+```
+
+E2E-I6 не начинается автоматически: слияние E2E-I5 и запуск следующего этапа остаются отдельными решениями владельца.
+
 Актуальные Platform contracts:
 
 - [run-event-protocol.md](run-event-protocol.md)
 - [failure-diagnostics.md](failure-diagnostics.md)
 - [e2e-preflight-cancellation.md](e2e-preflight-cancellation.md)
 - [e2e-package-harness-reuse.md](e2e-package-harness-reuse.md)
+- [non-release-build-identity.md](non-release-build-identity.md)
 - [docker-e2e.md](docker-e2e.md)
 
 Исторические run IDs, package hashes и artifact digests находятся в [`../reports/README.md`](../reports/README.md).
@@ -93,6 +107,7 @@ core merge commit: 8924987de31da64203855f5b15019b5075945650
 - Не возвращать legacy aliases и routes без доказанной compatibility необходимости.
 - Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
 - Successful unchanged exact-SHA gates не повторять.
+- PR, closeout-отчёты и handoff-документы, подготовленные на русском языке, должны использовать русский во всём человекочитаемом тексте; на английском сохраняются только точные идентификаторы, пути, команды, имена полей схемы, названия workflow/job и устоявшиеся непереводимые термины.
 - Не создавать вложенную лестницу этапов вместо одной цельной задачи.
 - Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
 
