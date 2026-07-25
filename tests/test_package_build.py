@@ -19,6 +19,16 @@ REQUIRED_ARCHIVE_FILES = {
     "config.json",
     "changelog.json",
     "telemetry_contract.json",
+    "THIRD_PARTY_NOTICES.md",
+    "_vendor/README.md",
+    "_vendor/tinycss2/__init__.py",
+    "_vendor/webencodings/__init__.py",
+    "_vendor/licenses/tinycss2-LICENSE",
+    "_vendor/licenses/webencodings-LICENSE",
+    "card_display_formatter_store.py",
+    "card_display_formatter_service.py",
+    "card_display_formatter_runtime.py",
+    "schemas/card-display-formatter-v1.schema.json",
     "web_dashboard/index.html",
 }
 
@@ -44,7 +54,7 @@ def write_minimal_archive(
             "[data-theme=light]",
             ".topbar-surface",
             ".shadow-panel",
-            ".cards-risk-table",
+            ".cards-inbox-page",
             ".anki-card-shadow-preview",
         ]
     )
@@ -55,7 +65,20 @@ def write_minimal_archive(
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
+        for name in (
+            "THIRD_PARTY_NOTICES.md",
+            "_vendor/README.md",
+            "_vendor/tinycss2/__init__.py",
+            "_vendor/webencodings/__init__.py",
+            "_vendor/licenses/tinycss2-LICENSE",
+            "_vendor/licenses/webencodings-LICENSE",
+        ):
+            archive.writestr(name, "packaged dependency notice")
         archive.writestr("dashboard_server.py", "")
+        archive.writestr("card_display_formatter_store.py", "")
+        archive.writestr("card_display_formatter_service.py", "")
+        archive.writestr("card_display_formatter_runtime.py", "")
+        archive.writestr("schemas/card-display-formatter-v1.schema.json", "{}")
         archive.writestr(
             "web_dashboard/index.html",
             '<!doctype html><html><head><link rel="stylesheet" href="/assets/app.css"></head>'
@@ -144,7 +167,7 @@ def write_split_archive(
     stale = stale or set()
     css_payload = "\n".join([
         "[data-theme=light]", ".topbar-surface", ".shadow-panel",
-        ".cards-risk-table", ".anki-card-shadow-preview",
+        ".cards-inbox-page", ".anki-card-shadow-preview",
     ])
     lazy_file = unsafe_lazy_path or "assets/fsrs-lazy.js"
     manifest = {
@@ -171,7 +194,20 @@ def write_split_archive(
         archive.writestr("config.json", "{}")
         archive.writestr("changelog.json", '{"schemaVersion":1,"unreleased":{"sections":[]},"releases":[]}')
         archive.writestr("telemetry_contract.json", '{"telemetrySchemaVersion":1}')
+        for name in (
+            "THIRD_PARTY_NOTICES.md",
+            "_vendor/README.md",
+            "_vendor/tinycss2/__init__.py",
+            "_vendor/webencodings/__init__.py",
+            "_vendor/licenses/tinycss2-LICENSE",
+            "_vendor/licenses/webencodings-LICENSE",
+        ):
+            archive.writestr(name, "packaged dependency notice")
         archive.writestr("dashboard_server.py", "")
+        archive.writestr("card_display_formatter_store.py", "")
+        archive.writestr("card_display_formatter_service.py", "")
+        archive.writestr("card_display_formatter_runtime.py", "")
+        archive.writestr("schemas/card-display-formatter-v1.schema.json", "{}")
         archive.writestr(
             "web_dashboard/index.html",
             '<!doctype html><link rel="stylesheet" href="/assets/app.css">'
@@ -273,3 +309,7 @@ def test_package_validation_rejects_unsafe_archive_paths(tmp_path, unsafe_name):
 
     assert validation.ok is False
     assert unsafe_name in validation.forbidden
+
+
+def test_package_includes_independent_triage_candidates():
+    assert (ROOT / "anki_study_report" / "triage_candidates.py").is_file()

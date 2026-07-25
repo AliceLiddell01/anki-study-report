@@ -147,8 +147,8 @@ def test_local_docker_layering_remains_structural_and_cloud_has_no_build_cache()
     ):
         assert forbidden not in workflow
 
-    upload_start = workflow.index("      - name: Upload redacted E2E diagnostics\n")
-    upload_end = workflow.index("      - name: Report artifact upload telemetry\n", upload_start)
+    upload_start = workflow.index("      - name: Upload E2E artifact\n")
+    upload_end = workflow.index("      - name: Resolve uploaded E2E artifact metadata\n", upload_start)
     artifact_upload = workflow[upload_start:upload_end]
     assert "actions/upload-artifact@" in artifact_upload
     assert "compression-level: 0" in artifact_upload

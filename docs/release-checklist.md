@@ -100,10 +100,9 @@ Do not run heavy Docker E2E for docs-only changes.
 - Open Anki Study Report from Tools menu.
 - Build/open report.
 - Open dashboard.
-- Check Cards page preview mode.
-  - `table`/`tiles`: front-only Shadow DOM preview, normal page scroll.
-  - `ankiPreview`: answer-only `AnkiCardShadowPreview` host from
-    `renderedPreview.backHtml`, no separate front duplication.
+- Check the Cards queue/Inspector workspace at desktop and 1024 px.
+  - Exactly one active-item Shadow DOM preview is visible.
+  - Expanded preview opens as a focus-managed portal and reuses inspected data.
 - Check one media preview if rendering/media changed.
 - Check Actions page only with non-destructive actions unless explicitly needed.
 

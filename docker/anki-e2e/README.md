@@ -1,482 +1,408 @@
-# Anki Study Report Docker E2E
+# Docker real-Anki E2E
 
-This directory contains the heavy Docker-based E2E environment for running the
-add-on inside real Anki Desktop with an isolated Linux profile.
+**Снимок документации:** 2026-07-24.
 
-It is intentionally separate from the fast local test suite. The normal local
-checks remain:
+Этот контур запускает exact add-on package в реальном Anki Desktop 26.05 внутри Docker, поднимает loopback token-protected dashboard и проверяет API, browser behavior, native rendering, media, telemetry, restart, live run lifecycle и публично безопасные artifacts.
 
-```bash
-cd web-dashboard
-pnpm run test:frontend
-pnpm run build
-cd ..
-node scripts/run_python.mjs -m pytest
-python scripts/package_addon.py --check-only
-```
+Полный Docker E2E — integration gate.
 
-Run the full local check without Docker:
+Связанные контракты:
 
-```powershell
-scripts/run_full_check.ps1 -SkipDocker
-```
+- политика запусков: [`../../docs/verification-run-policy.md`](../../docs/verification-run-policy.md);
+- package/harness reuse: [`../../docs/e2e-package-harness-reuse.md`](../../docs/e2e-package-harness-reuse.md);
+- run events и browser items: [`../../docs/run-event-protocol.md`](../../docs/run-event-protocol.md);
+- обзор Docker E2E: [`../../docs/docker-e2e.md`](../../docs/docker-e2e.md).
 
-Run the full local check with Docker E2E and a clean Docker volume first:
+## Collection source
 
-```powershell
-scripts/run_full_check.ps1 -CleanDocker
-```
-
-Run only Docker E2E through the full-check wrapper:
-
-```powershell
-scripts/run_full_check.ps1 -DockerOnly
-```
-
-## When to Run Checks
-
-- Fast checks: run Python tests, frontend tests, and frontend build before a
-  normal commit that changes Python, TypeScript, or dashboard assets.
-- Package check: run before building or handing off `anki_study_report.ankiaddon`.
-- Docker E2E: run before merging renderer, dashboard runtime, or Anki desktop
-  integration changes.
-- Telemetry client changes: use the built-in loopback fake and force restart,
-  for example `scripts/run_full_check.ps1 -DockerOnly -E2EScope settings
-  -VerifyRestart 1`. The fake never contacts the production service and its
-  public summaries contain counts/codes, not request bodies or credentials.
-- Docker E2E with `KEEP_E2E_DATA=1`: use only for debugging an E2E failure where
-  preserving the temporary profile helps diagnosis.
-- Full check script: run before a large merge, checkpoint, or branch handoff.
-
-## Release Package CSS Checks
-
-Build the release add-on from the project root:
-
-```powershell
-.\build_ankiaddon.ps1
-```
-
-The script validates that it is running from the Anki Study Report checkout by
-checking `web-dashboard/package.json`, `anki_study_report/manifest.json`, and
-`scripts/package_addon.py`. The package validator also reads
-`web_dashboard/index.html` inside the archive and checks that every linked
-Vite JS/CSS asset exists in the `.ankiaddon`, is non-empty, and that dashboard
-CSS markers such as theme rules, app shell styles, Cards table styles, and
-Shadow DOM preview host styles are present.
-
-For manual Anki checks, remove the old installed add-on folder from
-`addons21` before installing a new `.ankiaddon`, or verify that Anki fully
-replaced the previous install. Then restart Anki and reopen/restart the
-dashboard server. This avoids judging a fresh archive through stale installed
-`web_dashboard/assets` files. Runtime outputs such as `e2e-artifacts/`,
-screenshots, logs, and old generated dashboard assets must stay out of the
-release archive.
-
-## Architecture
-
-- Base image: `mcr.microsoft.com/playwright:v1.49.1-noble`
-- Anki Desktop: official `anki-${ANKI_VERSION}-linux-x86_64.tar.zst` release
-- Default Anki version: `26.05`
-- Headless display: `Xvfb :99`
-- Profile base: `/e2e/anki-data`
-- Profile name: `E2E`
-- Profile metadata DB: `/e2e/anki-data/prefs21.db`
-- Add-on install path: `/e2e/anki-data/addons21/anki_study_report_e2e`
-- Artifacts path: `/e2e/artifacts`
-
-The project source is bind-mounted read-only at `/workspace`. The runner copies
-it into `/e2e/workspace-build` before installing dependencies or building
-dashboard assets, so the container writes only to its internal build directory
-and `/e2e/artifacts`.
-
-The Dockerfile isolates Anki installation from volatile smoke scripts and
-prefetches the pnpm store from the frozen lockfile. GitHub Actions builds with
-Buildx `type=gha`, loads the image once, then runs Compose without rebuilding.
-
-## Scopes and performance telemetry
-
-`mode` and `scope` are independent. Scopes are `full`, `global`, `stats`,
-`decks`, `activity`, `cards`, and `settings`. Targeted scopes preserve real
-Anki/readiness/API/token/browser/artifact core checks but are not release
-gates; `full` preserves all captures and restart. `auto` restart means full
-only. `strict-apkg` and `perf100` require full/cards.
-
-Read-only page screenshots use one Chromium and 1–4 isolated BrowserContexts
-(default 3). Cards/APKG and mutations remain serial. Phase, per-task screenshot,
-resource, artifact and combined performance reports live under `reports/` and
-are indexed by manifest schema v2. See `../../docs/e2e-performance.md`.
-
-## Fixture Collection
-
-`create-profile.sh` resets `/e2e/anki-data` by default and recreates the
-base-level add-ons folder plus `/e2e/anki-data/E2E`. Set `KEEP_E2E_DATA=1` to
-skip that reset while debugging.
-
-`bootstrap-prefs.py` creates `/e2e/anki-data/prefs21.db` before Anki starts.
-It writes the `profiles` table with pickled protocol 4 `_global` metadata and
-the `E2E` profile row, matching Anki's profile manager storage format. The
-metadata disables update prompts, sets English as the default language, records
-`last_loaded_profile_name=E2E`, and disables update/add-on update checks. The
-profile row disables sync/media sync and includes Anki's standard window,
-import, backup, search, and legacy color/media keys.
-
-`seed-collection.py` then creates a fresh `collection.anki2` in the E2E profile
-for each run. It does not use or mount any personal Anki data.
-
-The collection includes:
-
-- Japanese vocabulary card with `[sound:要望.mp3]`, `要.gif`, `望.gif`, inline
-  color, `.word-focus`, and night-mode CSS.
-- Generic non-Japanese front/back card.
-- Custom CSS card.
-- Unsafe sanitizer card with script/file/javascript examples for API-level
-  sanitizer checks.
-
-Synthetic media fixtures are written into
-`/e2e/anki-data/E2E/collection.media`. The default GIF fixtures are large
-enough for browser smoke tests to verify image loading and rendered dimensions.
-
-For local visual checks against real Anki media, set a read-only media source
-before running `scripts/run_anki_e2e_docker.ps1`:
-
-```powershell
-$env:ANKI_E2E_REAL_MEDIA_DIR="C:\Users\<user>\AppData\Roaming\Anki2\<profile>\collection.media"
-$env:ANKI_E2E_REQUIRE_REAL_MEDIA="1"
-.\scripts\run_anki_e2e_docker.ps1
-Remove-Item Env:\ANKI_E2E_REAL_MEDIA_DIR
-Remove-Item Env:\ANKI_E2E_REQUIRE_REAL_MEDIA
-```
-
-Only the allowlisted files `要.gif`, `望.gif`, and `要望.mp3` are copied into
-the isolated E2E profile. The real `collection.anki2`, profile folder,
-backups, add-on data, trash, and other personal files are not mounted or
-copied. Without these environment variables, Docker E2E uses the synthetic
-fixtures and remains CI-safe.
-
-## APKG Fixture Mode
-
-The default Docker E2E run always seeds the synthetic collection and then
-imports the tracked APKG fixture when it is present in the checkout. If no APKG
-fixture is present, the runner keeps using the synthetic collection and writes
-`apkg-import-summary.json` with `enabled: false`.
-
-APKG mode imports an owner-authored, sanitized and owner-authorized regression
-deck into the isolated E2E collection after
-the synthetic fixture is seeded and before Anki starts. The APKG is fixture-only
-regression data for card rendering and dashboard previews; do not use a real
-personal collection or full Anki profile here. Imported cards are made
-problematic programmatically with deterministic E2E-only `revlog` and card
-stats, so they appear in Cards page / `attentionCards`.
-
-Tracked fixture path:
+Disposable collection содержит только committed рабочие decks:
 
 ```text
-docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
+fixtures/real-decks/Words__N1.apkg
+fixtures/real-decks/文法__N5.apkg
+fixtures/real-decks/Java.apkg
+fixtures/real-decks/manifest.json
 ```
 
-The owner created and curates the cards, templates, deck structure and all 13
-bundled media files, and authorizes public distribution of this fixture as part
-of this repository, its tests, Docker E2E and CI artifacts. This fixture-specific
-permission does not establish a license for the rest of the repository. See
-`fixtures/README.md` for the provenance record.
+Импорт выполняется через public `Collection.import_anki_package(...)`. Synthetic notes/cards/templates/media и fallback content запрещены.
 
-Local-only fixture mode is preferred while iterating. The PowerShell wrapper
-copies the host file into ignored staging:
+## Основные entrypoints
 
 ```text
-docker/anki-e2e/local-input/asr-e2e-render-fixtures.apkg
+run-e2e.sh                         canonical container orchestration
+smoke-api.py                       API smoke
+smoke-browser-wrapper.mjs          scope wrapper
+smoke-browser.mjs                  direct Playwright browser entrypoint
+browser-progress.mjs               deterministic plan/item progress
+run_event_protocol.py              global schema-v1 producer/validator
+write-artifact-manifest.py         manifest schema v2
+verify-telemetry-restart.py        restart proof
 ```
 
-Docker mounts that directory read-only at `/e2e/local-input/`. The staged
-`local-input` folder, screenshots, logs, HTML dumps, and JSON runtime artifacts
-are ignored and must not be committed.
-
-Run the default synthetic E2E:
-
-```powershell
-.\scripts\run_anki_e2e_docker.ps1
-```
-
-Run strict APKG fixture E2E with the tracked fixture:
-
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
-```
-
-Run APKG-derived Cards performance smoke with 100 problematic cards:
-
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
-```
-
-`-Perf100` sets `ANKI_E2E_PERF100=1`. The E2E setup keeps the tracked APKG as
-the source fixture, clones its imported notes/cards inside the isolated Docker
-collection until 100 cards are problematic, and writes
-`browser-smoke-performance-100-<label>.json` with mode, viewport, host,
-render-source, scroll, and layout counters.
-
-Run strict APKG local fixture E2E while iterating on an ignored local file:
-
-```powershell
-$env:ANKI_E2E_APKG_FIXTURE="C:\path\to\asr-e2e-render-fixtures.apkg"
-$env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
-docker compose -f docker\anki-e2e\docker-compose.yml down -v
-.\scripts\run_anki_e2e_docker.ps1
-Remove-Item Env:\ANKI_E2E_APKG_FIXTURE
-Remove-Item Env:\ANKI_E2E_REQUIRE_APKG_FIXTURE
-```
-
-The APKG importer first uses Anki's package importer API
-`anki.importing.apkg.AnkiPackageImporter`. If that API is not available in the
-installed Anki package, the script tries the collection backend package import
-method and otherwise fails with a clear diagnostic rather than manually
-unpacking the APKG.
-
-## Add-on E2E Mode
-
-The add-on only enables E2E shortcuts when:
-
-```bash
-ANKI_STUDY_REPORT_E2E=1
-```
-
-In that mode it starts the dashboard server, publishes the default dashboard
-report, and writes:
+Dockerfile копирует все `*.mjs` после dependency/Anki layers, затем:
 
 ```text
-/e2e/artifacts/runtime/dashboard-ready.json
-/e2e/artifacts/runtime/addon-e2e-events.jsonl
+smoke-browser.mjs         → smoke-browser-core.mjs
+smoke-browser-wrapper.mjs → smoke-browser.mjs
 ```
 
-The readiness file includes `port`, `baseUrl`, `token`, `startedAt`,
-`addonVersion`, `profile`, and `reportAvailable`. The dashboard token is not
-written into report payload artifacts.
+Поэтому новый `browser-progress.mjs` доступен entrypoint без изменения дорогих image layers.
 
-The JSONL event file records the add-on startup/readiness pipeline:
-`import_start`, `addon_folder_present`, `e2e_env_detected`, `hook_registered`,
-`import_done`, `hook_fired`, `bootstrap_scheduled`, `collection_available`,
-`report_build_start`, `report_build_done`, `server_start_start`,
-`server_start_done`, `report_publish_start`, `report_publish_done`,
-`report_published`, `readiness_write_start`, and `readiness_write_done`.
-If the collection is missing it records `collection_unavailable` with main
-window/profile details. On failure it records an `error` stage with traceback
-details when the add-on can catch the exception.
+## Execution order
 
-`start-anki.sh` also writes the initial `addon_folder_present` marker before
-launching Anki. If that is the last stage and no `import_start` appears, Anki
-did not import the add-on.
-
-Before launching Anki, `start-anki.sh` prints whether `prefs21.db`,
-`collection.anki2`, and the installed add-on `__init__.py` exist. It also
-queries the `profiles` table with Python `sqlite3` and prints the profile names
-and blob sizes.
-
-The health check is token-protected:
+Canonical contour:
 
 ```text
-GET /api/health?token=...
+exact package validation
+→ fresh profile
+→ empty collection
+→ real APKG import/inventory/anchors
+→ scheduling/state scenarios
+→ add-on install
+→ first Anki start/readiness
+→ API smoke
+→ plan-driven browser smoke
+→ optional restart proof
+→ manifest/public artifact
+→ cleanup/final result
 ```
 
-## Commands
+## Live run protocol
 
-Build the image:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml build
-```
-
-For local development, `ANKI_SHA256` is optional. The downloaded Anki archive is
-verified when the hash is provided, but the Docker E2E flow remains runnable
-without a checksum for quick local iteration.
-
-For CI or strict reproducibility, require the hash explicitly:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml build --build-arg ANKI_REQUIRE_SHA256=1 --build-arg ANKI_SHA256=<sha256>
-```
-
-The equivalent environment-variable form is:
-
-```bash
-ANKI_REQUIRE_SHA256=1 ANKI_SHA256=<sha256> docker compose -f docker/anki-e2e/docker-compose.yml build
-```
-
-If `apt-get update` or `apt-get install` fails while fetching Ubuntu packages
-from `archive.ubuntu.com` or `security.ubuntu.com`, retry the build first. The
-Dockerfile configures apt with 5 retries and 30 second HTTP/HTTPS timeouts.
-
-If the same mirror/CDN failure repeats, build with another Ubuntu mirror:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml build --build-arg UBUNTU_MIRROR=http://mirror.math.princeton.edu/pub/ubuntu
-```
-
-Run E2E:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml run --rm anki-e2e
-```
-
-Run from PowerShell:
-
-```powershell
-scripts/run_anki_e2e_docker.ps1
-```
-
-Run and keep artifacts in a specific folder:
-
-```powershell
-docker compose -f docker/anki-e2e/docker-compose.yml run --rm -v "${PWD}/e2e-artifacts:/e2e/artifacts" anki-e2e
-```
-
-Debug shell:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml run --rm anki-e2e bash
-```
-
-The Dockerfile defaults to official Ubuntu packages over HTTPS to avoid
-transient plain-HTTP CDN failures. Override the mirror when needed:
-
-```bash
-docker compose -f docker/anki-e2e/docker-compose.yml build --build-arg UBUNTU_MIRROR=https://mirror.example.org/ubuntu
-```
-
-If Anki fails with a Qt `xcb` platform plugin error, inspect:
+Container stream:
 
 ```text
-e2e-artifacts/diagnostics/qt-xcb-diagnostics-first.log
-e2e-artifacts/diagnostics/anki-stdout-first.log
-e2e-artifacts/diagnostics/anki-stderr-first.log
+/e2e/artifacts/reports/run-events.jsonl
 ```
 
-The startup script records `xdpyinfo`, the discovered `libqxcb.so` path, and
-`ldd` output for that plugin. To make Qt print verbose plugin loading details
-for the next run, set:
+Крупные phases публикуются через shell helpers:
+
+```text
+phase_start
+phase_pass
+phase_fail
+phase_skip
+```
+
+`browser-smoke-first` остаётся одной stable global phase. Browser entrypoint пишет item lifecycle как safe `message/info` events с `current/total`.
+
+## Browser plan
+
+`browser-progress.mjs` строит plan до запуска Chromium.
+
+Фактический plan с telemetry:
+
+```text
+23 items
+18 expected screenshots
+```
+
+Items:
+
+```text
+browser.launch
+dashboard.setup
+10 × route.<route>.<theme>
+4 × telemetry.<step>
+3 × preview.<anchor>
+scenario.cards
+2 × cards-route.<theme>
+diagnostics.final
+```
+
+Plan validation требует:
+
+- schemaVersion `1`;
+- unique stable IDs;
+- known kinds;
+- sequential order;
+- non-negative expected screenshots;
+- exact `countsByKind` parity;
+- exact screenshot sum;
+- public-safe bounded fields.
+
+## Browser item wrapper
+
+`BrowserProgress.run(itemId, operation)`:
+
+1. принимает только planned item;
+2. запрещает concurrent/duplicate completion;
+3. фиксирует `performance.now()`;
+4. печатает START;
+5. вызывает schema-v1 Python producer;
+6. выполняет operation;
+7. проверяет screenshot delta;
+8. сохраняет PASS или FAIL;
+9. обновляет partial browser report;
+10. повторно бросает исходную ошибку.
+
+Producer adapter использует:
+
+```text
+execFile
+shell: false
+array arguments
+non-zero exit → hard failure
+```
+
+Retries отсутствуют.
+
+## Console progress
+
+```text
+[BROWSER] PLAN items=23 screenshots=18 telemetry=true
+[BROWSER] [1/23] START browser-launch item=browser.launch
+[BROWSER] [1/23] PASS browser-launch item=browser.launch duration=478ms screenshots=0
+[BROWSER] [3/23] START route-capture item=route.home.light route=#/home theme=light
+[BROWSER] [3/23] PASS route-capture item=route.home.light duration=1566ms screenshots=1
+```
+
+Progress line не содержит raw stack, token-bearing URL, credentials или absolute private paths.
+
+## Route coverage
+
+Routes:
+
+```text
+home
+cards
+decks
+profile
+settings
+```
+
+Themes:
+
+```text
+light
+dark
+```
+
+Каждый route/theme — отдельный item и один screenshot. Итого 10.
+
+Сохраняются:
+
+- `waitUntil: "networkidle"`;
+- visible `main`;
+- exact hash;
+- init-script theme bootstrap;
+- dialog dismissal;
+- full-page screenshot.
+
+## Native preview coverage
+
+Anchors:
+
+```text
+words-preview
+grammar-preview
+java-preview
+```
+
+Каждый anchor — один item с двумя screenshots. Внутри:
+
+- `/api/search/inspect`;
+- exact card identity;
+- native render source;
+- front/back HTML;
+- raw AV marker prohibition;
+- expected class checks;
+- Shadow DOM;
+- zero scripts;
+- light/dark capture.
+
+Итого 6.
+
+## Cards state coverage
+
+`scenario.cards` проверяет реальные imported card states без content cloning.
+
+```text
+cards-route.light
+cards-route.dark
+```
+
+проверяют zero raw AV markers, zero horizontal overflow и создают 2 state screenshots.
+
+## Telemetry coverage
+
+При наличии `ANKI_STUDY_REPORT_TELEMETRY_E2E_ENDPOINT` plan содержит:
+
+```text
+telemetry.declined
+telemetry.reliability
+telemetry.feature
+telemetry.offline
+```
+
+Проверяются zero outbound, purpose isolation, bounded batch delivery и persistent offline queue. Отдельные event POST calls не являются plan items.
+
+## Final diagnostics
+
+`diagnostics.final` проверяет:
+
+```text
+pageErrors.length === 0
+actionable failedRequests.length === 0
+unexpectedExternalRequests.length === 0
+consoleErrors.length === 0
+```
+
+Favicon failure фильтруется. `requestfailed` сохраняет Playwright network semantics; HTTP 4xx/5xx не классифицируется автоматически как network failure.
+
+## Browser reports
+
+```text
+reports/browser-smoke-first.json    schema v2
+reports/screenshot-performance.json schema v2
+reports/screenshot-performance.md
+```
+
+Browser report содержит:
+
+```text
+plan
+progress
+items
+slowestItems
+anchors
+scenarioCards
+cardsRoute
+telemetryClient
+screenshots
+consoleEvents
+pageErrors
+failedRequests
+unexpectedExternalRequests
+```
+
+Failure report дополнительно сохраняет partial progress, exact failed item и raw error в существующем diagnostics field.
+
+## Screenshot fail-closed contract
+
+```text
+10 route screenshots
+6 native preview screenshots
+2 Cards state screenshots
+= 18
+```
+
+Проверяются:
+
+- item delta;
+- plan expected total;
+- final `screenshots.length`;
+- independent PowerShell category counts;
+- zero synthetic/legacy screenshot paths.
+
+## Public artifact
+
+Success artifact включает:
+
+```text
+artifact-manifest.json
+package/anki_study_report.ankiaddon
+reports/run-events.jsonl
+reports/browser-smoke-first.json
+reports/screenshot-performance.json
+real-deck reports
+API reports
+resource reports, если включены
+18 screenshots
+redacted readiness
+diagnostics
+```
+
+Public exporter валидирует source и public copy, redacts token/private paths и отклоняет secret-like content.
+
+## Verification commands
+
+Node:
 
 ```bash
-ANKI_STUDY_REPORT_E2E_DEBUG_QT=1 docker compose -f docker/anki-e2e/docker-compose.yml run --rm anki-e2e
+node --check docker/anki-e2e/browser-progress.mjs
+node --check docker/anki-e2e/smoke-browser.mjs
+node --test tests/browser_progress.test.mjs
 ```
 
-## E2E Flow
+Focused pytest:
 
-`run-e2e.sh` performs:
+```bash
+python -m pytest \
+  tests/test_browser_progress_node.py \
+  tests/test_e2e_screenshot_contract.py \
+  tests/test_docker_smoke_helpers.py \
+  tests/test_run_event_protocol.py \
+  tests/test_run_event_integration.py \
+  tests/test_run_event_controlled_failure.py \
+  tests/test_telemetry_e2e_harness.py \
+  tests/test_e2e_harness_reuse.py
+```
 
-1. Copy `/workspace` to `/e2e/workspace-build`.
-2. Run `pnpm install --offline --frozen-lockfile` from the image pnpm store.
-3. Run `pnpm run build:addon`.
-4. Build and validate `/e2e/artifacts/package/anki_study_report.ankiaddon`.
-5. Create the isolated `E2E` Anki profile.
-6. Bootstrap `/e2e/anki-data/prefs21.db` with `_global` and `E2E`.
-7. Seed the fixture collection and media.
-8. Copy the unpacked add-on into `addons21/anki_study_report_e2e`.
-9. Start Anki in Xvfb with `-b /e2e/anki-data -p E2E`.
-10. Wait for `runtime/dashboard-ready.json` and `/api/health`.
-11. Run `smoke-api.py`.
-12. Run `smoke-browser.mjs`, execute scope-filtered serial checks and a bounded
-    read-only page capture queue, and save deterministic screenshots.
-    `table` and `tiles` stay front-only; `ankiPreview` checks one answer-only
-    `AnkiCardShadowPreview` host rendered from `backHtml`.
-13. For `full` (or explicit restart), stop and start Anki with the same profile.
-14. Wait for restart readiness and rerun API smoke.
-15. Finalize phase/resource/performance reports and validate manifest v2.
+Cloud targeted proof:
 
-## Artifacts
+```bash
+gh workflow run ci-e2e.yml \
+  --repo AliceLiddell01/anki-study-report \
+  --ref <branch> \
+  -f mode=standard \
+  -f scope=cards \
+  -f screenshot_workers=auto \
+  -f resource_telemetry=true \
+  -f verify_restart=false \
+  -f fast_ci_run_id=<successful-fast-ci-run>
+```
 
-The default host artifact folder is:
+## Последний подтверждённый proof
 
 ```text
-e2e-artifacts/
+implementation SHA: e25bd0b24e32ce4717ed2dbda138d802f707f6d5
+Fast CI: 30048028664 — PASS
+standard/cards: 30049216529 — PASS
+artifact ID: 8580366654
+artifact digest: sha256:04d3945e594c01cf292fb1f7a2a56e4734ccc37e27bd094cd27f9d5cb92127a7
+browser items: 23/23 PASS
+screenshots: 18/18
+diagnostics errors: 0
 ```
 
-The root contains a redacted `artifact-manifest.json` plus category folders:
+Closeout: [`../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md`](../../reports/ci/e2e-i2-browser-smoke-progress-closeout.md).
+
+## Stable failure diagnostics
+
+E2E-I3 wraps the shared Docker runner with `run-e2e-failure-wrapper.sh` and stores the first root cause in:
 
 ```text
-e2e-artifacts/
-├─ artifact-manifest.json
-├─ runtime/                    dashboard-ready.json, events and PIDs
-├─ diagnostics/                Anki/Xvfb logs, env, startup trees and tails
-├─ reports/                    API, browser, APKG and fixture JSON
-├─ html/                       redacted Cards/failure DOM dumps
-├─ package/                    anki_study_report.ankiaddon
-└─ screenshots/
-   ├─ navigation/              avatar-menu-light.png, avatar-menu-dark.png
-   ├─ pages/
-   │  ├─ today|calendar|decks|profile|tools/
-   │  └─ settings/report|data|server|sources|logs/
-   └─ cards/
-      ├─ synthetic/table|tiles|anki-preview/
-      └─ apkg/table|tiles|anki-preview/
+reports/failure-summary.json
 ```
 
-Each page and Cards leaf contains deterministic `light.png` and `dark.png`
-files. A strict APKG run produces 30 page screenshots, 2 navigation screenshots,
-6 synthetic Cards screenshots and 6 APKG Cards screenshots. Browser failures
-write a screenshot under `screenshots/failures/`, HTML under `html/failures/`,
-machine-readable summaries under `reports/`, and console logs under
-`diagnostics/`.
+Public export:
 
-The `calendar` page leaf is the Stage 4 Activity surface at canonical
-`#/calendar`. Browser smoke exercises the default 90-day period, metric/day
-selection, inactive details, five-plus deck expansion, derived daily/weekly
-feed and explicit load-more before the light/dark page capture.
+```text
+artifacts/reports/failure-summary.json
+failure-summary.md
+```
 
-The `decks` page leaf is the Stage 5 Decks v2 surface. Synthetic seeding creates
-multiple roots, a parent with direct cards, danger/attention/preliminary
-children, duplicate `N3` names, a six-level Unicode hierarchy and one filtered
-deck. Browser smoke verifies hierarchy/search/filter/sibling sort, direct versus
-subtree detail, both typed Browser actions and the existing light/dark page
-screenshots indexed by the artifact manifest.
+Rules:
 
-Stage 5.5 browser smoke also verifies the persistent Global Utility Dock and
-theme toggle across product and Settings routes, explicit light/dark storage,
-reload/navigation persistence, dynamic labels, keyboard focus, and profile-menu
-overlap. Additional state screenshots live under `screenshots/states/`.
+- first primary failure is immutable;
+- later manifest/sanitizer/cleanup failures are secondary;
+- exact phase/item, original exit code/signal and safe relative evidence paths are preserved;
+- token-bearing URLs, secrets and private absolute paths are rejected;
+- successful runs must not contain a failure summary;
+- public summary must equal the validated source summary;
+- GitHub receives one primary annotation.
 
-Stage 6 browser smoke covers `#/stats` plus quality/load/progress/decks,
-typed period/scope/direct queries, all-time comparison disablement, the native
-Anki Stats callback, light/dark page screenshots and 125% overview/decks proof.
-The synthetic revlog spans more than one year and includes first-review
-retention, manual exclusion, introduced events and bounded due categories.
+Run-event schema v2 carries the same stable failure code in terminal phase/run events. Historical schema v1 remains readable.
 
-Targeted 125% proof for Activity, Decks, Statistics overview/decks, and Settings lives under
-`screenshots/zoom-125/`. It uses an isolated Playwright browser context with a
-1152x800 CSS viewport, `deviceScaleFactor=1.25`, and a 1440x1000 physical
-target. The smoke records the method and rejects horizontal overflow or
-dock/action overlap; it does not call this a browser UI shortcut.
+Final proof:
 
-The manifest stores only existing relative paths and route/theme/mode/fixture
-metadata. Validation rejects missing required files, absolute paths, traversal
-and duplicates; missing optional files are omitted. The canonical add-on log is
-`diagnostics/anki_study_report.log` (no hyphen alias). The readiness JSON may
-contain the runtime token, but the manifest indexes only its path and never its
-contents or a full token-bearing URL. Runtime PID files are intentionally not
-required manifest entries.
+```text
+implementation: 2ee3c238bd0db2866abb1b97e399baf4fd256136
+Fast CI: 30090001597 — PASS
+standard/full: 30098237291 — PASS
+artifact: ci-e2e-standard-30098237291-1
+browser: 23/23 items, 18/18 screenshots
+```
 
-## Safety
-
-- The host `%APPDATA%/Anki2` folder is never mounted.
-- The source mount is read-only in Compose.
-- The fixture collection is generated from scratch.
-- Media fixtures are tiny synthetic files.
-- API response samples are sanitized and checked for token leakage.
-- `standard/global` и `standard/full` также пишут
-  `reports/search-query-contract.json`: real collection Cards/Notes native
-  query, Search UI/navigation, bounded metadata, Card/Note inspect, Browser
-  bridge, safe action/restore cycles и filtered destination rejection. Артефакт
-  не содержит raw query/token/tag content/ID lists.
-- Docker E2E is a heavy command and requires Docker Desktop/WSL2 on Windows.
-
-## Security Notes
-
-- This container is test-only infrastructure for Docker E2E.
-- Host Anki data is not mounted into the container.
-- The project source mount is read-only; the runner copies it to a writable
-  container-local build directory.
-- Fixture data is synthetic and recreated for normal runs.
-- The container may run as `root` to keep the Qt, Anki, and Xvfb setup simple in
-  this test harness.
-- `QTWEBENGINE_DISABLE_SANDBOX=1` is used only inside this test-only Docker E2E
-  environment.
-- The root container setup and Qt WebEngine sandbox override are not production
-  or runtime recommendations.
+Canonical contract: [`failure-diagnostics.md`](../../docs/failure-diagnostics.md).

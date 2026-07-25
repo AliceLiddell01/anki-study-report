@@ -1,6 +1,6 @@
 # Режимы работы ChatGPT и Codex
 
-Снимок правил: **2026-07-22**.
+Снимок правил: **2026-07-25**.
 
 Этот документ определяет два разных режима работы с репозиторием:
 
@@ -14,8 +14,10 @@
 Подробности:
 
 - [ChatGPT work mode](chatgpt-work-mode.md);
+- [ChatGPT manual operations](chatgpt-manual-operations.md);
 - [Codex work mode](codex-agent-rules.md);
-- [Codex local WSL environment](codex-local-environment.md).
+- [Codex local WSL environment](codex-local-environment.md);
+- [UI prototyping and visual acceptance](ui-prototype-visual-acceptance.md).
 
 ## Выбор режима не является постоянным default
 
@@ -60,6 +62,10 @@ Environment profile описывает только то, **как** выпол�
    privacy или package boundaries.
 10. Не коммитить generated/runtime outputs, tokens, profiles, screenshots, logs,
     cache, `.ankiaddon` или E2E artifacts.
+11. Для крупного UI или нового reference workspace выполнять prototype-first
+    процесс: standalone prototype, независимое ревью, bounded revision и явная
+    owner visual acceptance до production implementation. Cards задаёт общий UI
+    foundation, но его page-specific layout не копируется механически.
 
 ## Принцип достаточного результата
 
@@ -133,6 +139,26 @@ production regression или явном owner rejection.
 Если ChatGPT-задача превратилась в длительную многофайловую shell-работу, следует
 перейти в Codex mode либо использовать консоль владельца, а не строить временную
 GitHub Actions инфраструктуру.
+
+## Ручной continuation contour ChatGPT mode
+
+Когда основная implementation уже существует, но connector не покрывает локальные
+Git/WSL/PowerShell/`gh` операции, используется
+[`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
+
+Contour обязан оставаться checkpointed:
+
+```text
+exact state
+→ одна bounded mutation
+→ focused verification
+→ evidence review
+→ следующий checkpoint
+```
+
+Нельзя компенсировать connector limitations временными controller workflows.
+Controlled cloud acceptance планируется заранее, а failed full E2E сначала
+диагностируется по logs/artifacts без same-SHA rerun.
 
 ## Обязательный итог
 

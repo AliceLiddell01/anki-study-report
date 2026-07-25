@@ -44,7 +44,7 @@ native Linux filesystem
 Основной source checkout на момент снимка:
 
 ```text
-/home/kykla/projects/anki-study-report-r7-manual
+$HOME/projects/anki-study-report
 ```
 
 Codex выполняет каждую задачу в отдельном worktree. Использовать переданные

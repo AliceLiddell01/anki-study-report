@@ -1,72 +1,94 @@
 # Roadmap Anki Study Report
 
-Снимок: **2026-07-21**.
+**Снимок:** 2026-07-26
 
-Roadmap contains one mandatory Core path and independent or conditional tracks. Production code/tests and current contracts outrank roadmap and historical reports.
+Roadmap разделён на один обязательный продуктовый путь **Core** и независимые либо условные треки. Больший номер не создаёт общей очереди между разными направлениями.
 
-## Current map
+## Общая карта
 
-| Track | Role | Current status | Does not block |
+```mermaid
+flowchart TB
+    S[Stage 0–9.5<br/>accepted product contour] --> C1[C1 Cards v2<br/>complete]
+    C1 --> C2[C2 Core hardening<br/>implemented and merged]
+    C2 --> A[C2 owner acceptance<br/>remediation]
+    A --> C3[C3 UI & Shell]
+    C3 --> C4[C4 Data Independence]
+    C4 --> C5[C5 Today v2]
+    C5 --> C6[C6 Profile v2]
+    C6 --> R{Core 1.0<br/>owner acceptance}
+    R --> REL[Separate release decision]
+
+    G[Gamification G<br/>G1.4 next / research only]
+    O[Operations O<br/>independent]
+    I[Identity I<br/>conditional]
+    E[Extensions E<br/>conditional]
+    P[Platform / CI<br/>I1–I6 complete]
+
+    G -. no automatic block .-> C3
+    O -. no automatic block .-> C3
+    I -. no automatic block .-> C3
+    E -. no automatic block .-> C3
+    P -. no automatic block .-> C3
+```
+
+## Состояние треков
+
+| Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | mandatory add-on path | `C1` Next | — |
-| [Gamification `G`](gamification/README.md) | parallel research → optional product | `G0 Complete`; `G1 In Progress`; `G1.3 Complete`; G1.4 protocol `Ready`; execution `Blocked on implementation`; production not approved | C1, C2 |
-| [Operations `O`](operations/README.md) | protected telemetry admin tooling | `O1` Planned | C1, C2 |
-| [Identity `I`](identity/README.md) | optional continuity gate | `I1` Conditional | telemetry, C1, C2, local gamification |
-| [Extensions `E`](extensions/README.md) | first-party extension discovery | `E1` Conditional | core release/maturity |
-| [Platform `CI`](platform/README.md) | CI/CD/E2E/release | CI 6B Complete; future measured | all product tracks |
+| [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0 complete; G1.3 complete; G1.4 protocol ready; execution blocked on implementation; production не одобрен | G1.4 bounded screening |
+| [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
+| [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
+| [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
+| [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I6 и bounded corrective fix завершены | нет активного этапа; CI 7–12 только по отдельному trigger |
 
-## Mandatory Core path
+Профильный [`roadmap/gamification/README.md`](gamification/README.md) является источником актуального статуса Gamification внутри ветки `gamification`. Core mirror не переопределяет завершённые G0–G1.3.
 
-```text
-Completed Stage 0–9.5
-→ C1 Cards v2 / Problem Triage
-→ C2 Core 1.0 Hardening
-→ C3? only for a demonstrated gap
-```
+## Как читать roadmap
 
-Gamification, accounts, telemetry administration and extensions do not block Core.
+Каждый этап должен содержать:
 
-## Gamification state
+- цель;
+- статус;
+- зависимости и activation criteria;
+- scope и out of scope;
+- completion criteria.
 
-```text
-G0 Complete
-G1 In Progress
-G1.3 Complete
-G1.4 protocol readiness: READY
-G1.4 execution readiness: BLOCKED_ON_IMPLEMENTATION
-G1.4 started: No
-candidate selected: No
-production not approved
-```
-
-Do not collapse the two readiness states into an ambiguous `G1.4 Ready`.
-
-## Track dependencies
+Roadmap не является production contract. Приоритет источников:
 
 ```text
-G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7?/G8?
-C1 → C2 independently
-O1 independent after telemetry query/auth contracts
-I1 only after a proven continuity requirement
-E1 only with a concrete pack and stable contracts
+production/research code и tests
+→ docs/
+→ roadmap/
+→ reports/
 ```
 
-Historical Stage 0–9.5 files remain under [roadmap/product/](product/README.md). Previous future-stage compatibility pointers remain valid.
+## Границы
 
-## Status vocabulary
+- `docs/` — текущее поведение и обязательные contracts;
+- `roadmap/` — будущее развитие и зависимости;
+- `reports/` — исторические audits, measurements и closeout evidence.
 
-- **Complete** — accepted implementation/evidence exists.
-- **Next** — recommended next stage inside its track.
-- **Planned** — sequenced after explicit dependencies.
-- **Conditional** — activates only when named evidence/trigger exists.
-- **Blocked** — dependency, implementation or research gap prevents execution.
-- **Research-only** — not production-ready and not included in package/CI.
+Завершённые run IDs, SHA и artifacts не дублируются в корневой roadmap. Они находятся в [reports](../reports/README.md).
 
-## Boundaries
+## Общие правила
 
-1. Payload/public behavior changes stay synchronized across backend, frontend types, tests and docs.
-2. Parallel work does not become a Core blocker without a documented dependency.
-3. No placeholder route, setting, account, pack or gamification UI before its implementation stage.
-4. Research candidates are not production economies.
-5. Historical evidence remains in `reports/`; generated/runtime artifacts never enter git.
-6. Verification follows [test matrix](../docs/test-matrix.md) and [run policy](../docs/verification-run-policy.md).
+1. Параллельный трек не блокирует Core без документированной зависимости.
+2. Placeholder UI и speculative APIs не добавляются заранее.
+3. Payload/public behavior меняются синхронно между backend, frontend types, tests и docs.
+4. Runtime artifacts, logs, screenshots, tokens, profile data и `.ankiaddon` не коммитятся.
+5. Verification следует [test matrix](../docs/test-matrix.md) и [run policy](../docs/verification-run-policy.md).
+6. Successful unchanged exact-SHA E2E не повторяется.
+7. Merge, release и publication — разные решения.
+8. Один крупный этап не дробится на бесконечную лестницу подпунктов.
+9. Research candidate не называется production-ready до отдельного решения.
+
+## Словарь статусов
+
+- **Complete** — обязательный результат существует и прошёл заявленные gates.
+- **Merged** — candidate интегрирован в целевую долгоживущую ветку.
+- **Owner acceptance open** — автоматические gates пройдены, но ручная проверка выявила незакрытый gap.
+- **Next** — следующая рекомендуемая работа внутри трека.
+- **Conditional** — активируется только при явном trigger.
+- **Deferred** — намеренно вне текущего горизонта.
+- **Research only** — не входит в production/package/CI.

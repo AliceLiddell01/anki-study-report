@@ -1,66 +1,132 @@
-# Передача контекста новому чату/нейронке
+# Передача актуального контекста ИИ
 
-Снимок: **2026-07-21**.
+**Снимок:** 2026-07-26
 
-## Начать отсюда
+Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
-1. `README.md`
-2. `roadmap/README.md`
-3. `docs/project-overview.md`
-4. `docs/architecture.md`
-5. профильный current-contract документ
-6. `reports/README.md` только для historical evidence
+## Порядок чтения
 
-При конфликте:
+1. [`../README.md`](../README.md)
+2. этот файл;
+3. профильный roadmap;
+4. профильный contract в `docs/`;
+5. production/research code и tests нужного scope;
+6. свежий closeout только когда он нужен задаче.
+
+При противоречиях:
 
 ```text
-production code/tests
-→ current docs
-→ roadmap
-→ current evidence
-→ historical reports
-→ old plans/assumptions
+production/research code и tests
+→ docs/
+→ roadmap/
+→ reports/artifacts
+→ старые планы и сообщения
+→ предположения
 ```
 
-## Product state
+## Проект и границы
 
-Anki Study Report — local add-on for Anki 26.05+ with Python runtime, React/TypeScript dashboard and token-protected loopback server. Frontend does not access the collection directly. The accepted product contour is complete through Stage 9.5.
+Anki Study Report — локальный add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard.
 
-Future work is organized by independent tracks. Only `C1 Cards v2 → C2 Core 1.0` is the mandatory add-on path. Gamification, telemetry operations, identity and extensions do not block Core.
+- dashboard работает только через loopback и защищён access token;
+- frontend получает bounded API projections и не читает collection напрямую;
+- preview использует sanitizer и Shadow DOM без JavaScript execution surface;
+- учебные и профильные данные остаются локальными;
+- payload/public behavior меняются синхронно между слоями, tests и docs;
+- Gamification research остаётся изолированным от add-on package, Fast CI и production runtime до отдельного решения.
+
+Подробности: [architecture.md](architecture.md), [dashboard-api.md](dashboard-api.md), [security-and-safety.md](security-and-safety.md).
+
+## Core
+
+```text
+C1 — завершён и принят
+C2 implementation/integration — завершены и влиты в core
+C2 owner acceptance — открыта bounded remediation
+C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
+release — не начат
+```
+
+Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
 
 ## Gamification
 
-Canonical branch: `gamification`. It is independent and research-only; no `gamification → master` PR or production integration is approved.
+Canonical branch:
 
 ```text
-G0: Complete
-G1: In Progress
-G1.1 and correction: Complete
-G1.2 and G1.2a correction: Complete
-G1.3: Complete
-G1.4 protocol readiness: Ready
-G1.4 execution readiness: Blocked on implementation
-G1.4 started: No
-candidate selected: No
-production integration: Prohibited
+gamification
 ```
 
-G1.2a leaves the root cause partially localized with medium confidence. `memory_main` is the dominant component and `post_transition` the dominant window, but Challenge is not direction-consistent and no unique corrective formula is proven.
+Текущий repository state:
 
-G1.3 freezes the [candidate protocol](gamification/review-xp-candidate-protocol.md), machine contract and strict schema. The next step is only `G1.4 — Bounded screening`. Before screening, implement the frozen post-transition MemoryGain mechanism and parameter registry without changing the protocol or viewing results. Gamification does not block Core.
+```text
+G0 — Complete
+G1 — In Progress
+G1.1 и correction — Complete
+G1.2 и G1.2a correction — Complete
+G1.3 — Complete
+G1.4 protocol readiness — READY
+G1.4 execution readiness — BLOCKED_ON_IMPLEMENTATION
+G1.4 screening started — NO
+candidate selected — NO
+production integration — PROHIBITED
+```
 
-## Technical invariants
+G1.2a оставляет root cause частично локализованным с `MEDIUM` confidence: `memory_main` — крупнейший component, `post_transition` — dominant timing window, Challenge не direction-consistent, уникальная corrective formula не доказана.
 
-1. Payload/public behavior changes synchronize backend, frontend types/validators, tests and docs.
-2. Frontend never reads Anki collection directly.
-3. Server remains loopback-only and token-protected.
-4. Sanitizer, media validation, action allowlists and preview isolation are not weakened.
-5. Generated assets/runtime artifacts/profile data/tokens are not committed.
-6. Signals/evidence/entity refs stay local and outside telemetry taxonomy.
-7. Telemetry/admin/identity/gamification data purposes remain separated.
-8. Research packages do not silently enter Fast CI or `.ankiaddon`.
-9. Release uses exact artifacts and never occurs automatically after merge.
+G1.3 замораживает candidate protocol, strict schema, четыре parameterizations и bounded 160-unit matrix. Следующая задача — только `G1.4 — Bounded screening`: сначала завершить и опубликовать frozen mechanism/registry, затем выполнить ровно зарегистрированную matrix без tuning и без начала G1.5.
 
-## Verification
+Точные источники:
 
-Use focused checks first and follow `docs/test-matrix.md` plus `docs/verification-run-policy.md`. Docs/contracts-only Gamification work does not justify Docker or real-Anki E2E. Before closing, verify branch/base/head, exact changed paths, relative links, no production/research source/test/config/evidence/workflow diff, and actual check evidence.
+- [`../roadmap/gamification/README.md`](../roadmap/gamification/README.md)
+- [human candidate protocol](gamification/review-xp-candidate-protocol.md)
+- [`../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json`](../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json)
+- [`../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json`](../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json)
+
+`gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
+
+## Platform / CI
+
+```text
+real-deck E2E foundation — COMPLETE / merged
+E2E-I1–E2E-I6 — COMPLETE / merged
+E2E-I6 bounded corrective fix — COMPLETE / merged через PR #144
+следующий Platform/CI stage — не активирован
+```
+
+Последний Core sync baseline:
+
+```text
+core HEAD: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+E2E-I6 corrective implementation: afe650adbf3ba55cb6b59068a1127022b651fbf3
+PR #144 merge SHA: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+Fast CI: 30169763775 — PASS
+standard/full: 30169890912 — PASS
+```
+
+E2E-I6 corrective fix не является новым этапом и не активирует CI 7–12. Любая оптимизация требует отдельного измеренного trigger и owner decision.
+
+## Рабочие правила
+
+- Сначала определить track, target branch и точный scope.
+- Desktop/laptop — основной target; mobile не приоритет без отдельной задачи.
+- Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
+- Не возвращать legacy aliases без доказанной compatibility необходимости.
+- Не дробить существующий roadmap stage на новые буквенные или цифровые лестницы.
+- Successful unchanged exact-SHA gates не повторять.
+- Harness failure не объявлять production failure без подтверждения.
+- Docs-only sync не требует повторного Fast CI или Docker E2E.
+- Для Gamification target и PR base — `gamification`, даже если общие environment docs приводят Core-примеры.
+
+## Режим работы
+
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [Codex agent rules](codex-agent-rules.md)
+- [Codex local environment](codex-local-environment.md)
+
+ChatGPT mode может использовать GitHub connector и консоль владельца WSL/PowerShell. Скачиваемые scripts выдаются отдельными файлами и предваряются `Unblock-File`.
+
+Codex mode работает непосредственно в локальном task worktree; созданные там scripts не требуют download/unblock ritual.
+
+Не начинать следующий roadmap stage автоматически только потому, что предыдущая техническая работа завершена.

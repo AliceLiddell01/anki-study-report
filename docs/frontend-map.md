@@ -1,240 +1,201 @@
 # Карта frontend dashboard
 
-## Documentation structure
+**Снимок документации:** 2026-07-22
 
-Current contracts remain in `docs/`; stage sequencing is in `../roadmap/`;
-historical reports/audits are indexed in `../reports/README.md`.
+Актуальные контракты находятся в `docs/`, последовательность работ — в `roadmap/`, исторические отчёты и аудиты — в `reports/`.
 
-## Notification surfaces
-
-`TopNav.tsx` монтирует `NotificationBell`; `AppLayout.tsx` — единственный
-`NotificationToasts`. `NotificationCenterPage.tsx` и
-`NotificationSettingsPage.tsx` загружаются как route-level chunks;
-`SearchPage.tsx` тоже lazy, чтобы entry оставался ниже bundle budget.
-`NotificationItemCard.tsx` владеет copy/actions, `notificationsApi.ts` — exact
-response validation, `notificationHandoff.ts` — bounded session-only context.
-Routes: `#/notifications` и `#/settings/notifications`.
-
-`FsrsStatisticsPage.tsx` owns five nested FSRS views and `fsrsApi.ts` owns the
-typed lazy API/cache identity. `StatisticsPage` and `FsrsStatisticsPage` are
-real route-level dynamic imports; `RouteDeliveryBoundary` owns their loading
-and chunk-failure UI. Canonical routes start with `#/stats/fsrs`.
-
-Снимок документации: 2026-07-12.
-
-Source of truth:
+## Источники истины
 
 ```text
 web-dashboard/src/app/router.tsx
 web-dashboard/src/app/App.tsx
-web-dashboard/src/layout/TopNav.tsx
-web-dashboard/src/layout/SettingsLayout.tsx
-web-dashboard/src/layout/GlobalUtilityDock.tsx
+web-dashboard/src/layout/
 web-dashboard/src/pages/
+web-dashboard/src/components/
+web-dashboard/src/hooks/
 web-dashboard/src/lib/
-web-dashboard/src/types/report.ts
-web-dashboard/src/types/settings.ts
+web-dashboard/src/types/
+web-dashboard/src/i18n/
 ```
 
-## Загрузка данных
+`App.tsx` читает токен dashboard из `window.location.search`. Frontend не читает collection Anki напрямую. Настройки темы и языка RU/EN остаются локальными и независимыми.
 
-`App.tsx` берет token из `window.location.search` и загружает:
+## Основные маршруты
 
 ```text
-/api/report?token=<token>
+Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
 ```
 
-В dev mode при non-403 ошибке используется `web-dashboard/src/data/mockReport.ts`.
-Это удобно для UI-разработки, но не является проверкой реального API.
+| Маршрут | Компонент | Данные или API | Главный риск |
+| --- | --- | --- | --- |
+| `#/home` | `HomePage` | `StudyReport.today` | различие текущего дня и исторического scope |
+| `#/calendar` | `CalendarPage` | `activityHub` | доступность даты и scope |
+| `#/stats` | страницы Statistics | API Statistics/FSRS | ограниченные запросы с latest-wins |
+| `#/decks` | `DecksPage` | `deckHub`, действие Browser | семантика direct и subtree |
+| `#/search` | `SearchPage` | Search v2, metadata v1 | строгий parsing и точные ID |
+| `#/cards` | лениво загружаемый `CardsPage` | запрос Triage v4, recheck v1, просмотр Search v2 | ограниченное накопление, гонки действий и recheck, фокус и responsive-подробности |
+| `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | API Inspection Profiles | точные ссылки, жизненный цикл и локальные черновики |
 
-`AppLayout` монтирует один `GlobalUtilityDock` для всех routes. Theme toggle
-переиспользует `lib/theme.ts` и storage key `anki-study-report-theme`.
-Language selector рядом с ним использует `i18n/language.ts`, storage key
-`anki-study-report-language` и переключает bundled RU/EN resources без reload.
-Оба preference независимы; подробнее — `docs/localization.md`.
+## Каноническая идентичность карточки и предпросмотр
 
-## Routes/pages
+Один backend-projector конкретной карточки предоставляет идентичность строк и подробностей Search и элементов Triage.
 
-Primary navigation содержит `Сегодня`, `Активность`, `Статистика`, `Колоды`,
-`Поиск` и `Карточки` в этом порядке. Profile/Settings/Tools и внешний Boosty support link
-открываются через avatar dropdown. Support — безопасная статическая ссылка, а
-не SPA route. Технические settings pages связаны отдельной навигацией и не
-являются primary-вкладками. Полный IA contract: `docs/navigation-ia.md`.
-
-| Route | Component | Данные/API | Тесты | Риски |
-| --- | --- | --- | --- | --- |
-| `#/home` | `HomePage` («Сегодня») | `StudyReport.today` + historical forecast/fsrs | `HomePage.test.tsx`, `router.test.tsx` | Today slice должен оставаться current-day; top-level report сохраняется для других pages |
-| `#/profile` | `ProfilePage` | `StudyReport.profile`, POST `/api/profile` | `ProfilePage.test.tsx`, `profileApi.test.ts`, `TopNav.test.tsx` | All-collection lifetime view; preferences per Anki profile, не dashboard scope |
-| `#/decks` | `DecksPage` | `report.deckHub`, legacy `report.decks` fallback, typed Browser action | `DecksPage.test.tsx`, `deckTree.test.ts` | Не смешивать direct/subtree, не flatten hierarchy при filter/sort |
-| `#/search` | `SearchPage` | Search query/inspect, entity actions, `deckHub` picker | `SearchPage.test.tsx`, `searchApi.test.ts`, `entityActionsApi.test.ts` | Latest-wins reads, explicit selection cap, serialized mutations и refresh/reconciliation |
-| `#/cards` | `CardsPage` | `attentionCards`, `attentionCardsStatus`, `noteTypeCatalog`, actions API, media URLs | `CardsPage.test.tsx`, `cardAttention.test.ts` | Самая рискованная зона: sanitizer, Shadow DOM, media, modes |
-| `#/calendar` | `CalendarPage` («Активность») | `StudyReport.activityHub`, `activityHub` helpers | `ActivityPage.test.tsx`, `calendarStats.test.ts` | Scope/date availability, keyboard и derived weekly/feed contracts |
-| `#/stats` + four nested routes | `StatisticsPage` | `statisticsHub.initialResult`, POST `/api/statistics/query`, native Stats action | `StatisticsPage.test.tsx`, `statisticsApi.test.ts` | Bounded query, stale response, current snapshot vs history |
-| `#/actions` | `ActionsPage` («Инструменты») | POST `/api/actions/<action>` | `TopNav.test.tsx`, `actionsApi.test.ts`, dashboard action tests backend | Доступен через avatar menu; только allowlisted actions |
-| `#/settings` | `ReportSettingsPage` | GET/POST `/api/dashboard/settings` | `SettingsHub.test.tsx`, `settingsApi.test.ts` | Dashboard scope и report defaults разделены; Home period не редактируется |
-| `#/settings/data` | `SettingsPage` («Данные») | settings API + cache status/actions | `SettingsHub.test.tsx`, backend cache tests | Form save и cache operations являются разными actions |
-| `#/settings/server` | `ServerSettingsPage` | settings API + server status/actions | `SettingsHub.test.tsx`, server tests | restart/stop меняют token/lifecycle |
-| `#/settings/sources` | `IntegrationsPage` | GET `/api/integrations/status` | `router.test.tsx`, typecheck | Read-only diagnostics; старый `#/integrations` redirect-ится сюда |
-| `#/settings/logs` | `LogsPage` | logs endpoints/download | `router.test.tsx`, typecheck | Token redaction; старый `#/logs` redirect-ится сюда |
-
-Stage 15 удалил placeholder `#/stats`, `#/fsrs` и `#/browse`. Stage 6 вернул
-`#/stats` только как five-section live product; FSRS/Browse не возвращались.
-Неизвестные hashes безопасно разрешаются в `#/home`.
-
-## Важные helpers/normalizers
+`cardDisplayText()` локализует только явные состояния `media_only` и `unavailable` и не анализирует произвольные поля заметки.
 
 ```text
-web-dashboard/src/lib/actionsApi.ts       token extraction and action response normalization
-web-dashboard/src/lib/cardAttention.ts    card-level payload normalization
-web-dashboard/src/lib/calendarStats.ts    calendar/heatmap model
-web-dashboard/src/lib/activityHub.ts      bounded Activity period/metric/feed selectors
-web-dashboard/src/lib/deckHealth.ts       deck status model
-web-dashboard/src/lib/deckTree.ts         Decks v2 search/filter/sibling sort/visible rows
-web-dashboard/src/lib/dateUtils.ts        date formatting
-web-dashboard/src/lib/formatters.ts       safe formatting and finite numbers
-web-dashboard/src/lib/profileApi.ts       narrow profile preference save API
-web-dashboard/src/lib/statisticsApi.ts    typed query, abort and validation errors
-web-dashboard/src/lib/searchApi.ts        strict Search query/inspect client
-web-dashboard/src/lib/entityActionsApi.ts strict card/note mutation client
-web-dashboard/src/hooks/useSearchWorkspace.ts query, selection, inspect and mutation orchestration
-web-dashboard/src/lib/fsrsPresentation.ts semantic FSRS verdicts and form bounds
-web-dashboard/src/lib/theme.ts            theme localStorage
-web-dashboard/src/i18n/index.ts           i18next initialization and bundled resources
-web-dashboard/src/i18n/language.ts        language normalization/storage/document sync
-web-dashboard/src/i18n/locales/           RU/EN namespace resources
+запрос и просмотр Search: schema v2
+metadata Search: schema v1
+запрос Triage: schema v4
+перепроверка конкретной карточки Triage: schema v1
 ```
 
-`types/search.ts` различает Cards/Notes row/details и хранит IDs строками.
-Search v1 использует отдельный `#/search`; Cards page и его preview contract не
-переименованы в Cards v2. Полный contract: `docs/search-v1-and-safe-actions.md`.
+Только активный элемент Cards запрашивает просмотр Search. `AnkiCardShadowPreview` показывает санитизированную нативную лицевую сторону в Inspector или выдвижной панели. `AccessibleModal` показывает закэшированный ответ или обратную сторону.
 
-## Cards preview modes
+Элементы очереди не рендерят полный HTML и не читают media.
 
-`CardsPage.tsx` поддерживает:
+## Топология очереди карточек, требующих внимания
 
 ```text
-table
-tiles
-ankiPreview
+CardsPage
+├─ компактная сводка, локальные фильтры очереди и отдельный scope запроса
+├─ одно disclosure покрытия источников и профилей
+└─ CardsInbox — упорядоченный семантический список
+   ├─ >= 1200 px: постоянный Inspector CardsDetail
+   └─ < 1200 px: очередь на всю ширину + CardsDetailDrawer
 ```
 
-Storage key:
+Основные модули:
 
 ```text
-anki-study-report.cards.displayMode
+components/cards/CardsInbox.tsx
+components/cards/CardsDetail.tsx
+components/cards/CardsDetailDrawer.tsx
+hooks/useCardsTriageWorkspace.ts
+hooks/useMediaQuery.ts
+lib/cardsWorkspacePolicy.ts
+lib/triageApi.ts
+lib/triageOrdering.ts
+lib/triagePagination.ts
+lib/triagePresentation.ts
+styles/cardsInbox.css
 ```
 
-`table` и `tiles` используют `AnkiCardShadowPreview` как front-only preview:
+Очередь — обычный `<ol>` с одной нативной кнопкой на элемент. Это не `table`, ARIA `grid`, `listbox` или составной элемент с roving tabindex. Фокус и активный элемент разделены.
+
+В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. При 1024 px постоянный Inspector и автоматический запрос предпросмотра отсутствуют; явная активация открывает подписанную немодальную панель без backdrop, `aria-modal`, inert-оболочки и focus trap.
+
+Граница layout точная: постоянный Inspector существует при `>= 1200 px`, drawer — при `< 1200 px`. Drawer имеет непрозрачную поверхность, явную левую границу, компактный sticky header и внутренний scroll; utility dock перемещается за пределы drawer.
+
+Предпросмотр ответа остаётся единственным модальным диалогом.
+
+## Состояние периода и продолжения
+
+Hook хранит локальный для сессии период обучения:
 
 ```text
-web-dashboard/src/components/AnkiCardShadowPreview.tsx
-data-testid="anki-card-shadow-preview"
+7 дней
+30 дней
+90 дней
 ```
 
-`ankiPreview` тоже использует `AnkiCardShadowPreview`, но в режиме
-`mode="preview"` / `side="answer"`. Он показывает единственную answer-only
-секцию из `renderedPreview.backHtml` и не дублирует отдельный front:
+Изменение периода запускает один автоматический запрос v4 с `contentCursor: null`, отменяет устаревшую работу, очищает накопленные страницы текущего содержимого и сохраняет локальные фильтры.
+
+Ручное продолжение доступно только при согласованном состоянии cursor. Одна активация отправляет один запрос.
+
+Накопление:
+
+- дедуплицирует элементы, причины и источники;
+- сохраняет канонический порядок;
+- ограничено 500 уникальными элементами;
+- ограничено 10 дополнительными страницами;
+- сохраняет прежние пригодные элементы после ошибки;
+- не запускает автоматический цикл cursor.
+
+## Состояние жизненного цикла C1.6
+
+`useCardsTriageWorkspace` отвечает за жизненный цикл одной карточки:
 
 ```text
-data-testid="anki-preview-answer"
-data-testid="anki-card-shadow-preview"
-data-shadow-preview-mode="preview"
-data-preview-side="answer"
+idle
+→ action/open handoff
+→ awaiting_recheck
+→ rechecking
+→ still_active | partially_resolved | resolved | failed | stale
 ```
 
-Если `backHtml` отсутствует, UI показывает diagnostic fallback внутри answer
-section; это не штатное отдельное front preview. Preview не исполняет JS
-templates и не использует iframe; sanitizer остается backend barrier, а note
-CSS должен оставаться внутри Shadow DOM preview host. Целевой layout для этого
-dashboard - desktop/laptop, не mobile widths ниже рабочего desktop surface.
+- mutations сериализуются и не отменяются;
+- чтения используют latest-wins и защищённые sequence ID;
+- mutation operation хранится независимо от query generation и остаётся глобально видимой до фактического завершения;
+- refresh, период и deck могут начать новое чтение, но не скрывают pending operation; конфликтующие actions/Open/Recheck остаются отключёнными;
+- inspect cache привязан к generation, ограничен 50 записями и очищается при refresh или изменении scope; устаревшее завершение не заселяет новую generation;
+- успех действия не удаляет элемент;
+- `recheckTriageCard()` вызывает строгий `/api/triage/recheck` v1;
+- reconciliation сравнивает стабильные `reasonId`;
+- оставшиеся и новые причины обновляют элемент на месте;
+- элемент удаляется только после полностью авторитетного ответа без причин;
+- после удаления фокус выбирает следующий или предыдущий элемент либо заголовок очереди.
 
-При smoke failure сначала проверить active mode, потом DOM selector. Для
-`table`/`tiles` искать Shadow DOM host с `data-shadow-preview-mode="table"` или
-`tile`; для `ankiPreview` искать `data-testid="anki-preview-answer"` и
-answer-host `data-shadow-preview-mode="preview"` / `data-preview-side="answer"`.
+Safe Actions и Open in Anki остаются существующими путями. Массовое и ручное определение устранения отсутствует.
 
-## Payload keys по страницам
+## Рабочее пространство пошаговой настройки Inspection Profiles
 
-| Payload key | Основные потребители |
-| --- | --- |
-| `metadata` | Home, Cards, Settings |
-| `profile` | Profile identity, lifetime KPI, activity, deck overview/preferences |
-| `summary` | Home |
-| `kpis` | Home |
-| `answerDistribution` | Home |
-| `activity` | Home and legacy calendar compatibility |
-| `activityHub` | Activity calendar, selected-day details, derived daily/weekly feed |
-| `comparison` | Home |
-| `decks` | Home, Decks, Cards filters/actions |
-| `deckHub` | Decks v2 scoped hierarchy and detail; additive, normalized |
-| `statisticsHub` | Statistics layout, common controls and all five sections |
-| `attentionCards` | Cards; canonical card-level payload key |
-| `attentionCardsStatus` | Cards, Settings |
-| `noteTypeCatalog` | Cards diagnostics |
-| `forecast` | Home only; Activity не показывает placeholder forecast metric |
-| `fsrs` | Home |
-| `recommendations` | Home, Actions context |
-| `cache` | Settings, ServerSettings |
-
-## Важные тесты
+`InspectionProfilesSettingsPage` объединяет:
 
 ```text
-web-dashboard/src/lib/actionsApi.test.ts
-web-dashboard/src/lib/calendarStats.test.ts
-web-dashboard/src/lib/cardAttention.test.ts
-web-dashboard/src/lib/dateUtils.test.ts
-web-dashboard/src/lib/formatters.test.ts
-web-dashboard/src/pages/CardsPage.test.tsx
-web-dashboard/src/pages/StatisticsPage.test.tsx
-web-dashboard/src/components/statistics/statisticsPresentation.test.ts
-web-dashboard/src/app/router.test.tsx
-web-dashboard/src/layout/TopNav.test.tsx
-web-dashboard/src/layout/GlobalUtilityDock.test.tsx
-web-dashboard/src/i18n/language.test.ts
-web-dashboard/src/i18n/resources.test.ts
-web-dashboard/src/pages/LocalizationSmoke.test.tsx
-web-dashboard/src/lib/formatters.localization.test.ts
+BasicProfileEditor
+ProfileValidationResult
+AdvancedProfileDisclosure
+useInspectionProfilesWorkspace
 ```
 
-## Visual/runtime risks
+Catalog имеет ширину 280–320 px на широком layout и складывается над editor при 1024 px. Обычный Basic — одна поверхность с семью смысловыми разделами: состояние, suggestion, поля, требования, scope, validation и confirmation. Advanced и Profile tools остаются отдельными disclosures; lifecycle предоставляет не более одного primary action.
 
-Statistics presentation layer:
+`inspectionProfileBasicView.ts` — чистая понятная проекция строгого v1.
 
-- `pages/StatisticsPage.tsx` — route composition, query state, KPI/insight and
-  route-specific panels;
-- `components/statistics/StatisticsCharts.tsx` — line/bar/stacked primitives,
-  tooltip, legend, summary and associated data table;
-- `components/statistics/statisticsPresentation.ts` — semantic palette mapping,
-  comparison display, sparse summaries and deterministic deck selection;
-- `styles.css` — centralized light/dark `--stats-color-*` tokens and panel
-  hierarchy.
+Hook отвечает за происхождение черновика, исходное состояние и пользовательские изменения, чтения latest-wins, отмену validation, сериализованные mutations и конфликты revision.
 
-Statistics не должна возвращаться к shared grouped scale для count/seconds,
-percent/count или cards/percentage. Backend series не следует расширять ради
-presentation без доказанного semantic blocker.
+## Граница безопасности
 
-FSRS presentation использует shared shell, но сохраняет разные задачи routes:
-overview conclusion, snapshot distributions, manual calibration, learning-step
-sufficiency и read-only workload simulation. Calibration/simulator запросы
-остаются manual. Chart output всегда имеет summary и table alternative.
+- frontend не имеет доступа к collection;
+- строгие parsers v4, v1 и v2 отклоняют неизвестные и несогласованные payload;
+- точные ID карточек используются для inspect, recheck и Open in Anki;
+- отображаемый текст не превращается в нативный запрос;
+- sanitizer, проверенные URL media и изоляция Shadow DOM сохраняются;
+- определение устранения проблемы на клиенте отсутствует;
+- C1.6 не добавляет второй стек детекторов или действий.
 
-Production build создаёт Vite manifest и восемь JS chunks. Bundle guard
-проверяет, что Statistics и FSRS остаются dynamic entries, а каждый JS chunk
-меньше 500,000 bytes. Текущая архитектура границ описана в
-`reports/product/stage-7-5-fsrs-visual-delivery-report.md`.
+## Профильные тесты
 
-- Dev `mockReport` может скрыть real API failure.
-- Media URLs без token в raw payload должны получить token при рендере.
-- External `http:`, `file:` и token-bearing media URLs нормализуются frontend
-  side, но backend sanitizer остается главным барьером.
-- Note CSS должен оставаться внутри preview, а не протекать в документ.
-- Cards page требует browser/live smoke после изменений rendering/media.
+```text
+pages/CardsPage.test.tsx
+pages/CardsVisualContract.test.ts
+hooks/useCardsTriageWorkspace.test.tsx
+components/cards/CardsInbox.test.tsx
+components/cards/CardsDetailDrawer.test.tsx
+lib/triageApi.test.ts
+lib/triagePagination.test.ts
+lib/triageOrdering.test.ts
+hooks/useMediaQuery.test.tsx
+components/AnkiCardShadowPreview.test.tsx
+pages/InspectionProfilesVisualContract.test.ts
+pages/LocalizationSmoke.test.tsx
+```
 
-## Product notices
+Набор frontend-тестов C1.6:
 
-`ProductNoticeCoordinator.tsx` монтируется рядом с `#dashboard-app-shell` и
-владеет единственным активным modal. `AccessibleModal.tsx` реализует focus
-trap/inert/return focus; `TelemetryConsentDialog.tsx` и `WhatsNewDialog.tsx`
-остаются разными решениями. `PrivacySettingsPage.tsx` обслуживает
-`#/settings/privacy`. Local API client находится в `lib/productNoticesApi.ts`,
-а bundled fallback — в `data/changelog.generated.ts`.
+```text
+342 теста — PASS
+TypeScript typecheck — PASS
+production-сборка — PASS
+ограничение bundle — PASS, entry 430 646 байт
+```
+
+## Текущий статус Core
+
+```text
+C1.5R.0–R.7 — завершено; принято владельцем
+C1.6 — завершено; принято владельцем; влито в core
+C1.6B — условный этап; не начат
+Core C1 — завершён
+C2 — implementation candidate; exact-SHA integration closeout pending
+```

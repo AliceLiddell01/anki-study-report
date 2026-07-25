@@ -1,56 +1,103 @@
-# Platform / CI roadmap
+# Roadmap Platform / CI
 
-Platform work evolves GitHub Actions, packaging, release delivery and real-Anki E2E. It is an independent track: it neither renumbers product work nor blocks Core, Gamification, Operations, Identity or Extensions unless a specific stage names a delivery dependency.
+Platform-трек развивает delivery, packaging и real-Anki E2E независимо от продуктовых stages.
 
-## State
+## Карта delivery contour
 
-| Stage | Status | Result / goal |
-| --- | --- | --- |
-| [CI 1](ci-01-gated-delivery-baseline.md) | Complete | gated delivery baseline |
-| [CI 2](ci-02-exact-fast-package.md) | Complete | exact Fast CI package producer |
-| [CI 3](ci-03-exact-package-e2e-handoff.md) | Complete | exact-package E2E handoff |
-| [CI 4](ci-04-package-reuse-measurement.md) | Complete | package reuse measurement |
-| [CI 5](ci-05-ghcr-environment-image.md) | Complete | stable GHCR environment producer |
-| [CI 5A/5B](ci-05a-05b-fast-ci-observability.md) | Complete | timing and duplicate typecheck removal |
-| [CI 6A/6B](ci-06-ghcr-consumer-cutover.md) | **Complete** | digest-pinned GHCR-only cloud consumer |
-| [CI 7](ci-07-post-cutover-optimization.md) | Conditional | rolling baseline and one measured bottleneck |
-| [CI 8](ci-08-fast-ci-critical-path.md) | Conditional | Fast CI critical-path optimization |
-| [CI 9](ci-09-real-anki-e2e-efficiency.md) | Conditional | real-Anki E2E efficiency |
-| [CI 10](ci-10-reliability-and-flake-governance.md) | Conditional | failure/flake governance |
-| [CI 11](ci-11-release-reproducibility.md) | Conditional | reproducible release evidence |
-| [CI 12](ci-12-scale-and-delivery-operations.md) | Deferred / conditional | contributor/runner scale only when needed |
+```mermaid
+flowchart LR
+    C1[CI 1–6B<br/>exact delivery + GHCR] --> F[Real-deck E2E foundation]
+    F --> I1[E2E-I1<br/>run events]
+    I1 --> I2[E2E-I2<br/>browser progress]
+    I2 --> I3[E2E-I3<br/>failure diagnostics]
+    I3 --> I4[E2E-I4<br/>preflight + cancellation]
+    I4 --> I5[E2E-I5<br/>build identity]
+    I5 --> I6[E2E-I6<br/>final summary + history]
 
-## Current invariant
+    M[CI 7 measurement gate] -. measured bottleneck .-> C8[CI 8 Fast CI]
+    M -. measured bottleneck .-> C9[CI 9 real-Anki efficiency]
+    M -. repeated flakes .-> C10[CI 10 reliability]
+    C11[CI 11 release reproducibility]:::conditional
+    C12[CI 12 scale/operations]:::conditional
 
-```text
-cloud E2E environment: immutable GHCR digest only
-manual package source: exact Fast CI artifact
-release package source: exact release artifact
-local Docker build: development/diagnostic fallback
-cloud BuildKit/GHA cache: removed
+    classDef conditional stroke-dasharray: 5 5;
 ```
 
-## Activation
-
-`CI 7` is a measurement gate, not automatic permission to change caches, runners, retries, splitting or coverage.
+## Текущее состояние
 
 ```text
-CI 7 measurement
-├─ Fast CI bottleneck       → consider CI 8
-├─ real-Anki/E2E bottleneck → consider CI 9
-├─ repeated flake/failures  → consider CI 10
-└─ no material problem      → defer
+CI 1–6B — ЗАВЕРШЕНО
+основа E2E на реальных колодах — ЗАВЕРШЕНО / влито
+E2E-I1 — ЗАВЕРШЕНО / влито
+E2E-I2 — ЗАВЕРШЕНО / влито
+E2E-I3 — ЗАВЕРШЕНО / влито
+E2E-I4 — ЗАВЕРШЕНО / влито через PR #137
+E2E-I5 — ЗАВЕРШЕНО / влито через PR #141
+E2E-I6 — ЗАВЕРШЕНО / влито через PR #142
+E2E-I6 bounded corrective fix — PASS / PR #144 открыт, не влит
+core merge SHA E2E-I6 — 52731abb2fae682c97c3d0d9a542c250c6f25ea8
+CI 7–12 — условные; ни один этап не активирован
 ```
 
-Choose at most one optimization candidate with a baseline, expected benefit, cost, risk and stop condition. `CI 11` may activate independently after release contracts stabilize. `CI 12` requires actual contributor/volume pressure and a security model.
+Corrective PR #144 исправляет только footprint category projection и producer current values в regression observations. Облачная приёмка пройдена на `afe650adbf3ba55cb6b59068a1127022b651fbf3`: Fast CI `30169763775`, telemetry-enabled `standard/full` `30169890912`, main artifact `8622647178`, history `append / 2 entries`. Это bounded исправление завершённого E2E-I6, а не новый roadmap stage.
 
-## Shared rules
+## Current invariants
 
-- use ordinary run history before creating controlled runs;
-- separate scopes, direct savings and observational deltas;
-- track p50/p95, first-run pass rate, minutes and artifact footprint;
-- do not repeat a successful same-SHA gate without a relevant contract change;
-- a new cache/runner/retry/split must beat its setup and maintenance cost;
-- never trade away Anki Desktop, exact identity, sanitizer/token/media/action/APKG or release gates.
+```text
+облачное окружение: неизменяемый digest GHCR
+ручной пакет: точный успешный артефакт Fast CI
+release-пакет: точный release-артефакт
+источник коллекций: три committed real APKG
+идентичности package и harness разделены
+повторное использование harness: ancestry + полный diff, fail closed
+события запуска: текущая schema v2; историческая v1 проверяется
+сводка ошибки: schema v1, только для failure
+сводка отмены: schema v1 + run/cancel
+предварительная проверка: детерминированный отчёт из 20 static/runtime checks
+идентичность нерелизной сборки: schema v1, digest только по canonical identity
+каноническая итоговая сводка: final-run-summary.json schema v1, максимум 64 KiB
+bounded history: 90 дней / 120 записей / 30 записей на compatibility key
+регрессионные наблюдения: informational-only, без blocking threshold
+browser: plan v1, report v3, 23 элемента, 18 screenshots
+```
 
-This track remains independent from [Core](../core/README.md), [Gamification](../gamification/README.md), [Operations](../operations/README.md), [Identity](../identity/README.md) and [Extensions](../extensions/README.md).
+Новый Fast CI package создаётся только при package-impacting diff либо когда exact artifact недоступен/невалиден. Allowlisted harness-only changes могут использовать existing package через fail-closed validator.
+
+## Roadmap E2E-I1–I6
+
+- [Полный roadmap observability/build identity](e2e-observability-build-identity.md)
+- [Run-event contract](../../docs/run-event-protocol.md)
+- [Failure diagnostics](../../docs/failure-diagnostics.md)
+- [Preflight и cancellation](../../docs/e2e-preflight-cancellation.md)
+- [Package/harness reuse](../../docs/e2e-package-harness-reuse.md)
+- [Идентичность нерелизной сборки](../../docs/non-release-build-identity.md)
+- [Каноническая итоговая сводка и bounded history](../../docs/e2e-final-summary-history.md)
+
+Исторические SHA, run IDs и artifacts: [reports/ci](../../reports/README.md).
+
+## Условные optimization tracks
+
+CI 7 — measurement gate, а не автоматическое разрешение менять caches, runners, retries, splitting или coverage.
+
+```mermaid
+flowchart TD
+    B[Ordinary run history] --> M[CI 7 bounded measurement]
+    M --> Q{Есть material bottleneck?}
+    Q -->|Fast CI| C8[Рассмотреть CI 8]
+    Q -->|real-Anki E2E| C9[Рассмотреть CI 9]
+    Q -->|repeated flakes| C10[Рассмотреть CI 10]
+    Q -->|нет| D[Отложить optimization]
+```
+
+Не более одного optimization candidate активируется одновременно. Он обязан иметь baseline, expected benefit, cost, risk и stop condition.
+
+## Общие правила
+
+- сначала ordinary run history, затем controlled runs;
+- не повторять successful unchanged package/harness pair;
+- Docker E2E — integration gate, не debugger;
+- retries не заменяют root-cause fix;
+- performance thresholds требуют отдельного measurement decision;
+- docs-only commits после successful gates не требуют нового Fast CI/Docker;
+- завершение E2E-I stage не запускает следующий автоматически;
+- Platform не меняет product scope без documented dependency.

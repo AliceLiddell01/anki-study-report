@@ -1,53 +1,38 @@
-# Dashboard API и payload-контракт
+# API dashboard и контракт payload
 
-## Notification API v1
+**Снимок документации:** 2026-07-22
 
-Все routes требуют текущий dashboard token:
+Dashboard — локальное приложение, которое получает опубликованный payload отчёта и использует несколько узких API. Frontend не читает collection Anki напрямую.
 
-```text
-GET  /api/notifications/summary
-GET  /api/notifications?page=&pageLimit=&tab=&category=
-POST /api/notifications/read
-POST /api/notifications/read-all
-GET  /api/settings/notifications
-PUT  /api/settings/notifications
-POST /api/notifications/toasts
-POST /api/notifications/toast-delivered
-```
+## Модель токена
 
-`pageLimit` ограничен 50. Mutation bodies используют exact keys; invalid
-category/tab/ID/preferences возвращают bounded JSON error. API не возвращает
-DB path, detector internals, dashboard token или telemetry credentials.
-
-Search v1 добавляет product route поверх bounded query/inspect foundation и
-отдельные strict card/note mutation endpoints. FSRS API остаётся read-only;
-generic search/SQL/method invocation и unknown fields отклоняются.
-
-Снимок документации: 2026-07-15.
-
-Dashboard - это локальное приложение, которое получает один опубликованный
-report payload и несколько служебных API. Оно не читает Anki collection
-напрямую.
-
-## Token model
-
-Все чувствительные endpoint-ы вызываются с query parameter:
+Все чувствительные endpoints требуют текущий токен dashboard:
 
 ```text
 ?token=<dashboard-token>
 ```
 
-Frontend берет token из URL:
+Dashboard открывается по loopback-URL:
 
 ```text
-http://127.0.0.1:8766/?token=<token>#/home
+http://127.0.0.1:<port>/?token=<token>#/home
 ```
 
-Если token неверный, `/api/report` возвращает `403`, и frontend показывает
-состояние forbidden. В dev mode mockReport подставляется только для не-403
-ошибок.
+Недопустимый токен возвращает `403`. Токен и полный URL с токеном не попадают в обычные логи, DOM-dumps, публичные артефакты или телеметрию.
 
-## Основные GET endpoints
+`GET /api/status` является единственным минимальным публичным readiness payload:
+
+```json
+{"ok": true, "status": "running"}
+```
+
+`GET /api/server/status` требует токен и возвращает подробную диагностику с basename вместо локальных путей. Неуспешная проверка токена не обновляет idle timer.
+
+Все dashboard-ответы получают CSP и защитные headers, включая `Referrer-Policy: no-referrer` и `X-Content-Type-Options: nosniff`.
+
+## Карта endpoints
+
+### Основные GET
 
 ```text
 /api/status
@@ -62,9 +47,14 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/logs/recent
 /api/logs/download
 /api/integrations/status
+/api/notifications/summary
+/api/notifications
+/api/settings/notifications
+/api/notifications/toasts
+/api/telemetry/status
 ```
 
-## Основные POST endpoints
+### Основные POST и PUT
 
 ```text
 /api/cache/rebuild
@@ -74,333 +64,240 @@ http://127.0.0.1:8766/?token=<token>#/home
 /api/dashboard/settings
 /api/profile
 /api/statistics/query
+/api/statistics/fsrs/query
 /api/search/query
 /api/search/inspect
+/api/triage/query
+/api/triage/recheck
+/api/inspection-profiles/query
+/api/inspection-profiles/validate
+/api/inspection-profiles/update
+/api/card-display-formatters/query
+/api/card-display-formatters/validate
+/api/card-display-formatters/update
 /api/entities/cards/actions
 /api/entities/notes/actions
 /api/actions/<action>
+/api/notifications/read
+/api/notifications/read-all
+/api/settings/notifications
+/api/notifications/toasts
+/api/notifications/toast-delivered
+/api/telemetry/events
+/api/telemetry/delete
+/api/telemetry/check-send
 ```
 
-Server actions и dashboard actions должны оставаться небольшим allowlist-слоем,
-а не произвольным RPC в Anki.
+Действия server и dashboard остаются allowlist, а не произвольным RPC.
 
-## Search query и inspect API
+## Запрос и просмотр Search
 
-`POST /api/search/query` и `POST /api/search/inspect` — отдельный read-only
-foundation Search v1. Оба требуют token, ограничены 8 KiB JSON body,
-отклоняют unknown fields и не принимают SQL/arbitrary order. Query использует
-native Anki grammar, bounded structured filters, page sizes `25|50|100` и hard
-cap 2000. Response различает фактический `pageCount` и cap-derived `pageLimit`;
-для пустого результата допустимы `page=1`, `pageCount=0`, а страница в пределах
-`pageLimit` за текущим `pageCount` возвращает пустой `items`. Inspect принимает
-ровно один decimal string `cardId` или `noteId`. Frontend проверяет полный
-declared row/details contract и всю response metadata до возврата typed data.
-Успех возвращает `{"ok":true,"response":...}`; ошибки типизированы как
-`invalid_search_request`, `search_entity_not_found`, `search_unavailable`,
-`search_failed`, `search_timeout`. Полный request/response и bounding contract:
-`docs/search-query-foundation.md`.
+`POST /api/search/query` и `POST /api/search/inspect`:
 
-## Entity actions API
+- защищены токеном;
+- принимают только POST;
+- принимают только JSON;
+- ограничены телом 8 КиБ.
 
-`POST /api/entities/cards/actions` и `/api/entities/notes/actions` требуют
-token, POST и JSON body до 8 KiB. Card allowlist: suspend/unsuspend, set/clear
-flag, bury/unbury, move_to_deck. Note allowlist: add_tags/remove_tags. Полная
-пачка из `1..200` decimal string IDs разрешается до mutation; stale ID не
-приводит к частичному изменению. Tags ограничены 20 нативными тегами и 1000
-символами. Success envelope содержит stable result code, requested/affected/
-unchanged counts и `undoable`; frontend не зависит от English message.
+Обычные query и inspect требуют точное значение `schemaVersion: 2`. Schema v1 не является alias. Query использует нативную грамматику Anki, ограниченные фильтры, размеры страницы `25 | 50 | 100` и жёсткое ограничение 2000. Inspect принимает ровно один десятичный строковый `cardId` или `noteId`.
 
-Изменяющая пачка использует один official Anki operation wrapper и один undo
-step. Move повторно проверяет normal destination server-side, отклоняет
-filtered destination и source cards с `odid > 0`. Typed statuses: validation и
-filtered destination — `400`, stale entity/deleted destination/filtered source
-— `409`, unavailable/failure — `503`, timeout — `504`. Полный контракт:
-`docs/search-v1-and-safe-actions.md`.
+Строки и подробности карточек v2:
 
-## Settings API
+```text
+displayText
+displaySource      browser_question | reviewer_front | none
+displayStatus      available | media_only | unavailable
+displayTruncated
+```
 
-`GET /api/dashboard/settings` возвращает normalized public settings и
-`deckOptions`. `POST` принимает partial nested patch только для allowlisted
-sections `dashboard`, `report`, `data`, `server`. Unknown/internal fields и
-invalid enum/type/range получают `400`:
+Alias карточки `primaryText` отсутствует. Строки и подробности заметок сохраняют `primaryText` заметки и не получают поля отображения карточки.
+
+Parser frontend отклоняет старые schema, aliases, неизвестные ключи, повреждённые ID, расхождение количества и несогласованное состояние отображения. `search_busy` означает, что уже выполняется один широкий нативный query; exact inspect не блокируется этим gate.
+
+Metadata Search остаётся отдельным вариантом запроса v1:
 
 ```json
-{
-  "error": "invalid_settings",
-  "fieldErrors": {"server.port": "..."},
-  "message": "Проверьте значения настроек.",
-  "ok": false
-}
+{"kind": "metadata", "requestId": "search-metadata-1"}
 ```
 
-Успешный ответ возвращает фактически сохранённое normalized state. Полный
-contract: `docs/settings-hub.md`.
+Ошибки Search:
 
-## Profile API
+```text
+400 invalid_search_request
+404 search_entity_not_found
+409 search_busy
+503 search_unavailable
+503 search_failed
+504 search_timeout
+```
 
-`GET /api/profile` возвращает public `ProfileModel`; `POST` принимает только
-`customStudyStartedOn` и `deckOverviewSort`. Computed metrics, identity и
-unknown fields не writable. Invalid values получают `400` и `fieldErrors`.
-Source of truth — per-profile runtime `profile.json`; public ответ не содержит
-token или runtime path. Полный contract: `docs/profile-mvp.md`.
+Полный контракт: [`search-v1-and-safe-actions.md`](search-v1-and-safe-actions.md).
 
-## Payload source of truth
+## Запрос Triage v4
 
-Backend builder:
+`POST /api/triage/query`:
+
+- защищён токеном;
+- принимает только POST и JSON;
+- ограничен телом 8 КиБ;
+- требует точное значение `schemaVersion: 4`.
+
+Автоматический запрос объединяет ограниченные источники обучения за период, текущего содержимого, активных Signals и идентичности Search. Продолжение текущего содержимого запускается вручную и ограничено cursor. Рабочий набор Search принимает от 1 до 200 точных ID карточек и сохраняет порядок первого появления.
+
+Ответ содержит типизированные состояния источников и содержимого, количества, согласованность cursor, стабильные причины и компактную идентичность, принадлежащую Search. Полный предпросмотр и media, необработанный revlog, значения заметок, произвольный query, исключения, токен и runtime-путь отсутствуют.
+
+## Recheck конкретной карточки v1
+
+`POST /api/triage/recheck`:
+
+- защищён токеном;
+- принимает только POST и JSON;
+- ограничен телом 8 КиБ;
+- требует точное значение `schemaVersion: 1`;
+- сериализован через `QueryOp`.
+
+Запрос содержит:
+
+```text
+cardId
+expectedNoteId
+reasonIds (1..4)
+scope
+```
+
+Recheck оценивает только конкретную карточку и переиспользует канонические источники Triage v4. Ответ возвращает типизированное состояние источников, `entityStatus`, `contentChecks` и текущий канонический элемент либо `null`.
+
+Resolved допустим только при полностью авторитетном покрытии и отсутствии актуальных причин. Частичное, недоступное или ошибочное состояние источника, изменение authority профиля, несовпадение идентичности, отсутствующая или изменённая сущность и ошибка collection работают по принципу fail closed.
+
+Полные контракты:
+
+- [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
+- [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
+
+## API formatter отображения карточки
+
+Endpoints:
+
+```text
+/api/card-display-formatters/query
+/api/card-display-formatters/validate
+/api/card-display-formatters/update
+```
+
+Они защищены токеном, принимают только POST, используют точную schema v1 и ограничение тела 64 КиБ.
+
+Состояния store:
+
+```text
+empty | available | corrupt | future_schema | unavailable
+```
+
+`validate` ничего не сохраняет и не читает collection. `update` принимает только `save` или `delete` с `expectedRevision`. API не раскрывает необработанный HTML, значения заметок, содержимое media, пути, исключения renderer или произвольный язык выражений.
+
+Полный контракт: [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
+
+## API Inspection Profiles
+
+```text
+POST /api/inspection-profiles/query
+POST /api/inspection-profiles/validate
+POST /api/inspection-profiles/update
+```
+
+Endpoints используют текущий токен, строгий JSON и ограничение 64 КиБ.
+
+Query возвращает ограниченные структуры, fingerprints, состояние жизненного цикла, сохранённый профиль и неавторитетное suggestion. Validation работает только на чтение. Update изменяет локальный store профилей с optimistic-проверками revision и fingerprint.
+
+Причины по содержимому создают только подтверждённые и актуальные профили. Состояния suggested, disabled, needs-review, missing, future, corrupt и unavailable работают по принципу fail closed.
+
+Полный контракт: [`inspection-profiles-v1.md`](inspection-profiles-v1.md).
+
+## API действий над сущностями
+
+```text
+POST /api/entities/cards/actions
+POST /api/entities/notes/actions
+```
+
+Требования: токен, POST, JSON и ограничение тела 8 КиБ.
+
+Allowlist карточек:
+
+```text
+suspend | unsuspend | set_flag | clear_flag | bury | unbury | move_to_deck
+```
+
+Allowlist заметок:
+
+```text
+add_tags | remove_tags
+```
+
+Пакет содержит от 1 до 200 точных десятичных ID. Один устаревший ID отклоняет весь пакет. Mutations используют официальные wrappers Anki и один нативный шаг undo.
+
+Успех действия, включая `action.no_changes`, не доказывает устранение проблемы Cards. Оно определяется только явным `/api/triage/recheck`.
+
+## API Settings и Profile
+
+`GET/POST /api/dashboard/settings` публикует нормализованные публичные настройки и принимает только частичные изменения из allowlist.
+
+`GET/POST /api/profile` публикует публичные данные профиля. Доступные для записи поля:
+
+```text
+customStudyStartedOn
+deckOverviewSort
+```
+
+Вычисляемые идентичность и метрики доступны только для чтения.
+
+## Statistics и FSRS
+
+`POST /api/statistics/query` принимает типизированные scope, period, granularity и comparison.
+
+`POST /api/statistics/fsrs/query` принимает документированные read-only-операции FSRS.
+
+Произвольные Search, SQL и необработанные строки revlog, карточек и заметок запрещены.
+
+## Notifications и телеметрия
+
+Endpoints Notification используют ограниченную schema v1 и локальные ID уведомлений. Endpoints телеметрии принимают только ограниченные технические события после явного согласия.
+
+Удалённая телеметрия исключает содержимое collection, имена и значения полей, queries Search, ID карточек, заметок и колод, компактный текст отображения, имена media-файлов и URL с токеном.
+
+## Источники истины payload
+
+Backend:
 
 ```text
 anki_study_report/dashboard_payload.py
 ```
 
-Frontend type contract:
+Frontend:
 
 ```text
 web-dashboard/src/types/report.ts
 ```
 
-Payload tests:
+Канонический Cards использует `/api/triage/query` и `/api/triage/recheck`. Устаревший `attentionCards` остаётся compatibility-поверхностью для других потребителей.
+
+## Предпросмотр и media
+
+Просмотр Search содержит санитизированный `renderedPreview` рядом с компактной идентичностью. Полный предпросмотр загружается только для активной карточки.
+
+URL media:
 
 ```text
-tests/test_dashboard_payload.py
-tests/test_attention_cards.py
-web-dashboard/src/lib/cardAttention.test.ts
-web-dashboard/src/pages/CardsPage.test.tsx
+/api/media?name=<validated-media-name>&token=<token>
 ```
 
-## Top-level StudyReport shape
+Обязательны backend-проверка имени файла, sanitizer, изоляция Shadow DOM и проверка токена. Запрещены `file:`, `javascript:`, iframe и выполнение JavaScript шаблона.
 
-Текущая frontend модель `StudyReport` содержит:
+## Текущий статус Core
 
 ```text
-dataSource?
-metadata
-summary
-kpis
-answerDistribution
-activity
-comparison?
-decks
-attentionCards?
-attentionCardsStatus?
-noteTypeCatalog?
-forecast
-fsrs
-recommendations
-cache?
-cacheDebug?
-performance?
-today?
-profile?
-activityHub?
-deckHub?
-statisticsHub?
+C1.5R.0–R.7 — завершено; принято владельцем
+C1.6 — завершено; принято владельцем; влито в core
+C1.6B — условный этап; не начат
+Core C1 — завершён
+C2 — implementation candidate; exact-SHA integration closeout pending
 ```
-
-Backend сейчас строит основной contract через:
-
-```python
-build_dashboard_report_payload(metrics, metadata, cache_summary=None)
-```
-
-Ключи, которые должны оставаться стабильными для dashboard:
-
-```text
-metadata
-summary
-kpis
-answerDistribution
-activity
-comparison
-decks
-attentionCards
-attentionCardsStatus
-noteTypeCatalog
-forecast
-fsrs
-recommendations
-cache
-```
-
-## Today slice
-
-Optional `today` содержит Home-only current-day view:
-
-```text
-metadata, summary, kpis, answerDistribution, activity,
-comparison, decks, recommendations
-```
-
-Он строится строго для `metadata.todayDate`. Top-level historical report не
-урезается и остаётся source для Calendar, Decks и Cards. `#/home` использует
-`today`, когда slice присутствует; fallback на top-level нужен только для
-старого payload/dev fixture.
-
-## Profile slice
-
-Optional `profile` содержит `identity`, `studyHistory`, `activity`, `decks` и
-`preferences`. В runtime Stage 3 он публикуется всегда и строится из исходного
-all-collection cache snapshot независимо от dashboard scope. Optional type
-сохраняет совместимость frontend с legacy fixtures/старым report.
-
-## Activity Hub slice
-
-Optional `activityHub` — canonical Stage 4 source для `#/calendar`: scoped
-one-year `days`, exact period bounds, availability, day-deck details и derived
-daily/weekly feed. Runtime публикует slice всегда; optional TS field сохраняет
-совместимость со старыми fixtures. Contract не содержит raw revlog/card data и
-не добавляет endpoint. См. `docs/activity-calendar-v2.md`.
-
-## Deck Hub slice
-
-Optional `deckHub` — canonical Stage 5 source для `#/decks`. Runtime публикует
-его из current normal-deck catalog и scoped direct rows. Shape normalized:
-`scope`, compact `summary`, `nodes` map и `rootIds`; каждый node разделяет
-`directMetrics`/`subtreeMetrics`, `aggregateHealth`, `dataConfidence` и
-`descendantIssues`. Filtered decks отсутствуют в nodes. Legacy `decks`
-сохранён для Home/Cards/compatibility. См. `docs/decks-v2.md`.
-
-Deck Browser использует token-protected `POST /api/actions/open-deck-browser`
-с body `{deckId, mode: subtree|direct}`. Backend разрешает current canonical
-name и не принимает arbitrary query через этот action.
-
-## Statistics Hub и query
-
-Runtime `statisticsHub` содержит default 90d dashboard query и
-`initialResult`, coverage/capabilities и compact normal-deck options.
-`POST /api/statistics/query` принимает только typed
-`scope/period/granularity/comparison` и возвращает тот же result type.
-Endpoint требует token, ограничен 8 KiB, отклоняет arbitrary search/SQL/unknown
-fields и не публикует raw revlog/card/note data. Secondary empty-body action:
-`POST /api/actions/open-native-stats`. Полный contract:
-`docs/statistics-v1.md`.
-
-## Card-level contract
-
-Карточки внимания приходят в canonical ключе:
-
-```text
-attentionCards
-```
-
-Backend должен отдавать актуальный `attentionCards` плюс
-`attentionCardsStatus`; frontend больше не fallback-ит к legacy top-level
-aliases. Top-level `problemCards` больше не является supported payload alias
-после Stage 9; top-level `cardIssues` удален после Stage 10; top-level `cards`
-удален после Stage 11.
-
-Важные поля карточки:
-
-```text
-cardId
-noteId
-deckName
-frontPreview/front
-preview
-renderedPreview
-issues
-riskScore
-againCount
-lapses
-averageAnswerSeconds
-passRate
-lastReviewedAt/lastReviewed
-searchQuery/browserSearch
-```
-
-`renderedPreview` может содержать:
-
-```text
-frontHtml
-backHtml
-frontPlainText
-backPlainText
-css
-mediaRefs
-cardOrd
-cardId
-renderSource
-renderStatus
-fallbackReason/reason
-```
-
-HTML/CSS/media должны проходить sanitizer. Нельзя отдавать произвольные
-`file:`, `javascript:` или опасные inline styles в dashboard.
-
-## Media preview
-
-Карточки используют ссылки вида:
-
-```text
-/api/media?name=<media-name>&token=<token>
-```
-
-Media name должен проходить safe filename validation на backend. Frontend может
-добавлять token к уже нормализованным media refs.
-
-## Cache summary
-
-`cache` описывает состояние SQLite cache:
-
-```text
-status
-dataSource
-usedFor
-version
-createdAt/updatedAt
-lastRevlogId
-cachedDays
-cachedDeckDays
-isBuilding
-error/lastError
-fallbackReason
-limitations
-periodSummary
-cacheDeckSummary
-performance
-```
-
-Cache может быть source для части dashboard, но не должен менять публичный
-frontend contract.
-
-Когда report строится через cache adapter, summary сохраняет status diagnostics
-(`version`, `isBuilding`, `error`, `lastError`) вместе с `fallbackReason`.
-`mixed` overlay ограничен cache-backed sections; card-level поля остаются за
-canonical live payload (`attentionCards` / `attentionCardsStatus`).
-
-## Правило изменения контракта
-
-Если меняется форма payload:
-
-1. Обновить `dashboard_payload.py`.
-2. Обновить `web-dashboard/src/types/report.ts`.
-3. Обновить Python tests на точную форму payload.
-4. Обновить frontend normalization/tests.
-5. Обновить этот документ.
-6. Прогнать минимум payload tests + frontend typecheck/tests.
-
-## Product notices и privacy API
-
-Отдельные token-protected local endpoints не входят в `StudyReport` payload:
-
-```text
-GET  /api/product-notices
-POST /api/product-notices/seen
-GET  /api/privacy
-POST /api/privacy
-GET  /api/telemetry/status
-POST /api/telemetry/events
-POST /api/telemetry/check-send
-POST /api/telemetry/delete
-```
-
-`/seen`, `/api/telemetry/check-send` и `/api/telemetry/delete` принимают только `{}`. Privacy POST принимает ровно `purposes` с двумя
-обязательными boolean полями. GET возвращает effective purposes, re-consent
-state и точные allowed/never-collected категории. Telemetry event POST
-принимает только strict semantic union; status никогда не возвращает remote ID
-или write token. React использует только local endpoints. Подробная shape —
-`docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.
-
-Check/send отвечает `202 started`, `409 busy|deletion_pending`,
-`400 purposes_disabled` или `503 unavailable`; GET для этого маршрута получает
-`405`. Status включает только bounded enrollment/sender state, queue counters и
-timestamps.

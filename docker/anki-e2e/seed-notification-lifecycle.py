@@ -8,6 +8,11 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+from typing import Any
+
+
+CARD_ANCHORS = ("cards-action-recheck", "cards-low-success")
+DECK_ANCHOR = "cards-action-recheck"
 
 
 def main() -> int:
@@ -17,12 +22,7 @@ def main() -> int:
     parser.add_argument("--artifacts-dir", required=True, type=Path)
     args = parser.parse_args()
 
-    fixture = json.loads((args.artifacts_dir / "fixture-summary.json").read_text(encoding="utf-8"))
-    anchor = datetime.fromtimestamp(int(fixture["reviewAnchorMs"]) / 1000, tz=timezone.utc).replace(microsecond=0)
-    card_ids = [int(item) for values in fixture["cardIds"].values() for item in values]
-    deck_id = int(fixture["actionDeckIds"]["source"])
-    if len(card_ids) < 2 or deck_id <= 0:
-        raise RuntimeError("Notification E2E fixture requires two cards and one deck.")
+    anchor, card_ids, deck_id = load_real_deck_context(args.artifacts_dir)
 
     module = load_store(args.addon_dir / "notification_store.py")
     data_dir = (args.profile_dir / "addon_data" / "anki_study_report_e2e").resolve()
@@ -76,7 +76,10 @@ def main() -> int:
         category_counts = Counter(item["category"] for item in history["items"])
         proof = {
             "ok": True,
-            "fixtureSchemaVersion": 1,
+            "fixtureSchemaVersion": 2,
+            "contentSource": "committed-real-apkg-anchors",
+            "anchorIds": list(CARD_ANCHORS),
+            "deckAnchorId": DECK_ANCHOR,
             "normalEvaluationWasEmpty": True,
             "notificationCount": history["total"],
             "activeSignalCount": store.summary()["activeSignalCount"],
@@ -88,8 +91,60 @@ def main() -> int:
         (args.artifacts_dir / "notification-fixture-proof.json").write_text(json.dumps(proof, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     finally:
         store.close()
-    print("Seeded isolated notification lifecycle fixture.")
+    print("Seeded isolated notification lifecycle state from real-deck anchors.")
     return 0
+
+
+def load_real_deck_context(artifacts_dir: Path) -> tuple[datetime, list[int], int]:
+    anchors_report = read_pass_report(artifacts_dir / "anchor-resolution-report.json")
+    scenarios_report = read_pass_report(artifacts_dir / "scenario-application-report.json")
+    anchors = anchors_report.get("anchors")
+    if not isinstance(anchors, dict):
+        raise RuntimeError("Real-deck anchor report must contain an anchors object.")
+
+    card_ids = [positive_int(anchor_row(anchors, anchor_id).get("cardId"), f"{anchor_id}.cardId") for anchor_id in CARD_ANCHORS]
+    if len(set(card_ids)) != len(card_ids):
+        raise RuntimeError("Notification E2E requires two distinct manifest card anchors.")
+    deck_id = positive_int(anchor_row(anchors, DECK_ANCHOR).get("deckId"), f"{DECK_ANCHOR}.deckId")
+
+    scheduler_day = scenarios_report.get("schedulerDay")
+    if not isinstance(scheduler_day, dict):
+        raise RuntimeError("Scenario report must contain schedulerDay evidence.")
+    start_ms = positive_int(scheduler_day.get("startMs"), "schedulerDay.startMs")
+    cutoff_ms = positive_int(scheduler_day.get("cutoffMs"), "schedulerDay.cutoffMs")
+    if start_ms >= cutoff_ms:
+        raise RuntimeError("Scheduler-day start must be earlier than its cutoff.")
+    anchor = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).replace(microsecond=0)
+    return anchor, card_ids, deck_id
+
+
+def read_pass_report(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Could not read required real-deck report {path.name}: {exc}") from exc
+    if not isinstance(value, dict) or value.get("schemaVersion") != 1 or value.get("status") != "PASS":
+        raise RuntimeError(f"Required real-deck report is not a schema-v1 PASS: {path.name}")
+    return value
+
+
+def anchor_row(anchors: dict[str, Any], anchor_id: str) -> dict[str, Any]:
+    row = anchors.get(anchor_id)
+    if not isinstance(row, dict) or row.get("status") != "PASS":
+        raise RuntimeError(f"Required notification anchor is unavailable: {anchor_id}")
+    return row
+
+
+def positive_int(value: Any, label: str) -> int:
+    if isinstance(value, bool):
+        raise RuntimeError(f"{label} must be a positive integer.")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"{label} must be a positive integer.") from exc
+    if parsed <= 0:
+        raise RuntimeError(f"{label} must be a positive integer.")
+    return parsed
 
 
 def load_store(path: Path):

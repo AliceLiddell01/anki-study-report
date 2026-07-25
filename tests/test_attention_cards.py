@@ -144,6 +144,26 @@ DEFAULT_NOTE_PROFILE_DIAGNOSTICS = {
 }
 
 
+def test_triage_candidate_collector_uses_one_bounded_internal_raw_field_path():
+    metrics = fresh_import_addon_module("metrics")
+    rows = [(
+        123, 456, 10, 0, 1, 0, "", "Front\x1f", 1, 0, 1_783_036_800_000, 1_783_036_800_000,
+    )]
+    col = FakeCollection(rows, model_with_fields("Front", "Meaning"))
+    attention, candidates, status = metrics.collect_triage_candidates_with_status(
+        col, 1_783_000_000_000, 1_783_100_000_000, max_results=100
+    )
+    assert status == {
+        "status": "available", "itemCount": 1, "skippedCount": 0,
+        "truncated": False, "errorCode": None,
+    }
+    assert candidates == [{
+        "cardId": 123, "noteId": 456, "noteTypeId": 1, "templateOrdinal": 0,
+        "rawFields": "Front\x1f", "siblingCount": 1,
+    }]
+    assert all("rawFields" not in item for item in attention)
+
+
 def test_collect_attention_cards_builds_read_only_payload():
     metrics = fresh_import_addon_module("metrics")
     rows = [
@@ -192,7 +212,7 @@ def test_collect_attention_cards_builds_read_only_payload():
             "fallbackReason": "native_unavailable_no_get_card",
             "frontHtml": "<b>鑑みる</b>",
             "backHtml": "<b>鑑みる</b><hr>consider",
-            "css": ".card { color: red; }",
+            "css": "@scope (.card){.card{color:red;}}",
             "frontPlainText": "鑑みる",
             "backPlainText": "鑑みる consider",
             "mediaRefs": [],
@@ -291,6 +311,31 @@ def test_collect_attention_cards_builds_read_only_payload():
         ],
         "noteTypeCatalogCount": 1,
     }
+
+
+def test_collect_attention_cards_can_skip_full_rendered_preview_for_triage(monkeypatch):
+    metrics = fresh_import_addon_module("metrics")
+    rows = [(
+        123, 456, 10, 8, 1, " leech ", "Front\x1fBack",
+        4, 3, 40_000, 1_783_036_800_000,
+    )]
+    col = FakeCollection(rows, model_with_fields("Front", "Back"))
+    monkeypatch.setattr(
+        metrics,
+        "build_rendered_preview_native_first",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("preview must not render")),
+    )
+
+    payload = metrics.collect_attention_cards(
+        col,
+        1_783_000_000_000,
+        1_783_100_000_000,
+        include_rendered_preview=False,
+    )
+
+    assert len(payload) == 1
+    assert "renderedPreview" not in payload[0]
+    assert payload[0]["frontPreview"] == "Front"
 
 
 def test_collect_attention_cards_tolerates_unknown_note_types():

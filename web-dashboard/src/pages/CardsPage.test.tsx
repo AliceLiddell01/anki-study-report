@@ -1,360 +1,212 @@
-import React from "react";
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  ANKI_PREVIEW_MODE_CONFIG,
-  AnkiCardShadowPreview,
-  buildShadowPreviewDocument,
-  calculateAdaptivePreviewLayout,
-} from "../components/AnkiCardShadowPreview";
-import CardsPage from "./CardsPage";
-import type { StudyReport } from "../types/report";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "../i18n";
+import type { CardsTriageWorkspace } from "../hooks/useCardsTriageWorkspace";
+import type { SearchInspectResponse } from "../types/search";
+import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/triage";
+import CardsPage, { CARDS_WIDE_WORKSPACE_QUERY } from "./CardsPage";
 
-const baseReport: StudyReport = {
-  metadata: {
-    title: "Report",
-    period: "today",
-    selectedDecks: [],
-    includeChildren: true,
-    answerMode: "pass_fail",
-    createdAt: "2026-07-03",
-    detailMode: "normal",
-    deletedCardReviews: 0,
-    unavailableTrackerNotes: [],
-  },
-  summary: {
-    verdict: "",
-    riskLevel: "neutral",
-    mainAction: "",
-    warning: "",
-    newCardsAdvice: "",
-  },
-  kpis: [],
-  answerDistribution: [],
-  activity: {
-    available: false,
-    activeDays: 0,
-    missedDays: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    bestDay: "",
-    weekdayAverage: [],
-    days: [],
-  },
-  decks: [],
-  attentionCards: [
-    {
-      cardId: 123,
-      noteId: 456,
-      deckName: "Japanese",
-      frontPreview: "legacy front",
-      preview: {
-        frontText: "表だけ",
-        backText: "back-side meaning",
-        primary: "表だけ",
-        secondary: "translation must stay hidden",
-        tertiary: "cid:999 / template meta",
-        mediaBadges: ["audio", "image", "gif"],
-        noteTypeName: "Japanese vocab",
-        cardTemplateName: "Recognition",
-        detectedKind: "japanese_vocab",
-      },
-      renderedPreview: {
-        renderStatus: "sanitized",
-        frontHtml:
-          '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word">表だけ</span><img src="/api/media?name=front.gif">',
-        backHtml:
-          '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio answer.mp3" data-audio-name="answer.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=answer.mp3"></audio></span><b>back-side meaning</b>',
-        frontPlainText: "表だけ",
-        backPlainText: "back-side meaning",
-        css: ".word { color: red; }",
-        cardOrd: 0,
-        mediaRefs: [
-          { name: "front.gif", type: "image", url: "/api/media?name=front.gif" },
-          { name: "voice.mp3", type: "audio", url: "/api/media?name=voice.mp3" },
-          { name: "answer.mp3", type: "audio", url: "/api/media?name=answer.mp3" },
-        ],
-      },
-      issues: ["missing pitch", "AUDIO", "missing_audio"],
-      riskScore: 80,
-      againCount: 2,
-      lapses: 1,
-      averageAnswerSeconds: 12,
-      passRate: 0.5,
-      lastReviewedAt: "2026-07-03",
-      searchQuery: "cid:123",
-    },
-  ],
-  attentionCardsStatus: {
-    status: "available",
-    scannedCards: 1,
-    returnedCards: 1,
-    source: "fresh",
-    noteTypeProfilesCount: 1,
-  },
-  noteTypeCatalog: [
-    {
-      noteTypeId: 1,
-      name: "Japanese vocab",
-      noteCount: 120,
-      cardTemplateCount: 2,
-      fields: ["Word", "Meaning", "Audio"],
-      templates: [{ ord: 0, name: "Recognition" }, { ord: 1, name: "Production" }],
-      cssAvailable: true,
-      usedInCurrentCards: true,
-    },
-    {
-      noteTypeId: 2,
-      name: "Basic",
-      noteCount: 50,
-      cardTemplateCount: 1,
-      fields: ["Front", "Back"],
-      templates: [{ ord: 0, name: "Card 1" }],
-      cssAvailable: false,
-      usedInCurrentCards: false,
-    },
-  ],
-  forecast: {
-    available: false,
-    tomorrow: 0,
-    next7Days: 0,
-    next30Days: 0,
-    activeDayBaseline: 0,
-    overloadRisk: "neutral",
-    daily: [],
-    recommendation: "",
-  },
-  fsrs: {
-    predictedRecall: null,
-    cardsBelowTarget: 0,
-    highForgettingRisk: 0,
-    averageDifficulty: null,
-    futureLoad30Days: 0,
-    settings: {
-      enabled: false,
-      desiredRetention: null,
-      helperDetected: false,
-      helperConfigAvailable: false,
-      rescheduleEnabled: false,
-      autoDisperse: false,
-    },
-  },
-  recommendations: {
-    mainAction: "",
-    why: "",
-    avoid: "",
-    checklist: [],
-  },
+const workspaceMock = vi.fn<() => CardsTriageWorkspace>();
+let wideMode = true;
+vi.mock("../hooks/useCardsTriageWorkspace", () => ({ useCardsTriageWorkspace: () => workspaceMock() }));
+vi.mock("../hooks/useMediaQuery", () => ({ useMediaQuery: () => wideMode }));
+
+const learningReason: TriageReason = {
+  reasonId: "learning:1", code: "learning.repeated_again", family: "learning", scope: "card",
+  priority: "high", sources: ["attention"], evidence: [{ kind: "review_counts", againCount: 4, periodStartMs: 1, periodEndMs: 7 * 86400000 + 1 }], detectedAtMs: 2,
 };
+const contentReason: TriageReason = {
+  reasonId: "content:1", code: "content.audio_missing", family: "content", scope: "note",
+  priority: "medium", sources: ["profile_checks"], evidence: [{ kind: "profile_check", profileId: "note-type-7", checkId: "audio", checkKind: "contains_audio", roles: ["audio"], fields: [{ ordinal: 2, name: "Audio" }], expectedCondition: "contains_audio", actualTextLength: null, expectedTextLength: null, marker: "audio", markerPresent: false, profileRevision: 2, fingerprint: "a".repeat(64), affectedSiblingCount: 2, templateOrdinals: [0] }], detectedAtMs: 2,
+};
+const items: TriageItem[] = [
+  { itemId: "card:1001", availability: "available", cardId: "1001", noteId: "2001", deck: { deckId: "3", name: "Japanese::N5" }, noteType: { noteTypeId: "7", name: "Japanese Vocabulary" }, template: { ordinal: 0, name: "Recognition" }, displayText: "【に】（する）", displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, priority: "high", primaryReasonCode: learningReason.code, reasons: [learningReason, contentReason], sources: ["attention", "profile_checks"], cardState: { state: "review", suspended: false, buried: false, flag: 1 }, inspect: { mode: "cards", cardId: "1001" } },
+  { itemId: "card:1002", availability: "available", cardId: "1002", noteId: "2002", deck: { deckId: "4", name: "Programming" }, noteType: { noteTypeId: "8", name: "Basic" }, template: { ordinal: 0, name: "Card 1" }, displayText: "", displaySource: "reviewer_front", displayStatus: "media_only", displayTruncated: false, priority: "medium", primaryReasonCode: contentReason.code, reasons: [contentReason], sources: ["profile_checks"], cardState: { state: "suspended", suspended: true, buried: false, flag: 0 }, inspect: { mode: "cards", cardId: "1002" } },
+];
+const response: TriageQueryResponse = {
+  schemaVersion: 4, dataset: "automatic", status: "partial", generatedAtMs: 10, totalCount: 2, returnedCount: 2, limit: 100, truncated: false,
+  sourceStatus: { learningCandidates: source("available", 1), contentCandidates: { ...source("available", 1), scannedNoteCount: 500, truncated: true, nextCursor: "500" }, signals: source("unavailable", 0), searchResolver: source("empty", 0), profileChecks: source("available", 1) },
+  contentChecks: { status: "profiles_need_review", confirmedProfileCount: 1, needsReviewProfileCount: 2, disabledProfileCount: 0, suggestedProfileCount: 0, scannedNoteCount: 500, evaluatedNoteCount: 1, failedCheckCount: 1, skippedCount: 1, truncated: true, nextCursor: "500", errorCode: null },
+  items,
+};
+const inspectResponse: SearchInspectResponse<"cards"> = { schemaVersion: 2, mode: "cards", requestId: "cards-1", details: { cardId: "1001", noteId: "2001", deckId: "3", deckName: "Japanese::N5", noteTypeId: "7", noteTypeName: "Japanese Vocabulary", templateOrdinal: 0, templateName: "Recognition", displayText: "【に】（する）", displaySource: "reviewer_front", displayStatus: "available", displayTruncated: false, state: "review", due: 1, interval: 10, repetitions: 5, lapses: 1, flag: 1, tagSummary: ["n5"], deck: { deckId: "3", deckName: "Japanese::N5" }, noteType: { noteTypeId: "7", noteTypeName: "Japanese Vocabulary" }, template: { ordinal: 0, name: "Recognition" }, queue: 2, tags: ["n5"], renderedPreview: { renderStatus: "sanitized", frontHtml: "<b>覚える</b>", backHtml: "<b>remember</b>", frontPlainText: "覚える", backPlainText: "remember", css: "b{font-weight:700}", mediaRefs: [], cardOrd: 0, cardId: 1001, renderSource: "anki_native" } } };
 
-afterEach(() => {
-  vi.unstubAllGlobals();
+beforeEach(async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  await i18n.changeLanguage("ru");
+  wideMode = true;
+  workspaceMock.mockReturnValue(readyWorkspace());
+});
+afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = ""; });
+
+describe("Cards attention inbox", () => {
+  it("removes the spreadsheet table and renders a semantic inbox with one detail surface", () => {
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain('data-testid="cards-inbox"');
+    expect(html.match(/data-testid="cards-inbox-item"/g)).toHaveLength(2);
+    expect(html).not.toContain("<table");
+    expect(html).not.toContain('role="grid"');
+    expect(html).not.toContain('role="listbox"');
+    expect(html).toContain('data-testid="cards-inspector"');
+    expect(html).not.toContain('data-testid="cards-detail-drawer"');
+    expect(html.match(/data-shadow-preview="true"/g)).toHaveLength(1);
+    expect(html).toContain("【に】（する）");
+    expect(html).toContain("+1 причина");
+    expect(html).toContain("Период обучения");
+    expect(html).toContain("Проверить следующие заметки");
+    expect(html).not.toContain("по одной карточке");
+    expect(html).toContain("Фильтры очереди");
+    expect(html).toContain("Область и обновление");
+    expect(html).toContain("cards-detail-metadata");
+    expect(html).toContain("cards-detail-reasons");
+    expect(html).not.toContain("cards-detail-reasons\"><article");
+    expect(html.indexOf("cards-detail-lifecycle")).toBeLessThan(html.indexOf("cards-detail-header"));
+    expect(html.indexOf("cards-detail-metadata")).toBeLessThan(html.indexOf("cards-detail-reasons"));
+    expect(html.indexOf("cards-detail-reasons")).toBeLessThan(html.indexOf("cards-detail-preview"));
+    expect(html.indexOf("cards-detail-preview")).toBeLessThan(html.indexOf("cards-detail-action-zone"));
+    expect(html.indexOf("cards-detail-action-zone")).toBeLessThan(html.indexOf("cards-detail-technical"));
+    expect(html).toContain("workspace-page");
+    expect(html).toContain("workspace-region");
+    expect(html).toContain("workspace-interactive");
+    expect(html).toContain("workspace-selected");
+    expect(html).toContain("workspace-safe-area");
+  });
+
+  it("keeps filter clearing separate from the learning period", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    const selects = Array.from(document.querySelectorAll("select"));
+    const period = selects.find((select) => select.parentElement?.textContent?.includes("Период обучения"))!;
+    await act(async () => { period.value = "30"; period.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(workspace.setLearningPeriodDays).toHaveBeenCalledWith(30);
+    const prioritySelect = selects.find((select) => select.parentElement?.textContent?.includes("Приоритет"))!;
+    await act(async () => { prioritySelect.value = "high"; prioritySelect.dispatchEvent(new Event("change", { bubbles: true })); });
+    const clear = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Очистить фильтры"));
+    expect(clear).toBeTruthy();
+    await act(async () => clear!.click());
+    expect(workspace.setLearningPeriodDays).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
+  it("uses a full-width queue and opens a non-modal drawer on activation", async () => {
+    expect(CARDS_WIDE_WORKSPACE_QUERY).toBe("(min-width: 1200px)");
+    wideMode = false;
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    expect(document.querySelector('[data-testid="cards-detail-drawer"]')).toBeNull();
+    const item = document.querySelector('button[data-card-id="1001"]') as HTMLButtonElement;
+    item.focus();
+    await act(async () => item.click());
+    const drawer = document.querySelector('[data-testid="cards-detail-drawer"]')!;
+    expect(drawer).toBeTruthy();
+    expect(drawer.getAttribute("role")).toBe("region");
+    expect(drawer.getAttribute("aria-modal")).toBeNull();
+    expect(drawer.textContent).toContain("Подробности карточки");
+    expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
+    expect(workspace.activate).toHaveBeenCalledWith(items[0]);
+    const close = drawer.querySelector('button[aria-label*="Закрыть подробности"]') as HTMLButtonElement;
+    await act(async () => close.click());
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[data-testid="cards-detail-drawer"]')).toBeNull();
+    expect(document.activeElement).toBe(item);
+    await act(async () => root.unmount());
+  });
+
+  it("keeps the expanded answer as the existing true modal", async () => {
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть ответ"));
+    expect(expand).toBeTruthy();
+    await act(async () => expand!.click());
+    const modal = document.querySelector('[data-testid="cards-preview-modal"]')!;
+    expect(modal.getAttribute("role")).toBe("dialog");
+    expect(modal.getAttribute("aria-modal")).toBe("true");
+    expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
+    expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).toContain("remember");
+    expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).not.toContain("覚える");
+    await act(async () => root.unmount());
+  });
+
+  it("localizes unavailable compact identity in English", async () => {
+    await i18n.changeLanguage("en");
+    const unavailable: TriageItem = { ...items[1]!, displaySource: "none", displayStatus: "unavailable" };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), activeId: "card:1002", activeItem: unavailable });
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Card text unavailable");
+  });
+
+  it("presents the reason-level resolution lifecycle without bulk or manual resolve controls", () => {
+    const partial = {
+      itemId: items[0]!.itemId,
+      phase: "partially_resolved" as const,
+      actionResult: { schemaVersion: 1 as const, entityType: "cards" as const, action: "suspend" as const, requestedCount: 1, affectedCount: 0, unchangedCount: 1, undoable: false, resultCode: "action.no_changes" as const, args: {} },
+      actionError: null,
+      recheckError: null,
+      reconciliation: { removed: [learningReason], remaining: [contentReason], added: [] },
+    };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), resolution: partial, lastOutcome: partial });
+    const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    expect(html).toContain("Устранено частично");
+    expect(html).toContain("Anki не внёс изменений");
+    expect(html).toContain("Частые ответы «Снова»");
+    expect(html).toContain("Нет аудио");
+    expect(html).toContain("Перепроверить карточку");
+    expect(html).toContain("Успешное действие ещё не означает");
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).not.toContain(">Готово<");
+    expect(html).not.toContain(">Архивировать<");
+  });
+
+  it("announces a global pending mutation and disables conflicting inspector controls", () => {
+    const awaiting = {
+      itemId: items[0]!.itemId,
+      phase: "awaiting_recheck" as const,
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: null,
+    };
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      mutationPending: true,
+      resolution: awaiting,
+    });
+
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const pending = document.querySelector('[data-testid="cards-mutation-pending"]');
+    expect(pending?.getAttribute("aria-busy")).toBe("true");
+    expect(pending?.textContent).toContain("Действие выполняется");
+    const controls = Array.from(document.querySelectorAll("button"));
+    expect(controls.find((button) => button.textContent?.includes("Открыть в Anki"))?.disabled).toBe(true);
+    expect(controls.find((button) => button.textContent?.includes("Перепроверить карточку"))?.disabled).toBe(true);
+  });
 });
 
-function renderCards(displayMode: "table" | "tiles" | "ankiPreview" = "table", report: StudyReport = baseReport) {
-  vi.stubGlobal("window", {
-    location: {
-      search: "?token=test-token",
-    },
-    localStorage: {
-      getItem: () => displayMode,
-      setItem: () => undefined,
-    },
-  });
-  return renderToStaticMarkup(<CardsPage report={report} loadState="ready" />);
+function readyWorkspace(): CardsTriageWorkspace {
+  return {
+    queryStatus: "ready", queryError: null, response,
+    learningPeriodDays: 7, setLearningPeriodDays: vi.fn(),
+    activeId: items[0]!.itemId, activeItem: items[0]!,
+    inspectStatus: "ready", inspectError: null, inspectResponse,
+    openPending: false, openResult: null,
+    resolution: null, lastOutcome: null, focusRequest: { itemId: null, version: 0 }, mutationPending: false,
+    continuationStatus: "idle", continuationError: null, loadedContentPages: 0,
+    scannedNoteCount: 500, hasMoreContent: true, lastContinuationAddedCount: null,
+    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined), runSafeAction: vi.fn(async () => undefined), recheckActive: vi.fn(async () => undefined),
+  };
 }
 
-describe("CardsPage v5 adaptive card previews", () => {
-  it("renders table preview from frontText without secondary, tertiary, cid, or raw media words", () => {
-    const html = renderCards("table");
-
-    expect(html).toContain("表だけ");
-    expect(html).toContain("cards-risk-table");
-    expect(html).toContain('data-testid="cards-table-wrap"');
-    expect(html).toContain('data-testid="cards-risk-table"');
-    expect(html).toContain('data-testid="cards-table-row"');
-    expect(html).toContain('data-testid="cards-table-preview-cell"');
-    expect(html).toContain('data-testid="cards-table-issues"');
-    expect(html).toContain('data-testid="cards-table-actions"');
-    expect(html).toContain("cards-risk-badge");
-    expect(html).toContain("Высокий ·");
-    expect(html).toContain("cards-row-open");
-    expect(html).toContain("Открыть в Anki");
-    expect(html).toContain("cards-row-copy");
-    expect(html).toContain("anki-card-shadow-preview");
-    expect(html).toContain('data-shadow-preview="true"');
-    expect(html).toContain('data-preview-mode="table"');
-    expect(html).toContain("asr-front-preview-table");
-    expect(html).toContain("/api/media?name=front.gif&token=test-token");
-    expect(html).not.toContain("translation must stay hidden");
-    expect(html).not.toContain("back-side meaning");
-    expect(html).not.toContain("/api/media?name=answer.mp3");
-    expect(html).not.toContain("cid:999");
-    expect(html).not.toContain("AUDIO");
-    expect(html).not.toContain("IMAGE");
-    expect(html).not.toContain("GIF");
-    expect(html).not.toContain("нет ударения");
-    expect(html).not.toContain("Медиа:");
-    expect(html).toContain("Нет аудио");
-  });
-
-  it("renders tiles main preview from frontText only", () => {
-    const html = renderCards("tiles");
-    const tileIndex = html.indexOf('data-testid="cards-tile"');
-    const previewSlotIndex = html.indexOf('data-testid="cards-tile-preview-slot"');
-    const metricsIndex = html.indexOf('data-testid="cards-tile-metrics"');
-    const issuesIndex = html.indexOf('data-testid="cards-tile-issues"');
-    const actionsIndex = html.indexOf('data-testid="cards-tile-actions"');
-
-    expect(html).toContain("表だけ");
-    expect(tileIndex).toBeGreaterThanOrEqual(0);
-    expect(previewSlotIndex).toBeGreaterThan(tileIndex);
-    expect(metricsIndex).toBeGreaterThan(previewSlotIndex);
-    expect(issuesIndex).toBeGreaterThan(metricsIndex);
-    expect(actionsIndex).toBeGreaterThan(issuesIndex);
-    expect(html).toContain("anki-card-shadow-preview");
-    expect(html).toContain('data-preview-mode="tile"');
-    expect(html).toContain('data-preview-side="front"');
-    expect(html).toContain('data-testid="cards-tile-meta"');
-    expect(html).toContain("asr-front-preview-tile");
-    expect(html).toContain("/api/media?name=front.gif&token=test-token");
-    expect(html).not.toContain("translation must stay hidden");
-    expect(html).not.toContain("back-side meaning");
-    expect(html).not.toContain("/api/media?name=answer.mp3");
-    expect(html).not.toContain("cid:123");
-  });
-
-  it("renders Anki preview as answer-only from the back template", () => {
-    const html = renderCards("ankiPreview");
-
-    expect(html).toContain("Вид после ответа");
-    expect(html).toContain('data-testid="anki-preview-answer"');
-    expect(html).toContain('data-shadow-preview-mode="preview"');
-    expect(html).toContain('data-preview-mode="preview"');
-    expect(html).toContain('data-preview-side="answer"');
-    expect(html).not.toContain('data-testid="anki-preview-front"');
-    expect(html).not.toContain('data-testid="anki-preview-back"');
-    expect(html).not.toContain(".asr-card-rendered .word");
-    expect(html).toContain("back-side meaning");
-    expect(html).toContain("/api/media?name=answer.mp3&token=test-token");
-    expect(html).not.toContain("/api/media?name=front.gif&token=test-token");
-    expect(html).not.toContain("/api/media?name=voice.mp3&token=test-token");
-    expect(html).toContain("asr-card-replay-button");
-    expect(html).toContain("asr-card-audio");
-    expect(html).not.toContain(" controls");
-    expect(html).not.toContain(">Back</h3>");
-    expect(html).not.toContain("Both");
-    expect(html).not.toContain("Anki-like preview fallback");
-    expect(html).not.toContain("Упрощённое превью");
-  });
-
-  it("falls back to the front preview when the rendered answer is unavailable", () => {
-    const report = JSON.parse(JSON.stringify(baseReport)) as StudyReport;
-    const rendered = report.attentionCards?.[0]?.renderedPreview;
-    if (rendered) {
-      rendered.backHtml = "";
-      rendered.reason = "answer render skipped";
-    }
-    const html = renderCards("ankiPreview", report);
-
-    expect(html).toContain("Вид после ответа");
-    expect(html).toContain('data-testid="anki-preview-answer"');
-    expect(html).toContain("表だけ");
-    expect(html).toContain("/api/media?name=front.gif&token=test-token");
-    expect(html).toContain("Ответ недоступен, показана лицевая сторона: answer render skipped");
-    expect(html).not.toContain("back-side meaning");
-  });
-
-  it("keeps template diagnostics closed and hides raw debug wording", () => {
-    const html = renderCards("table");
-
-    expect(html).toContain("Настройки отображения");
-    expect(html).toContain("Диагностика шаблонов");
-    expect(html).toContain("Типов записей в коллекции");
-    expect(html).toContain("Japanese vocab");
-    expect(html).not.toContain("localStorage");
-    expect(html).not.toContain("Config contract");
-    expect(html).not.toContain("strategy auto/structured");
-  });
-
-  it("builds a shadow preview document with card classes, note CSS, and safe HTML", () => {
-    const renderedHost = renderToStaticMarkup(
-      <AnkiCardShadowPreview
-        mode="table"
-        html='<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word-focus" style="color: rgb(255, 165, 0)">要望する</span>'
-        css=".word-focus { font-weight: 700; }"
-        title="要望する"
-        cardOrd={1}
-        renderSource="anki_native"
-        nightMode
-      />,
-    );
-    const document = buildShadowPreviewDocument({
-      mode: "table",
-      html: '<span class="asr-card-replay"><button class="asr-card-replay-button" type="button" aria-label="Play audio voice.mp3" data-audio-name="voice.mp3"><span class="asr-card-replay-icon" aria-hidden="true">&#9658;</span></button><audio class="asr-card-audio" preload="none" src="/api/media?name=voice.mp3"></audio></span><span class="word-focus">要望する</span>',
-      css: ".word-focus { font-weight: 700; }",
-      cardOrd: 1,
-      nightMode: true,
-    });
-
-    expect(renderedHost).toContain('data-shadow-preview="true"');
-    expect(renderedHost).toContain('data-preview-side="front"');
-    expect(renderedHost).toContain('data-render-source="anki_native"');
-    expect(renderedHost).toContain('data-preview-measured="false"');
-    expect(renderedHost).toContain('data-preview-overflow="false"');
-    expect(renderedHost).toContain('data-preview-scale="0.500"');
-    expect(renderedHost).toContain("data-shadow-preview-template");
-    expect(renderedHost).toContain("asr-card-replay-button");
-    expect(renderedHost).toContain("asr-card-audio");
-    expect(renderedHost).not.toContain(" controls");
-    expect(renderedHost).toContain("word-focus");
-    expect(document.cardClassName).toBe("card card2 nightMode");
-    expect(document.shellClassName).toBe("asr-shadow-card-shell asr-shadow-card-shell--table asr-shadow-card-shell--front nightMode");
-    expect(document.viewportClassName).toBe("asr-shadow-card-viewport asr-shadow-card-viewport--table");
-    expect(document.styleText).toContain(".word-focus { font-weight: 700; }");
-    expect(document.styleText).toContain(".nightMode .card");
-    expect(document.styleText).toContain(".asr-card-replay-button");
-    expect(document.styleText).toContain(".asr-card-audio");
-    expect(document.styleText).toContain("display: none");
-    expect(document.styleText).toContain("transform: scale(var(--asr-preview-scale))");
-    expect(document.styleText).toContain("overflow: visible");
-    expect(ANKI_PREVIEW_MODE_CONFIG.table.scale).toBeGreaterThan(0.36);
-    expect(ANKI_PREVIEW_MODE_CONFIG.table.minScale).toBeLessThan(ANKI_PREVIEW_MODE_CONFIG.table.maxScale);
-    expect(ANKI_PREVIEW_MODE_CONFIG.tile.targetWidth).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.table.targetWidth);
-    expect(ANKI_PREVIEW_MODE_CONFIG.preview.targetHeight).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.tile.targetHeight);
-    expect(document.html).toContain("asr-card-replay-button");
-    expect(document.html).toContain("asr-card-audio");
-    expect(document.html).toContain("要望する");
-  });
-
-  it("calculates adaptive height for answer preview without clipping normal long cards", () => {
-    const previewLayout = calculateAdaptivePreviewLayout({
-      mode: "preview",
-      availableWidth: 720,
-      contentWidth: 720,
-      contentHeight: 900,
-    });
-    const tableLayout = calculateAdaptivePreviewLayout({
-      mode: "table",
-      availableWidth: 336,
-      contentWidth: 640,
-      contentHeight: 900,
-    });
-    const tileLayout = calculateAdaptivePreviewLayout({
-      mode: "tile",
-      availableWidth: 500,
-      contentWidth: 640,
-      contentHeight: 260,
-    });
-
-    expect(previewLayout.overflow).toBe(false);
-    expect(previewLayout.hostHeight).toBeGreaterThan(ANKI_PREVIEW_MODE_CONFIG.preview.targetHeight);
-    expect(previewLayout.scale).toBeGreaterThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.preview.minScale);
-    expect(previewLayout.scale).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.preview.maxScale);
-    expect(tableLayout.hostHeight).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.table.maxHeight ?? Infinity);
-    expect(tableLayout.overflow).toBe(true);
-    expect(tableLayout.scale).toBeLessThanOrEqual(ANKI_PREVIEW_MODE_CONFIG.table.maxScale);
-    expect(tileLayout.overflow).toBe(false);
-    expect(tileLayout.hostHeight).toBeLessThan(ANKI_PREVIEW_MODE_CONFIG.tile.maxHeight ?? Infinity);
-  });
-});
+function source(status: "available" | "empty" | "unavailable", itemCount: number) {
+  return { status, itemCount, skippedCount: 0, truncated: false, errorCode: null } as const;
+}

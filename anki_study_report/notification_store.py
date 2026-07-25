@@ -27,6 +27,7 @@ STATUSES = {"active", "resolved"}
 ENTITY_TYPES = {"all_collection", "deck", "card", "note"}
 NOTIFICATION_KINDS = {"signal_created", "signal_reactivated", "severity_escalated", "release", "system"}
 TOAST_KINDS = {"signal_created", "signal_reactivated", "severity_escalated", "release"}
+ACTIVE_CARD_SIGNAL_LIMIT = 50
 
 DEFAULT_PREFERENCES = {
     "notificationCenterEnabled": True,
@@ -278,6 +279,24 @@ class NotificationStore:
             "activeSignalCount": active,
             "items": [_public_notification(row) for row in rows],
         }
+
+    def list_active_card_signals(self, *, limit: int = ACTIVE_CARD_SIGNAL_LIMIT) -> list[dict[str, Any]]:
+        """Return bounded canonical card-level Signals without notification history."""
+
+        bounded = min(ACTIVE_CARD_SIGNAL_LIMIT, max(0, int(limit)))
+        with self._lock:
+            rows = self._require_connection().execute(
+                """
+                SELECT code, severity, entity_type, entity_id, evidence_json,
+                       detector_version, first_seen_at, last_seen_at
+                FROM signals
+                WHERE status = 'active' AND entity_type = 'card'
+                ORDER BY last_seen_at DESC, code, entity_id
+                LIMIT ?
+                """,
+                (bounded,),
+            ).fetchall()
+        return [_public_active_card_signal(row) for row in rows]
 
     def list_notifications(
         self,
@@ -617,6 +636,23 @@ def _public_notification(row: sqlite3.Row) -> dict[str, Any]:
         "entity": None if release else {"type": str(row["entity_type"]), "id": str(row["entity_id"]) if row["entity_id"] else None},
         "evidence": evidence,
         "sourceRevision": str(row["source_revision"]),
+    }
+
+
+def _public_active_card_signal(row: sqlite3.Row) -> dict[str, Any]:
+    try:
+        evidence = json.loads(row["evidence_json"]) if row["evidence_json"] else {}
+    except (json.JSONDecodeError, TypeError):
+        evidence = {}
+    return {
+        "code": str(row["code"]),
+        "severity": str(row["severity"]),
+        "entityType": "card",
+        "entityId": str(row["entity_id"] or ""),
+        "evidence": evidence if isinstance(evidence, dict) else {},
+        "detectorVersion": str(row["detector_version"]),
+        "firstSeenAt": str(row["first_seen_at"]),
+        "lastSeenAt": str(row["last_seen_at"]),
     }
 
 

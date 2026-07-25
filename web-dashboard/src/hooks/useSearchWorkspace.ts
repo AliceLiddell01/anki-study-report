@@ -221,8 +221,8 @@ export function useSearchWorkspace() {
     const requestId = `inspect-${sequence}`;
     try {
       const value = mode === "cards"
-        ? await fetchSearchInspect({ mode, cardId: id, requestId }, controller.signal)
-        : await fetchSearchInspect({ mode, noteId: id, requestId }, controller.signal);
+        ? await fetchSearchInspect({ schemaVersion: 2, mode, cardId: id, requestId }, controller.signal)
+        : await fetchSearchInspect({ schemaVersion: 2, mode, noteId: id, requestId }, controller.signal);
       if (sequence !== inspectSequence.current) return;
       setInspectResponse(value);
       setInspectStatus("ready");
@@ -385,6 +385,7 @@ function buildRequest(input: {
   if (input.mode === "cards" && input.filters.state) filters.push({ type: "state", state: input.filters.state });
   if (input.mode === "cards" && input.filters.flag !== "") filters.push({ type: "flag", flag: Number(input.filters.flag) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 });
   return {
+    schemaVersion: 2,
     mode: input.mode,
     query: input.query,
     filters,

@@ -1,188 +1,167 @@
 # Fixtures and test data
 
-Stage 7 E2E fixture enables native FSRS, creates two preset fingerprints, a
-deck target override and deterministic memory-state ranges. It remains
-synthetic and contains no real profile.
+**Снимок документации:** 2026-07-23.
 
-Снимок документации: 2026-07-12.
+Этот документ разделяет unit/frontend fixtures, committed real-deck fixtures и runtime artifacts. Ни один тип данных не должен подменять другой.
 
-Этот документ разделяет существующие fixtures и рекомендованное покрытие.
+## Python fixtures
 
-## Existing Python fixtures
+Dashboard JSON fixtures в `tests/fixtures/dashboard/` используются для payload/cache/report tests. Это deterministic synthetic inputs, а не Anki collection и не доказательство real-Anki runtime.
 
-Dashboard JSON fixtures:
-
-```text
-tests/fixtures/dashboard/cache_snapshot.json
-tests/fixtures/dashboard/empty_collection.json
-tests/fixtures/dashboard/large_collection.json
-tests/fixtures/dashboard/minimal_metrics.json
-tests/fixtures/dashboard/normal_day.json
-```
-
-Они используются Python tests для payload/cache/report behavior.
-
-## Existing frontend mock data
+## Frontend mock data
 
 ```text
 web-dashboard/src/data/mockReport.ts
 ```
 
-`mockReport` нужен для frontend dev mode и UI tests. Он не является доказательством
-работы реального `/api/report`.
+`mockReport` используется только для frontend dev mode/UI tests. Он не доказывает работу `/api/report`, native Anki rendering или media routes.
 
-Profile fixtures в `mockReport` синтетические: identity `E2E`, normal history,
-несколько deterministic decks и revlog-estimate time. `ProfilePage.test.tsx`
-также строит empty/missing-time/custom-date variants; реальные имена и runtime
-`profile.json` не коммитятся.
+## Committed real-deck fixtures
 
-Stage 4 mock добавляет bounded `activityHub`: 90-day active/inactive pattern,
-unavailable early range, seven daily decks, milestone/return/record и two
-completed weeks. Docker synthetic collection распределяет revlog по нескольким
-дням/неделям и добавляет safe Activity fixture decks; APKG fixture не меняется.
-
-Stage 5 mock добавляет normalized `deckHub`: multiple roots, direct parent,
-danger descendant под stable aggregate, attention/preliminary, duplicate short
-names, long/Unicode names и filtered excluded count. Pure tests отдельно строят
-161-node и malformed/cyclic fixtures.
-
-Stage 5.5 не добавляет backend fixture fields. Те же Activity/Decks mock и
-synthetic rows используются для month grouping, root-only expansion, detail
-sections, theme persistence и 125% visual proof.
-
-Stage 6 mock добавляет typed `statisticsHub.initialResult`: five-section data,
-90d/common controls, ratings/True Retention, overdue/future due, current states,
-card/note totals и non-overlapping deck rows. Unit fixtures генерируют exact
-period bounds, partial baseline, missing answer time и payload ceilings.
-
-## Existing Docker synthetic data
-
-Docker E2E создает synthetic collection через:
+Docker real-Anki E2E использует только:
 
 ```text
-docker/anki-e2e/seed-collection.py
+docker/anki-e2e/fixtures/real-decks/words-n1.apkg
+docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
+docker/anki-e2e/fixtures/real-decks/java-core.apkg
 ```
 
-Существующие synthetic note types/cards включают:
-
-- `E2E Japanese Vocabulary`;
-- `E2E Generic Basic`;
-- `E2E Custom CSS`;
-- `E2E Unsafe Sanitizer`.
-
-Synthetic media allowlist:
+Contract:
 
 ```text
-要.gif
-望.gif
-要望.mp3
+docker/anki-e2e/fixtures/real-decks/manifest.json
+docker/anki-e2e/fixtures/real-decks/README.md
 ```
 
-Decks v2 synthetic data также создаёт `E2E Decks`, `E2E Grammar`, шестой
-уровень `E2E Deep`, duplicate `N3` и пустую filtered deck
-`E2E Filtered Health Excluded`. Review patterns детерминированно дают healthy,
-attention, danger и preliminary states.
+Packages являются owner-provided рабочими колодами, разрешёнными владельцем для публичного хранения и CI этого репозитория. Они не содержат profile token/runtime collection.
 
-Statistics history разреженно покрывает более года и содержит current/previous
-periods, gaps, повтор той же карты за local day, ratings 1–4, young/mature
-previous intervals, `ease=0` manual entry, introduced `type=0` events и due
-snapshot для overdue/7/30/90 days с learning/review/relearning. Filtered deck
-остаётся исключённой. Tracked Cards APKG не изменялась.
+| Package | Notes | Cards | Used note types | Media |
+| --- | ---: | ---: | ---: | ---: |
+| Words N1 | 718 | 718 | 1 | 2 153 |
+| Grammar N5 | 133 | 133 | 1 | 0 |
+| Java | 70 | 70 | 1 | 0 |
 
-## APKG fixtures
+Точные sizes, SHA-256, anchors, expected fields, fingerprints, media capabilities и scenario mutations зафиксированы в manifest.
 
-Tracked APKG fixture:
+## Что harness не создаёт
+
+- synthetic decks/note types/fields/templates;
+- synthetic notes/cards/media;
+- fake profile learning content;
+- fallback collection;
+- cloned cards для performance.
+
+`seed-collection.py` создаёт только empty disposable collection. Пустой системный `Default` deck без cards не считается fixture content.
+
+Удалённый legacy source:
 
 ```text
 docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg
 ```
 
-Это owner-authored, sanitized и owner-authorized regression deck для Cards
-rendering preview. В fixture сейчас:
+Его synthetic 10-card contract больше не поддерживается.
 
-- 10 cards;
-- 10 notes;
-- 4 note types;
-- 13 media entries.
+## Import contract
 
-Cards, fields, templates и deck structure созданы и многократно переработаны
-владельцем с AI assistance. Все 13 media entries созданы владельцем: нарисованы,
-записаны либо сгенерированы под его управлением. Владелец разрешает публичное
-распространение этой fixture как части repository, tests, Docker E2E и CI
-artifacts. Это разрешение относится только к fixture и не задаёт лицензию для
-остального репозитория. Provenance рядом с файлом зафиксирован в
-`docker/anki-e2e/fixtures/README.md`.
+Все три packages обязательны и импортируются через:
 
-Не путать эту owner-authored APKG с generated synthetic Docker collection из
-`docker/anki-e2e/seed-collection.py`.
-
-Default Docker E2E сначала создает synthetic collection, затем importer
-автоматически добавляет tracked APKG fixture, если файл есть в checkout. Strict
-APKG mode делает отсутствие или неудачный import ошибкой:
-
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture
+```text
+Collection.import_anki_package(ImportAnkiPackageRequest)
 ```
 
-Perf100 smoke использует эту же tracked APKG fixture и не создает новую APKG.
-Docker E2E импортирует fixture, затем клонирует импортированные notes/cards в
-изолированной collection до 100 problematic cards:
+Hard failure:
 
-```powershell
-.\scripts\run_full_check.ps1 -DockerOnly -RequireApkgFixture -Perf100
+- missing/duplicate package;
+- size/SHA mismatch;
+- importer error;
+- inventory mismatch;
+- missing/ambiguous anchor;
+- fingerprint/field/template mismatch;
+- missing required media.
+
+External APKG override отсутствует.
+
+`docker/anki-e2e/local-input/` используется только для exact `.ankiaddon` handoff, а не для collection fixtures.
+
+## Scenario data
+
+Разрешены только study-state mutations существующих cards:
+
+- scheduling state;
+- revlog;
+- due/interval/factor/reps/lapses;
+- suspended;
+- buried.
+
+Fields/templates/media и note/card counts не меняются.
+
+`perf100` выбирает 100 distinct imported cards.
+
+## Manifest-driven anchors
+
+Generic scripts получают concrete identifiers из manifest/runtime reports.
+
+| Capability | Real source |
+| --- | --- |
+| Words preview | real Words note |
+| Grammar preview | real Grammar note |
+| Java preview/`language-java` | real Java note |
+| audio/GIF/image | real Words media |
+| action/recheck | imported card + study-state |
+| low success | imported card + revlog |
+| suspended/buried | imported cards |
+| Japanese Inspection Profile | real `Слова` note type |
+| Programming Inspection Profile | real Java note type |
+| Notification lifecycle | `cards-action-recheck` + `cards-low-success` anchors |
+
+Notification fixture не содержит synthetic card/deck IDs и берёт scheduler timestamp из scenario evidence.
+
+## Runtime evidence
+
+Генерируется, но не коммитится:
+
+```text
+e2e-artifacts/reports/real-deck-manifest-report.json
+e2e-artifacts/reports/real-deck-import-report.json
+e2e-artifacts/reports/collection-inventory.json
+e2e-artifacts/reports/anchor-resolution-report.json
+e2e-artifacts/reports/scenario-application-report.json
+e2e-artifacts/reports/notification-fixture-proof.json
+e2e-artifacts/screenshots/
 ```
 
-Local-only APKG можно передать через:
-
-```powershell
-$env:ANKI_E2E_APKG_FIXTURE="C:\path\to\asr-e2e-render-fixtures.apkg"
-$env:ANKI_E2E_REQUIRE_APKG_FIXTURE="1"
-.\scripts\run_anki_e2e_docker.ps1
-```
-
-## Какие данные нужны для Cards/rendering/media tests
-
-Существующее и рекомендуемое покрытие:
-
-| Edge case | Сейчас | Где |
-| --- | --- | --- |
-| custom note CSS | Есть synthetic Docker + unit tests | `seed-collection.py`, `test_note_intelligence.py` |
-| audio/image/gif media | Есть synthetic Docker + unit tests | `seed-collection.py`, `test_note_intelligence.py` |
-| missing fields | Есть unit coverage | `tests/test_attention_cards.py`, `test_note_intelligence.py` |
-| missing audio/image/meaning/example/part of speech | Есть attention/card tests | `tests/test_attention_cards.py` |
-| dangerous HTML/CSS | Есть unsafe sanitizer fixture/tests | `seed-collection.py`, `test_note_intelligence.py` |
-| large fields | Рекомендуется держать в synthetic/unit coverage | Добавлять как sanitized fixture |
-| non-Japanese/general note types | Есть generic basic | `seed-collection.py`, `test_note_intelligence.py` |
-| several card templates | Есть owner-authorized tracked APKG + synthetic coverage | `docker/anki-e2e/fixtures/asr-e2e-render-fixtures.apkg`, `seed-collection.py` |
+Runtime evidence не является source fixture.
 
 ## Что можно коммитить
 
-- Маленькие synthetic JSON fixtures.
-- Sanitized frontend mock data.
-- Маленькие synthetic APKG, если они не содержат личных данных и явно
-  предназначены для regression tests.
-- Generated fixture summaries только если они стабильны и нужны как source
-  fixture, не runtime artifact.
+- маленькие deterministic unit JSON fixtures;
+- sanitized frontend mock data;
+- три owner-authorized real APKG;
+- manifest/README с checksums/anchors/fingerprints;
+- generic tests без embedded content fallback.
 
 ## Что нельзя коммитить
 
-- Личную `collection.anki2`.
-- Личные decks/APKG без очистки.
-- Real profile folders.
-- Token-bearing artifacts.
-- `e2e-artifacts/`.
-- Screenshots/logs/HTML dumps от локального прогона.
+- `collection.anki2` или полный profile;
+- произвольные личные APKG;
+- token-bearing URLs/readiness;
+- `e2e-artifacts/`, screenshots, logs, HTML dumps;
+- cache/media DB/package outputs/`.ankiaddon`;
 - `docker/anki-e2e/local-input/`.
 
-Runtime screenshots организованы под `e2e-artifacts/screenshots/cards/` по
-fixture (`synthetic`/`apkg`), mode (`table`/`tiles`/`anki-preview`) и theme.
-Это generated proof, а не source fixture.
+## Обновление working decks
 
-## Как обновлять fixtures безопасно
+1. Зафиксировать причину и capability.
+2. Заменить только нужный `.apkg`.
+3. Проверить provenance и отсутствие secrets/profile metadata.
+4. Пересчитать size/SHA-256.
+5. Повторно получить inventory.
+6. Проверить anchors/fingerprints/media.
+7. Обновить manifest.
+8. Не менять generic runtime ради конкретного content.
+9. Выполнить focused contract tests.
+10. Выполнить один policy-compliant real-Anki proof.
 
-1. Описать, какой bug/edge case fixture покрывает.
-2. Проверить, что данные synthetic или sanitized.
-3. Не включать реальные token/paths/profile names.
-4. Добавить test, который действительно использует fixture.
-5. Для Cards/rendering проверить unit tests и, при необходимости, Docker E2E.
-6. Обновить этот документ, если появляется новый tracked fixture.
+Изменение только APKG/manifest/E2E harness не требует нового Fast CI package, если `.ankiaddon` не менялся и полный diff проходит `harness-only` allowlist. Package-impacting diff требует новый Fast CI.
+
+Правила: [`e2e-package-harness-reuse.md`](e2e-package-harness-reuse.md).

@@ -152,6 +152,7 @@ def collect_attention_cards(
     end_ts: int | float,
     deck_ids: Sequence[int] | None = None,
     max_results: int = ATTENTION_CARD_LIMIT,
+    include_rendered_preview: bool = True,
 ) -> list[dict[str, Any]]:
     """Return read-only card-level attention rows for the dashboard.
 
@@ -166,6 +167,7 @@ def collect_attention_cards(
         end_ts,
         deck_ids,
         max_results=max_results,
+        include_rendered_preview=include_rendered_preview,
     )
     return cards
 
@@ -176,6 +178,7 @@ def collect_attention_cards_with_status(
     end_ts: int | float,
     deck_ids: Sequence[int] | None = None,
     max_results: int = ATTENTION_CARD_LIMIT,
+    include_rendered_preview: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Return card-level attention rows plus collector status metadata."""
 
@@ -242,7 +245,12 @@ def collect_attention_cards_with_status(
         rows = _attention_card_rows(col, start_ms, end_ms, expanded_deck_ids)
         deck_names = _deck_names_by_id(col)
         attention_cards = [
-            _attention_card_payload(col, row, deck_names)
+            _attention_card_payload(
+                col,
+                row,
+                deck_names,
+                include_rendered_preview=include_rendered_preview,
+            )
             for row in rows
         ]
         attention_cards = [card for card in attention_cards if card is not None]
@@ -769,7 +777,77 @@ def _problem_deck_card_ids(
         end_ms,
         problem_deck_ids,
         max_results=max_results,
+        )
+
+
+def collect_triage_candidates_with_status(
+    col: Any,
+    start_ts: int | float,
+    end_ts: int | float,
+    deck_ids: Sequence[int] | None = None,
+    *,
+    max_results: int = ATTENTION_CARD_LIMIT,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Return one bounded shared candidate set for triage learning/content checks.
+
+    Raw fields are deliberately confined to the internal candidate DTO.  The
+    public attention payload is produced by the legacy projector from the same
+    SQL rows, avoiding a second revlog/card/note scan.
+    """
+
+    start_ms, _start_normalized, _start_reason = _ensure_epoch_ms(
+        start_ts, name="periodStartRaw", default=0
     )
+    end_ms, _end_normalized, _end_reason = _ensure_epoch_ms(
+        end_ts, name="periodEndRaw", default=_now_ms()
+    )
+    limit = max(1, min(ATTENTION_CARD_LIMIT, _as_int(max_results)))
+    if end_ms <= start_ms or not _collection_available(col):
+        status = "unavailable" if not _collection_available(col) else "skipped"
+        return [], [], {
+            "status": status,
+            "itemCount": 0,
+            "skippedCount": 0,
+            "truncated": False,
+            "errorCode": "collection_unavailable" if status == "unavailable" else "invalid_period",
+        }
+    raw_selected = _normalized_deck_ids(deck_ids or [])
+    expanded = _expand_deck_ids(col, deck_ids) if raw_selected else None
+    if start_ms == 0:
+        latest = _safe_db_scalar(col, "select max(id) from revlog")
+        if latest > 0:
+            end_ms = max(end_ms, latest + 1)
+    rows = _triage_candidate_rows(col, start_ms, end_ms, expanded, limit + 1)
+    truncated = len(rows) > limit
+    rows = rows[:limit]
+    deck_names = _deck_names_by_id(col)
+    attention_cards = [
+        item
+        for item in (
+            _attention_card_payload(col, row, deck_names, include_rendered_preview=False)
+            for row in rows
+        )
+        if item is not None
+    ]
+    candidates = [
+        {
+            "cardId": _as_int(row[0]),
+            "noteId": _as_int(row[1]),
+            "noteTypeId": _as_int(row[4]),
+            "templateOrdinal": _as_int(row[5]),
+            "rawFields": str(row[7] or ""),
+            "siblingCount": 1,
+        }
+        for row in rows
+        if len(row) >= 12 and _as_int(row[0]) > 0 and _as_int(row[1]) > 0
+    ]
+    return attention_cards, candidates, {
+        "status": "available",
+        "itemCount": len(rows),
+        "skippedCount": max(0, len(rows) - len(candidates)),
+        "truncated": truncated,
+        "errorCode": None,
+    }
 
 
 def _attention_card_rows(
@@ -817,10 +895,47 @@ def _attention_card_rows(
     )
 
 
+def _triage_candidate_rows(
+    col: Any,
+    start_ms: int,
+    end_ms: int,
+    deck_ids: Sequence[int] | None,
+    limit: int,
+) -> list[tuple[Any, ...]]:
+    deck_sql, deck_params = _deck_filter_sql(deck_ids)
+    return col.db.all(
+        f"""
+        select
+            c.id, c.nid, c.did, c.lapses, n.mid, c.ord, n.tags, n.flds,
+            count(*),
+            coalesce(sum(case when r.ease = 1 then 1 else 0 end), 0),
+            coalesce(sum(case when r.time < 0 then 0 when r.time > ? then ? else r.time end), 0),
+            max(r.id)
+        from revlog r
+        join cards c on c.id = r.cid
+        join notes n on n.id = c.nid
+        where r.id >= ? and r.id < ?
+          {REVLOG_REVIEW_FILTER_SQL}
+          {deck_sql}
+        group by c.id, c.nid, c.did, c.lapses, n.mid, c.ord, n.tags, n.flds
+        order by max(r.id) desc, c.id asc
+        limit ?
+        """,
+        ANSWER_TIME_CAP_MS,
+        ANSWER_TIME_CAP_MS,
+        start_ms,
+        end_ms,
+        *deck_params,
+        max(1, int(limit)),
+    )
+
+
 def _attention_card_payload(
     col: Any,
     row: tuple[Any, ...],
     deck_names: dict[int, str],
+    *,
+    include_rendered_preview: bool = True,
 ) -> dict[str, Any] | None:
     if len(row) >= 12:
         (
@@ -884,14 +999,13 @@ def _attention_card_payload(
         return None
 
     front_preview = preview.get("primary") or _front_preview(fields)
-    return {
+    payload = {
         "cardId": card_id_int,
         "noteId": note_id_int,
         "noteTypeId": _as_int(model_id),
         "deckName": deck_name,
         "frontPreview": front_preview,
         "preview": preview,
-        "renderedPreview": build_rendered_preview_native_first(col, card_id_int, model, raw_fields, card_ord),
         "issues": issues,
         "riskScore": _attention_risk_score(issues, lapses_int),
         "againCount": again_count_int,
@@ -904,7 +1018,16 @@ def _attention_card_payload(
         "noteTypeName": preview.get("noteTypeName") or profile.get("noteTypeName") or "",
         "cardTemplateName": preview.get("cardTemplateName") or "",
         "detectedKind": preview.get("detectedKind") or profile.get("detectedKind") or "unknown",
-}
+    }
+    if include_rendered_preview:
+        payload["renderedPreview"] = build_rendered_preview_native_first(
+            col,
+            card_id_int,
+            model,
+            raw_fields,
+            card_ord,
+        )
+    return payload
 
 
 def _rendered_preview_fallback() -> dict[str, Any]:

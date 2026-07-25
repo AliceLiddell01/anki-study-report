@@ -13,7 +13,7 @@ production code. Для выбора проверок см. `docs/test-matrix.md
 | После свежей установки видны старые стили | Anki использует старую папку add-on/assets | `addons21`, `web_dashboard/assets` | Удалить старую установленную папку, переустановить, перезапустить Anki |
 | Dashboard открыл fallback-страницу | Static assets отсутствуют или неполные | `/api/status`, `web_dashboard/index.html`, `web_dashboard/assets` | Пересобрать `build:addon`, проверить package validation |
 | Docker E2E не доходит до readiness | Add-on не импортирован, профиль не создан, server/report не стартовал | `e2e-artifacts/runtime/addon-e2e-events.jsonl` | Читать markers по порядку, проверить layout и `prefs21.db` |
-| Cards preview пустой или smoke ждет не тот DOM | Несовпадение display mode и ожиданий smoke | `CardsPage.tsx`, `smoke-browser.mjs` | Проверить mode: `table`/`tiles` или `ankiPreview` |
+| Cards preview пустой или smoke ждёт не тот DOM | Search inspect active item недоступен или smoke использует legacy selector | `CardsPage.tsx`, `useCardsTriageWorkspace.ts`, `smoke-browser.mjs` | Проверить один active row, `/api/search/inspect` и `cards-v2-*` selectors |
 | Media preview возвращает 400/404 | Unsafe name, файла нет, token не передан | `/api/media`, `note_intelligence.py` | Проверить `name`, token и provider media file |
 | Payload test упал на точной форме | Контракт реально изменился или устарел тест | `dashboard_payload.py`, `report.ts`, tests | Сначала проверить фактический payload |
 | Package validation падает | Нет linked asset, запрещенный файл, stale build | `scripts/package_addon.py` | Пересобрать dashboard и проверить archive validation |
@@ -247,35 +247,34 @@ publish. Если нет профиля, проверять `bootstrap-prefs.py`
 
 - Cards page есть, но preview пустой.
 - Browser smoke падает на Shadow DOM preview host или answer-only секцию.
-- Table/tiles проходят, а `ankiPreview` падает, или наоборот.
+- Queue загружена, но active Inspector preview остаётся loading/unavailable.
 
 ### Вероятные причины
 
-- Активный display mode не совпадает с DOM selector.
+- Active row отсутствует или Search inspect detail не соответствует ему.
 - `renderedPreview` отсутствует или sanitizer удалил опасный HTML.
 - Media refs нормализованы без token и frontend не добавил token.
 
 ### Что проверить
 
-- `table` и `tiles` используют `AnkiCardShadowPreview` и
-  `data-testid="anki-card-shadow-preview"`.
-- `ankiPreview` использует `data-testid="anki-preview-answer"` и
-  `AnkiCardShadowPreview` host с `data-shadow-preview-mode="preview"` /
-  `data-preview-side="answer"`; штатный source - answer-only HTML из
-  `renderedPreview.backHtml`, front отдельно не дублируется.
-- Если `backHtml` отсутствует, ожидается diagnostic fallback внутри answer
-  section, а не обычное отдельное front preview.
-- `CardsPage.tsx` хранит display mode в
-  `anki-study-report.cards.displayMode`.
-- `cardAttention.ts` нормализует canonical `attentionCards`; legacy top-level
-  aliases `cards`, `cardIssues` и `problemCards` не являются supported input.
+- Queue использует `POST /api/triage/query` automatic v2, limit 100.
+- Только active item использует `POST /api/search/inspect`; количество Shadow
+  preview hosts в обычном workspace равно одному.
+- Search card details должны содержать `renderedPreview` с allowlisted status;
+  sanitizer/media validation остаются backend boundary.
+- Expanded preview использует `data-testid="cards-preview-modal"`, портал вне
+  application shell и не делает повторный inspect fetch.
+- Legacy `attentionCards` остаётся backend-compatible report payload, но
+  `CardsPage.tsx` его не читает.
 
 ### Команды / файлы
 
 ```text
 web-dashboard/src/pages/CardsPage.tsx
 web-dashboard/src/components/AnkiCardShadowPreview.tsx
-web-dashboard/src/lib/cardAttention.ts
+web-dashboard/src/hooks/useCardsTriageWorkspace.ts
+web-dashboard/src/lib/triageApi.ts
+web-dashboard/src/lib/searchApi.ts
 docker/anki-e2e/smoke-browser.mjs
 tests/test_note_intelligence.py
 ```

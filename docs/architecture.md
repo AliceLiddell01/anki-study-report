@@ -1,20 +1,6 @@
 # Архитектура
 
-## Локальные signals и notifications
-
-`signal_detection.py` вычисляет четыре bounded detector family из cache
-snapshot, Deck Hub и одного grouped `revlog` query. `notification_store.py`
-владеет отдельной per-profile SQLite schema, reconciliation и preferences.
-`__init__.py` привязывает stores заново при открытии профиля и публикует строгие
-handlers в `dashboard_server.py`. React читает их через `notificationsApi.ts`;
-App Shell монтирует bell/toasts, route pages остаются lazy boundaries. Этот
-поток не соединён с `TelemetryClient`.
-
-Stage 7 adds `fsrs_service.py` as an isolated read-only Anki adapter and pure
-aggregate layer. `statistics_service.py` publishes only lightweight capability;
-`dashboard_server.py` exposes a strict token-protected FSRS operation union.
-
-Снимок документации: 2026-07-15.
+**Снимок документации:** 2026-07-15
 
 ## Общий поток данных
 
@@ -31,94 +17,100 @@ flowchart TD
     S --> F
     A --> Q["search_service.py / QueryOp"]
     Q --> F
+    A --> T["triage_service.py / QueryOp"]
+    N["NotificationStore active card Signals"] --> T
+    T --> F
     F --> M["entity_actions.py / CollectionOp"]
     B --> H["report_builder.py"]
     H --> I["Markdown/HTML report dialog"]
 ```
 
-Главный принцип: Anki-зависимый код и UI orchestration остаются в
-`__init__.py`, а преобразования данных по возможности вынесены в чистые модули,
-которые можно импортировать и тестировать без установленного Anki.
+Главный принцип: зависящие от Anki части и orchestration UI остаются в `__init__.py`, а чистые преобразования данных по возможности выносятся в отдельные модули, которые можно импортировать и тестировать без установленного Anki.
 
 ## Python add-on
 
-`anki_study_report/__init__.py` - entrypoint Anki add-on. Он:
+`anki_study_report/__init__.py` — точка входа add-on Anki. Он:
 
 - импортирует `aqt`, регистрирует меню и hooks;
-- создает диалоги `StudyReportDialog`, `IntegrationDiagnosticsDialog`,
-  `WebDashboardSettingsDialog`, `LauncherDialog`;
-- управляет dashboard server lifecycle;
-- соединяет cache, сбор метрик, публикацию dashboard report и UI actions;
-- содержит E2E bootstrap, который активен только при `ANKI_STUDY_REPORT_E2E=1`.
+- создаёт диалоги `StudyReportDialog`, `IntegrationDiagnosticsDialog`, `WebDashboardSettingsDialog`, `LauncherDialog`;
+- управляет жизненным циклом server dashboard;
+- связывает cache, сбор метрик, публикацию отчёта dashboard и действия UI;
+- содержит E2E-bootstrap, активный только при `ANKI_STUDY_REPORT_E2E=1`.
 
-Важно: этот файл намеренно остается adapter/orchestration layer. Когда
-появляется новая чистая логика трансформации данных, ее лучше выносить в
-отдельный модуль и покрывать тестами без Anki.
+Этот файл намеренно остаётся слоем adapter и orchestration. Новую чистую логику преобразования следует выносить в отдельный модуль и покрывать тестами без Anki.
 
-## Метрики и отчеты
+## Метрики и отчёты
 
-`metrics.py` собирает основные данные из Anki collection:
+`metrics.py` собирает основные данные из collection Anki:
 
-- total reviews, new cards, answer distribution;
-- deck breakdown;
-- due tomorrow;
-- FSRS-related данные;
-- attention cards и note type diagnostics;
-- pass/fail метрики.
+- общее количество повторений;
+- новые карточки;
+- распределение ответов;
+- разбивку по колодам;
+- карточки на завтра;
+- данные, связанные с FSRS;
+- карточки, требующие внимания, и диагностику типов заметок;
+- метрики успешных и неуспешных ответов.
 
-`heatmap_metrics.py` отвечает за календарную активность и streaks.
+Дополнительные модули:
 
-`forecast_metrics.py` строит легкий прогноз нагрузки.
+- `heatmap_metrics.py` — календарная активность и streaks;
+- `forecast_metrics.py` — лёгкий прогноз нагрузки;
+- `report_builder.py` — отчёт Markdown/HTML для диалога Anki;
+- `study_time_integration.py` и `session_tracker.py` — альтернативные источники реального времени обучения, когда включены соответствующие настройки.
 
-`report_builder.py` рендерит Markdown/HTML отчет для Anki dialog.
+## Слой cache
 
-`study_time_integration.py` и `session_tracker.py` дают альтернативные источники
-реального времени обучения, если соответствующие настройки включены.
-
-## Cache layer
-
-`stats_cache.py` управляет SQLite cache в runtime data директории профиля Anki:
+`stats_cache.py` управляет SQLite-cache в каталоге runtime-данных профиля Anki:
 
 ```text
 <profile>/addon_data/<addon_id>/study_report_cache.sqlite3
 ```
 
-Если профиль недоступен, fallback - `anki_study_report/user_files/`.
+Если профиль недоступен, используется fallback:
 
-`report_from_cache.py` адаптирует cache snapshot в части отчета. Он нужен,
-чтобы dashboard мог быстро показывать долгие периоды и историю без полного
-пересчета legacy-метрик каждый раз.
+```text
+anki_study_report/user_files/
+```
 
-Кэш не должен менять публичный dashboard contract. Если cache и legacy дают
-разную форму данных, адаптер обязан привести ее к тому же payload.
+`report_from_cache.py` преобразует snapshot cache в части отчёта, чтобы dashboard мог быстро показывать длинные периоды и историю без полного пересчёта устаревших метрик.
 
-`profile_service.py` получает исходный all-collection snapshot до применения
-dashboard period/deck filters. Он строит compact Profile slice и обслуживает
-атомарный `<runtime>/profile.json`; frontend не сканирует collection и не
-пересчитывает raw revlog.
+Cache не должен менять публичный контракт dashboard. Если cache и устаревший путь возвращают разную структуру, adapter обязан привести их к одному payload.
 
-`activity_service.py` получает тот же snapshot, но применяет текущий historical
-dashboard deck scope. Он публикует bounded one-year `activityHub`, day-deck
-details и derived daily/weekly events; старый `activity` contract остаётся для
-Home/backward compatibility.
+`profile_service.py` получает исходный snapshot всей collection до применения фильтров периода и колоды dashboard. Он создаёт компактный раздел Profile и обслуживает атомарный файл `<runtime>/profile.json`. Frontend не сканирует collection и не пересчитывает необработанный revlog.
 
-`deck_hub.py` объединяет current Anki deck catalog с теми же scoped direct
-deck rows. Он исключает filtered decks, сохраняет structural ancestors,
-агрегирует subtree bottom-up и публикует normalized `deckHub`. Cache schema v3
-использует current home deck (`odid`) для карт во filtered deck.
+`activity_service.py` использует тот же snapshot, но применяет текущий исторический scope колод dashboard. Он публикует:
 
-## Dashboard payload
+- ограниченный годовой `activityHub`;
+- подробности дня и колоды;
+- производные дневные и недельные события.
 
-`dashboard_payload.py` - чистый слой трансформации метрик в JSON. Его ключевые
-entrypoints:
+Старый контракт `activity` сохраняется для Home и обратной совместимости.
 
-- `build_dashboard_report_payload(metrics, metadata, cache_summary=None)`
-- `build_default_dashboard_metadata(snapshot, today_key, display_settings=None, now=None)`
-- `metrics_from_cache_snapshot(snapshot, today_key, display_settings=None)`
+`deck_hub.py` объединяет актуальный каталог колод Anki с теми же строками непосредственных колод в выбранном scope. Он:
+
+- исключает filtered decks;
+- сохраняет структурных предков;
+- агрегирует subtree снизу вверх;
+- публикует нормализованный `deckHub`.
+
+Schema v3 cache использует актуальную домашнюю колоду (`odid`) для карточек в filtered deck.
+
+## Payload dashboard
+
+`dashboard_payload.py` — чистый слой преобразования метрик в JSON.
+
+Ключевые точки входа:
+
+```text
+build_dashboard_report_payload(metrics, metadata, cache_summary=None)
+build_default_dashboard_metadata(snapshot, today_key, display_settings=None, now=None)
+metrics_from_cache_snapshot(snapshot, today_key, display_settings=None)
+```
 
 Payload должен соответствовать `web-dashboard/src/types/report.ts`.
 
-Текущие top-level ключи:
+Текущие ключи верхнего уровня:
 
 ```text
 metadata
@@ -135,52 +127,102 @@ forecast
 fsrs
 recommendations
 cache
-today (optional Home-only slice)
-profile (all-collection lifetime slice)
-activityHub (scoped bounded Activity slice)
-deckHub (scoped normalized Decks v2 hierarchy)
-statisticsHub (bounded initial 90d Statistics result)
+today (необязательный раздел только для Home)
+profile (статистика за всё время по всей collection)
+activityHub (ограниченная активность в выбранном scope)
+deckHub (нормализованная иерархия Decks v2 в выбранном scope)
+statisticsHub (ограниченный начальный результат Statistics за 90 дней)
 ```
 
-## Dashboard server
+## Server dashboard
 
-`dashboard_server.py` поднимает локальный HTTP server на `127.0.0.1`. Он:
+`dashboard_server.py` поднимает локальный HTTP-server на `127.0.0.1`.
 
-- отдает static frontend из `anki_study_report/web_dashboard`;
-- защищает report/API token-ом;
-- публикует последний report payload в памяти;
-- обслуживает media-preview безопасным allowlist/sanitizer путем;
-- прокидывает dashboard actions обратно в Anki через callbacks.
-- обслуживает narrow token-protected `GET/POST /api/profile`.
-- обслуживает narrow token-protected `POST /api/statistics/query`.
+Он:
+
+- отдаёт статический frontend из `anki_study_report/web_dashboard`;
+- защищает отчёт и API токеном;
+- хранит последний payload отчёта в памяти;
+- обслуживает media предпросмотра через allowlist и sanitizer;
+- передаёт действия dashboard в Anki через callbacks;
+- обслуживает узкий защищённый токеном `GET/POST /api/profile`;
+- обслуживает узкий защищённый токеном `POST /api/statistics/query`;
 - обслуживает read-only `POST /api/search/query` и `/api/search/inspect`;
-  collection work выполняется сериализованным `QueryOp` через
-  `search_runtime.py`, а validation/projection изолированы в
-  `search_service.py`.
-- обслуживает отдельные card/note mutation endpoints; strict validation и
-  preflight находятся в `entity_actions.py`, а official Anki wrapper bridge —
-  в `entity_action_runtime.py`;
+- обслуживает добавочный read-only `POST /api/triage/query`;
+- обслуживает `POST /api/inspection-profiles/query|validate|update`;
+- обслуживает отдельные endpoints mutations карточек и заметок.
 
-Frontend не должен иметь прямой доступ к Anki collection. Все действия идут
-через API server и контролируются Python side.
+### Search
 
-Security details: `docs/security-and-safety.md`.
+Работа с collection выполняется сериализованным `QueryOp` через `search_runtime.py`. Validation и projection изолированы в `search_service.py`.
+
+### Triage
+
+`triage_runtime.py` сериализует чтение collection через `QueryOp`.
+
+`triage_service.py` объединяет в ограниченную детерминированную проекцию:
+
+- существующий collector attention cards;
+- активные Signals карточек;
+- строки точных карточек Search;
+- проверки содержимого подтверждённых профилей.
+
+Triage не создаёт постоянное состояние, не изменяет collection и не передаёт полный предпросмотр.
+
+### Inspection Profiles
+
+`inspection_profile_runtime.py` сериализует чтение моделей и карточек через `QueryOp`.
+
+`inspection_profile_service.py` отвечает за:
+
+- структуры;
+- fingerprints;
+- жизненный цикл;
+- оценку по allowlist.
+
+`inspection_profile_store.py` отвечает только за:
+
+- строгую validation;
+- revision;
+- атомарное хранение на уровне профиля;
+- восстановление.
+
+### Safe Actions
+
+Строгая validation и preflight находятся в `entity_actions.py`. Bridge к официальным wrappers Anki находится в `entity_action_runtime.py`.
+
+Frontend не должен получать прямой доступ к collection Anki. Все действия проходят через API-server и контролируются Python-стороной.
+
+`metrics.py` сохраняет устаревшее поведение attention cards и отдельно предоставляет ограниченный внутренний DTO кандидатов для Triage.
+
+Источники ответственности:
+
+- `NotificationStore` — Signals;
+- `search_service.project_card_row()` — компактная идентичность;
+- `InspectionProfileStore` — конфигурация на уровне профиля;
+- Triage — объединение источников, независимые причины обучения и только ошибки содержимого подтверждённых и актуальных профилей.
+
+Контракты:
+
+- [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
+- [`inspection-profiles-v1.md`](inspection-profiles-v1.md);
+- [`security-and-safety.md`](security-and-safety.md).
 
 ## Frontend dashboard
 
-`web-dashboard` - Vite + React + TypeScript приложение.
+`web-dashboard` — приложение Vite + React + TypeScript.
 
-`web-dashboard/src/app/App.tsx` читает token из query string и грузит:
+`web-dashboard/src/app/App.tsx` читает токен из query string и запрашивает:
 
 ```text
 /api/report?token=<token>
 ```
 
-В development mode, если API недоступен и ошибка не `403`, приложение может
-подставить `mockReport`. В production это не должно маскировать проблему
-реального dashboard server.
+В development-режиме при недоступном API и ошибке, отличной от `403`, приложение может использовать `mockReport`. В production это не должно скрывать проблему настоящего server dashboard.
 
-Hash router находится в `web-dashboard/src/app/router.tsx`. Текущие страницы:
+Hash-router находится в `web-dashboard/src/app/router.tsx`.
+
+Текущие маршруты:
 
 ```text
 #/home
@@ -202,43 +244,84 @@ Hash router находится в `web-dashboard/src/app/router.tsx`. Текущ
 #/settings/logs
 ```
 
-Старые placeholder routes `#/fsrs` и `#/browse` удалены в Stage 15. `#/stats`
-вернулся только вместе с полноценным five-section Statistics v1; unknown hash
-fallback ведёт на `#/home`.
+Placeholder-маршруты `#/fsrs` и `#/browse` удалены в Stage 15. `#/stats` вернулся только вместе с полноценным Statistics v1. Fallback неизвестного hash ведёт на `#/home`.
 
-Видимая primary navigation отделена от полного registry routes. Она содержит
-`Сегодня`, `Активность`, `Статистика`, `Колоды` и `Карточки`. `TopNav.tsx` размещает
-Profile/Settings/Tools в avatar dropdown, а `SettingsLayout.tsx` связывает
-report/data/server/sources/logs постоянным Settings Hub sidebar. Старые
-`#/integrations` и `#/logs` redirect-ятся в canonical diagnostics routes.
-Технические страницы не показываются как основные аналитические вкладки.
+Видимая основная навигация отделена от полного registry маршрутов и содержит:
 
-`AppLayout` также владеет persistent `GlobalUtilityDock` вне route content.
-Theme preference остаётся browser-local (`light|dark|system`) и применяется
-inline до React render; dock фиксирует explicit light/dark без backend API.
-Там же находится независимый selector языка `ru|en`. `i18next` и
-`react-i18next` загружают bundled resources до первого render, русский служит
-default/fallback, а `anki-study-report-language` хранит browser-local выбор.
-Смена языка не меняет payload/API и синхронно обновляет product UI,
-`html lang` и `document.title`. Полный contract: `docs/localization.md`.
+```text
+Сегодня
+Активность
+Статистика
+Колоды
+Карточки
+```
 
-Подробная карта frontend routes/pages/helpers: `docs/frontend-map.md`.
-Продуктовое решение по навигации: `docs/navigation-ia.md`.
-Search foundation и mutation architecture: `docs/search-query-foundation.md`,
-`docs/search-v1-and-safe-actions.md`.
+`TopNav.tsx` размещает Profile, Settings и Tools в dropdown аватара.
 
-## Runtime data
+`SettingsLayout.tsx` связывает отчёт, данные, server, sources и logs постоянной боковой панелью Settings Hub. Старые `#/integrations` и `#/logs` перенаправляются на канонические диагностические маршруты. Технические страницы не показываются как основные аналитические tabs.
 
-Runtime data хранится отдельно от исходников, когда Anki profile доступен:
+`AppLayout` отвечает за постоянный `GlobalUtilityDock` вне содержимого маршрута.
+
+Настройка темы:
+
+```text
+light | dark | system
+```
+
+Она хранится в browser и применяется inline до рендера React. Dock явно переключает light и dark без backend API.
+
+Независимый выбор языка:
+
+```text
+ru | en
+```
+
+`i18next` и `react-i18next` загружают встроенные resources до первого рендера. Русский используется по умолчанию и как fallback. Локальный выбор browser хранится в `anki-study-report-language`.
+
+Смена языка не меняет payload или API и синхронно обновляет:
+
+- продуктовый UI;
+- `html lang`;
+- `document.title`.
+
+Связанные документы:
+
+- [`localization.md`](localization.md);
+- [`frontend-map.md`](frontend-map.md);
+- [`navigation-ia.md`](navigation-ia.md);
+- [`search-v1-and-safe-actions.md`](search-v1-and-safe-actions.md).
+
+## Локальные Signals и Notifications
+
+`signal_detection.py` вычисляет четыре ограниченных семейства детекторов из snapshot cache, Deck Hub и одного сгруппированного запроса `revlog`.
+
+`notification_store.py` отвечает за отдельную SQLite-schema на уровне профиля, reconciliation и preferences.
+
+`__init__.py` повторно привязывает stores при открытии профиля и публикует строгие handlers в `dashboard_server.py`.
+
+React читает данные через `notificationsApi.ts`. Оболочка приложения монтирует bell и toasts, а страницы маршрутов остаются lazy-boundaries.
+
+Этот поток не связан с `TelemetryClient`.
+
+## Adapter FSRS
+
+`fsrs_service.py` — изолированный read-only-adapter Anki и чистый слой агрегации.
+
+`statistics_service.py` публикует только лёгкую capability, а `dashboard_server.py` предоставляет строгий защищённый токеном union операций FSRS.
+
+## Runtime-данные
+
+При доступном профиле Anki runtime-данные хранятся отдельно от исходников:
 
 ```text
 <profile>/addon_data/<addon_id>/
 ```
 
-Там размещаются cache, `profile.json` и logs. Старый `anki_study_report/user_files/`
-используется как fallback и мигрируется при возможности.
+Там находятся cache, `profile.json` и logs.
 
-В git не должны попадать:
+Старый `anki_study_report/user_files/` используется как fallback и при возможности мигрируется.
+
+В Git не должны попадать:
 
 ```text
 anki_study_report/user_files/*.sqlite3
@@ -249,14 +332,68 @@ anki_study_report/web_dashboard/
 *.ankiaddon
 ```
 
-## Product notices и privacy state
+## Product notices и состояние конфиденциальности
 
-`product_notices.py` владеет двумя атомарными per-profile JSON stores и строгой
-валидацией consent. `dashboard_server.py` публикует token-protected local API,
-а `ProductNoticeCoordinator` последовательно показывает consent и What’s New.
-`release/changelog.json` является каноническим source; Markdown и bundled
-RU/EN assets генерируются. Этот слой работает офлайн и не является telemetry
-sender. Отдельный Python client валидирует semantic events, хранит bounded
-per-profile SQLite queue и выполняет consent-gated background delivery; React
-не знает remote endpoint/credentials. Контракты:
-`docs/product-notices-and-consent.md` и `docs/telemetry-client.md`.
+`product_notices.py` отвечает за два атомарных JSON-хранилища на уровне профиля и строгую validation согласия.
+
+`dashboard_server.py` публикует защищённый токеном локальный API, а `ProductNoticeCoordinator` последовательно показывает запрос согласия и What’s New.
+
+`release/changelog.json` является каноническим источником. Markdown и встроенные assets RU/EN генерируются.
+
+Этот слой работает offline и не является отправителем телеметрии.
+
+Отдельный Python-client:
+
+- валидирует семантические события;
+- хранит ограниченную SQLite-очередь на уровне профиля;
+- выполняет фоновую доставку только после согласия.
+
+React не знает удалённый endpoint или credentials.
+
+Контракты:
+
+- `docs/product-notices-and-consent.md`;
+- `docs/telemetry-client.md`.
+
+## Декларативный runtime компактного форматтера
+
+C1.5R.2 добавляет независимый путь на уровне профиля:
+
+```text
+<profile>/addon_data/<addon-id>/card_display_formatters.json
+```
+
+Поток:
+
+```text
+handlers DashboardServerManager
+→ CardDisplayFormatterStore читается один раз на запрос Search или Triage
+→ неизменяемый CardDisplayFormatterResolver
+→ projector точной карточки Search
+→ Triage переиспользует строки карточек, принадлежащие Search
+→ канонический fallback R1 при любой ошибке formatter или store
+```
+
+Store отделён от:
+
+- `inspection_profiles.json`;
+- глобальной конфигурации add-on;
+- данных collection;
+- типов заметок;
+- шаблонов.
+
+Используются строгая schema v1, детерминированные атомарные записи JSON, конфликты optimistic revision, quarantine повреждённых данных и сохранение будущей schema с fail-closed-поведением.
+
+Parser форматтера создаёт только ограниченные упорядоченные токены text, line, image и audio. Он не выполняет пользовательскую программу, не читает media-файлы, не загружает удалённые resources и не меняет Inspector или расширенный предпросмотр.
+
+Контракт:
+
+- [`card-display-formatter-v1.md`](card-display-formatter-v1.md).
+
+## Семантика предпросмотра C1.5R.3
+
+См. [`card-preview-semantics.md`](card-preview-semantics.md). Полный предпросмотр использует нативные лицевую сторону и ответ reviewer: Inspector показывает лицевую сторону, расширенный диалог — ответ, компактная идентичность не меняется.
+
+## Независимые источники кандидатов C1.5R.4
+
+См. [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md). Schema v4 Triage разделяет кандидатов обучения за ограниченный период и кандидатов по текущему содержимому.
