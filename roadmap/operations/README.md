@@ -2,8 +2,8 @@
 
 **Track:** `O`  
 **Role:** protected operational tooling for remote services, separate from the local add-on  
-**Decision snapshot:** **2026-07-20**  
-**Current status:** `O1` is **Next**; `O2` is **Conditional**
+**Decision snapshot:** **2026-07-26**  
+**Current status:** `O1.1` is **Complete**, `O1.2` is **Next**; `O2` is **Conditional**
 
 Operations is a parallel track. It does not extend the primary study navigation, does not place administrative credentials in the add-on and does not block `C1`, `C2` or local gamification work.
 
@@ -30,7 +30,7 @@ They may share operational tooling later, but they do not share identifiers, cre
 
 # O1 — Telemetry Operations Foundation and Admin Console
 
-**Status:** Next  
+**Status:** O1.1 Complete; O1.2 Next; O1.3–O1.6 Planned  
 **Activation:** approved because automatic operational metrics and an early minimal admin surface are now required
 
 ## Goal
@@ -89,14 +89,20 @@ The browser never supplies SQL, table names, column names or arbitrary grouping 
 
 Authoritative for application-level information:
 
-- enrolled and active installations;
+- current enrolled installations and fixed-window accepted activity;
 - accepted event counts;
-- event, version, page, feature, action, result and bounded performance distributions;
-- consent schema and privacy notice distributions;
-- quota state;
-- retention, expiry and deletion outcomes.
+- long-term event, add-on/Anki version, OS, locale, result and duration distributions;
+- raw-retention-only page, feature, action and error distributions;
+- current consent schema and privacy notice distributions;
+- current application-cap state;
+- bounded retention and deletion evidence.
 
 These are **installation metrics**, not proof of unique people. The UI must not label installations as users.
+
+The source audit confirms that the current `daily_aggregates` table does not
+preserve page, feature, action, error, consent or privacy-notice dimensions.
+Historical installation snapshots also become incomplete after authenticated
+deletion. O1.2 must not invent that missing history.
 
 ### Cloudflare GraphQL Analytics API
 
@@ -106,9 +112,11 @@ Authoritative for provider-level infrastructure information:
 - query volume and latency;
 - database size;
 - Worker requests, errors, status classes, CPU and execution duration where available;
-- current provider quota pressure.
+- provider capacity inputs with source-specific semantics.
 
-The API credential is server-side, least-privilege and read-only.
+The API credential is server-side, least-privilege and read-only. D1 provider
+analytics retain 31 days; Workers GraphQL supports bounded historical queries
+but does not replace durable collector snapshots.
 
 ### `ADMIN_DB`
 
@@ -148,10 +156,12 @@ Recommended logical families:
 ```text
 daily_metric_totals
 daily_metric_dimensions
-daily_metric_pairs
 maintenance_runs
 provider_metric_snapshots
 ```
+
+No two-dimensional query is approved by O1.1. A pair table is not created
+unless a later registry entry receives a separate privacy justification.
 
 The exact schema is finalized during implementation, but these invariants are fixed:
 
@@ -185,7 +195,9 @@ It must not claim:
 Initial privacy guardrails:
 
 - global totals may be exact;
-- small distribution cells below `5` are displayed as `<5`;
+- small distribution cells below `5` are suppressed server-side and displayed as `<5`;
+- complementary suppression and removal of an exact grand total prevent a single hidden cell from being recovered by subtraction;
+- arbitrary dates and dimension-value filters are not accepted;
 - one-dimensional breakdowns are the default;
 - two-dimensional breakdowns require an explicit registry entry;
 - installation IDs are never searchable or displayed;
@@ -255,7 +267,7 @@ The first admin UI contains only four top-level surfaces:
 
 - active installations;
 - accepted events;
-- current error rate;
+- explicitly named reliability families rather than a generic error rate;
 - source freshness;
 - critical operational notices.
 
@@ -269,10 +281,12 @@ The first admin UI contains only four top-level surfaces:
 ### Reliability
 
 - D1 rows read/written and database size;
-- Worker request/error state;
-- quota pressure;
+- Worker provider request/invocation error state;
+- opt-in client reliability events, separately labeled;
+- exact application global-cap utilization;
+- D1 row, storage and provider-availability state as separate capacity families;
 - collector and maintenance history;
-- fail-closed runtime switch state where safely observable.
+- bounded ingestion rejection families only after a separate durable counting contract exists.
 
 ### Privacy
 
@@ -286,15 +300,19 @@ There is no generic dashboard builder, customizable SQL editor or mutation conso
 ## Delivery phases
 
 ```text
-O1.0  Activation evidence and source/schema audit
-O1.1  Metric Registry and query contract
-O1.2  Aggregate read model and maintenance ledger
-O1.3  Access threat model and authorization contract
-O1.4  Read-only Admin Worker API
-O1.5  Cloudflare provider collector and ADMIN_DB snapshots
-O1.6  Minimal Overview / Usage / Reliability / Privacy UI
-O1.7  Synthetic staging verification and separately approved production deployment
+O1.1  Metrics, Query and Security Contract                 Complete
+O1.2  Operational Read Model and Maintenance Evidence     Next
+O1.3  Protected Read-only Admin API                       Planned
+O1.4  Provider Metrics Collector                          Planned
+O1.5  Minimal Admin Console                               Planned
+O1.6  Verification, Runbook and Production Gate           Planned
 ```
+
+O1.1 established the versioned Metric Registry, fixed Query Registry, typed
+response states, partial-history/backfill boundaries, small-cell suppression,
+and Access/JWT/JWKS threat contract in the private telemetry repository. It did
+not add migrations, an Admin Worker/API/UI, `ADMIN_DB`, provider credentials,
+Cloudflare resources, or deployment. `O1` as a whole is not complete.
 
 ## Dependencies
 

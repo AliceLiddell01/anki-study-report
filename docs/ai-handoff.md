@@ -1,6 +1,6 @@
 # Передача контекста новому чату/нейронке
 
-Снимок: **2026-07-18**.
+Снимок: **2026-07-26**.
 
 ## Начать отсюда
 
@@ -73,7 +73,15 @@ Research candidates are not production economy. Gamification does not block core
 
 ### Telemetry operations
 
-Current telemetry service has only bounded ingestion/schema/deletion endpoints, no dashboard or generic query API. `O1` is a separate Access-protected read-only admin application with Worker-side JWT validation and prepared bounded D1 queries. It never becomes a route or secret-bearing mode in the add-on.
+Current telemetry service has only bounded ingestion/schema/deletion endpoints,
+no dashboard or generic query API. `O1.1 Metrics, Query and Security Contract`
+is complete in the private telemetry repository: sources and partial history
+are classified, fixed Metric/Query registries and typed response states exist,
+and the Access/JWT/JWKS threat boundary is fixed. `O1.2 Operational Read Model
+and Maintenance Evidence` is next; O1.3–O1.6 remain planned. No Admin Worker,
+API, UI, D1 read-model migration, provider collector, Access resource or
+deployment was created. Operations never becomes a route or secret-bearing
+mode in the add-on.
 
 ### Identity and extensions
 

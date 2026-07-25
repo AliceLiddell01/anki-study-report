@@ -31,6 +31,10 @@ production code/tests
 - [ci-optimization-stage-6a-ghcr-consumer-validation.md](ci/ci-optimization-stage-6a-ghcr-consumer-validation.md)
 - [ci-optimization-stage-6b-ghcr-cloud-cutover.md](ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
 
+## Operations reports
+
+- [o1-1-metrics-query-security-contract-closeout.md](operations/o1-1-metrics-query-security-contract-closeout.md)
+
 ## Audits
 
 - [card-alias-audit.md](audits/card-alias-audit.md)
