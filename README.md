@@ -1,83 +1,76 @@
 # Anki Study Report
 
-Документация описывает текущий проект на **2026-07-22**.
+Локальное расширение для **Anki 26.05+**: Python runtime собирает и анализирует учебные данные, а React/TypeScript dashboard показывает их в защищённом локальном интерфейсе.
 
-Anki Study Report — add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard. Он собирает локальную статистику обучения, строит Markdown/HTML-отчёт и предоставляет token-protected dashboard на `127.0.0.1` с Statistics/FSRS, Activity, Decks, native Cards/Notes Search, Safe Actions, Cards и локальными Signals/Notifications.
+> Проект находится в активной разработке. Стабильный публичный release ещё не объявлен.
 
-Settings также содержит локальный Inspection Profiles workspace для явной настройки декларативных проверок exact note types; он не изменяет коллекцию.
+## Что уже есть
 
-Signals, evidence, entity references и notification preferences остаются per-profile/local и не отправляются в remote telemetry. Отдельный private telemetry service принимает только opt-in bounded technical events.
+- локальные страницы Today, Activity, Statistics/FSRS, Decks, Search, Cards и Profile;
+- безопасные действия и bounded API без прямого доступа frontend к Anki collection;
+- token-protected dashboard только на `127.0.0.1`;
+- sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
+- Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
+- доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки;
+- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting.
 
-## Быстрый вход
+## Куда идти дальше
 
-```text
-anki_study_report/       Python add-on/runtime/API
-web-dashboard/           Vite + React + TypeScript
-tests/                   Python tests
-scripts/                 build/package/verification
-docker/anki-e2e/         real-Anki Desktop E2E
-docs/                    current contracts
-roadmap/                 tracks, dependencies and activation criteria
-reports/                 historical evidence
+| Задача | Документ |
+| --- | --- |
+| Понять проект и архитектуру | [Обзор проекта](docs/project-overview.md) · [Архитектура](docs/architecture.md) |
+| Найти актуальный контракт | [Индекс документации](docs/README.md) |
+| Узнать текущее состояние | [AI handoff](docs/ai-handoff.md) |
+| Посмотреть планы и зависимости | [Карта roadmap](roadmap/README.md) |
+| Найти исторические подтверждения | [Индекс отчётов](reports/README.md) |
+| Запустить проверки | [Матрица тестирования](docs/test-matrix.md) · [Политика запусков](docs/verification-run-policy.md) |
+| Собрать или выпустить add-on | [Packaging и release](docs/packaging-release.md) |
+| Внести вклад | [CONTRIBUTING](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
+
+## Архитектура в одном экране
+
+```mermaid
+flowchart LR
+    A[Anki add-on<br/>Python runtime] --> B[Bounded local API]
+    B --> C[React / TypeScript dashboard]
+    A --> D[Markdown / HTML report]
+    C --> E[Loopback only<br/>Token protected]
+    A --> F[Anki collection]
+    C -. no direct collection access .-> F
 ```
 
-Главный release artifact — flat `anki_study_report.ankiaddon`.
-
-Current primary navigation:
+Основные каталоги:
 
 ```text
-Сегодня → Активность → Статистика → Колоды → Поиск → Карточки
+anki_study_report/   Python add-on, runtime и API
+web-dashboard/       Vite + React + TypeScript
+tests/               Python и contract tests
+scripts/             build, package и verification
+docker/anki-e2e/     real-Anki Desktop E2E
+docs/                актуальные контракты
+roadmap/             треки, зависимости и критерии
+reports/             исторические отчёты и evidence
 ```
 
-Profile, Tools, Settings and Support live outside the primary study navigation. Server, Sources and Logs remain current diagnostic/settings surfaces until the corresponding roadmap cleanup is implemented.
+## Текущее направление
 
-## Roadmap
+- **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
+- **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
+- **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
-The accepted product contour is complete through **Stage 9.5**. Future work is organized by independent tracks rather than one global Stage 10–13 queue.
+Точные статусы и критерии находятся в [roadmap](roadmap/README.md); run IDs, SHA и исторические результаты — в [reports](reports/README.md).
 
-- [Roadmap map](roadmap/README.md)
-- [Core critical path](roadmap/core/README.md): `C2 owner acceptance closure → C3 UI & Shell → C4 Data Independence → C5 Today v2 → C6 Profile v2 → Core 1.0`
-- [Gamification](roadmap/gamification/README.md): parallel research/product track; production not approved
-- [Telemetry operations](roadmap/operations/README.md): separate protected admin tooling
-- [Identity continuity](roadmap/identity/README.md): conditional opt-in gate
-- [Extension ecosystem](roadmap/extensions/README.md): conditional/deferred
-- [Platform / CI](roadmap/platform/README.md): independent delivery/E2E track
+## Основные инварианты
 
-Only the Core sequence is mandatory for Core 1.0. Gamification, accounts, telemetry admin UI, extension packs, `C1.6B` and contextual additions do not block it unless a documented dependency is introduced.
+1. Frontend не читает Anki collection напрямую.
+2. Dashboard остаётся loopback-only и token-protected.
+3. Payload и публичное поведение меняются синхронно между backend, frontend types, tests и docs.
+4. Sanitizer, media validation, action allowlists и preview isolation не ослабляются ради удобства.
+5. Generated assets, logs, screenshots, profile data, tokens, `.ankiaddon` и E2E outputs не коммитятся.
+6. Release, merge и публикация — отдельные явно одобряемые действия.
+7. Real-Anki Docker E2E является integration gate, а не обычным циклом отладки.
 
-Current Core status:
-
-```text
-C1 — complete and accepted
-C2 — implemented, exact-SHA verified and merged into core
-core merge commit — edb140b1197910aae31500a40e4a8287cc46b760
-post-merge owner acceptance — reopened after manual Cards/Inspection Profiles review
-next action — bounded C2 manual acceptance remediation
-C3–C6 — mandatory future Core path
-Core 1.0 release — not started
-```
-
-The revised Core path explicitly requires:
-
-- a full-width desktop shell instead of one global narrow centered container;
-- a site-wide UI/content system with shared headers, surfaces, shapes, spacing and motion;
-- removal of obsolete Tools/Report surfaces;
-- first-party replacement of useful external data-source functionality before Sources is deleted;
-- a focused daily `Today v2`;
-- a full-width editable `Profile v2 Foundation` without fake gamification placeholders.
-
-Current platform state:
-
-```text
-CI Stage 6B: Complete
-cloud real-Anki E2E: immutable GHCR digest only
-manual E2E package: exact Fast CI artifact
-release E2E package: exact release artifact
-local Docker build: development/diagnostic fallback
-future CI 7+: conditional on new measurements
-```
-
-## Important commands
+## Основные команды
 
 Canonical non-Docker check:
 
@@ -85,71 +78,18 @@ Canonical non-Docker check:
 .\scripts\run_full_check.ps1 -SkipDocker
 ```
 
-Release build:
-
-```powershell
-.\build_ankiaddon.ps1
-```
-
 Package validation:
 
 ```powershell
 node scripts/run_python.mjs scripts/package_addon.py --check
-node scripts/run_python.mjs scripts/package_addon.py --check-only
 ```
 
-Full local Docker E2E, only when risk/policy requires it:
+Полный Docker E2E запускается только когда это оправдано риском изменения:
 
 ```powershell
 .\scripts\run_full_check.ps1 -CleanDocker
 ```
 
-Manual gated release after merge:
+## Лицензия
 
-```powershell
-node scripts/run_python.mjs scripts/prepare_release.py --version 1.0.0 --check
-gh workflow run release.yml --ref master -f version=1.0.0 -f channel=stable
-```
-
-Merge or push does not publish automatically.
-
-## Documentation
-
-Start with:
-
-- [Documentation index](docs/README.md)
-- [Project overview](docs/project-overview.md)
-- [Architecture](docs/architecture.md)
-- [Dashboard API](docs/dashboard-api.md)
-- [Navigation / IA](docs/navigation-ia.md)
-- [UI prototyping and visual acceptance](docs/ui-prototype-visual-acceptance.md)
-- [Security and safety](docs/security-and-safety.md)
-- [Test matrix](docs/test-matrix.md)
-- [Verification policy](docs/verification-run-policy.md)
-- [CI/CD](docs/ci-cd.md)
-- [GHCR E2E consumer](docs/ghcr-e2e-consumer.md)
-- [Decision log](docs/decision-log.md)
-- [AI handoff](docs/ai-handoff.md)
-- [Historical reports](reports/README.md)
-
-## Contract rules
-
-1. Payload/public behavior changes require synchronized backend, frontend types/validators, tests and docs.
-2. Frontend never reads the Anki collection directly.
-3. The dashboard remains loopback-only and token-protected.
-4. Sanitizer, media validation, action allowlists and preview isolation are security contracts.
-5. Generated assets, logs, screenshots, profile data, tokens, `.ankiaddon` and E2E outputs are not committed.
-6. Production code is not changed to satisfy an outdated test when current behavior is correct.
-7. Research code/evidence is not silently added to Fast CI or package contents.
-8. Release remains manual, approval-gated and exact-artifact based.
-9. Desktop working pages must not be constrained by one global narrow `max-width`; width limits are local component decisions.
-10. New pages must reuse shared layout/content primitives instead of introducing another local visual grammar.
-
-## Participation and safety
-
-- [Contributing](CONTRIBUTING.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Security policy](SECURITY.md)
-- [GPL-3.0-only license](LICENSE)
-
-Potential vulnerabilities must use the private channel documented in `SECURITY.md`, not public Issues.
+Проект распространяется по лицензии [GPL-3.0-only](LICENSE).

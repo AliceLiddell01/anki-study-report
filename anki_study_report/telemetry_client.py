@@ -163,7 +163,10 @@ class TelemetryClient:
             return {"ok": False, "code": "telemetry.queue_unavailable", "queued": False, "purpose": purpose}
         count = self.store.queue_count()
         if count >= QUEUE_SEND_THRESHOLD:
-            self.request_send()
+            # Threshold-triggered delivery must not be suppressed by the periodic
+            # background-send interval. It is also safe while another sender is
+            # active because request_send() coalesces the follow-up request.
+            self.request_send(force=True)
         return {"ok": True, "code": "telemetry.queued", "queued": True, "purpose": purpose}
 
     def apply_privacy_choices(self, purposes: dict[str, bool]) -> dict[str, Any]:
@@ -171,9 +174,14 @@ class TelemetryClient:
         self.store.delete_purposes(disabled)
         if not any(purposes.get(purpose) is True for purpose in CONTRACT["purposes"]):
             return self.disable_all_and_delete()
-        if not self.privacy_store.read()["telemetry"]["deletionPending"]:
+        telemetry = self.privacy_store.read()["telemetry"]
+        # Do not create an empty sender during a consent transition. Starting an
+        # empty worker can race with the first new events, drain only a partial
+        # batch, and leave the remainder below the threshold. Existing queued
+        # events still get an immediate forced attempt.
+        if self.store.queue_count() > 0 and not telemetry["deletionPending"]:
             self.request_send(force=True)
-        return {"ok": True, "code": "telemetry.choices_applied", "deletionPending": self.privacy_store.read()["telemetry"]["deletionPending"]}
+        return {"ok": True, "code": "telemetry.choices_applied", "deletionPending": telemetry["deletionPending"]}
 
     def disable_all_and_delete(self) -> dict[str, Any]:
         self.store.clear_queue()
@@ -226,7 +234,7 @@ class TelemetryClient:
         try:
             delete_next = deletion_only
             bypass_next = bypass_enrollment_backoff
-            for attempt in range(8):
+            for _ in range(8):
                 if delete_next or self.privacy_store.read()["telemetry"]["deletionPending"]:
                     result = self.attempt_deletion()
                 else:
@@ -239,11 +247,6 @@ class TelemetryClient:
                         self._send_again = False
                         self._deletion_requested = False
                 if requested:
-                    if attempt == 7:
-                        with self._worker_lock:
-                            self._send_again = self._send_again or not delete_next
-                            self._deletion_requested = self._deletion_requested or delete_next
-                        break
                     continue
                 if not delete_next and result.get("code") in {"telemetry.delivered", "telemetry.queue_empty"}:
                     threading.Event().wait(0.1)

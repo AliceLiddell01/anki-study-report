@@ -63,7 +63,11 @@ def test_package_source_inputs_fail_closed_before_registry_work() -> None:
     assert "--release-artifact-name" in validation
     assert "--release-artifact-sha256" in validation
     assert "--fast-ci-run-id" in validation
-    assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_SHA=${{ job.workflow_sha }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_REPOSITORY=${{ job.workflow_repository }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_PATH=${{ job.workflow_file_path }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_REF=${{ job.workflow_ref }}" in validation
+    assert "E2E_WORKFLOW_SOURCE_SHA=${{ github.sha }}" not in validation
     assert "Cloud E2E requires an exact prebuilt Fast CI or release artifact package" in validation
     assert "Unsupported cloud package source" in validation
     assert "github.event_name" not in validation
@@ -91,21 +95,22 @@ def test_fast_run_is_resolved_by_api_and_artifacts_are_downloaded_by_id() -> Non
         assert "name:" not in block.split("with:", 1)[1]
 
 
-def test_diagnostics_precedes_exact_checkout_and_package_download_follows_it() -> None:
+def test_diagnostics_precedes_exact_harness_checkout_and_package_download_follows_it() -> None:
     text = workflow_text()
     diagnostics_download = text.index("Download exact Fast CI diagnostics by artifact ID")
     diagnostics_validation = text.index("Validate Fast CI diagnostics and derive tested commit")
-    exact_checkout = text.index("Check out exact Fast CI tested commit")
-    checkout_validation = text.index("Verify exact tested commit checkout")
+    exact_checkout = text.index("Check out exact E2E workflow and harness commit")
+    checkout_validation = text.index("Verify exact E2E harness checkout")
     package_download = text.index("Download exact Fast CI package by artifact ID")
     package_validation = text.index("Validate and stage exact Fast CI package")
 
     assert diagnostics_download < diagnostics_validation < exact_checkout < checkout_validation < package_download < package_validation
-    checkout = step(text, "Check out exact Fast CI tested commit", "Verify exact tested commit checkout")
-    assert "ref: ${{ steps.fast_diagnostics.outputs.tested_sha }}" in checkout
+    checkout = step(text, "Check out exact E2E workflow and harness commit", "Verify exact E2E harness checkout")
+    assert "ref: ${{ job.workflow_sha }}" in checkout
     assert "persist-credentials: false" in checkout
     assert "fetch-depth: 0" in checkout
-    verify = step(text, "Verify exact tested commit checkout", "Download exact Fast CI package by artifact ID")
+    verify = step(text, "Verify exact E2E harness checkout", "Download exact Fast CI package by artifact ID")
+    assert "EXPECTED_HARNESS_SHA: ${{ job.workflow_sha }}" in verify
     assert "git rev-parse HEAD" in verify
     assert "E2E_CHECKOUT_SHA=$actual" in verify
 
@@ -129,7 +134,7 @@ def test_fast_package_validation_binds_source_head_and_stages_prebuilt_env() -> 
 def test_release_current_run_path_and_local_source_build_remain_separate() -> None:
     text = workflow_text()
     release_download = step(text, "Download exact release artifact", "Stage and verify exact release artifact")
-    release_stage = step(text, "Stage and verify exact release artifact", "Capture runner and Docker preflight")
+    release_stage = step(text, "Stage and verify exact release artifact", "Capture runner context")
 
     assert "if: steps.source_mode.outputs.package_source == 'release-artifact'" in release_download
     assert "name: ${{ inputs.release_artifact_name }}" in release_download
@@ -144,15 +149,15 @@ def test_release_current_run_path_and_local_source_build_remain_separate() -> No
     assert 'if [ -z "$ANKI_E2E_PREBUILT_ADDON_PATH" ] && [ "$ANKI_E2E_PACKAGE_SOURCE" != "source-build" ]; then' in shell
     assert 'if [ -n "$ANKI_E2E_PREBUILT_ADDON_PATH" ]; then' in shell
     assert "install --offline --frozen-lockfile" in shell
-    assert 'phase_end "frontend build"' in shell
-    assert 'phase_end "add-on package"' in shell
+    assert 'phase_start "frontend-build" "frontend build"' in shell
+    assert 'phase_start "addon-package" "add-on package"' in shell
 
 
 def test_prebuilt_wording_and_phase_semantics_are_generic() -> None:
     shell = CONTAINER.read_text(encoding="utf-8")
 
     assert 'section "Validate exact prebuilt add-on artifact"' in shell
-    assert 'phase_end "exact prebuilt add-on validation and extraction"' in shell
+    assert 'phase_start "exact-package-validation" "exact prebuilt add-on validation and extraction"' in shell
     assert "exact prebuilt release artifact" not in shell
     assert "exact release add-on validation and extraction" not in shell
 
@@ -201,24 +206,29 @@ def test_cloud_buildkit_and_gha_cache_contour_is_removed() -> None:
 def test_ghcr_preparation_and_compose_are_unconditional() -> None:
     text = workflow_text()
     lock = step(text, "Validate environment consumer lock", "Expose exact GHCR environment identity")
-    identity = step(text, "Expose exact GHCR environment identity", "Log in to GHCR")
+    identity = step(text, "Expose exact GHCR environment identity", "Run canonical runtime E2E preflight")
+    runtime = step(text, "Run canonical runtime E2E preflight", "Log in to GHCR")
     login = step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
-    pull = step(text, "Pull and verify exact GHCR environment image", "Validate resolved GHCR Compose contract")
-    compose = step(text, "Validate resolved GHCR Compose contract", "Run canonical Docker-only E2E")
+    pull = step(text, "Pull and verify exact GHCR environment image", "Run canonical Docker-only E2E")
 
-    for block in (lock, identity, login, pull):
+    for block in (lock, identity, runtime, login, pull):
         assert "if: env.ANKI_E2E_IMAGE_SOURCE" not in block
     assert "ANKI_E2E_IMAGE=$env:EXACT_REFERENCE" in identity
     assert "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" in identity
     assert "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" in identity
     assert "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" in identity
+    assert "scripts/e2e_preflight.py run" in runtime
+    assert "--layer runtime" in runtime
+    assert "--execution-context github-actions" in runtime
+    assert "ANKI_E2E_PREFLIGHT_COMPLETE=1" in runtime
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "password: ${{ github.token }}" in login
     assert "docker pull --platform $env:EXPECTED_PLATFORM $env:EXACT_REFERENCE" in pull
     assert "RepoDigests" in pull
-    assert "docker-compose.yml" in compose
-    assert "docker-compose.ghcr.yml" in compose
-    assert "if ($env:ANKI_E2E_IMAGE_SOURCE" not in compose
+    assert "Validate resolved GHCR Compose contract" not in text
+    checks = (ROOT / "scripts" / "e2e_preflight_checks.py").read_text(encoding="utf-8")
+    assert '"config", "--quiet"' in checks
+    assert '"config", "--format", "json"' in checks
 
 
 def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payloads() -> None:
@@ -244,11 +254,21 @@ def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payl
 
 def test_early_failure_diagnostics_and_cleanup_do_not_require_exact_image_identity() -> None:
     text = workflow_text()
-    capture = step(text, "Capture final Docker state", "Prepare redacted public E2E artifact")
-    cleanup = step(text, "Clean Docker E2E state", "Restore canonical result")
+    capture = step(
+        text,
+        "Capture final Docker state",
+        "Finalize Docker E2E state before artifact preparation",
+    )
+    cleanup = step(
+        text,
+        "Finalize Docker E2E state before artifact preparation",
+        "Build canonical final E2E summary",
+    )
 
+    assert "if: ${{ !cancelled() }}" in capture
     assert "if ($env:ANKI_E2E_IMAGE)" in capture
     assert "exact GHCR image identity was not exposed before failure" in capture
+    assert "if: ${{ !cancelled() }}" in cleanup
     assert "if ($env:ANKI_E2E_IMAGE)" in cleanup
     assert "Skipping Docker E2E cleanup because exact GHCR image identity was not exposed" in cleanup
 

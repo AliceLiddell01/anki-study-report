@@ -1,113 +1,79 @@
 # Индекс документации
 
-Каталог `docs/` содержит актуальные контракты архитектуры, API, UX, безопасности, конфигурации, тестирования и эксплуатации.
-
-## Границы каталогов
+`docs/` содержит **актуальные контракты** проекта. Текущие планы находятся в `roadmap/`, а исторические аудиты, измерения и closeout — в `reports/`.
 
 ```text
-docs/       актуальное поведение и обязательные контракты
-roadmap/    состояние треков, зависимости и критерии активации и завершения
-reports/    исторические аудиты, измерения и итоговые подтверждения
+docs/       текущее поведение, архитектура и обязательные правила
+roadmap/    будущие этапы, зависимости и criteria
+reports/    исторические evidence и завершённые проверки
 ```
 
-Будущее развитие разделено на несколько треков. Компактная карта находится в [`roadmap/README.md`](../roadmap/README.md):
+## Начать отсюда
 
-- [Core](../roadmap/core/README.md);
-- [Геймификация](../roadmap/gamification/README.md);
-- [Эксплуатация телеметрии](../roadmap/operations/README.md);
-- [Непрерывность идентификации](../roadmap/identity/README.md);
-- [Экосистема расширений](../roadmap/extensions/README.md);
-- [Платформа и CI](../roadmap/platform/README.md).
+- [Обзор проекта](project-overview.md)
+- [Архитектура](architecture.md)
+- [Передача актуального контекста ИИ](ai-handoff.md)
+- [Карта roadmap](../roadmap/README.md)
+- [Исторические отчёты](../reports/README.md)
 
-Исследования геймификации, административные инструменты телеметрии, необязательная идентификация и пакеты расширений не становятся актуальными production-контрактами только потому, что присутствуют в roadmap.
+## Product и UX
 
-## Основные актуальные контракты
+- [Навигация и информационная архитектура](navigation-ia.md)
+- [UI prototyping и visual acceptance](ui-prototype-visual-acceptance.md)
+- [Settings Hub](settings-hub.md)
+- [Statistics v1](statistics-v1.md)
+- [FSRS analytics](fsrs-analytics.md)
+- [Search и Safe Actions](search-v1-and-safe-actions.md)
+- [Signals foundation](signals-foundation.md)
+- [Notification center](notification-center.md)
+- [Privacy и telemetry](privacy-telemetry.md)
 
-### Обзор и архитектура
+### Cards и Inspection Profiles
 
-- [Обзор проекта](project-overview.md);
-- [Архитектура](architecture.md);
-- [Dashboard API](dashboard-api.md);
-- [Карта frontend](frontend-map.md);
-- [Навигация и информационная архитектура](navigation-ia.md).
+- [Cards v2 product contract](cards-v2-product-contract.md)
+- [Triage read API](cards-v2-triage-read-api.md)
+- [Canonical single-card resolution loop](cards-v2-resolution-loop.md)
+- [Cards attention inbox](cards-attention-inbox.md)
+- [Card display identity](card-display-identity.md)
+- [Declarative formatter v1](card-display-formatter-v1.md)
+- [Card preview semantics](card-preview-semantics.md)
+- [Triage candidate sources v4](triage-candidate-sources-v4.md)
+- [Inspection Profiles v1](inspection-profiles-v1.md)
+- [Inspection Profiles UI](inspection-profiles-ui.md)
+- [Guided Inspection Profiles](guided-inspection-profiles.md)
 
-### UI foundation и визуальная приёмка
+Исторический C1.5 UI сохранён отдельно: [Cards workspace UI](cards-v2-workspace-ui.md).
 
-- [Процесс UI-прототипирования и визуальной приёмки](ui-prototype-visual-acceptance.md).
+## Architecture и API
 
-### Core: Cards и Inspection Profiles
+- [Dashboard API](dashboard-api.md)
+- [Frontend map](frontend-map.md)
+- [Configuration reference](config-reference.md)
+- [Fixtures и test data](fixtures-and-test-data.md)
+- [Decision log](decision-log.md)
 
-- [Продуктовый контракт Cards v2](cards-v2-product-contract.md);
-- [API чтения Triage для Cards v2](cards-v2-triage-read-api.md);
-- [Канонический цикл решения проблемы одной карточки](cards-v2-resolution-loop.md);
-- [Очередь карточек, требующих внимания](cards-attention-inbox.md);
-- [Исторический UI рабочего пространства C1.5](cards-v2-workspace-ui.md);
-- [Идентичность отображения карточки](card-display-identity.md);
-- [Декларативный форматтер отображения v1](card-display-formatter-v1.md);
-- [Семантика предпросмотра карточки](card-preview-semantics.md);
-- [Источники кандидатов Triage v4](triage-candidate-sources-v4.md);
-- [Inspection Profiles v1](inspection-profiles-v1.md);
-- [UI настроек Inspection Profiles](inspection-profiles-ui.md);
-- [Пошаговая настройка Inspection Profiles](guided-inspection-profiles.md).
+## Security, testing и delivery
 
-### Остальные актуальные продуктовые контракты
+- [Security and safety](security-and-safety.md)
+- [Test matrix](test-matrix.md)
+- [Verification run policy](verification-run-policy.md)
+- [CI/CD](ci-cd.md)
+- [Docker real-Anki E2E](docker-e2e.md)
+- [Run-event protocol](run-event-protocol.md)
+- [Failure diagnostics](failure-diagnostics.md)
+- [Preflight и cancellation](e2e-preflight-cancellation.md)
+- [Fast CI package / E2E harness reuse](e2e-package-harness-reuse.md)
+- [Идентичность нерелизной сборки](non-release-build-identity.md)
+- [Каноническая итоговая сводка E2E и bounded history](e2e-final-summary-history.md)
+- [GHCR E2E consumer](ghcr-e2e-consumer.md)
+- [Packaging и release](packaging-release.md)
 
-- [Центр настроек](settings-hub.md);
-- [Статистика](statistics-v1.md);
-- [Аналитика FSRS](fsrs-analytics.md);
-- [Поиск и Safe Actions](search-v1-and-safe-actions.md);
-- [Сигналы](signals-foundation.md);
-- [Центр уведомлений](notification-center.md);
-- [Конфиденциальность и телеметрия](privacy-telemetry.md).
+## Работа ИИ-агентов
 
-### Безопасность, тестирование и поставка
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
+- [Codex agent rules](codex-agent-rules.md)
+- [Codex local WSL environment](codex-local-environment.md)
 
-- [Безопасность и модель защиты](security-and-safety.md);
-- [Матрица тестирования](test-matrix.md);
-- [Политика проверочных запусков](verification-run-policy.md);
-- [CI/CD](ci-cd.md);
-- [Потребитель GHCR-образа для E2E](ghcr-e2e-consumer.md);
-- [Сборка пакета и выпуск](packaging-release.md);
-- [Журнал решений](decision-log.md).
-
-### Контекст для агентов
-
-- [Передача контекста ИИ](ai-handoff.md);
-- [Режимы работы ChatGPT и Codex](ai-work-modes.md);
-- [Режим ChatGPT](chatgpt-work-mode.md);
-- [Режим Codex](codex-agent-rules.md);
-- [Локальное WSL-окружение Codex](codex-local-environment.md).
-
-Исторические подтверждения должны находиться в [`reports/`](../reports/README.md), а не в `docs/`.
-
-## Текущий статус Core
-
-```text
-C1.5R.0–R.7 — завершено; принято владельцем
-C1.6 — завершено; принято владельцем; влито в core
-C1.6B — условный этап; не начат
-Core C1 — завершён
-C2 — следующий этап; не начат
-```
-
-## Контракты C1.5R и C1.6
-
-### Семантика предпросмотра C1.5R.3
-
-См. [`card-preview-semantics.md`](card-preview-semantics.md). Полный предпросмотр использует нативные лицевую и обратную стороны reviewer: Inspector показывает лицевую сторону, расширенный диалог — обратную, а компактная идентичность остаётся неизменной.
-
-### Независимые источники кандидатов C1.5R.4
-
-См. [`triage-candidate-sources-v4.md`](triage-candidate-sources-v4.md). Triage v4 разделяет кандидатов по учебной активности за ограниченный период и кандидатов по текущему содержимому.
-
-### Очередь карточек, требующих внимания, C1.5R.5
-
-См. [`cards-attention-inbox.md`](cards-attention-inbox.md). Отклонённая таблица заменена семантическим списком, построенным вокруг идентичности карточки, широким Inspector, немодальной выдвижной панелью, явным периодом обучения и ручным ограниченным продолжением проверки текущего содержимого.
-
-### Пошаговая настройка Inspection Profiles C1.5R.6
-
-См. [`guided-inspection-profiles.md`](guided-inspection-profiles.md). Для ненастроенного типа заметки сразу создаётся чистый несохранённый черновик; обычный путь проходит через Basic, а строгий редактор v1 находится в Advanced.
-
-### Цикл решения проблемы одной карточки C1.6
-
-См. [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md). Успешный Safe Action или Open in Anki переводит элемент в состояние Awaiting recheck, после чего каноническая перепроверка конкретной карточки выполняет fail-closed-сопоставление стабильных причин.
+`ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/`, а не дублироваться в этом индексе.

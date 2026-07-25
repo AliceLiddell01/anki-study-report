@@ -6,4 +6,4 @@ services:
       - /bin/bash
       - /workspace/docker/anki-e2e/bootstrap-current-harness.sh
     command:
-      - /e2e/bin/run-e2e.sh
+      - /e2e/bin/run-e2e-failure-wrapper.sh

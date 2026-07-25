@@ -1,309 +1,124 @@
-# Передача контекста ИИ — Anki Study Report
+# Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-22
+**Снимок:** 2026-07-26
 
-## С чего начать
+Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
-Читайте источники в таком порядке:
+## Порядок чтения
 
-1. [`../README.md`](../README.md);
+1. [`../README.md`](../README.md)
 2. этот файл;
-3. [`../roadmap/README.md`](../roadmap/README.md);
-4. [`../roadmap/core/README.md`](../roadmap/core/README.md);
-5. актуальные production-код и тесты в пределах задачи;
-6. профильный контракт и последний отчёт соответствующего этапа.
+3. профильный roadmap;
+4. профильный contract в `docs/`;
+5. production code и tests;
+6. свежий closeout только когда он нужен задаче.
 
 При противоречиях:
 
 ```text
-актуальные production-код и тесты
-→ актуальные README и профильные документы
-→ свежие отчёты и артефакты
+production code и tests
+→ docs/
+→ roadmap/
+→ reports/artifacts
 → старые планы и сообщения
 → предположения
 ```
 
-Не утверждайте, что файл, артефакт или участок кода изучен, если он фактически не был открыт.
-
-## Текущее состояние проекта
+## Проект и границы
 
 Anki Study Report — локальный add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard.
 
-Dashboard:
+- dashboard работает только через loopback и защищён access token;
+- frontend получает bounded API projections и не читает collection напрямую;
+- preview использует sanitizer и Shadow DOM без JavaScript execution surface;
+- учебные и профильные данные остаются локальными;
+- payload/public behavior меняются синхронно между слоями, tests и docs.
 
-- доступен только через loopback-интерфейс;
-- защищён токеном;
-- получает ограниченные JSON/API-проекции;
-- не предоставляет frontend прямой доступ к collection.
+Подробности: [architecture.md](architecture.md), [dashboard-api.md](dashboard-api.md), [security-and-safety.md](security-and-safety.md).
 
-Текущий статус Core:
-
-```text
-базовая ветка: core
-текущий head core после C2: edb140b1197910aae31500a40e4a8287cc46b760
-PR C2: #128, merged
-C1.5R.0–R.7: завершено и принято владельцем
-C1.6: завершено, принято владельцем и влито в core
-C1.6B: условный этап, не начат
-C1: завершён
-C2 implementation: завершён и exact-SHA проверен
-C2 integration: влит в core
-C2 owner acceptance: повторно открыта после ручной проверки
-post-C2 remediation branch/PR: ещё не созданы
-C3–C6: новый обязательный путь к Core 1.0
-release: не начат
-```
-
-## Почему C2 ещё не закрыт владельцем
-
-После merge ручная проверка реального UI выявила:
-
-### Cards
-
-- не применяется нативный root background карточки в compact/expanded preview;
-- compact preview перехватывает wheel вместо page scroll;
-- wide Inspector имеет лишний нижний safe-area;
-- результат Suspend/Bury/Open/Recheck недостаточно наблюдаем;
-- информационная композиция остаётся слишком плоской;
-- refresh и state changes ощущаются резкими.
-
-### Inspection Profiles
-
-- Basic и Advanced одновременно показывают две проекции одного draft;
-- notices и validation messages перегружены;
-- editor layout зависит от viewport вместо своей ширины;
-- осмысленные field names распознаются недостаточно хорошо;
-- normal path всё ещё напоминает schema/admin editor.
-
-### Общий UI
-
-- shape/surface/motion foundation недостаточно цельная;
-- многие страницы используют узкую centered область вместо всей рабочей ширины;
-- тексты часто повторяют page title или очевидную функцию.
-
-Эти проблемы исправляются одной post-C2 manual acceptance remediation task. Не создавать `C2.1/C2.2`.
-
-## Обновлённый обязательный путь Core
+## Core
 
 ```text
-post-C2 manual acceptance remediation
-→ C3 Core UI & Shell Consolidation
-→ C4 First-party Data Independence
-→ C5 Today v2
-→ C6 Profile v2 Foundation
-→ Core 1.0 owner acceptance
-→ отдельное решение о release
+C1 — завершён и принят
+C2 implementation/integration — завершены и влиты в core
+C2 owner acceptance — открыта bounded remediation
+C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
+release — не начат
 ```
 
-### C3 — Core UI & Shell Consolidation
+Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
 
-- site-wide UI/content review перед implementation;
-- полноширинный desktop App Shell без глобального узкого `max-width`;
-- shared PageHeader, typography, spacing, shape, surface и motion;
-- удаление текстового дублирования;
-- удаление Tools и Report surfaces с мёртвым кодом;
-- Search как utility icon справа;
-- без функциональной перестройки Today/Profile.
-
-### C4 — First-party Data Independence
-
-- inventory текущих integrations;
-- перенос полезных данных на поддерживаемые first-party Anki/runtime boundaries;
-- удаление runtime dependence на сторонние add-ons;
-- только после миграции удалить Sources route/API/tests/docs.
-
-### C5 — Today v2
-
-Daily action-oriented summary: что сегодня, что сделано, что требует внимания, какой следующий шаг. Не дублировать Statistics/Activity/Decks/FSRS.
-
-### C6 — Profile v2 Foundation
-
-Editable nickname, description, avatar, banner и дата начала обучения; полноширинная композиция; реальные progress/milestone data. Не добавлять fake XP/achievements/skills до отдельного G-track.
-
-`C1.6B` и contextual additions не входят в обязательную очередь.
-
-## Актуальные отчёты Core
-
-- [`../reports/core/c1-5r-0-recovery-baseline.md`](../reports/core/c1-5r-0-recovery-baseline.md);
-- [`../reports/core/c1-5r-1-canonical-card-display-identity.md`](../reports/core/c1-5r-1-canonical-card-display-identity.md);
-- [`../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md`](../reports/core/c1-5r-2-declarative-compact-formatter-runtime.md);
-- [`../reports/core/c1-5r-3-front-back-preview-semantics.md`](../reports/core/c1-5r-3-front-back-preview-semantics.md);
-- [`../reports/core/c1-5r-4-independent-triage-candidate-sources.md`](../reports/core/c1-5r-4-independent-triage-candidate-sources.md);
-- [`../reports/core/c1-5r-5-cards-attention-inbox-redesign.md`](../reports/core/c1-5r-5-cards-attention-inbox-redesign.md);
-- [`../reports/core/c1-5r-6-guided-inspection-profiles-ux.md`](../reports/core/c1-5r-6-guided-inspection-profiles-ux.md);
-- [`../reports/core/c1-5r-7-integrated-acceptance-closeout.md`](../reports/core/c1-5r-7-integrated-acceptance-closeout.md);
-- [`../reports/core/c1-6-canonical-single-card-resolution-loop.md`](../reports/core/c1-6-canonical-single-card-resolution-loop.md);
-- [`../reports/core/c2-core-hardening-ui-remediation.md`](../reports/core/c2-core-hardening-ui-remediation.md).
-
-## Канонические контракты Cards
-
-Основные документы:
-
-- [`cards-v2-product-contract.md`](cards-v2-product-contract.md);
-- [`cards-v2-triage-read-api.md`](cards-v2-triage-read-api.md);
-- [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md);
-- [`cards-attention-inbox.md`](cards-attention-inbox.md);
-- [`card-display-identity.md`](card-display-identity.md);
-- [`card-preview-semantics.md`](card-preview-semantics.md);
-- [`inspection-profiles-v1.md`](inspection-profiles-v1.md);
-- [`guided-inspection-profiles.md`](guided-inspection-profiles.md).
-
-### Компактная идентичность карточки
-
-Одна backend-проекция используется в Search, Triage, очереди Cards и Inspector:
+## Platform / CI
 
 ```text
-displayText
-displaySource      browser_question | reviewer_front | none
-displayStatus      available | media_only | unavailable
-displayTruncated
+real-deck E2E foundation — COMPLETE / merged
+E2E-I1 — COMPLETE / PR #134
+E2E-I2 — COMPLETE / PR #135
+E2E-I3 — COMPLETE / PR #136
+E2E-I4 — COMPLETE / PR #137
+E2E-I5 — COMPLETE / PR #141
+E2E-I6 — COMPLETE / merged через PR #142
+E2E-I6 bounded corrective fix — cloud acceptance PASS / PR #144 открыт, не влит
+следующий Platform/CI stage — не активирован
 ```
 
-Fallback:
+Принятый E2E-I6 candidate:
 
 ```text
-вопрос из Browser
-→ лицевая сторона reviewer
-→ media_only | unavailable
+implementation HEAD: 00e1e98f91b454a1fa0c5fef5b3530884f01ec32
+docs/report head: 34498a03e2ce7b8aa2fe2ccef13a92ae2da42bf5
+core merge SHA: 52731abb2fae682c97c3d0d9a542c250c6f25ea8
+Fast CI: 30166328801 — PASS
+standard/full: 30166561184 — PASS
+main artifact: 8621761591
+history artifact: 8621762124
+canonical result: success / complete / run/pass
+history: bootstrap / 1 entry
+repository artifact/log retention: 90 дней для новых artifacts
 ```
 
-Поле `primaryText` у Card отсутствует. Search в режиме заметок сохраняет `primaryText` заметки.
-
-### Предпросмотр
-
-- Inspector показывает санитизированную нативную лицевую сторону;
-- расширенный modal показывает санитизированную нативную обратную сторону;
-- полный preview загружается только для активной карточки;
-- строки очереди не читают media и не рендерят полный HTML;
-- sanitizer, media validation, Shadow DOM и parser-backed CSS policy обязательны;
-- frontend не получает доступ к collection и не выполняет JavaScript карточек.
-
-Owner scroll decision для следующей remediation:
+Corrective candidate после E2E-I6:
 
 ```text
-wide Cards:
-- nested vertical scroll только у левой очереди;
-- Inspector использует page scroll;
-- compact preview не перехватывает wheel.
-
-narrow drawer и answer modal:
-- internal scroll сохраняется.
+PR: #144 — OPEN / unmerged
+base core: a49c4b301084e5ffd3915b4cfcacf7bb8c95a3cb
+implementation HEAD: afe650adbf3ba55cb6b59068a1127022b651fbf3
+Fast CI: 30169763775 — PASS
+standard/full: 30169890912 — PASS
+main artifact: 8622647178
+history artifact: 8622648096
+canonical result: success / complete / run/pass
+history: append / 2 entries
+corrected footprint: meaningful categories restored; other=6 service files
+producer observations: current=55 / 4711, status=insufficient-history
 ```
 
-### Triage v4
+Актуальный contract:
 
-Triage разделяет кандидатов по учебной активности, текущему содержимому, Signals и Search identity. Content scan использует только подтверждённые и актуальные Inspection Profiles, ограничен 500 заметками на запрос и продолжается через явный cursor.
+- [e2e-final-summary-history.md](e2e-final-summary-history.md)
 
-### Cards workspace
+Исторические отчёты:
 
-```text
->= 1200 px: семантическая очередь + постоянный Inspector
-< 1200 px: очередь на всю ширину + немодальная выдвижная панель
-```
+- [E2E-I6 closeout](../reports/ci/e2e-i6-final-summary-history-closeout.md)
+- [E2E-I6 post-merge sync](../reports/ci/e2e-i6-post-merge-documentation-sync.md)
+- [E2E-I6 corrective closeout](../reports/ci/e2e-i6-corrective-fix-closeout.md)
 
-Очередь не является таблицей, ARIA grid или listbox. Ответ открывается в отдельном true modal. Local filters отделены от query scope.
+E2E-I6 corrective fix не является новым этапом и не активирует CI 7–12. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
 
-### Inspection Profiles
+## Рабочие правила
 
-```text
-конкретный тип заметки
-→ чистый черновик Basic
-→ ограниченная проверка и выборка
-→ явное подтверждение
-```
+- Desktop/laptop — основной target; mobile не является приоритетом без отдельной задачи.
+- Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
+- Не возвращать legacy aliases без доказанной compatibility необходимости.
+- Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Successful unchanged exact-SHA gates не повторять.
+- Не создавать вложенную лестницу этапов вместо одной цельной задачи.
+- Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
 
-Basic — понятная проекция strict schema v1. Machine IDs, ordinals и mappings находятся в Advanced. Autosave и autoconfirm отсутствуют. Неподтверждённые, устаревшие и повреждённые профили работают fail closed.
+## Режим работы
 
-Следующая remediation должна показывать Basic и Advanced как взаимоисключающие режимы одного strict draft.
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [Codex agent rules](codex-agent-rules.md)
 
-## C1.6 — цикл решения проблемы одной карточки
-
-```text
-проблема
-→ Safe Action или Open in Anki
-→ результат действия
-→ Awaiting recheck
-→ ограниченная каноническая перепроверка exact card
-→ Still active | Partially resolved | Resolved | Recheck failed | Evidence stale
-```
-
-API:
-
-```text
-POST /api/triage/query    schema v4
-POST /api/triage/recheck  schema v1
-```
-
-Успех действия или `action.no_changes` не доказывает resolution. Элемент удаляется только при полностью авторитетном результате без оставшихся причин.
-
-## C2 — подтверждённые результаты
-
-- parser-backed CSS allowlist на vendored `tinycss2`/`webencodings`;
-- selector scoping, bounded fail-closed output и safe local media/font rewrite;
-- deny-by-default CSP и response security headers;
-- Vite-managed same-origin theme bootstrap;
-- exact-card authority только для релевантного note type и profile-dependent reasons;
-- независимые query/inspect/cache/mutation generations;
-- bounded `O(cap)` additional Search memory и один широкий native query одновременно;
-- типизированный `409 search_busy`;
-- минимальный public `/api/status` и token-protected diagnostics;
-- failed authentication не продлевает idle lifetime;
-- behavior-based E2E helpers;
-- Fast CI, targeted `standard/cards` с restart и final `standard/full` прошли до merge.
-
-Residual risks:
-
-- native Anki Search материализует полную Sequence до add-on processing;
-- broad legacy services не переписаны вне доказанных policy seams;
-- `style-src 'unsafe-inline'` необходим для runtime Shadow DOM styles;
-- приватный пользовательский профиль владельца не является автоматическим CI gate.
-
-## Следующее точное действие
-
-```text
-создать одну ветку/PR post-C2 manual acceptance remediation
-→ исправить Cards, Inspection Profiles и shared motion/shape
-→ targeted + final real-Anki verification
-→ ручная owner acceptance
-→ начать C3 site-wide review
-```
-
-Не выполнять как неявное продолжение:
-
-- release или merge в `master`;
-- AnkiWeb publish;
-- C1.6B;
-- production Gamification;
-- C3 implementation до закрытия C2 owner acceptance;
-- несвязанный cleanup.
-
-## Границы проверки
-
-Используйте:
-
-- [`test-matrix.md`](test-matrix.md);
-- [`verification-run-policy.md`](verification-run-policy.md).
-
-Real-Anki Docker E2E — integration gate, а не обычный цикл разработки.
-
-## Технические инварианты
-
-Запрещено:
-
-- односторонне менять payload или schema;
-- предоставлять frontend прямой доступ к collection;
-- открывать локальный сервер наружу;
-- ослаблять token validation, sanitizer, media validation или action allowlists;
-- логировать token или полный token-bearing URL;
-- создавать iframe/JavaScript execution surface для карточек;
-- редактировать generated dashboard assets вручную;
-- коммитить логи, screenshots, cache, profile data, tokens, `.ankiaddon` или E2E outputs;
-- менять корректное production-поведение только ради устаревшего теста;
-- создавать второй стек запросов, действий или детекторов;
-- считать успех действия доказательством resolution;
-- использовать один глобальный узкий `max-width` для рабочих desktop routes;
-- добавлять placeholder gamification или future routes заранее.
-
-## Границы Git
-
-Начинайте новые Core tasks от актуального `origin/core`. По умолчанию одна цельная задача использует одну основную ветку и один PR. Не выполнять автоматически merge, force-push, destructive reset/clean, переписывание несвязанных изменений, release или публикацию.
+Сначала определите трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.

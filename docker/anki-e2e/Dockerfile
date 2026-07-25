@@ -106,4 +106,4 @@ RUN mv /e2e/bin/smoke-browser.mjs /e2e/bin/smoke-browser-core.mjs \
 WORKDIR /workspace
 
 ENTRYPOINT ["/e2e/bin/entrypoint.sh"]
-CMD ["/e2e/bin/run-e2e.sh"]
+CMD ["/e2e/bin/run-e2e-failure-wrapper.sh"]

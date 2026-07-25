@@ -1,62 +1,67 @@
 # Исторические отчёты и подтверждения
 
-Эта папка хранит снимки состояния, передачи контекста, аудиты, измерения, инвентаризации и подтверждения завершения. Эти файлы полезны для воспроизводимости решений, но **не являются источником истины для текущего production-поведения**.
-
-При противоречиях используется следующий приоритет:
+`reports/` хранит snapshots, audits, measurements и closeout evidence. Эти файлы не являются источником истины для текущего production-поведения.
 
 ```text
-актуальные production-код и тесты
-→ актуальные docs/
+production code и tests
+→ docs/
 → roadmap/
 → reports/
-→ старые планы и предположения
 ```
 
-## Отчёты Core
+## Core
 
-- [C1.0 — исходное состояние ветки Core](core/c1-0-baseline.md);
-- [C1.5 — историческое рабочее пространство Cards](core/c1-5-cards-workspace.md);
-- [C1.5R — основной отчёт о выполнении](core/c1-5r-main-execution-report.md);
-- [C1.5R — исправление UX Cards и Inspection Profiles](core/c1-5r-cards-profiles-ux-remediation.md);
-- [C1.5R.0 — восстановление и исходное состояние](core/c1-5r-0-recovery-baseline.md);
-- [C1.5R.1 — каноническая идентичность отображения](core/c1-5r-1-canonical-card-display-identity.md);
-- [C1.5R.2 — декларативный runtime компактного форматтера](core/c1-5r-2-declarative-compact-formatter-runtime.md);
-- [C1.5R.3 — семантика предпросмотра лицевой и обратной стороны](core/c1-5r-3-front-back-preview-semantics.md);
-- [C1.5R.4 — независимые источники кандидатов Triage](core/c1-5r-4-independent-triage-candidate-sources.md);
-- [C1.5R.5 — переработка очереди Cards](core/c1-5r-5-cards-attention-inbox-redesign.md);
-- [C1.5R.6 — пошаговая настройка Inspection Profiles](core/c1-5r-6-guided-inspection-profiles-ux.md);
-- [C1.5R.7 — комплексная приёмка](core/c1-5r-7-integrated-acceptance-closeout.md);
-- [C1.6 — канонический цикл решения проблемы одной карточки](core/c1-6-canonical-single-card-resolution-loop.md).
+- [C1.0 baseline](core/c1-0-baseline.md)
+- [C1.5 historical Cards workspace](core/c1-5-cards-workspace.md)
+- [C1.5R main execution](core/c1-5r-main-execution-report.md)
+- [C1.5R integrated acceptance](core/c1-5r-7-integrated-acceptance-closeout.md)
+- [C1.6 single-card resolution loop](core/c1-6-canonical-single-card-resolution-loop.md)
+- [C2 Core hardening](core/c2-core-hardening-ui-remediation.md)
 
-## Отчёты продуктовых этапов
+Остальные C1.5R reports остаются в [`reports/core/`](core/).
 
-- [Передача контекста после удаления legacy](product/legacy-cleanup-handoff.md);
-- [Stage 7.5 — визуальная поставка FSRS](product/stage-7-5-fsrs-visual-delivery-report.md);
-- [Stage 7.6 — финальная проверка FSRS](product/stage-7-6-fsrs-final-pass-report.md);
-- [Stage 9 — основа телеметрии](product/stage-9-telemetry-foundation-handoff.md);
-- [Stage 9.0.1 — надёжность телеметрии](product/stage-9-0-1-telemetry-reliability-handoff.md);
-- [Stage 9.3–9.5 — передача контекста](product/stage-9-3-to-9-5-handoff.md).
+## Product
 
-## Отчёты CI
+- [Legacy cleanup handoff](product/legacy-cleanup-handoff.md)
+- [FSRS visual delivery](product/stage-7-5-fsrs-visual-delivery-report.md)
+- [FSRS final pass](product/stage-7-6-fsrs-final-pass-report.md)
+- [Telemetry foundation](product/stage-9-telemetry-foundation-handoff.md)
+- [Telemetry reliability](product/stage-9-0-1-telemetry-reliability-handoff.md)
+- [Stage 9.3–9.5 handoff](product/stage-9-3-to-9-5-handoff.md)
 
-- [Исходные измерения оптимизации CI](ci/ci-optimization-baseline.md);
-- [Stage 4 — повторное использование пакета](ci/ci-optimization-stage-4-package-reuse.md);
-- [Stage 5A — измерения Fast CI](ci/ci-optimization-stage-5a-fast-ci-timing.md);
-- [Stage 5B — устранение повторного typecheck](ci/ci-optimization-stage-5b-typecheck-dedup.md);
-- [Stage 5 — завершение публикации GHCR](ci/ci-optimization-stage-5-ghcr-publication-closeout.md);
-- [Stage 6A — проверка потребителя GHCR](ci/ci-optimization-stage-6a-ghcr-consumer-validation.md);
-- [Stage 6B — переход cloud E2E на GHCR](ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md).
+## CI / E2E
 
-## Аудиты
+- [CI optimization baseline](ci/ci-optimization-baseline.md)
+- [Package reuse](ci/ci-optimization-stage-4-package-reuse.md)
+- [Fast CI timing](ci/ci-optimization-stage-5a-fast-ci-timing.md)
+- [Typecheck deduplication](ci/ci-optimization-stage-5b-typecheck-dedup.md)
+- [GHCR publication](ci/ci-optimization-stage-5-ghcr-publication-closeout.md)
+- [GHCR consumer validation](ci/ci-optimization-stage-6a-ghcr-consumer-validation.md)
+- [GHCR cloud cutover](ci/ci-optimization-stage-6b-ghcr-cloud-cutover.md)
+- [Real-deck E2E foundation](ci/real-deck-e2e-foundation-closeout.md)
+- [E2E-I1 run events](ci/e2e-i1-unified-live-run-protocol-closeout.md)
+- [E2E-I2 browser progress](ci/e2e-i2-browser-smoke-progress-closeout.md)
+- [E2E-I3 failure diagnostics](ci/e2e-i3-stable-failure-diagnostics-closeout.md)
+- [E2E-I4 cancellation/preflight](ci/e2e-i4-cancellation-preflight-closeout.md)
+- [E2E-I4 post-merge docs sync](ci/e2e-i4-post-merge-documentation-sync.md)
+- [E2E-I5 — идентичность нерелизной сборки](ci/e2e-i5-non-release-build-identity-closeout.md)
+- [E2E-I6 — каноническая итоговая сводка и bounded history](ci/e2e-i6-final-summary-history-closeout.md)
+- [E2E-I6 post-merge documentation sync](ci/e2e-i6-post-merge-documentation-sync.md)
+- [E2E-I6 bounded corrective fix](ci/e2e-i6-corrective-fix-closeout.md)
 
-- [Аудит alias карточки](audits/card-alias-audit.md);
-- [Инвентаризация удаления legacy](audits/legacy-cleanup-inventory.md);
-- [Исправление результатов code scanning от 2026-07-13](audits/code-scanning-remediation-2026-07-13.md);
-- [Готовность публичного репозитория](audits/public-repository-readiness.md).
+## Research
 
-## Исследовательские инвентаризации
+- [Gamification source audit — 2026-07-18](research/gamification-track-source-audit-2026-07-18.md)
+- [FSRS helper reference inventory](research/fsrs-helper-reference-inventory.md)
+- [Statistics reference inventory](research/statistics-reference-inventory.md)
 
-- [Инвентаризация справочных материалов FSRS](research/fsrs-helper-reference-inventory.md);
-- [Инвентаризация референсов Statistics](research/statistics-reference-inventory.md).
+## Audits
 
-Новые отчёты не добавляются в `docs/`. Они должны указывать дату и scope, проверенный SHA или идентичность запуска и честный список того, что не проверялось.
+- [Card alias audit](audits/card-alias-audit.md)
+- [Legacy cleanup inventory](audits/legacy-cleanup-inventory.md)
+- [Code scanning remediation](audits/code-scanning-remediation-2026-07-13.md)
+- [Public repository readiness](audits/public-repository-readiness.md)
+
+## Правила
+
+Новый report обязан указывать дату, scope, проверенные SHA/run identities, честный список непроверенного и ссылку на актуальный contract в `docs/`. Актуальные rules и behavior не переносятся из `docs/` в reports.

@@ -1,71 +1,69 @@
-# Identity continuity track
+# Трек Identity Continuity
 
-**Track:** `I`
-**Role:** conditional cloud/recovery gate
-**Current status:** `I1` is Conditional, not scheduled
+**Трек:** `I`  
+**Роль:** условный cloud/recovery gate  
+**Текущий статус:** `I1` не запланирован
 
-Identity continuity is not a prerequisite for telemetry, Cards v2 or Core 1.0. It must not silently become an account system.
+Identity не является prerequisite для Core, telemetry или local Gamification и не должна незаметно превращаться в account system.
 
-## I1 — Identity continuity and optional linking
+## Решение об активации
 
-**Status:** Conditional
-
-### Goal
-
-Provide continuity only when a validated cross-installation workflow cannot be solved by local export/import or the existing anonymous `installation_id`.
-
-### Trigger conditions
-
-At least one concrete requirement must exist:
-
-- cross-device state;
-- recovery after reinstall/OS loss;
-- continuity of an approved production gamification ledger;
-- entitlement or sync that cannot be represented locally.
-
-A vague desire to “have accounts later” is not a trigger.
-
-### Identity model
-
-```text
-installation_id — random identity of one installation/profile
-person_id       — absent by default; explicit opt-in linkage only
+```mermaid
+flowchart TD
+    N[Конкретный continuity workflow] --> L{Local export/import достаточно?}
+    L -->|да| X[I1 не нужен]
+    L -->|нет| P{Purpose, threat model и delete/revoke определены?}
+    P -->|нет| R[Сначала закрыть product/privacy design]
+    P -->|да| I[I1 optional linking]
 ```
 
-One person may have multiple installations and one installation may be shared. `installation_id` is not upgraded into a person identifier.
+Допустимые trigger conditions:
+
+- cross-device state;
+- recovery после reinstall/OS loss;
+- continuity утверждённого production ledger;
+- entitlement/sync, который нельзя представить локально.
+
+Желание «когда-нибудь иметь accounts» не является trigger.
+
+## Identity model
+
+```text
+installation_id — случайная identity одной installation/profile
+person_id       — отсутствует по умолчанию; появляется только через explicit opt-in
+```
+
+Один человек может иметь несколько installations, а installation может быть общей. `installation_id` не преобразуется автоматически в person identifier.
+
+## I1 — Optional linking
 
 ### Dependencies
 
-- explicit product workflow and data-purpose definition;
-- separate threat model and privacy migration;
-- stable state/ledger contract for the feature requiring continuity;
-- export/delete/revoke semantics before implementation.
+- конкретный workflow и data-purpose;
+- отдельный threat model и privacy migration;
+- stable state/ledger contract;
+- export/delete/revoke semantics до implementation.
 
 ### Scope
 
-- compare recovery code/file, passkey/OAuth/account and OS credential-store options;
+- сравнение recovery file/code, passkey, OAuth/account и OS credential-store options;
 - link/unlink/revoke/rotate/export/delete lifecycle;
 - bounded replay/rate-limit/recovery controls;
-- separate identity, telemetry, entitlement and sync data;
-- migration, rollback and recovery verification.
+- разделение identity, telemetry, entitlement и sync data;
+- migration, rollback и recovery verification.
 
-### Out of scope
+### Вне scope
 
 - default account creation;
-- retroactive linking of existing installations;
-- IP, MAC, machine GUID, hardware or browser fingerprinting;
-- hidden identifiers or automatic person inference;
-- social features or monetization without separate stages.
+- retroactive linking;
+- IP/MAC/machine GUID/hardware/browser fingerprinting;
+- hidden identifiers;
+- social/monetization features без отдельных stages.
 
-### Activation criteria
+### Completion
 
-A documented trigger condition is approved and local export/import is insufficient. Production gamification can remain local without `I1`; remote continuity may depend on it later.
-
-### Completion criteria
-
-- `person_id` remains absent by default;
-- explicit informed opt-in;
-- no fingerprint-derived identity;
-- unlink, revoke, export and delete work end to end;
-- privacy notice/consent migration and threat model are approved;
-- secrets and identifiers are excluded from logs, screenshots, reports and CI artifacts.
+- `person_id` отсутствует по умолчанию;
+- informed opt-in;
+- unlink/revoke/export/delete проходят end to end;
+- threat model и privacy migration approved;
+- identifiers/secrets исключены из logs, screenshots, reports и CI artifacts.
