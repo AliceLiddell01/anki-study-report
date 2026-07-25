@@ -37,15 +37,30 @@ rust-oracle/   isolated Rust implementation
 - [G1.3 protocol schema](schemas/review-xp-candidate-protocol-v1.schema.json)
 - [Human protocol](../../docs/gamification/review-xp-candidate-protocol.md)
 - [G1.3 report](../../roadmap/gamification/g1-candidate-protocol.md)
-- [G1.4 bounded screening closeout](../../roadmap/gamification/g1-bounded-screening.md)
+- [G1.4 technical reference](../../docs/gamification/review-xp-bounded-screening.md)
+- [G1.4 full report](../../roadmap/gamification/g1-bounded-screening.md)
 
 G1.4 added an isolated typed mechanism registry, execution context and deterministic bounded-screening harness without changing production code, scheduler/FSRS semantics or the default `R-CURRENT` result.
 
 The exact matrix completed with 160 unique units and no missing, extra or duplicate units. `P-STEP-ZERO` and `P-TAPER-ZERO-30D` survive at family level. The two neutral-ratio variants failed only `GATE-NO-CYCLING-GROWTH`.
 
+```text
+screened implementation SHA:
+a8857f111849e2e98744adda8e06fe1910bdf805
+
+canonical G1.4 merge SHA:
+d855baf7355bba3f4014370cafba3fdc6d0c0e3c
+
+manifest digest:
+40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c
+
+evidence digest:
+836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694
+```
+
 ## Available command surface
 
-The research package now includes:
+The research package includes:
 
 ```text
 validate-bounded-screening
@@ -53,6 +68,8 @@ run-bounded-screening
 ```
 
 The runner validates the frozen protocol/schema and exact 160-unit manifest, requires exact base/implementation SHA provenance, evaluates non-compensable hard gates and writes deterministic external evidence. It does not choose a final candidate or integrate with production.
+
+See the [technical reference](../../docs/gamification/review-xp-bounded-screening.md) for command syntax, mechanism semantics, output layout, fail-closed validation and G1.5 handoff constraints.
 
 ## Evidence and production boundary
 
