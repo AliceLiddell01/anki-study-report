@@ -46,7 +46,7 @@ G0 reproduced the current synthetic baseline without production integration. The
 - `G1.2 — Root-cause attribution`: Complete — [report](g1-root-cause-attribution.md)
   - `G1.2a — Attribution contract and evidence correction`: nested corrective checkpoint, Complete — [report](g1-root-cause-attribution-correction.md)
 - `G1.3 — Candidate protocol and hypothesis design`: Complete — [report](g1-candidate-protocol.md)
-- `G1.4 — Bounded screening`: Complete — [report](g1-bounded-screening.md)
+- `G1.4 — Bounded screening`: Complete — [full report](g1-bounded-screening.md), [technical reference](../../docs/gamification/review-xp-bounded-screening.md)
 - `G1.5 — Confirmatory 90/365, robustness and safety evidence`: Next / Ready; not started
 - `G1.6 — Candidate decision and G1 closure`: Planned after G1.5
 
@@ -81,6 +81,7 @@ G1.3 freezes two post-transition MemoryGain families, four predefined parameteri
 G1.4 implemented the frozen post-transition MemoryGain mechanism and executed the exact registered matrix on implementation `a8857f111849e2e98744adda8e06fe1910bdf805`.
 
 ```text
+canonical merge SHA: d855baf7355bba3f4014370cafba3fdc6d0c0e3c
 expected / actual unique units: 160 / 160
 missing / extra / duplicates: 0 / 0 / 0
 manifest digest: 40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c
