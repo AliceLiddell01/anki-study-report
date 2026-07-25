@@ -58,6 +58,7 @@ E2E-I3 — COMPLETE / PR #136
 E2E-I4 — COMPLETE / PR #137
 E2E-I5 — COMPLETE / PR #141
 E2E-I6 — COMPLETE / merged через PR #142
+E2E-I6 bounded corrective fix — cloud acceptance PASS / PR #144 открыт, не влит
 следующий Platform/CI stage — не активирован
 ```
 
@@ -76,6 +77,22 @@ history: bootstrap / 1 entry
 repository artifact/log retention: 90 дней для новых artifacts
 ```
 
+Corrective candidate после E2E-I6:
+
+```text
+PR: #144 — OPEN / unmerged
+base core: a49c4b301084e5ffd3915b4cfcacf7bb8c95a3cb
+implementation HEAD: afe650adbf3ba55cb6b59068a1127022b651fbf3
+Fast CI: 30169763775 — PASS
+standard/full: 30169890912 — PASS
+main artifact: 8622647178
+history artifact: 8622648096
+canonical result: success / complete / run/pass
+history: append / 2 entries
+corrected footprint: meaningful categories restored; other=6 service files
+producer observations: current=55 / 4711, status=insufficient-history
+```
+
 Актуальный contract:
 
 - [e2e-final-summary-history.md](e2e-final-summary-history.md)
@@ -84,8 +101,9 @@ repository artifact/log retention: 90 дней для новых artifacts
 
 - [E2E-I6 closeout](../reports/ci/e2e-i6-final-summary-history-closeout.md)
 - [E2E-I6 post-merge sync](../reports/ci/e2e-i6-post-merge-documentation-sync.md)
+- [E2E-I6 corrective closeout](../reports/ci/e2e-i6-corrective-fix-closeout.md)
 
-E2E-I6 не активирует CI 7–12 автоматически. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
+E2E-I6 corrective fix не является новым этапом и не активирует CI 7–12. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
 
 ## Рабочие правила
 
