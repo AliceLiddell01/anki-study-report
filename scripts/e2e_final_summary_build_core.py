@@ -57,7 +57,9 @@ def build_summary(
     phases = read_json(reports / "e2e-phase-timings.json")
     environment = read_json(reports / "environment-image-provenance.json")
     workload = read_json(reports / "real-deck-manifest-report.json")
-    identity = read_json(reports / "non-release-build-identity.json")
+    non_release_identity = read_json(reports / "non-release-build-identity.json")
+    release_identity = read_json(reports / "release-build-identity.json")
+    identity = release_identity if package_source == "release-artifact" else non_release_identity
     failure = read_json(reports / "failure-summary.json")
     cancellation = read_json(reports / "cancellation-summary.json")
 
@@ -141,8 +143,8 @@ def build_summary(
         and artifact_preparation_status == "success"
     ):
         finalization = "complete"
-    if result == "success" and package_source == "fast-ci-artifact" and build["status"] != "resolved":
-        raise FinalSummaryError("successful non-release run requires canonical build identity")
+    if result == "success" and package_source in {"fast-ci-artifact", "release-artifact"} and build["status"] != "resolved":
+        raise FinalSummaryError("successful artifact-backed run requires canonical build identity")
 
     if started_at_utc:
         start = normalize_utc(started_at_utc)
