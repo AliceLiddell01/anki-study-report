@@ -41,12 +41,28 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 ```text
 C1 — завершён и принят
 C2 implementation/integration — завершены и влиты в core
-C2 owner acceptance — открыта bounded remediation
-C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
+C2 automated post-merge remediation — технически закрыта в draft PR #130
+C2 owner acceptance — private-profile gate остаётся открытым
+C3 → C4 → C5 → C6 — обязательный путь к Core 1.0, но C3 ещё не активирован
 release — не начат
 ```
 
 Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
+
+Current C2 remediation evidence:
+
+```text
+PR: #130 — OPEN / DRAFT / UNMERGED
+base core: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+verified production candidate: a746172f8746eac82ff628d36a7a6328d9332acf
+Fast CI: 30173712679 — PASS
+standard/full + restart: 30174041436 — PASS
+package SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
+automated remediation: technically closed
+private-profile owner acceptance: pending
+```
+
+Подробный closeout: [C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md).
 
 ## Platform / CI
 
