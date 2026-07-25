@@ -157,6 +157,75 @@ class HistoryTests(unittest.TestCase):
             self.assertIn("CI не блокируется", markdown)
             self.assertNotIn("::error", markdown)
 
+    def test_current_producer_metrics_match_summary_and_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = build(make_root(Path(tmp)))
+            history = final.merge_history(None, entry(summary))
+            aggregation = final.aggregate_history(history, summary)
+            observations = final.render_observations(summary, history, aggregation)
+            current_entry = history["entries"][-1]
+
+            for metric_id in ("runEventProducerCalls", "runEventProducerDurationMs"):
+                current = observations["metrics"][metric_id]
+                self.assertEqual(summary["performance"]["producer"][metric_id], current["current"])
+                self.assertEqual(current_entry["metrics"][metric_id], current["current"])
+                self.assertEqual("insufficient-history", current["status"])
+
+    def test_producer_metrics_follow_p50_and_p95_sample_minimums(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = build(make_root(Path(tmp)))
+            history = None
+            for index in range(20):
+                summary = deepcopy(base)
+                summary["execution"]["runId"] = 1000 + index
+                summary["performance"]["producer"]["runEventProducerCalls"] = index + 1
+                summary["performance"]["producer"]["runEventProducerDurationMs"] = (index + 1) * 10
+                history = final.merge_history(
+                    history,
+                    entry(summary),
+                    generated_at_utc=summary["execution"]["finishedAtUtc"],
+                )
+
+            aggregation = final.aggregate_history(history, summary)
+            observations = final.render_observations(summary, history, aggregation)
+            for metric_id in ("runEventProducerCalls", "runEventProducerDurationMs"):
+                self.assertIsNotNone(aggregation["metrics"][metric_id]["p50"]["value"])
+                self.assertIsNotNone(aggregation["metrics"][metric_id]["p95"]["value"])
+                self.assertEqual(20, observations["metrics"][metric_id]["sampleCount"])
+                self.assertNotEqual("not-comparable", observations["metrics"][metric_id]["status"])
+
+    def test_missing_current_producer_metric_is_not_comparable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = build(make_root(Path(tmp)))
+            summary["performance"]["producer"]["runEventProducerCalls"] = None
+            history = final.merge_history(None, entry(summary))
+            aggregation = final.aggregate_history(history, summary)
+            observations = final.render_observations(summary, history, aggregation)
+
+            self.assertIsNone(observations["metrics"]["runEventProducerCalls"]["current"])
+            self.assertEqual("not-comparable", observations["metrics"]["runEventProducerCalls"]["status"])
+
+    def test_special_current_metric_sources_remain_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = build(make_root(Path(tmp)))
+            current_entry = entry(summary, artifact_id=42)
+            history = final.merge_history(None, current_entry)
+            aggregation = final.aggregate_history(history, summary)
+            observations = final.render_observations(summary, history, aggregation)
+
+            self.assertEqual(
+                summary["artifactFootprint"]["totalUncompressedBytes"],
+                observations["metrics"]["artifactUncompressedBytes"]["current"],
+            )
+            self.assertEqual(
+                current_entry["metrics"]["mainArtifactUploadedBytes"],
+                observations["metrics"]["mainArtifactUploadedBytes"]["current"],
+            )
+            self.assertEqual(
+                current_entry["metrics"]["artifactUploadDurationMs"],
+                observations["metrics"]["artifactUploadDurationMs"]["current"],
+            )
+
     def test_compact_github_summary_does_not_embed_json_history(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = build(make_root(Path(tmp)))
