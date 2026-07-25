@@ -300,9 +300,20 @@ def _manifest_paths(manifest: Mapping[str, Any]) -> list[str]:
     return result
 
 
+_FOOTPRINT_CATEGORIES = {
+    "reports", "screenshots", "diagnostics", "package", "runtime", "html"
+}
+
+
+def _normalize_footprint_path(path: str) -> str:
+    normalized = safe_relative_path(path, "artifact footprint path")
+    prefix = "artifacts/"
+    return normalized[len(prefix):] if normalized.startswith(prefix) else normalized
+
+
 def _category(path: str) -> str:
-    first = path.split("/", 1)[0]
-    return first if first in {"reports", "screenshots", "diagnostics", "package", "runtime", "html"} else "other"
+    first = _normalize_footprint_path(path).split("/", 1)[0]
+    return first if first in _FOOTPRINT_CATEGORIES else "other"
 
 
 def _footprint(
