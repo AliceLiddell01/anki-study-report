@@ -1,0 +1,38 @@
+name: Apply Cards Stage 2 patch
+
+on:
+  push:
+    branches:
+      - c2-manual-acceptance-remediation
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, 'Stage the verified Cards integration patch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Apply verified Cards integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cat .stage2-patch/code-*.b64 | base64 --decode > /tmp/stage2-code.patch.zst
+          echo "3c4e2f7cb515fc16b8fce2343b46891081dc3d921b343e6163e2a1757c903ce9  /tmp/stage2-code.patch.zst" | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/stage2-code.patch.zst > /tmp/stage2-code.patch
+          git apply --index --whitespace=error /tmp/stage2-code.patch
+          git commit -m "Recompose the Cards workspace around the accepted prototype"
+          cat .stage2-patch/docs-*.b64 | base64 --decode > /tmp/stage2-docs.patch.zst
+          echo "d890c6d9c0490ffa0bcdd15c05f97a0557d2d5fda840668e1d39ed8a3955d02e  /tmp/stage2-docs.patch.zst" | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/stage2-docs.patch.zst > /tmp/stage2-docs.patch
+          git apply --index --whitespace=error /tmp/stage2-docs.patch
+          git rm -r .stage2-patch .github/workflows/stage2-apply.yml
+          git commit -m "Correct the Cards and Profiles integration sequence"
+          git push origin HEAD:c2-manual-acceptance-remediation

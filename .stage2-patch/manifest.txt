@@ -1,0 +1,3 @@
+Cards Stage 2 verified patch transport
+code-zst-sha256 3c4e2f7cb515fc16b8fce2343b46891081dc3d921b343e6163e2a1757c903ce9
+docs-zst-sha256 d890c6d9c0490ffa0bcdd15c05f97a0557d2d5fda840668e1d39ed8a3955d02e
