@@ -73,6 +73,37 @@ class FinalSummaryTests(unittest.TestCase):
             self.assertIsNone(summary["build"]["identityDigest"])
             self.assertEqual("check-3", summary["terminal"]["itemId"])
 
+    def test_setup_failure_uses_bounded_host_fallback_without_fake_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp), result="success", include_identity=False)
+            (root / "reports/run-events.jsonl").unlink()
+            (root / "reports/preflight-report.json").unlink()
+            summary = build(
+                root,
+                result="failure",
+                package_source="unresolved",
+                exit_code=2,
+                host_failure_code="ASR-E2E-SETUP",
+                host_failure_phase="workflow-setup",
+                host_failure_mode="fallback",
+                finished_at_utc="2026-07-25T00:00:01.000Z",
+            )
+            self.assertEqual("failure", summary["result"])
+            self.assertEqual("host/fail", summary["terminal"]["event"])
+            self.assertEqual("ASR-E2E-SETUP", summary["terminal"]["failureCode"])
+            self.assertIsNone(summary["build"]["identityDigest"])
+
+    def test_host_fallback_does_not_override_valid_terminal_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = build(
+                make_root(Path(tmp), result="success"),
+                host_failure_code="ASR-E2E-SETUP",
+                host_failure_phase="workflow-setup",
+                host_failure_mode="fallback",
+            )
+            self.assertEqual("success", summary["result"])
+            self.assertEqual("run/pass", summary["terminal"]["event"])
+
     def test_closed_schema_rejects_unknown_and_missing_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = build(make_root(Path(tmp)))
