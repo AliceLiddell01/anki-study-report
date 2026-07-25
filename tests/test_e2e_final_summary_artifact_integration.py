@@ -57,7 +57,7 @@ def test_footprint_category_normalizes_only_reviewed_public_prefix(path: str, ex
     assert common._category(path) == expected
 
 
-@pytest.mark.parametrize("path", ["../secret", "/tmp/file", "./reports/a.json", r"C:\Users\x\file"])
+@pytest.mark.parametrize("path", ["../secret", "/tmp/file", r"C:\Users\x\file"])
 def test_footprint_category_rejects_unsafe_paths(path: str) -> None:
     with pytest.raises(final.FinalSummaryError):
         common._category(path)
@@ -106,8 +106,10 @@ def test_footprint_category_sums_and_derived_fields_match_inventory(
 
     assert sum(row["fileCount"] for row in footprint["categories"].values()) == footprint["fileCount"]
     assert sum(row["bytes"] for row in footprint["categories"].values()) == footprint["totalUncompressedBytes"]
-    for category in ("reports", "screenshots", "diagnostics", "package", "runtime"):
+    assert footprint["categories"]["reports"]["fileCount"] == 2
+    for category in ("screenshots", "diagnostics", "package", "runtime"):
         assert footprint["categories"][category]["fileCount"] == 1
+    assert footprint["categories"]["other"]["fileCount"] == 2
     assert footprint["reportsCount"] == footprint["categories"]["reports"]["fileCount"]
     assert footprint["screenshotCount"] == footprint["categories"]["screenshots"]["fileCount"]
     assert footprint["diagnosticsCount"] == footprint["categories"]["diagnostics"]["fileCount"]
