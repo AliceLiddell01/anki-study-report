@@ -171,6 +171,30 @@ class FinalSummaryTests(unittest.TestCase):
             with self.assertRaises(final.FinalSummaryError):
                 final.validate_pair(raw, public)
 
+    def test_release_identity_is_resolved_and_candidate_distinct_from_fast_ci(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp))
+            write_json(root / "reports/release-build-identity.json", {
+                "schemaVersion": 1,
+                "kind": "release-artifact",
+                "identityDigest": "sha256:" + "7" * 64,
+            })
+            fast = build(root, package_source="fast-ci-artifact")
+            release = build(root, package_source="release-artifact")
+            self.assertEqual("resolved", release["build"]["status"])
+            self.assertEqual("release-artifact", release["build"]["identityKind"])
+            self.assertEqual(
+                "reports/release-build-identity.json",
+                release["build"]["evidencePath"],
+            )
+            self.assertNotEqual(final.candidate_key(fast), final.candidate_key(release))
+
+    def test_successful_release_requires_release_identity_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp))
+            with self.assertRaisesRegex(final.FinalSummaryError, "artifact-backed"):
+                build(root, package_source="release-artifact")
+
     def test_success_requires_resolved_non_release_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_root(Path(tmp), include_identity=False)
