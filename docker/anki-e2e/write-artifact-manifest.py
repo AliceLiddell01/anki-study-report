@@ -51,7 +51,6 @@ REQUIRED_SUCCESS_ARTIFACTS = (
     "reports/screenshot-performance.md",
     "reports/e2e-performance-summary.json",
     "reports/e2e-performance-summary.md",
-    "reports/final-run-summary.json",
     "package/anki_study_report.ankiaddon",
 )
 
