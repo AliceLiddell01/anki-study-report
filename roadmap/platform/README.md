@@ -32,9 +32,9 @@ E2E-I1 — ЗАВЕРШЕНО / влито
 E2E-I2 — ЗАВЕРШЕНО / влито
 E2E-I3 — ЗАВЕРШЕНО / влито
 E2E-I4 — ЗАВЕРШЕНО / влито через PR #137
-E2E-I5 — ЗАВЕРШЕНО / облачная приёмка пройдена в PR #141
-E2E-I6 — следующий запланированный этап
-CI 7–12 — условные
+E2E-I5 — ЗАВЕРШЕНО / влито через PR #141
+E2E-I6 — ЗАВЕРШЕНО / cloud acceptance пройдена в PR #142
+CI 7–12 — условные; ни один этап не активирован
 ```
 
 ## Current invariants
@@ -51,12 +51,15 @@ release-пакет: точный release-артефакт
 сводка отмены: schema v1 + run/cancel
 предварительная проверка: детерминированный отчёт из 20 static/runtime checks
 идентичность нерелизной сборки: schema v1, digest только по canonical identity
+каноническая итоговая сводка: final-run-summary.json schema v1, максимум 64 KiB
+bounded history: 90 дней / 120 записей / 30 записей на compatibility key
+регрессионные наблюдения: informational-only, без blocking threshold
 browser: plan v1, report v3, 23 элемента, 18 screenshots
 ```
 
 Новый Fast CI package создаётся только при package-impacting diff либо когда exact artifact недоступен/невалиден. Allowlisted harness-only changes могут использовать existing package через fail-closed validator.
 
-## Текущий roadmap E2E-I1–I6
+## Roadmap E2E-I1–I6
 
 - [Полный roadmap observability/build identity](e2e-observability-build-identity.md)
 - [Run-event contract](../../docs/run-event-protocol.md)
@@ -64,6 +67,7 @@ browser: plan v1, report v3, 23 элемента, 18 screenshots
 - [Preflight и cancellation](../../docs/e2e-preflight-cancellation.md)
 - [Package/harness reuse](../../docs/e2e-package-harness-reuse.md)
 - [Идентичность нерелизной сборки](../../docs/non-release-build-identity.md)
+- [Каноническая итоговая сводка и bounded history](../../docs/e2e-final-summary-history.md)
 
 Исторические SHA, run IDs и artifacts: [reports/ci](../../reports/README.md).
 
