@@ -20,6 +20,26 @@ class FinalSummaryTests(unittest.TestCase):
             self.assertLessEqual(len(final._json_bytes(summary)), final.MAX_SUMMARY_BYTES)
             final.validate_summary(summary)
 
+    def test_pre_export_success_does_not_claim_public_artifact_preparation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp), result="success")
+            staging = build(
+                root,
+                result="success",
+                public_validated=False,
+                artifact_preparation_status="unavailable",
+            )
+            self.assertFalse(staging["finalState"]["publicValidated"])
+            self.assertEqual("unavailable", staging["finalState"]["artifactPreparationStatus"])
+            final.validate_summary(staging)
+            with self.assertRaisesRegex(final.FinalSummaryError, "publicly finalized summary"):
+                build(
+                    root,
+                    result="success",
+                    public_validated=True,
+                    artifact_preparation_status="unavailable",
+                )
+
     def test_valid_failure_preserves_primary_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = build(make_root(Path(tmp), result="failure"), result="failure")
@@ -45,7 +65,10 @@ class FinalSummaryTests(unittest.TestCase):
             report["status"] = "FAIL"
             report["checks"][3]["status"] = "FAIL"
             write_json(root / "reports/preflight-report.json", report)
-            summary = build(root, result="failure", package_source="unresolved", exit_code=2, finished_at_utc="2026-07-25T00:00:01.000Z")
+            summary = build(
+                root, result="failure", package_source="unresolved", exit_code=2,
+                finished_at_utc="2026-07-25T00:00:01.000Z",
+            )
             self.assertEqual("minimal", summary["finalizationStatus"])
             self.assertIsNone(summary["build"]["identityDigest"])
             self.assertEqual("check-3", summary["terminal"]["itemId"])
@@ -65,7 +88,12 @@ class FinalSummaryTests(unittest.TestCase):
     def test_type_enum_sha_digest_and_timestamp_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
             summary = build(make_root(Path(tmp)))
-            mutations = [("result", "maybe"), ("execution.triggerSha", "bad"), ("build.identityDigest", "sha256:bad"), ("execution.startedAtUtc", "2026-07-25")]
+            mutations = [
+                ("result", "maybe"),
+                ("execution.triggerSha", "bad"),
+                ("build.identityDigest", "sha256:bad"),
+                ("execution.startedAtUtc", "2026-07-25"),
+            ]
             for path, value in mutations:
                 broken = deepcopy(summary)
                 target = broken
@@ -151,7 +179,13 @@ class FinalSummaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_root(Path(tmp))
             baseline = build(root)
-            for change in [{"mode": "strict-apkg"}, {"scope": "cards"}, {"screenshot_workers": 2}, {"resource_telemetry": False}]:
+            changes = [
+                {"mode": "strict-apkg"},
+                {"scope": "cards"},
+                {"screenshot_workers": 2},
+                {"resource_telemetry": False},
+            ]
+            for change in changes:
                 changed = build(root, **change)
                 with self.subTest(change=change):
                     self.assertNotEqual(baseline["compatibility"]["key"], changed["compatibility"]["key"])
@@ -164,13 +198,16 @@ class FinalSummaryTests(unittest.TestCase):
             self.assertEqual(first["compatibility"]["key"], second["compatibility"]["key"])
             history = final.merge_history(None, entry(first), generated_at_utc=first["execution"]["finishedAtUtc"])
             history = final.merge_history(history, entry(second), generated_at_utc=second["execution"]["finishedAtUtc"])
-            observations = final.render_observations(second, history, final.aggregate_history(history, second))
+            agg = final.aggregate_history(history, second)
+            observations = final.render_observations(second, history, agg)
             self.assertIn("runnerImage changed", observations["runnerEnvironmentCaveats"])
 
     def test_local_and_cloud_are_not_compatible(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_root(Path(tmp))
-            self.assertNotEqual(build(root, contour="cloud")["compatibility"]["key"], build(root, contour="local")["compatibility"]["key"])
+            cloud = build(root, contour="cloud")
+            local = build(root, contour="local")
+            self.assertNotEqual(cloud["compatibility"]["key"], local["compatibility"]["key"])
 
     def test_browser_uses_operation_only_timing_and_explicit_counters(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -182,7 +219,8 @@ class FinalSummaryTests(unittest.TestCase):
     def test_artifact_footprint_categories_largest_files_and_manifest_hash(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_root(Path(tmp))
-            footprint = build(root)["artifactFootprint"]
+            summary = build(root)
+            footprint = summary["artifactFootprint"]
             self.assertGreater(footprint["fileCount"], 0)
             self.assertEqual(1, footprint["screenshotCount"])
             self.assertLessEqual(len(footprint["largestFiles"]), final.MAX_LARGEST_FILES)
@@ -196,7 +234,8 @@ class FinalSummaryTests(unittest.TestCase):
             self.assertEqual("artifacts/reports/final-run-summary.json", projection["derivedFrom"])
             self.assertEqual(summary["result"], projection["result"])
             self.assertEqual(summary["compatibility"]["key"], projection["compatibilityKey"])
-            self.assertIn("Производная compatibility-проекция", final.render_legacy_markdown(summary))
+            markdown = final.render_legacy_markdown(summary)
+            self.assertIn("Производная compatibility-проекция", markdown)
 
     def test_finalize_public_reaches_fixed_point_and_uses_full_upload_footprint(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -209,17 +248,79 @@ class FinalSummaryTests(unittest.TestCase):
             (public_root / "logs").mkdir()
             (public_root / "logs" / "docker-system.txt").write_text("safe\n", encoding="utf-8")
             raw_output = root / "reports/final-run-summary.json"
-            context = {"repository": "AliceLiddell01/anki-study-report", "run_id": 100, "run_attempt": 1, "event": "workflow_dispatch", "ref": "refs/heads/platform/e2e-i6-final-summary-history", "trigger_sha": SHA_A, "workflow_source_sha": SHA_A, "harness_sha": SHA_A, "mode": "standard", "scope": "full", "run_purpose": "acceptance", "screenshot_workers": 3, "resource_telemetry": True, "contour": "cloud", "started_at_utc": "2026-07-25T00:00:00.000Z", "finished_at_utc": "2026-07-25T00:00:02.000Z", "exit_code": 0, "runner_os": "Linux", "runner_image": "ubuntu24:one", "docker_client_version": "28.0.4", "docker_server_version": "28.0.4", "docker_compose_version": "2.38.2", "powershell_version": "7.6.3", "package_source": "fast-ci-artifact", "artifact_preparation_duration_ms": 25, "workflow_duration_ms": 2000, "cleanup_status": "success", "cleanup_duration_ms": 10, "artifact_preparation_status": "success", "source_validated": True, "public_validated": True}
-            summary = final.finalize_public_artifact(root, public_root, raw_output, context=context)
-            final.validate_pair(raw_output, public_root / "artifacts/reports/final-run-summary.json")
+            context = {
+                "repository": "AliceLiddell01/anki-study-report",
+                "run_id": 100,
+                "run_attempt": 1,
+                "event": "workflow_dispatch",
+                "ref": "refs/heads/platform/e2e-i6-final-summary-history",
+                "trigger_sha": SHA_A,
+                "workflow_source_sha": SHA_A,
+                "harness_sha": SHA_A,
+                "mode": "standard",
+                "scope": "full",
+                "run_purpose": "acceptance",
+                "screenshot_workers": 3,
+                "resource_telemetry": True,
+                "contour": "cloud",
+                "started_at_utc": "2026-07-25T00:00:00.000Z",
+                "finished_at_utc": "2026-07-25T00:00:02.000Z",
+                "exit_code": 0,
+                "runner_os": "Linux",
+                "runner_image": "ubuntu24:one",
+                "docker_client_version": "28.0.4",
+                "docker_server_version": "28.0.4",
+                "docker_compose_version": "2.38.2",
+                "powershell_version": "7.6.3",
+                "package_source": "fast-ci-artifact",
+                "artifact_preparation_duration_ms": 25,
+                "workflow_duration_ms": 2000,
+                "cleanup_status": "success",
+                "cleanup_duration_ms": 10,
+                "artifact_preparation_status": "success",
+                "source_validated": True,
+                "public_validated": True,
+            }
+            summary = final.finalize_public_artifact(
+                root, public_root, raw_output, context=context
+            )
+            public_summary = public_root / "artifacts/reports/final-run-summary.json"
+            final.validate_pair(raw_output, public_summary)
             self.assertTrue((public_root / "ci-e2e-summary.json").is_file())
             self.assertTrue((public_root / "ci-e2e-summary.md").is_file())
-            self.assertGreater(summary["artifactFootprint"]["totalUncompressedBytes"], sum(path.stat().st_size for path in root.rglob("*") if path.is_file()))
+            self.assertGreater(
+                summary["artifactFootprint"]["totalUncompressedBytes"],
+                sum(path.stat().st_size for path in root.rglob("*") if path.is_file()),
+            )
+            self.assertTrue(any(
+                row["path"] == "logs/docker-system.txt"
+                for row in summary["artifactFootprint"]["largestFiles"]
+            ) or summary["artifactFootprint"]["categories"]["other"]["fileCount"] >= 1)
 
     def test_host_cleanup_failure_overrides_run_pass_without_console_parsing(self):
         with tempfile.TemporaryDirectory() as tmp:
-            summary = build(make_root(Path(tmp)), result="success", exit_code=5, host_failure_code="ASR-E2E-CLEANUP", host_failure_phase="host-cleanup", cleanup_status="failure")
+            root = make_root(Path(tmp))
+            summary = build(
+                root,
+                result="success",
+                exit_code=5,
+                host_failure_code="ASR-E2E-CLEANUP",
+                host_failure_phase="host-cleanup",
+                cleanup_status="failure",
+            )
             self.assertEqual("failure", summary["result"])
             self.assertEqual("host/fail", summary["terminal"]["event"])
             self.assertEqual("ASR-E2E-CLEANUP", summary["terminal"]["failureCode"])
             self.assertEqual("minimal", summary["finalizationStatus"])
+
+
+def entry(summary: dict, artifact_id: int | None = 10) -> dict:
+    return final.build_history_entry(
+        summary,
+        summary_digest=final.sha256_digest(final._json_bytes(summary)),
+        main_artifact_id=artifact_id,
+        main_artifact_digest="sha256:" + "6" * 64 if artifact_id else None,
+        main_artifact_size_bytes=1000 if artifact_id else None,
+        main_artifact_expires_at_utc="2026-10-01T00:00:00.000Z" if artifact_id else None,
+    )
+
