@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-**Снимок:** 2026-07-25
+**Снимок:** 2026-07-26
 
 Roadmap разделён на один обязательный продуктовый путь **Core** и независимые либо условные треки. Больший номер не создаёт общей очереди между разными направлениями.
 
@@ -22,7 +22,7 @@ flowchart TB
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
-    P[Platform / CI<br/>independent delivery track]
+    P[Platform / CI<br/>I1–I6 complete]
 
     G -. no automatic block .-> C3
     O -. no automatic block .-> C3
@@ -40,7 +40,7 @@ flowchart TB
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
-| [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I5 завершены | E2E-I6 |
+| [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I6 завершены | нет активного этапа; CI 7–12 только по отдельному trigger |
 
 ## Как читать roadmap
 
