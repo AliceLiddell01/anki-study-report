@@ -254,8 +254,16 @@ def test_safe_handoff_and_environment_evidence_are_exported_without_raw_api_payl
 
 def test_early_failure_diagnostics_and_cleanup_do_not_require_exact_image_identity() -> None:
     text = workflow_text()
-    capture = step(text, "Capture final Docker state", "Prepare redacted public E2E artifact")
-    cleanup = step(text, "Clean Docker E2E state", "Restore canonical result")
+    capture = step(
+        text,
+        "Capture final Docker state",
+        "Finalize Docker E2E state before artifact preparation",
+    )
+    cleanup = step(
+        text,
+        "Finalize Docker E2E state before artifact preparation",
+        "Build canonical final E2E summary",
+    )
 
     assert "if: ${{ !cancelled() }}" in capture
     assert "if ($env:ANKI_E2E_IMAGE)" in capture

@@ -231,9 +231,13 @@ def test_cloud_workflow_always_uses_base_and_ghcr_compose_files() -> None:
     final_state = workflow_step(
         text,
         "Capture final Docker state",
-        "Prepare redacted public E2E artifact",
+        "Finalize Docker E2E state before artifact preparation",
     )
-    cleanup = workflow_step(text, "Clean Docker E2E state", "Restore canonical result")
+    cleanup = workflow_step(
+        text,
+        "Finalize Docker E2E state before artifact preparation",
+        "Build canonical final E2E summary",
+    )
     checks = PREFLIGHT_CHECKS.read_text(encoding="utf-8")
 
     assert "scripts/e2e_preflight.py run" in runtime

@@ -36,11 +36,16 @@ E2E_I6_PATHS = [
     "scripts/validate_e2e_harness_reuse.py",
     "tests/e2e_final_summary_fixtures.py",
     "tests/test_ci_e2e_final_summary_workflow.py",
+    "tests/test_ci_e2e_handoff_hotfix.py",
+    "tests/test_ci_e2e_workflow.py",
+    "tests/test_e2e_environment_consumer.py",
     "tests/test_e2e_final_summary_artifact_integration.py",
     "tests/test_e2e_final_summary_contract.py",
     "tests/test_e2e_final_summary_history.py",
     "tests/test_e2e_harness_reuse.py",
     "tests/test_e2e_history_transport.py",
+    "tests/test_e2e_i4_contracts.py",
+    "tests/test_e2e_performance.py",
 ]
 
 
