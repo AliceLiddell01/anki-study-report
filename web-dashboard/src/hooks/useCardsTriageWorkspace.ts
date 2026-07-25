@@ -89,6 +89,7 @@ export interface CardsTriageWorkspace {
   openInAnki: () => Promise<void>;
   runSafeAction: (action: CardEntityAction) => Promise<void>;
   recheckActive: () => Promise<void>;
+  advanceResolved: () => void;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -555,11 +556,13 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         return;
       }
 
-      const current = responseRef.current;
       inspectCache.current.delete(inspectCacheKey(querySequence.current, item.cardId));
-      const index = current?.items.findIndex((candidate) => candidate.itemId === item.itemId) ?? -1;
-      const nextResponse = removeTriageItem(current, item.itemId);
-      const nextItem = nextResponse?.items[Math.min(Math.max(index, 0), Math.max(nextResponse.items.length - 1, 0))] ?? null;
+      const resolvedItem: TriageItem = {
+        ...value.item,
+        priority: null,
+        primaryReasonCode: null,
+        reasons: [],
+      };
       const outcome: CardsResolutionState = {
         itemId: item.itemId,
         phase: "resolved",
@@ -568,11 +571,9 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
         recheckError: null,
         reconciliation,
       };
+      const nextResponse = replaceTriageItem(responseRef.current, resolvedItem);
       setResponse(nextResponse);
       responseRef.current = nextResponse;
-      setActiveId(nextItem?.itemId ?? null);
-      activeIdRef.current = nextItem?.itemId ?? null;
-      setFocusRequest((currentFocus) => ({ itemId: nextItem?.itemId ?? null, version: currentFocus.version + 1 }));
       writeResolution(item.itemId, outcome);
       setLastOutcome(outcome);
     } catch (error: unknown) {
@@ -598,6 +599,21 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
 
   const scannedNoteCount = response?.sourceStatus.contentCandidates.scannedNoteCount ?? 0;
   const hasMoreContent = continuationStatus !== "capped" && !!coherentNextCursor(response);
+
+  const advanceResolved = useCallback(() => {
+    const itemId = activeIdRef.current;
+    const current = responseRef.current;
+    if (!itemId || resolutionById[itemId]?.phase !== "resolved" || !current) return;
+    const index = current.items.findIndex((candidate) => candidate.itemId === itemId);
+    const nextResponse = removeTriageItem(current, itemId);
+    const nextItem = nextResponse?.items[Math.min(Math.max(index, 0), Math.max((nextResponse?.items.length ?? 1) - 1, 0))] ?? null;
+    setResponse(nextResponse);
+    responseRef.current = nextResponse;
+    setActiveId(nextItem?.itemId ?? null);
+    activeIdRef.current = nextItem?.itemId ?? null;
+    setLastOutcome(null);
+    setFocusRequest((currentFocus) => ({ itemId: nextItem?.itemId ?? null, version: currentFocus.version + 1 }));
+  }, [resolutionById]);
 
   return {
     queryStatus,
@@ -631,6 +647,7 @@ export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace
     openInAnki,
     runSafeAction,
     recheckActive,
+    advanceResolved,
   };
 }
 

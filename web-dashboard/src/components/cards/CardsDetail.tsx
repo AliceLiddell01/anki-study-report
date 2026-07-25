@@ -1,8 +1,7 @@
-import { ExternalLink, Maximize2, RotateCw } from "lucide-react";
+import { CheckCircle2, ExternalLink, Maximize2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnkiCardShadowPreview } from "../AnkiCardShadowPreview";
-import type { CardsTriageWorkspace } from "../../hooks/useCardsTriageWorkspace";
-import type { CardsResolutionState } from "../../hooks/useCardsTriageWorkspace";
+import type { CardsResolutionState, CardsTriageWorkspace } from "../../hooks/useCardsTriageWorkspace";
 import { cardDisplayText } from "../../lib/cardDisplayText";
 import {
   evidenceLabel,
@@ -27,7 +26,9 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const item = workspace.activeItem;
   const details = workspace.inspectResponse?.details;
-  const actionLocked = workspace.mutationPending || ["awaiting_recheck", "rechecking"].includes(workspace.resolution?.phase ?? "idle");
+  const phase = workspace.resolution?.phase ?? "idle";
+  const resolved = phase === "resolved";
+  const actionLocked = workspace.mutationPending || ["awaiting_recheck", "rechecking"].includes(phase);
 
   if (!item) {
     return emptyAllowed ? (
@@ -40,100 +41,135 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   }
 
   return (
-    <div className="cards-detail-content" data-testid="cards-detail-content">
-      <LifecycleBanner state={workspace.resolution} />
+    <div className="cards-detail-content" data-testid="cards-detail-content" data-resolution-phase={phase}>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="cards-resolution-live-status">
+        {workspace.resolution ? `${t(`resolution.states.${phase}.title`)}. ${t(`resolution.states.${phase}.description`)}` : ""}
+      </div>
 
       <header className="cards-detail-header">
         <div className="cards-detail-heading-copy">
-          <PriorityBadge value={item.priority} />
+          <div className={`cards-detail-state is-${phase}`} data-testid="cards-resolution-state">
+            {resolved ? <CheckCircle2 size={15} aria-hidden="true" /> : <span className="cards-detail-state-dot" aria-hidden="true" />}
+            <span>{t(`resolution.states.${phase}.title`)}</span>
+          </div>
           <h2 id={headingId}>{cardDisplayText(item)}</h2>
+          <p className="cards-detail-identity-meta">
+            <span>{item.deck.name || "—"}</span>
+            <span aria-hidden="true">·</span>
+            <span>{item.noteType.name || t("queue.unknownType")}</span>
+            <span aria-hidden="true">·</span>
+            <span>{details?.templateName ?? item.template.name}</span>
+            <span aria-hidden="true">·</span>
+            <span>{stateLabel(item, t)}</span>
+          </p>
         </div>
+        {resolved ? <span className="cards-detail-resolved-badge">{t("queue.resolved")}</span> : <PriorityBadge value={item.priority} />}
       </header>
 
-      <dl className="cards-detail-metadata" aria-label={t("inspector.metadata")}>
-        <Entry label={t("inspector.deck")} value={item.deck.name || "—"} />
-        <Entry label={t("inspector.state")} value={stateLabel(item, t)} />
-        <Entry label={t("inspector.noteType")} value={item.noteType.name || t("queue.unknownType")} />
-        <Entry label={t("inspector.template")} value={details?.templateName ?? item.template.name} />
-      </dl>
-
-      <section className="cards-detail-section" aria-labelledby={`${headingId}-reasons`}>
-        <h3 id={`${headingId}-reasons`}>{t("inspector.reasons")}</h3>
-        <ul className="cards-detail-reasons">
-          {item.reasons.map((reason, index) => <ReasonRow key={reason.reasonId} reason={reason} primary={index === 0} />)}
-        </ul>
-      </section>
-
-      <section className="cards-detail-section" aria-labelledby={`${headingId}-preview`}>
-        <div className="cards-detail-section-heading">
-          <h3 id={`${headingId}-preview`}>{t("preview.frontTitle")}</h3>
-          {details ? (
-            <button
-              type="button"
-              className="secondary-button cards-detail-expand"
-              onClick={onExpandAnswer}
-              disabled={!hasUsableBackPreview(details.renderedPreview)}
-            >
-              <Maximize2 size={16} aria-hidden="true" />
-              {t("preview.expand")}
-            </button>
-          ) : null}
-        </div>
-        {workspace.inspectStatus === "loading" ? (
-          <div className="cards-detail-preview-state" role="status">{t("preview.loading")}</div>
-        ) : workspace.inspectStatus === "error" ? (
-          <div className="cards-detail-preview-state is-error" role="alert">
-            <span>{workspace.inspectError?.code === "search_entity_not_found" ? t("preview.stale") : t("preview.failed")}</span>
-            <button type="button" className="secondary-button" onClick={workspace.retryInspect}>
-              <RotateCw size={16} aria-hidden="true" />{t("retry")}
-            </button>
+      <div className="cards-detail-workspace-body">
+        <section className="cards-detail-preview-region" aria-labelledby={`${headingId}-preview`}>
+          <div className="cards-detail-section-heading">
+            <h3 id={`${headingId}-preview`}>{t("preview.frontTitle")}</h3>
+            {details ? (
+              <button
+                type="button"
+                className="secondary-button cards-detail-expand"
+                onClick={onExpandAnswer}
+                disabled={!hasUsableBackPreview(details.renderedPreview)}
+              >
+                <Maximize2 size={16} aria-hidden="true" />
+                {t("preview.expand")}
+              </button>
+            ) : null}
           </div>
-        ) : details ? (
-          <>
-            <CardPreview details={details} side="front" />
-            {!hasUsableBackPreview(details.renderedPreview) ? <p className="cards-detail-preview-hint" role="status">{t("preview.answerUnavailable")}</p> : null}
-          </>
-        ) : (
-          <div className="cards-detail-preview-state" role="status">{t("preview.unavailable")}</div>
-        )}
-      </section>
+          <div className="cards-detail-preview-frame">
+            {workspace.inspectStatus === "loading" ? (
+              <div className="cards-detail-preview-state" role="status">{t("preview.loading")}</div>
+            ) : workspace.inspectStatus === "error" ? (
+              <div className="cards-detail-preview-state is-error" role="alert">
+                <span>{workspace.inspectError?.code === "search_entity_not_found" ? t("preview.stale") : t("preview.failed")}</span>
+                <button type="button" className="secondary-button" onClick={workspace.retryInspect}>
+                  <RotateCw size={16} aria-hidden="true" />{t("retry")}
+                </button>
+              </div>
+            ) : details ? (
+              <>
+                <CardPreview details={details} side="front" />
+                {!hasUsableBackPreview(details.renderedPreview) ? <p className="cards-detail-preview-hint" role="status">{t("preview.answerUnavailable")}</p> : null}
+              </>
+            ) : (
+              <div className="cards-detail-preview-state" role="status">{t("preview.unavailable")}</div>
+            )}
+          </div>
+        </section>
 
-      <section className="cards-detail-section" aria-labelledby={`${headingId}-next`}>
-        <h3 id={`${headingId}-next`}>{t("inspector.next")}</h3>
-        <p className="cards-detail-next-copy">{recommendedStep(item, t)}</p>
-      </section>
+        <aside className="cards-detail-resolution-rail" aria-label={t("inspector.resolutionRail")}>
+          <section className="cards-detail-flow-section" aria-labelledby={`${headingId}-reasons`}>
+            <h3 id={`${headingId}-reasons`}>{t("inspector.reasons")}</h3>
+            {resolved ? (
+              <div className="cards-detail-resolved-summary">
+                <CheckCircle2 size={18} aria-hidden="true" />
+                <p>{t("resolution.noActiveReasons")}</p>
+              </div>
+            ) : (
+              <ul className="cards-detail-reasons">
+                {item.reasons.map((reason, index) => <ReasonRow key={reason.reasonId} reason={reason} primary={index === 0} />)}
+              </ul>
+            )}
+          </section>
 
-      <section className="cards-detail-section cards-detail-action-zone" aria-labelledby={`${headingId}-actions`}>
-        <h3 id={`${headingId}-actions`}>{t("inspector.actions")}</h3>
-        <p className="cards-detail-resolution-rule">{t("resolution.rule")}</p>
-        <div className="cards-detail-actions">
-          {safeActions(item).map((action, index) => (
-            <button
-              key={action}
-              type="button"
-              className={index === 0 ? "primary-button" : "secondary-button"}
-              onClick={() => void workspace.runSafeAction(action)}
-              disabled={workspace.openPending || actionLocked}
-            >
-              {workspace.resolution?.phase === "action_pending" ? t("actions.working") : t(`actions.${action}`)}
-            </button>
-          ))}
-          <button type="button" className={safeActions(item).length ? "secondary-button" : "primary-button"} onClick={() => void workspace.openInAnki()} disabled={workspace.openPending || workspace.mutationPending || workspace.resolution?.phase === "rechecking"}>
-            <ExternalLink size={16} aria-hidden="true" />
-            {workspace.openPending ? t("actions.opening") : t("actions.open")}
-          </button>
-          {item.reasons.some((reason) => reason.family === "content") ? (
-            <a className="secondary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
-          ) : null}
-        </div>
-      </section>
+          <section className="cards-detail-flow-section" aria-labelledby={`${headingId}-next`}>
+            <h3 id={`${headingId}-next`}>{t("inspector.next")}</h3>
+            <p className="cards-detail-next-copy">{resolved ? t("resolution.resolvedNext") : recommendedStep(item, t)}</p>
+          </section>
 
-      <ResolutionResult
-        state={workspace.resolution}
-        headingId={`${headingId}-result`}
-        recheckDisabled={workspace.mutationPending}
-        onRecheck={() => void workspace.recheckActive()}
-      />
+          <section className="cards-detail-flow-section cards-detail-action-zone" aria-labelledby={`${headingId}-actions`}>
+            <h3 id={`${headingId}-actions`}>{resolved ? t("inspector.result") : t("inspector.execution")}</h3>
+            {resolved ? (
+              <button type="button" className="primary-button cards-detail-next-card" onClick={workspace.advanceResolved}>
+                {t("resolution.nextCard")}
+              </button>
+            ) : (
+              <>
+                <div className="cards-detail-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => void workspace.openInAnki()}
+                    disabled={workspace.openPending || workspace.mutationPending || phase === "rechecking"}
+                  >
+                    <ExternalLink size={16} aria-hidden="true" />
+                    {workspace.openPending ? t("actions.opening") : t("actions.open")}
+                  </button>
+                  <div className="cards-detail-action-alternatives">
+                    {safeActions(item).map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void workspace.runSafeAction(action)}
+                        disabled={workspace.openPending || actionLocked}
+                      >
+                        {phase === "action_pending" ? t("actions.working") : t(`actions.${action}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {item.reasons.some((reason) => reason.family === "content") ? (
+                    <a className="tertiary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
+                  ) : null}
+                </div>
+                <p className="cards-detail-resolution-rule">{t("resolution.rule")}</p>
+                <ResolutionResult
+                  state={workspace.resolution}
+                  headingId={`${headingId}-result`}
+                  recheckDisabled={workspace.mutationPending}
+                  onRecheck={() => void workspace.recheckActive()}
+                />
+              </>
+            )}
+          </section>
+        </aside>
+      </div>
 
       <details className="cards-detail-technical">
         <summary>{t("inspector.technical")}</summary>
@@ -150,22 +186,6 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
   );
 }
 
-function LifecycleBanner({ state }: { state: CardsResolutionState | null }) {
-  const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
-  const phase = state?.phase ?? "idle";
-  return (
-    <section
-      className={`cards-detail-lifecycle workspace-state is-${phase}`}
-      data-testid="cards-resolution-state"
-      role={state ? "status" : undefined}
-      aria-live={state ? "polite" : undefined}
-    >
-      <strong>{t(`resolution.states.${phase}.title`)}</strong>
-      <p>{t(`resolution.states.${phase}.description`)}</p>
-    </section>
-  );
-}
-
 function ResolutionResult({
   state,
   headingId,
@@ -178,16 +198,16 @@ function ResolutionResult({
   onRecheck: () => void;
 }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
-  if (!state) return null;
+  if (!state || state.phase === "resolved") return null;
   const canRecheck = ["awaiting_recheck", "still_active", "partially_resolved", "recheck_failed", "evidence_stale", "entity_missing", "entity_changed"].includes(state.phase);
   const noChanges = state.actionResult && "resultCode" in state.actionResult && state.actionResult.resultCode === "action.no_changes";
   const actionSucceeded = state.actionResult && "resultCode" in state.actionResult && !noChanges;
   const openResult = state.actionResult && "ok" in state.actionResult ? state.actionResult : null;
   const isError = state.phase === "action_failed" || state.phase === "recheck_failed";
   return (
-    <section className={`cards-detail-section cards-resolution-state is-${state.phase}`} data-testid="cards-resolution-result" role={isError ? "alert" : "status"} aria-live={isError ? undefined : "polite"} aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
-      <h3 id={headingId}>{t("inspector.result")}</h3>
-      {state.phase === "action_pending" ? <p>{t("resolution.actionPending")}</p> : null}
+    <div className={`cards-resolution-state is-${state.phase}${isError ? " is-error" : ""}`} data-testid="cards-resolution-result" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
+      <h4 id={headingId}>{t(`resolution.states.${state.phase}.title`)}</h4>
+      <p>{t(`resolution.states.${state.phase}.description`)}</p>
       {actionSucceeded ? <p>{t(`resolution.actionResults.${state.actionResult!.action}`)}</p> : null}
       {noChanges ? <p>{t("resolution.noChanges")}</p> : null}
       {openResult?.ok ? <p>{t("actions.opened")}</p> : null}
@@ -206,7 +226,7 @@ function ResolutionResult({
           <RotateCw size={16} aria-hidden="true" />{t("resolution.recheck")}
         </button>
       ) : null}
-    </section>
+    </div>
   );
 }
 
@@ -223,9 +243,7 @@ function ReasonChangeList({ title, reasons, className }: { title: string; reason
 
 function safeActions(item: NonNullable<CardsTriageWorkspace["activeItem"]>): CardEntityAction[] {
   if (!item.reasons.some((reason) => reason.family === "learning")) return [];
-  const actions: CardEntityAction[] = [item.cardState.suspended ? "unsuspend" : "suspend"];
-  actions.push(item.cardState.buried ? "unbury" : "bury");
-  return actions;
+  return [item.cardState.suspended ? "unsuspend" : "suspend", item.cardState.buried ? "unbury" : "bury"];
 }
 
 function ReasonRow({ reason, primary }: { reason: TriageReason; primary: boolean }) {

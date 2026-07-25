@@ -41,10 +41,10 @@ beforeEach(async () => {
   wideMode = true;
   workspaceMock.mockReturnValue(readyWorkspace());
 });
-afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = ""; });
+afterEach(() => { workspaceMock.mockReset(); document.body.innerHTML = ""; });
 
 describe("Cards attention inbox", () => {
-  it("removes the spreadsheet table and renders a semantic inbox with one detail surface", () => {
+  it("recomposes the page into compact header, queue rail, dominant preview, and resolution rail", () => {
     const html = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
     expect(html).toContain('data-testid="cards-inbox"');
     expect(html.match(/data-testid="cards-inbox-item"/g)).toHaveLength(2);
@@ -56,24 +56,21 @@ describe("Cards attention inbox", () => {
     expect(html.match(/data-shadow-preview="true"/g)).toHaveLength(1);
     expect(html).toContain("【に】（する）");
     expect(html).toContain("+1 причина");
-    expect(html).toContain("Период обучения");
     expect(html).toContain("Проверить следующие заметки");
-    expect(html).not.toContain("по одной карточке");
-    expect(html).toContain("Фильтры очереди");
-    expect(html).toContain("Область и обновление");
-    expect(html).toContain("cards-detail-metadata");
-    expect(html).toContain("cards-detail-reasons");
-    expect(html).not.toContain("cards-detail-reasons\"><article");
-    expect(html.indexOf("cards-detail-lifecycle")).toBeLessThan(html.indexOf("cards-detail-header"));
-    expect(html.indexOf("cards-detail-metadata")).toBeLessThan(html.indexOf("cards-detail-reasons"));
-    expect(html.indexOf("cards-detail-reasons")).toBeLessThan(html.indexOf("cards-detail-preview"));
-    expect(html.indexOf("cards-detail-preview")).toBeLessThan(html.indexOf("cards-detail-action-zone"));
-    expect(html.indexOf("cards-detail-action-zone")).toBeLessThan(html.indexOf("cards-detail-technical"));
+    expect(html).toContain("Покрытие и детали");
+    expect(html).toContain("Найти карточку или колоду");
+    expect(html).toContain("Причины, рекомендация и выполнение");
+    expect(html).not.toContain('id="cards-inbox-filter-panel"');
+    expect(html).not.toContain("Фильтры очереди");
+    expect(html).not.toContain("Область и обновление");
+    expect(html.indexOf("cards-inbox-heading")).toBeLessThan(html.indexOf("cards-inbox-workspace"));
+    expect(html.indexOf("cards-inbox-queue")).toBeLessThan(html.indexOf("cards-inbox-inspector"));
+    expect(html.indexOf("cards-detail-preview-region")).toBeLessThan(html.indexOf("cards-detail-resolution-rail"));
+    expect(html.indexOf("cards-detail-resolution-rail")).toBeLessThan(html.indexOf("cards-detail-technical"));
     expect(html).toContain("workspace-page");
     expect(html).toContain("workspace-region");
     expect(html).toContain("workspace-interactive");
     expect(html).toContain("workspace-selected");
-    expect(html).not.toMatch(/cards-inbox-inspector[^>]*workspace-safe-area/);
   });
 
   it("keeps filter clearing separate from the learning period", async () => {
@@ -82,13 +79,16 @@ describe("Cards attention inbox", () => {
     const workspace = readyWorkspace();
     workspaceMock.mockReturnValue(workspace);
     await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    expect(document.getElementById("cards-inbox-filter-panel")).toBeNull();
+    const filterToggle = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Фильтры"))!;
+    await act(async () => filterToggle.click());
     const selects = Array.from(document.querySelectorAll("select"));
     const period = selects.find((select) => select.parentElement?.textContent?.includes("Период обучения"))!;
     await act(async () => { period.value = "30"; period.dispatchEvent(new Event("change", { bubbles: true })); });
     expect(workspace.setLearningPeriodDays).toHaveBeenCalledWith(30);
     const prioritySelect = selects.find((select) => select.parentElement?.textContent?.includes("Приоритет"))!;
     await act(async () => { prioritySelect.value = "high"; prioritySelect.dispatchEvent(new Event("change", { bubbles: true })); });
-    const clear = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Очистить фильтры"));
+    const clear = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Сбросить"));
     expect(clear).toBeTruthy();
     await act(async () => clear!.click());
     expect(workspace.setLearningPeriodDays).toHaveBeenCalledTimes(1);
@@ -137,6 +137,9 @@ describe("Cards attention inbox", () => {
     expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
     expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).toContain("remember");
     expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).not.toContain("覚える");
+    const close = Array.from(modal.querySelectorAll("button")).find((button) => button.textContent?.includes("Закрыть"))!;
+    await act(async () => close.click());
+    await act(async () => { await Promise.resolve(); });
     await act(async () => root.unmount());
   });
 
@@ -173,7 +176,7 @@ describe("Cards attention inbox", () => {
   it("announces a global pending mutation and disables conflicting inspector controls", () => {
     const awaiting = {
       itemId: items[0]!.itemId,
-      phase: "awaiting_recheck" as const,
+      phase: "action_pending" as const,
       actionResult: null,
       actionError: null,
       recheckError: null,
@@ -186,12 +189,13 @@ describe("Cards attention inbox", () => {
     });
 
     document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
-    const pending = document.querySelector('[data-testid="cards-mutation-pending"]');
+    const pending = document.querySelector('[data-testid="cards-resolution-result"]');
     expect(pending?.getAttribute("aria-busy")).toBe("true");
     expect(pending?.textContent).toContain("Действие выполняется");
     const controls = Array.from(document.querySelectorAll("button"));
     expect(controls.find((button) => button.textContent?.includes("Открыть в Anki"))?.disabled).toBe(true);
-    expect(controls.find((button) => button.textContent?.includes("Перепроверить карточку"))?.disabled).toBe(true);
+    expect((document.querySelector(".cards-detail-action-alternatives button") as HTMLButtonElement | null)?.disabled).toBe(true);
+    expect(controls.some((button) => button.textContent?.includes("Перепроверить карточку"))).toBe(false);
   });
 });
 
@@ -205,7 +209,7 @@ function readyWorkspace(): CardsTriageWorkspace {
     resolution: null, lastOutcome: null, focusRequest: { itemId: null, version: 0 }, mutationPending: false,
     continuationStatus: "idle", continuationError: null, loadedContentPages: 0,
     scannedNoteCount: 500, hasMoreContent: true, lastContinuationAddedCount: null,
-    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined), runSafeAction: vi.fn(async () => undefined), recheckActive: vi.fn(async () => undefined),
+    activate: vi.fn(), clearActive: vi.fn(), refresh: vi.fn(), continueContentScan: vi.fn(async () => undefined), retryInspect: vi.fn(), openInAnki: vi.fn(async () => undefined), runSafeAction: vi.fn(async () => undefined), recheckActive: vi.fn(async () => undefined), advanceResolved: vi.fn(),
   };
 }
 

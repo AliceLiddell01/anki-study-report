@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en";
 import ru from "./locales/ru";
+import { cardsWorkspaceV323 } from "./cardsWorkspaceV323";
 import {
   applyDocumentLanguage,
   normalizeLanguage,
@@ -11,7 +12,36 @@ import {
   type AppLanguage,
 } from "./language";
 
-export const resources = { ru, en } as const;
+function withCardsWorkspaceV323<T extends typeof ru>(resource: T, override: typeof cardsWorkspaceV323.ru | typeof cardsWorkspaceV323.en): T {
+  const workspace = resource.pages.cards.workspace;
+  return {
+    ...resource,
+    pages: {
+      ...resource.pages,
+      cards: {
+        ...resource.pages.cards,
+        workspace: {
+          ...workspace,
+          ...override,
+          filters: { ...workspace.filters, ...override.filters },
+          queue: { ...workspace.queue, ...override.queue },
+          inspector: { ...workspace.inspector, ...override.inspector },
+          resolution: {
+            ...workspace.resolution,
+            ...override.resolution,
+            states: { ...workspace.resolution.states, ...override.resolution.states },
+          },
+          coverage: { ...workspace.coverage, ...override.coverage },
+        },
+      },
+    },
+  } as T;
+}
+
+export const resources = {
+  ru: withCardsWorkspaceV323(ru, cardsWorkspaceV323.ru),
+  en: withCardsWorkspaceV323(en as typeof ru, cardsWorkspaceV323.en),
+} as const;
 
 void i18n.use(initReactI18next).init({
   resources,

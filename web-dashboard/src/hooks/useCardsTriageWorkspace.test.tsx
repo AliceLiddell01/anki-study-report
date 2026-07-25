@@ -358,6 +358,11 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => { await latestWorkspace!.recheckActive(); });
     expect(latestWorkspace!.lastOutcome?.phase).toBe("resolved");
     expect(latestWorkspace!.lastOutcome?.reconciliation?.removed.map((value) => value.reasonId)).toEqual(["learning:1"]);
+    expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1001", "1002"]);
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1001");
+    expect(latestWorkspace!.activeItem?.reasons).toEqual([]);
+    expect(latestWorkspace!.focusRequest.version).toBe(0);
+    await act(async () => latestWorkspace!.advanceResolved());
     expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1002"]);
     expect(latestWorkspace!.activeItem?.cardId).toBe("1002");
     expect(latestWorkspace!.focusRequest.itemId).toBe("card:1002");

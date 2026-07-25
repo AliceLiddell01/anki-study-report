@@ -1,4 +1,4 @@
-import { RotateCw, TriangleAlert } from "lucide-react";
+import { RotateCw, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
@@ -45,10 +45,14 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   const [reason, setReason] = useState<ReasonFilter>("all");
   const [deck, setDeck] = useState("all");
   const [textFilter, setTextFilter] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const activatorRef = useRef<HTMLElement | null>(null);
   const queueHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const refreshButtonRef = useRef<HTMLButtonElement | null>(null);
+  const refreshStatusRef = useRef<HTMLDivElement | null>(null);
+  const previousRefreshStatus = useRef(workspace.refreshStatus);
   const detailRegionId = "cards-detail-region";
   const detailHeadingId = "cards-detail-title";
 
@@ -67,8 +71,16 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
     if (target instanceof HTMLElement) target.focus();
     else queueHeadingRef.current?.focus();
   }, [workspace.focusRequest]);
+  useEffect(() => {
+    const previous = previousRefreshStatus.current;
+    previousRefreshStatus.current = workspace.refreshStatus;
+    if (workspace.refreshStatus === "pending") refreshStatusRef.current?.focus();
+    else if (previous === "pending" && (workspace.refreshStatus === "success" || workspace.refreshStatus === "error")) refreshButtonRef.current?.focus();
+  }, [workspace.refreshStatus]);
 
   const allItems = workspace.response?.items ?? [];
+  const resolvedId = workspace.resolution?.phase === "resolved" ? workspace.activeId : null;
+  const activeCount = allItems.filter((item) => item.itemId !== resolvedId).length;
   const decks = useMemo(
     () => [...new Set(allItems.map((item) => item.deck.name).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
     [allItems],
@@ -76,10 +88,11 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   const visibleItems = useMemo(() => {
     const needle = textFilter.trim().toLocaleLowerCase();
     return allItems.filter((item) => {
-      if (priority !== "all" && item.priority !== priority) return false;
-      if (reason === "learning" || reason === "content") {
+      const resolvedConfirmation = item.itemId === resolvedId;
+      if (!resolvedConfirmation && priority !== "all" && item.priority !== priority) return false;
+      if (!resolvedConfirmation && (reason === "learning" || reason === "content")) {
         if (!item.reasons.some((itemReason) => itemReason.family === reason)) return false;
-      } else if (reason !== "all" && !item.reasons.some((itemReason) => itemReason.code === reason)) {
+      } else if (!resolvedConfirmation && reason !== "all" && !item.reasons.some((itemReason) => itemReason.code === reason)) {
         return false;
       }
       if (deck !== "all" && item.deck.name !== deck) return false;
@@ -92,7 +105,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
       ].join(" ").toLocaleLowerCase();
       return searchable.includes(needle);
     });
-  }, [allItems, deck, priority, reason, t, textFilter]);
+  }, [allItems, deck, priority, reason, resolvedId, t, textFilter]);
 
   useEffect(() => {
     if (workspace.queryStatus !== "ready") return;
@@ -109,15 +122,13 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   }, [isWide, visibleItems, workspace.activate, workspace.activeId, workspace.clearActive, workspace.queryStatus]);
 
   const filtersActive = priority !== "all" || reason !== "all" || deck !== "all" || !!textFilter.trim();
-  const highCount = allItems.filter((item) => item.priority === "high").length;
   const activeFilterLabels = useMemo(() => {
-    const labels: string[] = [];
+    const labels: string[] = [t("summary.period", { count: workspace.learningPeriodDays })];
     if (priority !== "all") labels.push(t("filters.activePriority", { value: t(`priorities.${priority}`) }));
     if (reason !== "all") labels.push(t("filters.activeReason", { value: reason === "learning" || reason === "content" ? t(`families.${reason}`) : reasonLabel(reason, t) }));
     if (deck !== "all") labels.push(t("filters.activeDeck", { value: deck }));
-    if (textFilter.trim()) labels.push(t("filters.activeText", { value: textFilter.trim() }));
     return labels;
-  }, [deck, priority, reason, t, textFilter]);
+  }, [deck, priority, reason, t, workspace.learningPeriodDays]);
 
   const clearFilters = useCallback(() => {
     setPriority("all");
@@ -142,111 +153,104 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           <h1 className="workspace-page-title">{t("title")}</h1>
           <p className="workspace-body">{t("description")}</p>
         </div>
+        <div className="cards-page-header-actions">
+          <RefreshButton ref={refreshButtonRef} label={t("refresh")} pending={workspace.refreshStatus === "pending"} onClick={workspace.refresh} />
+          <CoverageDisclosure workspace={workspace} />
+        </div>
       </header>
 
-      <section className="cards-inbox-controls panel-surface workspace-region" aria-label={t("filters.label")}>
-        <div className="cards-inbox-summary" aria-live="polite">
-          <strong>{workspace.response ? t("summary.items", { count: allItems.length }) : t("summary.loading")}</strong>
-          {workspace.response ? <span>{t("summary.high", { count: highCount })}</span> : null}
-        </div>
-
-        <div className="cards-inbox-control-groups">
-          <fieldset className="cards-inbox-filter-group">
-            <legend>{t("filters.queueGroup")}</legend>
-            <div className="cards-inbox-filter-row">
-              <label>
-                <span>{t("filters.priority")}</span>
-                <select value={priority} onChange={(event) => setPriority(event.target.value as PriorityFilter)}>
-                  <option value="all">{t("filters.allPriorities")}</option>
-                  <option value="high">{t("priorities.high")}</option>
-                  <option value="medium">{t("priorities.medium")}</option>
-                  <option value="low">{t("priorities.low")}</option>
-                </select>
-              </label>
-              <label>
-                <span>{t("filters.reason")}</span>
-                <select value={reason} onChange={(event) => setReason(event.target.value)}>
-                  <option value="all">{t("filters.allReasons")}</option>
-                  <optgroup label={t("families.groups")}>
-                    <option value="learning">{t("families.learning")}</option>
-                    <option value="content">{t("families.content")}</option>
-                  </optgroup>
-                  <optgroup label={t("families.learning")}>
-                    {REASON_CODES.filter((code) => code.startsWith("learning.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
-                  </optgroup>
-                  <optgroup label={t("families.content")}>
-                    {REASON_CODES.filter((code) => code.startsWith("content.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
-                  </optgroup>
-                </select>
-              </label>
-              <label>
-                <span>{t("filters.deck")}</span>
-                <select value={deck} onChange={(event) => setDeck(event.target.value)}>
-                  <option value="all">{t("filters.allDecks")}</option>
-                  {decks.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-              </label>
-              <label className="cards-inbox-text-filter">
-                <span>{t("filters.text")}</span>
-                <input value={textFilter} onChange={(event) => setTextFilter(event.target.value)} placeholder={t("filters.textPlaceholder")} />
-              </label>
-            </div>
-          </fieldset>
-          <div className="cards-inbox-scope-group" role="group" aria-label={t("queryScope.label")}>
-            <span className="cards-inbox-group-title">{t("queryScope.label")}</span>
-            <div className="cards-inbox-scope-row">
-              <label>
-                <span>{t("period.label")}</span>
-                <select
-                  value={workspace.learningPeriodDays}
-                  title={t("period.help")}
-                  onChange={(event) => workspace.setLearningPeriodDays(Number(event.target.value) as LearningPeriodDays)}
-                >
-                  <option value={7}>{t("period.days", { count: 7 })}</option>
-                  <option value={30}>{t("period.days", { count: 30 })}</option>
-                  <option value={90}>{t("period.days", { count: 90 })}</option>
-                </select>
-              </label>
-              <div className="cards-inbox-toolbar-actions">
-                {filtersActive ? <button type="button" className="tertiary-button" onClick={clearFilters}>{t("filters.clear")}</button> : null}
-                <RefreshButton label={t("refresh")} pending={workspace.refreshStatus === "pending"} onClick={workspace.refresh} />
-              </div>
-            </div>
-            <p className="cards-inbox-period-help">{t("period.help")}</p>
-            {workspace.response ? (
-              <p className="cards-inbox-scope-status" role="status">
-                <span>{t("summary.contentScanned", { count: workspace.scannedNoteCount })}</span>
-                {workspace.hasMoreContent ? <span className="is-warning">{t("summary.contentMore")}</span> : null}
-                {workspace.response.truncated ? <span className="is-warning">{t("summary.responseTruncated", { count: workspace.response.limit })}</span> : null}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        {activeFilterLabels.length ? (
-          <div className="cards-inbox-active-filters" role="status">
-            <strong>{t("filters.active")}</strong>
-            <ul>{activeFilterLabels.map((label) => <li key={label}>{label}</li>)}</ul>
-          </div>
+      <div
+        ref={refreshStatusRef}
+        className={`cards-refresh-status is-${workspace.refreshStatus}`}
+        tabIndex={-1}
+        role={workspace.refreshStatus === "error" ? "alert" : "status"}
+        aria-live={workspace.refreshStatus === "error" ? undefined : "polite"}
+        data-testid="cards-refresh-status"
+      >
+        {workspace.refreshStatus === "pending" ? <><RotateCw size={15} aria-hidden="true" />{t("refreshing")}</> : null}
+        {workspace.refreshStatus === "success" ? t("refreshed") : null}
+        {workspace.refreshStatus === "error" && workspace.response ? (
+          <><span>{t("refreshFailedStale")}</span><button type="button" className="tertiary-button" onClick={workspace.refresh}>{t("retry")}</button></>
         ) : null}
-      </section>
+      </div>
 
       <CardsWorkspaceWarnings workspace={workspace} />
       {workspace.lastOutcome && workspace.lastOutcome.itemId !== workspace.activeId ? (
-        <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} role="status" aria-live="polite" data-testid="cards-resolution-outcome">
+        <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} data-testid="cards-resolution-outcome">
           <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
           <span>{t(`resolution.states.${workspace.lastOutcome.phase}.description`)}</span>
         </div>
       ) : null}
-      <CoverageDisclosure workspace={workspace} />
 
       <div className="cards-inbox-workspace">
         <section className={`cards-inbox-queue panel-surface workspace-region shared-refresh-region${workspace.queryStatus === "loading" && workspace.response ? " is-refreshing" : ""}`} aria-labelledby="cards-inbox-queue-title" aria-busy={workspace.queryStatus === "loading"}>
           <header className="cards-inbox-queue-header">
-            <div>
+            <div className="cards-inbox-queue-title-row">
               <h2 id="cards-inbox-queue-title" className="workspace-section-title" ref={queueHeadingRef} tabIndex={-1}>{t("queue.title")}</h2>
-              <p className="workspace-meta">{workspace.response ? t("queue.visible", { visible: visibleItems.length, total: allItems.length }) : t("queue.loading")}</p>
+              <span className="cards-inbox-queue-count">{activeCount}</span>
             </div>
+            <div className="cards-inbox-queue-controls">
+              <input
+                value={textFilter}
+                onChange={(event) => setTextFilter(event.target.value)}
+                placeholder={t("filters.searchPlaceholder")}
+                aria-label={t("filters.text")}
+              />
+              <button type="button" className="secondary-button cards-inbox-filter-toggle" aria-expanded={filtersOpen} aria-controls="cards-inbox-filter-panel" onClick={() => setFiltersOpen((value) => !value)}>
+                <SlidersHorizontal size={15} aria-hidden="true" />{t("filters.open")}
+              </button>
+            </div>
+            <div className="cards-inbox-active-filters" aria-label={t("filters.active")}>
+              {activeFilterLabels.map((label) => <span key={label}>{label}</span>)}
+              {filtersActive ? <button type="button" className="cards-filter-clear" onClick={clearFilters}>{t("filters.clearShort")}</button> : null}
+            </div>
+            {filtersOpen ? (
+              <div id="cards-inbox-filter-panel" className="cards-inbox-filter-panel">
+                <label>
+                  <span>{t("filters.priority")}</span>
+                  <select value={priority} onChange={(event) => setPriority(event.target.value as PriorityFilter)}>
+                    <option value="all">{t("filters.allPriorities")}</option>
+                    <option value="high">{t("priorities.high")}</option>
+                    <option value="medium">{t("priorities.medium")}</option>
+                    <option value="low">{t("priorities.low")}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t("filters.reason")}</span>
+                  <select value={reason} onChange={(event) => setReason(event.target.value)}>
+                    <option value="all">{t("filters.allReasons")}</option>
+                    <optgroup label={t("families.groups")}>
+                      <option value="learning">{t("families.learning")}</option>
+                      <option value="content">{t("families.content")}</option>
+                    </optgroup>
+                    <optgroup label={t("families.learning")}>
+                      {REASON_CODES.filter((code) => code.startsWith("learning.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
+                    </optgroup>
+                    <optgroup label={t("families.content")}>
+                      {REASON_CODES.filter((code) => code.startsWith("content.")).map((code) => <option key={code} value={code}>{reasonLabel(code, t)}</option>)}
+                    </optgroup>
+                  </select>
+                </label>
+                <label>
+                  <span>{t("filters.deck")}</span>
+                  <select value={deck} onChange={(event) => setDeck(event.target.value)}>
+                    <option value="all">{t("filters.allDecks")}</option>
+                    {decks.map((name) => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("period.label")}</span>
+                  <select value={workspace.learningPeriodDays} title={t("period.help")} onChange={(event) => workspace.setLearningPeriodDays(Number(event.target.value) as LearningPeriodDays)}>
+                    <option value={7}>{t("period.days", { count: 7 })}</option>
+                    <option value={30}>{t("period.days", { count: 30 })}</option>
+                    <option value={90}>{t("period.days", { count: 90 })}</option>
+                  </select>
+                </label>
+                <p>{t("period.help")}</p>
+              </div>
+            ) : null}
           </header>
+
           <QueueState
             workspace={workspace}
             visibleItems={visibleItems}
@@ -255,15 +259,14 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
             detailRegionId={detailRegionId}
             drawerMode={!isWide}
             drawerOpen={drawerOpen}
+            resolvedId={resolvedId}
             onActivate={activateItem}
           />
           <ContinuationFooter workspace={workspace} />
-          {workspace.refreshStatus === "success" ? <p className="shared-refresh-status" role="status">{t("refreshed")}</p> : null}
-          {workspace.refreshStatus === "error" && workspace.response ? <p className="shared-refresh-status is-error" role="alert">{t("refreshFailedStale")}</p> : null}
         </section>
 
         {isWide ? (
-          <aside id={detailRegionId} className="cards-inbox-inspector panel-surface workspace-region" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
+          <aside id={detailRegionId} className="cards-inbox-inspector workspace-region" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
             <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} />
           </aside>
         ) : null}
@@ -321,6 +324,7 @@ function QueueState({
   detailRegionId,
   drawerMode,
   drawerOpen,
+  resolvedId,
   onActivate,
 }: {
   workspace: ReturnType<typeof useCardsTriageWorkspace>;
@@ -330,6 +334,7 @@ function QueueState({
   detailRegionId: string;
   drawerMode: boolean;
   drawerOpen: boolean;
+  resolvedId: string | null;
   onActivate: (item: TriageItem, button: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
@@ -337,35 +342,22 @@ function QueueState({
   if (workspace.queryStatus === "error" && !workspace.response) return <WorkspaceMessage alert title={t("states.errorTitle")} text={t("states.error")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}><RotateCw size={16} aria-hidden="true" />{t("retry")}</button>} />;
   if (workspace.response?.status === "unavailable") return <WorkspaceMessage alert title={t("states.unavailableTitle")} text={t("states.unavailable")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}>{t("retry")}</button>} />;
   if (!visibleItems.length) return <WorkspaceMessage title={filtersActive ? t("states.filteredTitle") : t("states.emptyTitle")} text={filtersActive ? t("states.filtered") : t("states.empty")} action={filtersActive ? <button type="button" className="secondary-button" onClick={onClear}>{t("filters.clear")}</button> : undefined} />;
-  return <CardsInbox items={visibleItems} activeId={workspace.activeId} detailRegionId={detailRegionId} drawerMode={drawerMode} drawerOpen={drawerOpen} onActivate={onActivate} />;
+  return <CardsInbox items={visibleItems} activeId={workspace.activeId} resolvedId={resolvedId} detailRegionId={detailRegionId} drawerMode={drawerMode} drawerOpen={drawerOpen} onActivate={onActivate} />;
 }
 
 function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof useCardsTriageWorkspace> }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   return (
     <div className="cards-inbox-warnings">
-      {workspace.mutationPending ? (
-        <div className="cards-inbox-warning workspace-state" role="status" aria-live="polite" aria-busy="true" data-testid="cards-mutation-pending">
-          <RotateCw size={18} aria-hidden="true" />
-          <span>
-            <strong>{t("resolution.states.action_pending.title")}</strong>{" "}
-            {t("resolution.states.action_pending.description")}
-          </span>
-        </div>
-      ) : null}
       {workspace.response?.contentChecks.status === "profiles_need_review" ? (
-        <div className="cards-inbox-warning workspace-state" role="status">
-          <TriangleAlert size={18} aria-hidden="true" />
+        <div className="cards-inbox-warning workspace-state">
+          <TriangleAlert size={17} aria-hidden="true" />
           <span><strong>{t("profiles.title", { count: workspace.response.contentChecks.needsReviewProfileCount })}</strong> {t("profiles.description")}</span>
-          <a className="secondary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
+          <a className="tertiary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
         </div>
       ) : null}
-      {workspace.response?.status === "partial" ? (
-        <div className="cards-inbox-warning workspace-state is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.partial")}</div>
-      ) : null}
-      {workspace.response?.truncated ? (
-        <div className="cards-inbox-warning workspace-state is-partial" role="status"><TriangleAlert size={17} aria-hidden="true" />{t("states.responseTruncated", { count: workspace.response.limit })}</div>
-      ) : null}
+      {workspace.response?.status === "partial" ? <div className="cards-inbox-warning workspace-state is-partial"><TriangleAlert size={16} aria-hidden="true" />{t("states.partial")}</div> : null}
+      {workspace.response?.truncated ? <div className="cards-inbox-warning workspace-state is-partial"><TriangleAlert size={16} aria-hidden="true" />{t("states.responseTruncated", { count: workspace.response.limit })}</div> : null}
     </div>
   );
 }
@@ -373,17 +365,18 @@ function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof us
 function CoverageDisclosure({ workspace }: { workspace: ReturnType<typeof useCardsTriageWorkspace> }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const response = workspace.response;
-  if (!response) return null;
   return (
-    <details className="cards-inbox-coverage panel-surface">
-      <summary>{t("coverage.summary", { count: workspace.scannedNoteCount })}</summary>
-      <dl>
-        <CoverageEntry label={t("coverage.learning")} value={sourceStatusLabel(response.sourceStatus.learningCandidates, t)} />
-        <CoverageEntry label={t("coverage.content")} value={sourceStatusLabel(response.sourceStatus.contentCandidates, t)} />
-        <CoverageEntry label={t("coverage.profiles")} value={sourceStatusLabel(response.sourceStatus.profileChecks, t)} />
-        <CoverageEntry label={t("coverage.signals")} value={sourceStatusLabel(response.sourceStatus.signals, t)} />
-        <CoverageEntry label={t("coverage.scanned")} value={t("coverage.noteCount", { count: workspace.scannedNoteCount })} />
-      </dl>
+    <details className="cards-inbox-coverage">
+      <summary className="tertiary-button">{t("coverage.action")}</summary>
+      {response ? (
+        <dl>
+          <CoverageEntry label={t("coverage.learning")} value={sourceStatusLabel(response.sourceStatus.learningCandidates, t)} />
+          <CoverageEntry label={t("coverage.content")} value={sourceStatusLabel(response.sourceStatus.contentCandidates, t)} />
+          <CoverageEntry label={t("coverage.profiles")} value={sourceStatusLabel(response.sourceStatus.profileChecks, t)} />
+          <CoverageEntry label={t("coverage.signals")} value={sourceStatusLabel(response.sourceStatus.signals, t)} />
+          <CoverageEntry label={t("coverage.scanned")} value={t("coverage.noteCount", { count: workspace.scannedNoteCount })} />
+        </dl>
+      ) : <p>{t("summary.loading")}</p>}
     </details>
   );
 }
