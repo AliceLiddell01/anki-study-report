@@ -349,9 +349,14 @@ screenshot/report/diagnostic/package/runtime counts and bytes
 artifact manifest size and SHA-256
 ```
 
-Categories are derived from stable relative prefixes. The summary size is included
-through a deterministic fixed-point calculation. Upload-generated metadata is not
-embedded in the uploaded main artifact.
+Categories are derived from stable relative prefixes. Raw inventory paths are
+categorized directly. Public inventory paths may carry exactly one leading
+`artifacts/` prefix; the classifier removes only that exact optional prefix before
+category lookup. Unknown top-level segments remain `other`, while unsafe paths are
+rejected by the existing fail-closed path validation.
+
+The summary size is included through a deterministic fixed-point calculation.
+Upload-generated metadata is not embedded in the uploaded main artifact.
 
 After upload, numeric artifact ID, digest, uploaded size, and expiry are written to
 the compact history entry and GitHub Step Summary. The already-uploaded artifact is
@@ -379,6 +384,12 @@ not-comparable
 
 The report includes current value, compatible p50/p95, absolute and percentage
 delta, sample count, continuity, and observed environment caveats.
+
+Current values are resolved from their canonical source: ordinary performance
+metrics from `performance.metrics`, run-event producer calls/duration from
+`performance.producer`, pre-upload artifact bytes from `artifactFootprint`, and
+post-upload artifact size/duration from the current bounded history entry. Missing
+values remain missing and are never replaced by zero.
 
 Classification is strictly observational. It must not change `result`, emit
 `::error`, prevent upload, block merge, or create a duration/size threshold.
