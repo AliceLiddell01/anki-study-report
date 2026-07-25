@@ -26,12 +26,19 @@ def load_script(relative: str, module_name: str):
     return module
 
 
-def test_success_manifest_requires_and_indexes_final_run_summary() -> None:
+def test_workflow_regenerated_manifest_indexes_final_run_summary_without_inner_requirement(tmp_path: Path) -> None:
     manifest = load_script(
         "docker/anki-e2e/write-artifact-manifest.py",
         "e2e_i6_artifact_manifest",
     )
-    assert "reports/final-run-summary.json" in manifest.REQUIRED_SUCCESS_ARTIFACTS
+    paths = manifest.ArtifactPaths.from_root(tmp_path / "artifact")
+    paths.ensure()
+    write_json(paths.reports / "final-run-summary.json", {"schemaVersion": 1})
+
+    document = manifest.build_manifest(paths, status="failed", anki_version="26.05")
+
+    assert "reports/final-run-summary.json" in manifest.manifest_indexed_paths(document)
+    assert "reports/final-run-summary.json" not in manifest.REQUIRED_SUCCESS_ARTIFACTS
 
 
 def test_cancellation_artifact_copies_and_revalidates_bounded_final_summary(tmp_path: Path) -> None:
