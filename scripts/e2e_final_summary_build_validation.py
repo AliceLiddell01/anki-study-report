@@ -49,8 +49,8 @@ def validate_summary(document: Any) -> dict[str, Any]:
         safe_relative_path(build["evidencePath"], "build.evidencePath")
     if root["result"] == "success" and root["finalizationStatus"] != "complete":
         raise FinalSummaryError("successful final summary must be complete")
-    if root["result"] == "success" and build["packageSource"] == "fast-ci-artifact" and build["status"] != "resolved":
-        raise FinalSummaryError("successful non-release summary requires resolved build identity")
+    if root["result"] == "success" and build["packageSource"] in {"fast-ci-artifact", "release-artifact"} and build["status"] != "resolved":
+        raise FinalSummaryError("successful artifact-backed summary requires resolved build identity")
 
     compatibility = _closed(root["compatibility"], COMPATIBILITY_FIELDS, "compatibility")
     if compatibility["schemaVersion"] != COMPATIBILITY_SCHEMA_VERSION:
