@@ -54,7 +54,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
+- **Core:** C1 завершён; C2 implementation/integration влиты. Автоматизированная bounded post-merge remediation технически закрыта в draft PR #130 на проверенном production candidate `a746172f8746eac82ff628d36a7a6328d9332acf`. Остаются owner acceptance на приватной коллекции и отдельное решение об интеграции; C3 не активирован автоматически.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
