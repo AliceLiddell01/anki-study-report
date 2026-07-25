@@ -44,6 +44,13 @@ from .longitudinal_runner import (
     validate_longitudinal_result,
     write_longitudinal_reports,
 )
+from .bounded_screening import (
+    build_screening_manifest,
+    render_bounded_screening_summary,
+    run_bounded_screening,
+    validate_screening_manifest,
+    write_bounded_screening_reports,
+)
 from .validation import close
 from .workspace import ResearchWorkspace, default_output_root, resolve_research_workspace
 
@@ -169,6 +176,20 @@ def build_parser() -> argparse.ArgumentParser:
     longitudinal.add_argument("--output-dir", type=Path)
     longitudinal.add_argument("--no-write", action="store_true")
 
+    subparsers.add_parser(
+        "validate-bounded-screening",
+        help="validate the frozen G1.4 protocol and exact 160-unit manifest",
+    )
+
+    screening = subparsers.add_parser(
+        "run-bounded-screening",
+        help="run the frozen G1.4 160-unit bounded screening",
+    )
+    screening.add_argument("--implementation-sha", required=True)
+    screening.add_argument("--base-sha", required=True)
+    screening.add_argument("--output-dir", type=Path)
+    screening.add_argument("--no-write", action="store_true")
+
     rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
     rust.add_argument("--parameter-set", required=True)
     rust.add_argument("--corpus", type=Path)
@@ -211,6 +232,30 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args, workspace: ResearchWorkspace) -> int:
+    if args.command == "validate-bounded-screening":
+        manifest = build_screening_manifest(workspace)
+        validate_screening_manifest(manifest)
+        print(
+            f"VALID {manifest['manifest_version']} "
+            f"{manifest['actual_unique_units']} unique units "
+            f"{manifest['manifest_digest']}"
+        )
+        return 0
+    if args.command == "run-bounded-screening":
+        payload = run_bounded_screening(
+            workspace,
+            implementation_sha=args.implementation_sha,
+            base_sha=args.base_sha,
+            exact_command=" ".join(sys.argv),
+        )
+        print(render_bounded_screening_summary(payload), end="")
+        if not args.no_write:
+            run_dir = write_bounded_screening_reports(
+                payload,
+                args.output_dir,
+            )
+            print(f"reports: {run_dir}", file=sys.stderr)
+        return 0
     if args.command == "validate-longitudinal-config":
         config = load_longitudinal_config(args.config, workspace=workspace)
         print(
