@@ -155,4 +155,3 @@ def validate_history_entry(entry: Any) -> dict[str, Any]:
         raise FinalSummaryError("history firstAttempt values are invalid")
     _safe_tree(entry)
     return entry
-

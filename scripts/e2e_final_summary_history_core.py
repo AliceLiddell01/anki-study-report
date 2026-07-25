@@ -169,4 +169,3 @@ def first_run_pass_rate(history: Mapping[str, Any]) -> dict[str, Any]:
         "excludedRuns": sum(excluded.values()),
         "excludedReasons": dict(sorted(excluded.items())),
     }
-

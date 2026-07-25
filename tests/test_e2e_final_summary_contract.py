@@ -378,4 +378,3 @@ def entry(summary: dict, artifact_id: int | None = 10) -> dict:
         main_artifact_size_bytes=1000 if artifact_id else None,
         main_artifact_expires_at_utc="2026-10-01T00:00:00.000Z" if artifact_id else None,
     )
-

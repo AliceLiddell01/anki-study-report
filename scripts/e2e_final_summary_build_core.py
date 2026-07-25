@@ -268,4 +268,3 @@ def build_summary(
     from e2e_final_summary_build_validation import validate_summary
     validate_summary(summary)
     return summary
-

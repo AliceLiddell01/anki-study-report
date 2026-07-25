@@ -242,4 +242,3 @@ def _result_and_terminal(
             "exitCode": exit_code,
         }
     raise FinalSummaryError("no terminal run event or failed preflight evidence is available")
-
