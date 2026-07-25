@@ -1,6 +1,6 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** `COMPLETE`; `E2E-I1–E2E-I6` завершены.
+**Статус:** `COMPLETE`; `E2E-I1–E2E-I6` завершены и влиты.
 **Снимок:** 2026-07-26
 **Трек:** Platform / CI
 **База:** real-deck E2E foundation из PR #133
@@ -82,7 +82,7 @@ flowchart LR
 
 ## E2E-I6 — Каноническая итоговая сводка и история
 
-**Статус:** `COMPLETE`; cloud acceptance пройдена в PR #142.
+**Статус:** `COMPLETE`, merged через PR #142.
 
 ### Реализовано
 
@@ -110,6 +110,8 @@ flowchart LR
 ```text
 PR: #142
 implementation HEAD: 00e1e98f91b454a1fa0c5fef5b3530884f01ec32
+docs/report head перед merge: 34498a03e2ce7b8aa2fe2ccef13a92ae2da42bf5
+core merge SHA: 52731abb2fae682c97c3d0d9a542c250c6f25ea8
 Fast CI: 30166328801 — PASS
 standard/full: 30166561184 — PASS
 main artifact: 8621761591

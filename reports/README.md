@@ -46,6 +46,7 @@ production code и tests
 - [E2E-I4 post-merge docs sync](ci/e2e-i4-post-merge-documentation-sync.md)
 - [E2E-I5 — идентичность нерелизной сборки](ci/e2e-i5-non-release-build-identity-closeout.md)
 - [E2E-I6 — каноническая итоговая сводка и bounded history](ci/e2e-i6-final-summary-history-closeout.md)
+- [E2E-I6 post-merge documentation sync](ci/e2e-i6-post-merge-documentation-sync.md)
 
 ## Research
 
