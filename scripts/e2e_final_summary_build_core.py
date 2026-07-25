@@ -157,7 +157,8 @@ def build_summary(
     elif events:
         finish = normalize_utc(str(events[-1].get("timestampUtc")))
     else:
-        finish = normalize_utc(str(preflight_report.get("finishedAtUtc") or preflight_report.get("generatedAtUtc")))
+        fallback_finish = preflight_report.get("finishedAtUtc") or preflight_report.get("generatedAtUtc")
+        finish = normalize_utc(str(fallback_finish)) if fallback_finish else utc_now()
     if workflow_duration_ms is None:
         workflow_duration_ms = max(
             0, int((datetime.fromisoformat(finish[:-1] + "+00:00") - datetime.fromisoformat(start[:-1] + "+00:00")).total_seconds() * 1000)
