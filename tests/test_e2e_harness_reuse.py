@@ -18,6 +18,31 @@ SPEC.loader.exec_module(MODULE)
 PACKAGE = "a" * 40
 HARNESS = "b" * 40
 
+E2E_I6_PATHS = [
+    ".github/workflows/ci-e2e.yml",
+    "docs/e2e-final-summary-history.md",
+    "scripts/e2e_final_summary.py",
+    "scripts/e2e_final_summary_build.py",
+    "scripts/e2e_final_summary_build_core.py",
+    "scripts/e2e_final_summary_build_projection.py",
+    "scripts/e2e_final_summary_build_validation.py",
+    "scripts/e2e_final_summary_common.py",
+    "scripts/e2e_final_summary_history.py",
+    "scripts/e2e_final_summary_history_core.py",
+    "scripts/e2e_final_summary_history_entry.py",
+    "scripts/e2e_final_summary_history_report.py",
+    "scripts/e2e_history_transport.py",
+    "scripts/prepare_ci_e2e_cancellation.py",
+    "scripts/validate_e2e_harness_reuse.py",
+    "tests/e2e_final_summary_fixtures.py",
+    "tests/test_ci_e2e_final_summary_workflow.py",
+    "tests/test_e2e_final_summary_artifact_integration.py",
+    "tests/test_e2e_final_summary_contract.py",
+    "tests/test_e2e_final_summary_history.py",
+    "tests/test_e2e_harness_reuse.py",
+    "tests/test_e2e_history_transport.py",
+]
+
 
 def test_harness_only_changes_can_reuse_exact_fast_ci_package() -> None:
     changed_paths = [
@@ -99,6 +124,20 @@ def test_e2e_i3_complete_harness_diff_is_allowlisted() -> None:
     )
     assert result["reuseMode"] == "harness-only"
     assert result["changedFileCount"] == len(changed_paths)
+
+
+def test_e2e_i6_complete_harness_diff_is_allowlisted() -> None:
+    result = MODULE.validate_harness_reuse(
+        package_tested_sha=PACKAGE,
+        harness_sha=HARNESS,
+        workflow_source_sha=HARNESS,
+        changed_paths=E2E_I6_PATHS,
+    )
+
+    assert result["reuseAllowed"] is True
+    assert result["reuseMode"] == "harness-only"
+    assert result["changedFileCount"] == len(E2E_I6_PATHS)
+    assert result["changedPaths"] == sorted(E2E_I6_PATHS)
 
 
 @pytest.mark.parametrize(
