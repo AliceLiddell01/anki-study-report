@@ -64,6 +64,7 @@ reports/    исторические evidence и завершённые пров
 - [Preflight и cancellation](e2e-preflight-cancellation.md)
 - [Fast CI package / E2E harness reuse](e2e-package-harness-reuse.md)
 - [Идентичность нерелизной сборки](non-release-build-identity.md)
+- [Каноническая итоговая сводка E2E и bounded history](e2e-final-summary-history.md)
 - [GHCR E2E consumer](ghcr-e2e-consumer.md)
 - [Packaging и release](packaging-release.md)
 
