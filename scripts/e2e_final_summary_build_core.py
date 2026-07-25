@@ -37,6 +37,7 @@ def build_summary(
     host_failure_code: str | None = None,
     host_failure_phase: str | None = None,
     host_failure_item: str | None = None,
+    host_failure_mode: str = "override",
     artifact_preparation_duration_ms: int | None = None,
     workflow_duration_ms: int | None = None,
     cleanup_status: str = "unknown",
@@ -60,23 +61,39 @@ def build_summary(
     failure = read_json(reports / "failure-summary.json")
     cancellation = read_json(reports / "cancellation-summary.json")
 
-    result, finalization, terminal = _result_and_terminal(
-        events=events, failure=failure, cancellation=cancellation,
-        preflight=preflight_report, exit_code=exit_code,
-    )
+    if host_failure_mode not in {"fallback", "override"}:
+        raise FinalSummaryError("hostFailureMode must be fallback or override")
     if host_failure_code is not None:
         _id(host_failure_code, "hostFailureCode")
-        if result == "success":
-            result = "failure"
-            finalization = "minimal"
-            terminal = {
-                "event": "host/fail",
-                "phaseId": host_failure_phase or "host-finalization",
-                "itemId": host_failure_item,
-                "failureCode": host_failure_code,
-                "signal": None,
-                "exitCode": exit_code,
-            }
+    try:
+        result, finalization, terminal = _result_and_terminal(
+            events=events, failure=failure, cancellation=cancellation,
+            preflight=preflight_report, exit_code=exit_code,
+        )
+    except FinalSummaryError:
+        if host_failure_code is None:
+            raise
+        result = "failure"
+        finalization = "minimal"
+        terminal = {
+            "event": "host/fail",
+            "phaseId": host_failure_phase or "host-setup",
+            "itemId": host_failure_item,
+            "failureCode": host_failure_code,
+            "signal": None,
+            "exitCode": exit_code,
+        }
+    if host_failure_code is not None and host_failure_mode == "override" and result == "success":
+        result = "failure"
+        finalization = "minimal"
+        terminal = {
+            "event": "host/fail",
+            "phaseId": host_failure_phase or "host-finalization",
+            "itemId": host_failure_item,
+            "failureCode": host_failure_code,
+            "signal": None,
+            "exitCode": exit_code,
+        }
     if run_purpose not in PURPOSES:
         raise FinalSummaryError("runPurpose must be acceptance, controlled, or measurement")
     if mode == "perf100":
