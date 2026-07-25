@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from pathlib import Path
+import statistics
 import tempfile
 import unittest
-import statistics
 
 import e2e_final_summary as final
+import non_release_build_identity as build_identity
 
 
 SHA_A = "a" * 40
@@ -16,6 +18,57 @@ SHA_B = "b" * 40
 IDENTITY = "sha256:" + "1" * 64
 ENVIRONMENT = "sha256:" + "2" * 64
 IMAGE = "sha256:" + "3" * 64
+
+
+def non_release_identity_document() -> dict[str, object]:
+    identity = {
+        "repository": "AliceLiddell01/anki-study-report",
+        "package": {
+            "source": "fast-ci-artifact",
+            "testedCommitSha": SHA_A,
+            "sourceRunId": 10,
+            "sourceRunAttempt": 1,
+            "artifactId": 20,
+            "artifactDigest": "sha256:" + "6" * 64,
+            "innerSha256": hashlib.sha256(b"addon").hexdigest(),
+            "sizeBytes": len(b"addon"),
+        },
+        "harness": {
+            "commitSha": SHA_A,
+            "checkoutSha": SHA_A,
+        },
+        "workflow": {
+            "repository": "AliceLiddell01/anki-study-report",
+            "filePath": ".github/workflows/ci-e2e.yml",
+            "sourceSha": SHA_A,
+        },
+        "environment": {
+            "imageReference": "ghcr.io/example/e2e@" + IMAGE,
+            "imageDigest": IMAGE,
+            "platform": "linux/amd64",
+            "contractSha256": "2" * 64,
+            "publishedFromCommitSha": SHA_A,
+        },
+        "reuse": {
+            "mode": "exact-tree",
+            "changedFileCount": 0,
+            "changedPathsSha256": hashlib.sha256(b"").hexdigest(),
+        },
+    }
+    document = {
+        "schemaVersion": build_identity.SCHEMA_VERSION,
+        "kind": build_identity.KIND,
+        "identityDigest": build_identity.compute_identity_digest(identity),
+        "identity": identity,
+        "execution": {
+            "runId": 100,
+            "runAttempt": 1,
+            "triggerSha": SHA_A,
+            "ref": "refs/heads/platform/e2e-i6-final-summary-history",
+        },
+    }
+    build_identity.validate_document(document)
+    return document
 
 
 def write_json(path: Path, value: object) -> None:
@@ -107,7 +160,10 @@ def make_root(base: Path, *, result: str = "success", include_identity: bool = T
     write_json(reports / "telemetry-restart-proof.json", {"ok": result == "success"})
     write_json(reports / "resource-summary.json", {"schemaVersion": 1, "sampleCount": 1})
     if include_identity:
-        write_json(reports / "non-release-build-identity.json", {"schemaVersion": 1, "kind": "non-release-build", "identityDigest": IDENTITY})
+        write_json(
+            reports / build_identity.CANONICAL_FILENAME,
+            non_release_identity_document(),
+        )
 
     if result == "success":
         events = [event("start", elapsed=0), event("start", phase="artifact-manifest", kind="phase", elapsed=1), event("pass", phase="artifact-manifest", kind="phase", elapsed=1), event("pass", elapsed=2)]
