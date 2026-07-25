@@ -1,6 +1,6 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** в работе; `E2E-I1–E2E-I4` завершены, следующий planned stage — `E2E-I5`
+**Статус:** в работе; `E2E-I1–E2E-I5` завершены, следующий planned stage — `E2E-I6`
 **Трек:** Platform / CI
 **База:** real-deck E2E foundation из PR #133
 **Scope:** наблюдаемость Fast CI и real-Anki Docker E2E, диагностика, cancellation, preflight, non-release build identity и performance evidence.
@@ -45,8 +45,8 @@ E2E-I1 — COMPLETE
 E2E-I2 — COMPLETE
 E2E-I3 — COMPLETE
 E2E-I4 — COMPLETE
-E2E-I5 — следующий planned stage
-E2E-I6 — запланирован
+E2E-I5 — COMPLETE
+E2E-I6 — следующий planned stage
 ```
 
 ## E2E-I1 — Единый live run protocol
@@ -393,30 +393,69 @@ Closeout:
 
 ## E2E-I5 — Non-release build identity
 
-**Статус:** запланирован.
+**Статус:** `COMPLETE`.
 
 ### Цель
 
 Назначить однозначную идентичность exact non-release build, независимо от workflow display names и человеческих labels.
 
-### В scope
+### Реализовано
 
-- build identity schema;
-- package tested SHA;
-- package artifact ID/digest;
-- inner package SHA-256;
-- harness SHA;
-- workflow source SHA;
-- GHCR environment digest;
-- source/reuse mode;
-- canonical identity in summaries/artifacts.
+- closed schema v1;
+- deterministic SHA-256 digest только canonical `identity`;
+- независимые package tested SHA, Fast CI run/attempt, artifact transport digest и inner package hash/size;
+- независимые harness commit/checkout и workflow source SHA;
+- immutable GHCR reference/digest/platform/contract/source revision;
+- exact-tree/harness-only reuse identity;
+- execution run/attempt вне build digest;
+- raw/public validation и semantic parity;
+- success/failure/cancellation lifecycle;
+- manifest/public artifact integration;
+- release-artifact exclusion.
 
-### Инварианты
+### Подтверждение
 
-- package и harness identities остаются независимыми;
+```text
+final candidate HEAD: 92354870970956ed5d2e9216efca5058aa8addf3
+Fast CI: 30149481485 — PASS
+package artifact ID: 8617175787
+package transport digest: sha256:a3b2357e6b19486c5902d62f4d8433f54374b539e689e2cc7ad138b4caab34c1
+inner package SHA-256: 4041ace490b1bba63e340ae8597613db3ce2bf8b12a1cbfb27c776b2c68e0861
+standard/full: 30150971581 — PASS
+E2E artifact ID: 8617629796
+E2E artifact digest: sha256:44d40f58251be7494928a26c151f8505c5a21623ec29d6f1c855314b4d703d7b
+identity digest: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
+browser items: 23/23 PASS
+screenshots: 18/18
+uploaded artifact checks: 33/33 PASS
+```
+
+### Инварианты сохранены
+
+- package и harness identities независимы;
 - docs commit не притворяется package identity;
 - artifact transport digest не заменяет inner package hash;
-- release identity остаётся отдельным contract.
+- release identity остаётся отдельным contract;
+- cloud source-build fallback не добавлен;
+- sanitizer и harness allowlist не ослаблены.
+
+### Что намеренно не запускалось
+
+- второй successful E2E;
+- controlled cancellation A/B;
+- intentionally failing cloud run;
+- `perf100`;
+- warm repeat;
+- worker comparison;
+- visual regression;
+- retries;
+- docs-only heavy rerun.
+
+Contract:
+[`../../docs/non-release-build-identity.md`](../../docs/non-release-build-identity.md).
+
+Closeout:
+[`../../reports/ci/e2e-i5-non-release-build-identity-closeout.md`](../../reports/ci/e2e-i5-non-release-build-identity-closeout.md).
 
 ## E2E-I6 — Canonical final summary и history
 
@@ -481,7 +520,7 @@ Structured progress/failure/build evidence может содержать тол�
 ## Следующий допустимый шаг
 
 ```text
-E2E-I4 — Cancellation и preflight
+E2E-I6 — Canonical final summary и history
 ```
 
-Он должен быть отдельной bounded веткой/задачей после отдельного решения владельца. Завершение `E2E-I3` не разрешает автоматически начинать `E2E-I4–I6` или CI optimization stages.
+Он должен быть отдельной bounded веткой/задачей после отдельного решения владельца. Завершение `E2E-I5` не запускает `E2E-I6` или CI optimization stages автоматически.

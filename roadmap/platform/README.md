@@ -32,8 +32,8 @@ E2E-I1 — COMPLETE / merged
 E2E-I2 — COMPLETE / merged
 E2E-I3 — COMPLETE / merged
 E2E-I4 — COMPLETE / merged через PR #137
-E2E-I5 — следующий planned stage
-E2E-I6 — planned
+E2E-I5 — COMPLETE / cloud acceptance через PR #141
+E2E-I6 — следующий planned stage
 CI 7–12 — conditional
 ```
 
@@ -50,6 +50,7 @@ run events: current schema v2; historical v1 validated
 failure summary: schema v1, failure-only
 cancellation summary: schema v1 + run/cancel
 preflight: deterministic 20-check static/runtime report
+non-release build identity: schema v1, digest over canonical identity only
 browser: plan v1, report v3, 23 items, 18 screenshots
 ```
 
@@ -62,6 +63,7 @@ browser: plan v1, report v3, 23 items, 18 screenshots
 - [Failure diagnostics](../../docs/failure-diagnostics.md)
 - [Preflight и cancellation](../../docs/e2e-preflight-cancellation.md)
 - [Package/harness reuse](../../docs/e2e-package-harness-reuse.md)
+- [Non-release build identity](../../docs/non-release-build-identity.md)
 
 Исторические SHA, run IDs и artifacts: [reports/ci](../../reports/README.md).
 

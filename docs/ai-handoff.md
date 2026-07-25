@@ -63,8 +63,8 @@ E2E-I1 — COMPLETE / merged через PR #134
 E2E-I2 — COMPLETE / merged через PR #135
 E2E-I3 — COMPLETE / merged через PR #136
 E2E-I4 — COMPLETE / merged через PR #137
-E2E-I5 — следующий planned stage, не начат
-E2E-I6 — запланирован
+E2E-I5 — COMPLETE / cloud acceptance PASS в PR #141
+E2E-I6 — следующий planned stage, не начат
 ```
 
 E2E-I4 merge:
@@ -76,12 +76,26 @@ docs head: 37b0a569b3a11de6af84e2cdb675f98e97dcd30b
 core merge commit: 8924987de31da64203855f5b15019b5075945650
 ```
 
+E2E-I5 accepted candidate:
+
+```text
+PR: #141
+candidate HEAD: 92354870970956ed5d2e9216efca5058aa8addf3
+Fast CI: 30149481485 — PASS
+standard/full: 30150971581 — PASS
+artifact ID: 8617629796
+identity digest: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
+```
+
+E2E-I6 не начинается автоматически: merge E2E-I5 и старт следующего stage остаются отдельными решениями владельца.
+
 Актуальные Platform contracts:
 
 - [run-event-protocol.md](run-event-protocol.md)
 - [failure-diagnostics.md](failure-diagnostics.md)
 - [e2e-preflight-cancellation.md](e2e-preflight-cancellation.md)
 - [e2e-package-harness-reuse.md](e2e-package-harness-reuse.md)
+- [non-release-build-identity.md](non-release-build-identity.md)
 - [docker-e2e.md](docker-e2e.md)
 
 Исторические run IDs, package hashes и artifact digests находятся в [`../reports/README.md`](../reports/README.md).
