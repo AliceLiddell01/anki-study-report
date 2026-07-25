@@ -1,8 +1,8 @@
 # Продуктовая ветка Core
 
-**Трек:** `C`  
-**Роль:** единственный обязательный последовательный путь основного add-on  
-**Снимок:** 2026-07-25
+**Трек:** `C`
+**Роль:** единственный обязательный последовательный путь основного add-on
+**Снимок:** 2026-07-26
 
 Core не зависит от Gamification, Operations, Identity или Extensions. Platform / CI обслуживает delivery contour, но не меняет продуктовый scope без явной зависимости.
 
@@ -32,9 +32,10 @@ flowchart LR
 ```text
 C1 — завершён и принят
 C2 implementation/integration — завершены и влиты
-C2 owner acceptance — открыта после post-merge проверки
-следующее действие — bounded C2 manual acceptance remediation
-C3–C6 — обязательный будущий путь
+C2 automated post-merge remediation — technically closed / PR #130 draft
+C2 owner acceptance — private-profile smoke pending
+следующее действие — owner acceptance и отдельное решение об интеграции PR #130
+C3–C6 — обязательный будущий путь; C3 не активирован автоматически
 release — не начат
 ```
 
@@ -72,13 +73,14 @@ problem
 
 ### C2 — Core 1.0 Hardening
 
-**Implementation:** complete  
-**Integration:** merged в `core`  
-**Owner acceptance:** повторно открыта
+**Implementation:** complete
+**Integration:** merged в `core`
+**Automated post-merge remediation:** technically closed в draft PR #130
+**Owner acceptance:** private-profile gate pending
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 
-Текущая незакрытая граница C2 включает:
+Автоматизированная remediation закрыла:
 
 - preview fidelity и wheel ownership;
 - заметный локальный feedback Safe Actions/Open in Anki/Recheck;
@@ -86,20 +88,26 @@ problem
 - container-aware editor/layout;
 - bounded suggestions и field-role inference;
 - согласованную motion/shape foundation;
-- representative screenshots и owner smoke.
+- exact Fast CI package и final `standard/full` с restart.
+
+Проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`. Подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md).
 
 Это closure существующего C2, а не новый numbered stage.
 
 Критерии закрытия:
 
-- security/CSP/sanitizer boundary не ослаблена;
-- targeted и final real-Anki gates соответствуют риску;
-- UI states работают на representative fixtures;
-- владелец принимает обновлённый smoke.
+| Критерий | Статус |
+| --- | --- |
+| security/CSP/sanitizer boundary не ослаблена | PASS |
+| targeted/final real-Anki gates соответствуют риску | PASS — final `standard/full` + restart |
+| UI states работают на representative fixtures | PASS |
+| владелец принимает обновлённый smoke на приватной collection | PENDING |
+
+До owner acceptance и отдельного integration decision C3 не начинается автоматически.
 
 ## C3 — Core UI & Shell Consolidation
 
-**Статус:** следующий обязательный этап после C2 remediation
+**Статус:** следующий обязательный этап после принятия C2 remediation
 
 ### Цель
 
