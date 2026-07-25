@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 import sys
 
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+
 import e2e_final_summary as final
 from e2e_final_summary_fixtures import build, make_root, write_json
 

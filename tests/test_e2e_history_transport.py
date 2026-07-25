@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 import unittest
+
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 
 import e2e_history_transport as transport
 
