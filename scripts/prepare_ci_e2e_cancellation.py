@@ -7,10 +7,13 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 
+from e2e_final_summary import load_summary
 from non_release_build_identity import CANONICAL_FILENAME, load_document
 
+FINAL_SUMMARY = "reports/final-run-summary.json"
 ALLOWED = (
     "reports/cancellation-summary.json",
+    FINAL_SUMMARY,
     "reports/preflight-report.json",
     f"reports/{CANONICAL_FILENAME}",
     "reports/run-events.jsonl",
@@ -41,6 +44,13 @@ def _safe_text(path: Path) -> bytes:
     return raw
 
 
+def _validate_known_document(path: Path) -> None:
+    if path.name == CANONICAL_FILENAME:
+        load_document(path)
+    elif path.as_posix().endswith(FINAL_SUMMARY):
+        load_summary(path)
+
+
 def prepare(source: Path, output: Path) -> list[str]:
     source = source.resolve()
     output = output.resolve()
@@ -52,14 +62,12 @@ def prepare(source: Path, output: Path) -> list[str]:
         candidate = source / PurePosixPath(relative)
         if not candidate.is_file():
             continue
-        if candidate.name == CANONICAL_FILENAME:
-            load_document(candidate)
+        _validate_known_document(candidate)
         raw = _safe_text(candidate)
         destination = output / PurePosixPath(relative)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(raw)
-        if candidate.name == CANONICAL_FILENAME:
-            load_document(destination)
+        _validate_known_document(destination)
         copied.append(relative)
     required = "reports/cancellation-summary.json"
     if required not in copied:
