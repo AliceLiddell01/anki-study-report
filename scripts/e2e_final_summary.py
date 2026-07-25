@@ -37,6 +37,7 @@ def _context_from_args(args: argparse.Namespace) -> dict[str, Any]:
         "host_failure_code": args.host_failure_code,
         "host_failure_phase": args.host_failure_phase,
         "host_failure_item": args.host_failure_item,
+        "host_failure_mode": args.host_failure_mode,
         "artifact_preparation_duration_ms": args.artifact_preparation_duration_ms,
         "workflow_duration_ms": args.workflow_duration_ms,
         "cleanup_status": args.cleanup_status,
@@ -80,6 +81,7 @@ def add_build_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--host-failure-code")
     parser.add_argument("--host-failure-phase")
     parser.add_argument("--host-failure-item")
+    parser.add_argument("--host-failure-mode", choices=("fallback", "override"), default="override")
     parser.add_argument("--artifact-preparation-duration-ms", type=int)
     parser.add_argument("--workflow-duration-ms", type=int)
     parser.add_argument("--cleanup-status", default="unknown")
@@ -98,8 +100,14 @@ def main() -> int:
     finalize_parser = sub.add_parser("finalize-public")
     add_build_args(finalize_parser)
     finalize_parser.add_argument("--public-root", type=Path, required=True)
-    finalize_parser.add_argument("--public-summary-relative", default="artifacts/reports/final-run-summary.json")
-    finalize_parser.add_argument("--public-manifest-relative", default="artifacts/artifact-manifest.json")
+    finalize_parser.add_argument(
+        "--public-summary-relative",
+        default="artifacts/reports/final-run-summary.json",
+    )
+    finalize_parser.add_argument(
+        "--public-manifest-relative",
+        default="artifacts/artifact-manifest.json",
+    )
 
     validate_parser = sub.add_parser("validate-summary")
     validate_parser.add_argument("--input", type=Path, required=True)
@@ -195,7 +203,10 @@ def main() -> int:
     elif args.command == "merge-history":
         previous = read_json(args.previous) if args.previous and args.previous.is_file() else None
         entry = read_json(args.entry, required=True)
-        merged = merge_history(previous, entry, generated_at_utc=args.generated_at_utc, reset_reason=args.reset_reason)
+        merged = merge_history(
+            previous, entry, generated_at_utc=args.generated_at_utc,
+            reset_reason=args.reset_reason,
+        )
         write_json(args.output, merged, max_bytes=MAX_HISTORY_BYTES)
     elif args.command == "aggregate-history":
         history = validate_history(read_json(args.history, required=True))
