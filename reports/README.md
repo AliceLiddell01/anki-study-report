@@ -17,6 +17,7 @@ production code и tests
 - [C1.5R integrated acceptance](core/c1-5r-7-integrated-acceptance-closeout.md)
 - [C1.6 single-card resolution loop](core/c1-6-canonical-single-card-resolution-loop.md)
 - [C2 Core hardening](core/c2-core-hardening-ui-remediation.md)
+- [C2 post-merge manual acceptance remediation](core/c2-manual-acceptance-remediation-closeout.md)
 
 Остальные C1.5R reports остаются в [`reports/core/`](core/).
 
