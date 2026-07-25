@@ -65,16 +65,18 @@ G1 — In Progress
 G1.1 и correction — Complete
 G1.2 и G1.2a correction — Complete
 G1.3 — Complete
-G1.4 protocol readiness — READY
-G1.4 execution readiness — BLOCKED_ON_IMPLEMENTATION
-G1.4 screening started — NO
-candidate selected — NO
+G1.4 — Complete
+G1.4 survivors — P-STEP-ZERO; P-TAPER-ZERO-30D
+final candidate selected — NO
+G1.5 — Next / Ready; started — NO
 production integration — PROHIBITED
 ```
 
 G1.2a оставляет root cause частично локализованным с `MEDIUM` confidence: `memory_main` — крупнейший component, `post_transition` — dominant timing window, Challenge не direction-consistent, уникальная corrective formula не доказана.
 
-G1.3 замораживает candidate protocol, strict schema, четыре parameterizations и bounded 160-unit matrix. Следующая задача — только `G1.4 — Bounded screening`: сначала завершить и опубликовать frozen mechanism/registry, затем выполнить ровно зарегистрированную matrix без tuning и без начала G1.5.
+G1.4 завершён на опубликованной implementation `a8857f111849e2e98744adda8e06fe1910bdf805`. Exact matrix дала `160/160` unique units, `0/0/0` missing/extra/duplicates и evidence digest `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`.
+
+По одному survivor сохранено в каждой family: `P-STEP-ZERO` и `P-TAPER-ZERO-30D`. Оба neutral-ratio варианта отклонены только из-за сохраняющегося positive cross-horizon growth. Это не final candidate selection и не production approval. Следующая отдельная задача — только G1.5; она не начата.
 
 Точные источники:
 
@@ -82,6 +84,7 @@ G1.3 замораживает candidate protocol, strict schema, четыре pa
 - [human candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [`../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json`](../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json)
 - [`../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json`](../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json)
+- [G1.4 bounded screening closeout](../roadmap/gamification/g1-bounded-screening.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
 
