@@ -104,86 +104,24 @@ Rebase и force-push не применялись. Существующий PR и
 
 Все остальные необходимые remediation paths были перенесены без подмены current production architecture.
 
-### 4.3 Финальное отношение к `core`
-
-После production commit campaign ветка находилась:
-
-```text
-ahead:  19
-behind: 0
-merge base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
-```
-
-Последующий documentation-only closeout commit меняет только Markdown/report tree и не меняет проверенные package bytes.
-
 ## 5. Удаление rejected prototype overlay
 
 В merge tree присутствовал глобальный prototype overlay, который был признан неподходящим для production composition.
 
-Отдельным commit:
-
-```text
-ea431acee24901c69460f6a6d1dc0393912eeab3
-Remove the rejected global prototype overlay
-```
-
-были удалены:
+Отдельным commit `ea431acee24901c69460f6a6d1dc0393912eeab3` удалены:
 
 - `web-dashboard/src/styles/prototypeV323.css`;
 - import этого файла из `web-dashboard/src/main.tsx`.
 
-Дополнительно проверено отсутствие:
-
-- `prototypeV323`;
-- `prototype-v323`;
-- marker `Accepted Prototype v3.2.3 presentation contract.`
-
-Cleanup не откатывал production components, hooks, Cards/Profiles contracts или pinned `highlight.js`.
+Дополнительно проверено отсутствие `prototypeV323`, `prototype-v323` и marker `Accepted Prototype v3.2.3 presentation contract.`
 
 ## 6. Telemetry continuation regression
 
-### 6.1 Обнаружение
+Focused Python suite выявил regression `test_background_worker_preserves_continuation_at_iteration_limit`: pending continuation терялся после восьмой итерации bounded loop.
 
-Focused Python suite выявил один реальный failure:
+Commit `a746172f8746eac82ff628d36a7a6328d9332acf` точечно восстановил pending intent на последней итерации, сохранив новые threshold/race protections из `core`.
 
-```text
-tests/test_telemetry_client.py::
-test_background_worker_preserves_continuation_at_iteration_limit
-```
-
-Причина:
-
-1. worker обрабатывал pending request;
-2. `_send_again` / `_deletion_requested` очищались внутри bounded loop;
-3. на восьмой итерации выполнялся `continue`;
-4. цикл завершался;
-5. `finally` больше не видел pending intent;
-6. continuation worker не создавался.
-
-### 6.2 Исправление
-
-Commit:
-
-```text
-a746172f8746eac82ff628d36a7a6328d9332acf
-Preserve telemetry continuation at the iteration limit
-```
-
-точечно восстановил bounded behavior:
-
-- loop использует `attempt`;
-- на последней разрешённой итерации pending intent возвращается во внутренние flags;
-- текущий worker завершает цикл;
-- `finally` создаёт continuation worker;
-- новые threshold/race protections из `core` сохранены.
-
-Изменено только:
-
-```text
-anki_study_report/telemetry_client.py
-```
-
-### 6.3 Focused proof
+Проверено:
 
 | Проверка | Результат |
 | --- | --- |
@@ -195,147 +133,64 @@ anki_study_report/telemetry_client.py
 
 ## 7. Canonical local non-Docker verification
 
-Выполнен canonical gate:
-
-```text
-scripts/run_full_check.ps1 -SkipDocker
-```
-
-Результаты:
+Выполнен `scripts/run_full_check.ps1 -SkipDocker`.
 
 | Контур | Результат |
 | --- | --- |
-| repository hygiene | PASS |
-| structured changelog outputs | PASS |
 | TypeScript typecheck | PASS |
 | frontend Vitest | PASS — 73 files / 352 tests |
 | Vite production build | PASS — 2279 modules |
 | bundle guard | PASS — 21 JS chunks |
-| bundle total | 1 406 617 bytes |
-| bundle gzip total | 397 647 bytes |
 | Python full | PASS — 1113 tests |
-| package build | PASS |
-| package verification | PASS |
-| archive entries | 97 |
-| linked dashboard asset graph | PASS |
-| forbidden/missing entries | none |
-
-Проверка не оставила generated assets или другие tracked changes.
+| package build/verification | PASS — 97 entries |
+| generated-output hygiene | PASS |
 
 ## 8. Exact Fast CI package
 
-### 8.1 Run identity
-
 ```text
-workflow: Fast CI
-run ID: 30173712679
-event: workflow_dispatch
-branch: c2-manual-acceptance-remediation
+Fast CI run: 30173712679
 head SHA: a746172f8746eac82ff628d36a7a6328d9332acf
-status: completed
-conclusion: success
-```
-
-Job `Frontend, Python and package` завершился успешно. Canonical fast pipeline, verification planner, package preparation и оба artifact uploads прошли.
-
-### 8.2 Package identity
-
-```text
-artifact:
-ci-package-a746172f8746eac82ff628d36a7a6328d9332acf-30173712679-1
-
-artifact ID:
-8623655600
-
-artifact archive size:
-759768 bytes
-
-artifact transport digest:
-sha256:6e090bf9e60a6e0f95335bfebf4309c597114afe7abb44d02d51577b186c7110
-
-internal package:
-anki_study_report.ankiaddon
-
-internal package size:
-764821 bytes
-
-internal package SHA-256:
-3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
-```
-
-Diagnostics artifact:
-
-```text
-ci-fast-30173712679-1
-artifact ID: 8623655386
-transport digest:
-sha256:89c13009095cc4a32d9ae3b53e836a05420b01a8efdf2d40bb6838b69eacaaf1
+status: success
+package artifact ID: 8623655600
+package artifact digest: sha256:6e090bf9e60a6e0f95335bfebf4309c597114afe7abb44d02d51577b186c7110
+internal .ankiaddon SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
+internal package size: 764821 bytes
+diagnostics artifact ID: 8623655386
 ```
 
 Metadata подтвердили одинаковые `testedCommitSha` и `sourceHeadSha`.
 
 ## 9. Final real-Anki integration gate
 
-### 9.1 Выбор gate
-
-PR затрагивает одновременно:
-
-- Cards и native preview;
-- Inspection Profiles;
-- shared frontend presentation;
-- telemetry/restart lifecycle;
-- package/runtime contour.
-
-Поэтому вместо двух последовательных тяжёлых запусков был выполнен один final:
+Выполнен один final gate вместо двух тяжёлых последовательных запусков:
 
 ```text
+run ID: 30174041436
 mode: standard
 scope: full
 verify_restart: true
 run_purpose: acceptance
 fast_ci_run_id: 30173712679
+status: success
 ```
-
-Это соответствует [verification run policy](../../docs/verification-run-policy.md): несколько product scopes и telemetry/restart требуют final `standard/full`.
-
-### 9.2 Run identity
-
-```text
-workflow: Full Docker / Anki E2E
-run ID: 30174041436
-event: workflow_dispatch
-branch: c2-manual-acceptance-remediation
-head SHA: a746172f8746eac82ff628d36a7a6328d9332acf
-status: completed
-conclusion: success
-job: Real Anki Desktop (standard / full)
-```
-
-Exact Fast CI package был разрешён по artifact ID, скачан, проверен и повторно проверен после E2E. Source-build fallback не использовался.
-
-### 9.3 E2E artifacts
 
 Main artifact:
 
 ```text
 ci-e2e-standard-30174041436-1
 artifact ID: 8623737960
-size: 7045989 bytes
-digest:
-sha256:0685125c2c893a1e2d9e7fa3698236734dd83262c13ab8417b90ee99e292bc15
+digest: sha256:0685125c2c893a1e2d9e7fa3698236734dd83262c13ab8417b90ee99e292bc15
 ```
 
-Bounded history:
+History artifact:
 
 ```text
 ci-e2e-history-30174041436-1
 artifact ID: 8623738676
-size: 7228 bytes
-digest:
-sha256:2af33d14d279acc650b2b442d145929b3fcf3747c3a04fd5f7066f668369a925
+digest: sha256:2af33d14d279acc650b2b442d145929b3fcf3747c3a04fd5f7066f668369a925
 ```
 
-### 9.4 Canonical result
+Canonical evidence:
 
 | Evidence | Результат |
 | --- | --- |
@@ -347,20 +202,14 @@ sha256:2af33d14d279acc650b2b442d145929b3fcf3747c3a04fd5f7066f668369a925
 | page errors | 0 |
 | failed requests | 0 |
 | unexpected external requests | 0 |
-| first-start API smoke | PASS |
-| restart API smoke | PASS |
-| telemetry restart persistence | PASS |
-| offline deletion-pending state | PASS |
-| final deletion confirmation | PASS |
-| credential destruction | PASS |
+| first-start и restart API smoke | PASS |
+| telemetry restart/deletion lifecycle | PASS |
 | artifact validation/redaction | PASS |
 | final Docker cleanup | PASS |
 
-Текущий compact runner создаёт 18 contract-oriented screenshots. Он не обязан воспроизводить старый исторический 125-screenshot artifact: авторитетными являются current workflow, manifest, browser plan и canonical final summary.
-
 ## 10. Real-deck foundation
 
-Gate использовал только три committed APKG:
+Gate использовал только committed APKG:
 
 ```text
 docker/anki-e2e/fixtures/real-decks/words-n1.apkg
@@ -368,19 +217,9 @@ docker/anki-e2e/fixtures/real-decks/grammar-n5.apkg
 docker/anki-e2e/fixtures/real-decks/java-core.apkg
 ```
 
-Подтверждены:
-
-- manifest/checksum contract;
-- импорт всех трёх колод;
-- inventory;
-- 11 обязательных anchors;
-- native light/dark previews;
-- Cards real-deck inbox states;
-- отсутствие synthetic fallback и external APKG override.
+Подтверждены manifest/checksum contract, импорт трёх колод, inventory, 11 anchors, native light/dark previews и Cards real-deck inbox states. Synthetic fallback и external APKG override не использовались.
 
 ## 11. Security и архитектурные инварианты
-
-Remediation не изменила фундаментальные границы:
 
 - frontend не получил прямой доступ к Anki collection;
 - dashboard остался loopback-only и token-protected;
@@ -406,115 +245,52 @@ Remediation не изменила фундаментальные границы:
 
 ## 12. Операционные инциденты и исправления процесса
 
-Во время ручного ChatGPT-mode closeout были выявлены четыре orchestration defect. Они не скрыты и не считаются успешными checkpoint:
+Зафиксированы и не скрыты:
 
-### 12.1 Ложная финальная строка первого focused block
-
-Первый блок содержал `set -u` и `pipefail`, но не `set -e`. Python suite вернул failure, однако shell продолжил выполнение до строки `CHECKPOINT 2 PASS`.
-
-Исправление:
-
-- checkpoint был классифицирован как FAIL;
-- последующие блоки использовали `set -euo pipefail`;
-- failing telemetry regression был локализован и исправлен;
-- ложный PASS не использовался как evidence.
-
-### 12.2 Недоступный `powershell.exe`
-
-WSL session не имел Windows executable interoperability в `PATH`.
-
-Исправление:
-
-- путь к Downloads определялся через `/mnt/c/Users/...`;
-- WSL configuration не изменялась ради одной операции;
-- repository mutation до failure не происходила.
-
-### 12.3 Значимый leading space в porcelain
-
-Первый Python repair runner применил mutation, но затем ошибочно использовал `.strip()` для `git status --porcelain`, уничтожив значимый leading space в статусе `" M path"`.
-
-Исправление:
-
-- исходный runner повторно не запускался;
-- создан state-aware continuation runner;
-- проверялся exact dirty set и exact repaired source anchor.
-
-### 12.4 Dirty patch оказался в checkout `core`
-
-Новый terminal открылся на `core`, поэтому рабочая копия изменения временно находилась при `core` HEAD.
-
-Исправление:
-
-- никакой commit в `core` не создавался;
-- доказано, что исходный blob `telemetry_client.py` одинаков в `core` и PR branch;
-- доказано, что dirty set содержит только целевой patch;
-- обычный `git switch` безопасно перенёс working-tree patch на PR branch;
-- затем tests, commit и fast-forward push выполнены на правильной ветке.
-
-Итог: данные не потеряны, `core` history не изменена, force/reset/stash не применялись.
+1. первый focused block не имел `set -e`, поэтому ложная финальная строка PASS была отвергнута;
+2. `powershell.exe` был недоступен в WSL, поэтому использовался `/mnt/c`;
+3. `.strip()` уничтожил значимый leading space porcelain status, после чего использовался state-aware continuation;
+4. dirty patch временно оказался при `core` HEAD, но не был закоммичен и был безопасно перенесён на PR branch;
+5. три docs runner attempts остановились до commit/push из-за слишком строгих guards и parser ошибки diagnostics; после stop-loss документация была опубликована напрямую через GitHub connector.
 
 ## 13. Документационный closeout
 
-После успешных package/E2E gates обновляются только:
+Опубликованы docs-only commits:
 
-- `README.md`;
-- `docs/ai-handoff.md`;
-- `roadmap/core/README.md`;
-- `reports/README.md`;
-- этот report.
+```text
+5da5d2798a0b379f20d9b0f4818c79969b87a7e3  Add the C2 remediation closeout report
+1747b7249d23f40f0a03687042a6e99ddbf38b97  Update the Core remediation status
+fdae1f27929501007192e76ed0fe0f1658e3a8ff  Refresh the current AI handoff
+1a5066880651d67bec6dca47c8e39f076502bc9a  Close the automated C2 remediation in the roadmap
+c652bd1ce6dc801886568b26bc1ad1264d2c0912  Index the C2 remediation closeout
+024e49ac01a163365d4821ae39d26d6dea24b8a3  Normalize the Core status documentation
+```
 
-Это docs-only изменение. Оно не меняет `.ankiaddon` bytes или production behavior. В соответствии с [verification run policy](../../docs/verification-run-policy.md) для него нужны `git diff --check` и проверка links/paths/code fences; этот closeout не dispatch'ит новый manual Fast CI или Docker E2E.
-
-Поэтому identities разделяются:
+Изменены только `README.md`, `docs/ai-handoff.md`, `roadmap/core/README.md`, `reports/README.md` и этот report. Production/package bytes не изменились, новый manual Fast CI или Docker E2E не запускались.
 
 ```text
 verified production candidate:
 a746172f8746eac82ff628d36a7a6328d9332acf
 
-subsequent PR head:
-documentation-only closeout commit
+current documentation head:
+024e49ac01a163365d4821ae39d26d6dea24b8a3
 ```
-
-Fast CI и E2E остаются evidence именно для проверенного production candidate.
 
 ## 14. Что не проверено автоматически
 
 Не выполнялся автоматический доступ к приватной Anki collection владельца.
 
-Остаются ручные проверки:
-
-### Cards
-
-- native compact/expanded backgrounds на representative real cards;
-- media и code highlighting на реальных шаблонах;
-- wheel behavior queue / Inspector / preview / drawer;
-- `Suspend`, `Bury`, `Open in Anki`;
-- pending/success/error feedback;
-- authoritative Recheck outcomes;
-- refresh и reduced-motion appearance.
-
-### Inspection Profiles
-
-- Basic/Advanced никогда не отображаются одновременно;
-- unsaved draft сохраняется при mode switch;
-- meaningful real field names предлагаются корректно;
-- ambiguous fields требуют явного выбора;
-- длинные RU/EN labels читаемы на обычных desktop widths;
-- validation feedback остаётся inline.
+Остаются ручные проверки Cards и Inspection Profiles на реальных note types, media, scroll/action/recheck behavior, Basic/Advanced draft preservation и длинных RU/EN labels.
 
 ## 15. Остаточные риски
 
-- browser raster и scrollbar details остаются platform-dependent;
+- browser raster и scrollbar details platform-dependent;
 - low-confidence field inference намеренно не угадывает роль автоматически;
 - safe CSS fidelity ограничена parser allowlist;
-- ручной owner acceptance может выявить collection-specific UI issue;
-- docs-only PR head не является новым package-tested SHA, хотя production tree относительно `a746172f8746eac82ff628d36a7a6328d9332acf` не меняется.
+- private-profile owner acceptance может выявить collection-specific UI issue;
+- docs-only PR head не является новым package-tested SHA.
 
 ## 16. Решение и следующий шаг
-
-Автоматизированная bounded C2 remediation технически готова.
-
-Следующий шаг:
 
 ```text
 owner acceptance на приватной collection
@@ -531,6 +307,7 @@ C1: завершён и принят
 C2 implementation/integration: завершены и влиты в core
 C2 automated post-merge remediation: PASS
 verified production candidate: a746172f8746eac82ff628d36a7a6328d9332acf
+documentation head: 024e49ac01a163365d4821ae39d26d6dea24b8a3
 canonical local non-Docker: PASS
 Fast CI exact package: 30173712679 / PASS
 standard/full + restart: 30174041436 / PASS
