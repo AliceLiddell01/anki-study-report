@@ -10,7 +10,7 @@ Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtu
 
 - `gamification` is the canonical independent branch.
 - `gamification → master` is prohibited until a separate owner decision.
-- `chatgpt/gamification-concept-foundation` is historical read-only source and must not be merged/rebased wholesale.
+- `archive/gamification-concept-foundation-2026-07` is the historical read-only tag for the original concept/simulator foundation and must not be merged/rebased wholesale.
 - Any production integration requires a separate explicit decision.
 
 ## AI work mode for this track
