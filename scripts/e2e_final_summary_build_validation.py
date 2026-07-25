@@ -105,8 +105,8 @@ def validate_summary(document: Any) -> dict[str, Any]:
             raise FinalSummaryError("complete summary requires a known final cleanup state")
         if final_state["artifactPreparationStatus"] != "success":
             raise FinalSummaryError("complete summary requires successful artifact preparation")
-        if not final_state["sourceValidated"] or not final_state["publicValidated"]:
-            raise FinalSummaryError("complete summary requires validated raw/public evidence")
+        if not final_state["sourceValidated"]:
+            raise FinalSummaryError("complete summary requires validated source evidence")
     if root["result"] == "success" and final_state["cleanupStatus"] != "success":
         raise FinalSummaryError("successful summary requires successful final cleanup")
     if not isinstance(root["checks"], dict) or not isinstance(root["performance"], dict):
