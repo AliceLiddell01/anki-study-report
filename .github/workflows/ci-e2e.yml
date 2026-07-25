@@ -23,6 +23,10 @@ on:
         required: false
         default: auto
         type: string
+      run_purpose:
+        required: false
+        default: acceptance
+        type: string
       release_artifact_name:
         required: false
         default: ""
@@ -77,6 +81,15 @@ on:
         default: auto
         type: choice
         options: [auto, "true", "false"]
+      run_purpose:
+        description: Bounded purpose for reliability statistics
+        required: true
+        default: acceptance
+        type: choice
+        options:
+          - acceptance
+          - controlled
+          - measurement
       fast_ci_run_id:
         description: Exact successful Fast CI run ID for this branch commit
         required: false
@@ -103,6 +116,7 @@ jobs:
       SCREENSHOT_WORKERS_INPUT: ${{ inputs.screenshot_workers || '3' }}
       RESOURCE_TELEMETRY_INPUT: ${{ inputs.resource_telemetry && 'true' || 'false' }}
       VERIFY_RESTART_INPUT: ${{ inputs.verify_restart || 'auto' }}
+      E2E_RUN_PURPOSE_INPUT: ${{ inputs.run_purpose || 'acceptance' }}
       RELEASE_ARTIFACT_NAME_INPUT: ${{ inputs.release_artifact_name || '' }}
       RELEASE_ARTIFACT_SHA256_INPUT: ${{ inputs.release_artifact_sha256 || '' }}
       FAST_CI_RUN_ID_INPUT: ${{ inputs.fast_ci_run_id || '' }}
@@ -128,16 +142,26 @@ jobs:
           New-Item -ItemType Directory -Force ci-e2e-raw | Out-Null
           New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
           Remove-Item -LiteralPath e2e-artifacts/reports/non-release-build-identity.json -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath e2e-artifacts/reports/release-build-identity.json -Force -ErrorAction SilentlyContinue
           Remove-Item -LiteralPath ci-e2e-raw/non-release-build-identity.json -Force -ErrorAction SilentlyContinue
+          $workers = if ($env:SCREENSHOT_WORKERS_INPUT -eq 'auto') { '3' } else { $env:SCREENSHOT_WORKERS_INPUT }
+          $telemetry = if ($env:RESOURCE_TELEMETRY_INPUT -eq 'false') { '0' } else { '1' }
+          $purpose = if ($env:E2E_MODE -eq 'perf100') { 'measurement' } else { $env:E2E_RUN_PURPOSE_INPUT }
+          if ($purpose -notin @('acceptance', 'controlled', 'measurement')) { $purpose = 'acceptance' }
           $started = [DateTime]::UtcNow.ToString('o')
-          $initialCheckout = (git rev-parse HEAD).Trim().ToLowerInvariant()
-          if ($LASTEXITCODE -ne 0 -or $initialCheckout -notmatch '^[0-9a-f]{40}$') {
-            throw 'Could not resolve the initial E2E checkout SHA.'
-          }
           "CI_E2E_STARTED_AT=$started" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_PWSH_VERSION=$($PSVersionTable.PSVersion)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_ARTIFACT_EXIT_CODE=1" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_PACKAGE_SOURCE=unresolved" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_SCOPE=$env:E2E_SCOPE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_SCREENSHOT_WORKERS=$workers" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANKI_E2E_RESOURCE_TELEMETRY=$telemetry" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_RUN_PURPOSE=$purpose" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_FINAL_CLEANUP_STATUS=unknown" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_FINAL_CLEANUP_DURATION_MS=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_ARTIFACT_PREPARATION_DURATION_MS=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_ARTIFACT_UPLOAD_DURATION_MS=" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_BUILD_DURATION_MS=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_IMAGE_SIZE_BYTES=0" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_CACHE_STATE=unavailable" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -153,6 +177,11 @@ jobs:
           "E2E_WORKFLOW_SOURCE_REPOSITORY=${{ job.workflow_repository }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "E2E_WORKFLOW_SOURCE_PATH=${{ job.workflow_file_path }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "E2E_WORKFLOW_SOURCE_REF=${{ job.workflow_ref }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_CHECKOUT_SHA=${{ job.workflow_sha }}" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $initialCheckout = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $initialCheckout -notmatch '^[0-9a-f]{40}$') {
+            throw 'Could not resolve the initial E2E checkout SHA.'
+          }
           "E2E_CHECKOUT_SHA=$initialCheckout" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           python scripts/verify_fast_ci_e2e_handoff.py validate-inputs `
             --release-artifact-name "$env:RELEASE_ARTIFACT_NAME_INPUT" `
@@ -247,7 +276,6 @@ jobs:
           run-id: ${{ steps.resolve_fast_ci.outputs.source_run_id }}
           merge-multiple: true
           digest-mismatch: error
-
       - name: Validate and stage exact Fast CI package
         id: fast_package
         if: steps.source_mode.outputs.package_source == 'fast-ci-artifact'
@@ -303,6 +331,13 @@ jobs:
           Copy-Item -LiteralPath $source -Destination docker/anki-e2e/local-input/anki_study_report.ankiaddon -Force
           'ANKI_E2E_PREBUILT_ADDON_PATH=/e2e/local-input/anki_study_report.ankiaddon' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           'ANKI_E2E_PACKAGE_SOURCE=release-artifact' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force e2e-artifacts/reports | Out-Null
+          [ordered]@{
+            schemaVersion = 1
+            kind = 'release-artifact'
+            identityDigest = "sha256:$actual"
+            artifactName = $env:RELEASE_ARTIFACT_NAME_INPUT
+          } | ConvertTo-Json -Depth 4 | Set-Content e2e-artifacts/reports/release-build-identity.json -Encoding utf8NoBOM
 
       - name: Capture runner context
         shell: pwsh
@@ -338,6 +373,11 @@ jobs:
           $workers = if ($env:SCREENSHOT_WORKERS_INPUT -eq 'auto') { '3' } else { $env:SCREENSHOT_WORKERS_INPUT }
           $telemetry = if ($env:RESOURCE_TELEMETRY_INPUT -eq 'false') { '0' } else { '1' }
           $restart = switch ($env:VERIFY_RESTART_INPUT) { 'true' { '1' }; 'false' { '0' }; default { $env:VERIFY_RESTART_INPUT } }
+          $purpose = if ($env:E2E_MODE -eq 'perf100') { 'measurement' } else { $env:E2E_RUN_PURPOSE_INPUT }
+          if ($purpose -notin @('acceptance', 'controlled', 'measurement')) {
+            throw "Unsupported E2E run purpose: $purpose"
+          }
+          "E2E_RUN_PURPOSE=$purpose" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_SCOPE=$env:E2E_SCOPE" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_SCREENSHOT_WORKERS=$workers" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "ANKI_E2E_RESOURCE_TELEMETRY=$telemetry" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -550,7 +590,6 @@ jobs:
           if ($actual -ne $env:EXPECTED_SHA256) {
             throw "The package tested by real Anki is not the exact Fast CI artifact: $actual"
           }
-
       - name: Publish sanitized Fast CI handoff evidence
         if: ${{ !cancelled() && steps.source_mode.outputs.package_source == 'fast-ci-artifact' && steps.fast_package.outcome == 'success' }}
         shell: pwsh
@@ -625,11 +664,91 @@ jobs:
           "--- disk after ---" | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
           df -h | Tee-Object -FilePath ci-e2e-raw/docker-system.txt -Append
 
+      - name: Finalize Docker E2E state before artifact preparation
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+          $status = 'success'
+          try {
+            if ($env:ANKI_E2E_IMAGE) {
+              $arguments = @(
+                'compose',
+                '--project-name', $env:COMPOSE_PROJECT_NAME,
+                '-f', 'docker/anki-e2e/docker-compose.yml',
+                '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
+                'down', '-v', '--remove-orphans'
+              )
+              & docker @arguments
+              if ($LASTEXITCODE -ne 0) { throw 'Docker E2E cleanup failed.' }
+            } else {
+              Write-Host 'Skipping Docker E2E cleanup because exact GHCR image identity was not exposed.'
+              $status = 'skipped'
+            }
+          } catch {
+            $status = 'failure'
+            Write-Error $_ -ErrorAction Continue
+          }
+          $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
+          "E2E_FINAL_CLEANUP_STATUS=$status" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_FINAL_CLEANUP_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build canonical final E2E summary
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $hostFailure = @('--host-failure-code', 'ASR-E2E-SETUP', '--host-failure-phase', 'workflow-setup', '--host-failure-mode', 'fallback')
+          if ($env:E2E_FINAL_CLEANUP_STATUS -eq 'failure') {
+            $hostFailure = @('--host-failure-code', 'ASR-E2E-CLEANUP', '--host-failure-phase', 'host-cleanup', '--host-failure-mode', 'override')
+          }
+          $resourceTelemetry = if ($env:ANKI_E2E_RESOURCE_TELEMETRY -eq '1') { '--resource-telemetry' } else { '--no-resource-telemetry' }
+          $dockerClient = (& docker version --format '{{.Client.Version}}' 2>$null | Select-Object -First 1)
+          $dockerServer = (& docker version --format '{{.Server.Version}}' 2>$null | Select-Object -First 1)
+          $dockerCompose = (& docker compose version --short 2>$null | Select-Object -First 1)
+          python scripts/e2e_final_summary.py build-summary `
+            --artifact-root e2e-artifacts `
+            --output e2e-artifacts/reports/final-run-summary.json `
+            --repository '${{ github.repository }}' `
+            --run-id $env:GITHUB_RUN_ID `
+            --run-attempt $env:GITHUB_RUN_ATTEMPT `
+            --event $env:GITHUB_EVENT_NAME `
+            --ref $env:GITHUB_REF `
+            --trigger-sha $env:GITHUB_SHA `
+            --workflow-source-sha $env:E2E_WORKFLOW_SOURCE_SHA `
+            --harness-sha $env:E2E_CHECKOUT_SHA `
+            --mode $env:E2E_MODE `
+            --scope $env:ANKI_E2E_SCOPE `
+            --run-purpose $env:E2E_RUN_PURPOSE `
+            --screenshot-workers $env:ANKI_E2E_SCREENSHOT_WORKERS `
+            $resourceTelemetry `
+            --contour cloud `
+            --started-at-utc $env:CI_E2E_STARTED_AT `
+            --exit-code $env:CI_E2E_EXIT_CODE `
+            --runner-os $env:RUNNER_OS `
+            --runner-image "$env:ImageOS`:$env:ImageVersion" `
+            --docker-client-version "$dockerClient" `
+            --docker-server-version "$dockerServer" `
+            --docker-compose-version "$dockerCompose" `
+            --powershell-version $env:CI_E2E_PWSH_VERSION `
+            --package-source $env:ANKI_E2E_PACKAGE_SOURCE `
+            --cleanup-status $env:E2E_FINAL_CLEANUP_STATUS `
+            --cleanup-duration-ms $env:E2E_FINAL_CLEANUP_DURATION_MS `
+            --artifact-preparation-status unavailable `
+            @hostFailure
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical final E2E summary generation failed.' }
+          $manifestStatus = if ([int]$env:CI_E2E_EXIT_CODE -eq 0 -and $env:E2E_FINAL_CLEANUP_STATUS -ne 'failure') { 'success' } else { 'failed' }
+          python docker/anki-e2e/write-artifact-manifest.py `
+            --root e2e-artifacts `
+            --status $manifestStatus `
+            --anki-version $env:ANKI_VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Final-summary-aware artifact manifest generation failed.' }
+
       - name: Prepare redacted public E2E artifact
         if: ${{ !cancelled() }}
         shell: pwsh
         run: |
           $artifactExit = 0
+          $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
           try {
             python scripts/prepare_ci_e2e_artifacts.py `
               --source e2e-artifacts `
@@ -656,24 +775,99 @@ jobs:
                 --raw e2e-artifacts/reports/non-release-build-identity.json `
                 --public ci-e2e/artifacts/reports/non-release-build-identity.json
               if ($LASTEXITCODE -ne 0) { throw 'Public non-release build identity validation failed.' }
-            } elseif (Test-Path -LiteralPath ci-e2e/artifacts/reports/non-release-build-identity.json -PathType Leaf) {
-              throw 'Release E2E must not emit non-release build identity evidence.'
+            } elseif ($env:ANKI_E2E_PACKAGE_SOURCE -eq 'release-artifact') {
+              if (Test-Path -LiteralPath ci-e2e/artifacts/reports/non-release-build-identity.json -PathType Leaf) {
+                throw 'Release E2E must not emit non-release build identity evidence.'
+              }
+              $rawRelease = 'e2e-artifacts/reports/release-build-identity.json'
+              $publicRelease = 'ci-e2e/artifacts/reports/release-build-identity.json'
+              if (-not (Test-Path -LiteralPath $rawRelease -PathType Leaf) -or -not (Test-Path -LiteralPath $publicRelease -PathType Leaf)) {
+                throw 'Release E2E identity evidence is missing from raw or public artifacts.'
+              }
+              $rawIdentity = Get-Content -LiteralPath $rawRelease -Raw | ConvertFrom-Json
+              $publicIdentity = Get-Content -LiteralPath $publicRelease -Raw | ConvertFrom-Json
+              $expectedIdentity = "sha256:$env:RELEASE_ARTIFACT_SHA256_INPUT"
+              if ($rawIdentity.identityDigest -ne $expectedIdentity -or $publicIdentity.identityDigest -ne $expectedIdentity) {
+                throw 'Release E2E identity evidence differs from the validated package digest.'
+              }
             }
           } catch {
             $artifactExit = 1
             Write-Error $_ -ErrorAction Continue
           }
+          $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
+          "E2E_ARTIFACT_PREPARATION_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CI_E2E_ARTIFACT_EXIT_CODE=$artifactExit" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Finalize public canonical summary and legacy projections
+        id: final_summary
+        if: ${{ !cancelled() && env.CI_E2E_ARTIFACT_EXIT_CODE == '0' }}
+        shell: pwsh
+        run: |
+          $finalizeExit = 0
+          $hostFailure = @('--host-failure-code', 'ASR-E2E-SETUP', '--host-failure-phase', 'workflow-setup', '--host-failure-mode', 'fallback')
+          if ($env:E2E_FINAL_CLEANUP_STATUS -eq 'failure') {
+            $hostFailure = @('--host-failure-code', 'ASR-E2E-CLEANUP', '--host-failure-phase', 'host-cleanup', '--host-failure-mode', 'override')
+          }
+          try {
+            $resourceTelemetry = if ($env:ANKI_E2E_RESOURCE_TELEMETRY -eq '1') { '--resource-telemetry' } else { '--no-resource-telemetry' }
+            $dockerClient = (& docker version --format '{{.Client.Version}}' 2>$null | Select-Object -First 1)
+            $dockerServer = (& docker version --format '{{.Server.Version}}' 2>$null | Select-Object -First 1)
+            $dockerCompose = (& docker compose version --short 2>$null | Select-Object -First 1)
+            python scripts/e2e_final_summary.py finalize-public `
+              --artifact-root e2e-artifacts `
+              --public-root ci-e2e `
+              --output e2e-artifacts/reports/final-run-summary.json `
+              --repository '${{ github.repository }}' `
+              --run-id $env:GITHUB_RUN_ID `
+              --run-attempt $env:GITHUB_RUN_ATTEMPT `
+              --event $env:GITHUB_EVENT_NAME `
+              --ref $env:GITHUB_REF `
+              --trigger-sha $env:GITHUB_SHA `
+              --workflow-source-sha $env:E2E_WORKFLOW_SOURCE_SHA `
+              --harness-sha $env:E2E_CHECKOUT_SHA `
+              --mode $env:E2E_MODE `
+              --scope $env:ANKI_E2E_SCOPE `
+              --run-purpose $env:E2E_RUN_PURPOSE `
+              --screenshot-workers $env:ANKI_E2E_SCREENSHOT_WORKERS `
+              $resourceTelemetry `
+              --contour cloud `
+              --started-at-utc $env:CI_E2E_STARTED_AT `
+              --exit-code $env:CI_E2E_EXIT_CODE `
+              --runner-os $env:RUNNER_OS `
+              --runner-image "$env:ImageOS`:$env:ImageVersion" `
+              --docker-client-version "$dockerClient" `
+              --docker-server-version "$dockerServer" `
+              --docker-compose-version "$dockerCompose" `
+              --powershell-version $env:CI_E2E_PWSH_VERSION `
+              --package-source $env:ANKI_E2E_PACKAGE_SOURCE `
+              --artifact-preparation-duration-ms $env:E2E_ARTIFACT_PREPARATION_DURATION_MS `
+              --cleanup-status $env:E2E_FINAL_CLEANUP_STATUS `
+              --cleanup-duration-ms $env:E2E_FINAL_CLEANUP_DURATION_MS `
+              --artifact-preparation-status success `
+              --public-validated `
+              @hostFailure
+            if ($LASTEXITCODE -ne 0) { throw 'Canonical public finalization failed.' }
+            python scripts/e2e_final_summary.py validate-pair `
+              --raw e2e-artifacts/reports/final-run-summary.json `
+              --public ci-e2e/artifacts/reports/final-run-summary.json
+            if ($LASTEXITCODE -ne 0) { throw 'Raw/public final summary validation failed.' }
+          } catch {
+            $finalizeExit = 1
+            Write-Error $_ -ErrorAction Continue
+          }
+          "CI_E2E_ARTIFACT_EXIT_CODE=$finalizeExit" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          if ($finalizeExit -ne 0) { throw 'Canonical public finalization failed.' }
+
       - name: Start artifact upload timing
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.final_summary.outcome == 'success' && env.CI_E2E_ARTIFACT_EXIT_CODE == '0' }}
         shell: pwsh
         run: |
           "ARTIFACT_UPLOAD_STARTED_MS=$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Upload redacted E2E diagnostics
+      - name: Upload E2E artifact
         id: artifact_upload
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.final_summary.outcome == 'success' && env.CI_E2E_ARTIFACT_EXIT_CODE == '0' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-e2e-${{ env.E2E_MODE }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -682,48 +876,167 @@ jobs:
           retention-days: 7
           compression-level: 0
 
-      - name: Report artifact upload telemetry
-        if: ${{ !cancelled() }}
+      - name: Resolve uploaded E2E artifact metadata
+        id: main_artifact_metadata
+        if: ${{ !cancelled() && steps.artifact_upload.outcome == 'success' }}
         shell: pwsh
         env:
+          GH_TOKEN: ${{ github.token }}
           ARTIFACT_ID: ${{ steps.artifact_upload.outputs.artifact-id }}
-          ARTIFACT_DIGEST: ${{ steps.artifact_upload.outputs.artifact-digest }}
         run: |
           $duration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [long]$env:ARTIFACT_UPLOAD_STARTED_MS
-          @(
-            "## Artifact upload"
-            ""
-            "| Field | Value |"
-            "| --- | --- |"
-            "| Duration | $duration ms |"
-            "| Compression level | 0 |"
-            "| Artifact ID | $env:ARTIFACT_ID |"
-            "| Digest | $env:ARTIFACT_DIGEST |"
-          ) | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "E2E_ARTIFACT_UPLOAD_DURATION_MS=$duration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $metadata = Join-Path $env:RUNNER_TEMP 'main-artifact-api.json'
+          gh api "repos/${{ github.repository }}/actions/artifacts/$env:ARTIFACT_ID" | Set-Content -LiteralPath $metadata -Encoding utf8NoBOM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve uploaded E2E artifact metadata.' }
+          python scripts/e2e_history_transport.py metadata `
+            --input $metadata `
+            --expected-id $env:ARTIFACT_ID `
+            --repository-id '${{ github.repository_id }}' `
+            --current-run-id $env:GITHUB_RUN_ID `
+            --output "$env:RUNNER_TEMP/main-artifact-metadata.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Uploaded E2E artifact metadata validation failed.' }
 
-      - name: Clean Docker E2E state
-        if: ${{ !cancelled() }}
+      - name: Discover previous bounded E2E history
+        id: previous_history
+        if: ${{ !cancelled() && steps.artifact_upload.outcome == 'success' }}
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $pages = Join-Path $env:RUNNER_TEMP 'history-artifact-pages.json'
+          $listing = Join-Path $env:RUNNER_TEMP 'history-artifacts.json'
+          gh api --paginate --slurp "repos/${{ github.repository }}/actions/artifacts?per_page=100" | Set-Content -LiteralPath $pages -Encoding utf8NoBOM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list previous E2E history artifacts.' }
+          $pagePayload = Get-Content -LiteralPath $pages -Raw | ConvertFrom-Json
+          $artifacts = @($pagePayload | ForEach-Object { @($_.artifacts) })
+          [ordered]@{ total_count = $artifacts.Count; artifacts = $artifacts } |
+            ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $listing -Encoding utf8NoBOM
+          python scripts/e2e_history_transport.py select `
+            --input $listing `
+            --repository-id '${{ github.repository_id }}' `
+            --current-run-id $env:GITHUB_RUN_ID `
+            --output "$env:RUNNER_TEMP/history-selection.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Previous E2E history selection failed.' }
+
+      - name: Download previous bounded E2E history
+        if: ${{ !cancelled() && steps.previous_history.outputs.status == 'selected' }}
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.previous_history.outputs.artifact_id }}
+          path: ${{ runner.temp }}/previous-e2e-history
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.previous_history.outputs.source_run_id }}
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Build compact bounded E2E history
+        if: ${{ !cancelled() && steps.artifact_upload.outcome == 'success' }}
         shell: pwsh
         run: |
-          if ($env:ANKI_E2E_IMAGE) {
-            $arguments = @(
-              'compose',
-              '--project-name', $env:COMPOSE_PROJECT_NAME,
-              '-f', 'docker/anki-e2e/docker-compose.yml',
-              '-f', 'docker/anki-e2e/docker-compose.ghcr.yml',
-              'down', '-v', '--remove-orphans'
-            )
-            & docker @arguments
-            if ($LASTEXITCODE -ne 0) { throw 'Docker E2E cleanup failed.' }
+          Write-Host 'history continuity: append when valid; bootstrap or reset otherwise'
+          $reports = 'ci-e2e-history/reports'
+          New-Item -ItemType Directory -Force $reports | Out-Null
+          Copy-Item ci-e2e/artifacts/reports/final-run-summary.json "$reports/final-run-summary.json" -Force
+          python scripts/e2e_final_summary.py build-entry `
+            --summary "$reports/final-run-summary.json" `
+            --output "$env:RUNNER_TEMP/current-history-entry.json" `
+            --main-artifact-id '${{ steps.main_artifact_metadata.outputs.artifact_id }}' `
+            --main-artifact-digest '${{ steps.main_artifact_metadata.outputs.artifact_digest }}' `
+            --main-artifact-size-bytes '${{ steps.main_artifact_metadata.outputs.artifact_size_bytes }}' `
+            --main-artifact-expires-at-utc '${{ steps.main_artifact_metadata.outputs.artifact_expires_at_utc }}' `
+            --artifact-upload-duration-ms $env:E2E_ARTIFACT_UPLOAD_DURATION_MS
+          if ($LASTEXITCODE -ne 0) { throw 'Current E2E history entry generation failed.' }
+          $previous = "$env:RUNNER_TEMP/previous-e2e-history/reports/e2e-run-history.json"
+          $mergeArgs = @()
+          if (Test-Path -LiteralPath $previous -PathType Leaf) {
+            $mergeArgs = @('--previous', $previous)
           } else {
-            Write-Host 'Skipping Docker E2E cleanup because exact GHCR image identity was not exposed.'
+            $mergeArgs = @('--reset-reason', 'bootstrap: previous history is missing, expired, unavailable, or corrupt')
           }
+          python scripts/e2e_final_summary.py merge-history `
+            @mergeArgs `
+            --entry "$env:RUNNER_TEMP/current-history-entry.json" `
+            --output "$reports/e2e-run-history.json"
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded E2E history merge failed.' }
+          python scripts/e2e_final_summary.py aggregate-history `
+            --history "$reports/e2e-run-history.json" `
+            --summary "$reports/final-run-summary.json" `
+            --output "$reports/e2e-history-aggregation.json"
+          if ($LASTEXITCODE -ne 0) { throw 'E2E history aggregation failed.' }
+          python scripts/e2e_final_summary.py render-observations `
+            --history "$reports/e2e-run-history.json" `
+            --summary "$reports/final-run-summary.json" `
+            --aggregation "$reports/e2e-history-aggregation.json" `
+            --json-output "$reports/e2e-regression-observations.json" `
+            --markdown-output "$reports/e2e-regression-observations.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Observational E2E comparison rendering failed.' }
+          $allowed = @(
+            'reports/final-run-summary.json',
+            'reports/e2e-run-history.json',
+            'reports/e2e-history-aggregation.json',
+            'reports/e2e-regression-observations.json',
+            'reports/e2e-regression-observations.md'
+          )
+          $actual = @(Get-ChildItem ci-e2e-history -File -Recurse | ForEach-Object { $_.FullName.Substring((Resolve-Path ci-e2e-history).Path.Length + 1).Replace('\\', '/') } | Sort-Object)
+          if (Compare-Object ($allowed | Sort-Object) $actual) { throw 'Compact history artifact differs from its explicit allowlist.' }
+
+      - name: Upload compact E2E history artifact
+        id: history_artifact_upload
+        if: ${{ !cancelled() && steps.artifact_upload.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-e2e-history-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-e2e-history/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
+
+      - name: Resolve compact history artifact metadata
+        id: history_artifact_metadata
+        if: ${{ !cancelled() && steps.history_artifact_upload.outcome == 'success' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.history_artifact_upload.outputs.artifact-id }}
+        run: |
+          $metadata = Join-Path $env:RUNNER_TEMP 'history-artifact-api.json'
+          gh api "repos/${{ github.repository }}/actions/artifacts/$env:ARTIFACT_ID" | Set-Content -LiteralPath $metadata -Encoding utf8NoBOM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve compact history artifact metadata.' }
+          python scripts/e2e_history_transport.py metadata `
+            --input $metadata `
+            --expected-id $env:ARTIFACT_ID `
+            --repository-id '${{ github.repository_id }}' `
+            --current-run-id $env:GITHUB_RUN_ID `
+            --output "$env:RUNNER_TEMP/history-artifact-metadata.json" `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Compact history artifact metadata validation failed.' }
+
+      - name: Render compact canonical E2E Step Summary
+        if: ${{ !cancelled() && steps.artifact_upload.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          python scripts/e2e_final_summary.py render-github-summary `
+            --summary ci-e2e-history/reports/final-run-summary.json `
+            --aggregation ci-e2e-history/reports/e2e-history-aggregation.json `
+            --history ci-e2e-history/reports/e2e-run-history.json `
+            --main-artifact-metadata "$env:RUNNER_TEMP/main-artifact-metadata.json" `
+            --history-artifact-metadata "$env:RUNNER_TEMP/history-artifact-metadata.json" `
+            --output "$env:RUNNER_TEMP/e2e-final-step-summary.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Compact E2E Step Summary rendering failed.' }
+          Get-Content "$env:RUNNER_TEMP/e2e-final-step-summary.md" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
       - name: Clean cancelled Docker E2E state
         if: ${{ cancelled() }}
         continue-on-error: true
         shell: pwsh
         run: |
+          $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
           $hostLog = Join-Path $env:RUNNER_TEMP 'e2e-cancellation-host.log'
           Remove-Item -LiteralPath $hostLog -Force -ErrorAction SilentlyContinue
           $arguments = @(
@@ -735,6 +1048,10 @@ jobs:
           )
           & /usr/bin/timeout @arguments *>&1 | Tee-Object -FilePath $hostLog
           $cleanupExit = [int]$LASTEXITCODE
+          $cleanupStatus = if ($cleanupExit -eq 0) { 'success' } else { 'failure' }
+          $cleanupDuration = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $started
+          "E2E_FINAL_CLEANUP_STATUS=$cleanupStatus" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "E2E_FINAL_CLEANUP_DURATION_MS=$cleanupDuration" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           if ($cleanupExit -ne 0) { Write-Warning "Bounded cancellation cleanup exited with $cleanupExit." }
 
           $uid = (& id -u).Trim()
@@ -757,6 +1074,42 @@ jobs:
             Copy-Item -LiteralPath $stagedIdentity -Destination e2e-artifacts/reports/non-release-build-identity.json -Force
           }
 
+      - name: Build bounded cancellation final summary
+        if: ${{ cancelled() }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $resourceTelemetry = if ($env:ANKI_E2E_RESOURCE_TELEMETRY -eq '1') { '--resource-telemetry' } else { '--no-resource-telemetry' }
+          $cancellation = Get-Content e2e-artifacts/reports/cancellation-summary.json -Raw | ConvertFrom-Json
+          $cancellationExit = if ([int]$cancellation.originalExitCode -in @(130, 143)) { [int]$cancellation.originalExitCode } else { 143 }
+          python scripts/e2e_final_summary.py build-summary `
+            --artifact-root e2e-artifacts `
+            --output e2e-artifacts/reports/final-run-summary.json `
+            --repository '${{ github.repository }}' `
+            --run-id $env:GITHUB_RUN_ID `
+            --run-attempt $env:GITHUB_RUN_ATTEMPT `
+            --event $env:GITHUB_EVENT_NAME `
+            --ref $env:GITHUB_REF `
+            --trigger-sha $env:GITHUB_SHA `
+            --workflow-source-sha $env:E2E_WORKFLOW_SOURCE_SHA `
+            --harness-sha $env:E2E_CHECKOUT_SHA `
+            --mode $env:E2E_MODE `
+            --scope $env:ANKI_E2E_SCOPE `
+            --run-purpose $env:E2E_RUN_PURPOSE `
+            --screenshot-workers $env:ANKI_E2E_SCREENSHOT_WORKERS `
+            $resourceTelemetry `
+            --contour cloud `
+            --started-at-utc $env:CI_E2E_STARTED_AT `
+            --exit-code $cancellationExit `
+            --runner-os $env:RUNNER_OS `
+            --runner-image "$env:ImageOS`:$env:ImageVersion" `
+            --powershell-version $env:CI_E2E_PWSH_VERSION `
+            --package-source $env:ANKI_E2E_PACKAGE_SOURCE `
+            --cleanup-status $env:E2E_FINAL_CLEANUP_STATUS `
+            --cleanup-duration-ms $env:E2E_FINAL_CLEANUP_DURATION_MS `
+            --artifact-preparation-status partial
+          if ($LASTEXITCODE -ne 0) { Write-Warning 'Bounded cancellation final summary generation failed.' }
+
       - name: Prepare bounded cancellation artifact
         if: ${{ cancelled() }}
         continue-on-error: true
@@ -765,6 +1118,12 @@ jobs:
           python scripts/prepare_ci_e2e_cancellation.py `
             --source e2e-artifacts `
             --output ci-e2e-cancelled
+          if (Test-Path ci-e2e-cancelled/reports/cancellation-summary.json) {
+            Write-Host 'Immutable cancellation-summary.json preserved.'
+          }
+          if (Test-Path ci-e2e-cancelled/reports/final-run-summary.json) {
+            Write-Host 'Bounded final-run-summary.json added.'
+          }
 
       - name: Upload bounded cancellation evidence
         if: ${{ cancelled() }}
@@ -783,7 +1142,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-e2e-preflight-${{ github.run_id }}-${{ github.run_attempt }}
-          path: e2e-artifacts/reports/preflight-report.json
+          path: |
+            e2e-artifacts/reports/preflight-report.json
+            e2e-artifacts/reports/final-run-summary.json
           if-no-files-found: error
           retention-days: 7
 
@@ -793,6 +1154,7 @@ jobs:
         run: |
           $e2eExit = if ($env:CI_E2E_EXIT_CODE) { [int]$env:CI_E2E_EXIT_CODE } else { 1 }
           $artifactExit = if ($env:CI_E2E_ARTIFACT_EXIT_CODE) { [int]$env:CI_E2E_ARTIFACT_EXIT_CODE } else { 1 }
-          if ($e2eExit -ne 0 -or $artifactExit -ne 0) {
-            throw "Full E2E failed (e2e=$e2eExit, artifact=$artifactExit)."
+          $cleanupExit = if ($env:E2E_FINAL_CLEANUP_STATUS -eq 'failure') { 1 } else { 0 }
+          if ($e2eExit -ne 0 -or $artifactExit -ne 0 -or $cleanupExit -ne 0) {
+            throw "Full E2E failed (e2e=$e2eExit, artifact=$artifactExit, cleanup=$cleanupExit)."
           }

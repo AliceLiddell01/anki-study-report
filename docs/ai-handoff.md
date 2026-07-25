@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-25
+**Снимок:** 2026-07-26
 
 Этот файл — короткая точка входа для нового рабочего чата. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -63,33 +63,32 @@ E2E-I1 — COMPLETE / merged через PR #134
 E2E-I2 — COMPLETE / merged через PR #135
 E2E-I3 — COMPLETE / merged через PR #136
 E2E-I4 — COMPLETE / merged через PR #137
-E2E-I5 — ЗАВЕРШЕНО / облачная приёмка пройдена в PR #141
-E2E-I6 — следующий запланированный этап, не начат
+E2E-I5 — COMPLETE / merged через PR #141
+E2E-I6 — COMPLETE / cloud acceptance пройдена в PR #142
+следующий Platform/CI stage — не активирован
 ```
 
-E2E-I4 merge:
+Принятый кандидат E2E-I6:
 
 ```text
-PR: #137
-feature implementation: 5e52faee5cd97af8e7760e2c5041c782ce4273fa
-docs head: 37b0a569b3a11de6af84e2cdb675f98e97dcd30b
-core merge commit: 8924987de31da64203855f5b15019b5075945650
+PR: #142
+HEAD принятого кандидата: 00e1e98f91b454a1fa0c5fef5b3530884f01ec32
+Fast CI: 30166328801 — ПРОЙДЕНО
+standard/full: 30166561184 — ПРОЙДЕНО
+main artifact ID: 8621761591
+main artifact digest: sha256:11dc6f3963dbd6b91059cdab27260bb7c1b41237d11d0adb8df4a36ca662fe05
+history artifact ID: 8621762124
+history artifact digest: sha256:0e545d0e46f87adaac8e1f73ef8ae864fc2df3234a05f9825340dc4ff6cb9c5c
+canonical summary: success / complete / run/pass
+history continuity: bootstrap, entries: 1
+repository artifact/log retention для новых artifacts: 90 дней
 ```
 
-Принятый кандидат E2E-I5:
+Канонический E2E-I6 contract:
 
-```text
-PR: #141
-HEAD принятого кандидата: 92354870970956ed5d2e9216efca5058aa8addf3
-Fast CI: 30149481485 — ПРОЙДЕНО
-standard/full: 30150971581 — ПРОЙДЕНО
-ID артефакта: 8617629796
-хэш идентичности: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
-```
+- [e2e-final-summary-history.md](e2e-final-summary-history.md)
 
-E2E-I6 не начинается автоматически: слияние E2E-I5 и запуск следующего этапа остаются отдельными решениями владельца.
-
-Актуальные Platform contracts:
+Предыдущие Platform contracts:
 
 - [run-event-protocol.md](run-event-protocol.md)
 - [failure-diagnostics.md](failure-diagnostics.md)
@@ -98,7 +97,9 @@ E2E-I6 не начинается автоматически: слияние E2E-
 - [non-release-build-identity.md](non-release-build-identity.md)
 - [docker-e2e.md](docker-e2e.md)
 
-Исторические run IDs, package hashes и artifact digests находятся в [`../reports/README.md`](../reports/README.md).
+Подробный E2E-I6 closeout находится в [`../reports/ci/e2e-i6-final-summary-history-closeout.md`](../reports/ci/e2e-i6-final-summary-history-closeout.md).
+
+Ни E2E-I6, ни его успешное слияние не активируют CI 7–12 автоматически. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
 
 ## Текущие рабочие решения
 

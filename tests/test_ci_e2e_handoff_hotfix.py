@@ -177,20 +177,26 @@ def test_workflow_preserves_early_failure_and_split_cancellation_upload_contract
     initialize = text.index("Capture workflow source and validate package source inputs")
     resolve = text.index("Resolve exact successful Fast CI run and artifact IDs")
     prepare = text.index("Prepare redacted public E2E artifact")
-    upload = text.index("Upload redacted E2E diagnostics")
+    finalize = text.index("Finalize public canonical summary and legacy projections")
+    upload = text.index("Upload E2E artifact")
     cancel_prepare = text.index("Prepare bounded cancellation artifact")
     cancel_upload = text.index("Upload bounded cancellation evidence")
-    assert initialize < resolve < prepare < upload < cancel_prepare < cancel_upload
+    assert initialize < resolve < prepare < finalize < upload < cancel_prepare < cancel_upload
     assert "CI_E2E_EXIT_CODE=1" in text[initialize:resolve]
     assert "ANKI_E2E_BUILD_DURATION_MS=0" in text[initialize:resolve]
     assert "ANKI_E2E_CACHE_STATE=unavailable" in text[initialize:resolve]
     assert "verify_fast_ci_e2e_handoff.py validate-inputs" in text[initialize:resolve]
 
-    prepare_block = text[prepare:text.index("Start artifact upload timing", prepare)]
+    prepare_block = text[prepare:finalize]
     assert "if: ${{ !cancelled() }}" in prepare_block
 
-    upload_block = text[upload:text.index("Report artifact upload telemetry", upload)]
-    assert "if: ${{ !cancelled() }}" in upload_block
+    finalize_block = text[finalize:text.index("Start artifact upload timing", finalize)]
+    assert "id: final_summary" in finalize_block
+    assert "env.CI_E2E_ARTIFACT_EXIT_CODE == '0'" in finalize_block
+
+    upload_block = text[upload:text.index("Resolve uploaded E2E artifact metadata", upload)]
+    assert "steps.final_summary.outcome == 'success'" in upload_block
+    assert "env.CI_E2E_ARTIFACT_EXIT_CODE == '0'" in upload_block
     assert "if-no-files-found: error" in upload_block
 
     cancel_prepare_block = text[cancel_prepare:cancel_upload]

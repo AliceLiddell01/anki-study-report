@@ -127,8 +127,11 @@ def test_workflow_preflight_and_cancellation_conditions_are_bounded():
     assert "if: ${{ cancelled() }}" in e2e
     assert "if: ${{ !cancelled() }}" in e2e
     assert "Prepare redacted public E2E artifact\n        if: ${{ !cancelled() }}" in e2e
-    assert "Upload redacted E2E diagnostics\n        id: artifact_upload\n        if: ${{ !cancelled() }}" in e2e
-    assert "Clean Docker E2E state\n        if: ${{ !cancelled() }}" in e2e
+    assert "Finalize Docker E2E state before artifact preparation\n        if: ${{ !cancelled() }}" in e2e
+    assert "Finalize public canonical summary and legacy projections\n        id: final_summary" in e2e
+    assert "Upload E2E artifact\n        id: artifact_upload" in e2e
+    assert "steps.final_summary.outcome == 'success'" in e2e
+    assert "env.CI_E2E_ARTIFACT_EXIT_CODE == '0'" in e2e
     assert "Prepare bounded cancellation artifact" in e2e
     assert "Upload bounded cancellation evidence" in e2e
     assert "Finalize cancelled Fast CI" in fast
