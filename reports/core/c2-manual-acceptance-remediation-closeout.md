@@ -7,7 +7,7 @@
 **Рабочая ветка:** `c2-manual-acceptance-remediation`
 **Проверенный production candidate:** `a746172f8746eac82ff628d36a7a6328d9332acf`
 **Pull request:** `#130`
-**Статус:** автоматизированная remediation и exact package/E2E campaign технически завершены; PR остаётся открытым draft, ручной owner acceptance на приватной коллекции и отдельное решение об интеграции не выполнены.
+**Статус:** автоматизированная remediation и exact package/E2E campaign технически завершены; документационный closeout опубликован; PR остаётся открытым draft, ручной owner acceptance на приватной коллекции и отдельное решение об интеграции не выполнены.
 
 ## 1. Итог этапа
 
@@ -32,6 +32,7 @@ exact Fast CI package            PASS
 standard/full real-Anki E2E      PASS
 restart verification             PASS
 artifact identity/redaction      PASS
+documentation closeout           PASS
 ```
 
 Этап не выполнял merge PR #130 в `core`, release, deployment, публикацию или запуск C3.
@@ -77,8 +78,6 @@ artifact identity/redaction      PASS
 
 ## 4. Git integration
 
-### 4.1 Merge commit
-
 Актуальный `core` был включён в существующую ветку обычным двухродительским merge commit:
 
 ```text
@@ -92,36 +91,32 @@ parents:
 
 Rebase и force-push не применялись. Существующий PR и branch identity сохранены.
 
-### 4.2 Разрешение пересечений
-
-Пересечение между старой базой PR, текущим `core` и remediation branch было локализовано в трёх путях:
+Пересечение было локализовано в трёх путях:
 
 | Путь | Решение | Причина |
 | --- | --- | --- |
 | `docker/anki-e2e/smoke-browser.mjs` | сохранить current `core` | компактный real-deck runner и E2E-I1–E2E-I6 contracts заменили старый монолитный runner PR |
 | `docs/test-matrix.md` | сохранить current `core` | актуальная matrix отражает package/harness identity, targeted scopes и final full policy |
-| `anki_study_report/telemetry_client.py` | сначала сохранить current `core`, затем точечно вернуть bounded continuation | новые threshold/race changes из `core` обязательны, но regression PR доказал потерю pending intent на восьмой итерации |
+| `anki_study_report/telemetry_client.py` | сохранить новые изменения `core`, затем точечно вернуть bounded continuation | regression PR доказал потерю pending intent на восьмой итерации |
 
-Все остальные необходимые remediation paths были перенесены без подмены current production architecture.
+После production campaign ветка была ahead 19 / behind 0 относительно `core`. Последующие commits меняют только Markdown/report tree и не меняют проверенные package bytes.
 
 ## 5. Удаление rejected prototype overlay
 
-В merge tree присутствовал глобальный prototype overlay, который был признан неподходящим для production composition.
-
-Отдельным commit `ea431acee24901c69460f6a6d1dc0393912eeab3` удалены:
+Commit `ea431acee24901c69460f6a6d1dc0393912eeab3` удалил:
 
 - `web-dashboard/src/styles/prototypeV323.css`;
 - import этого файла из `web-dashboard/src/main.tsx`.
 
 Дополнительно проверено отсутствие `prototypeV323`, `prototype-v323` и marker `Accepted Prototype v3.2.3 presentation contract.`
 
+Cleanup не откатывал production components, hooks, Cards/Profiles contracts или pinned `highlight.js`.
+
 ## 6. Telemetry continuation regression
 
 Focused Python suite выявил regression `test_background_worker_preserves_continuation_at_iteration_limit`: pending continuation терялся после восьмой итерации bounded loop.
 
-Commit `a746172f8746eac82ff628d36a7a6328d9332acf` точечно восстановил pending intent на последней итерации, сохранив новые threshold/race protections из `core`.
-
-Проверено:
+Commit `a746172f8746eac82ff628d36a7a6328d9332acf` восстановил pending intent на последней итерации, сохранив новые threshold/race protections из `core`.
 
 | Проверка | Результат |
 | --- | --- |
@@ -151,8 +146,9 @@ Commit `a746172f8746eac82ff628d36a7a6328d9332acf` точечно восстан�
 Fast CI run: 30173712679
 head SHA: a746172f8746eac82ff628d36a7a6328d9332acf
 status: success
+package artifact: ci-package-a746172f8746eac82ff628d36a7a6328d9332acf-30173712679-1
 package artifact ID: 8623655600
-package artifact digest: sha256:6e090bf9e60a6e0f95335bfebf4309c597114afe7abb44d02d51577b186c7110
+package transport digest: sha256:6e090bf9e60a6e0f95335bfebf4309c597114afe7abb44d02d51577b186c7110
 internal .ankiaddon SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
 internal package size: 764821 bytes
 diagnostics artifact ID: 8623655386
@@ -174,23 +170,17 @@ fast_ci_run_id: 30173712679
 status: success
 ```
 
-Main artifact:
+Artifacts:
 
 ```text
 ci-e2e-standard-30174041436-1
-artifact ID: 8623737960
+ID: 8623737960
 digest: sha256:0685125c2c893a1e2d9e7fa3698236734dd83262c13ab8417b90ee99e292bc15
-```
 
-History artifact:
-
-```text
 ci-e2e-history-30174041436-1
-artifact ID: 8623738676
+ID: 8623738676
 digest: sha256:2af33d14d279acc650b2b442d145929b3fcf3747c3a04fd5f7066f668369a925
 ```
-
-Canonical evidence:
 
 | Evidence | Результат |
 | --- | --- |
@@ -251,29 +241,28 @@ docker/anki-e2e/fixtures/real-decks/java-core.apkg
 2. `powershell.exe` был недоступен в WSL, поэтому использовался `/mnt/c`;
 3. `.strip()` уничтожил значимый leading space porcelain status, после чего использовался state-aware continuation;
 4. dirty patch временно оказался при `core` HEAD, но не был закоммичен и был безопасно перенесён на PR branch;
-5. три docs runner attempts остановились до commit/push из-за слишком строгих guards и parser ошибки diagnostics; после stop-loss документация была опубликована напрямую через GitHub connector.
+5. docs runner attempts остановились до commit/push из-за слишком строгих guards и parser ошибки diagnostics; после stop-loss документация была опубликована напрямую через GitHub connector.
 
 ## 13. Документационный closeout
 
-Опубликованы docs-only commits:
+Обновлены только:
 
-```text
-5da5d2798a0b379f20d9b0f4818c79969b87a7e3  Add the C2 remediation closeout report
-1747b7249d23f40f0a03687042a6e99ddbf38b97  Update the Core remediation status
-fdae1f27929501007192e76ed0fe0f1658e3a8ff  Refresh the current AI handoff
-1a5066880651d67bec6dca47c8e39f076502bc9a  Close the automated C2 remediation in the roadmap
-c652bd1ce6dc801886568b26bc1ad1264d2c0912  Index the C2 remediation closeout
-024e49ac01a163365d4821ae39d26d6dea24b8a3  Normalize the Core status documentation
-```
+- `README.md`;
+- `docs/ai-handoff.md`;
+- `roadmap/core/README.md`;
+- `reports/README.md`;
+- этот report.
 
-Изменены только `README.md`, `docs/ai-handoff.md`, `roadmap/core/README.md`, `reports/README.md` и этот report. Production/package bytes не изменились, новый manual Fast CI или Docker E2E не запускались.
+Это docs-only изменение. Оно не меняет `.ankiaddon` bytes или production behavior. Новый manual Fast CI или Docker E2E не запускались.
+
+Идентичности разделяются:
 
 ```text
 verified production candidate:
 a746172f8746eac82ff628d36a7a6328d9332acf
 
 current documentation head:
-024e49ac01a163365d4821ae39d26d6dea24b8a3
+смотрите актуальный head PR #130; он содержит только docs-only commits после production candidate
 ```
 
 ## 14. Что не проверено автоматически
@@ -307,7 +296,6 @@ C1: завершён и принят
 C2 implementation/integration: завершены и влиты в core
 C2 automated post-merge remediation: PASS
 verified production candidate: a746172f8746eac82ff628d36a7a6328d9332acf
-documentation head: 024e49ac01a163365d4821ae39d26d6dea24b8a3
 canonical local non-Docker: PASS
 Fast CI exact package: 30173712679 / PASS
 standard/full + restart: 30174041436 / PASS
