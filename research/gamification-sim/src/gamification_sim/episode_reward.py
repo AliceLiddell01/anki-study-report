@@ -4,6 +4,10 @@ import math
 
 from .models import EpisodeRewardBreakdown, Outcome, ReasonCode, ReviewEpisodeInput
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
+from .review_candidate_mechanisms import (
+    RewardExecutionContext,
+    memory_gain_multiplier,
+)
 from .validation import require_binary_int, require_positive, require_range
 
 
@@ -74,6 +78,9 @@ def memory_gain_credit(
 def evaluate_episode(
     episode: ReviewEpisodeInput,
     params: RewardParameterSet = CURRENT_PARAMETERS,
+    *,
+    candidate_parameterization_id: str | None = None,
+    execution_context: RewardExecutionContext | None = None,
 ) -> EpisodeRewardBreakdown:
     if not episode.source_event_key.strip():
         raise ValueError("source_event_key must not be empty")
@@ -113,6 +120,10 @@ def evaluate_episode(
         episode.memory.stability_good_counterfactual,
         params,
     ) if passed else 0.0
+    gain *= memory_gain_multiplier(
+        candidate_parameterization_id,
+        execution_context,
+    )
     confidence = params.confidence(episode.memory.confidence)
     context_credit = 0.0
     reasons: list[str] = []

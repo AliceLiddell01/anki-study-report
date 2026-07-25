@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import math
 
 import pytest
 
 from gamification_sim.day_aggregation import aggregate_day, contribution_band, volume_credit
 from gamification_sim.models import (
     CompletionStatus,
+    ConfidenceLevel,
     ContributionBand,
+    MemoryContext,
     Outcome,
     ReviewDayInput,
     ReviewEpisodeInput,
@@ -17,6 +20,7 @@ from gamification_sim.models import (
     WorkloadSnapshot,
 )
 from gamification_sim.parameters import CURRENT_PARAMETERS
+from gamification_sim.review_candidate_mechanisms import RewardExecutionContext
 from gamification_sim.validation import close
 
 
@@ -200,3 +204,45 @@ def test_full_breakdown_equality():
     )
     assert close(result.total, expected)
     assert result.total >= 0
+
+
+def test_day_aggregation_passes_candidate_execution_context():
+    episode = ReviewEpisodeInput(
+        source_event_key="candidate-day",
+        card_lineage="candidate-day-card",
+        anki_day=DAY,
+        outcome=Outcome.GOOD,
+        memory=MemoryContext(
+            retrievability_actual=0.95,
+            retrievability_natural_due=0.95,
+            stability_before=1.0,
+            stability_good_counterfactual=math.exp(2.0),
+            confidence=ConfidenceLevel.HIGH,
+        ),
+    )
+    day = ReviewDayInput(DAY, episodes=(episode,))
+
+    reference = aggregate_day(day)
+    candidate = aggregate_day(
+        day,
+        candidate_parameterization_id="P-STEP-ZERO",
+        execution_context=RewardExecutionContext(
+            day=60,
+            retention_transition_days=(30, 60),
+        ),
+    )
+
+    assert close(reference.core_baseline, candidate.core_baseline)
+    assert close(reference.core_context, 0.12)
+    assert close(candidate.core_context, 0.0)
+    assert close(reference.episode_breakdowns[0].memory_gain_credit, 0.12)
+    assert close(candidate.episode_breakdowns[0].memory_gain_credit, 0.0)
+
+
+def test_default_day_aggregation_signature_preserves_existing_result():
+    day = ReviewDayInput(DAY, episodes=successes(3))
+
+    assert aggregate_day(day) == aggregate_day(
+        day,
+        candidate_parameterization_id=None,
+    )

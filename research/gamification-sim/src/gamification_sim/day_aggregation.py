@@ -12,6 +12,7 @@ from .models import (
     ReviewDayInput,
 )
 from .parameters import CURRENT_PARAMETERS, RewardParameterSet
+from .review_candidate_mechanisms import RewardExecutionContext
 from .safeguards import apply_decision, decide_safeguards
 from .validation import require_non_negative, require_non_negative_int
 
@@ -60,6 +61,9 @@ def contribution_band(q: float, status: CompletionStatus) -> ContributionBand:
 def aggregate_day(
     day: ReviewDayInput,
     params: RewardParameterSet = CURRENT_PARAMETERS,
+    *,
+    candidate_parameterization_id: str | None = None,
+    execution_context: RewardExecutionContext | None = None,
 ) -> ReviewDayBreakdown:
     require_non_negative_int(
         "workload.natural_due_at_start",
@@ -102,7 +106,14 @@ def aggregate_day(
         if effective.eligibility_class is not EligibilityClass.CORE:
             continue
         seen_card_days.add((episode.card_lineage, episode.anki_day))
-        episode_breakdowns.append(evaluate_episode(effective, params))
+        episode_breakdowns.append(
+            evaluate_episode(
+                effective,
+                params,
+                candidate_parameterization_id=candidate_parameterization_id,
+                execution_context=execution_context,
+            )
+        )
 
     core_baseline = sum(item.baseline for item in episode_breakdowns)
     core_context = sum(item.context for item in episode_breakdowns)

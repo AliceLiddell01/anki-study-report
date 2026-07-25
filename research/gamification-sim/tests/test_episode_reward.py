@@ -12,6 +12,7 @@ from gamification_sim.episode_reward import (
     memory_gain_credit,
 )
 from gamification_sim.models import ConfidenceLevel, MemoryContext, Outcome, ReviewEpisodeInput
+from gamification_sim.review_candidate_mechanisms import RewardExecutionContext
 from gamification_sim.validation import close
 
 
@@ -165,3 +166,124 @@ def test_invalid_unused_memory_value_is_rejected():
     )
     with pytest.raises(ValueError):
         evaluate_episode(episode)
+
+
+def candidate_memory_episode() -> ReviewEpisodeInput:
+    return ReviewEpisodeInput(
+        source_event_key="candidate-memory",
+        card_lineage="candidate-card",
+        anki_day="2026-07-16",
+        outcome=Outcome.GOOD,
+        memory=MemoryContext(
+            retrievability_actual=0.95,
+            retrievability_natural_due=0.95,
+            stability_before=1.0,
+            stability_good_counterfactual=math.exp(2.0),
+            confidence=ConfidenceLevel.HIGH,
+        ),
+    )
+
+
+def cycling_execution_context(day: int) -> RewardExecutionContext:
+    return RewardExecutionContext(
+        day=day,
+        retention_transition_days=(30, 60),
+    )
+
+
+def test_default_candidate_path_is_bitwise_identity():
+    episode = candidate_memory_episode()
+
+    default = evaluate_episode(episode)
+    explicit_none = evaluate_episode(
+        episode,
+        candidate_parameterization_id=None,
+    )
+    reference = evaluate_episode(
+        episode,
+        candidate_parameterization_id="R-CURRENT",
+    )
+
+    assert explicit_none == default
+    assert reference == default
+
+
+def test_step_candidate_scales_only_memory_gain_on_day_60():
+    episode = candidate_memory_episode()
+
+    reference = evaluate_episode(episode)
+    candidate = evaluate_episode(
+        episode,
+        candidate_parameterization_id="P-STEP-ZERO",
+        execution_context=cycling_execution_context(60),
+    )
+
+    assert close(reference.baseline, candidate.baseline)
+    assert close(reference.challenge_credit, candidate.challenge_credit)
+    assert close(reference.memory_gain_credit, 0.12)
+    assert close(candidate.memory_gain_credit, 0.0)
+    assert close(reference.context, 0.12)
+    assert close(candidate.context, 0.0)
+
+
+def test_neutral_ratio_candidate_uses_source_derived_endpoint():
+    candidate = evaluate_episode(
+        candidate_memory_episode(),
+        candidate_parameterization_id="P-STEP-NEUTRAL-RATIO",
+        execution_context=cycling_execution_context(60),
+    )
+
+    assert close(candidate.memory_gain_credit, 0.10)
+    assert close(candidate.context, 0.10)
+    assert close(candidate.total, 1.00)
+
+
+def test_taper_candidate_scales_raw_memory_gain_before_confidence_blend():
+    candidate = evaluate_episode(
+        candidate_memory_episode(),
+        candidate_parameterization_id="P-TAPER-ZERO-30D",
+        execution_context=cycling_execution_context(75),
+    )
+
+    assert close(candidate.memory_gain_credit, 0.06)
+    assert close(candidate.challenge_credit, 0.0)
+    assert close(candidate.context, 0.06)
+    assert close(candidate.total, 0.96)
+
+
+def test_candidate_is_identity_for_policy_without_final_day_60_transition():
+    episode = candidate_memory_episode()
+    reference = evaluate_episode(episode)
+    candidate = evaluate_episode(
+        episode,
+        candidate_parameterization_id="P-STEP-ZERO",
+        execution_context=RewardExecutionContext(
+            day=365,
+            retention_transition_days=(),
+        ),
+    )
+
+    assert candidate == reference
+
+
+def test_unknown_candidate_fails_closed_in_episode_evaluation():
+    with pytest.raises(
+        ValueError,
+        match="unknown frozen Review parameterization",
+    ):
+        evaluate_episode(
+            candidate_memory_episode(),
+            candidate_parameterization_id="P-UNREGISTERED",
+            execution_context=cycling_execution_context(60),
+        )
+
+
+def test_candidate_episode_evaluation_requires_context():
+    with pytest.raises(
+        ValueError,
+        match="requires an execution context",
+    ):
+        evaluate_episode(
+            candidate_memory_episode(),
+            candidate_parameterization_id="P-STEP-ZERO",
+        )

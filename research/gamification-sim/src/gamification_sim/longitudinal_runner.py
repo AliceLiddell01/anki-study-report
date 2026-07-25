@@ -35,6 +35,11 @@ from .models import (
 from .population import resolve_parameter_set
 from .validation import close, dataclass_to_dict
 from .parameters import RewardParameterSet
+from .review_candidate_mechanisms import (
+    REFERENCE_PARAMETERIZATION_ID,
+    RewardExecutionContext,
+    frozen_review_candidate_trace,
+)
 from .workspace import ResearchWorkspace, resolve_research_workspace
 
 
@@ -221,6 +226,67 @@ def _percentile(values: list[float], proportion: float) -> float:
     return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
 
+def _candidate_trace_for_policy(
+    *,
+    candidate_parameterization_id: str | None,
+    parameter_set_id: str,
+    params_override: RewardParameterSet | None,
+) -> dict[str, Any] | None:
+    if candidate_parameterization_id is None:
+        return None
+
+    trace = frozen_review_candidate_trace(
+        candidate_parameterization_id
+    )
+
+    if parameter_set_id != REFERENCE_PARAMETERIZATION_ID:
+        raise ValueError(
+            "frozen Review candidates require parameter set R-CURRENT"
+        )
+    if params_override is not None:
+        raise ValueError(
+            "frozen Review candidates prohibit parameter overrides"
+        )
+
+    return trace
+
+
+def _candidate_trace_for_longitudinal(
+    *,
+    candidate_parameterization_id: str | None,
+    parameter_set_ids: tuple[str, ...],
+    parameter_overrides: dict[str, RewardParameterSet] | None,
+) -> dict[str, Any] | None:
+    if candidate_parameterization_id is None:
+        return None
+
+    trace = frozen_review_candidate_trace(
+        candidate_parameterization_id
+    )
+
+    if parameter_set_ids != (REFERENCE_PARAMETERIZATION_ID,):
+        raise ValueError(
+            "candidate-enabled longitudinal runs require exactly "
+            "R-CURRENT"
+        )
+    if parameter_overrides is not None:
+        raise ValueError(
+            "candidate-enabled longitudinal runs prohibit "
+            "parameter overrides"
+        )
+
+    return trace
+
+
+def _retention_transition_days(
+    policy: LongitudinalPolicy,
+) -> tuple[int, ...]:
+    return tuple(
+        step.start_day
+        for step in policy.retention_timeline[1:]
+    )
+
+
 def run_policy(
     config: LongitudinalConfig,
     *,
@@ -230,13 +296,22 @@ def run_policy(
     mode_id: str,
     replica: int,
     params_override: RewardParameterSet | None = None,
+    candidate_parameterization_id: str | None = None,
     diagnostic_observer: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
+    candidate_trace = _candidate_trace_for_policy(
+        candidate_parameterization_id=candidate_parameterization_id,
+        parameter_set_id=parameter_set_id,
+        params_override=params_override,
+    )
     mode = config.mode(mode_id)
     if params_override is None:
         normalized_id, params = resolve_parameter_set(parameter_set_id)
     else:
         normalized_id, params = parameter_set_id, params_override
+
+    retention_transition_days = _retention_transition_days(policy)
+
     cards = initial_cohort(
         master_seed=master_seed,
         replica=replica,
@@ -325,8 +400,26 @@ def run_policy(
             ),
             session_ids=("longitudinal-daily-session",),
         )
-        breakdown = aggregate_day(day_input, params)
-        by_key = {item.source_event_key: item for item in breakdown.episode_breakdowns}
+        if candidate_trace is None:
+            breakdown = aggregate_day(day_input, params)
+        else:
+            breakdown = aggregate_day(
+                day_input,
+                params,
+                candidate_parameterization_id=(
+                    candidate_parameterization_id
+                ),
+                execution_context=RewardExecutionContext(
+                    day=day,
+                    retention_transition_days=(
+                        retention_transition_days
+                    ),
+                ),
+            )
+        by_key = {
+            item.source_event_key: item
+            for item in breakdown.episode_breakdowns
+        }
         if diagnostic_observer is not None:
             episode_observations = []
             for diagnostic_episode in episodes:
@@ -350,6 +443,14 @@ def run_policy(
                     "config": config,
                     "policy": policy,
                     "parameter_set_id": normalized_id,
+                    **(
+                        {
+                            "candidate_parameterization":
+                                candidate_trace
+                        }
+                        if candidate_trace is not None
+                        else {}
+                    ),
                     "params": params,
                     "master_seed": master_seed,
                     "mode_id": mode_id,
@@ -453,6 +554,8 @@ def run_policy(
             "next_due_max": max(item.next_due_day for item in final_cards),
         },
     }
+    if candidate_trace is not None:
+        result["candidate_parameterization"] = candidate_trace
     if diagnostic_observer is not None:
         diagnostic_observer({"kind": "policy_result", "result": result})
     return result
@@ -466,6 +569,7 @@ def run_longitudinal(
     parameter_set_ids: tuple[str, ...] | None = None,
     policy_ids: tuple[str, ...] | None = None,
     parameter_overrides: dict[str, RewardParameterSet] | None = None,
+    candidate_parameterization_id: str | None = None,
     workspace: ResearchWorkspace | Path | None = None,
     diagnostic_observer: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
@@ -475,8 +579,21 @@ def run_longitudinal(
 
     validate_policy_pairs(config.policies)
     mode = config.mode(mode_id)
-    selected_parameters = parameter_set_ids or config.parameter_set_ids
-    selected_policy_ids = set(policy_ids or tuple(item.policy_id for item in config.policies))
+    selected_parameters = (
+        parameter_set_ids
+        or config.parameter_set_ids
+    )
+    candidate_trace = _candidate_trace_for_longitudinal(
+        candidate_parameterization_id=(
+            candidate_parameterization_id
+        ),
+        parameter_set_ids=selected_parameters,
+        parameter_overrides=parameter_overrides,
+    )
+    selected_policy_ids = set(
+        policy_ids
+        or tuple(item.policy_id for item in config.policies)
+    )
     selected_policies = tuple(item for item in config.policies if item.policy_id in selected_policy_ids)
     if len(selected_policies) != len(selected_policy_ids):
         raise ValueError("unknown longitudinal policy ID")
@@ -492,43 +609,63 @@ def run_longitudinal(
                         master_seed=master_seed,
                         mode_id=mode_id,
                         replica=replica,
-                        params_override=(parameter_overrides or {}).get(parameter_set_id),
+                        params_override=(
+                            parameter_overrides or {}
+                        ).get(parameter_set_id),
+                        candidate_parameterization_id=(
+                            candidate_parameterization_id
+                        ),
                         diagnostic_observer=diagnostic_observer,
                     )
                 )
+    manifest = {
+        "generator_version": GENERATOR_VERSION,
+        "config_version": config.version,
+        "config_digest": config.digest,
+        "mode": mode_id,
+        "horizon_days": mode.horizon_days,
+        "cohort_size": mode.cohort_size,
+        "replicas": mode.replicas,
+        "master_seed": master_seed,
+        "parameter_set_ids": list(selected_parameters),
+        "policy_ids": sorted(selected_policy_ids),
+        "py_fsrs_version": importlib.metadata.version("fsrs"),
+        "neutral_scheduler_version": (
+            NEUTRAL_SCHEDULER_VERSION
+        ),
+        "result_count": len(results),
+    }
+    if candidate_trace is not None:
+        manifest["candidate_parameterization"] = candidate_trace
+
     payload = {
-        "manifest": {
-            "generator_version": GENERATOR_VERSION,
-            "config_version": config.version,
-            "config_digest": config.digest,
-            "mode": mode_id,
-            "horizon_days": mode.horizon_days,
-            "cohort_size": mode.cohort_size,
-            "replicas": mode.replicas,
-            "master_seed": master_seed,
-            "parameter_set_ids": list(selected_parameters),
-            "policy_ids": sorted(selected_policy_ids),
-            "py_fsrs_version": importlib.metadata.version("fsrs"),
-            "neutral_scheduler_version": NEUTRAL_SCHEDULER_VERSION,
-            "result_count": len(results),
-        },
+        "manifest": manifest,
         "policy_results": results,
     }
     from .matched_analysis import deterministic_matched_matrices, longitudinal_matrices
 
     fairness, abuse = longitudinal_matrices(payload)
-    deterministic_fairness: list[dict[str, Any]] = []
-    deterministic_abuse: list[dict[str, Any]] = []
-    for parameter_set_id in selected_parameters:
-        fair_items, abuse_items = deterministic_matched_matrices(
-            resolve_research_workspace(workspace).root,
-            parameter_set_id,
-            params_override=(parameter_overrides or {}).get(parameter_set_id),
+    if candidate_trace is None:
+        deterministic_fairness: list[dict[str, Any]] = []
+        deterministic_abuse: list[dict[str, Any]] = []
+        for parameter_set_id in selected_parameters:
+            fair_items, abuse_items = (
+                deterministic_matched_matrices(
+                    resolve_research_workspace(workspace).root,
+                    parameter_set_id,
+                    params_override=(
+                        parameter_overrides or {}
+                    ).get(parameter_set_id),
+                )
+            )
+            deterministic_fairness.extend(fair_items)
+            deterministic_abuse.extend(abuse_items)
+        fairness["comparisons"].extend(
+            deterministic_fairness
         )
-        deterministic_fairness.extend(fair_items)
-        deterministic_abuse.extend(abuse_items)
-    fairness["comparisons"].extend(deterministic_fairness)
-    abuse["comparisons"].extend(deterministic_abuse)
+        abuse["comparisons"].extend(
+            deterministic_abuse
+        )
     payload["fairness"] = fairness
     payload["abuse"] = abuse
     payload["manifest"]["trajectory_digest"] = canonical_digest(
