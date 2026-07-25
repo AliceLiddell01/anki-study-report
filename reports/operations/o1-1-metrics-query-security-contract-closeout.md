@@ -45,7 +45,7 @@ provider identifiers, or operational values.
 - `ADMIN_DB` or provider collector;
 - Access application, policy, credentials, secrets, or deployment;
 - telemetry event, purpose, consent, notice, or retention changes;
-- cloud workflows, add-on release, Docker, or real-Anki E2E.
+- manually dispatched cloud workflows, add-on release, Docker, or real-Anki E2E.
 
 ## Next
 
