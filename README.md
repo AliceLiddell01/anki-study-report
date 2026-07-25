@@ -11,7 +11,7 @@
 - token-protected dashboard только на `127.0.0.1`;
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
 - Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
-- schema-validated evidence для progress, failures, preflight, cancellation и non-release build identity.
+- доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки.
 
 ## Куда идти дальше
 

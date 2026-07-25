@@ -26,32 +26,32 @@ flowchart LR
 ## Текущее состояние
 
 ```text
-CI 1–6B — COMPLETE
-real-deck E2E foundation — COMPLETE / merged
-E2E-I1 — COMPLETE / merged
-E2E-I2 — COMPLETE / merged
-E2E-I3 — COMPLETE / merged
-E2E-I4 — COMPLETE / merged через PR #137
-E2E-I5 — COMPLETE / cloud acceptance через PR #141
-E2E-I6 — следующий planned stage
-CI 7–12 — conditional
+CI 1–6B — ЗАВЕРШЕНО
+основа E2E на реальных колодах — ЗАВЕРШЕНО / влито
+E2E-I1 — ЗАВЕРШЕНО / влито
+E2E-I2 — ЗАВЕРШЕНО / влито
+E2E-I3 — ЗАВЕРШЕНО / влито
+E2E-I4 — ЗАВЕРШЕНО / влито через PR #137
+E2E-I5 — ЗАВЕРШЕНО / облачная приёмка пройдена в PR #141
+E2E-I6 — следующий запланированный этап
+CI 7–12 — условные
 ```
 
 ## Current invariants
 
 ```text
-cloud environment: immutable GHCR digest
-manual package: exact successful Fast CI artifact
-release package: exact release artifact
-collection source: three committed real APKG
-package identity and harness identity: separate
-harness reuse: ancestry + complete-diff fail closed
-run events: current schema v2; historical v1 validated
-failure summary: schema v1, failure-only
-cancellation summary: schema v1 + run/cancel
-preflight: deterministic 20-check static/runtime report
-non-release build identity: schema v1, digest over canonical identity only
-browser: plan v1, report v3, 23 items, 18 screenshots
+облачное окружение: неизменяемый digest GHCR
+ручной пакет: точный успешный артефакт Fast CI
+release-пакет: точный release-артефакт
+источник коллекций: три committed real APKG
+идентичности package и harness разделены
+повторное использование harness: ancestry + полный diff, fail closed
+события запуска: текущая schema v2; историческая v1 проверяется
+сводка ошибки: schema v1, только для failure
+сводка отмены: schema v1 + run/cancel
+предварительная проверка: детерминированный отчёт из 20 static/runtime checks
+идентичность нерелизной сборки: schema v1, digest только по canonical identity
+browser: plan v1, report v3, 23 элемента, 18 screenshots
 ```
 
 Новый Fast CI package создаётся только при package-impacting diff либо когда exact artifact недоступен/невалиден. Allowlisted harness-only changes могут использовать existing package через fail-closed validator.
@@ -63,7 +63,7 @@ browser: plan v1, report v3, 23 items, 18 screenshots
 - [Failure diagnostics](../../docs/failure-diagnostics.md)
 - [Preflight и cancellation](../../docs/e2e-preflight-cancellation.md)
 - [Package/harness reuse](../../docs/e2e-package-harness-reuse.md)
-- [Non-release build identity](../../docs/non-release-build-identity.md)
+- [Идентичность нерелизной сборки](../../docs/non-release-build-identity.md)
 
 Исторические SHA, run IDs и artifacts: [reports/ci](../../reports/README.md).
 

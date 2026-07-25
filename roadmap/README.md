@@ -40,7 +40,7 @@ flowchart TB
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
-| [Platform / CI](platform/README.md) | CI/CD, exact artifacts и real-Anki E2E | E2E-I1–I5 завершены | E2E-I6 |
+| [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I5 завершены | E2E-I6 |
 
 ## Как читать roadmap
 

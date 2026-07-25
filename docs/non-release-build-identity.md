@@ -1,183 +1,257 @@
-# Non-release build identity
+# Идентичность нерелизной E2E-сборки
 
-Status: implementation candidate for E2E-I5; cloud acceptance is required before the stage may be marked complete.
-
-## Purpose
-
-A non-release real-Anki E2E run consumes several independently versioned materials. Human labels such as workflow names, artifact names, branch names, job names and timestamps do not uniquely identify that combination. The canonical document binds the immutable package, harness, workflow, environment and reuse boundary into one deterministic identity while keeping the E2E execution instance separate.
-
-Canonical raw path:
+## Статус контракта
 
 ```text
-reports/non-release-build-identity.json
+schemaVersion: 1
+kind: non-release-build
+область: только нерелизная сборка из точного артефакта Fast CI
 ```
 
-Canonical public path:
+Этот документ определяет каноническую машиночитаемую идентичность нерелизной сборки, которая проверяется в real-Anki Docker E2E. Контракт связывает пакет, E2E harness, источник workflow, неизменяемое окружение GHCR и границу повторного использования, но не смешивает идентичность сборки с конкретным запуском E2E.
+
+## Канонические пути
 
 ```text
-artifacts/reports/non-release-build-identity.json
+raw:    reports/non-release-build-identity.json
+public: artifacts/reports/non-release-build-identity.json
 ```
 
-The document is emitted only for `fast-ci-artifact`. `release-artifact` retains its existing release identity contract and must not emit `kind=non-release-build`.
+Raw- и public-представления обязаны проходить одинаковую проверку схемы и быть семантически равными. Public-файл включается в `artifacts/manifest.json` и в опубликованный E2E-артефакт.
 
-## Identity map
+## Верхний уровень документа
 
-| Value | Producer / raw source | Validator | Public evidence | Immutable | Independent recheck |
-| --- | --- | --- | --- | --- | --- |
-| Package tested SHA | Fast CI package metadata and diagnostics | Fast CI handoff validator + identity cross-evidence validator | `fast-ci-handoff.json`, canonical identity | yes | compare exact 40-hex SHA |
-| Source Fast CI run/attempt | GitHub Actions run metadata | Fast CI run resolver | canonical identity | yes | GitHub Actions run API |
-| Package artifact ID | GitHub artifact metadata | exact artifact resolver | canonical identity | yes | GitHub Actions artifact API |
-| Package transport digest | GitHub artifact metadata | exact artifact resolver | canonical identity | yes | GitHub Actions artifact API |
-| Inner package SHA-256/size | exact `.ankiaddon` bytes | package metadata validator + independent byte rehash | canonical identity | yes | hash and size exact file bytes |
-| Harness SHA / checkout SHA | validated E2E checkout | harness reuse validator + identity validator | canonical identity | yes | `git rev-parse HEAD` and ancestry/diff validation |
-| Workflow repository/path/SHA | `job.workflow_repository`, `job.workflow_file_path`, `job.workflow_sha` | workflow static tests + identity validator | canonical identity | yes | GitHub workflow identity contexts |
-| Reuse mode/count/hash | complete package-to-harness diff | harness reuse validator | `e2e-harness-reuse.json`, canonical identity | yes | recompute sorted changed-path hash |
-| GHCR reference/digest/platform | immutable consumer lock and pulled image | environment consumer validator + `RepoDigests`/platform checks | canonical identity and environment provenance | yes | image inspect and lock validation |
-| Environment contract/source commit | environment lock and OCI labels | environment consumer validator + identity cross-check | canonical identity | yes | lock/label parity |
-| E2E run ID/attempt/ref/trigger SHA | current workflow execution | identity schema validator | `execution` object | yes per execution | GitHub run metadata |
+Документ содержит только следующие поля:
 
-Artifact names, workflow display names and timestamps remain informational labels and are not identity fields.
+```text
+schemaVersion
+kind
+identity
+identityDigest
+execution
+```
 
-## Schema v1
+Дополнительные поля запрещены. Максимальный размер кодированного JSON — 32 KiB.
 
-The document has an exact, closed field set:
+### `schemaVersion`
+
+Текущее значение — целое число `1`.
+
+### `kind`
+
+Текущее значение — строка `non-release-build`. Контракт не используется для release-артефактов.
+
+### `identity`
+
+Канонические материальные признаки сборки. Только этот объект участвует в вычислении `identityDigest`.
+
+### `identityDigest`
+
+Строка вида `sha256:<64 hex>`. Хэш вычисляется по compact UTF-8 JSON объекта `identity`:
+
+```text
+ключи отсортированы
+разделители не содержат лишних пробелов
+BOM отсутствует
+завершающий перевод строки в хэшируемые байты не входит
+объект execution в хэш не входит
+```
+
+### `execution`
+
+Идентичность конкретного запуска E2E. Она хранится рядом с идентичностью сборки, но не влияет на `identityDigest`.
+
+## Объект `identity`
+
+### Репозиторий
 
 ```json
 {
-  "schemaVersion": 1,
-  "kind": "non-release-build",
-  "identityDigest": "sha256:<64 lowercase hex>",
-  "identity": {
-    "repository": "AliceLiddell01/anki-study-report",
-    "package": {
-      "source": "fast-ci-artifact",
-      "testedCommitSha": "<40 lowercase hex>",
-      "sourceRunId": 123,
-      "sourceRunAttempt": 1,
-      "artifactId": 456,
-      "artifactDigest": "sha256:<64 lowercase hex>",
-      "innerSha256": "<64 lowercase hex>",
-      "sizeBytes": 750680
-    },
-    "harness": {
-      "commitSha": "<40 lowercase hex>",
-      "checkoutSha": "<40 lowercase hex>"
-    },
-    "workflow": {
-      "repository": "AliceLiddell01/anki-study-report",
-      "filePath": ".github/workflows/ci-e2e.yml",
-      "sourceSha": "<40 lowercase hex>"
-    },
-    "environment": {
-      "imageReference": "ghcr.io/...@sha256:<64 lowercase hex>",
-      "imageDigest": "sha256:<64 lowercase hex>",
-      "platform": "linux/amd64",
-      "contractSha256": "<64 lowercase hex>",
-      "publishedFromCommitSha": "<40 lowercase hex>"
-    },
-    "reuse": {
-      "mode": "exact-tree",
-      "changedFileCount": 0,
-      "changedPathsSha256": "<64 lowercase hex>"
-    }
-  },
-  "execution": {
-    "runId": 789,
-    "runAttempt": 1,
-    "triggerSha": "<40 lowercase hex>",
-    "ref": "refs/heads/platform/e2e-i5-non-release-build-identity"
-  }
+  "repository": "AliceLiddell01/anki-study-report"
 }
 ```
 
-Maximum encoded document size is 32 KiB. Unknown fields, missing fields, wrong JSON types, unsafe paths/refs, uppercase or malformed hashes, mutable image references and inconsistent exact-tree/harness-only boundaries fail closed.
-
-## Digest semantics
-
-`identityDigest` is SHA-256 over only the canonical `identity` object:
+### Пакет — `identity.package`
 
 ```text
-UTF-8
-sorted JSON keys
-compact separators (, and :)
-no BOM
-no trailing newline in hashed bytes
+source
+sourceRunId
+sourceRunAttempt
+testedCommitSha
+artifactId
+artifactDigest
+innerSha256
+sizeBytes
 ```
 
-Included:
+Правила:
 
-- exact Fast CI source run and attempt;
-- exact package artifact ID and transport digest;
-- package tested commit;
-- inner `.ankiaddon` SHA-256 and size;
-- harness and actual checkout SHA;
-- workflow repository, file path and source SHA;
-- immutable environment reference, digest, platform, contract and publication source commit;
-- reuse mode, changed-file count and changed-path hash.
+- `source` для этого контракта равен `fast-ci-artifact`;
+- `sourceRunId` и `sourceRunAttempt` указывают точный успешный Fast CI;
+- `testedCommitSha` — commit, на котором был собран и проверен пакет;
+- `artifactId` — неизменяемый ID GitHub Actions artifact;
+- `artifactDigest` — транспортный SHA-256 всего artifact, возвращённый GitHub;
+- `innerSha256` — независимо пересчитанный SHA-256 байтов `anki_study_report.ankiaddon`;
+- `sizeBytes` — фактический размер внутреннего `.ankiaddon`.
 
-Excluded:
+`artifactDigest` и `innerSha256` являются разными идентичностями и не заменяют друг друга.
 
-- `identityDigest` itself;
-- E2E run ID and attempt;
-- trigger ref/SHA;
-- timestamps;
-- artifact, workflow and job display names;
-- branch/PR titles and URLs;
-- human summaries.
-
-A re-run of the same exact build therefore retains the same digest while the `execution` object changes. Mutation of any component identity or reuse-boundary field changes the digest.
-
-## Boundaries
-
-### Artifact transport digest versus inner package hash
-
-The GitHub artifact digest identifies the uploaded transport archive. `innerSha256` identifies the exact `.ankiaddon` bytes tested by Anki. They are intentionally separate and neither substitutes for the other.
-
-### Package commit versus harness commit
-
-`package.testedCommitSha` identifies the source tree that produced package bytes. `harness.commitSha` identifies the E2E harness used to test them. A docs-only or allowlisted harness commit does not become the package-tested commit.
-
-### Harness commit versus workflow source commit
-
-The harness is the exact checked-out repository tree used by E2E. The workflow source is obtained from the workflow identity context (`job.workflow_sha` and related fields), not from the trigger SHA. Current Fast CI artifact consumption validates the explicit relation through the existing reuse contract.
-
-### Build identity versus execution
-
-`identity` describes the exact build combination. `execution` identifies one run/attempt that exercised it and is deliberately excluded from `identityDigest`.
-
-### Non-release versus release
-
-The contract is consumer-side evidence for Fast CI artifacts. It does not redesign release provenance, signing or publication.
-
-## Lifecycle
-
-1. Resolve and validate the exact successful Fast CI run and artifact IDs.
-2. Validate diagnostics, package metadata and exact package bytes.
-3. Validate package-to-harness ancestry and complete changed-path boundary.
-4. Resolve workflow identity from the workflow/job context.
-5. Validate the immutable GHCR lock, pull the exact digest and verify `RepoDigests`, platform and labels.
-6. Build and cross-validate the canonical identity before Docker E2E.
-7. Keep a bounded staging copy outside the inner artifact reset and restore the canonical reports path after the reset.
-8. Rebuild the artifact manifest so the report is indexed.
-9. Preserve the same validated document for success, functional failure and cancellation when material resolution completed.
-10. Validate raw and public copies independently and require semantic equality.
-
-If failure or cancellation occurs before all required materials are resolved, no partial identity is created. Empty strings, `unknown` placeholders and mutable tags are forbidden.
-
-## CLI
+### E2E harness — `identity.harness`
 
 ```text
-python scripts/non_release_build_identity.py build ...
-python scripts/non_release_build_identity.py validate --input <path>
-python scripts/non_release_build_identity.py validate-cross-evidence ...
-python scripts/non_release_build_identity.py validate-pair --raw <path> --public <path>
-python scripts/non_release_build_identity.py render-summary --input <path> [--output <summary>]
+commitSha
+checkoutSha
 ```
 
-The pure schema/digest validator performs no network calls and uses only the Python standard library. GitHub API resolution remains in the existing handoff workflow.
+`commitSha` задаёт commit harness, выбранный контрактом. `checkoutSha` подтверждает фактический `HEAD` после checkout. Оба значения проверяются независимо от `package.testedCommitSha`.
 
-## Security boundary
+### Источник workflow — `identity.workflow`
 
-The schema does not permit tokens, authorization headers, artifact download URLs, private filesystem paths, actor email, event payloads, arbitrary environment values, command lines, package contents or display titles. Raw and public documents are validated before and after the existing sanitizer boundary.
+```text
+repository
+filePath
+sourceSha
+```
 
-Artifact attestations, Sigstore, SLSA, SBOM and signing are intentionally outside E2E-I5. They are separate supply-chain capabilities and would require an independently approved permissions and provenance design.
+Источник workflow определяется через контекст `job.workflow_*`, а не через зависящий от trigger `github.sha`:
+
+```text
+repository <- job.workflow_repository
+filePath   <- job.workflow_file_path
+sourceSha  <- job.workflow_sha
+```
+
+`actions/checkout` получает `job.workflow_sha` напрямую. Trigger SHA сохраняется отдельно в `execution.triggerSha`.
+
+### Окружение — `identity.environment`
+
+```text
+imageReference
+imageDigest
+platform
+contractSha256
+publishedFromCommitSha
+```
+
+Правила:
+
+- `imageReference` обязан быть неизменяемой ссылкой `ghcr.io/...@sha256:<digest>`;
+- `imageDigest` сверяется со ссылкой, `RepoDigests` загруженного образа и consumer lock;
+- `platform` фиксирует фактическую платформу, например `linux/amd64`;
+- `contractSha256` связывает образ с контрактом окружения;
+- `publishedFromCommitSha` фиксирует commit, из которого опубликовано окружение.
+
+Проверка выполняется до запуска canonical Docker E2E. Source-build fallback в облачном контуре запрещён.
+
+### Повторное использование — `identity.reuse`
+
+```text
+mode
+changedFileCount
+changedPathsSha256
+```
+
+Допустимые режимы определяются validator’ом повторного использования package/harness. Для принятого E2E-I5 использован `exact-tree`:
+
+```text
+changedFileCount: 0
+changedPathsSha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+```
+
+Полный список изменённых путей не дублируется в идентичности. Он остаётся в отдельном `e2e-harness-reuse.json`; в build identity входят только режим, количество и хэш списка.
+
+## Объект `execution`
+
+```text
+runId
+runAttempt
+triggerSha
+ref
+```
+
+Эти поля описывают конкретный запуск E2E:
+
+- GitHub Actions run и attempt;
+- trigger SHA;
+- точный Git ref.
+
+Они намеренно исключены из `identityDigest`, поэтому повторный запуск неизменной сборки не создаёт новую идентичность build material.
+
+## Жизненный цикл
+
+1. До полного разрешения package, harness, workflow и environment старый identity-файл удаляется.
+2. Частичная идентичность при pre-material failure не создаётся.
+3. После полного разрешения material identity создаётся до canonical Docker E2E.
+4. Staging-копия переживает внутренний reset каталога E2E-артефактов.
+5. После success или functional failure канонический файл восстанавливается и повторно проверяется.
+6. При cancellation identity сохраняется только тогда, когда она уже была полностью материализована.
+7. Manifest строится повторно и включает public identity.
+8. Raw/public validation и semantic parity выполняются до upload.
+
+## Fail-closed проверки
+
+Выполнение завершается ошибкой при любом несоответствии:
+
+- неизвестное или дополнительное поле;
+- неверный тип или формат SHA/digest;
+- различие transport digest и ожидаемого artifact;
+- различие внутреннего SHA-256 или размера пакета;
+- несовпадение package tested SHA, harness checkout или workflow source;
+- несовпадение GHCR reference/digest/platform/contract/source revision;
+- запрещённый reuse boundary;
+- различие raw/public;
+- отсутствие identity в manifest;
+- появление identity в release-artifact path;
+- превышение ограничения размера.
+
+Нельзя ослаблять validator, sanitizer или allowlist ради повторного использования старого пакета.
+
+## Что не входит в `identityDigest`
+
+```text
+E2E run ID и attempt
+trigger SHA и ref
+временные метки
+названия workflow, job и artifact
+PR и названия веток
+URL
+человекочитаемые сводки
+```
+
+Эти данные либо относятся к `execution`, либо остаются во внешнем evidence.
+
+## Граница release
+
+Release artifact использует отдельный контракт идентичности и происхождения. Нерелизный `non-release-build-identity.json` не добавляется в release package и не подменяет release provenance.
+
+## Безопасность публичного артефакта
+
+Identity может содержать только публичные SHA, digest, bounded enum, размеры, счётчики и безопасные относительные пути. Запрещены:
+
+- token и credential;
+- `Authorization` header;
+- token-bearing URL;
+- приватные абсолютные пути;
+- произвольный environment dump;
+- HTML или пользовательское содержимое карточек;
+- raw stack trace.
+
+Public exporter и sanitizer остаются обязательной границей перед upload.
+
+## Принятое доказательство E2E-I5
+
+```text
+финальный implementation SHA: 92354870970956ed5d2e9216efca5058aa8addf3
+Fast CI: 30149481485 / attempt 1 — ПРОЙДЕНО
+package artifact ID: 8617175787
+package artifact digest: sha256:a3b2357e6b19486c5902d62f4d8433f54374b539e689e2cc7ad138b4caab34c1
+inner package SHA-256: 4041ace490b1bba63e340ae8597613db3ce2bf8b12a1cbfb27c776b2c68e0861
+standard/full E2E: 30150971581 / attempt 1 — ПРОЙДЕНО
+E2E artifact ID: 8617629796
+E2E artifact digest: sha256:44d40f58251be7494928a26c151f8505c5a21623ec29d6f1c855314b4d703d7b
+identityDigest: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
+browser items: 23/23
+screenshots: 18/18
+```
+
+Исторический и проверочный контекст находится в [`../reports/ci/e2e-i5-non-release-build-identity-closeout.md`](../reports/ci/e2e-i5-non-release-build-identity-closeout.md).

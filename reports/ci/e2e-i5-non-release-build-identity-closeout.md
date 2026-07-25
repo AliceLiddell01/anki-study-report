@@ -1,51 +1,112 @@
-# E2E-I5 — Non-release build identity closeout
+# E2E-I5 — итоговый отчёт об идентичности нерелизной сборки
 
-## Status
+## Статус
 
 ```text
-COMPLETE
-implementation and cloud acceptance passed
-PR #141 remains unmerged at this snapshot
-E2E-I6 not started
+ЗАВЕРШЕНО
+реализация принята
+облачная проверка пройдена
+документация синхронизирована
+следующий этап E2E-I6 не начат
 ```
 
-E2E-I5 is complete at the candidate stage. The implementation, package-producing Fast CI, exact package handoff, one `standard/full` real-Anki E2E and uploaded-artifact inspection all passed on the final implementation tree.
+E2E-I5 завершён как самостоятельный этап Platform / CI. Реализация создаёт закрытую машиночитаемую идентичность нерелизной сборки и связывает точный пакет Fast CI, E2E harness, источник workflow, неизменяемое окружение GHCR и границу повторного использования. Идентичность конкретного запуска E2E хранится отдельно и не влияет на хэш build material.
 
-## Baseline and final tree
+## Исходное состояние и границы
 
 ```text
-base branch: core
-core baseline: 50c2f0473603fa5979fb4bd46b9f36198f18f85c
-working branch: platform/e2e-i5-non-release-build-identity
-final candidate HEAD: 92354870970956ed5d2e9216efca5058aa8addf3
+базовая ветка: core
+исходный core SHA: 50c2f0473603fa5979fb4bd46b9f36198f18f85c
+рабочая ветка: platform/e2e-i5-non-release-build-identity
+финальный implementation SHA: 92354870970956ed5d2e9216efca5058aa8addf3
 PR: #141
-previous completed Platform stage: E2E-I4
-next planned Platform stage: E2E-I6
+предыдущий завершённый этап: E2E-I4
+следующий запланированный этап: E2E-I6
 ```
 
-The stage remained bounded to non-release build identity and its required package/harness/workflow/environment evidence. `core` was not modified directly and no force push was used.
+Этап не менял product/API/dashboard scope, не добавлял release provenance, retries, visual regression или performance thresholds. `core` не изменялся напрямую, force push не использовался.
 
-## Implemented
+## Реализованный контракт
 
-- closed schema v1 and deterministic `identityDigest` over the canonical `identity` object only;
-- independent package tested SHA, Fast CI run/attempt, artifact ID/transport digest and inner package hash/size;
-- independent harness commit/checkout and workflow source identity;
-- exact immutable GHCR reference, digest, platform, environment contract and source revision;
-- exact-tree/harness-only reuse mode with changed-file count and changed-path digest;
-- execution run/attempt separated from the build digest;
-- identity creation after complete material resolution and before canonical Docker E2E;
-- raw/public validation and semantic parity enforcement;
-- bounded identity staging across inner artifact reset;
-- success and functional-failure restoration;
-- cancellation preservation only when identity already exists;
-- manifest regeneration and public export validation;
-- stale identity removal and honest absence before material resolution;
-- release-artifact exclusion;
-- focused schema, lifecycle, workflow and security tests.
+Канонические файлы:
 
-Canonical contract: [`../../docs/non-release-build-identity.md`](../../docs/non-release-build-identity.md).
+```text
+raw:    reports/non-release-build-identity.json
+public: artifacts/reports/non-release-build-identity.json
+```
 
-## Published commits
+Верхний уровень schema v1:
+
+```text
+schemaVersion
+kind
+identity
+identityDigest
+execution
+```
+
+Основные свойства:
+
+- `kind=non-release-build` только для пакета из точного Fast CI artifact;
+- закрытая схема с запретом дополнительных полей;
+- максимальный размер JSON — 32 KiB;
+- `identityDigest` вычисляется только по canonical объекту `identity`;
+- compact UTF-8 JSON, сортировка ключей, отсутствие BOM и завершающего перевода строки в хэшируемых байтах;
+- `execution` хранит run-specific данные и не влияет на build identity.
+
+Подробный актуальный контракт: [`../../docs/non-release-build-identity.md`](../../docs/non-release-build-identity.md).
+
+## Состав идентичности
+
+### Пакет Fast CI
+
+Идентичность пакета содержит:
+
+- точный Fast CI run/attempt;
+- commit, на котором пакет был собран и проверен;
+- ID и transport digest GitHub Actions artifact;
+- независимо пересчитанные SHA-256 и размер внутреннего `.ankiaddon`.
+
+Transport digest и хэш внутренних байтов не подменяют друг друга.
+
+### E2E harness
+
+`harness.commitSha` и фактический `harness.checkoutSha` проверяются отдельно от `package.testedCommitSha`. Это не позволяет документационному commit или trigger SHA притвориться идентичностью пакета либо harness.
+
+### Источник workflow
+
+Workflow source определяется через `job.workflow_repository`, `job.workflow_file_path` и `job.workflow_sha`. Checkout выполняется по `job.workflow_sha`; trigger-dependent `github.sha` хранится только в `execution.triggerSha`.
+
+### Окружение GHCR
+
+Проверяются:
+
+- неизменяемая ссылка `ghcr.io/...@sha256:<digest>`;
+- digest ссылки и загруженного образа;
+- `RepoDigests`;
+- платформа;
+- SHA-256 контракта окружения;
+- commit публикации образа.
+
+Cloud source-build fallback не добавлялся.
+
+### Граница повторного использования
+
+В идентичность входят режим, количество изменённых файлов и SHA-256 полного списка путей. Сам список остаётся в отдельном `e2e-harness-reuse.json`. Allowlist не ослаблялся.
+
+## Жизненный цикл артефакта
+
+- старый identity-файл удаляется до material resolution;
+- частичная identity при pre-material failure отсутствует;
+- полная identity создаётся до canonical Docker E2E;
+- staging-копия переживает внутренний reset каталога артефактов;
+- identity восстанавливается для success и functional failure;
+- cancellation сохраняет identity только после её полной материализации;
+- manifest строится повторно;
+- raw/public проходят проверку схемы и semantic parity;
+- release-artifact path отвергает нерелизную identity.
+
+## Опубликованные implementation commits
 
 ```text
 4d77f37c331250628f9e8e45bb47d711475e78ae  Add canonical non-release build identity
@@ -53,48 +114,71 @@ e1653de57992904424b237c03affda1d85e8f907  Bind package, harness, workflow, and e
 df113081f88c2bd476c1e6f3999e2a47f47e76ed  Use exact workflow context for harness checkout
 2393c1843c112c12d11757e138991bb833e18d19  Document and verify non-release build identity
 92354870970956ed5d2e9216efca5058aa8addf3  Align E2E workflow tests with source identity
+0a9f62bb2191301c33316ab2261f9415a751ae02  Close out non-release build identity acceptance
 ```
 
-The final commit corrected two stale string-based workflow tests. Production workflow behavior was not weakened or reverted.
+Исторические commit messages сохранены дословно как Git evidence. Человекочитаемые PR, контракт, roadmap и отчёт приведены к русскому формату.
 
-## Local and focused verification
+## Локальные и профильные проверки
 
-Before cloud acceptance:
+До облачной приёмки:
 
 ```text
-python source compile: PASS
-initial E2E-I5 focused tests: 47 PASS
-workflow YAML parse: PASS
-post-fix focused tests: 61 PASS
-git diff --check: PASS
+компиляция изменённых Python-файлов: ПРОЙДЕНО
+первичные профильные тесты: 47 ПРОЙДЕНО
+разбор workflow YAML: ПРОЙДЕНО
+git diff --check: ПРОЙДЕНО
 ```
 
-The first package-producing Fast CI attempt exposed two stale assertions in `tests/test_ci_e2e_workflow.py`:
+После исправления устаревших workflow assertions:
+
+```text
+профильные тесты: 61 ПРОЙДЕНО
+```
+
+После docs-only closeout:
+
+```text
+профильные тесты: 61 ПРОЙДЕНО
+проверка относительных Markdown-ссылок: ПРОЙДЕНО
+git diff --check: ПРОЙДЕНО
+```
+
+## Первый Fast CI и устранение причины ошибки
+
+Первый package-producing запуск:
 
 ```text
 Fast CI run: 30149006339
-result: FAILURE
-Python: 1020 passed, 6 skipped, 2 failed
-package artifact: not produced
+результат: ОШИБКА
+Python: 1020 пройдено, 6 пропущено, 2 ошибки
+package artifact: не создан
 ```
 
-The assertions expected trigger-dependent `github.sha` and the removed tested-commit checkout step. Commit `92354870970956ed5d2e9216efca5058aa8addf3` aligned them with `job.workflow_*` and the exact workflow/harness checkout contract. The failed run was not reused or rerun blindly.
+Причина была ограничена двумя устаревшими строковыми проверками в `tests/test_ci_e2e_workflow.py`:
 
-## Successful Fast CI package
+- ожидался trigger-dependent `github.sha` вместо `job.workflow_sha`;
+- ожидался удалённый checkout tested package commit вместо точного checkout workflow/harness commit.
+
+Production workflow не откатывался и не ослаблялся. Commit `92354870970956ed5d2e9216efca5058aa8addf3` обновил только устаревшие тестовые ожидания. Неуспешный run не переиспользовался и не перезапускался вслепую.
+
+## Успешный Fast CI с формированием пакета
 
 ```text
 Fast CI run: 30149481485 / attempt 1
-result: PASS
-tested commit: 92354870970956ed5d2e9216efca5058aa8addf3
+результат: ПРОЙДЕНО
+проверенный commit: 92354870970956ed5d2e9216efca5058aa8addf3
+
 diagnostics artifact ID: 8617175451
 diagnostics artifact digest: sha256:568456efdbc5e50aaefe1f19a7adee78d9f7258a425eb0917a3b4e41ae52f070
+
 package artifact ID: 8617175787
 package artifact digest: sha256:a3b2357e6b19486c5902d62f4d8433f54374b539e689e2cc7ad138b4caab34c1
 inner package SHA-256: 4041ace490b1bba63e340ae8597613db3ce2bf8b12a1cbfb27c776b2c68e0861
 inner package size: 750680 bytes
 ```
 
-The package and diagnostics artifacts were downloaded and validated before E2E dispatch. The complete handoff contract passed with:
+Package и diagnostics были скачаны и проверены до запуска E2E. Полный handoff подтвердил:
 
 ```text
 reuseAllowed: true
@@ -103,122 +187,152 @@ changedFileCount: 0
 changedPathsSha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 ```
 
-Transport artifact digest and inner `.ankiaddon` digest remained separate identities.
-
-## Successful standard/full E2E
+## Успешный полный E2E в реальном Anki
 
 ```text
 E2E run: 30150971581 / attempt 1
 job: Real Anki Desktop (standard / full)
-result: PASS
-tested commit: 92354870970956ed5d2e9216efca5058aa8addf3
-source Fast CI run: 30149481485
+результат: ПРОЙДЕНО
+проверенный commit: 92354870970956ed5d2e9216efca5058aa8addf3
+источник пакета: Fast CI run 30149481485
+
 E2E artifact ID: 8617629796
-E2E artifact name: ci-e2e-standard-30150971581-1
+имя артефакта: ci-e2e-standard-30150971581-1
 E2E artifact digest: sha256:44d40f58251be7494928a26c151f8505c5a21623ec29d6f1c855314b4d703d7b
-E2E artifact size: 6883753 bytes
+размер артефакта: 6883753 bytes
 ```
 
-All canonical steps passed, including exact package resolution, diagnostics validation, exact workflow/harness checkout, immutable GHCR verification, identity creation, Docker-only E2E, identity restoration, package hash verification, sanitized evidence publication, public artifact preparation, upload and Docker cleanup.
+Успешно завершились все обязательные шаги:
 
-## Canonical identity evidence
+- разрешение exact Fast CI package и diagnostics;
+- проверка handoff;
+- checkout точного workflow/harness SHA;
+- проверка неизменяемого GHCR environment;
+- создание canonical identity;
+- Docker-only E2E;
+- восстановление identity после внутреннего reset;
+- повторная проверка SHA-256 пакета;
+- публикация очищенных handoff/environment evidence;
+- формирование public artifact;
+- upload;
+- Docker cleanup;
+- восстановление canonical результата.
 
-The uploaded public identity contains:
+## Каноническая идентичность принятой сборки
 
 ```text
 schemaVersion: 1
 kind: non-release-build
 identityDigest: sha256:d85608e71b0bb927fbd7f400c9b65d436395ff359f467dec6a12f0c63028cbad
 repository: AliceLiddell01/anki-study-report
+
 package source run: 30149481485 / attempt 1
 package artifact ID: 8617175787
 package artifact digest: sha256:a3b2357e6b19486c5902d62f4d8433f54374b539e689e2cc7ad138b4caab34c1
 package inner SHA-256: 4041ace490b1bba63e340ae8597613db3ce2bf8b12a1cbfb27c776b2c68e0861
 package size: 750680 bytes
 package tested SHA: 92354870970956ed5d2e9216efca5058aa8addf3
-harness commit/checkout SHA: 92354870970956ed5d2e9216efca5058aa8addf3
+
+harness commit SHA: 92354870970956ed5d2e9216efca5058aa8addf3
+harness checkout SHA: 92354870970956ed5d2e9216efca5058aa8addf3
 workflow source SHA: 92354870970956ed5d2e9216efca5058aa8addf3
 workflow path: .github/workflows/ci-e2e.yml
 reuse mode: exact-tree
+
 environment image digest: sha256:bce7889f4db861c1b539b0747b4bbf0fcc68c38d520090a0836b1fe9a7a2b475
 environment platform: linux/amd64
 environment contract SHA-256: 8d3c11ccdd9c474c751ea7fe4e845f67f21a388484cc4291c3ea2ee06cba5447
 ```
 
-The execution section separately records E2E run `30150971581`, attempt `1`, trigger SHA and ref. Recomputing SHA-256 over compact sorted UTF-8 JSON of `identity` reproduced the stored `identityDigest`.
+Независимый пересчёт SHA-256 compact sorted UTF-8 JSON объекта `identity` воспроизвёл сохранённый `identityDigest`.
 
-## Uploaded artifact inspection
+## Проверка опубликованного артефакта
 
-The artifact ZIP was downloaded through the GitHub Actions artifact API and independently inspected outside the repository checkout.
+Архив был скачан через GitHub Actions artifact API и проверен вне checkout репозитория.
 
 ```text
-deterministic acceptance checks: 33/33 PASS
-uploaded files: 73/73 exact summary inventory
-artifact manifest: success
-identity present in manifest: yes
-identity encoded size: 1847 bytes
-browser items: 23/23 PASS
+детерминированные проверки: 33/33 ПРОЙДЕНО
+опубликованные файлы: 73/73
+manifest: success
+identity присутствует в manifest: да
+размер identity JSON: 1847 bytes
+browser items: 23/23 ПРОЙДЕНО
 screenshots: 18/18
 console events: 0
 page errors: 0
 failed requests: 0
 unexpected external requests: 0
-preflight checks: 20/20 PASS
-FSRS visual checks: 80 PASS
-sanitizer scan: no token, authorization header, private key or token-bearing URL matches
+preflight checks: 20/20 ПРОЙДЕНО
+FSRS visual checks: 80 ПРОЙДЕНО
+sanitizer: совпадений token, Authorization header, private key и token-bearing URL нет
 ```
 
-Real-deck evidence remained non-synthetic and passed:
+Доказательства real-deck contour:
 
 ```text
-committed APKG packages: 3
-manifest packages: 3 PASS
-runtime imports: 3 PASS
+committed APKG: 3
+manifest packages: 3 ПРОЙДЕНО
+runtime imports: 3 ПРОЙДЕНО
 resolved anchors: 11/11
-scenario groups: 9 PASS
-API smoke: PASS
+scenario groups: 9 ПРОЙДЕНО
+API smoke: ПРОЙДЕНО
 manual package extraction: false
 synthetic fallback: false
 ```
 
-The workflow-level raw/public identity validation and semantic parity checks passed before upload. In the downloaded public artifact, the identity digest was independently recomputed, the public identity was present in the artifact manifest, the summary inventory matched all 73 uploaded files, and the screenshot manifest matched all 18 PNG files.
+## Безопасность и сохранённые инварианты
 
-## Intentionally not run
+- dashboard token и token-bearing URL не логируются;
+- public artifact проходит sanitizer;
+- media validation и action allowlists не менялись;
+- карточки не превращались в iframe/JavaScript execution surface;
+- generated assets и runtime outputs не коммитились;
+- package и harness identities остаются независимыми;
+- source-build fallback не добавлен;
+- исторический package reuse был отвергнут fail closed;
+- release identity остаётся отдельным контрактом.
 
-- second successful E2E;
+## Что намеренно не запускалось
+
+- второй успешный E2E;
 - controlled cancellation A/B;
-- intentionally failing cloud run;
+- намеренно неуспешный облачный run;
 - `perf100`;
 - warm repeat;
-- worker comparison;
+- сравнение workers;
 - visual regression;
 - retries;
-- docs-only heavy rerun.
+- повторный тяжёлый запуск после docs-only изменений.
 
-These runs were not required after one successful exact-tree `standard/full` acceptance on the final implementation SHA.
+Эти запуски не требовались после одного успешного exact-tree `standard/full` на финальном implementation SHA.
 
-## Scope retained
-
-Not implemented:
+## Вне области этапа
 
 ```text
-E2E-I6 canonical final summary/history
-release identity/provenance redesign
-artifact attestations/SBOM/SLSA/signing
+E2E-I6 — canonical final summary и history
+переработка release identity/provenance
+artifact attestations, SBOM, SLSA и signing
 retries/quarantine
 visual regression
 performance thresholds
-source-build cloud fallback
-product/API/dashboard changes
+cloud source-build fallback
+изменения product/API/dashboard
 ```
 
-## Completion decision
+## Формат проектных материалов
 
-All E2E-I5 completion conditions are satisfied:
+Начиная с этого closeout, русский PR, closeout-отчёт, roadmap-статус и handoff используют русский язык во всём человекочитаемом тексте. Без перевода сохраняются только точные технические идентификаторы, пути, команды, поля схемы, workflow/job names, SHA/digest и устоявшиеся обозначения `Fast CI`, `E2E`, `GHCR`, `APKG`, `JSON`, `YAML`.
 
-1. successful package-producing Fast CI on the final implementation commit;
-2. successful `standard/full` E2E consuming that exact package;
-3. uploaded artifact inspection proving schema/digest, manifest/public evidence, 23 browser items and 18 screenshots;
-4. roadmap, handoff, documentation index and report status synchronization.
+Это правило зафиксировано в `docs/chatgpt-work-mode.md`, `docs/codex-agent-rules.md` и текущем `docs/ai-handoff.md`.
 
-E2E-I6 is the next planned Platform stage, but this closeout does not start it. Merge remains a separate owner-approved action.
+## Решение о завершении
+
+Все критерии E2E-I5 выполнены:
+
+1. успешный package-producing Fast CI на финальном implementation commit;
+2. успешный `standard/full` E2E с этим точным пакетом;
+3. проверка identity schema/digest, manifest/public evidence, 23 browser items и 18 screenshots;
+4. синхронизация актуального контракта, roadmap, handoff и подробного отчёта;
+5. сохранение security, package/harness и release boundaries.
+
+Для интеграции выбран merge commit, чтобы сохранить шесть implementation/closeout commits и явную точку слияния с `core`. Squash, rebase и auto-merge не используются. E2E-I6 остаётся отдельным следующим решением владельца.
