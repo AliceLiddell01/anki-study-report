@@ -10,9 +10,15 @@ Core не зависит от Gamification, Operations, Identity или Extensio
 
 ```mermaid
 flowchart LR
-    C1[C1 Cards v2<br/>complete] --> C2[C2 Hardening<br/>implemented + merged]
-    C2 --> A{Owner acceptance}
-    A -->|remediation accepted| C3[C3 UI & Shell]
+    C1[C1 Cards v2<br/>complete] --> C2[C2 Hardening<br/>base merged]
+    C2 --> S1[PR #130 Stage 1<br/>sync + overlay cleanup]
+    S1 --> S2[Cards 1:1<br/>production integration]
+    S2 --> OC{Owner checkpoint<br/>Cards}
+    OC --> S3[Inspection Profiles 1:1]
+    S3 --> OP{Owner checkpoint<br/>Profiles}
+    OP --> FV[Final verification]
+    FV --> MI{Separate PR #130<br/>merge decision}
+    MI --> C3[C3 UI & Shell]
     C3 --> C4[C4 First-party Data]
     C4 --> C5[C5 Today v2]
     C5 --> C6[C6 Profile v2]
@@ -31,10 +37,11 @@ flowchart LR
 
 ```text
 C1 — завершён и принят
-C2 implementation/integration — завершены и влиты
-C2 automated post-merge remediation — technically closed / PR #130 draft
-C2 owner acceptance — private-profile smoke pending
-следующее действие — owner acceptance и отдельное решение об интеграции PR #130
+C2 base implementation/integration — завершены и влиты
+PR #130 Stage 1 sync + rejected-overlay cleanup — COMPLETE
+PR #130 Stage 2 Cards 1:1 — implementation/evidence COMPLETE; owner checkpoint PENDING
+PR #130 Stage 3 Inspection Profiles 1:1 — NOT STARTED
+final verification и отдельное решение о merge PR #130 — NOT PERFORMED
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
 release — не начат
 ```
@@ -75,8 +82,9 @@ problem
 
 **Implementation:** complete
 **Integration:** merged в `core`
-**Automated post-merge remediation:** technically closed в draft PR #130
-**Owner acceptance:** private-profile gate pending
+**Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
+**Stage 2 Cards 1:1:** implementation/evidence complete; owner decision pending
+**Stage 3 Inspection Profiles 1:1:** not started
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 
@@ -103,11 +111,11 @@ problem
 | UI states работают на representative fixtures | PASS |
 | владелец принимает обновлённый smoke на приватной collection | PENDING |
 
-До owner acceptance и отдельного integration decision C3 не начинается автоматически.
+До owner checkpoints по Cards и Inspection Profiles, final verification и отдельного merge decision C3 не начинается автоматически.
 
 ## C3 — Core UI & Shell Consolidation
 
-**Статус:** следующий обязательный этап после принятия C2 remediation
+**Статус:** не активирован; возможен только после Cards/Profiles checkpoints, final verification и отдельного merge decision по PR #130
 
 ### Цель
 

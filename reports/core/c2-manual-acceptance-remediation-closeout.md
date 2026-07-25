@@ -305,3 +305,31 @@ private-profile owner acceptance: PENDING
 C3: NOT STARTED
 release/deployment/publication: NOT PERFORMED
 ```
+
+## Post-closeout correction — Prototype v3.2.3 production integration sequence
+
+**Добавлено:** 2026-07-26. Этот addendum исправляет только устаревший следующий шаг; historical SHA, package/E2E evidence и технические результаты выше не переписываются.
+
+Последовательность `owner acceptance → merge decision → C3` оказалась преждевременной: Stage 1 удалил отклонённый global overlay, но не выполнил настоящую 1:1 recomposition утверждённых Cards и Inspection Profiles. Актуальная последовательность:
+
+```text
+Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
+→ Stage 2: Cards 1:1 production integration
+→ owner checkpoint: ACCEPT / REVISE CARDS
+→ Stage 3: Inspection Profiles 1:1
+→ owner checkpoint: ACCEPT / REVISE PROFILES
+→ final verification
+→ отдельное решение о merge PR #130
+```
+
+Текущий статус после Stage 2:
+
+```text
+Cards 1:1 implementation/evidence: COMPLETE / awaiting owner decision
+Inspection Profiles 1:1: NOT STARTED
+PR #130: OPEN / DRAFT / UNMERGED
+Fast CI / Docker E2E in Stage 2: NOT RUN
+merge / release / C3: NOT PERFORMED
+```
+
+Предыдущий exact Fast CI и real-Anki E2E остаются baseline evidence Stage 1 и не выдаются за доказательство новой Cards composition.

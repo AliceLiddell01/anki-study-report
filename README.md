@@ -54,7 +54,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; C2 implementation/integration влиты. Автоматизированная bounded post-merge remediation технически закрыта в draft PR #130 на проверенном production candidate `a746172f8746eac82ff628d36a7a6328d9332acf`. Остаются owner acceptance на приватной коллекции и отдельное решение об интеграции; C3 не активирован автоматически.
+- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён, Cards 1:1 production integration по Prototype v3.2.3 реализована и ожидает решения владельца; Inspection Profiles 1:1 ещё не начата. Merge PR, final verification и C3 не выполнялись.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 

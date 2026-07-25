@@ -1,1 +1,0 @@
-This temporary directory is intentionally removed by the applying workflow.
