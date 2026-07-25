@@ -59,25 +59,37 @@ def aggregate_history(history: Mapping[str, Any], current_summary: Mapping[str, 
     }
 
 
+def _current_metric_value(
+    summary: Mapping[str, Any],
+    history: Mapping[str, Any],
+    metric_id: str,
+) -> int | float | None:
+    if metric_id == "artifactUncompressedBytes":
+        return summary["artifactFootprint"].get("totalUncompressedBytes")
+
+    if metric_id in {"mainArtifactUploadedBytes", "artifactUploadDurationMs"}:
+        current_entry = next(
+            (
+                row for row in reversed(history["entries"])
+                if row["runId"] == summary["execution"]["runId"]
+                and row["runAttempt"] == summary["execution"]["runAttempt"]
+            ),
+            None,
+        )
+        return current_entry["metrics"].get(metric_id) if current_entry else None
+
+    if metric_id in {"runEventProducerCalls", "runEventProducerDurationMs"}:
+        return summary["performance"].get("producer", {}).get(metric_id)
+
+    return summary["performance"].get("metrics", {}).get(metric_id)
+
+
 def render_observations(
     summary: Mapping[str, Any], history: Mapping[str, Any], aggregation: Mapping[str, Any]
 ) -> dict[str, Any]:
-    current_metrics = summary["performance"].get("metrics", {})
     observations: dict[str, Any] = {}
     for metric_id, aggregate in aggregation.get("metrics", {}).items():
-        current = current_metrics.get(metric_id)
-        if metric_id == "artifactUncompressedBytes":
-            current = summary["artifactFootprint"].get("totalUncompressedBytes")
-        elif metric_id in {"mainArtifactUploadedBytes", "artifactUploadDurationMs"}:
-            current_entry = next(
-                (
-                    row for row in reversed(history["entries"])
-                    if row["runId"] == summary["execution"]["runId"]
-                    and row["runAttempt"] == summary["execution"]["runAttempt"]
-                ),
-                None,
-            )
-            current = current_entry["metrics"].get(metric_id) if current_entry else None
+        current = _current_metric_value(summary, history, metric_id)
         p50 = aggregate["p50"]
         p95 = aggregate["p95"]
         if not isinstance(current, (int, float)):

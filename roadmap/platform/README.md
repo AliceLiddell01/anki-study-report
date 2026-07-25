@@ -34,9 +34,12 @@ E2E-I3 — ЗАВЕРШЕНО / влито
 E2E-I4 — ЗАВЕРШЕНО / влито через PR #137
 E2E-I5 — ЗАВЕРШЕНО / влито через PR #141
 E2E-I6 — ЗАВЕРШЕНО / влито через PR #142
-core merge SHA — 52731abb2fae682c97c3d0d9a542c250c6f25ea8
+E2E-I6 bounded corrective fix — PASS / PR #144 открыт, не влит
+core merge SHA E2E-I6 — 52731abb2fae682c97c3d0d9a542c250c6f25ea8
 CI 7–12 — условные; ни один этап не активирован
 ```
+
+Corrective PR #144 исправляет только footprint category projection и producer current values в regression observations. Облачная приёмка пройдена на `afe650adbf3ba55cb6b59068a1127022b651fbf3`: Fast CI `30169763775`, telemetry-enabled `standard/full` `30169890912`, main artifact `8622647178`, history `append / 2 entries`. Это bounded исправление завершённого E2E-I6, а не новый roadmap stage.
 
 ## Current invariants
 

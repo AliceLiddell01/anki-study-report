@@ -1,8 +1,8 @@
 # Roadmap наблюдаемости E2E, диагностики и идентичности сборки
 
-**Статус:** `COMPLETE`; `E2E-I1–E2E-I6` завершены и влиты.
-**Снимок:** 2026-07-26
-**Трек:** Platform / CI
+**Статус:** `COMPLETE`; `E2E-I1–E2E-I6` завершены и влиты.  
+**Снимок:** 2026-07-26  
+**Трек:** Platform / CI  
 **База:** real-deck E2E foundation из PR #133
 
 ## Назначение
@@ -122,6 +122,29 @@ canonical result: success / complete / run/pass
 history: bootstrap / 1 entry
 ```
 
+### Bounded corrective verification
+
+PR #144 исправляет два presentation defects без изменения schema или functional E2E result:
+
+- public `artifacts/` prefix теперь нормализуется ровно один раз перед footprint categorization;
+- producer current values читаются из `performance.producer` и совпадают между summary, history и observations.
+
+```text
+PR: #144 — OPEN / unmerged
+base core: a49c4b301084e5ffd3915b4cfcacf7bb8c95a3cb
+implementation HEAD: afe650adbf3ba55cb6b59068a1127022b651fbf3
+Fast CI: 30169763775 — PASS
+standard/full: 30169890912 — PASS
+main artifact: 8622647178
+main digest: sha256:cfcf34691a0e5c81a8eb03a3b7487beba3da6fda05dbeb701fafbac899203e11
+history artifact: 8622648096
+history digest: sha256:2f9579dab8fd60535aed0599e5c486c63d6c2e5cd97dd57a6a7257407d322a65
+canonical result: success / complete / run/pass
+history: append / 2 entries
+```
+
+Исправление подтверждено одним successful Fast CI и одним telemetry-enabled `standard/full`. Оно не является E2E-I7 и не активирует CI 7–12. Historical evidence: [corrective closeout](../../reports/ci/e2e-i6-corrective-fix-closeout.md).
+
 ### Сохранённые границы
 
 - нет blocking performance thresholds;
@@ -152,4 +175,4 @@ Structured progress/failure/build/history evidence может содержать
 
 Активного продолжения у E2E-I roadmap нет.
 
-CI 7–12 остаются условными. Любой optimization stage активируется только отдельным решением владельца после измеренного bottleneck, повторяющихся flakes либо конкретного release/scale trigger. Завершение E2E-I6 не активирует их автоматически.
+CI 7–12 остаются условными. Любой optimization stage активируется только отдельным решением владельца после измеренного bottleneck, повторяющихся flakes либо конкретного release/scale trigger. Завершение E2E-I6 и bounded corrective fix не активируют их автоматически.
