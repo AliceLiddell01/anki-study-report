@@ -231,6 +231,22 @@ fix(cards): preserve inspection profile fixtures in full smoke
 Не merge в `master`, не создавать release/tag/deployment и не публиковать в
 AnkiWeb без отдельного прямого разрешения.
 
+### Operations branch invariant
+
+Работа трека Operations:
+
+- начинается от exact current `core`;
+- использует long-lived base `operations`;
+- PR направляется в `operations`, никогда не в `master`;
+- `operations` не сливается в `core` без отдельного owner approval;
+- PR создаётся draft, auto-merge выключен;
+- title/body пишутся по-русски с реальными переносами строк;
+- merge, deployment и следующий Operations stage не начинаются автоматически.
+
+Поскольку Git не позволяет одновременно refs `operations` и `operations/...`,
+task branch должна использовать ясное эквивалентное имя, например
+`operations-o1-2-read-model-maintenance`.
+
 ## Финальный отчёт Codex mode
 
 Указать:
