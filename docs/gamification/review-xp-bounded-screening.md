@@ -1,53 +1,53 @@
-# Review XP bounded screening — G1.4 technical reference
+# Review XP bounded screening — техническая справка G1.4
 
 **Stage:** `G1.4 — Bounded screening`  
 **Status:** `COMPLETE`  
 **Research package:** `research/gamification-sim/`  
 **Production integration:** `PROHIBITED`  
-**Next stage:** `G1.5`, ready but not started
+**Next stage:** `G1.5`, готов, но не начат
 
-This document explains the implemented G1.4 screening harness and its operational contract. It is not a replacement for the frozen G1.3 protocol and does not select a final Review XP candidate.
+Этот документ описывает реализованный screening harness G1.4 и его операционный контракт. Он не заменяет frozen protocol G1.3 и не выбирает финального кандидата Review XP.
 
-## Source hierarchy
+## Иерархия источников
 
-Use the following order when resolving conflicts:
+При противоречиях используется следующий порядок:
 
-1. current research source code and tests;
-2. the [machine-readable candidate protocol](../../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json);
-3. the [strict Draft 2020-12 schema](../../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json);
-4. the frozen [human protocol explanation](review-xp-candidate-protocol.md);
-5. the [G1.4 closeout report](../../roadmap/gamification/g1-bounded-screening.md).
+1. актуальный research source code и tests;
+2. [machine-readable candidate protocol](../../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json);
+3. [строгая Draft 2020-12 schema](../../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json);
+4. frozen [человекочитаемое объяснение protocol](review-xp-candidate-protocol.md);
+5. [closeout-отчёт G1.4](../../roadmap/gamification/g1-bounded-screening.md).
 
-The human protocol is a frozen pre-screening G1.3 design document. Its historical readiness text must not be interpreted as the current repository status. Current execution status and results are recorded in the G1.4 closeout and track README.
+Human protocol — зафиксированный pre-screening design document G1.3. Его исторический текст о readiness нельзя трактовать как актуальный статус репозитория. Текущее состояние выполнения и результаты записаны в closeout G1.4 и track README.
 
-## Purpose
+## Назначение
 
-G1.4 answers one bounded question:
+G1.4 отвечает на один ограниченный вопрос:
 
-> Under the frozen G1.3 matrix and non-compensable hard gates, which predefined post-transition MemoryGain parameterizations remain eligible for later confirmatory work?
+> Какие заранее определённые post-transition MemoryGain parameterization остаются eligible для последующей confirmatory работы при frozen matrix G1.3 и non-compensable hard gates?
 
-It does not:
+G1.4 не:
 
-- tune coefficients after observing results;
-- search outside the four registered parameterizations;
-- select a final candidate between families;
-- prove human learning effectiveness or motivation;
-- approve production reward behavior;
-- change FSRS, due dates, scheduling or Anki runtime behavior.
+- настраивает coefficients после просмотра результатов;
+- выполняет поиск вне четырёх registered parameterization;
+- выбирает финального кандидата между семействами;
+- доказывает human learning effectiveness или motivation;
+- разрешает production reward behavior;
+- меняет FSRS, due dates, scheduling или Anki runtime behavior.
 
-## Implemented components
+## Реализованные компоненты
 
-### Candidate mechanism registry
+### Registry candidate mechanisms
 
-`src/gamification_sim/review_candidate_mechanisms.py` defines:
+`src/gamification_sim/review_candidate_mechanisms.py` определяет:
 
-- `FrozenReviewCandidate` — immutable typed parameterization identity;
-- `RewardExecutionContext` — simulation day and structural retention-transition days;
-- `FROZEN_REVIEW_CANDIDATES` — exactly four registered parameterizations;
-- `memory_gain_multiplier()` — the only mechanism-specific multiplier calculation;
-- semantic validation against the frozen machine protocol.
+- `FrozenReviewCandidate` — immutable typed identity parameterization;
+- `RewardExecutionContext` — simulation day и structural retention-transition days;
+- `FROZEN_REVIEW_CANDIDATES` — ровно четыре registered parameterization;
+- `memory_gain_multiplier()` — единственное mechanism-specific вычисление multiplier;
+- semantic validation относительно frozen machine protocol.
 
-The registry contains exactly:
+Registry содержит ровно:
 
 | Family | Parameterization | Endpoint | Shape |
 |---|---|---:|---|
@@ -56,65 +56,65 @@ The registry contains exactly:
 | `F-POST-TRANSITION-MG-TAPER` | `P-TAPER-ZERO-30D` | `0.0` | linear 30-day taper |
 | `F-POST-TRANSITION-MG-TAPER` | `P-TAPER-NEUTRAL-RATIO-30D` | `0.8333333333333334` | linear 30-day taper |
 
-`R-CURRENT` is the regression reference. It is not a candidate and cannot survive or be promoted.
+`R-CURRENT` является regression reference. Он не candidate и не может получить survivor или promotion status.
 
-### Reward wiring
+### Подключение reward path
 
-The candidate path is threaded through:
+Candidate path проходит через:
 
 - `episode_reward.py`;
 - `day_aggregation.py`;
 - `longitudinal_runner.py`.
 
-Only the MemoryGain contribution is scaled. Attempt credit, outcome credit, support credit, completion credit, volume credit and all scheduling behavior remain unchanged.
+Масштабируется только contribution MemoryGain. Attempt credit, outcome credit, support credit, completion credit, volume credit и всё scheduling behavior остаются неизменными.
 
-When no candidate parameterization is supplied, the runner calls the original default path. Clean-HEAD parity demonstrated that `R-CURRENT` produces the same trajectory, final-cohort, report and full payload digests with and without the G1.4 wiring.
+Когда candidate parameterization не передана, runner вызывает исходный default path. Clean-HEAD parity доказал, что `R-CURRENT` создаёт одинаковые trajectory, final-cohort, report и full-payload digests с wiring G1.4 и без него.
 
 ### Screening harness
 
-`src/gamification_sim/bounded_screening.py` provides:
+`src/gamification_sim/bounded_screening.py` предоставляет:
 
-- protocol/schema loading and semantic validation;
-- typed `ScreeningExecutionUnit` identities;
-- deterministic 160-unit manifest construction;
-- per-unit matched policy execution;
-- compact evidence extraction;
-- protected-invariant evaluation;
-- 16 non-compensable hard gates per candidate;
-- result validation and canonical evidence digesting;
-- external report writing.
+- загрузку и semantic validation protocol/schema;
+- typed identities `ScreeningExecutionUnit`;
+- deterministic построение manifest из 160 units;
+- per-unit выполнение matched policies;
+- извлечение compact evidence;
+- evaluation защищённых invariants;
+- 16 non-compensable hard gates на candidate;
+- result validation и canonical digest evidence;
+- запись external reports.
 
 ### CLI surface
 
-The research CLI exposes two G1.4 commands:
+Research CLI предоставляет две команды G1.4:
 
 ```text
 validate-bounded-screening
 run-bounded-screening
 ```
 
-## Day and transition semantics
+## Семантика day и transition
 
-The machine protocol is authoritative.
+Авторитетным источником является machine protocol.
 
-### STEP family
+### Семейство STEP
 
 ```text
 day < 60  → multiplier 1.0
 day >= 60 → registered endpoint multiplier
 ```
 
-### TAPER family
+### Семейство TAPER
 
 ```text
 day <= 60     → multiplier 1.0
-60 < day < 90 → linear interpolation from 1.0 to the endpoint
+60 < day < 90 → linear interpolation from 1.0 to endpoint
 day >= 90     → registered endpoint multiplier
 ```
 
-The final transition must structurally occur on day `60`. If the supplied retention timeline does not end at the candidate's registered start day, the multiplier remains `1.0`.
+Последний transition обязан структурно происходить на day `60`. Если переданный retention timeline не заканчивается на зарегистрированном start day candidate, multiplier остаётся `1.0`.
 
-The mechanism uses simulation day and the policy retention timeline. It never derives applicability from:
+Механизм использует simulation day и policy retention timeline. Он никогда не определяет применимость через:
 
 - session boundaries;
 - wall-clock time;
@@ -122,11 +122,13 @@ The mechanism uses simulation day and the policy retention timeline. It never de
 - response duration;
 - Anki profile data.
 
-Boundary tests cover days `59`, `60`, `61`, `89`, `90` and `91`.
+Boundary tests покрывают days `59`, `60`, `61`, `89`, `90` и `91`.
 
-## Frozen execution matrix
+Fallback `STEP from day 61` не является авторитетной семантикой и не применяется.
 
-A `ScreeningExecutionUnit` is the tuple:
+## Зафиксированная execution matrix
+
+`ScreeningExecutionUnit` — tuple:
 
 ```text
 (candidate_or_reference,
@@ -138,12 +140,12 @@ A `ScreeningExecutionUnit` is the tuple:
  population_variant)
 ```
 
-The axes are:
+Оси:
 
 | Axis | Values | Count |
 |---|---|---:|
-| candidate/reference | `R-CURRENT` + four registered parameterizations | 5 |
-| policy pair | four frozen cases | 4 |
+| candidate/reference | `R-CURRENT` + четыре registered parameterization | 5 |
+| policy pair | четыре frozen cases | 4 |
 | control condition | `MATCHED_CONTROL_FROM_CASE` | 1 |
 | horizon | `90`, `365` | 2 |
 | replica | `0`, `1` | 2 |
@@ -154,13 +156,24 @@ The axes are:
 5 × 4 × 1 × 2 × 2 × 2 × 1 = 160 units
 ```
 
-`required_invariant_checks` is metadata evaluated against evidence; it is not an execution axis.
+`candidate_or_reference` — самостоятельная axis variants.
 
-Each unit receives a canonical digest-based `unit_id`. The manifest fails closed unless it contains exactly 160 units, 160 unique IDs and zero missing, extra or duplicate units.
+Поле `parameterization` не является дополнительной axis и не отражает потерю dimension. Оно детерминированно выводится в payload:
+
+```text
+R-CURRENT → parameterization: null
+candidate → parameterization: <variant ID>
+```
+
+Это normalization representation.
+
+`required_invariant_checks` — metadata, проверяемая по evidence, а не execution axis.
+
+Каждый unit получает canonical digest-based `unit_id`. Manifest fail closed, если в нём не ровно 160 units, 160 unique IDs и нулевые missing, extra и duplicate units.
 
 ## Policy cases
 
-The four protocol cases map to current matched-analysis policy pairs:
+Четыре protocol cases сопоставляются актуальным matched-analysis policy pairs:
 
 | Protocol case | Matched pair |
 |---|---|
@@ -169,52 +182,45 @@ The four protocol cases map to current matched-analysis policy pairs:
 | `CASE-INTENTIONAL-BACKLOG` | `intentional-backlog` |
 | `CASE-HONEST-BACKLOG-RETURN` | `honest-backlog-return` |
 
-For each unit, left and right policy executions must share the same initial cohort digest and latent stream ID. A mismatch aborts evidence generation.
+В каждом unit left и right policy execution обязаны иметь одинаковые initial cohort digest и latent stream ID. Несовпадение прерывает evidence generation.
 
 ## Validation command
 
-From `research/gamification-sim/` with `src` importable:
+Из `research/gamification-sim/` при доступном `src`:
 
 ```bash
-python -m gamification_sim \
-  --research-root . \
-  validate-bounded-screening
+python -m gamification_sim   --research-root .   validate-bounded-screening
 ```
 
-A valid result reports:
+Валидный результат:
 
 ```text
 VALID review-xp-bounded-screening-manifest-v1 160 unique units <manifest-digest>
 ```
 
-This command validates protocol/schema semantics and recomputes the exact manifest. It does not execute the simulations.
+Команда валидирует semantics protocol/schema и пересчитывает точный manifest. Simulations она не запускает.
 
 ## Screening command
 
-The canonical G1.4 run used the published implementation commit before the results were viewed:
+Canonical G1.4 run использовал published implementation commit до просмотра результатов:
 
 ```bash
-python -m gamification_sim \
-  --research-root . \
-  run-bounded-screening \
-  --implementation-sha a8857f111849e2e98744adda8e06fe1910bdf805 \
-  --base-sha 54dd47cc2817b9c07fad81da29fa666a0423c4e7 \
-  --output-dir <external-output-root>
+python -m gamification_sim   --research-root .   run-bounded-screening   --implementation-sha a8857f111849e2e98744adda8e06fe1910bdf805   --base-sha 54dd47cc2817b9c07fad81da29fa666a0423c4e7   --output-dir <external-output-root>
 ```
 
-The runner requires:
+Runner требует:
 
-- both SHAs to be lowercase 40-character hexadecimal values;
-- current `HEAD` to equal `--implementation-sha`;
-- `--base-sha` to be an ancestor of the implementation;
-- the frozen protocol, schema, config and candidate registry to validate;
-- exactly 160 manifest units.
+- оба SHA в lowercase 40-character hexadecimal form;
+- текущий `HEAD` равный `--implementation-sha`;
+- `--base-sha`, являющийся ancestor implementation;
+- валидные frozen protocol, schema, config и candidate registry;
+- ровно 160 manifest units.
 
-The canonical result must not be regenerated from the post-merge `gamification` HEAD, because the screened identity is the published implementation commit, not the later merge commit. Use the recorded evidence identities for review. Any future reproduction should use an isolated checkout of the screened implementation and must not be confused with a new G1.5 experiment.
+Canonical result нельзя регенерировать с post-merge `gamification` HEAD: screened identity — published implementation commit, а не более поздний merge commit. Для review используются записанные evidence identities. Любая будущая reproduction должна выполняться в isolated checkout screened implementation и не должна смешиваться с новым G1.5 experiment.
 
 ## Evidence output
 
-The writer creates:
+Writer создаёт:
 
 ```text
 <output-root>/bounded-screening/<evidence-digest-prefix>/
@@ -226,31 +232,73 @@ The writer creates:
 
 ### `evidence.json`
 
-Contains:
+Содержит:
 
-- implementation/base/branch and environment provenance;
-- the complete manifest;
-- all 160 compact unit results;
+- provenance implementation/base/branch и environment;
+- полный manifest;
+- все 160 compact unit results;
 - per-candidate gate evidence;
-- the canonical `evidence_digest`.
+- canonical `evidence_digest`.
 
 ### `manifest.json`
 
-Contains the protocol/schema/config identities, frozen axes, exact accounting and all unit definitions.
+Содержит identities protocol/schema/config, frozen axes, exact accounting и все unit definitions.
 
 ### `summary.md`
 
-Contains the human-readable PASS/REJECT table. It is a projection of evidence, not the normative artifact.
+Содержит человекочитаемую таблицу PASS/REJECT. Это projection evidence, а не normative artifact.
 
 ### `run-metadata.json`
 
-Contains write-time metadata and the evidence identity. Its timestamp is not part of the scientific result digest.
+Содержит write-time metadata и identity evidence. Timestamp не входит в scientific result digest.
 
-Generated screening output remains outside Git. Repository documentation records immutable digests and bounded summaries instead of committing the raw payload.
+Generated screening output остаётся вне Git. Repository documentation хранит immutable digests и bounded summaries, а не raw payload.
+
+Политика external evidence:
+
+- original bundle хранится вне Git и не изменяется;
+- repository хранит identities и semantic summary;
+- unit-level audit требует raw bundle;
+- bundle сохраняется минимум до завершения G1.5/G1.6 либо отдельного archive decision.
+
+Точные identities:
+
+```text
+G1.4 historical merge SHA:
+d855baf7355bba3f4014370cafba3fdc6d0c0e3c
+
+current gamification HEAD at G1.5 task start:
+f595a47ecaaaf93cf345978de052cf4f4747b8ef
+
+manifest digest:
+40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c
+
+evidence digest:
+836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694
+
+external evidence bundle SHA-256:
+bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be
+
+evidence.json SHA-256:
+976e728df07fdf46c8e6037f79a5b81fd5ee3b0293d70f6ab03e4a0259483b5c
+```
+
+Перед G1.5 external bundle повторно прошёл read-only validation:
+
+```text
+expected / actual unique:
+160 / 160
+
+missing / extra / duplicates:
+0 / 0 / 0
+
+validator:
+PASS
+```
 
 ## Hard gates
 
-Every candidate must pass all 16 gates independently:
+Каждый candidate обязан независимо пройти все 16 gates:
 
 1. `GATE-ENDPOINT-CAP`;
 2. `GATE-NO-CYCLING-GROWTH`;
@@ -269,11 +317,11 @@ Every candidate must pass all 16 gates independently:
 15. `GATE-EVIDENCE-COMPLETE`;
 16. `GATE-RESEARCH-ONLY`.
 
-There is no aggregate score, weighted compensation, Pareto rescue or least-bad promotion. One failed hard gate produces `REJECT`.
+Aggregate score, weighted compensation, Pareto rescue и least-bad promotion отсутствуют. Один failed hard gate даёт `REJECT`.
 
-## Result interpretation
+## Интерпретация результата
 
-G1.4 produced one survivor in each family:
+G1.4 дал по одному survivor в каждом семействе:
 
 ```text
 F-POST-TRANSITION-MG-STEP
@@ -283,23 +331,23 @@ F-POST-TRANSITION-MG-TAPER
 → P-TAPER-ZERO-30D
 ```
 
-The neutral-ratio variants were rejected only by `GATE-NO-CYCLING-GROWTH`. This means their other safety, baseline, fairness and evidence gates passed, but the original cross-horizon growth problem remained in required cells.
+Neutral-ratio variants были отклонены только по `GATE-NO-CYCLING-GROWTH`. Их остальные safety, baseline, fairness и evidence gates прошли, но исходная cross-horizon growth problem сохранилась в required cells.
 
-A G1.4 survivor means only:
+Survivor G1.4 означает только:
 
-- the parameterization passed the frozen bounded screening gates;
-- it is eligible for separately authorized G1.5 confirmatory work;
-- at most one parameterization survived in its family.
+- parameterization прошла frozen bounded screening gates;
+- она eligible для отдельно разрешённой confirmatory работы G1.5;
+- в её семействе сохранилась не более чем одна parameterization.
 
-It does not mean:
+Survivor не означает:
 
-- final candidate selection;
-- superiority between STEP and TAPER;
+- выбор финального candidate;
+- превосходство STEP или TAPER;
 - production readiness;
-- human learning or motivation benefit;
-- approval to alter the add-on reward economy.
+- benefit для человеческого обучения или motivation;
+- разрешение менять reward economy add-on.
 
-## Reproducibility identities
+## Reproducibility identities и источник acceptance
 
 ```text
 base SHA:
@@ -308,8 +356,11 @@ base SHA:
 screened implementation SHA:
 a8857f111849e2e98744adda8e06fe1910bdf805
 
-canonical merge SHA:
+G1.4 historical merge SHA:
 d855baf7355bba3f4014370cafba3fdc6d0c0e3c
+
+current gamification HEAD at G1.5 task start:
+f595a47ecaaaf93cf345978de052cf4f4747b8ef
 
 manifest digest:
 40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c
@@ -321,41 +372,43 @@ external evidence bundle SHA-256:
 bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be
 ```
 
+G1.4 local research verification прошла согласно closeout ledger и являлась источником acceptance. GitHub combined status checks не были источником acceptance. Их отсутствие не требует rerun.
+
 ## Testing boundary
 
-The implementation was verified with:
+Реализация была проверена через:
 
-- clean-HEAD `R-CURRENT` parity;
-- boundary and registry tests;
+- clean-HEAD parity `R-CURRENT`;
+- boundary и registry tests;
 - focused reward/aggregation/runner tests;
-- manifest and gate-evaluator tests;
-- the complete research pytest suite after the final code change;
-- independent evidence and unit-digest validation.
+- tests manifest и gate evaluator;
+- полный research pytest suite после последнего изменения code;
+- независимую validation evidence и unit digests.
 
-Fast CI, Docker/real-Anki E2E and `.ankiaddon` packaging were intentionally not run because the change is isolated to research/docs and does not alter production/package surfaces.
+Fast CI, Docker/real-Anki E2E и `.ankiaddon` packaging намеренно не запускались, потому что изменения изолированы в research/docs и не затрагивают production/package surfaces.
 
-## Production and security boundary
+## Production и security boundary
 
-The G1.4 implementation has no path into:
+Implementation G1.4 не имеет пути в:
 
-- the add-on runtime;
-- dashboard payloads or APIs;
+- add-on runtime;
+- dashboard payloads или API;
 - Anki collection access;
 - local server/token handling;
-- sanitizer or preview behavior;
+- sanitizer или preview behavior;
 - package/release workflows;
-- telemetry or remote services.
+- telemetry или remote services.
 
-The simulator consumes deterministic synthetic inputs. It must not receive real profile exports, collection data, tokens or user-identifying records.
+Simulator потребляет deterministic synthetic inputs. В него запрещено передавать real profile exports, collection data, tokens или user-identifying records.
 
-## G1.5 handoff
+## Передача в G1.5
 
-G1.5 remains a separate stage and must be explicitly started. It may use only the two recorded survivors and the frozen confirmatory boundary. G1.5 must not silently:
+G1.5 остаётся отдельным этапом и должен запускаться явно. Он может использовать только двух зарегистрированных survivors и frozen confirmatory boundary.
 
-- revive rejected neutral-ratio variants;
-- alter G1.4 thresholds after seeing results;
-- treat the two families as already ranked;
-- call either survivor production-ready;
-- merge `gamification` into `master`.
+G1.5 не должен молча:
 
-See the [G1.4 full report](../../roadmap/gamification/g1-bounded-screening.md) for the implementation history, verification ledger, result analysis and final repository state.
+- возвращать rejected neutral-ratio variants;
+- менять thresholds G1.4 после просмотра results;
+- считать два семейства уже ранжированными;
+- называть любой survivor production-ready;
+- вливать `gamification` в `master`.
