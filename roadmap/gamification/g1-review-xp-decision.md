@@ -24,7 +24,7 @@ starting origin/gamification HEAD: 2b4b6a39dacb66732349211ebe553e9ab02d78a9
 starting comparison: exact identity with origin/gamification
 G1.4 PR: #146
 G1.5 PR: #153
-G1.6 PR: recorded by the merge that adds this closeout
+G1.6 PR: #154
 ```
 
 Основной WSL checkout владельца и Windows Downloads не были доступны в исполняемой среде ChatGPT. GitHub state проверялся через GitHub connector; mutation выполнена на отдельной task branch от exact starting HEAD без force push и без изменения `master`.
