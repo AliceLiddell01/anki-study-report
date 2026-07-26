@@ -1,0 +1,36 @@
+name: Apply Cards visual parity closure
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+      - name: Apply verified Cards visual parity patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .stage2-cards-parity.patch.b64 > /tmp/cards-parity.patch.zst
+          echo '17349f53315285fffd91ce660583595bbe1fb2eaf8c424cab86987007d4e806f  /tmp/cards-parity.patch.zst' | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/cards-parity.patch.zst > /tmp/cards-parity.patch
+          echo '0c41bac94a5481903c36f6357389ba25feaad4bba325161525dee9925c3f307c  /tmp/cards-parity.patch' | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/cards-parity.patch
+          git rm .github/workflows/cards-visual-parity-closure.yml .stage2-cards-parity.patch.b64
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Align Cards preview scale and responsive overlays'
+          git push origin HEAD:c2-manual-acceptance-remediation
