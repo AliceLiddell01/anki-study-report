@@ -54,7 +54,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён, Cards 1:1 production integration по Prototype v3.2.3 реализована и ожидает решения владельца; Inspection Profiles 1:1 ещё не начата. Merge PR, final verification и C3 не выполнялись.
+- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён, [Cards 1:1 production integration](docs/cards-v323-production-workspace.md) по Prototype v3.2.3 реализована и ожидает решения владельца; [полный Stage 2 report](reports/core/c2-cards-v323-production-integration.md) фиксирует verification и visual evidence. Inspection Profiles 1:1 ещё не начата; merge PR, final verification и C3 не выполнялись.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 

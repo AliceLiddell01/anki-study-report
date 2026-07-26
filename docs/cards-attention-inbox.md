@@ -2,9 +2,9 @@
 
 ## Статус
 
-Этот контракт описывает `C1.5R.5 — переработка очереди карточек, требующих внимания` для `#/cards`.
+Этот контракт описывает data, queue, filtering, continuation и accessibility semantics `#/cards`, сформированные в C1.5R/C1.6 и сохранённые при Stage 2 production recomposition.
 
-Он заменяет отклонённую таблицу C1.5 в стиле электронной таблицы. Компоновка C1.5R.5 принята владельцем в составе C1.5R.7 и расширена в C1.6 без изменения структуры очереди, Inspector, выдвижной панели или предпросмотра.
+Актуальная visual composition закреплена в [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md). Она заменяет прежнюю wide-layout модель «большая очередь + отдельный Inspector», не меняя Triage/Search APIs, native preview, action/recheck authority или security boundaries.
 
 ## Выбранная структура
 
@@ -12,13 +12,14 @@
 Вариант A — плотная очередь с приоритетом идентичности отображения
 
 широкий desktop (>= 1200 CSS px)
-компактная сводка и фильтры
-упорядоченная очередь | постоянный Inspector
+compact header + Refresh + coverage disclosure
+compact queue rail | active workspace
+в active workspace: dominant native preview | resolution rail
 
 узкий desktop (< 1200 CSS px)
-компактная сводка и фильтры
-очередь на всю ширину
-немодальная панель подробностей после явной активации
+compact header + queue на всю ширину
+body-level немодальная detail drawer после явной активации
+в drawer: native preview → resolution flow
 ```
 
 Старая таблица не сохраняется как переключатель, feature flag, скрытый fallback или responsive-alias. Tiles, tabs и семантика ARIA `grid` и `listbox` отклонены.
@@ -56,14 +57,11 @@
 
 `CardsDetail` совместно используется широким Inspector и узкой выдвижной панелью. Одновременно существует ровно одна поверхность подробностей и один активный host предпросмотра.
 
-### Широкий Inspector
+### Широкий active workspace
 
-Inspector участвует в естественной прокрутке страницы и не создаёт второй вертикальный scroll container. Собственный scroll остаётся у левой очереди; после технических сведений нет искусственного safe-area padding. Identity, metadata, причины и action zone образуют мягкие смысловые группы без набора одинаковых вложенных карточек.
+Top-level grid использует compact queue rail `clamp(300px, 23vw, 334px)` и active workspace на оставшейся ширине. Внутри workspace preview доминирует над resolution rail: `minmax(620px, 2.2fr) minmax(286px, 1fr)`; на 1200–1500 px применяется более узкий bounded вариант.
 
-- постоянный семантический `aside`;
-- sticky и при необходимости независимо прокручиваемый;
-- ширина `clamp(380px, 34vw, 520px)`;
-- колонка очереди не сжимается уже 560 px.
+Queue list владеет собственным scroll. Active workspace не создаёт повторяющуюся колонку административных panels: identity header, native preview и resolution rail образуют одну surface. Rail может прокручиваться независимо при большом числе причин, а preview сохраняет рабочую площадь.
 
 ### Узкая выдвижная панель
 
@@ -82,16 +80,19 @@ Inspector участвует в естественной прокрутке ст
 
 ## Содержимое подробностей и предпросмотр
 
-Порядок разделов:
+Порядок визуального чтения:
 
-1. единое состояние жизненного цикла;
-2. приоритет и полная компактная идентичность;
-3. компактные метаданные и все канонические причины;
-4. безопасный нативный предпросмотр лицевой стороны и модальный ответ;
-5. рекомендуемый следующий шаг;
-6. одна зона Safe Actions или Open in Anki;
-7. результат операции, явный recheck и reconciliation;
-8. переход к Inspection Profile и свёрнутые технические подробности.
+1. lifecycle/state marker и compact identity;
+2. deck, note type, template и card state;
+3. dominant safe native front preview;
+4. resolution rail: `Почему`;
+5. resolution rail: `Что сделать`;
+6. resolution rail: `Выполнение / результат`;
+7. применимые Safe Actions/Open in Anki и authoritative recheck;
+8. переход к Inspection Profile только для content reasons;
+9. свёрнутые технические подробности.
+
+Ответ/back открывается только в существующем accessible modal. Wide workspace и drawer используют один `CardsDetail` component tree.
 
 Только активный элемент запрашивает schema v2 просмотра Search. Элементы очереди не рендерят HTML предпросмотра и не читают media. Один cache просмотра переиспользуется Inspector, выдвижной панелью и расширенным ответом.
 
@@ -147,13 +148,15 @@ Inspector участвует в естественной прокрутке ст
 
 ## Фильтры и покрытие
 
-Локальные фильтры уже загруженной очереди:
+Постоянно видимы local text search и compact filter toggle. Остальные локальные фильтры уже загруженной очереди раскрываются по запросу:
 
 - приоритет;
 - семейство или точная причина;
 - колода;
-- локальное совпадение по видимому тексту;
-- clear filters при активных фильтрах, не относящихся к периоду.
+- период обучения;
+- clear filters при активных filters.
+
+Активные значения показываются compact chips. Permanent filter wall отсутствует.
 
 Query scope и utilities отделены от локальных фильтров:
 
@@ -180,7 +183,7 @@ Refresh не очищает текущую очередь: region получае
 - переиспользует канонические детекторы Triage v4;
 - работает по принципу fail closed при частичном, недоступном или устаревшем подтверждении;
 - выполняет reconciliation по стабильному `reasonId`;
-- удаляет элемент только после полностью авторитетного результата без причин.
+- переводит элемент в `resolved` только после полностью авторитетного результата без причин.
 
 Возможные состояния:
 
@@ -192,7 +195,7 @@ Recheck failed
 Evidence stale
 ```
 
-После полного устранения фокус детерминированно переходит на следующий элемент, предыдущий элемент или заголовок очереди.
+После полного устранения та же canonical entity остаётся transient success projection: active reasons и priority отсутствуют, row исключена из active count, а единственный primary control `К следующей карточке` закрывает подтверждение. Только после этого row удаляется, и фокус детерминированно переходит на следующий элемент, предыдущий элемент или заголовок очереди. Этот control не является manual Resolve: authority уже получена от recheck endpoint.
 
 Полный контракт: [`cards-v2-resolution-loop.md`](cards-v2-resolution-loop.md).
 

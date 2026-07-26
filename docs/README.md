@@ -31,6 +31,7 @@ reports/    исторические evidence и завершённые пров
 ### Cards и Inspection Profiles
 
 - [Cards v2 product contract](cards-v2-product-contract.md)
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md)
 - [Triage read API](cards-v2-triage-read-api.md)
 - [Canonical single-card resolution loop](cards-v2-resolution-loop.md)
 - [Cards attention inbox](cards-attention-inbox.md)

@@ -165,16 +165,16 @@ Suggestion не становится authority автоматически. По�
 
 ```text
 широкий desktop >= 1200 px
-компактная сводка и фильтры
-упорядоченная семантическая очередь | постоянный Inspector
+compact header + Refresh + coverage disclosure
+compact queue rail | active card workspace
+внутри workspace: dominant native preview | resolution rail
 
 узкий desktop < 1200 px
-компактная сводка и фильтры
-очередь на всю ширину
-немодальная панель подробностей после явной активации
+compact header + очередь на всю ширину
+body-level немодальная detail drawer после явной активации
 ```
 
-Таблица в стиле электронной таблицы, tiles и равноправный переключатель режимов отсутствуют.
+Таблица в стиле электронной таблицы, tiles и равноправный переключатель режимов отсутствуют. Полная visual composition: [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md).
 
 Локальные фильтры уже загруженной очереди отделены от query scope и utilities. Активные фильтры видны как компактные состояния, сводка не дублирует queue anatomy, а покрытие источников представлено один раз через disclosure.
 
@@ -182,18 +182,17 @@ Suggestion не становится authority автоматически. По�
 
 Checkbox отсутствует. Ограниченные массовые действия относятся только к условному C1.6B.
 
-## Inspector
+## Active card workspace
 
-Разделы:
+Порядок чтения:
 
-1. единое состояние жизненного цикла;
-2. приоритет и компактная идентичность;
-3. метаданные и все причины в текущем scope;
-4. безопасный предпросмотр лицевой стороны;
-5. рекомендуемый следующий шаг;
-6. одна зона применимых Safe Actions или Open in Anki;
-7. результат и явный recheck;
-8. технические подробности и источник Inspection Profile.
+1. lifecycle/state marker и compact identity;
+2. metadata карточки;
+3. dominant safe native front preview;
+4. resolution rail: причины;
+5. resolution rail: рекомендуемый следующий шаг;
+6. resolution rail: выполнение, результат и authoritative recheck;
+7. technical details и источник Inspection Profile в collapsed disclosure.
 
 Полный ответ открывается через существующий доступный модальный диалог. Editor полей или шаблонов отсутствует.
 
@@ -231,10 +230,12 @@ Reconciliation причин:
 - оставшиеся причины обновляют элемент на месте;
 - сочетание удалённых и оставшихся причин даёт Partially resolved;
 - новые причины показываются явно;
-- отсутствие причин удаляет элемент только при полностью авторитетном ответе;
+- отсутствие причин создаёт transient `resolved` projection только при полностью авторитетном ответе;
+- resolved projection не содержит active reasons/priority и исключается из active count;
+- `К следующей карточке` закрывает success projection, но не определяет resolution вручную;
 - частичное, недоступное, устаревшее, отсутствующее или изменённое состояние работает по принципу fail closed.
 
-После удаления фокус переходит на следующий элемент, затем предыдущий, затем заголовок очереди.
+После `К следующей карточке` row удаляется, а фокус переходит на следующий элемент, затем предыдущий, затем заголовок очереди.
 
 Запрещены действия Done, Resolve, Hide forever, Ignore permanently, Archive и Snooze.
 

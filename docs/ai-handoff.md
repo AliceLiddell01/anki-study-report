@@ -60,12 +60,18 @@ Fast CI: 30173712679 — PASS
 standard/full + restart: 30174041436 — PASS
 package SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
 Stage 1 synchronization/overlay cleanup: complete
-Cards 1:1 implementation/evidence: awaiting owner decision
-Inspection Profiles 1:1: not started
-PR merge/final verification/C3: not performed
+Cards 1:1 production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
+Cards 1:1 implementation/evidence: COMPLETE / owner decision PENDING
+Inspection Profiles 1:1: NOT STARTED
+PR merge/final verification/C3: NOT PERFORMED
 ```
 
-Подробный closeout: [C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md).
+Актуальный Cards contract: [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md).
+
+Reports:
+
+- [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
+- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md).
 
 ## Platform / CI
 

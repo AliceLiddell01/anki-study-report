@@ -7,7 +7,7 @@
 **Рабочая ветка:** `c2-manual-acceptance-remediation`
 **Проверенный production candidate:** `a746172f8746eac82ff628d36a7a6328d9332acf`
 **Pull request:** `#130`
-**Статус:** автоматизированная remediation и exact package/E2E campaign технически завершены; документационный closeout опубликован; PR остаётся открытым draft, ручной owner acceptance на приватной коллекции и отдельное решение об интеграции не выполнены.
+**Статус historical Stage 1:** автоматизированная remediation и exact package/E2E campaign технически завершены; этот report не является closeout новой Cards v3.2.3 composition. Stage 2 описан отдельно в [Cards Prototype v3.2.3 production integration](c2-cards-v323-production-integration.md). PR остаётся открытым draft.
 
 ## 1. Итог этапа
 
@@ -332,4 +332,4 @@ Fast CI / Docker E2E in Stage 2: NOT RUN
 merge / release / C3: NOT PERFORMED
 ```
 
-Предыдущий exact Fast CI и real-Anki E2E остаются baseline evidence Stage 1 и не выдаются за доказательство новой Cards composition.
+Предыдущий exact Fast CI и real-Anki E2E остаются baseline evidence Stage 1 и не выдаются за доказательство новой Cards composition. Полный Stage 2 implementation/evidence ledger: [C2 Cards Prototype v3.2.3 production integration](c2-cards-v323-production-integration.md).

@@ -1,1 +1,0 @@
-Temporary verified transport for the Cards Stage 2 documentation closeout. Removed by the bounded workflow after the reviewed patch is applied.

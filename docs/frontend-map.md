@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-**Снимок документации:** 2026-07-22
+**Снимок документации:** 2026-07-26
 
 Актуальные контракты находятся в `docs/`, последовательность работ — в `roadmap/`, исторические отчёты и аудиты — в `reports/`.
 
@@ -57,11 +57,13 @@ metadata Search: schema v1
 
 ```text
 CardsPage
-├─ компактная сводка, локальные фильтры очереди и отдельный scope запроса
-├─ одно disclosure покрытия источников и профилей
-└─ CardsInbox — упорядоченный семантический список
-   ├─ >= 1200 px: постоянный Inspector CardsDetail
-   └─ < 1200 px: очередь на всю ширину + CardsDetailDrawer
+├─ compact page header: Refresh + coverage disclosure
+├─ CardsInbox: compact ordered queue rail
+│  ├─ search + filter disclosure + active chips
+│  └─ canonical row / transient resolved row
+└─ CardsDetail: one active workspace implementation
+   ├─ >= 1200 px: dominant preview + resolution rail
+   └─ < 1200 px: body-level non-modal CardsDetailDrawer
 ```
 
 Основные модули:
@@ -82,9 +84,9 @@ styles/cardsInbox.css
 
 Очередь — обычный `<ol>` с одной нативной кнопкой на элемент. Это не `table`, ARIA `grid`, `listbox` или составной элемент с roving tabindex. Фокус и активный элемент разделены.
 
-В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. При 1024 px постоянный Inspector и автоматический запрос предпросмотра отсутствуют; явная активация открывает подписанную немодальную панель без backdrop, `aria-modal`, inert-оболочки и focus trap.
+В широком режиме первый доступный для просмотра элемент выбирается без перемещения фокуса. Queue rail занимает `clamp(300px, 23vw, 334px)`, а active workspace использует оставшуюся ширину для native preview и bounded resolution rail. При 1024 px wide workspace и автоматический inspect отсутствуют; явная активация открывает подписанную немодальную панель без backdrop, `aria-modal`, inert-оболочки и focus trap.
 
-Граница layout точная: постоянный Inspector существует при `>= 1200 px`, drawer — при `< 1200 px`. Drawer имеет непрозрачную поверхность, явную левую границу, компактный sticky header и внутренний scroll; utility dock перемещается за пределы drawer.
+Граница layout точная: active workspace существует при `>= 1200 px`, drawer — при `< 1200 px`. Drawer имеет непрозрачную поверхность, явную левую границу, компактный sticky header и внутренний scroll; utility dock перемещается за пределы drawer.
 
 Предпросмотр ответа остаётся единственным модальным диалогом.
 
@@ -132,8 +134,10 @@ idle
 - `recheckTriageCard()` вызывает строгий `/api/triage/recheck` v1;
 - reconciliation сравнивает стабильные `reasonId`;
 - оставшиеся и новые причины обновляют элемент на месте;
-- элемент удаляется только после полностью авторитетного ответа без причин;
-- после удаления фокус выбирает следующий или предыдущий элемент либо заголовок очереди.
+- полностью авторитетный ответ без причин создаёт transient `resolved` projection той же canonical entity;
+- resolved row не содержит active reasons/priority и исключается из active count;
+- `advanceResolved()` удаляет projection только после явного `К следующей карточке`;
+- после `advanceResolved()` фокус выбирает следующий или предыдущий элемент либо заголовок очереди.
 
 Safe Actions и Open in Anki остаются существующими путями. Массовое и ручное определение устранения отсутствует.
 
@@ -191,6 +195,8 @@ production-сборка — PASS
 ограничение bundle — PASS, entry 430 646 байт
 ```
 
+Актуальный composition contract: [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md).
+
 ## Текущий статус Core
 
 ```text
@@ -198,5 +204,5 @@ C1.5R.0–R.7 — завершено; принято владельцем
 C1.6 — завершено; принято владельцем; влито в core
 C1.6B — условный этап; не начат
 Core C1 — завершён
-C2 — закрыт и включён в `core`; текущая post-merge manual acceptance remediation не создаёт нового roadmap stage
+C2 base — закрыт и включён в `core`; PR #130 Stage 2 Cards 1:1 implementation/evidence complete, owner checkpoint pending; Inspection Profiles 1:1 not started
 ```
