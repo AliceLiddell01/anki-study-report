@@ -9,7 +9,8 @@ G1.2/G1.2a: Complete
 G1.3 protocol: Frozen / Complete
 G1.4 bounded screening: Complete
 G1.4 survivors: P-STEP-ZERO; P-TAPER-ZERO-30D
-G1.5: Next / Ready; not started
+G1.5: Complete; both survivors CONFIRMATORY_ELIGIBLE
+G1.6: Next / not started
 ```
 
 The package is isolated under `research/gamification-sim/`. It has no production imports, root dependency changes, Fast CI/package/release integration, real Anki profile data, collection data or tokens.
@@ -39,6 +40,10 @@ rust-oracle/   isolated Rust implementation
 - [G1.3 report](../../roadmap/gamification/g1-candidate-protocol.md)
 - [G1.4 technical reference](../../docs/gamification/review-xp-bounded-screening.md)
 - [G1.4 full report](../../roadmap/gamification/g1-bounded-screening.md)
+- [G1.5 machine protocol](contracts/review-xp-confirmatory-protocol-v1.json)
+- [G1.5 strict schema](schemas/review-xp-confirmatory-protocol-v1.schema.json)
+- [G1.5 human protocol](../../docs/gamification/review-xp-confirmatory-protocol.md)
+- [G1.5 closeout](../../roadmap/gamification/g1-confirmatory-evidence.md)
 
 G1.4 added an isolated typed mechanism registry, execution context and deterministic bounded-screening harness without changing production code, scheduler/FSRS semantics or the default `R-CURRENT` result.
 
@@ -58,6 +63,19 @@ evidence digest:
 836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694
 ```
 
+G1.5 executed the prospectively published 840-unit confirmatory matrix on implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`. Both `P-STEP-ZERO` and `P-TAPER-ZERO-30D` received `CONFIRMATORY_ELIGIBLE`; no ranking or final selection occurred.
+
+```text
+manifest digest:
+eea4e2ed6da087f7ac45eb56d9390b23e44ce52837b5f1d015afb3276049c728
+
+evidence digest:
+9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa
+
+external evidence bundle SHA-256:
+90b2132cbe46edeb2a28e6f9ae81de311807353dd5e0826cbe8d3a6af41a85fb
+```
+
 ## Available command surface
 
 The research package includes:
@@ -65,14 +83,17 @@ The research package includes:
 ```text
 validate-bounded-screening
 run-bounded-screening
+validate-confirmatory-protocol
+validate-confirmatory-evidence
+run-confirmatory
 ```
 
-The runner validates the frozen protocol/schema and exact 160-unit manifest, requires exact base/implementation SHA provenance, evaluates non-compensable hard gates and writes deterministic external evidence. It does not choose a final candidate or integrate with production.
+The G1.4 runner validates the frozen 160-unit screening contract. The G1.5 runner validates the frozen 840-unit confirmatory contract, requires exact published implementation/base provenance, recomputes non-compensable gates and writes deterministic external evidence. Neither runner ranks families, chooses a final candidate or integrates with production.
 
 See the [technical reference](../../docs/gamification/review-xp-bounded-screening.md) for command syntax, mechanism semantics, output layout, fail-closed validation and G1.5 handoff constraints.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a and the recorded G1.4 identities are current synthetic evidence. The raw G1.4 bundle remains external to Git with SHA-256 `bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be`; its semantic evidence digest is `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`.
+G0.7, G1.2a, G1.4 and G1.5 are current synthetic evidence. The raw G1.4 bundle remains external to Git with SHA-256 `bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be`; its semantic evidence digest is `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`. The raw G1.5 bundle remains external with SHA-256 `90b2132cbe46edeb2a28e6f9ae81de311807353dd5e0826cbe8d3a6af41a85fb`; its semantic evidence digest is `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`.
 
 Historical reports remain non-authoritative where they conflict. The package is research-only and is not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.

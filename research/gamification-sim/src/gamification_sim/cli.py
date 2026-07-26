@@ -51,6 +51,14 @@ from .bounded_screening import (
     validate_screening_manifest,
     write_bounded_screening_reports,
 )
+from .confirmatory import (
+    build_confirmatory_manifest,
+    load_and_validate_confirmatory_evidence,
+    render_confirmatory_summary,
+    run_confirmatory,
+    validate_confirmatory_manifest,
+    write_confirmatory_reports,
+)
 from .validation import close
 from .workspace import ResearchWorkspace, default_output_root, resolve_research_workspace
 
@@ -190,6 +198,26 @@ def build_parser() -> argparse.ArgumentParser:
     screening.add_argument("--output-dir", type=Path)
     screening.add_argument("--no-write", action="store_true")
 
+    subparsers.add_parser(
+        "validate-confirmatory-protocol",
+        help="validate the frozen G1.5 protocol and exact 840-unit manifest",
+    )
+
+    validate_confirmatory_evidence = subparsers.add_parser(
+        "validate-confirmatory-evidence",
+        help="strictly validate detached G1.5 confirmatory evidence",
+    )
+    validate_confirmatory_evidence.add_argument("evidence", type=Path)
+
+    confirmatory = subparsers.add_parser(
+        "run-confirmatory",
+        help="run the frozen G1.5 840-unit confirmatory matrix",
+    )
+    confirmatory.add_argument("--implementation-sha", required=True)
+    confirmatory.add_argument("--base-sha", required=True)
+    confirmatory.add_argument("--output-dir", type=Path)
+    confirmatory.add_argument("--no-write", action="store_true")
+
     rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
     rust.add_argument("--parameter-set", required=True)
     rust.add_argument("--corpus", type=Path)
@@ -232,6 +260,34 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args, workspace: ResearchWorkspace) -> int:
+    if args.command == "validate-confirmatory-protocol":
+        manifest = build_confirmatory_manifest(workspace)
+        validate_confirmatory_manifest(manifest)
+        print(
+            f"VALID {manifest['manifest_version']} "
+            f"{manifest['actual_unique_units']} unique units "
+            f"{manifest['manifest_digest']}"
+        )
+        return 0
+    if args.command == "validate-confirmatory-evidence":
+        payload = load_and_validate_confirmatory_evidence(args.evidence)
+        print(
+            f"VALID {payload['evidence_version']} "
+            f"{payload['evidence_digest']}"
+        )
+        return 0
+    if args.command == "run-confirmatory":
+        payload = run_confirmatory(
+            workspace,
+            implementation_sha=args.implementation_sha,
+            base_sha=args.base_sha,
+            exact_command=" ".join(sys.argv),
+        )
+        print(render_confirmatory_summary(payload), end="")
+        if not args.no_write:
+            run_dir = write_confirmatory_reports(payload, args.output_dir)
+            print(f"reports: {run_dir}", file=sys.stderr)
+        return 0
     if args.command == "validate-bounded-screening":
         manifest = build_screening_manifest(workspace)
         validate_screening_manifest(manifest)

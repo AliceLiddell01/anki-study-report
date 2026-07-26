@@ -67,8 +67,10 @@ G1.2 и G1.2a correction — Complete
 G1.3 — Complete
 G1.4 — Complete
 G1.4 survivors — P-STEP-ZERO; P-TAPER-ZERO-30D
+G1.5 — Complete
+G1.5 outcomes — both CONFIRMATORY_ELIGIBLE
 final candidate selected — NO
-G1.5 — Next / Ready; started — NO
+G1.6 — Next / not started
 production integration — PROHIBITED
 ```
 
@@ -76,7 +78,7 @@ G1.2a оставляет root cause частично локализованны�
 
 G1.4 завершён на опубликованной implementation `a8857f111849e2e98744adda8e06fe1910bdf805`. Exact matrix дала `160/160` unique units, `0/0/0` missing/extra/duplicates и evidence digest `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`.
 
-По одному survivor сохранено в каждой family: `P-STEP-ZERO` и `P-TAPER-ZERO-30D`. Оба neutral-ratio варианта отклонены только из-за сохраняющегося positive cross-horizon growth. Это не final candidate selection и не production approval. Следующая отдельная задача — только G1.5; она не начата.
+G1.5 выполнил prospectively frozen 840-unit matrix на published implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`: `840/840` unique units, `0/0/0` missing/extra/duplicates, evidence digest `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`. `P-STEP-ZERO` и `P-TAPER-ZERO-30D` получили `CONFIRMATORY_ELIGIBLE`. Ranking, final candidate selection и production approval не выполнялись. G1.6 — следующий отдельный этап, но он не начат.
 
 Точные источники:
 
@@ -85,6 +87,8 @@ G1.4 завершён на опубликованной implementation `a8857f11
 - [`../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json`](../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json)
 - [`../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json`](../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json)
 - [G1.4 bounded screening closeout](../roadmap/gamification/g1-bounded-screening.md)
+- [G1.5 confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
+- [G1.5 confirmatory closeout](../roadmap/gamification/g1-confirmatory-evidence.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
 

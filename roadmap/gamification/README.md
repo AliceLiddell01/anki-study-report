@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 In Progress`; `G1.4 Complete`; two family-level survivors recorded; `G1.5 Next / Ready` but not started; production integration not approved
+**Current status:** `G0 Complete`; `G1 In Progress`; `G1.5 Complete`; two confirmatory-eligible family-level survivors recorded; `G1.6 Next / not started`; final candidate not selected; production integration not approved
 
 Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -47,8 +47,8 @@ G0 reproduced the current synthetic baseline without production integration. The
   - `G1.2a — Attribution contract and evidence correction`: nested corrective checkpoint, Complete — [report](g1-root-cause-attribution-correction.md)
 - `G1.3 — Candidate protocol and hypothesis design`: Complete — [report](g1-candidate-protocol.md)
 - `G1.4 — Bounded screening`: Complete — [full report](g1-bounded-screening.md), [technical reference](../../docs/gamification/review-xp-bounded-screening.md)
-- `G1.5 — Confirmatory 90/365, robustness and safety evidence`: Next / Ready; not started
-- `G1.6 — Candidate decision and G1 closure`: Planned after G1.5
+- `G1.5 — Confirmatory 90/365, robustness and safety evidence`: Complete — [report](g1-confirmatory-evidence.md), [protocol](../../docs/gamification/review-xp-confirmatory-protocol.md)
+- `G1.6 — Candidate decision and G1 closure`: Next / not started; separate activation required
 
 The duplicated top-level G1.2a row is removed: G1.2a is a correction nested under G1.2.
 
@@ -93,7 +93,25 @@ Family-level survivors:
 - `F-POST-TRANSITION-MG-STEP` → `P-STEP-ZERO`;
 - `F-POST-TRANSITION-MG-TAPER` → `P-TAPER-ZERO-30D`.
 
-Both neutral-ratio parameterizations were rejected solely by `GATE-NO-CYCLING-GROWTH`; all other hard gates and protected invariants passed. G1.4 does not select a final candidate between families. `R-CURRENT` remains the regression reference, production remains prohibited and G1.5 has not started.
+Both neutral-ratio parameterizations were rejected solely by `GATE-NO-CYCLING-GROWTH`; all other hard gates and protected invariants passed. G1.4 did not select a final candidate between families. `R-CURRENT` remains the regression reference and production remains prohibited.
+
+### G1.5 confirmatory result
+
+G1.5 executed the prospectively published 840-unit matrix on implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`.
+
+```text
+expected / actual unique units: 840 / 840
+missing / extra / duplicates: 0 / 0 / 0
+manifest digest: eea4e2ed6da087f7ac45eb56d9390b23e44ce52837b5f1d015afb3276049c728
+evidence digest: 9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa
+```
+
+Outcomes:
+
+- `P-STEP-ZERO` → `CONFIRMATORY_ELIGIBLE`;
+- `P-TAPER-ZERO-30D` → `CONFIRMATORY_ELIGIBLE`.
+
+All required gates passed for both survivors. No ranking, final candidate selection or production approval occurred. G1.6 is the next decision stage but has not started.
 
 ### G1 goal and closure boundary
 
@@ -137,4 +155,4 @@ DEFER_REVIEW_MODEL
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, package, release or telemetry integration is approved. `G1.5` is the only next Gamification stage; it is ready for a separate task but has not started.
+No production add-on, dashboard, payload, API, migration, package, release or telemetry integration is approved. `G1.6` is the next Gamification stage but is not started and requires a separate task.

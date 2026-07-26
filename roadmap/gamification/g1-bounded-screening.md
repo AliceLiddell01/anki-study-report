@@ -1,10 +1,10 @@
-# G1.4 — Bounded screening full report
+# G1.4 — Полный отчёт bounded screening
 
-## Executive summary
+## Итоговая сводка
 
-G1.4 is complete.
+G1.4 завершён.
 
-The stage recovered and integrated the previously unfinished Review XP candidate mechanism, proved that the default `R-CURRENT` behavior remained unchanged, published the implementation before viewing screening results, executed exactly the frozen 160-unit matrix and recorded one survivor in each candidate family.
+Этап восстановил и интегрировал ранее незавершённый механизм кандидатов Review XP, доказал неизменность поведения `R-CURRENT` по умолчанию, опубликовал реализацию до просмотра результатов screening, выполнил ровно зафиксированную матрицу из 160 units и зарегистрировал по одному survivor в каждом семействе кандидатов.
 
 ```text
 G1.4: COMPLETE
@@ -13,7 +13,7 @@ final candidate selected: NO
 production integration: PROHIBITED
 ```
 
-The two family-level survivors are:
+Survivors на уровне семейств:
 
 ```text
 F-POST-TRANSITION-MG-STEP
@@ -23,13 +23,13 @@ F-POST-TRANSITION-MG-TAPER
 → P-TAPER-ZERO-30D
 ```
 
-The two neutral-ratio parameterizations were rejected solely by `GATE-NO-CYCLING-GROWTH`. All their other hard gates and protected invariants passed.
+Обе parameterization с neutral-ratio были отклонены только по `GATE-NO-CYCLING-GROWTH`. Все остальные hard gates и защищённые invariants у них прошли.
 
-G1.4 does not rank STEP against TAPER, does not select a final Review XP candidate and does not authorize production integration.
+G1.4 не ранжирует STEP относительно TAPER, не выбирает финального кандидата Review XP и не разрешает production integration.
 
-For the implemented command surface and operational contract, see the [G1.4 technical reference](../../docs/gamification/review-xp-bounded-screening.md).
+Реализованный command surface и операционный контракт описаны в [технической справке G1.4](../../docs/gamification/review-xp-bounded-screening.md).
 
-## Final repository and delivery state
+## Финальное состояние репозитория и доставки
 
 ```text
 canonical branch:
@@ -47,46 +47,51 @@ closeout commit SHA:
 PR:
 #146
 
-canonical G1.4 merge SHA:
+G1.4 historical merge SHA:
 d855baf7355bba3f4014370cafba3fdc6d0c0e3c
+
+current gamification HEAD at G1.5 task start:
+f595a47ecaaaf93cf345978de052cf4f4747b8ef
 ```
 
-PR #146 was merged with a normal two-parent merge commit. The task branch was removed remotely, the local task branch and remote-tracking ref were removed, and the linked task worktree was deleted after canonical merge verification.
+`d855baf7355bba3f4014370cafba3fdc6d0c0e3c` — исторический merge SHA этапа G1.4. Он не является текущим `gamification` HEAD: к началу задачи G1.5 каноническая ветка уже находилась на `f595a47ecaaaf93cf345978de052cf4f4747b8ef`.
 
-The owner's unrelated canonical checkout remained on its existing Core remediation branch and was not switched, reset or cleaned by the G1.4 workflow.
+PR #146 был влит обычным двухродительским merge commit. После проверки канонического merge удалённая task-ветка, локальная task-ветка, remote-tracking ref и linked task worktree были удалены.
 
-## Stage purpose
+Несвязанный canonical checkout владельца оставался на своей ветке Core remediation и не переключался, не сбрасывался и не очищался процессом G1.4.
 
-G1.3 froze two post-transition MemoryGain mechanism families and four predefined parameterizations. G1.4 had one bounded responsibility:
+## Назначение этапа
 
-> Implement the frozen mechanism without changing protocol semantics, execute exactly the registered matrix and retain at most one passing parameterization per family for later confirmatory work.
+G1.3 зафиксировал два семейства механизмов post-transition MemoryGain и четыре заранее определённые parameterization. У G1.4 была одна ограниченная ответственность:
 
-The stage was not allowed to:
+> Реализовать зафиксированный механизм без изменения семантики protocol, выполнить ровно зарегистрированную матрицу и оставить не более одной прошедшей parameterization в каждом семействе для последующей confirmatory работы.
 
-- alter the protocol, schema, coefficient endpoints or thresholds after observing results;
-- add variants, seeds, replicas, horizons, policy pairs or populations;
-- perform adaptive or rescue search;
-- select a final candidate between the two families;
-- change FSRS or scheduling behavior;
-- modify production add-on, dashboard, API, package or release surfaces;
-- begin G1.5 automatically.
+Этапу запрещалось:
 
-## Authoritative inputs
+- изменять protocol, schema, coefficient endpoints или thresholds после просмотра результатов;
+- добавлять variants, seeds, replicas, horizons, policy pairs или populations;
+- выполнять adaptive search или rescue search;
+- выбирать финального кандидата между двумя семействами;
+- менять FSRS или scheduling behavior;
+- изменять production add-on, dashboard, API, package или release surfaces;
+- автоматически начинать G1.5.
 
-The following frozen inputs governed the stage:
+## Авторитетные входные данные
 
-- [G1.3 human protocol](../../docs/gamification/review-xp-candidate-protocol.md);
+Этапом управляли следующие зафиксированные источники:
+
+- [человекочитаемый protocol G1.3](../../docs/gamification/review-xp-candidate-protocol.md);
 - [machine protocol](../../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json);
-- [strict Draft 2020-12 schema](../../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json);
-- current longitudinal configuration `configs/review-longitudinal-v0.1.json`;
-- current matched policy-pair catalog;
-- current research source and tests on `gamification`.
+- [строгая Draft 2020-12 schema](../../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json);
+- актуальная longitudinal configuration `configs/review-longitudinal-v0.1.json`;
+- актуальный каталог matched policy pairs;
+- актуальный research source и tests ветки `gamification`.
 
-The machine protocol had higher authority than historical fallback wording when resolving the day-60 boundary.
+При определении day-60 boundary machine protocol имел более высокий приоритет, чем историческая fallback-формулировка.
 
-## Scientific starting point
+## Научная исходная точка
 
-G1.2a left the Review XP root cause only partially localized:
+После G1.2a root cause Review XP оставался локализован только частично:
 
 ```text
 classification: ROOT_CAUSE_PARTIALLY_LOCALIZED
@@ -98,24 +103,24 @@ post_transition share: 0.8565121323195105
 Challenge direction-consistent: false
 ```
 
-The attribution was synthetic and post-hoc. It supported bounded prospective hypotheses but did not establish one uniquely correct reward formula.
+Attribution был синтетическим и post-hoc. Он позволял сформулировать ограниченные prospective hypotheses, но не доказывал существование единственной правильной reward formula.
 
-## Recovery and integration history
+## История восстановления и интеграции
 
-### Missing original worktree
+### Отсутствующий исходный worktree
 
-The earlier local implementation worktree and branch no longer existed when G1.4 resumed. The following recovery sources remained:
+При возобновлении G1.4 прежние локальные implementation worktree и branch уже отсутствовали. Сохранились:
 
 - implementation backup;
-- worktree metadata backup;
-- old baseline worktree;
+- backup metadata worktree;
+- старый baseline worktree;
 - task-specific Python 3.11.9 environment.
 
-No destructive repair, reset, clean or blind patch application was performed.
+Destructive repair, reset, clean и слепое применение patch не выполнялись.
 
-### Backup integrity
+### Целостность backup
 
-The recovery bundle was independently checked before use:
+Перед использованием recovery bundle был независимо проверен:
 
 ```text
 recorded working files: 8
@@ -129,38 +134,38 @@ patch failures: 0
 result: BACKUP_INTEGRITY_PASS
 ```
 
-The recovered implementation consisted of six modified files and two new files in the research package.
+Восстановленная реализация состояла из шести изменённых и двух новых файлов research package.
 
-### Integration onto current `gamification`
+### Интеграция на актуальный `gamification`
 
-The old implementation was based on an earlier repository state. It was not copied wholesale over the current branch.
+Старая реализация была основана на более раннем состоянии репозитория и не копировалась целиком поверх актуальной ветки.
 
-A fresh linked worktree was created from exact `origin/gamification` SHA `54dd47cc2817b9c07fad81da29fa666a0423c4e7`. The tracked patch was first validated against that base, then the six tracked changes and two new files were restored. The resulting dirty set was required to contain exactly those eight paths.
+Свежий linked worktree был создан от точного `origin/gamification` SHA `54dd47cc2817b9c07fad81da29fa666a0423c4e7`. Сначала tracked patch был проверен на этой базе, затем восстановлены шесть tracked changes и два новых файла. Dirty set обязан был содержать ровно эти восемь путей.
 
-### `R-CURRENT` compatibility proof
+### Доказательство совместимости `R-CURRENT`
 
-One restored regression test contained digest constants from the old base. Those constants initially failed on the current base.
+Один восстановленный regression test содержал digest constants со старой базы и первоначально падал на актуальной базе.
 
-The implementation was not changed to satisfy the stale checkpoint. Instead, a clean copy of current `HEAD` and the restored implementation were executed in separate Python processes with the same config, seed and `R-CURRENT` parameter set.
+Production/research implementation не изменялась ради устаревшего checkpoint. Вместо этого чистая копия актуального `HEAD` и восстановленная реализация были запущены в отдельных Python processes с одинаковыми config, seed и parameter set `R-CURRENT`.
 
-The following values matched exactly:
+Точно совпали:
 
 - manifest trajectory digest;
 - final-cohort digest;
 - report digest;
-- every policy trajectory digest;
-- full serialized payload SHA-256;
-- absence of candidate metadata.
+- каждый policy trajectory digest;
+- SHA-256 полного serialized payload;
+- отсутствие candidate metadata.
 
 ```text
 DEFAULT_R_CURRENT_PARITY_PASS
 ```
 
-Only after this proof were the regression-test constants refreshed to the current pre-wiring digests.
+Только после этого constants regression test были обновлены до актуальных pre-wiring digests.
 
-## Implementation architecture
+## Архитектура реализации
 
-The published implementation commit changed only 11 research source/test paths:
+Опубликованный implementation commit менял только 11 research source/test paths:
 
 ```text
 research/gamification-sim/src/gamification_sim/bounded_screening.py
@@ -176,65 +181,65 @@ research/gamification-sim/tests/test_longitudinal_runner.py
 research/gamification-sim/tests/test_review_candidate_mechanisms.py
 ```
 
-### Frozen candidate registry
+### Зафиксированный candidate registry
 
-`review_candidate_mechanisms.py` introduced:
+`review_candidate_mechanisms.py` добавил:
 
 - immutable typed candidate definitions;
-- exact family and parameterization identities;
-- registered endpoint multipliers;
+- точные family и parameterization identities;
+- зарегистрированные endpoint multipliers;
 - typed simulation execution context;
-- day/window multiplier evaluation;
-- semantic reconciliation with the machine protocol.
+- вычисление day/window multiplier;
+- семантическое согласование с machine protocol.
 
-The registry rejects unknown parameterizations, invalid bounds, wrong mechanism classes and candidate use with anything other than `R-CURRENT`.
+Registry отклоняет неизвестные parameterization, недопустимые bounds, неверные mechanism classes и применение candidate с чем-либо, кроме `R-CURRENT`.
 
-### Reward-path wiring
+### Подключение reward path
 
-The candidate identity and execution context are threaded through episode evaluation, daily aggregation and longitudinal policy execution.
+Candidate identity и execution context проходят через episode evaluation, daily aggregation и longitudinal policy execution.
 
-Only MemoryGain is scaled. The implementation leaves unchanged:
+Масштабируется только MemoryGain. Не меняются:
 
 - ordinary attempt credit;
 - successful outcome credit;
 - Again attempt credit;
-- support and supplemental reward terms;
-- completion and volume credit;
-- scheduler and FSRS semantics;
-- due dates and intervals;
+- support и supplemental reward terms;
+- completion и volume credit;
+- scheduler и FSRS semantics;
+- due dates и intervals;
 - direct button behavior;
 - response-time behavior;
-- default `R-CURRENT` execution.
+- default execution `R-CURRENT`.
 
 ### Bounded screening harness
 
-`bounded_screening.py` introduced:
+`bounded_screening.py` добавил:
 
-- protocol/schema validation;
-- exact registry validation;
+- validation protocol/schema;
+- validation точного registry;
 - typed deterministic execution-unit identities;
-- exact 160-unit manifest construction;
-- matched policy-pair execution;
-- compact unit evidence and canonical digests;
-- protected invariant checks;
-- 16 hard gates per candidate;
-- fail-closed result validation;
-- external evidence writer and human-readable summary.
+- построение точного manifest из 160 units;
+- выполнение matched policy pairs;
+- compact unit evidence и canonical digests;
+- проверки защищённых invariants;
+- 16 hard gates на candidate;
+- fail-closed validation результата;
+- writer внешнего evidence и человекочитаемую summary.
 
 ### CLI
 
-The research command surface gained:
+Research command surface получил:
 
 ```text
 validate-bounded-screening
 run-bounded-screening
 ```
 
-The run command requires exact implementation and base SHAs and records the exact command in evidence provenance.
+Run command требует точные implementation/base SHA и записывает exact command в provenance evidence.
 
-## Day-60 semantics
+## Семантика day 60
 
-The frozen machine protocol defines the following behavior.
+Зафиксированный machine protocol определяет следующее поведение.
 
 ### STEP
 
@@ -247,17 +252,19 @@ day >= 60 → frozen endpoint
 
 ```text
 day <= 60     → multiplier 1.0
-60 < day < 90 → linear interpolation from 1.0 to the endpoint
+60 < day < 90 → linear interpolation from 1.0 to endpoint
 day >= 90     → frozen endpoint
 ```
 
-The mechanism is active only when the policy's final structural retention transition is day `60`. It uses simulation day and the retention timeline, never wall clock or session boundaries.
+Механизм активен только тогда, когда последний structural retention transition policy приходится на day `60`. Используются simulation day и retention timeline, но не wall clock и не session boundaries.
 
-Boundary tests cover days `59`, `60`, `61`, `89`, `90` and `91`.
+Boundary tests покрывают days `59`, `60`, `61`, `89`, `90` и `91`.
+
+Fallback `STEP from day 61` не является авторитетной семантикой и не применяется.
 
 ## Publication barrier
 
-The implementation was committed and pushed before any canonical screening result was viewed.
+Реализация была committed и pushed до просмотра любого canonical screening result.
 
 ```text
 published implementation SHA:
@@ -270,11 +277,11 @@ result files present in implementation commit:
 NO
 ```
 
-After publication, the mechanism, matrix, thresholds, seeds, replicas, horizons, population and hard-gate semantics were frozen for the run.
+После публикации mechanism, matrix, thresholds, seeds, replicas, horizons, population и hard-gate semantics были заморожены для run.
 
-## Verification ledger
+## Реестр проверок
 
-### Recovery and compatibility
+### Recovery и compatibility
 
 ```text
 backup integrity: PASS
@@ -302,22 +309,43 @@ Cargo-dependent skips shown by configured suite: 2
 implementation local/remote SHA equality: PASS
 ```
 
-The quiet full-suite output did not provide a reliable exact pass count, so none is invented here.
+Quiet full-suite output не предоставил надёжного точного pass count, поэтому в отчёте он не выдумывается.
 
-### Evidence verification
+Источником acceptance G1.4 была локальная research verification, зафиксированная в closeout ledger. GitHub combined status checks не использовались как источник acceptance; их отсутствие не требует rerun G1.4.
 
-After the canonical run:
+### Проверка evidence
 
-- the bundle SHA-256 matched the recorded value;
-- the archive contained only the expected result files;
-- `evidence.json` validated through the implementation validator;
-- standalone `manifest.json` equaled the embedded manifest;
-- all 160 unit digests were recomputed and matched;
-- evidence provenance matched the published implementation and base SHAs;
-- evidence and run-metadata identities matched;
-- repository `HEAD` and working state remained unchanged by the run.
+После canonical run:
 
-## Screening identity
+- SHA-256 bundle совпал с записанным значением;
+- archive содержал только ожидаемые result files;
+- `evidence.json` прошёл implementation validator;
+- отдельный `manifest.json` совпал с embedded manifest;
+- digests всех 160 units были пересчитаны и совпали;
+- provenance evidence соответствовал published implementation/base SHA;
+- identities evidence и run-metadata совпали;
+- repository `HEAD` и working state не изменились из-за run.
+
+Повторная read-only проверка перед G1.5 также подтвердила:
+
+```text
+bundle SHA-256:
+bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be
+
+evidence.json SHA-256:
+976e728df07fdf46c8e6037f79a5b81fd5ee3b0293d70f6ab03e4a0259483b5c
+
+validator:
+PASS
+
+expected / actual unique:
+160 / 160
+
+missing / extra / duplicates:
+0 / 0 / 0
+```
+
+## Identity screening
 
 ```text
 machine protocol Git blob:
@@ -339,11 +367,19 @@ evidence.json SHA-256:
 976e728df07fdf46c8e6037f79a5b81fd5ee3b0293d70f6ab03e4a0259483b5c
 ```
 
-The raw evidence is approximately 1 MiB and remains outside Git. The repository records immutable identities and a bounded semantic summary rather than duplicating the machine payload in Markdown.
+Raw evidence имеет размер около 1 MiB и находится вне Git. Репозиторий хранит immutable identities и bounded semantic summary, а не дублирует machine payload в Markdown.
 
-## Frozen matrix accounting
+Политика external evidence:
 
-A screening unit is:
+- original raw bundle не изменяется;
+- repository хранит identities, provenance и semantic summary;
+- unit-level audit требует доступа к raw bundle;
+- bundle не удаляется до завершения G1.5/G1.6 либо до отдельного archive decision;
+- отсутствие GitHub status checks не заменяет и не отменяет локальную validation bundle.
+
+## Учёт зафиксированной матрицы
+
+Screening unit:
 
 ```text
 (candidate_or_reference,
@@ -355,7 +391,18 @@ A screening unit is:
  population_variant)
 ```
 
-Matrix dimensions:
+`candidate_or_reference` является самостоятельной осью variants.
+
+Поле `parameterization` не является отдельной потерянной dimension. Оно детерминированно выводится при сериализации payload:
+
+```text
+R-CURRENT → parameterization: null
+candidate → parameterization: <variant ID>
+```
+
+Это normalization representation, а не потеря измерения.
+
+Размерности матрицы:
 
 ```text
 candidate/reference variants: 5
@@ -369,7 +416,7 @@ population variants: 1
 5 × 4 × 1 × 2 × 2 × 2 × 1 = 160
 ```
 
-Final accounting:
+Финальный accounting:
 
 ```text
 expected units: 160
@@ -380,11 +427,11 @@ extra: 0
 duplicates: 0
 ```
 
-`required_invariant_checks` was correctly treated as metadata, not as an additional matrix axis.
+`required_invariant_checks` корректно рассматривался как metadata, а не как дополнительная axis матрицы.
 
-## Hard-gate policy
+## Политика hard gates
 
-Every candidate had to pass all 16 non-compensable gates:
+Каждый candidate обязан был независимо пройти все 16 non-compensable gates:
 
 1. `GATE-ENDPOINT-CAP`;
 2. `GATE-NO-CYCLING-GROWTH`;
@@ -403,64 +450,64 @@ Every candidate had to pass all 16 non-compensable gates:
 15. `GATE-EVIDENCE-COMPLETE`;
 16. `GATE-RESEARCH-ONLY`.
 
-No weighted score, Pareto compensation, least-bad choice or post-hoc threshold adjustment was permitted.
+Weighted score, Pareto compensation, least-bad choice и post-hoc threshold adjustment не разрешались.
 
-## Screening results
+## Результаты screening
 
 | Family | Parameterization | Result | Gate result |
 |---|---|---|---|
 | `F-POST-TRANSITION-MG-STEP` | `P-STEP-ZERO` | PASS | 16/16 PASS |
-| `F-POST-TRANSITION-MG-STEP` | `P-STEP-NEUTRAL-RATIO` | REJECT | only `GATE-NO-CYCLING-GROWTH` failed |
+| `F-POST-TRANSITION-MG-STEP` | `P-STEP-NEUTRAL-RATIO` | REJECT | failed only `GATE-NO-CYCLING-GROWTH` |
 | `F-POST-TRANSITION-MG-TAPER` | `P-TAPER-ZERO-30D` | PASS | 16/16 PASS |
-| `F-POST-TRANSITION-MG-TAPER` | `P-TAPER-NEUTRAL-RATIO-30D` | REJECT | only `GATE-NO-CYCLING-GROWTH` failed |
+| `F-POST-TRANSITION-MG-TAPER` | `P-TAPER-NEUTRAL-RATIO-30D` | REJECT | failed only `GATE-NO-CYCLING-GROWTH` |
 
-### Passing STEP parameterization
+### Прошедшая STEP parameterization
 
-`P-STEP-ZERO` passed all gates.
+`P-STEP-ZERO` прошёл все gates.
 
 ```text
 required cross-horizon growth range:
 -0.0371046033 to -0.0004580763
 ```
 
-Every required retention growth cell was non-positive under the frozen tolerance.
+Каждая required retention growth cell была non-positive с учётом frozen tolerance.
 
-### Rejected STEP parameterization
+### Отклонённая STEP parameterization
 
-`P-STEP-NEUTRAL-RATIO` failed only the cycling-growth gate.
+`P-STEP-NEUTRAL-RATIO` не прошёл только cycling-growth gate.
 
 ```text
 positive required growth cells: 5 / 8
 maximum positive growth: +0.0175703395
 ```
 
-Its baseline, suppression, fairness, backlog, unit-credit, button, session, response-validity, replay, seed, completeness and research-only gates passed.
+Его baseline, suppression, fairness, backlog, unit-credit, button, session, response-validity, replay, seed, completeness и research-only gates прошли.
 
-### Passing TAPER parameterization
+### Прошедшая TAPER parameterization
 
-`P-TAPER-ZERO-30D` passed all gates.
+`P-TAPER-ZERO-30D` прошёл все gates.
 
 ```text
 required cross-horizon growth range:
 -0.0406010767 to -0.0024101933
 ```
 
-Every required retention growth cell was non-positive under the frozen tolerance.
+Каждая required retention growth cell была non-positive с учётом frozen tolerance.
 
-### Rejected TAPER parameterization
+### Отклонённая TAPER parameterization
 
-`P-TAPER-NEUTRAL-RATIO-30D` failed only the cycling-growth gate.
+`P-TAPER-NEUTRAL-RATIO-30D` не прошёл только cycling-growth gate.
 
 ```text
 positive required growth cells: 5 / 8
 maximum positive growth: +0.0172449867
 ```
 
-Its remaining 15 gates passed.
+Остальные 15 gates прошли.
 
-## Protected invariants
+## Защищённые invariants
 
-All four candidate parameterizations preserved the following observed invariants:
+Все четыре candidate parameterization сохранили следующие наблюдаемые invariants:
 
 ```text
 ordinary successful review: 1.00 RU
@@ -479,11 +526,11 @@ evidence completeness: PASS
 research-only classification: PASS
 ```
 
-The rejected variants were not unsafe on these dimensions; they were rejected because they failed to close the original cross-horizon cycling-growth gap.
+Rejected variants не были unsafe по этим dimensions. Они были отклонены потому, что не закрыли исходный cross-horizon cycling-growth gap.
 
-## Survivor decision
+## Решение о survivors
 
-Exactly one survivor is recorded in each family:
+В каждом семействе зарегистрирован ровно один survivor:
 
 ```text
 F-POST-TRANSITION-MG-STEP:
@@ -493,31 +540,31 @@ F-POST-TRANSITION-MG-TAPER:
 P-TAPER-ZERO-30D
 ```
 
-`R-CURRENT` remains a regression/reference control and is not survivor-eligible.
+`R-CURRENT` остаётся regression/reference control и не имеет survivor eligibility.
 
-A survivor means only that the registered parameterization passed the G1.4 bounded screening gates and may enter separately authorized G1.5 confirmatory work.
+Статус survivor означает только, что зарегистрированная parameterization прошла bounded screening gates G1.4 и может войти в отдельно разрешённый confirmatory этап G1.5.
 
-G1.4 makes no claim that:
+G1.4 не утверждает, что:
 
-- STEP is better than TAPER;
-- TAPER is better than STEP;
-- either survivor is the final Review XP candidate;
-- either survivor improves human learning or motivation;
-- either survivor is appropriate for production.
+- STEP лучше TAPER;
+- TAPER лучше STEP;
+- любой survivor является финальным кандидатом Review XP;
+- любой survivor улучшает человеческое обучение или мотивацию;
+- любой survivor подходит для production.
 
-## Scientific interpretation
+## Научная интерпретация
 
-The result supports a narrow conclusion:
+Поддерживается только узкий вывод:
 
-> Under the current synthetic model and frozen matrix, complete post-transition removal of MemoryGain closed the required cross-horizon growth gate in both the immediate-step and 30-day-taper families, while the neutral-ratio endpoints did not.
+> В рамках текущей synthetic model и frozen matrix полное удаление post-transition MemoryGain закрыло required cross-horizon growth gate как для immediate STEP, так и для 30-day TAPER, тогда как neutral-ratio endpoints этого не сделали.
 
-This is evidence about the tested synthetic mechanism, not proof of a universal causal rule.
+Это evidence о проверенном synthetic mechanism, а не доказательство универсального causal rule.
 
-The result does not resolve the earlier uncertainty around partial root-cause localization. It narrows later confirmatory work to two zero-endpoint variants, but the reason those two pass may still combine MemoryGain effects with model-specific dynamics.
+Результат не устраняет прежнюю неопределённость partial root-cause localization. Он сужает последующую confirmatory работу до двух zero-endpoint variants, но их прохождение может быть обусловлено сочетанием MemoryGain effects и model-specific dynamics.
 
 ## Production boundary
 
-No production surface changed.
+Ни одна production surface не изменилась.
 
 ```text
 add-on runtime: unchanged
@@ -531,9 +578,9 @@ release workflows: unchanged
 telemetry/remote services: unchanged
 ```
 
-The simulator remains research-only and uses deterministic synthetic inputs. No real user profile, collection, token or identifiable learning data was used.
+Simulator остаётся research-only и использует deterministic synthetic inputs. Real user profile, collection, token или identifiable learning data не использовались.
 
-## Checks intentionally not run
+## Проверки, намеренно не запускавшиеся
 
 ```text
 Fast CI:
@@ -558,80 +605,21 @@ master/release/deployment:
 untouched
 ```
 
-## Merge and cleanup
+## Передача в G1.5
 
-PR #146 was merged into `gamification` with merge commit:
-
-```text
-d855baf7355bba3f4014370cafba3fdc6d0c0e3c
-```
-
-Post-merge verification confirmed:
-
-- the merge had exactly the expected base and head parents;
-- the canonical diff contained exactly the 15 expected research/docs paths;
-- the merged closeout contained the expected survivor and boundary markers;
-- `origin/gamification` pointed to the merge commit;
-- the unrelated canonical checkout branch, HEAD and dirty state were unchanged.
-
-Cleanup completed:
+G1.5 остаётся отдельным существующим этапом. Он может использовать только:
 
 ```text
-remote task branch: removed automatically after merge
-linked task worktree: removed
-local task branch: removed
-stale remote-tracking task ref: removed
-```
-
-The external evidence bundle remains intentionally outside Git. Historical recovery backups and the task Python environment are local, non-canonical artifacts and may be removed separately with exact path-specific commands when no longer needed.
-
-## Remaining limitations and risks
-
-- Evidence is synthetic and does not prove human learning effectiveness, motivation or real-user reward-gaming behavior.
-- Only one canonical synthetic population variant was used.
-- The matrix used two seeds and two replicas.
-- G1.2a remains `ROOT_CAUSE_PARTIALLY_LOCALIZED` with `MEDIUM` confidence.
-- Both survivors use a zero post-transition MemoryGain endpoint; confirmatory work must assess whether this is robust rather than an artifact of the current synthetic model.
-- Passing G1.4 is survivor eligibility, not production readiness.
-- The external raw bundle must remain available if future independent audit needs unit-level evidence.
-- G1.5 must remain separately scoped and explicitly started.
-
-## G1.5 handoff boundary
-
-G1.5 may start only under a separate task. Its eligible inputs are exactly:
-
-```text
+R-CURRENT
 P-STEP-ZERO
 P-TAPER-ZERO-30D
 ```
 
-G1.5 must not:
-
-- revive the rejected neutral-ratio variants without a new protocol amendment;
-- change G1.4 thresholds or reinterpret failed gates;
-- add post-hoc screening units to the completed G1.4 matrix;
-- assume an ordering between STEP and TAPER;
-- call either survivor production-ready;
-- integrate Gamification into `master`.
-
-## Final decision
+Rejected neutral-ratio variants не возвращаются без отдельного protocol amendment.
 
 ```text
-G1.4 outcome:
-TWO_FAMILY_LEVEL_SURVIVORS
-
-STEP survivor:
-P-STEP-ZERO
-
-TAPER survivor:
-P-TAPER-ZERO-30D
-
-final Review XP candidate:
-NOT_SELECTED
-
-G1.5:
-READY_BUT_NOT_STARTED
-
-production integration:
-PROHIBITED
+G1.4: COMPLETE
+G1.5: NEXT / READY; NOT STARTED
+final candidate selected: NO
+production integration: PROHIBITED
 ```

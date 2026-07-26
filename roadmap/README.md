@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1.4 next / research only]
+    G[Gamification G<br/>G1.5 complete / G1.6 not started]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0 complete; G1.3 complete; G1.4 protocol ready; execution blocked on implementation; production не одобрен | G1.4 bounded screening |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0 complete; G1.5 complete; оба survivors confirmatory-eligible; final candidate не выбран; production не одобрен | G1.6 только отдельной задачей; не начат |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
