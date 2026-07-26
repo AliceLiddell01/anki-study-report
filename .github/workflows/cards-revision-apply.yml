@@ -1,21 +1,24 @@
 name: Apply verified Cards visual revision
 
 on:
-  push:
+  pull_request:
     branches:
-      - c2-manual-acceptance-remediation
+      - core
+    types:
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: contains(github.event.head_commit.message, 'ENABLE_AFTER_CHUNKS')
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          ref: c2-manual-acceptance-remediation
           fetch-depth: 0
 
       - name: Apply verified Cards revision
