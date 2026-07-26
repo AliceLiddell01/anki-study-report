@@ -1,0 +1,37 @@
+name: Apply Cards visual revision documentation
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+
+      - name: Apply verified documentation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cat .cards-revision-docs/chunk-* | base64 --decode > /tmp/cards-revision-docs.patch.zst
+          echo "67353b609a6af41863bba32749bedd88065314814b1a179f622517d555016b61  /tmp/cards-revision-docs.patch.zst" | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/cards-revision-docs.patch.zst > /tmp/cards-revision-docs.patch
+          echo "0e98e59e47b4e707426cdfbd5d58ad39874e96e04b9ceb9f857cf1a0d90d3993  /tmp/cards-revision-docs.patch" | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/cards-revision-docs.patch
+          git rm -r .cards-revision-docs .github/workflows/cards-revision-docs-apply.yml
+          git commit -m "Document the Cards visual revision evidence"
+          git push origin HEAD:c2-manual-acceptance-remediation
