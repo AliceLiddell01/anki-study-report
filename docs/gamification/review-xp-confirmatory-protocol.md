@@ -267,3 +267,48 @@ G1.5 не меняет:
 - telemetry/remote services.
 
 Все inputs synthetic и research-only.
+
+
+## Execution record
+
+The status block at the top records the prospective publication state before results. Canonical execution later completed without changing the machine protocol, schema, matrix, thresholds or outcome semantics.
+
+```text
+implementation SHA:
+7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8
+
+base SHA:
+646be9379518977381ae04a37da3a6027c4ec6ec
+
+expected / actual unique:
+840 / 840
+
+missing / extra / duplicates:
+0 / 0 / 0
+
+manifest digest:
+eea4e2ed6da087f7ac45eb56d9390b23e44ce52837b5f1d015afb3276049c728
+
+evidence digest:
+9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa
+
+P-STEP-ZERO:
+CONFIRMATORY_ELIGIBLE
+
+P-TAPER-ZERO-30D:
+CONFIRMATORY_ELIGIBLE
+
+ranking:
+NO
+
+final candidate selected:
+NO
+
+production approved:
+NO
+
+G1.6 started:
+NO
+```
+
+Full closeout: [G1.5 confirmatory evidence](../../roadmap/gamification/g1-confirmatory-evidence.md).
