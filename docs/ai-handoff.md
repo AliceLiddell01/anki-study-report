@@ -110,8 +110,10 @@ E2E-I6 corrective fix не является новым этапом и не ак
 ```text
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
-O1.3 — Complete / integrated; not deployed
-O1.4 — Next
+O1.3 — Complete / corrected / integrated; not deployed
+O1.4 — Complete / integrated; not deployed
+O1.5 — Next
+O1.6 — Planned
 ```
 
 Operations long-lived branch основана на
@@ -122,7 +124,9 @@ Canonical private reviews:
 
 - O1.1: [telemetry PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19);
 - O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20);
-- O1.3: [telemetry PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21).
+- O1.3: [telemetry PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21);
+- O1.4 и corrective fix O1.3:
+  [telemetry PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22).
 
 Telemetry integration:
 
@@ -134,18 +138,22 @@ O1.2 merge: bb1ae3c7e42da22f917128b9becde04ba7b0b4d8
 O1.3 final head: 755511ce20ffc65046503b2504d9edf6d7564e4f
 O1.3 final CI: 30196888155 — PASS / OSV green
 O1.3 merge: 1acb7abc6d9f2347ce59e3f2b52da3a0728140bb
+O1.4 final head: 03ad15c15917c192878a6fa4900430772964c95c
+O1.4 final CI: 30200494159 — PASS / OSV green
+O1.4 merge: ebae6f71ec0dcf2ba044faf9dff2a58cde474263
 ```
 
-O1.3 добавляет отдельный неразвёрнутый Admin Worker/API: strict Access
-JWT/JWKS validation, 21 machine-mapped canonical operations, 17 active
-SELECT-only read paths, 4 typed unavailable operations без D1, fixed UTC
-periods, seven-state envelope, suppression и before/after no-mutation proof.
-Public ingestion routes/payload/Cron не менялись.
+Corrective fix O1.3 закрывает registry-wide differencing paths, сохраняет
+различие exact zero и empty и уточняет source coverage. O1.4 добавляет отдельный
+неразвёрнутый Provider Metrics Collector с least-privilege token boundary,
+изолированным `ADMIN_DB`, fixed GraphQL templates, bounded retry/backfill,
+90-day retention и source-specific freshness. Admin API не получает provider
+token и читает только materialized provider snapshots.
 
 20,000 accepted events остаётся abuse cap, не Free-plan capacity guarantee.
 Remote D1 migration, Cloudflare Access resource/policy, Admin route,
-staging/production deployment, provider collector и UI не выполнялись.
-Следующий отдельный scope — `O1.4 — Provider Metrics Collector`.
+staging/production deployment, live provider query, Cron activation и UI не
+выполнялись. Следующий отдельный scope — `O1.5 — Minimal Admin Console`.
 
 ## Рабочие правила
 
