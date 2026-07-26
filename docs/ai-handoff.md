@@ -110,7 +110,8 @@ E2E-I6 corrective fix не является новым этапом и не ак
 ```text
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
-O1.3 — Planned
+O1.3 — Complete / integrated; not deployed
+O1.4 — Next
 ```
 
 Operations long-lived branch основана на
@@ -120,7 +121,8 @@ Operations long-lived branch основана на
 Canonical private reviews:
 
 - O1.1: [telemetry PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19);
-- O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20).
+- O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20);
+- O1.3: [telemetry PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21).
 
 Telemetry integration:
 
@@ -129,16 +131,21 @@ O1.1 merge: 8ef613d61c7b8672d9143b0c3b710c2d81b2fa6b
 O1.2 final head: 86dcdae38c0044dee7e839ee2ff190d539b7cf57
 O1.2 final CI: 30193694403 — PASS / OSV green
 O1.2 merge: bb1ae3c7e42da22f917128b9becde04ba7b0b4d8
+O1.3 final head: 755511ce20ffc65046503b2504d9edf6d7564e4f
+O1.3 final CI: 30196888155 — PASS / OSV green
+O1.3 merge: 1acb7abc6d9f2347ce59e3f2b52da3a0728140bb
 ```
 
-O1.2 заменяет unconditional eight-day rewrite на dirty/missing-day
-checkpoints, делит bounded write budget между aggregation/backfill/retention и
-фиксирует actual D1 metadata/deferred evidence. Deployment, remote migration,
-Admin API/UI, Access resource и provider collector не выполнялись.
+O1.3 добавляет отдельный неразвёрнутый Admin Worker/API: strict Access
+JWT/JWKS validation, 21 machine-mapped canonical operations, 17 active
+SELECT-only read paths, 4 typed unavailable operations без D1, fixed UTC
+periods, seven-state envelope, suppression и before/after no-mutation proof.
+Public ingestion routes/payload/Cron не менялись.
 
 20,000 accepted events остаётся abuse cap, не Free-plan capacity guarantee.
-Следующий минимальный scope после отдельного migration/deployment решения —
-`O1.3 — Protected Read-only Admin API`; он не начат.
+Remote D1 migration, Cloudflare Access resource/policy, Admin route,
+staging/production deployment, provider collector и UI не выполнялись.
+Следующий отдельный scope — `O1.4 — Provider Metrics Collector`.
 
 ## Рабочие правила
 
