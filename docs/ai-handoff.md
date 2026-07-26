@@ -62,42 +62,37 @@ gamification
 ```text
 G0 — Complete
 G1 — Complete
-G1.1 и correction — Complete
-G1.2 и G1.2a correction — Complete
-G1.3 — Complete
-G1.4 — Complete
-G1.4 survivors — P-STEP-ZERO; P-TAPER-ZERO-30D
-G1.5 — Complete
-G1.5 outcomes — both CONFIRMATORY_ELIGIBLE
-G1.6 — Complete
 G1 final outcome — DEFER_REVIEW_MODEL
-recommended research candidate — NONE
-P-STEP-ZERO — not selected; not falsified
-P-TAPER-ZERO-30D — not selected; not falsified
+recommended Review XP research candidate — NONE
+P-STEP-ZERO — CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; not selected; not falsified
+G2 — IN PROGRESS
+G2.1 — COMPLETE
+Learn XP contract — FROZEN_PRE_LIFECYCLE_ANALYSIS
+identity candidates — CARD; NOTE; SIBLING_GROUP; LEARNING_EPISODE
+identity winner — NONE
+reward amount / pending ratio / confirmation delay — NONE
+G2.2 — NEXT / NOT STARTED
 production integration — PROHIBITED
-G2 — PLANNED / NOT STARTED
 ```
 
-G1.2a оставляет root cause частично локализованным с `MEDIUM` confidence: `memory_main` — крупнейший component, `post_transition` — dominant timing window, Challenge не direction-consistent, уникальная corrective formula не доказана.
+G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует.
 
-G1.4 завершён на опубликованной implementation `a8857f111849e2e98744adda8e06fe1910bdf805`. Exact matrix дала `160/160` unique units, `0/0/0` missing/extra/duplicates и evidence digest `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`.
+G2.1 заморозил отдельный Learn XP problem contract. Он отделяет официальные Anki states `New/Learning/Review/Relearn` от Learn XP research lifecycle, фиксирует четыре identity candidates, pending/confirmation minimum requirements, шесть anti-farming threat families, 19 protected invariants, privacy/claims boundary и entry contract G2.2.
 
-G1.5 выполнил prospectively frozen 840-unit matrix на published implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`: `840/840` unique units, `0/0/0` missing/extra/duplicates, evidence digest `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`. `P-STEP-ZERO` и `P-TAPER-ZERO-30D` получили `CONFIRMATORY_ELIGIBLE`.
-
-G1.6 применил frozen decision policy и закрыл G1 outcome `DEFER_REVIEW_MODEL`. Raw bundles G1.4/G1.5 не были доступны для обязательной read-only continuity revalidation, а принятые агрегаты не дают неарбитрарного основания предпочесть STEP или TAPER. Оба candidates остаются eligible, не выбраны и не falsified. Новые simulations, ranking и production integration не выполнялись.
+G2.1 не выбрал identity winner, lifecycle, XP amount, pending ratio, confirmation delay, candidate family или simulation matrix. Simulation не запускалась. G2.2 не начата.
 
 Точные источники:
 
 - [`../roadmap/gamification/README.md`](../roadmap/gamification/README.md)
-- [human candidate protocol](gamification/review-xp-candidate-protocol.md)
-- [`../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json`](../research/gamification-sim/contracts/review-xp-candidate-protocol-v1.json)
-- [`../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json`](../research/gamification-sim/schemas/review-xp-candidate-protocol-v1.schema.json)
-- [G1.4 bounded screening closeout](../roadmap/gamification/g1-bounded-screening.md)
-- [G1.5 confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
-- [G1.5 confirmatory closeout](../roadmap/gamification/g1-confirmatory-evidence.md)
+- [Gamification docs index](gamification/README.md)
+- [Learn XP human contract](gamification/learn-xp-problem-contract.md)
+- [Learn XP machine contract](../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
+- [Learn XP strict schema](../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
+- [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
-`gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision. G2 не начат.
+`gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
 
 ## Platform / CI
 
@@ -129,7 +124,7 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Не дробить существующий roadmap stage на новые буквенные или цифровые лестницы.
 - Successful unchanged exact-SHA gates не повторять.
 - Harness failure не объявлять production failure без подтверждения.
-- Docs-only sync не требует повторного Fast CI или Docker E2E.
+- Docs/contracts-only sync не требует повторного Fast CI или Docker E2E.
 - Для Gamification target и PR base — `gamification`, даже если общие environment docs приводят Core-примеры.
 
 ## Режим работы

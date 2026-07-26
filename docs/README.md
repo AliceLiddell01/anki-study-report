@@ -44,6 +44,15 @@ reports/    исторические evidence и завершённые пров
 
 Исторический C1.5 UI сохранён отдельно: [Cards workspace UI](cards-v2-workspace-ui.md).
 
+## Gamification research
+
+- [Индекс Gamification research](gamification/README.md)
+- [Learn XP problem contract](gamification/learn-xp-problem-contract.md)
+- [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
+- [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
+
+Gamification contracts являются research-only и не разрешают production integration.
+
 ## Architecture и API
 
 - [Dashboard API](dashboard-api.md)
