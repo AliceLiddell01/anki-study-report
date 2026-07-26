@@ -69,10 +69,16 @@ P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; not selected; not falsified
 G2 — IN PROGRESS
 G2.1 — COMPLETE
 Learn XP contract — FROZEN_PRE_LIFECYCLE_ANALYSIS
-identity candidates — CARD; NOTE; SIBLING_GROUP; LEARNING_EPISODE
-identity winner — NONE
+G2.2 — COMPLETE
+Learn XP lifecycle model — FROZEN_PRE_CANDIDATE_DESIGN
+identity architecture — FACTORIZED; LearningEpisode<AchievementSubject>
+achievement-subject candidates — CARD; NOTE; SIBLING_GROUP
+achievement-subject winner — NONE
+lifecycle states / events / transitions — 7 / 20 / 12
+fixtures / threat families / invariants — 23 / 6 / 19
+fixture manifest digest — 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
 reward amount / pending ratio / confirmation delay — NONE
-G2.2 — NEXT / NOT STARTED
+G2.3 — NEXT / NOT STARTED
 production integration — PROHIBITED
 ```
 
@@ -80,16 +86,24 @@ G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval о
 
 G2.1 заморозил отдельный Learn XP problem contract. Он отделяет официальные Anki states `New/Learning/Review/Relearn` от Learn XP research lifecycle, фиксирует четыре identity candidates, pending/confirmation minimum requirements, шесть anti-farming threat families, 19 protected invariants, privacy/claims boundary и entry contract G2.2.
 
-G2.1 не выбрал identity winner, lifecycle, XP amount, pending ratio, confirmation delay, candidate family или simulation matrix. Simulation не запускалась. G2.2 не начата.
+G2.2 определил семь typed lifecycle states, 20 events и 12 deterministic transitions. Identity architecture factorized как `LearningEpisode<AchievementSubject>`: `LEARNING_EPISODE` является container, а `CARD`, `NOTE`, `SIBLING_GROUP` остаются невыбранными subject candidates.
+
+G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, покрывающие шесть threat families и все 19 invariants. Focused validation и full research suite прошли; model status — `FROZEN_PRE_CANDIDATE_DESIGN`.
+
+G2.2 не выбрал achievement-subject winner, XP amount, pending ratio, numeric confirmation delay, candidate family или screening matrix. Screening не запускался. G2.3 не начат.
 
 Точные источники:
 
 - [`../roadmap/gamification/README.md`](../roadmap/gamification/README.md)
 - [Gamification docs index](gamification/README.md)
-- [Learn XP human contract](gamification/learn-xp-problem-contract.md)
-- [Learn XP machine contract](../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
-- [Learn XP strict schema](../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
+- [Learn XP human problem contract](gamification/learn-xp-problem-contract.md)
+- [Learn XP machine problem contract](../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
+- [Learn XP problem schema](../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
+- [Learn XP human lifecycle model](gamification/learn-xp-lifecycle-model.md)
+- [Learn XP machine lifecycle model](../research/gamification-sim/contracts/learn-xp-lifecycle-model-v1.json)
+- [Learn XP lifecycle schemas](../research/gamification-sim/schemas/learn-xp-lifecycle-model-v1.schema.json)
 - [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
+- [G2.2 closeout](../roadmap/gamification/g2-learn-xp-lifecycle.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.

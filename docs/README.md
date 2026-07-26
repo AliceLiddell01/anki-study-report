@@ -48,6 +48,7 @@ reports/    исторические evidence и завершённые пров
 
 - [Индекс Gamification research](gamification/README.md)
 - [Learn XP problem contract](gamification/learn-xp-problem-contract.md)
+- [Learn XP lifecycle and anti-farming model](gamification/learn-xp-lifecycle-model.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 

@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Next / Not Started`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Next / Not Started`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -115,27 +115,50 @@ Official Anki semantics and peer-reviewed spacing/retrieval research are methodo
 
 ### G2.2 — Learning lifecycle and anti-farming model
 
-**Status:** `NEXT / NOT STARTED`.
+**Status:** Complete.
 
-Entry contract requires G2.2 to:
+Artifacts:
+
+- [human lifecycle model](../../docs/gamification/learn-xp-lifecycle-model.md);
+- [machine lifecycle model](../../research/gamification-sim/contracts/learn-xp-lifecycle-model-v1.json);
+- [lifecycle model schema](../../research/gamification-sim/schemas/learn-xp-lifecycle-model-v1.schema.json);
+- [fixture schema](../../research/gamification-sim/schemas/learn-xp-lifecycle-fixture-v1.schema.json);
+- [fixture manifest](../../research/gamification-sim/fixtures/learn-xp-lifecycle-v1/manifest.json);
+- [G2.2 closeout](g2-learn-xp-lifecycle.md).
+
+Frozen status:
 
 ```text
-build a typed lifecycle
-separate scheduler state from reward state
-define pending/confirmed/expired/cancelled/invalidated transitions
-formalize all identity candidates
-create deterministic event traces
-create fixtures for all six threat families
-define observable and missing/ambiguous-data behavior
-avoid XP amounts and screening
-avoid production code changes
+model status: FROZEN_PRE_CANDIDATE_DESIGN
+states: 7
+events: 20
+transitions: 12
+identity architecture: FACTORIZED
+generic form: LearningEpisode<AchievementSubject>
+subject candidates: CARD; NOTE; SIBLING_GROUP
+subject winner: NONE
+fixtures: 23
+threat families: 6
+protected invariants: 19
+manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
+XP amount / pending ratio / numeric delay: NONE
+candidate family / screening matrix: NONE
+production approved: NO
 ```
 
-G2.2 requires a separate task. G2.1 did not start it.
+Focused validation and the full research suite passed. The evaluator remains research-only and does not import Anki or production code.
+
+### G2.3 — Candidate protocol and hypothesis design
+
+**Status:** `NEXT / NOT STARTED`.
+
+G2.3 receives the frozen state/event/transition model, factorized identity architecture, unresolved subject candidates, abstract confirmation predicate, fixture manifest/digest and threat/invariant coverage.
+
+G2.3 may define candidate families, comparison hypotheses, numeric delays, pending ratios, amounts and a screening matrix only after separate activation. It must not infer rating truth, mastery, production readiness or semantic identity from private card content.
 
 ### Later G2 stages
 
-Prospective candidate design, bounded screening, confirmatory evidence and final G2 decision may be defined only after G2.2 establishes the lifecycle/threat model. No additional stage numbering is created by G2.1.
+Bounded screening, confirmatory evidence and final G2 decision may be defined only after G2.3 prospectively freezes its candidate protocol. No additional stage numbering is created by G2.2.
 
 Allowed final G2 outcomes are frozen as:
 
@@ -173,4 +196,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1 is a docs/contracts/schema-only research freeze. G2.2 is not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1 and G2.2 are frozen research stages. G2.3 is not started.
