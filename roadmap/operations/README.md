@@ -7,8 +7,9 @@
 ```text
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
-O1.3 — Planned
-O1.4–O1.6 — Planned
+O1.3 — Complete / integrated; not deployed
+O1.4 — Next
+O1.5–O1.6 — Planned
 ```
 
 Operations — независимый трек. Он не добавляет административные credentials,
@@ -50,10 +51,11 @@ flowchart LR
     U[Local Anki add-on] -. no admin route or secret .-> W
 ```
 
-Cloudflare Access будет внешней защитой, но будущий Admin Worker обязан
-самостоятельно валидировать Access JWT, issuer, audience, время действия и
-JWKS rotation. D1 остаётся server-side; browser не задаёт SQL, table/column
-names, arbitrary grouping, sort или date range.
+Cloudflare Access остаётся внешней защитой, а интегрированный O1.3 Admin Worker
+самостоятельно валидирует Access JWT, issuer, exact environment audience,
+время действия, owner identity и JWKS rotation. D1 остаётся server-side;
+browser не задаёт SQL, table/column names, arbitrary grouping, sort или date
+range.
 
 ## O1 — Telemetry Operations
 
@@ -132,23 +134,35 @@ reviewed lower cap или paid plan остаются отдельным реше
 
 ### O1.3 — Protected Read-only Admin API
 
-**Статус:** `Planned`
+**Статус:** `Complete / integrated; not deployed`
+**Canonical review:** telemetry
+[PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21)
+**Final telemetry head:** `755511ce20ffc65046503b2504d9edf6d7564e4f`
+**Telemetry operations merge:** `1acb7abc6d9f2347ce59e3f2b52da3a0728140bb`
 
-Минимальный scope после owner-approved O1.2 integration:
+Интегрированный scope:
 
-- отдельный protected Admin Worker/API;
-- strict Access JWT/JWKS validation;
-- только active fixed Query Registry operations;
-- static read-only prepared templates и server-owned UTC boundaries;
-- typed response envelope;
-- primary/complementary suppression;
-- fail-closed authorization и before/after D1 no-mutation proof.
+- отдельный protected Admin Worker/API без изменения ingestion Worker;
+- strict RS256 Access JWT/JWKS validation до route dispatch и D1;
+- machine map всех 21 Query Registry operations;
+- 17 active fixed SELECT-only operations и 4 typed unavailable без D1;
+- server-owned UTC boundaries, sort, dimensions и row caps;
+- seven-state typed response envelope;
+- primary/complementary suppression, включая stale/incomplete cells;
+- fail-closed authorization, static SQL validation и before/after D1
+  no-mutation proof для каждой active operation;
+- отдельная fail-closed Wrangler config с placeholders, но без deployment.
 
-O1.3 не включает UI, provider collector или production deployment.
+Final telemetry CI
+[run 30196888155](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30196888155)
+на exact head прошёл, включая OSV. O1.3 не создавал Access application/policy,
+не применял remote D1 migration и не выполнял staging/production deployment.
+UI и provider collector не входят в этап.
 
 ### O1.4–O1.6
 
-- `O1.4` — least-privilege provider metrics collector и bounded snapshots;
+- `O1.4` — **Next**: least-privilege provider metrics collector и bounded
+  snapshots;
 - `O1.5` — minimal Admin Console поверх принятых fixed API operations;
 - `O1.6` — verification, runbook и отдельный production gate.
 
