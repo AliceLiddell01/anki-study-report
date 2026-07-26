@@ -1,0 +1,49 @@
+name: Export final Cards visual correction source
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation' && contains(github.event.pull_request.head_commit.message, 'Trigger final Cards visual source export')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out correction branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+
+      - name: Export source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/final-cards-visual-source.tar.zst"
+          checksum="$RUNNER_TEMP/final-cards-visual-source.sha256"
+          tar \
+            --exclude=.git \
+            --exclude='web-dashboard/node_modules' \
+            --exclude='web-dashboard/dist' \
+            --exclude='**/coverage' \
+            --exclude='**/test-results' \
+            --exclude='**/playwright-report' \
+            -C "$GITHUB_WORKSPACE" \
+            -caf "$archive" .
+          sha256sum "$archive" > "$checksum"
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: cards-final-visual-source
+          path: |
+            ${{ runner.temp }}/final-cards-visual-source.tar.zst
+            ${{ runner.temp }}/final-cards-visual-source.sha256
+          if-no-files-found: error
+          retention-days: 1
