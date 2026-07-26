@@ -1,0 +1,56 @@
+name: Export Cards revision source
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation' && contains(github.event.pull_request.head.sha, '')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out revision branch
+        uses: actions/checkout@v4
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+
+      - name: Export source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude=.git \
+            --exclude='web-dashboard/node_modules' \
+            --exclude='web-dashboard/dist' \
+            --exclude='**/coverage' \
+            --exclude='**/test-results' \
+            --exclude='**/playwright-report' \
+            -caf revision-source.tar.zst .
+          sha256sum revision-source.tar.zst > revision-source.sha256
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: cards-revision-source
+          path: |
+            revision-source.tar.zst
+            revision-source.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove temporary exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/revision-source-export.yml
+          git commit -m 'Remove the temporary Cards source exporter'
+          git push origin HEAD:c2-manual-acceptance-remediation
