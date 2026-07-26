@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RoutePath } from "../app/router";
 import { THEME_STORAGE_KEY } from "../lib/theme";
+import { useResolvedTheme } from "../lib/resolvedThemeContext";
 import AppLayout from "./AppLayout";
 
 const routes: RoutePath[] = [
@@ -60,11 +61,13 @@ describe("AppLayout global utilities", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(toggle.getAttribute("aria-label")).toBe("Включить тёмную тему");
     expect(container.querySelector('#theme-toggle-tooltip')?.textContent).toBe("Включить тёмную тему");
+    expect(container.querySelector('[data-testid="resolved-theme-probe"]')?.textContent).toBe("light");
 
     await act(async () => toggle.click());
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(themeToggle().getAttribute("aria-label")).toBe("Включить светлую тему");
+    expect(container.querySelector('[data-testid="resolved-theme-probe"]')?.textContent).toBe("dark");
 
     await act(async () => themeToggle().click());
     expect(document.documentElement.dataset.theme).toBe("light");
@@ -86,10 +89,14 @@ describe("AppLayout global utilities", () => {
   });
 
   async function render(route: RoutePath) {
-    await act(async () => root.render(<AppLayout activeRoute={route}><p>{route}</p></AppLayout>));
+    await act(async () => root.render(<AppLayout activeRoute={route}><p>{route}</p><ResolvedThemeProbe /></AppLayout>));
   }
 
   function themeToggle() {
     return container.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!;
   }
 });
+
+function ResolvedThemeProbe() {
+  return <span data-testid="resolved-theme-probe">{useResolvedTheme()}</span>;
+}

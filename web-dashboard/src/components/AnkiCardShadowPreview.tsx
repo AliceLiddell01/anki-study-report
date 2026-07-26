@@ -202,11 +202,6 @@ const SHADOW_BASE_CSS = `
   white-space: pre;
 }
 
-.nightMode .card,
-.card.nightMode {
-  background: #111827;
-  color: #f8fafc;
-}
 `;
 
 function measuredNumber(value: number, fallback: number): number {
@@ -524,6 +519,7 @@ function AnkiCardShadowPreviewComponent({
       data-shadow-preview-mode={mode}
       data-shadow-preview-side={side}
       data-render-source={renderSource}
+      data-preview-night-mode={resolvedNightMode ? "true" : "false"}
       data-preview-measured={layout.measured ? "true" : "false"}
       data-preview-overflow={layout.overflow ? "true" : "false"}
       data-preview-scale={layout.scale.toFixed(3)}

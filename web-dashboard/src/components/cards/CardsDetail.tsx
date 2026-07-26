@@ -20,9 +20,10 @@ export interface CardsDetailProps {
   headingId: string;
   onExpandAnswer: () => void;
   emptyAllowed?: boolean;
+  nightMode: boolean;
 }
 
-export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed = true }: CardsDetailProps) {
+export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed = true, nightMode }: CardsDetailProps) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const item = workspace.activeItem;
   const details = workspace.inspectResponse?.details;
@@ -98,7 +99,7 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
               </div>
             ) : details ? (
               <>
-                <CardPreview details={details} side="front" />
+                <CardPreview details={details} side="front" nightMode={nightMode} />
                 {!hasUsableBackPreview(details.renderedPreview) ? <p className="cards-detail-preview-hint" role="status">{t("preview.answerUnavailable")}</p> : null}
               </>
             ) : (
@@ -347,7 +348,7 @@ function Entry({ label, value }: { label: string; value: string }) {
   return <div><dt>{label}</dt><dd>{value || "—"}</dd></div>;
 }
 
-export function CardPreview({ details, side }: { details: SearchCardDetails; side: "front" | "back" }) {
+export function CardPreview({ details, side, nightMode }: { details: SearchCardDetails; side: "front" | "back"; nightMode: boolean }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const preview = details.renderedPreview;
   const usable = side === "front" ? hasUsableFrontPreview(preview) : hasUsableBackPreview(preview);
@@ -368,6 +369,7 @@ export function CardPreview({ details, side }: { details: SearchCardDetails; sid
         title={title}
         cardOrd={preview.cardOrd || details.templateOrdinal}
         renderSource={preview.renderSource || ""}
+        nightMode={nightMode}
       />
     </div>
   );

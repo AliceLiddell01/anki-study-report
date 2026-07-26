@@ -13,6 +13,7 @@ import {
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { cardDisplayText } from "../lib/cardDisplayText";
 import { reasonLabel, sourceStatusLabel } from "../lib/triagePresentation";
+import { useResolvedTheme } from "../lib/resolvedThemeContext";
 import type { TriageItem, TriagePriority } from "../types/triage";
 import type { StudyReport } from "../types/report";
 import type { LoadState } from "./HomePage";
@@ -35,6 +36,8 @@ const REASON_CODES = [
 
 export default function CardsPage({ report }: { report: StudyReport | null; loadState: LoadState }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  const resolvedTheme = useResolvedTheme();
+  const nightMode = resolvedTheme === "dark";
   const deckIds = useMemo(
     () => (report?.deckHub?.scope.selectedDeckIds ?? []).map(String),
     [report?.deckHub?.scope.selectedDeckIds],
@@ -266,7 +269,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
 
         {isWide ? (
           <aside id={detailRegionId} className="cards-inbox-inspector workspace-region" aria-labelledby={detailHeadingId} data-testid="cards-inspector">
-            <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} />
+            <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} nightMode={nightMode} />
           </aside>
         ) : null}
       </div>
@@ -283,7 +286,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           fallbackFocusTo={queueHeadingRef.current}
           onRequestClose={closeDrawer}
         >
-          <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} emptyAllowed={false} />
+          <CardsDetail workspace={workspace} headingId={detailHeadingId} onExpandAnswer={() => setExpanded(true)} emptyAllowed={false} nightMode={nightMode} />
         </CardsDetailDrawer>
       ) : null}
 
@@ -305,7 +308,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           className="cards-answer-modal"
           footer={<button type="button" className="secondary-button" onClick={() => setExpanded(false)}>{t("preview.close")}</button>}
         >
-          <CardPreview details={workspace.inspectResponse.details} side="back" />
+          <CardPreview details={workspace.inspectResponse.details} side="back" nightMode={nightMode} />
         </AccessibleModal>
       ) : null}
     </div>

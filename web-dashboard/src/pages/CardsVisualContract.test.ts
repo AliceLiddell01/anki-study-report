@@ -18,7 +18,7 @@ describe("Cards responsive visual contract", () => {
   });
 
   it("keeps the narrow drawer opaque, non-modal, labelled, and clear of the utility dock", () => {
-    expect(cardsCss).toMatch(/\.cards-detail-drawer\s*\{[^}]*width:\s*min\(72vw, 760px\)[^}]*border-left:\s*1px solid[^}]*background:\s*var\(--surface-2\)/s);
+    expect(cardsCss).toMatch(/\.cards-detail-drawer\s*\{(?=[^}]*width:\s*min\(72vw, 760px\))(?=[^}]*border-left:\s*1px solid)(?=[^}]*background:\s*var\(--surface-2\))[^}]*\}/s);
     expect(cardsCss).toMatch(/body:has\(\.cards-detail-drawer\) \.global-utility-dock\s*\{[^}]*right:\s*calc\(min\(72vw, 760px\) \+ 1rem\)/s);
     expect(cardsCss).toMatch(/\.cards-detail-drawer-close\s*\{[^}]*display:\s*inline-flex/s);
     expect(cardsCss).toMatch(/\.cards-detail-drawer-close\s*\{[^}]*min-width:\s*6\.1rem/s);
@@ -27,6 +27,6 @@ describe("Cards responsive visual contract", () => {
 
   it("keeps answer modal chrome compact and respects reduced motion", () => {
     expect(cardsCss).toMatch(/\.product-modal\.cards-answer-modal\s*\{[^}]*width:\s*min\(980px, 100%\)/s);
-    expect(cardsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.cards-detail-drawer,[\s\S]*?animation:\s*none/s);
+    expect(cardsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.cards-detail-drawer\s*\{[^}]*animation:\s*none/s);
   });
 });

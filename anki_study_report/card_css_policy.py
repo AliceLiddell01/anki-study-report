@@ -248,6 +248,11 @@ def _rewrite_scoped_selector(tokens: Iterable[Any]) -> str:
             return f":scope.nightMode{root_tail(branch[index + 2:])}"
         if nested_class.lower().startswith("card") and nested_class[4:].isdigit():
             return f":scope.nightMode{tinycss2.serialize(branch[index:]).strip()}"
+        # Native Anki also uses `.nightMode .child` selectors.  Because the
+        # actual nightMode class is mirrored on the scoped card root, replace
+        # the leading context class with the explicit scope root while keeping
+        # the descendant/compound selector tail intact.
+        return f":scope.nightMode{root_tail(branch[2:])}"
 
     return tinycss2.serialize(branch).strip()
 

@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AnkiCardShadowPreview, buildShadowPreviewDocument, calculateAdaptivePreviewLayout } from "./AnkiCardShadowPreview";
@@ -38,7 +40,7 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(html).toContain('data-preview-mode="expanded"');
   });
 
-  it("keeps compact preview clipped and independent from the dashboard theme", () => {
+  it("keeps compact preview clipped while applying an explicit Anki day/night context", () => {
     const lightCard = buildShadowPreviewDocument({
       html: '<span class="term">front</span>',
       css: '@scope (.card){:scope{background-color:rgb(250,240,220);color:rgb(20,30,40)}:scope.card1{text-align:center}:scope .term{font-weight:700}}',
@@ -47,13 +49,52 @@ describe("AnkiCardShadowPreview layout", () => {
       mode: "preview",
     });
 
+    const darkCard = buildShadowPreviewDocument({
+      html: '<span class="term">front</span>',
+      css: '.card.nightMode{background-color:rgb(47,47,49)}.nightMode .term{color:rgb(245,245,245)}',
+      cardOrd: 0,
+      nightMode: true,
+      mode: "preview",
+    });
+
     expect(lightCard.cardClassName).toBe("card card1");
     expect(lightCard.shellClassName).not.toContain("nightMode");
+    expect(darkCard.cardClassName).toBe("card card1 nightMode");
+    expect(darkCard.shellClassName).toContain("nightMode");
+    expect(darkCard.styleText).toContain(".card.nightMode{background-color:rgb(47,47,49)}");
+    expect(darkCard.styleText).toContain(".nightMode .term{color:rgb(245,245,245)}");
+    expect(darkCard.styleText).not.toContain("background: #111827");
     expect(lightCard.styleText).toContain(".asr-shadow-card-shell--preview");
     expect(lightCard.styleText).toContain("overflow: hidden");
     expect(lightCard.styleText).not.toContain("overflow-y: auto");
     expect(lightCard.styleText).not.toContain("overscroll-behavior: contain");
     expect(lightCard.styleText).toContain("background-color:rgb(250,240,220)");
+  });
+
+  it("updates shell and card nightMode classes without replacing the preview payload", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const css = '.card{background-color:rgb(250,250,250)}.card.nightMode{background-color:rgb(47,47,49)}.nightMode .target{color:rgb(245,245,245)}';
+    const html = '<span class="target">same payload</span>';
+
+    await act(async () => root.render(<AnkiCardShadowPreview html={html} css={css} nightMode={false} mode="preview" side="front" />));
+    let host = container.querySelector<HTMLElement>('[data-testid="anki-card-shadow-preview"]')!;
+    expect(host.dataset.previewNightMode).toBe("false");
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]')?.classList.contains("nightMode")).toBe(false);
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(false);
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.innerHTML).toContain("same payload");
+
+    await act(async () => root.render(<AnkiCardShadowPreview html={html} css={css} nightMode mode="preview" side="front" />));
+    host = container.querySelector<HTMLElement>('[data-testid="anki-card-shadow-preview"]')!;
+    expect(host.dataset.previewNightMode).toBe("true");
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]')?.classList.contains("nightMode")).toBe(true);
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(true);
+    expect(host.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.innerHTML).toContain("same payload");
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 
   it("adds the dashboard token only to parser-approved local CSS media URLs", () => {

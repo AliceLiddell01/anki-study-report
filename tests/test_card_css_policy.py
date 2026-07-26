@@ -79,6 +79,7 @@ def test_card_css_policy_rewrites_native_root_and_ordinal_selectors_per_branch()
         .card.card1, .card1 { text-align: center; }
         .card .term, .card.card1 .answer { font-weight: 700; }
         .nightMode .card, .card.nightMode { color: white; }
+        .nightMode .term, .nightMode .answer strong { color: rgb(204, 204, 204); }
         @media (max-width: 700px) { .card.card1 .term { font-size: 20px; } }
         """
     )
@@ -88,6 +89,9 @@ def test_card_css_policy_rewrites_native_root_and_ordinal_selectors_per_branch()
     assert ":scope.card1,:scope.card1{text-align:center;}" in compact
     assert ":scope .term,:scope.card1 .answer{font-weight:700;}" in sanitized
     assert ":scope.nightMode,:scope.nightMode{color:white;}" in compact
+    assert ":scope.nightMode .term" in sanitized
+    assert ":scope.nightMode .answer strong" in sanitized
+    assert "color:rgb(204,204,204);" in compact
     assert "@media (max-width: 700px){:scope.card1 .term{font-size:20px;}}" in sanitized
     assert ".card.card1" not in sanitized
 

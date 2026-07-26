@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../i18n";
 import type { CardsTriageWorkspace } from "../hooks/useCardsTriageWorkspace";
+import { ResolvedThemeProvider } from "../lib/resolvedThemeContext";
 import type { SearchInspectResponse } from "../types/search";
 import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/triage";
 import CardsPage, { CARDS_WIDE_WORKSPACE_QUERY } from "./CardsPage";
@@ -126,6 +127,85 @@ describe("Cards attention inbox", () => {
     await act(async () => root.unmount());
   });
 
+  it("propagates live day/night context to the wide preview without resetting local workspace state", async () => {
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    const renderTheme = async (theme: "light" | "dark") => {
+      await act(async () => root.render(
+        <ResolvedThemeProvider value={theme}>
+          <CardsPage report={null} loadState="ready" />
+        </ResolvedThemeProvider>,
+      ));
+    };
+
+    await renderTheme("light");
+    const filterToggle = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Фильтры"))!;
+    await act(async () => filterToggle.click());
+    expect(document.getElementById("cards-inbox-filter-panel")).toBeTruthy();
+    const lightHost = document.querySelector<HTMLElement>('[data-preview-side="front"]')!;
+    const lightTemplate = lightHost.querySelector("template")?.innerHTML;
+    expect(lightHost.dataset.previewNightMode).toBe("false");
+    expect(lightHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]')?.classList.contains("nightMode")).toBe(false);
+    expect(lightHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(false);
+
+    await renderTheme("dark");
+    const darkHost = document.querySelector<HTMLElement>('[data-preview-side="front"]')!;
+    expect(darkHost.dataset.previewNightMode).toBe("true");
+    expect(darkHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card-shell"]')?.classList.contains("nightMode")).toBe(true);
+    expect(darkHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(true);
+    expect(darkHost.querySelector("template")?.innerHTML).toBe(lightTemplate);
+    expect(document.getElementById("cards-inbox-filter-panel")).toBeTruthy();
+    expect(workspace.activate).not.toHaveBeenCalled();
+    expect(workspace.refresh).not.toHaveBeenCalled();
+    expect(workspace.retryInspect).not.toHaveBeenCalled();
+
+    await renderTheme("light");
+    expect(document.querySelector<HTMLElement>('[data-preview-side="front"]')?.dataset.previewNightMode).toBe("false");
+    expect(document.getElementById("cards-inbox-filter-panel")).toBeTruthy();
+    await act(async () => root.unmount());
+  });
+
+  it("keeps drawer and expanded answer on the same resolved theme context", async () => {
+    wideMode = false;
+    document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
+    const root = createRoot(document.getElementById("root")!);
+    const workspace = readyWorkspace();
+    workspaceMock.mockReturnValue(workspace);
+    const renderTheme = async (theme: "light" | "dark") => {
+      await act(async () => root.render(
+        <ResolvedThemeProvider value={theme}>
+          <CardsPage report={null} loadState="ready" />
+        </ResolvedThemeProvider>,
+      ));
+    };
+
+    await renderTheme("dark");
+    const item = document.querySelector('button[data-card-id="1001"]') as HTMLButtonElement;
+    await act(async () => item.click());
+    const drawerHost = document.querySelector<HTMLElement>('[data-testid="cards-detail-drawer"] [data-preview-side="front"]')!;
+    expect(drawerHost.dataset.previewNightMode).toBe("true");
+    expect(drawerHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(true);
+
+    const expand = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Развернуть ответ"))!;
+    await act(async () => expand.click());
+    let modalHost = document.querySelector<HTMLElement>('[data-testid="cards-preview-modal"] [data-preview-side="back"]')!;
+    expect(modalHost.dataset.previewNightMode).toBe("true");
+    expect(modalHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(true);
+
+    await renderTheme("light");
+    modalHost = document.querySelector<HTMLElement>('[data-testid="cards-preview-modal"] [data-preview-side="back"]')!;
+    expect(modalHost.dataset.previewNightMode).toBe("false");
+    expect(modalHost.shadowRoot?.querySelector('[data-testid="asr-shadow-card"]')?.classList.contains("nightMode")).toBe(false);
+    expect(document.querySelector<HTMLElement>('[data-testid="cards-detail-drawer"] [data-preview-side="front"]')?.dataset.previewNightMode).toBe("false");
+    expect(workspace.activate).toHaveBeenCalledTimes(1);
+    expect(workspace.refresh).not.toHaveBeenCalled();
+    expect(workspace.retryInspect).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
   it("keeps the expanded answer as the existing true modal", async () => {
     document.body.innerHTML = '<div id="dashboard-app-shell"><div id="root"></div></div>';
     const root = createRoot(document.getElementById("root")!);
@@ -161,6 +241,76 @@ describe("Cards attention inbox", () => {
     expect(actions).toBeTruthy();
     expect(actions?.querySelector(".primary-button")?.textContent).toContain("Вернуть карточку");
     expect(actions?.querySelector(".cards-detail-action-alternatives")?.textContent).toContain("Открыть в Anki");
+  });
+
+  it("maps buried cards to unbury and keeps Open in Anki secondary", () => {
+    const buried: TriageItem = {
+      ...items[0]!,
+      itemId: "card:1003",
+      cardId: "1003",
+      cardState: { ...items[0]!.cardState, buried: true },
+    };
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      activeId: buried.itemId,
+      activeItem: buried,
+      inspectResponse: {
+        ...inspectResponse,
+        details: { ...inspectResponse.details, cardId: buried.cardId },
+      },
+    });
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const actions = document.querySelector('[data-primary-action="unbury"]');
+    expect(actions?.querySelector(".primary-button")?.textContent).toContain("Вернуть из отложенных");
+    expect(actions?.querySelector(".cards-detail-action-alternatives")?.textContent).toContain("Открыть в Anki");
+  });
+
+  it("keeps Open in Anki primary for ordinary learning and content/profile paths", () => {
+    const ordinary = items[0]!;
+    workspaceMock.mockReturnValue(readyWorkspace());
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    let actions = document.querySelector('[data-primary-action="open"]');
+    expect(actions?.querySelector(".primary-button")?.textContent).toContain("Открыть в Anki");
+    expect(actions?.querySelector(".cards-detail-action-alternatives")?.textContent).toContain("Приостановить");
+    expect(actions?.querySelector(".cards-detail-action-alternatives")?.textContent).toContain("Отложить");
+
+    const contentOnly = items[1]!;
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      activeId: contentOnly.itemId,
+      activeItem: contentOnly,
+      inspectResponse: {
+        ...inspectResponse,
+        details: { ...inspectResponse.details, cardId: contentOnly.cardId, noteId: contentOnly.noteId! },
+      },
+    });
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    actions = document.querySelector('[data-primary-action="unsuspend"]');
+    expect(actions?.querySelector(".primary-button")?.textContent).toContain("Вернуть карточку");
+    expect(document.querySelector('a[href="#/settings/inspection-profiles"]')).toBeTruthy();
+    expect(ordinary.reasons).toHaveLength(2);
+  });
+
+  it("uses canonical card state for the primary action when multiple reasons coexist", () => {
+    const suspendedMultiple: TriageItem = {
+      ...items[0]!,
+      itemId: "card:1004",
+      cardId: "1004",
+      cardState: { ...items[0]!.cardState, state: "suspended", suspended: true },
+    };
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      activeId: suspendedMultiple.itemId,
+      activeItem: suspendedMultiple,
+      inspectResponse: {
+        ...inspectResponse,
+        details: { ...inspectResponse.details, cardId: suspendedMultiple.cardId },
+      },
+    });
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const actions = document.querySelector('[data-primary-action="unsuspend"]');
+    expect(actions).toBeTruthy();
+    expect(document.querySelectorAll(".cards-detail-reasons li")).toHaveLength(2);
   });
 
   it("keeps all three resolution surfaces in the transient resolved projection", () => {
