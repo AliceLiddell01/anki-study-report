@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-27
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -127,8 +127,10 @@ Canonical private reviews:
 - O1.3: [telemetry PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21);
 - O1.4 и corrective fix O1.3:
   [telemetry PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22);
-- O1.4 corrective и O1.5:
-  [telemetry PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23).
+- O1.5 initial Admin Console и corrective closure O1.4:
+  [telemetry PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23);
+- O1.5 Product Metrics v2 и product-first Admin Console redesign:
+  [telemetry PR #24](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/24).
 
 Telemetry integration:
 
@@ -143,9 +145,12 @@ O1.3 merge: 1acb7abc6d9f2347ce59e3f2b52da3a0728140bb
 O1.4 final head: 03ad15c15917c192878a6fa4900430772964c95c
 O1.4 final CI: 30200494159 — PASS / OSV green
 O1.4 merge: ebae6f71ec0dcf2ba044faf9dff2a58cde474263
-O1.5 final head: f21cd48ac03c555467a15676dc8af90fa14a7525
-O1.5 final CI: 30203326707 — PASS / Chromium / axe / OSV green
-O1.5 merge: 0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6
+O1.5 baseline head: f21cd48ac03c555467a15676dc8af90fa14a7525
+O1.5 baseline CI: 30203326707 — PASS / Chromium / axe / OSV green
+O1.5 baseline merge: 0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6
+O1.5 final redesign head: 1ce7c6c848fa4466d6824e965bd9b8f74bd7567f
+O1.5 final redesign CI: 30219294751 — PASS / 108 tests / Chromium / axe / OSV green
+O1.5 final merge: 450665efd80de8c38525017a32c82f2b1a55146b
 ```
 
 Corrective fix O1.3 закрывает registry-wide differencing paths, сохраняет
@@ -156,11 +161,18 @@ Corrective fix O1.3 закрывает registry-wide differencing paths, сох�
 token и читает только materialized provider snapshots.
 
 20,000 accepted events остаётся abuse cap, не Free-plan capacity guarantee.
-O1.5 корректирует provider pair/bounds/atomic replacement/full-body timeout и
-добавляет неразвёрнутую owner-only Admin Console: четыре fixed pages, ровно 20
-active operations, Worker-first authenticated assets, seven-state privacy-safe
-rendering и отдельный Chromium/axe gate. Future ingestion-rejections query не
-доступен UI.
+Final O1.5 ограничивает owner console пятнадцатью fixed read-only operations и
+шестью routes: Overview, Audience, Features, Reliability, Privacy и
+Infrastructure. `product.overview` имеет 19-cell fixed contract и семь primary
+KPI; Dashboard, Search, Entity Actions и Data health остаются отдельными status
+groups, а infrastructure diagnostics не подменяют product health. Ratios и
+suppression рассчитываются server-side; exact zero сохраняется, suppressed и
+unavailable values остаются `null`, raw query/metric codes доступны только в
+technical inspector.
+
+Canonical prototype v3.2.3 прошёл ZIP integrity и 51/51 checksum verification;
+reference comparison material mismatch не выявил. Prototype assets и
+screenshots в repository не переносились.
 
 Remote D1 migration, Cloudflare Access resource/policy, Admin route,
 staging/production deployment, live provider query и Cron activation не
