@@ -54,7 +54,7 @@ Public docs sync:
 | --------------------------------------------- | ------- |
 | `git diff --check`                            | PASS    |
 | `python -m compileall -q anki_study_report`   | PASS    |
-| exact-head Fast CI                            | PENDING |
+| [Fast CI run 30197082202](https://github.com/AliceLiddell01/anki-study-report/actions/runs/30197082202) | PASS |
 | Docker / real-Anki E2E                        | NOT RUN |
 
 Docs-only sync не меняет Python/frontend/runtime/package behavior, поэтому
