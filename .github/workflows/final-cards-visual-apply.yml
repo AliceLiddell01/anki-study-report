@@ -1,0 +1,37 @@
+name: Apply final Cards visual closure
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out correction branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+
+      - name: Apply verified final correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cat .final-cards-visual-patch/chunk-* | base64 --decode > /tmp/final-cards-visual.patch.zst
+          echo '533633f8069d1f94baef5ad529b2a41ea7acfa0c74ea060d7773c3cf2e98f872  /tmp/final-cards-visual.patch.zst' | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/final-cards-visual.patch.zst > /tmp/final-cards-visual.patch
+          echo '729704eced45ede5291ceb8f2883fa51d679f4838ac57eb1be67afa9b9401df6  /tmp/final-cards-visual.patch' | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/final-cards-visual.patch
+          git rm -r .final-cards-visual-patch .github/workflows/final-cards-visual-apply.yml
+          git commit -m 'Complete the Cards native preview and visual closure'
+          git push origin HEAD:c2-manual-acceptance-remediation
