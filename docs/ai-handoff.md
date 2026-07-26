@@ -111,8 +111,8 @@ E2E-I6 corrective fix не является новым этапом и не ак
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
 O1.3 — Complete / corrected / integrated; not deployed
-O1.4 — Complete / integrated; not deployed
-O1.5 — Next
+O1.4 — Complete / corrected / integrated; not deployed
+O1.5 — Complete / integrated; not deployed
 O1.6 — Planned
 ```
 
@@ -126,7 +126,9 @@ Canonical private reviews:
 - O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20);
 - O1.3: [telemetry PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21);
 - O1.4 и corrective fix O1.3:
-  [telemetry PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22).
+  [telemetry PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22);
+- O1.4 corrective и O1.5:
+  [telemetry PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23).
 
 Telemetry integration:
 
@@ -141,6 +143,9 @@ O1.3 merge: 1acb7abc6d9f2347ce59e3f2b52da3a0728140bb
 O1.4 final head: 03ad15c15917c192878a6fa4900430772964c95c
 O1.4 final CI: 30200494159 — PASS / OSV green
 O1.4 merge: ebae6f71ec0dcf2ba044faf9dff2a58cde474263
+O1.5 final head: f21cd48ac03c555467a15676dc8af90fa14a7525
+O1.5 final CI: 30203326707 — PASS / Chromium / axe / OSV green
+O1.5 merge: 0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6
 ```
 
 Corrective fix O1.3 закрывает registry-wide differencing paths, сохраняет
@@ -151,9 +156,16 @@ Corrective fix O1.3 закрывает registry-wide differencing paths, сох�
 token и читает только materialized provider snapshots.
 
 20,000 accepted events остаётся abuse cap, не Free-plan capacity guarantee.
+O1.5 корректирует provider pair/bounds/atomic replacement/full-body timeout и
+добавляет неразвёрнутую owner-only Admin Console: четыре fixed pages, ровно 20
+active operations, Worker-first authenticated assets, seven-state privacy-safe
+rendering и отдельный Chromium/axe gate. Future ingestion-rejections query не
+доступен UI.
+
 Remote D1 migration, Cloudflare Access resource/policy, Admin route,
-staging/production deployment, live provider query, Cron activation и UI не
-выполнялись. Следующий отдельный scope — `O1.5 — Minimal Admin Console`.
+staging/production deployment, live provider query и Cron activation не
+выполнялись. Следующий отдельный scope — `O1.6 — Verification, Runbook and
+Production Gate`.
 
 ## Рабочие правила
 
