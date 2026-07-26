@@ -217,6 +217,51 @@ const SHADOW_BASE_CSS = `
   color: #f8fafc;
 }
 
+/*
+ * Anki-compatible presentation fallbacks live before template CSS and use
+ * zero-specificity selectors. Card templates remain authoritative for replay
+ * control size/colors/spacing and image geometry.
+ */
+:where(.card) :where(img) {
+  max-width: 100%;
+  max-height: 95vh;
+}
+
+:where(.card) :where(.asr-card-replay) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 3px;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg) {
+  width: var(--asr-card-audio-size);
+  height: var(--asr-card-audio-size);
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg circle) {
+  fill: #fff;
+  stroke: #414141;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg path) {
+  fill: #414141;
+}
+
 .card pre {
   max-width: 100%;
   overflow: auto;
@@ -301,56 +346,16 @@ const SHADOW_SAFETY_CSS = `
   min-height: var(--asr-preview-content-height);
 }
 
-.card img {
-  max-width: 100%;
-  height: auto;
-  vertical-align: middle;
-  object-fit: contain;
-}
-
+/* Raw media stays inert; playback is owned by the safe ShadowRoot handler. */
 .card audio,
 .card .asr-card-audio {
   display: none;
 }
 
-.card .asr-card-replay {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  margin: 0 0 12px;
-}
-
-.card .asr-card-replay-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--asr-card-audio-size);
-  height: var(--asr-card-audio-size);
-  border: 1px solid rgba(37, 99, 235, 0.42);
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
-  cursor: pointer;
-  padding: 0;
-}
-
-.card .asr-card-replay-button:hover {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.62);
-}
-
-.card .asr-card-replay-button:focus-visible {
+/* Accessibility fallback only. Template focus rules can override it. */
+:where(.card) :where(.asr-card-replay-button):focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.28);
   outline-offset: 2px;
-}
-
-.card .asr-card-replay-icon {
-  display: block;
-  font-size: 16px;
-  line-height: 1;
-  transform: translateX(1px);
 }
 
 .card .asr-card-media-missing {
@@ -362,6 +367,56 @@ const SHADOW_SAFETY_CSS = `
   font-size: 18px;
 }
 `;
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+function createReplaySvg(ownerDocument: Document): SVGSVGElement {
+  const svg = ownerDocument.createElementNS(SVG_NAMESPACE, "svg");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.classList.add("asr-card-replay-svg");
+
+  const circle = ownerDocument.createElementNS(SVG_NAMESPACE, "circle");
+  circle.setAttribute("cx", "20");
+  circle.setAttribute("cy", "20");
+  circle.setAttribute("r", "18");
+
+  const path = ownerDocument.createElementNS(SVG_NAMESPACE, "path");
+  path.setAttribute("d", "M16 11.5 L30 20 L16 28.5 Z");
+
+  svg.append(circle, path);
+  return svg;
+}
+
+/**
+ * Adds Anki's documented presentation hooks after sanitization without
+ * allowing card-owned SVG or script execution through the HTML sanitizer.
+ */
+export function enhanceReplayControls(root: ParentNode): void {
+  root.querySelectorAll<HTMLElement>(".asr-card-replay").forEach((wrapper) => {
+    const audio = wrapper.querySelector<HTMLAudioElement>("audio.asr-card-audio");
+    if (!audio) {
+      return;
+    }
+
+    let button = wrapper.querySelector<HTMLButtonElement>("button.asr-card-replay-button");
+    if (!button) {
+      button = wrapper.ownerDocument.createElement("button");
+      button.type = "button";
+      button.className = "asr-card-replay-button";
+      button.setAttribute("aria-label", "Play audio");
+      wrapper.insertBefore(button, audio);
+    }
+
+    button.classList.add("replay-button");
+    button.dataset.asrReplayEnhanced = "true";
+    if (!button.getAttribute("aria-label")) {
+      button.setAttribute("aria-label", "Play audio");
+    }
+    button.replaceChildren(createReplaySvg(wrapper.ownerDocument));
+  });
+}
 
 export function buildShadowPreviewDocument({
   html,
@@ -448,6 +503,7 @@ function AnkiCardShadowPreviewComponent({
     card.className = shadowDocument.cardClassName;
     card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
+    enhanceReplayControls(card);
 
     const frame = document.createElement("div");
     frame.className = "asr-shadow-card-frame";
