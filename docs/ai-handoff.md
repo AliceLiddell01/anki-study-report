@@ -108,8 +108,8 @@ E2E-I6 corrective fix не является новым этапом и не ак
 ## Operations
 
 ```text
-O1.1 — Complete / reviewable contract
-O1.2 — Review
+O1.1 — Complete / integrated
+O1.2 — Complete / integrated; not deployed
 O1.3 — Planned
 ```
 
@@ -122,10 +122,23 @@ Canonical private reviews:
 - O1.1: [telemetry PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19);
 - O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20).
 
-O1.2 не добавляет Admin API/UI, Access resource, provider collector или
-deployment. Owner integration в `operations` остаётся отдельным решением.
-Следующий минимальный scope — `O1.3 — Protected Read-only Admin API`; он не
-начат.
+Telemetry integration:
+
+```text
+O1.1 merge: 8ef613d61c7b8672d9143b0c3b710c2d81b2fa6b
+O1.2 final head: 86dcdae38c0044dee7e839ee2ff190d539b7cf57
+O1.2 final CI: 30193694403 — PASS / OSV green
+O1.2 merge: bb1ae3c7e42da22f917128b9becde04ba7b0b4d8
+```
+
+O1.2 заменяет unconditional eight-day rewrite на dirty/missing-day
+checkpoints, делит bounded write budget между aggregation/backfill/retention и
+фиксирует actual D1 metadata/deferred evidence. Deployment, remote migration,
+Admin API/UI, Access resource и provider collector не выполнялись.
+
+20,000 accepted events остаётся abuse cap, не Free-plan capacity guarantee.
+Следующий минимальный scope после отдельного migration/deployment решения —
+`O1.3 — Protected Read-only Admin API`; он не начат.
 
 ## Рабочие правила
 

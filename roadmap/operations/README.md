@@ -5,8 +5,8 @@
 **Снимок решения:** `2026-07-26`
 
 ```text
-O1.1 — Complete / reviewable contract
-O1.2 — Review
+O1.1 — Complete / integrated
+O1.2 — Complete / integrated; not deployed
 O1.3 — Planned
 O1.4–O1.6 — Planned
 ```
@@ -74,9 +74,10 @@ raw-event explorer, arbitrary segmentation и two-dimensional analytics
 
 ### O1.1 — Metrics, Query and Security Contract
 
-**Статус:** `Complete / reviewable contract`
+**Статус:** `Complete / integrated`
 **Canonical review:** telemetry
 [PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19)
+**Telemetry operations merge:** `8ef613d61c7b8672d9143b0c3b710c2d81b2fa6b`
 
 Зафиксированы:
 
@@ -97,26 +98,37 @@ Operations branch от текущего `core`.
 
 ### O1.2 — Operational Read Model and Maintenance Evidence
 
-**Статус:** `Review`
+**Статус:** `Complete / integrated; not deployed`
 **Canonical review:** telemetry
 [PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20)
+**Telemetry operations merge:** `bb1ae3c7e42da22f917128b9becde04ba7b0b4d8`
 
-Review candidate добавляет только:
+Интегрированный Operations contract добавляет только:
 
 - bounded daily totals;
 - approved one-dimensional distributions;
-- fixed-column component maintenance evidence;
+- fixed-column component maintenance evidence и bounded per-day checkpoint;
 - coverage и bounded incomplete reason codes;
-- idempotent complete-day rebuild;
+- dirty/missing-day selection без unconditional eight-day rewrite;
+- общий 20,000-row maintenance write budget с actual D1 metadata;
+- explicit `capacity_budget_deferred` и `single_day_budget_exceeded`;
+- atomic aggregate/read-model/checkpoint transaction;
 - resumable bounded backfill;
 - deletion-aware anonymous aggregate semantics;
-- 24-month aggregate/read-model и 60-day maintenance-evidence retention.
+- тот же two-year calendar-month cutoff, что у aggregates, и 60-day
+  maintenance-evidence retention.
 
 Не добавлены Admin API/UI, provider collector, Cloudflare Access resources,
 external alerts, new client telemetry, retention expansion или deployment.
 
-O1.2 нельзя отмечать `Complete`, пока exact-head cloud CI и PR metadata не
-подтверждены и владелец отдельно не решил integration в `operations`.
+Final telemetry CI
+[run 30193694403](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30193694403)
+на head `86dcdae38c0044dee7e839ee2ff190d539b7cf57` прошёл, включая OSV.
+Migration/deployment не выполнялись.
+
+Application cap 20,000 accepted events остаётся abuse boundary, а не
+доказательством совместимости с Workers Free. Production provider evidence,
+reviewed lower cap или paid plan остаются отдельным решением.
 
 ### O1.3 — Protected Read-only Admin API
 
