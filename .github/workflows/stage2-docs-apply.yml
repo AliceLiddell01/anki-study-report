@@ -1,0 +1,34 @@
+name: Apply Cards documentation closeout
+
+on:
+  push:
+    branches:
+      - c2-manual-acceptance-remediation
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, 'Stage the Cards documentation closeout')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Apply verified documentation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cat .stage2-docs-patch/part-* | base64 --decode > /tmp/stage2-docs.patch.zst
+          echo "c0e168f14b8af38585315c5190046f2276b6a816b0e88be6132eabaa17b8ff02  /tmp/stage2-docs.patch.zst" | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/stage2-docs.patch.zst > /tmp/stage2-docs.patch
+          echo "5679e15862ef1d90e50403ddceba21ea458c698bb5afd257efaf5211fd80b5ef  /tmp/stage2-docs.patch" | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/stage2-docs.patch
+          git rm -r .stage2-docs-patch .github/workflows/stage2-docs-apply.yml
+          git commit -m "Document the Cards v3.2.3 production integration"
+          git push origin HEAD:c2-manual-acceptance-remediation
