@@ -2,9 +2,9 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 In Progress`; `G1.5 Complete`; two confirmatory-eligible family-level survivors recorded; `G1.6 Next / not started`; final candidate not selected; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete`; `G1.6 Complete`; final outcome `DEFER_REVIEW_MODEL`; recommended research candidate `NONE`; both candidates remain confirmatory-eligible, not selected and not falsified; production integration not approved; `G2 PLANNED / NOT STARTED`
 
-Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
+Gamification does not block the Core path. Research code, fixtures and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
 ## Branch and production policy
 
@@ -37,9 +37,22 @@ G0 reproduced the current synthetic baseline without production integration. The
 
 ## G1 — Close Review XP cross-horizon cycling gap
 
-**Status:** In Progress.
+**Status:** Complete.
 
-### Current decomposition
+### Final state
+
+```text
+G1: COMPLETE
+G1.6: COMPLETE
+G1 final outcome: DEFER_REVIEW_MODEL
+recommended research candidate: NONE
+P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+production integration: PROHIBITED
+G2: PLANNED / NOT STARTED
+```
+
+### Decomposition
 
 - `G1.1 — Freeze problem and diagnostic contract`: Complete — [report](g1-problem-gate-freeze.md)
   - corrective checkpoint: Complete — [report](g1-contract-correction.md)
@@ -48,9 +61,9 @@ G0 reproduced the current synthetic baseline without production integration. The
 - `G1.3 — Candidate protocol and hypothesis design`: Complete — [report](g1-candidate-protocol.md)
 - `G1.4 — Bounded screening`: Complete — [full report](g1-bounded-screening.md), [technical reference](../../docs/gamification/review-xp-bounded-screening.md)
 - `G1.5 — Confirmatory 90/365, robustness and safety evidence`: Complete — [report](g1-confirmatory-evidence.md), [protocol](../../docs/gamification/review-xp-confirmatory-protocol.md)
-- `G1.6 — Candidate decision and G1 closure`: Next / not started; separate activation required
+- `G1.6 — Candidate decision and G1 closure`: Complete — [decision and closeout](g1-review-xp-decision.md)
 
-The duplicated top-level G1.2a row is removed: G1.2a is a correction nested under G1.2.
+The duplicated top-level G1.2a row remains removed: G1.2a is a correction nested under G1.2.
 
 ### G1.2a scientific state
 
@@ -111,11 +124,26 @@ Outcomes:
 - `P-STEP-ZERO` → `CONFIRMATORY_ELIGIBLE`;
 - `P-TAPER-ZERO-30D` → `CONFIRMATORY_ELIGIBLE`.
 
-All required gates passed for both survivors. No ranking, final candidate selection or production approval occurred. G1.6 is the next decision stage but has not started.
+All required gates passed for both survivors. No ranking, final candidate selection or production approval occurred in G1.5.
+
+### G1.6 final decision
+
+G1.6 applied the exact allowed outcome protocol and closed G1 with:
+
+```text
+final G1 outcome: DEFER_REVIEW_MODEL
+recommended research candidate: NONE
+```
+
+The required raw G1.4/G1.5 bundles were not available in the ChatGPT execution environment for fresh SHA-256, `FILES.sha256`, inventory and detached-validator continuity checks. This blocks recommendation but is not a model-level rejection reason.
+
+The accepted summaries also leave both candidates tied under the frozen non-compensable criteria. STEP has a smaller mechanism and observability surface; TAPER provides a gradual transition but adds an unvalidated linear-shape/window assumption. No pre-existing mandatory project principle makes either property a winner criterion. Selecting one would require an arbitrary post-hoc ranking rule, which is forbidden.
+
+No new simulation, score, parameter search, candidate family, threshold or production change was introduced. Full rationale and decision ledger: [G1.6 decision and closeout](g1-review-xp-decision.md).
 
 ### G1 goal and closure boundary
 
-Resolve the cycling growth gate under frozen tolerances or explicitly reject/defer the Review model. A recommended research candidate is never called production-ready. Allowed final outcomes are exactly:
+G1 resolved its required decision boundary with one exact machine-protocol outcome. Allowed final outcomes remain:
 
 ```text
 RECOMMEND_RESEARCH_CANDIDATE
@@ -123,11 +151,13 @@ REJECT_REVIEW_MODEL
 DEFER_REVIEW_MODEL
 ```
 
+Selected outcome: `DEFER_REVIEW_MODEL`. A recommended research candidate was not selected. This does not falsify either eligible candidate and does not approve production.
+
 ## Later stages
 
 ### G2 — Learn XP specification and simulation
 
-**Status:** Planned after G1. Define initial-learning units, pending/confirmed rewards and anti-farming behavior independently from Review XP. Production ledger/UI remain out of scope.
+**Status:** `PLANNED / NOT STARTED`. Define initial-learning units, pending/confirmed rewards and anti-farming behavior independently from Review XP. Production ledger/UI remain out of scope. G1.6 did not start or propose implementation work for G2.
 
 ### G3 — Create XP specification and simulation
 
@@ -155,4 +185,4 @@ DEFER_REVIEW_MODEL
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, package, release or telemetry integration is approved. `G1.6` is the next Gamification stage but is not started and requires a separate task.
+No production add-on, dashboard, payload, API, migration, package, release or telemetry integration is approved. G1 is complete with `DEFER_REVIEW_MODEL`; G2 is planned but not started.

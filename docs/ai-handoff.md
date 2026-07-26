@@ -61,7 +61,7 @@ gamification
 
 ```text
 G0 — Complete
-G1 — In Progress
+G1 — Complete
 G1.1 и correction — Complete
 G1.2 и G1.2a correction — Complete
 G1.3 — Complete
@@ -69,16 +69,22 @@ G1.4 — Complete
 G1.4 survivors — P-STEP-ZERO; P-TAPER-ZERO-30D
 G1.5 — Complete
 G1.5 outcomes — both CONFIRMATORY_ELIGIBLE
-final candidate selected — NO
-G1.6 — Next / not started
+G1.6 — Complete
+G1 final outcome — DEFER_REVIEW_MODEL
+recommended research candidate — NONE
+P-STEP-ZERO — not selected; not falsified
+P-TAPER-ZERO-30D — not selected; not falsified
 production integration — PROHIBITED
+G2 — PLANNED / NOT STARTED
 ```
 
 G1.2a оставляет root cause частично локализованным с `MEDIUM` confidence: `memory_main` — крупнейший component, `post_transition` — dominant timing window, Challenge не direction-consistent, уникальная corrective formula не доказана.
 
 G1.4 завершён на опубликованной implementation `a8857f111849e2e98744adda8e06fe1910bdf805`. Exact matrix дала `160/160` unique units, `0/0/0` missing/extra/duplicates и evidence digest `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`.
 
-G1.5 выполнил prospectively frozen 840-unit matrix на published implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`: `840/840` unique units, `0/0/0` missing/extra/duplicates, evidence digest `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`. `P-STEP-ZERO` и `P-TAPER-ZERO-30D` получили `CONFIRMATORY_ELIGIBLE`. Ranking, final candidate selection и production approval не выполнялись. G1.6 — следующий отдельный этап, но он не начат.
+G1.5 выполнил prospectively frozen 840-unit matrix на published implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`: `840/840` unique units, `0/0/0` missing/extra/duplicates, evidence digest `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`. `P-STEP-ZERO` и `P-TAPER-ZERO-30D` получили `CONFIRMATORY_ELIGIBLE`.
+
+G1.6 применил frozen decision policy и закрыл G1 outcome `DEFER_REVIEW_MODEL`. Raw bundles G1.4/G1.5 не были доступны для обязательной read-only continuity revalidation, а принятые агрегаты не дают неарбитрарного основания предпочесть STEP или TAPER. Оба candidates остаются eligible, не выбраны и не falsified. Новые simulations, ranking и production integration не выполнялись.
 
 Точные источники:
 
@@ -89,8 +95,9 @@ G1.5 выполнил prospectively frozen 840-unit matrix на published implem
 - [G1.4 bounded screening closeout](../roadmap/gamification/g1-bounded-screening.md)
 - [G1.5 confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 - [G1.5 confirmatory closeout](../roadmap/gamification/g1-confirmatory-evidence.md)
+- [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
-`gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
+`gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision. G2 не начат.
 
 ## Platform / CI
 
