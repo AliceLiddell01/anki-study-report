@@ -40,8 +40,8 @@ flowchart LR
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты
 PR #130 Stage 1 sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2 Cards 1:1 — composition + bounded visual revision + native night-mode + final native preview/visual closure + repaired evidence COMPLETE; owner checkpoint PENDING
-Inspection Profiles screenshot-first audit — NOT STARTED
+PR #130 Stage 2 Cards 1:1 — native template CSS fidelity repair + exact same-card evidence COMPLETE; owner checkpoint REVOKED / PENDING
+Inspection Profiles screenshot-first comparison capture — COMPLETE; owner review NOT PERFORMED
 PR #130 Stage 3 Inspection Profiles 1:1 implementation — NOT STARTED
 Settings shared regression sweep — NOT STARTED
 final verification и отдельное решение о merge PR #130 — NOT PERFORMED
@@ -86,8 +86,8 @@ problem
 **Implementation:** complete
 **Integration:** merged в `core`
 **Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
-**Stage 2 Cards 1:1:** composition, bounded visual revision, native Anki night-mode correction, final native preview/visual closure и repaired evidence complete; owner decision pending — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-v323-production-integration.md)
-**Inspection Profiles screenshot-first audit:** not started; после `ACCEPT CARDS 1:1` выполняется отдельно и без production changes на первом проходе
+**Stage 2 Cards 1:1:** native template CSS fidelity repair и exact same-card evidence complete; owner decision revoked/pending — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-v323-production-integration.md)
+**Inspection Profiles screenshot-first comparison capture:** complete; owner review not performed, production changes not started
 **Stage 3 Inspection Profiles 1:1 implementation:** not started
 **Settings shared regression sweep:** not started
 
@@ -103,7 +103,7 @@ problem
 - согласованную motion/shape foundation;
 - exact Fast CI package и final `standard/full` с restart.
 
-Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`; final native preview/visual closure: `c2c2b65b399907010ff7e2d40307b1ded02a1bc3`; repaired evidence: `cards-v323-production-final-evidence-repair.zip`, SHA-256 `ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8`; подробности: [Cards v3.2.3 integration report](../../reports/core/c2-cards-v323-production-integration.md).
+Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`; final native preview/visual closure: `c2c2b65b399907010ff7e2d40307b1ded02a1bc3`; native template CSS fidelity repair: `adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5`; repaired evidence: `cards-v323-production-final-evidence-repair.zip`, SHA-256 `ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8`; подробности: [Cards v3.2.3 integration report](../../reports/core/c2-cards-v323-production-integration.md).
 
 Это closure существующего C2, а не новый numbered stage.
 

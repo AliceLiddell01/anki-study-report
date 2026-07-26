@@ -5,8 +5,10 @@
 **Initial Stage 2 implementation:** `1f78b69574794c67149796343dde8cbdd4948fb4`
 **Bounded visual revision:** `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`
 **Native Anki night-mode correction:** `f288595499904eadeb81c4ceab3da232581c30f5`
+**Native template CSS fidelity repair:** `adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5`
 **Owner visual acceptance:** pending
-**Следующий этап:** Inspection Profiles 1:1 только после решения владельца по Cards
+**Profiles coverage:** screenshot-first comparison capture complete; owner review and implementation not started
+**Следующий этап:** owner review Cards; Profiles production changes не начинаются автоматически
 
 ## Назначение
 
@@ -484,9 +486,10 @@ Stage 2 composition: COMPLETE
 bounded visual revision: COMPLETE
 native Anki night-mode correction: COMPLETE
 final native preview and visual closure: COMPLETE
-final visual closure evidence: COMPLETE
+native template CSS fidelity repair/evidence: COMPLETE
 Cards owner visual acceptance: PENDING
-Inspection Profiles 1:1: NOT STARTED
+Inspection Profiles screenshot-first capture: COMPLETE / OWNER REVIEW NOT PERFORMED
+Inspection Profiles 1:1 implementation: NOT STARTED
 final integration: NOT RUN
 PR #130: OPEN / DRAFT / UNMERGED
 ```
@@ -503,3 +506,19 @@ ACCEPT CARDS 1:1
 REVISE:
 <конкретные visual/interaction deviations>
 ```
+
+
+## Native Anki stylesheet regression after final visual closure
+
+Timeline:
+
+```text
+f288595 → template-owned Words background/night/accent styles confirmed
+c2c2b65 → canvas geometry improved, but report CSS was cut at 3000 chars and preview fallback overrode root typography
+0093237 → media/lifecycle evidence repaired; CSS regression remained
+adfe628 → complete bounded sanitizer output restored and fallback specificity weakened
+```
+
+Exact same-card browser provenance uses committed `words-n1.apkg`, card `1649481469689`, note type `Слова`, ordinal `0`, template `Карточка 1`. Raw CSS, sanitized CSS, inspect/report payload and Shadow DOM style order are hashed in the evidence package.
+
+Visual comparison coverage also uses the exact Prototype card identities for Japanese Words (`1708095865696`, `工作`), Japanese Grammar (`1781457470336`) and Java (`1780002619582`, deep copy), with Prototype/Production side-by-side sheets in light/dark. All named Prototype Inspection Profiles / Settings contours were captured under the same state names for screenshot-first comparison; this is evidence collection only, not Profiles acceptance or implementation.

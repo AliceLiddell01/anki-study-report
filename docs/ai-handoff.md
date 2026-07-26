@@ -42,8 +42,9 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты в core
 PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2: Cards 1:1 composition + bounded visual revision + native Anki night-mode correction — COMPLETE, owner decision PENDING
-PR #130 Stage 3: Inspection Profiles 1:1 — NOT STARTED
+PR #130 Stage 2: Cards 1:1 composition + bounded corrections + native template CSS fidelity repair — COMPLETE, owner decision PENDING
+Inspection Profiles screenshot-first comparison capture — COMPLETE / owner review NOT PERFORMED
+PR #130 Stage 3: Inspection Profiles 1:1 implementation — NOT STARTED
 final verification / merge decision / C3 — NOT PERFORMED
 release — не начат
 ```
@@ -64,12 +65,15 @@ Cards 1:1 initial production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
 Cards bounded visual revision: 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
 Cards native Anki night-mode correction: f288595499904eadeb81c4ceab3da232581c30f5
 Cards final visual production commit: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+Cards native template CSS fidelity repair: adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5
 Cards final visual evidence: cards-v323-production-final-visual-closure-evidence.zip
 Cards final visual evidence SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
 Cards repaired micro-evidence: cards-v323-production-final-evidence-repair.zip
 Cards repaired micro-evidence SHA-256: ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8
-Cards composition/revision/night-mode/final visual closure/repaired evidence: COMPLETE / owner decision PENDING
-Inspection Profiles screenshot-first visual audit: NOT STARTED
+Cards native template CSS fidelity artifact: cards-native-template-css-fidelity-repair-evidence.zip
+Cards native template CSS fidelity artifact SHA-256: 5885b4ac5e676685363855708d346bc030c697a24bdb70b41f6bbdef227cea6e
+Cards implementation/native CSS repair/evidence: COMPLETE / owner decision PENDING
+Inspection Profiles screenshot-first comparison capture: COMPLETE / owner review NOT PERFORMED
 Inspection Profiles 1:1 implementation: NOT STARTED
 Settings shared regression sweep: NOT STARTED
 PR merge/final verification/C3: NOT PERFORMED
@@ -83,10 +87,10 @@ PR merge/final verification/C3: NOT PERFORMED
 
 | Route / area | Prototype references | Current production captures | Reviewed | Owner verdict / next action |
 | --- | --- | --- | --- | --- |
-| `#/cards` wide | есть | есть, включая repaired Words media | да | owner decision PENDING |
+| `#/cards` wide | есть | exact same-card Words / Grammar / Java + native CSS provenance | да | owner decision PENDING |
 | `#/cards` drawer/modal | есть | есть | да | входит только в Cards checkpoint |
 | `#/cards` lifecycle | есть | repaired `still_active` отличается от `recheck_pending` | да | owner decision PENDING |
-| `#/settings/inspection-profiles` | есть | актуального полного production-пакета нет | нет | NOT REVIEWED; после `ACCEPT CARDS 1:1` отдельный screenshot-first audit без production changes на первом проходе |
+| `#/settings/inspection-profiles` | есть | same-name production captures и side-by-side sheets собраны | нет | CAPTURE COMPLETE / OWNER REVIEW NOT PERFORMED; production changes не выполнялись |
 | Settings shared shell | частично | только старые CI captures | нет | NOT REVIEWED |
 | Other Settings routes | redesign не входит в текущий scope | нужен только regression sweep | нет | OUT OF SCOPE / REGRESSION ONLY |
 

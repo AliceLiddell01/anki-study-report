@@ -54,3 +54,31 @@ Pre-template safe fallback задаёт default unstyled card: light — све�
 ## Чтения
 
 Открытие диалога ответа переиспользует payload активного просмотра Search. Строки очереди не получают данные полного предпросмотра и не инициируют чтение media.
+
+
+## Native Anki stylesheet fidelity repair
+
+После final visual closure была выявлена P0-регрессия на exact Words card `1649481469689` (`影`). Parser-backed sanitizer сохранял полный безопасный stylesheet, но `_dashboard_preview_css()` вторично обрезал его до `3000` символов посреди CSS rule. Браузер получал синтаксически неполный stylesheet и показывал pre-template fallback вместо template-owned background и descendant accents. Дополнительно preview fallback для typography/spacing имел более высокую specificity, чем template root.
+
+Исправленный contract:
+
+- dashboard payload возвращает полный уже bounded sanitizer output без повторного character slicing;
+- `MAX_CARD_CSS_OUTPUT_CHARS = 4000`, allowlist и fail-closed parser policy сохранены;
+- preview fallback использует low-specificity `:where(...)`;
+- template CSS остаётся между base fallback и safety CSS;
+- safety CSS ограничивается containment/security и не управляет background, color, font, accent или template spacing;
+- exact-card fixture фиксирует raw/sanitized CSS hashes, card ordinal, selectors и media identity.
+
+Для `1649481469689` подтверждено:
+
+```text
+raw CSS:       4667 chars / 234a03d0f46846cb4c274d8350980170c3e1504625fb1039933d8eaa8f44ce97
+sanitized CSS: 3724 chars / d67fa36bffdfd829a4294e139a62ff9d457bf1306038bdb936d65951690ec93a
+light: background rgb(252,252,252), color rgb(51,51,51)
+dark:  background rgb(47,47,49), color rgb(220,220,220)
+accent: rgb(255,170,0)
+font-size / line-height: 20px / 32px
+media: 影.gif, HTTP 200, 160×120, external requests 0
+```
+
+Wide preview, `1024×768` drawer и expanded answer используют один CSS payload и один template cascade. Cards owner acceptance этим техническим repair не объявляется.

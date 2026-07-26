@@ -12,8 +12,9 @@
 **Bounded visual revision start:** `94ba28dc8cf414fcade1eb2041b548022dc3836e`
 **Production visual revision:** `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`
 **Native Anki night-mode correction:** `f288595499904eadeb81c4ceab3da232581c30f5`
+**Native template CSS fidelity repair:** `adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5`
 **Pull request:** `#130` — OPEN / DRAFT / UNMERGED
-**Статус:** composition, bounded visual revision, native Anki night-mode correction и correction evidence завершены; owner checkpoint по Cards ожидается; Inspection Profiles 1:1 не начиналась.
+**Статус:** native template CSS fidelity repair и exact same-card evidence завершены; Cards owner acceptance отозван и снова ожидает решения; Profiles screenshot-first captures собраны, но owner review/implementation не выполнялись.
 
 ## 1. Краткий результат
 
@@ -37,8 +38,10 @@ bounded visual revision                   COMPLETE
 revision visual evidence                  COMPLETE
 native Anki night-mode correction         COMPLETE
 night-mode semantic/visual evidence       COMPLETE
-Cards owner acceptance                    PENDING
-Inspection Profiles 1:1                   NOT STARTED
+native template CSS fidelity repair       COMPLETE
+Cards owner acceptance                    REVOKED / PENDING
+Profiles screenshot-first capture         COMPLETE
+Profiles owner review / implementation     NOT PERFORMED / NOT STARTED
 Fast CI / Docker / final integration gate NOT RUN
 merge / release / C3                      NOT PERFORMED
 ```
@@ -821,3 +824,102 @@ final visual closure evidence COMPLETE
 ```
 
 PR остаётся OPEN / DRAFT / UNMERGED. C3, release и publication не активируются автоматически.
+
+
+## Native Anki stylesheet regression after final visual closure
+
+### Timeline and root cause
+
+```text
+f288595499904eadeb81c4ceab3da232581c30f5
+→ exact Words template background/night/accent rules worked
+
+c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+→ `_dashboard_preview_css()` cut the already-sanitized stylesheet to 3000 characters inside a CSS rule; preview typography/spacing fallback also had excessive specificity
+
+0093237d7eb4df1d936125ff88821775737516b0
+→ media and still_active evidence repaired, but production CSS regression remained
+
+adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5
+→ full parser-bounded stylesheet restored and fallback reduced to low-specificity `:where(...)`
+```
+
+The sanitizer was not weakened: output limit remains `4000`, selector/declaration allowlists remain fail-closed, and unsafe roots/URLs are still rejected. The defect was the secondary payload truncation after sanitization and a cascade-specificity mistake in the preview fallback.
+
+### Exact Words provenance
+
+```text
+card ID: 1649481469689
+note type ID: 1769943199828
+card ordinal: 0
+template: Карточка 1
+raw CSS length/hash: 4667 / 234a03d0f46846cb4c274d8350980170c3e1504625fb1039933d8eaa8f44ce97
+sanitized length/hash: 3724 / d67fa36bffdfd829a4294e139a62ff9d457bf1306038bdb936d65951690ec93a
+parse errors: 0
+dropped rules: 0
+root/night/main-word/accent selectors: preserved
+```
+
+Computed production values match the deterministic exact-card committed-APKG oracle:
+
+| Context | Background | Root color | Accent | Typography |
+| --- | --- | --- | --- | --- |
+| light | `rgb(252,252,252)` | `rgb(51,51,51)` | `rgb(255,170,0)` | template stack, `20px / 32px` |
+| dark | `rgb(47,47,49)` | `rgb(220,220,220)` | `rgb(255,170,0)` | template stack, `20px / 32px` |
+
+`影.gif` loads with HTTP `200`, token present, `160×120`, and zero external requests. Wide, drawer and expanded answer share the same CSS identity.
+
+### Same-card Cards comparisons
+
+Prototype v3.2.3 and current production were captured with the exact same anchors:
+
+| Family | Card ID | Anchor | Coverage |
+| --- | --- | --- | --- |
+| Japanese Words | `1708095865696` | `工作` | light/dark full page + preview side-by-side |
+| Japanese Grammar | `1781457470336` | `「A」より「B」（の）方が「C」` | light/dark full page + preview side-by-side |
+| Java | `1780002619582` | `Что такое deep copy?` | light/dark full page + preview side-by-side |
+
+The regression oracle uses exact card `1649481469689` (`影`) with before-regression, repaired production and deterministic committed-APKG template renders. The APKG oracle is not misrepresented as a fresh Anki WebView screenshot; historical real-Anki E2E identity evidence is included separately.
+
+### Profiles / Settings screenshot-first coverage
+
+All named Prototype Profiles references were copied unchanged, current production was captured under the same state names, and side-by-side sheets were generated for Basic Japanese, Basic/Advanced Java, validation error, dirty draft, identity, tabs focus, QHD, `1024` menu/popover/route-target focus and Basic↔Advanced transition. No Profiles production code changed.
+
+Status boundary:
+
+```text
+Cards native template CSS repair: COMPLETE
+Cards evidence: COMPLETE / OWNER REVIEW PENDING
+Inspection Profiles screenshot-first capture: COMPLETE
+Inspection Profiles owner review: NOT PERFORMED
+Inspection Profiles implementation: NOT STARTED
+Settings shared regression acceptance: NOT PERFORMED
+PR-wide acceptance: NOT PERFORMED
+```
+
+### Verification and artifact
+
+```text
+Python focused: PASS — 57 tests
+Frontend focused: PASS — 9 files / 54 tests
+TypeScript: PASS
+Vite build: PASS — 2281 modules
+Bundle guard: PASS — 21 chunks
+entry: 437115 bytes
+total JavaScript: 1412515 bytes
+gzip: 399418 bytes
+git diff --check: PASS
+```
+
+```text
+name: cards-native-template-css-fidelity-repair-evidence.zip
+files: 180
+size: 27919821 bytes
+SHA-256: 5885b4ac5e676685363855708d346bc030c697a24bdb70b41f6bbdef227cea6e
+manifest content files: 178
+SHA256SUMS entries: 179
+self-verification: PASS
+production SHA: adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5
+```
+
+Cards owner acceptance is not self-issued by this report.
