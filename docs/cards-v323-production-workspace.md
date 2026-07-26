@@ -410,6 +410,46 @@ Artifact содержит same-card light/dark pairs для Grammar, Words и Ja
 
 Этот corrective pass не объявляет owner acceptance и не запускает Inspection Profiles.
 
+## Final native preview and visual closure
+
+Последний bounded corrective pass не менял JSX architecture, Cards state/API или night-mode propagation. Он закрыл оставшиеся presentation contracts:
+
+- compact Shadow preview получил равномерный `10 px` outer gap и full-height template-owned native canvas без верхней dashboard-полосы;
+- width-fit учитывает horizontal padding; short content растягивает canvas, но не glyphs; long content остаётся bounded/clipped;
+- default unstyled card использует безопасный Anki light/dark fallback до template CSS;
+- canonical root default font нормализуется в `Arial, "Noto Sans JP", sans-serif`, custom/template/child/code fonts сохраняются;
+- queue оформлена как единый component; search и Filters имеют одинаковую высоту; chips, selected, focus и busy projections различимы;
+- available primary action использует явную accent hierarchy, secondary и disabled states не конкурируют с ней;
+- rail остаётся в порядке `Почему → Что сделать → Выполнение / результат`, но с меньшей border/copy density.
+
+Browser evidence:
+
+```text
+wide short-card max gap delta: 0.25 px
+default light background: rgb(255, 255, 255)
+default dark background: rgb(17, 24, 39)
+default computed font: Arial, "Noto Sans JP", sans-serif
+Java code font: Consolas, "JetBrains Mono", "Courier New", monospace
+long fixture overflow: true
+page errors: 0
+unexpected console errors: 0
+```
+
+Final evidence identity:
+
+```text
+name: cards-v323-production-final-visual-closure-evidence.zip
+files: 111
+size: 7311471 bytes
+SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
+production SHA: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+manifest content files: 109
+SHA256SUMS entries: 110
+self-verification: PASS
+```
+
+`manifest.json` hashes content files, но не себя и не `SHA256SUMS`; `SHA256SUMS` hashes manifest и content files, но не себя. Проверка выполнена после распаковки ZIP в пустой каталог. Owner acceptance остаётся pending.
+
 ## 10. Границы Stage 2
 
 Не менялись:
@@ -443,7 +483,8 @@ Artifact содержит same-card light/dark pairs для Grammar, Words и Ja
 Stage 2 composition: COMPLETE
 bounded visual revision: COMPLETE
 native Anki night-mode correction: COMPLETE
-night-mode correction evidence: COMPLETE
+final native preview and visual closure: COMPLETE
+final visual closure evidence: COMPLETE
 Cards owner visual acceptance: PENDING
 Inspection Profiles 1:1: NOT STARTED
 final integration: NOT RUN

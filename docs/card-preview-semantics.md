@@ -38,6 +38,17 @@ Resolved dashboard theme выбирает нативный Anki day/night render
 
 Один и тот же explicit boolean используется в wide preview, 1024 drawer и expanded answer modal. Переключение `light → dark → light` обновляет rendering context реактивно, не выполняет новый `/api/search/inspect`, не заменяет HTML/CSS payload и не сбрасывает selection или resolution state.
 
+Compact preview использует непрерывную dashboard-owned outer frame и template-owned native canvas. Width-fit рассчитывается по внутренней ширине после равномерного `10 px` gap; короткая карточка увеличивает только canvas height до видимой высоты, а glyph scale остаётся width-driven. Длинный контент сохраняет тот же width-fit и обрезается compact viewport. Expanded answer остаётся auto-height и не наследует compact clipping.
+
+Font authority:
+
+- отсутствующий root `font-family` использует `Arial, "Noto Sans JP", sans-serif`;
+- canonical Anki defaults `Arial`, `Arial, sans-serif` и `sans-serif` нормализуются parser-backed только на root `.card`;
+- custom stacks, `@font-face`, child-specific fonts, platform Japanese fonts и monospace/code declarations не переписываются;
+- remote font requests не добавляются, крупный font asset в package не включается.
+
+Pre-template safe fallback задаёт default unstyled card: light — светлый фон/тёмный текст, dark — тёмный фон/светлый текст. Sanitized template CSS применяется позже и сохраняет право переопределить fallback без post-template `!important`.
+
 Общий модальный диалог делает оболочку приложения неактивной, переводит фокус на видимый заголовок, удерживает `Tab` и `Shift+Tab`, закрывается по `Escape` и возвращает фокус вызвавшему элементу управления, если он всё ещё существует.
 
 ## Чтения

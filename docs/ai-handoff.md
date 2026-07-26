@@ -63,9 +63,10 @@ Stage 1 synchronization/overlay cleanup: complete
 Cards 1:1 initial production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
 Cards bounded visual revision: 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
 Cards native Anki night-mode correction: f288595499904eadeb81c4ceab3da232581c30f5
-Cards night-mode evidence: cards-v323-production-night-mode-correction-evidence.zip
-Cards night-mode evidence SHA-256: 13cc34c325d74f4e3f5dd551240a74d64b875687410dda4ce983f1e61882d195
-Cards composition/revision/night-mode correction/evidence: COMPLETE / owner decision PENDING
+Cards final visual production commit: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+Cards final visual evidence: cards-v323-production-final-visual-closure-evidence.zip
+Cards final visual evidence SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
+Cards composition/revision/night-mode/final visual closure/evidence: COMPLETE / owner decision PENDING
 Inspection Profiles 1:1: NOT STARTED
 PR merge/final verification/C3: NOT PERFORMED
 ```

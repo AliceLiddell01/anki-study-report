@@ -606,6 +606,56 @@ Artifact не перезаписывает предыдущий revision package
 
 Этот блок не выдаёт self-acceptance. Cards owner acceptance остаётся pending.
 
+## Final native preview and visual closure
+
+Финальное owner review подтвердило night-mode architecture, но потребовало один последний visual/canvas/font/evidence pass без нового numbered stage.
+
+### Production correction
+
+- Shadow compact preview учитывает `20 px` total horizontal/vertical padding при width-fit и canvas-height calculation;
+- короткий native canvas заполняет inner viewport, сохраняя template background;
+- длинный content остаётся width-fitted и clipped; expanded answer — auto-height;
+- default night fallback размещён до template CSS с equal specificity, поэтому исправляет unstyled card, но не перебивает custom template;
+- root canonical defaults `Arial`, `Arial, sans-serif`, `sans-serif` нормализуются parser-backed в `Arial, "Noto Sans JP", sans-serif`; custom, `@font-face`, child и code fonts не меняются;
+- queue/search/Filters/chips, selected/focus/busy и primary/secondary/disabled hierarchy доведены без новой component architecture.
+
+### Verification
+
+```text
+focused Python card CSS policy: PASS — 36 tests
+TypeScript tsc --noEmit: PASS
+focused Vitest: PASS — 9 files / 53 tests
+Vite production build: PASS — 2281 modules transformed
+bundle guard: PASS — 21 JavaScript chunks
+entry: 437115 bytes
+total JavaScript: 1412442 bytes
+gzip: 399403 bytes
+git diff --check: PASS
+```
+
+### Browser/evidence results
+
+- same-family Prototype/Production: Grammar, Words, Java — light/dark;
+- wide ready, preview closeups, default/long fixtures, queue selected/focus/busy, toolbar/chips, all primary-action mappings, lifecycle matrix, 1024 drawer и expanded answer;
+- wide short-card max gap delta: `0.25 px`;
+- default unstyled: `rgb(255,255,255)` light → `rgb(17,24,39)` dark;
+- computed default font: `Arial, "Noto Sans JP", sans-serif`;
+- Java code font preserved: `Consolas, "JetBrains Mono", "Courier New", monospace`;
+- page errors: `0`; unexpected console errors: `0`; три HTTP 500 console messages ожидаемы в action/recheck/refresh failure contours.
+
+```text
+name: cards-v323-production-final-visual-closure-evidence.zip
+files: 111
+size: 7311471 bytes
+SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
+production SHA: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+manifest content files: 109
+SHA256SUMS entries: 110
+self-verification: PASS
+```
+
+Integrity проверена после распаковки в пустой каталог: все manifest paths/sizes/hashes совпали, `sha256sum -c SHA256SUMS` завершился успешно. Artifact не коммитится и не входит в `.ankiaddon`. Owner acceptance этим report не объявляется.
+
 ## 12. Git publication
 
 Stage 2 implementation и bounded visual revision опубликованы без force-push:
@@ -625,6 +675,9 @@ Align the Cards workspace with the accepted visual reference
 
 f288595499904eadeb81c4ceab3da232581c30f5
 Restore native Anki night-mode fidelity in Cards previews
+
+c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+Complete the Cards native preview and visual closure
 ```
 
 Transport workflow:
@@ -639,7 +692,7 @@ Transport workflow:
 
 ```text
 full frontend Vitest: NOT RUN for Stage 2
-full Python suite: NOT RUN for Stage 2 (focused card CSS policy: 27 tests PASS)
+full Python suite: NOT RUN for Stage 2 (focused card CSS policy: 36 tests PASS)
 canonical run_full_check.ps1 -SkipDocker: NOT RUN for Stage 2
 Fast CI/package artifact: NOT RUN for Stage 2
 Docker/real-Anki E2E: NOT RUN for Stage 2
@@ -680,7 +733,8 @@ final integration verification: NOT RUN
 Stage 2 composition COMPLETE
 bounded visual revision COMPLETE
 native Anki night-mode correction COMPLETE
-night-mode correction evidence COMPLETE
+final native preview and visual closure COMPLETE
+final visual closure evidence COMPLETE
 → owner checkpoint: ACCEPT CARDS 1:1 или REVISE
 → только после ACCEPT: Stage 3 Inspection Profiles 1:1
 → Profiles owner checkpoint
