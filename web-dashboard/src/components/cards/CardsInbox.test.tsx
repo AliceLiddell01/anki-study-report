@@ -68,7 +68,7 @@ describe("CardsInbox", () => {
     expect(html).toContain('aria-labelledby="cards-inbox-card-1001-identity"');
     expect(html).toContain("Частые ответы «Снова»");
     expect(html).toContain("+1 причина");
-    expect(html).toContain("уровень записи");
+    expect(html).toContain("Japanese Vocabulary");
     expect(html).toContain("Карточка только с медиа");
     expect(html).toContain("cards-inbox-item-identity");
   });

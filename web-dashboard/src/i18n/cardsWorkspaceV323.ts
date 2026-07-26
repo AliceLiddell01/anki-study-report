@@ -11,7 +11,12 @@ export const cardsWorkspaceV323 = {
     },
     queue: { resolved: "Resolved" },
     inspector: {
+      reasons: "Why",
+      next: "What to do",
+      result: "Result",
       execution: "Execution / after action",
+      recommendUnsuspend: "Return this suspended card to active study, then recheck the current reasons.",
+      recommendUnbury: "Return this buried card to the active queue, then recheck the current reasons.",
       resolutionRail: "Reasons, recommendation, and execution",
     },
     resolution: {
@@ -25,6 +30,7 @@ export const cardsWorkspaceV323 = {
         },
       },
     },
+    drawer: { closeShort: "Close" },
     coverage: { action: "Coverage and details" },
   },
   ru: {
@@ -39,7 +45,12 @@ export const cardsWorkspaceV323 = {
     },
     queue: { resolved: "Устранено" },
     inspector: {
+      reasons: "Почему",
+      next: "Что сделать",
+      result: "Результат",
       execution: "Выполнение / после действия",
+      recommendUnsuspend: "Верните приостановленную карточку в обучение, затем перепроверьте текущие причины.",
+      recommendUnbury: "Верните отложенную карточку в активную очередь, затем перепроверьте текущие причины.",
       resolutionRail: "Причины, рекомендация и выполнение",
     },
     resolution: {
@@ -53,6 +64,7 @@ export const cardsWorkspaceV323 = {
         },
       },
     },
+    drawer: { closeShort: "Закрыть" },
     coverage: { action: "Покрытие и детали" },
   },
 } as const;

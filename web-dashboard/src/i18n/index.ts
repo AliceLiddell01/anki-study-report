@@ -26,6 +26,7 @@ function withCardsWorkspaceV323<T extends typeof ru>(resource: T, override: type
           filters: { ...workspace.filters, ...override.filters },
           queue: { ...workspace.queue, ...override.queue },
           inspector: { ...workspace.inspector, ...override.inspector },
+          drawer: { ...workspace.drawer, ...override.drawer },
           resolution: {
             ...workspace.resolution,
             ...override.resolution,

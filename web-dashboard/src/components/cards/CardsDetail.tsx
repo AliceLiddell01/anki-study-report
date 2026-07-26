@@ -40,6 +40,10 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
     ) : null;
   }
 
+  const actions = safeActions(item);
+  const primaryAction = recommendedPrimaryAction(item, actions);
+  const alternativeActions = actions.filter((action) => action !== primaryAction);
+
   return (
     <div className="cards-detail-content" data-testid="cards-detail-content" data-resolution-phase={phase}>
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="cards-resolution-live-status">
@@ -126,32 +130,48 @@ export function CardsDetail({ workspace, headingId, onExpandAnswer, emptyAllowed
           <section className="cards-detail-flow-section cards-detail-action-zone" aria-labelledby={`${headingId}-actions`}>
             <h3 id={`${headingId}-actions`}>{resolved ? t("inspector.result") : t("inspector.execution")}</h3>
             {resolved ? (
-              <button type="button" className="primary-button cards-detail-next-card" onClick={workspace.advanceResolved}>
-                {t("resolution.nextCard")}
-              </button>
+              <div className="cards-detail-resolved-result" data-testid="cards-resolved-result">
+                <div>
+                  <CheckCircle2 size={20} aria-hidden="true" />
+                  <p>{t("resolution.states.resolved.description")}</p>
+                </div>
+                <button type="button" className="primary-button cards-detail-next-card" onClick={workspace.advanceResolved}>
+                  {t("resolution.nextCard")}
+                </button>
+              </div>
             ) : (
               <>
-                <div className="cards-detail-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => void workspace.openInAnki()}
+                <div className="cards-detail-actions" data-primary-action={primaryAction}>
+                  <ResolutionActionButton
+                    action={primaryAction}
+                    primary
+                    phase={phase}
+                    openPending={workspace.openPending}
                     disabled={workspace.openPending || workspace.mutationPending || phase === "rechecking"}
-                  >
-                    <ExternalLink size={16} aria-hidden="true" />
-                    {workspace.openPending ? t("actions.opening") : t("actions.open")}
-                  </button>
+                    onOpen={() => void workspace.openInAnki()}
+                    onSafeAction={(action) => void workspace.runSafeAction(action)}
+                  />
                   <div className="cards-detail-action-alternatives">
-                    {safeActions(item).map((action) => (
-                      <button
+                    {primaryAction !== "open" ? (
+                      <ResolutionActionButton
+                        action="open"
+                        phase={phase}
+                        openPending={workspace.openPending}
+                        disabled={workspace.openPending || workspace.mutationPending || phase === "rechecking"}
+                        onOpen={() => void workspace.openInAnki()}
+                        onSafeAction={(action) => void workspace.runSafeAction(action)}
+                      />
+                    ) : null}
+                    {alternativeActions.map((action) => (
+                      <ResolutionActionButton
                         key={action}
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => void workspace.runSafeAction(action)}
+                        action={action}
+                        phase={phase}
+                        openPending={workspace.openPending}
                         disabled={workspace.openPending || actionLocked}
-                      >
-                        {phase === "action_pending" ? t("actions.working") : t(`actions.${action}`)}
-                      </button>
+                        onOpen={() => void workspace.openInAnki()}
+                        onSafeAction={(nextAction) => void workspace.runSafeAction(nextAction)}
+                      />
                     ))}
                   </div>
                   {item.reasons.some((reason) => reason.family === "content") ? (
@@ -205,7 +225,13 @@ function ResolutionResult({
   const openResult = state.actionResult && "ok" in state.actionResult ? state.actionResult : null;
   const isError = state.phase === "action_failed" || state.phase === "recheck_failed";
   return (
-    <div className={`cards-resolution-state is-${state.phase}${isError ? " is-error" : ""}`} data-testid="cards-resolution-result" aria-busy={state.phase === "action_pending" || state.phase === "rechecking"} aria-labelledby={headingId}>
+    <div
+      className={`cards-resolution-state is-${state.phase}${isError ? " is-error" : ""}`}
+      data-testid="cards-resolution-result"
+      role={isError ? "alert" : undefined}
+      aria-busy={state.phase === "action_pending" || state.phase === "rechecking"}
+      aria-labelledby={headingId}
+    >
       <h4 id={headingId}>{t(`resolution.states.${state.phase}.title`)}</h4>
       <p>{t(`resolution.states.${state.phase}.description`)}</p>
       {actionSucceeded ? <p>{t(`resolution.actionResults.${state.actionResult!.action}`)}</p> : null}
@@ -241,9 +267,59 @@ function ReasonChangeList({ title, reasons, className }: { title: string; reason
   );
 }
 
+type ResolutionPresentationAction = "open" | CardEntityAction;
+
+function recommendedPrimaryAction(
+  item: NonNullable<CardsTriageWorkspace["activeItem"]>,
+  actions: CardEntityAction[],
+): ResolutionPresentationAction {
+  if (item.cardState.suspended && actions.includes("unsuspend")) return "unsuspend";
+  if (item.cardState.buried && actions.includes("unbury")) return "unbury";
+  return "open";
+}
+
+function ResolutionActionButton({
+  action,
+  primary = false,
+  phase,
+  openPending,
+  disabled,
+  onOpen,
+  onSafeAction,
+}: {
+  action: ResolutionPresentationAction;
+  primary?: boolean;
+  phase: string;
+  openPending: boolean;
+  disabled: boolean;
+  onOpen: () => void;
+  onSafeAction: (action: CardEntityAction) => void;
+}) {
+  const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  const className = primary ? "primary-button" : "secondary-button";
+  if (action === "open") {
+    return (
+      <button type="button" className={className} onClick={onOpen} disabled={disabled}>
+        <ExternalLink size={16} aria-hidden="true" />
+        {openPending ? t("actions.opening") : t("actions.open")}
+      </button>
+    );
+  }
+  return (
+    <button type="button" className={className} onClick={() => onSafeAction(action)} disabled={disabled}>
+      {phase === "action_pending" ? t("actions.working") : t(`actions.${action}`)}
+    </button>
+  );
+}
+
 function safeActions(item: NonNullable<CardsTriageWorkspace["activeItem"]>): CardEntityAction[] {
-  if (!item.reasons.some((reason) => reason.family === "learning")) return [];
-  return [item.cardState.suspended ? "unsuspend" : "suspend", item.cardState.buried ? "unbury" : "bury"];
+  const learningReason = item.reasons.some((reason) => reason.family === "learning");
+  const actions: CardEntityAction[] = [];
+  if (item.cardState.suspended) actions.push("unsuspend");
+  else if (learningReason) actions.push("suspend");
+  if (item.cardState.buried) actions.push("unbury");
+  else if (learningReason) actions.push("bury");
+  return actions;
 }
 
 function ReasonRow({ reason, primary }: { reason: TriageReason; primary: boolean }) {

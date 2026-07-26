@@ -149,7 +149,6 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
     <div className="cards-inbox-page page-stack workspace-page" data-testid="cards-inbox-page" data-workspace-mode={isWide ? "wide" : "drawer"}>
       <header className="cards-inbox-heading">
         <div>
-          <span className="page-eyebrow">{t("eyebrow")}</span>
           <h1 className="workspace-page-title">{t("title")}</h1>
           <p className="workspace-body">{t("description")}</p>
         </div>
@@ -278,6 +277,7 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           labelledBy={detailHeadingId}
           regionId={detailRegionId}
           closeLabel={t("drawer.close")}
+          visibleCloseLabel={t("drawer.closeShort")}
           contextLabel={t("drawer.title")}
           restoreFocusTo={activatorRef.current}
           fallbackFocusTo={queueHeadingRef.current}

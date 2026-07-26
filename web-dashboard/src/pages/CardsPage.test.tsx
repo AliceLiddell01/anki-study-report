@@ -59,6 +59,7 @@ describe("Cards attention inbox", () => {
     expect(html).toContain("Проверить следующие заметки");
     expect(html).toContain("Покрытие и детали");
     expect(html).toContain("Найти карточку или колоду");
+    expect(html).not.toContain("Очередь внимания</span>");
     expect(html).toContain("Причины, рекомендация и выполнение");
     expect(html).not.toContain('id="cards-inbox-filter-panel"');
     expect(html).not.toContain("Фильтры очереди");
@@ -117,6 +118,7 @@ describe("Cards attention inbox", () => {
     expect(document.getElementById("dashboard-app-shell")!.hasAttribute("inert")).toBe(false);
     expect(workspace.activate).toHaveBeenCalledWith(items[0]);
     const close = drawer.querySelector('button[aria-label*="Закрыть подробности"]') as HTMLButtonElement;
+    expect(close.textContent).toContain("Закрыть");
     await act(async () => close.click());
     await act(async () => { await Promise.resolve(); });
     expect(document.querySelector('[data-testid="cards-detail-drawer"]')).toBeNull();
@@ -141,6 +143,43 @@ describe("Cards attention inbox", () => {
     await act(async () => close.click());
     await act(async () => { await Promise.resolve(); });
     await act(async () => root.unmount());
+  });
+
+  it("maps the primary visual action from canonical card state", () => {
+    const suspended = items[1]!;
+    workspaceMock.mockReturnValue({
+      ...readyWorkspace(),
+      activeId: suspended.itemId,
+      activeItem: suspended,
+      inspectResponse: {
+        ...inspectResponse,
+        details: { ...inspectResponse.details, cardId: suspended.cardId, noteId: suspended.noteId! },
+      },
+    });
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const actions = document.querySelector('[data-primary-action="unsuspend"]');
+    expect(actions).toBeTruthy();
+    expect(actions?.querySelector(".primary-button")?.textContent).toContain("Вернуть карточку");
+    expect(actions?.querySelector(".cards-detail-action-alternatives")?.textContent).toContain("Открыть в Anki");
+  });
+
+  it("keeps all three resolution surfaces in the transient resolved projection", () => {
+    const resolved = {
+      itemId: items[0]!.itemId,
+      phase: "resolved" as const,
+      actionResult: null,
+      actionError: null,
+      recheckError: null,
+      reconciliation: { removed: [learningReason, contentReason], remaining: [], added: [] },
+    };
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), resolution: resolved, lastOutcome: resolved });
+    document.body.innerHTML = renderToStaticMarkup(<CardsPage report={null} loadState="ready" />);
+    const rail = document.querySelector(".cards-detail-resolution-rail");
+    expect(rail?.querySelectorAll(".cards-detail-flow-section")).toHaveLength(3);
+    expect(rail?.textContent).toContain("Активные причины не обнаружены");
+    expect(rail?.textContent).toContain("К следующей карточке");
+    expect(document.querySelector('[data-testid="cards-resolved-result"]')).toBeTruthy();
+    expect(document.querySelector('[data-primary-action]')).toBeNull();
   });
 
   it("localizes unavailable compact identity in English", async () => {
