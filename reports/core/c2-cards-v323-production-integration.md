@@ -11,8 +11,9 @@
 **Documentation sequence correction:** `ace37c3caa67c97e7a70b4ac499ba39b05e4e695`
 **Bounded visual revision start:** `94ba28dc8cf414fcade1eb2041b548022dc3836e`
 **Production visual revision:** `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`
+**Native Anki night-mode correction:** `f288595499904eadeb81c4ceab3da232581c30f5`
 **Pull request:** `#130` — OPEN / DRAFT / UNMERGED
-**Статус:** implementation, bounded visual revision и revision evidence завершены; owner checkpoint по Cards ожидается; Inspection Profiles 1:1 не начиналась.
+**Статус:** composition, bounded visual revision, native Anki night-mode correction и correction evidence завершены; owner checkpoint по Cards ожидается; Inspection Profiles 1:1 не начиналась.
 
 ## 1. Краткий результат
 
@@ -34,6 +35,8 @@ focused tests/typecheck/build              PASS
 production visual evidence                COMPLETE
 bounded visual revision                   COMPLETE
 revision visual evidence                  COMPLETE
+native Anki night-mode correction         COMPLETE
+night-mode semantic/visual evidence       COMPLETE
 Cards owner acceptance                    PENDING
 Inspection Profiles 1:1                   NOT STARTED
 Fast CI / Docker / final integration gate NOT RUN
@@ -505,6 +508,104 @@ Verified patch применён commit `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
 
 Owner acceptance этим revision pass не объявляется.
 
+## Native Anki night-mode correction
+
+### Причина
+
+Критическое owner review предыдущего revision artifact вынесло решение `REVISE`: тёмная тема dashboard не активировала native Anki night-mode context внутри Shadow DOM preview. Wide, drawer и expanded answer отображали day-card на тёмном shell. Это было функциональным blocker, а не допустимой palette difference. Исходное ревью также потребовало исправить tests, evidence, documentation и консолидировать Cards CSS без нового numbered stage.
+
+### Production correction
+
+`AppLayout` остаётся единственным владельцем `resolvedTheme`. Небольшой React context передаёт resolved value вниз, а Cards преобразует его в один explicit boolean:
+
+```text
+light → nightMode=false
+dark  → nightMode=true
+```
+
+Этот boolean проходит через один component path в:
+
+- wide front preview;
+- body-level non-modal drawer;
+- expanded back/answer modal.
+
+`AnkiCardShadowPreview` добавляет `nightMode` на Shadow DOM shell и native card root. Dashboard не читает theme случайно из global DOM, не refetch-ит inspect payload и не задаёт hardcoded native-card background.
+
+Parser-backed CSS policy дополнена scoped обработкой обоих Anki night selectors:
+
+```css
+.card.nightMode { ... }      → :scope.nightMode { ... }
+.nightMode .child { ... }     → :scope.nightMode .child { ... }
+```
+
+Allowlist, parser, URL/media validation и запрет внешних execution surfaces не ослаблялись.
+
+### Bounded visual normalization
+
+В том же последнем corrective pass без новой JSX architecture:
+
+- `cardsInbox.css` консолидирован; поздние revision/correction override-блоки удалены;
+- context-aware exact duplicate selectors: `0`;
+- light page/queue/workspace/preview-frame/rail surfaces разделены только снаружи native card;
+- resolution rail уплотнён;
+- selected queue row смягчён;
+- resolved green локализован около confirmation locus;
+- active header собран плотнее;
+- primary action mapping доказан для suspended, buried, ordinary, content/profile и multiple-reason contours.
+
+### Focused verification
+
+```text
+focused Python card CSS policy: PASS — 27 tests
+TypeScript tsc --noEmit: PASS
+focused Vitest: PASS — 10 files / 61 tests
+Vite production build: PASS — 2281 modules transformed
+bundle guard: PASS — 21 JavaScript chunks
+entry: 437115 bytes
+total JavaScript: 1411332 bytes
+gzip: 399170 bytes
+git diff --check: PASS
+Cards CSS context-aware duplicate selectors: 0
+```
+
+Не запускались full Python/frontend suites, Fast CI, package-producing gate, Docker/real-Anki E2E и final integration campaign.
+
+### Semantic browser evidence
+
+Capture использовал production build, serialized real-deck E2E API payload, CSS note types из committed APKG, текущий parser-backed sanitizer и committed media fixtures.
+
+Подтверждено:
+
+| Контур | Day background | Night background | Результат |
+| --- | --- | --- | --- |
+| Grammar | `rgb(252, 252, 252)` | `rgb(47, 47, 49)` | template night selector applied |
+| Words | `rgb(252, 252, 252)` | `rgb(47, 47, 49)` | template night selector applied |
+| Java | `rgb(43, 43, 43)` | `rgb(43, 43, 43)` | template-owned dark surface; separate night selector отсутствует |
+
+Дополнительно:
+
+- shell/card class lists содержат `nightMode` только в dark context;
+- `.nightMode .child` меняет computed child color;
+- wide/drawer/modal используют одинаковый context;
+- live `light → dark → light` сохранил selected card и payload;
+- inspect requests до/после theme switch: `3 → 3`;
+- page errors: `0`;
+- console errors: `0`.
+
+### Correction evidence
+
+```text
+name: cards-v323-production-night-mode-correction-evidence.zip
+files: 48
+size: 5112078 bytes
+SHA-256: 13cc34c325d74f4e3f5dd551240a74d64b875687410dda4ce983f1e61882d195
+production SHA: f288595499904eadeb81c4ceab3da232581c30f5
+```
+
+Artifact не перезаписывает предыдущий revision package. Он содержит same-card light/dark pairs для Grammar, Words и Java, drawer и expanded-back pairs, live theme-switch triptych, semantic JSON, computed styles, class lists, preview scale, request counts, neutral known-differences ledger, comparisons, diagnostics, contact sheet и SHA-256 manifest.
+
+Этот блок не выдаёт self-acceptance. Cards owner acceptance остаётся pending.
+
 ## 12. Git publication
 
 Stage 2 implementation и bounded visual revision опубликованы без force-push:
@@ -521,6 +622,9 @@ Correct the Cards and Profiles integration sequence
 
 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
 Align the Cards workspace with the accepted visual reference
+
+f288595499904eadeb81c4ceab3da232581c30f5
+Restore native Anki night-mode fidelity in Cards previews
 ```
 
 Transport workflow:
@@ -535,7 +639,7 @@ Transport workflow:
 
 ```text
 full frontend Vitest: NOT RUN for Stage 2
-full Python suite: NOT RUN for Stage 2
+full Python suite: NOT RUN for Stage 2 (focused card CSS policy: 27 tests PASS)
 canonical run_full_check.ps1 -SkipDocker: NOT RUN for Stage 2
 Fast CI/package artifact: NOT RUN for Stage 2
 Docker/real-Anki E2E: NOT RUN for Stage 2
@@ -573,9 +677,10 @@ final integration verification: NOT RUN
 ## 16. Решение и следующий шаг
 
 ```text
-Stage 2 implementation COMPLETE
-Stage 2 bounded visual revision COMPLETE
-Stage 2 revision evidence COMPLETE
+Stage 2 composition COMPLETE
+bounded visual revision COMPLETE
+native Anki night-mode correction COMPLETE
+night-mode correction evidence COMPLETE
 → owner checkpoint: ACCEPT CARDS 1:1 или REVISE
 → только после ACCEPT: Stage 3 Inspection Profiles 1:1
 → Profiles owner checkpoint

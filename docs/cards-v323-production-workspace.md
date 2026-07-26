@@ -4,6 +4,7 @@
 **Снимок:** 2026-07-26
 **Initial Stage 2 implementation:** `1f78b69574794c67149796343dde8cbdd4948fb4`
 **Bounded visual revision:** `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`
+**Native Anki night-mode correction:** `f288595499904eadeb81c4ceab3da232581c30f5`
 **Owner visual acceptance:** pending
 **Следующий этап:** Inspection Profiles 1:1 только после решения владельца по Cards
 
@@ -111,7 +112,6 @@ Drawer:
 
 Header содержит:
 
-- eyebrow;
 - короткий page title;
 - bounded description;
 - один shared `RefreshButton`;
@@ -299,27 +299,33 @@ State copy имеет RU/EN parity и объявляется через bounded 
 
 ## 9. Verification и evidence
 
-После bounded visual revision проверен production source `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`:
+Текущий production source после native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`.
 
 ```text
+focused Python card CSS policy: PASS — 27 tests
 TypeScript typecheck: PASS
-focused Vitest: 10 files / 43 tests PASS
-Vite production build: PASS — 2280 modules
+focused Vitest: PASS — 10 files / 61 tests
+Vite production build: PASS — 2281 modules
 bundle guard: PASS — 21 JavaScript chunks
-entry: 436925 bytes
-total JavaScript: 1411062 bytes
-gzip: 399064 bytes
+entry: 437115 bytes
+total JavaScript: 1411332 bytes
+gzip: 399170 bytes
 git diff --check: PASS
+Cards CSS context-aware duplicate selectors: 0
 ```
 
 Focused tests дополнительно закрепляют:
 
 - отсутствие лишнего page eyebrow;
 - три последовательные resolution surfaces;
-- recommendation-aware primary action;
+- recommendation-aware primary action для suspended, buried, ordinary, content/profile и multiple-reason cases;
 - transient resolved skeleton и единственный primary `К следующей карточке`;
 - подписанную кнопку закрытия drawer;
 - non-modal drawer focus/Escape contract;
+- explicit `light=false` / `dark=true` night-mode propagation;
+- одинаковый context для wide, drawer и expanded answer;
+- live `light → dark → light` без нового inspect request и без сброса локального Cards state;
+- `.card.nightMode` и `.nightMode .child` через parser-backed scoped CSS;
 - RU/EN resource parity.
 
 Production visual evidence построено на:
@@ -358,6 +364,52 @@ right unused gutter: 30 px
 
 Generated screenshots, comparisons и capture-only payloads не коммитятся. Evidence package поставляется отдельно от Git tree и package add-on.
 
+## Native Anki night-mode correction
+
+Критическое ревью предыдущего revision evidence выявило функциональный blocker: тёмная тема dashboard не передавала Anki night-mode context внутрь native preview. Внешний shell был тёмным, но карточка оставалась в day context.
+
+Исправленный contract:
+
+```text
+AppLayout — единственный owner resolvedTheme
+→ ResolvedThemeProvider
+→ CardsPage
+→ CardsDetail / drawer / expanded answer
+→ AnkiCardShadowPreview nightMode
+```
+
+При `dark` класс `nightMode` находится на Shadow DOM shell и card root. Parser-backed sanitizer сохраняет scoped семантику обоих официальных шаблонных паттернов:
+
+```css
+.card.nightMode { ... }
+.nightMode .child { ... }
+```
+
+Template CSS остаётся владельцем фактического фона и цветов. Dashboard не красит native card hardcoded значением, не добавляет post-template `!important` override и не ослабляет sanitizer, media validation или action allowlists.
+
+Browser evidence подтвердило:
+
+- Grammar: `rgb(252, 252, 252)` в day context → `rgb(47, 47, 49)` в night context;
+- Words: `rgb(252, 252, 252)` → `rgb(47, 47, 49)`;
+- Java: template-owned `rgb(43, 43, 43)` в обоих contexts, поскольку этот note type не задаёт отдельный night selector;
+- wide, drawer и expanded answer используют один context source;
+- inspect request count при `light → dark → light` не изменился: `3 → 3`;
+- page errors и console errors отсутствовали.
+
+Correction evidence identity:
+
+```text
+name: cards-v323-production-night-mode-correction-evidence.zip
+files: 48
+size: 5112078 bytes
+SHA-256: 13cc34c325d74f4e3f5dd551240a74d64b875687410dda4ce983f1e61882d195
+production SHA: f288595499904eadeb81c4ceab3da232581c30f5
+```
+
+Artifact содержит same-card light/dark pairs для Grammar, Words и Java, wide/drawer/modal captures, live theme-switch triptych, semantic JSON с class lists/computed styles/preview scale/request counts, neutral known-differences ledger и per-file SHA-256 manifest.
+
+Этот corrective pass не объявляет owner acceptance и не запускает Inspection Profiles.
+
 ## 10. Границы Stage 2
 
 Не менялись:
@@ -366,7 +418,8 @@ Generated screenshots, comparisons и capture-only payloads не коммитя�
 - detector semantics;
 - direct collection boundary;
 - loopback/token contract;
-- sanitizer/CSP/media validation;
+- CSP/media validation и security allowlists;
+- backend/API/schema;
 - action allowlists;
 - iframe/JavaScript policy;
 - Inspection Profiles UI;
@@ -387,11 +440,13 @@ Generated screenshots, comparisons и capture-only payloads не коммитя�
 Текущий статус:
 
 ```text
-Stage 2 implementation: COMPLETE
-Stage 2 bounded visual revision: COMPLETE
-Stage 2 revision evidence: COMPLETE
+Stage 2 composition: COMPLETE
+bounded visual revision: COMPLETE
+native Anki night-mode correction: COMPLETE
+night-mode correction evidence: COMPLETE
 Cards owner visual acceptance: PENDING
-Stage 3 Inspection Profiles 1:1: NOT STARTED
+Inspection Profiles 1:1: NOT STARTED
+final integration: NOT RUN
 PR #130: OPEN / DRAFT / UNMERGED
 ```
 

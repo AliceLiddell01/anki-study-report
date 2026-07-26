@@ -26,7 +26,17 @@ Allowlist sanitizer, проверка URL и путей, очистка CSS и �
 
 Compact preview вписывает содержимое по ширине, обрезает собственный overflow и не перехватывает колесо: в широком workspace вертикально прокручивается страница, а слева независимо прокручивается только очередь. Drawer и диалог ответа сохраняют собственную ограниченную прокрутку. После готовности изображений и шрифтов компоновка измеряется повторно.
 
-Корневые Anki-selectors переписываются parser-backed policy без строковых подстановок: `.card` становится preview-root `:scope`, `.card.card1` — `:scope.card1`, а descendant selectors остаются внутри этого root. Dashboard theme не подменяет native day/night context карточки: светлый фон карточки сохраняется и в тёмной теме dashboard, если native render не передал night mode.
+Корневые Anki-selectors переписываются parser-backed policy без строковых подстановок: `.card` становится preview-root `:scope`, `.card.card1` — `:scope.card1`, `.card.nightMode` — `:scope.nightMode`, а `.nightMode .child` — `:scope.nightMode .child`. Descendant selectors остаются внутри preview-root.
+
+Resolved dashboard theme выбирает нативный Anki day/night rendering context, но не подменяет CSS шаблона:
+
+- `light` передаёт `nightMode=false`;
+- `dark` передаёт `nightMode=true`;
+- при night mode класс `nightMode` присутствует и на Shadow DOM shell, и на корневом `card`;
+- фактические background, foreground и дочерние цвета определяются санитизированным CSS конкретного шаблона;
+- dashboard surfaces не задают native card background после template CSS и не используют глобальный `!important` override.
+
+Один и тот же explicit boolean используется в wide preview, 1024 drawer и expanded answer modal. Переключение `light → dark → light` обновляет rendering context реактивно, не выполняет новый `/api/search/inspect`, не заменяет HTML/CSS payload и не сбрасывает selection или resolution state.
 
 Общий модальный диалог делает оболочку приложения неактивной, переводит фокус на видимый заголовок, удерживает `Tab` и `Shift+Tab`, закрывается по `Escape` и возвращает фокус вызвавшему элементу управления, если он всё ещё существует.
 

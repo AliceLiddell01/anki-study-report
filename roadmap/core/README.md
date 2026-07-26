@@ -12,7 +12,7 @@ Core не зависит от Gamification, Operations, Identity или Extensio
 flowchart LR
     C1[C1 Cards v2<br/>complete] --> C2[C2 Hardening<br/>base merged]
     C2 --> S1[PR #130 Stage 1<br/>sync + overlay cleanup]
-    S1 --> S2[Cards 1:1<br/>production integration]
+    S1 --> S2[Cards 1:1<br/>composition + bounded corrections]
     S2 --> OC{Owner checkpoint<br/>Cards}
     OC --> S3[Inspection Profiles 1:1]
     S3 --> OP{Owner checkpoint<br/>Profiles}
@@ -39,7 +39,7 @@ flowchart LR
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты
 PR #130 Stage 1 sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2 Cards 1:1 — implementation + bounded visual revision + evidence COMPLETE; owner checkpoint PENDING
+PR #130 Stage 2 Cards 1:1 — composition + bounded visual revision + native Anki night-mode correction + evidence COMPLETE; owner checkpoint PENDING
 PR #130 Stage 3 Inspection Profiles 1:1 — NOT STARTED
 final verification и отдельное решение о merge PR #130 — NOT PERFORMED
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
@@ -83,7 +83,7 @@ problem
 **Implementation:** complete
 **Integration:** merged в `core`
 **Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
-**Stage 2 Cards 1:1:** implementation, bounded visual revision и evidence complete; owner decision pending — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-v323-production-integration.md)
+**Stage 2 Cards 1:1:** composition, bounded visual revision, native Anki night-mode correction и evidence complete; owner decision pending — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-v323-production-integration.md)
 **Stage 3 Inspection Profiles 1:1:** not started
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
@@ -98,7 +98,7 @@ problem
 - согласованную motion/shape foundation;
 - exact Fast CI package и final `standard/full` с restart.
 
-Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; подробности: [Cards v3.2.3 integration report](../../reports/core/c2-cards-v323-production-integration.md).
+Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`; подробности: [Cards v3.2.3 integration report](../../reports/core/c2-cards-v323-production-integration.md).
 
 Это closure существующего C2, а не новый numbered stage.
 

@@ -42,7 +42,7 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты в core
 PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2: Cards 1:1 production integration + bounded visual revision — COMPLETE, owner decision PENDING
+PR #130 Stage 2: Cards 1:1 composition + bounded visual revision + native Anki night-mode correction — COMPLETE, owner decision PENDING
 PR #130 Stage 3: Inspection Profiles 1:1 — NOT STARTED
 final verification / merge decision / C3 — NOT PERFORMED
 release — не начат
@@ -62,9 +62,10 @@ package SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa4
 Stage 1 synchronization/overlay cleanup: complete
 Cards 1:1 initial production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
 Cards bounded visual revision: 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
-Cards revision evidence: cards-v323-production-revision-evidence.zip
-Cards revision evidence SHA-256: 7974e5b38d2003acc7e606845e1659d819eac593b9be894c8cec5611b751921c
-Cards 1:1 implementation/revision/evidence: COMPLETE / owner decision PENDING
+Cards native Anki night-mode correction: f288595499904eadeb81c4ceab3da232581c30f5
+Cards night-mode evidence: cards-v323-production-night-mode-correction-evidence.zip
+Cards night-mode evidence SHA-256: 13cc34c325d74f4e3f5dd551240a74d64b875687410dda4ce983f1e61882d195
+Cards composition/revision/night-mode correction/evidence: COMPLETE / owner decision PENDING
 Inspection Profiles 1:1: NOT STARTED
 PR merge/final verification/C3: NOT PERFORMED
 ```
