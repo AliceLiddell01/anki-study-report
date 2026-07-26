@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation' && contains(github.event.pull_request.head_commit.message, 'Stage native night-mode correction workflow')
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
     runs-on: ubuntu-latest
     steps:
       - name: Check out correction branch
