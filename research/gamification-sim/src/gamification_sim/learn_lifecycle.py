@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
-from hashlib import sha256
-import json
 from typing import Any, Iterable, Mapping, Sequence
+
+from .canonical_json import canonical_digest
+from .validation import require_int, require_non_negative_int
 
 
 class LifecycleError(ValueError):
@@ -173,59 +174,106 @@ class LifecycleResult:
     canonical_digest: str
 
 
-def _canonical_payload(value: Any) -> Any:
-    if hasattr(value, "__dataclass_fields__"):
-        return {key: _canonical_payload(item) for key, item in asdict(value).items()}
-    if isinstance(value, Enum):
-        return value.value
-    if isinstance(value, Mapping):
-        return {str(key): _canonical_payload(item) for key, item in value.items()}
-    if isinstance(value, (tuple, list)):
-        return [_canonical_payload(item) for item in value]
+ALLOWED_SCHEDULER_STATES = frozenset(
+    {"NEW", "LEARNING", "REVIEW", "RELEARN"}
+)
+
+
+def _require_non_empty_str(name: str, value: Any) -> str:
+    if type(value) is not str or not value:
+        raise ValueError(f"{name} must be a non-empty string without coercion")
     return value
 
 
-def canonical_digest(value: Any) -> str:
-    serialized = json.dumps(
-        _canonical_payload(value),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    )
-    return sha256(serialized.encode("utf-8")).hexdigest()
+def _require_optional_non_empty_str(name: str, value: Any) -> str | None:
+    if value is None:
+        return None
+    return _require_non_empty_str(name, value)
+
+
+def _require_exact_bool(name: str, value: Any) -> bool:
+    if type(value) is not bool:
+        raise ValueError(f"{name} must be a boolean without coercion")
+    return value
+
+
+def _require_optional_int(name: str, value: Any) -> int | None:
+    if value is None:
+        return None
+    return require_int(name, value)
+
+
+def _require_optional_non_negative_int(name: str, value: Any) -> int | None:
+    if value is None:
+        return None
+    return require_non_negative_int(name, value)
+
+
+def _require_optional_scheduler_state(name: str, value: Any) -> str | None:
+    value = _require_optional_non_empty_str(name, value)
+    if value is not None and value not in ALLOWED_SCHEDULER_STATES:
+        raise ValueError(f"{name} is not a registered scheduler state")
+    return value
 
 
 def event_from_dict(payload: Mapping[str, Any]) -> LearnEvent:
-    allowed = {field.name for field in LearnEvent.__dataclass_fields__.values()}
-    unknown = sorted(set(payload) - allowed)
+    allowed = set(LearnEvent.__dataclass_fields__)
+    unknown = sorted(str(key) for key in set(payload) - allowed)
     if unknown:
         raise LifecycleError(f"unexpected event field(s): {', '.join(unknown)}")
     try:
+        subject_raw = payload.get("subject_type")
         return LearnEvent(
-            event_id=str(payload["event_id"]),
-            sequence_index=int(payload["sequence_index"]),
-            event_kind=EventKind(payload["event_kind"]),
-            subject_type=SubjectType(payload["subject_type"]) if payload.get("subject_type") is not None else None,
-            subject_id=payload.get("subject_id"),
-            episode_id=payload.get("episode_id"),
-            source_event_id=payload.get("source_event_id"),
-            rating=Rating(payload.get("rating", "NONE")),
-            signal_status=SignalStatus(payload.get("signal_status", "NONE")),
-            continuity_status=ContinuityStatus(payload.get("continuity_status", "STABLE")),
-            provenance_status=ProvenanceStatus(payload.get("provenance_status", "VALID")),
-            answer_revealed=bool(payload.get("answer_revealed", False)),
-            scheduler_state_before=payload.get("scheduler_state_before"),
-            scheduler_state_after=payload.get("scheduler_state_after"),
-            anki_day_index=payload.get("anki_day_index"),
-            monotonic_time_index=payload.get("monotonic_time_index"),
-            session_id=payload.get("session_id"),
-            preset_id=payload.get("preset_id"),
-            learning_step_profile_id=payload.get("learning_step_profile_id"),
+            event_id=_require_non_empty_str("event_id", payload["event_id"]),
+            sequence_index=require_non_negative_int("sequence_index", payload["sequence_index"]),
+            event_kind=EventKind(_require_non_empty_str("event_kind", payload["event_kind"])),
+            subject_type=(
+                SubjectType(_require_non_empty_str("subject_type", subject_raw))
+                if subject_raw is not None
+                else None
+            ),
+            subject_id=_require_optional_non_empty_str("subject_id", payload.get("subject_id")),
+            episode_id=_require_optional_non_empty_str("episode_id", payload.get("episode_id")),
+            source_event_id=_require_optional_non_empty_str(
+                "source_event_id", payload.get("source_event_id")
+            ),
+            rating=Rating(_require_non_empty_str("rating", payload.get("rating", "NONE"))),
+            signal_status=SignalStatus(
+                _require_non_empty_str("signal_status", payload.get("signal_status", "NONE"))
+            ),
+            continuity_status=ContinuityStatus(
+                _require_non_empty_str(
+                    "continuity_status", payload.get("continuity_status", "STABLE")
+                )
+            ),
+            provenance_status=ProvenanceStatus(
+                _require_non_empty_str(
+                    "provenance_status", payload.get("provenance_status", "VALID")
+                )
+            ),
+            answer_revealed=_require_exact_bool(
+                "answer_revealed", payload.get("answer_revealed", False)
+            ),
+            scheduler_state_before=_require_optional_scheduler_state(
+                "scheduler_state_before", payload.get("scheduler_state_before")
+            ),
+            scheduler_state_after=_require_optional_scheduler_state(
+                "scheduler_state_after", payload.get("scheduler_state_after")
+            ),
+            anki_day_index=_require_optional_int(
+                "anki_day_index", payload.get("anki_day_index")
+            ),
+            monotonic_time_index=_require_optional_non_negative_int(
+                "monotonic_time_index", payload.get("monotonic_time_index")
+            ),
+            session_id=_require_optional_non_empty_str("session_id", payload.get("session_id")),
+            preset_id=_require_optional_non_empty_str("preset_id", payload.get("preset_id")),
+            learning_step_profile_id=_require_optional_non_empty_str(
+                "learning_step_profile_id", payload.get("learning_step_profile_id")
+            ),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise LifecycleError(f"invalid event payload: {exc}") from exc
-
 
 def _validate_order(events: Sequence[LearnEvent]) -> None:
     if not events:
