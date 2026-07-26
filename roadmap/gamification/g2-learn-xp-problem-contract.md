@@ -18,7 +18,7 @@ repository: AliceLiddell01/anki-study-report
 target branch: gamification
 starting origin/gamification HEAD: 1168f42eaecc28fc59d12a6612f22f73ded5b391
 task branch: chatgpt/g2-1-learn-xp-problem-contract
-PR: recorded after publication
+PR: #155
 ```
 
 Starting `gamification` был exact identity с `1168f42eaecc28fc59d12a6612f22f73ded5b391`. Основной WSL checkout владельца не переключался и не очищался. Mutation выполнялась только в отдельной GitHub task branch без force push и без изменения `master`.
