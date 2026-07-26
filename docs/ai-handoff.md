@@ -66,12 +66,30 @@ Cards native Anki night-mode correction: f288595499904eadeb81c4ceab3da232581c30f
 Cards final visual production commit: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
 Cards final visual evidence: cards-v323-production-final-visual-closure-evidence.zip
 Cards final visual evidence SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
-Cards composition/revision/night-mode/final visual closure/evidence: COMPLETE / owner decision PENDING
-Inspection Profiles 1:1: NOT STARTED
+Cards repaired micro-evidence: cards-v323-production-final-evidence-repair.zip
+Cards repaired micro-evidence SHA-256: ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8
+Cards composition/revision/night-mode/final visual closure/repaired evidence: COMPLETE / owner decision PENDING
+Inspection Profiles screenshot-first visual audit: NOT STARTED
+Inspection Profiles 1:1 implementation: NOT STARTED
+Settings shared regression sweep: NOT STARTED
 PR merge/final verification/C3: NOT PERFORMED
 ```
 
 Актуальный Cards contract: [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md).
+
+### Visual coverage checkpoint
+
+`ACCEPT CARDS 1:1` принимает только route `#/cards`; это не означает принятие PR #130, Inspection Profiles, ready-for-review или merge.
+
+| Route / area | Prototype references | Current production captures | Reviewed | Owner verdict / next action |
+| --- | --- | --- | --- | --- |
+| `#/cards` wide | есть | есть, включая repaired Words media | да | owner decision PENDING |
+| `#/cards` drawer/modal | есть | есть | да | входит только в Cards checkpoint |
+| `#/cards` lifecycle | есть | repaired `still_active` отличается от `recheck_pending` | да | owner decision PENDING |
+| `#/settings/inspection-profiles` | есть | актуального полного production-пакета нет | нет | NOT REVIEWED; после `ACCEPT CARDS 1:1` отдельный screenshot-first audit без production changes на первом проходе |
+| Settings shared shell | частично | только старые CI captures | нет | NOT REVIEWED |
+| Other Settings routes | redesign не входит в текущий scope | нужен только regression sweep | нет | OUT OF SCOPE / REGRESSION ONLY |
+
 
 Reports:
 

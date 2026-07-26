@@ -656,6 +656,84 @@ self-verification: PASS
 
 Integrity проверена после распаковки в пустой каталог: все manifest paths/sizes/hashes совпали, `sha256sum -c SHA256SUMS` завершился успешно. Artifact не коммитится и не входит в `.ankiaddon`. Owner acceptance этим report не объявляется.
 
+
+## Cards evidence micro-repair and visual coverage checkpoint
+
+Revised owner review обнаружило два дефекта не production composition, а финального evidence package. Этот ненумерованный micro-pass не менял Cards API, lifecycle, JSX/CSS или production SHA.
+
+### Words positive media
+
+Предыдущий capture harness отдавал вместо real-deck media некорректный 14-byte GIF placeholder. Production path уже добавлял dashboard token к разрешённым локальным `/api/media?name=...` URL, поэтому source correction не потребовалась.
+
+Repair capture использовал настоящий `影.gif`, извлечённый из committed `words-n1.apkg`:
+
+```text
+cardId: 1649481469689
+media: 影.gif
+same media in light/dark: true
+complete: true
+naturalWidth: 160
+naturalHeight: 120
+local request status: 200
+token present: true
+external requests: 0
+page errors: 0
+console errors: 0
+```
+
+### Completed still_active
+
+Предыдущий harness ожидал завершение `click()`, но не delayed authoritative recheck response. Поэтому файл `still-active-dark.png` был снят ещё в `rechecking` и совпал с pending capture.
+
+Repaired guard ожидает canonical DOM phase и completed message:
+
+```text
+expected phase: still_active
+actual phase: still_active
+aria-busy: false
+visible status: Всё ещё требует внимания
+pending status absent: true
+completed status present: true
+controls available: true
+recheck_pending SHA-256: 0b2d572564f0fb65c8d988908efb89fd922ebc434ff1327f68ab1698e6b85bc1
+still_active SHA-256: e4bbff63acd2f2cf7464ec370916eb5aa86f22c5ced7051d617a9a382773dfb0
+byte-identical: false
+```
+
+`awaiting-recheck-*` captures исходного full package могут быть намеренно идентичны: они документируют один общий pre-outcome checkpoint перед разными authoritative results. Эта семантика явно записана в repaired artifact.
+
+### Repaired artifact
+
+```text
+name: cards-v323-production-final-evidence-repair.zip
+files: 20
+size: 659105 bytes
+SHA-256: ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8
+production SHA: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
+source full artifact: cards-v323-production-final-visual-closure-evidence.zip
+source full artifact SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
+manifest content files: 18
+SHA256SUMS entries: 19
+self-verification: PASS
+```
+
+После распаковки в пустой каталог подтверждены `sha256sum -c SHA256SUMS`, manifest paths/sizes/hashes, `missing=0`, `unexpected=0`, `mismatches=0`.
+
+### Visual coverage ledger
+
+Cards acceptance остаётся route-scoped и не является PR-wide acceptance.
+
+| Route / area | Prototype | Current production | Review | Verdict / next action |
+| --- | --- | --- | --- | --- |
+| `#/cards` wide | есть | есть, Words media repaired | выполнен | Cards owner decision PENDING |
+| `#/cards` drawer/modal | есть | есть | выполнен | входит только в Cards checkpoint |
+| `#/cards` lifecycle | есть | repaired completed `still_active` | выполнен | Cards owner decision PENDING |
+| `#/settings/inspection-profiles` | есть | актуального полного пакета нет | не выполнен | NOT REVIEWED |
+| Settings shared shell | частично | старые CI captures | не выполнен | NOT REVIEWED |
+| Other Settings routes | redesign вне scope | нужен regression sweep | не выполнен | OUT OF SCOPE / REGRESSION ONLY |
+
+После команды `ACCEPT CARDS 1:1` следующий шаг — отдельный **Inspection Profiles screenshot-first audit** Prototype v3.2.3 ↔ current production, без production changes на первом проходе. Profiles implementation, shared Settings regression sweep и final PR verification не начаты.
+
 ## 12. Git publication
 
 Stage 2 implementation и bounded visual revision опубликованы без force-push:
