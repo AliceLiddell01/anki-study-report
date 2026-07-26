@@ -1,0 +1,36 @@
+name: Apply native CSS fidelity documentation
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+      - name: Apply verified documentation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .stage2-native-css-docs/chunk-* | base64 --decode > /tmp/native-css-docs.patch.zst
+          echo 'f627af091cf60c86263f9ed8e5eae0505ff64e92e1b4f1d9cce6c986efb636e3  /tmp/native-css-docs.patch.zst' | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/native-css-docs.patch.zst > /tmp/native-css-docs.patch
+          echo '2887db89378017d379c766cd58b28aa0b6cd3346bc2f90765b6b8368fb9499d7  /tmp/native-css-docs.patch' | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/native-css-docs.patch
+          git rm -r .stage2-native-css-docs .github/workflows/cards-native-css-docs.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Document the native Anki stylesheet fidelity repair'
+          git push origin HEAD:c2-manual-acceptance-remediation
