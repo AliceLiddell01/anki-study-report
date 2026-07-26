@@ -9,6 +9,11 @@
 - Exact-head cloud CI:
   [run 30180721082](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30180721082)
   — **PASS**
+- Final review head:
+  `c75ee7ddf295b34ac2b0c40947bc0f9ce7c1a94e`
+- Final review-head cloud CI:
+  [run 30180797761](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30180797761)
+  — **PASS**
 - Owner integration: **PENDING**
 
 ## Результат

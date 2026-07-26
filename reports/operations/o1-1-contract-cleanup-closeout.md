@@ -31,6 +31,11 @@ retargeted, потому что был основан на `master`, имел li
 `core`; commits или merge history из неправильной `master`-ветки не
 переносились.
 
+После публикации replacement PR #148 remote branch
+`agent/o1-1-operations-roadmap` удалена как obsolete. Открытых PR на неё не
+было; исходные commits остаются восстановимыми по закрытому PR #147 и SHA
+`991f53d3e43829f1b1c0dad77e8946d28a2cc8e6`.
+
 ## OSV blocker
 
 Фактический CI log run `30178730833` показал:
