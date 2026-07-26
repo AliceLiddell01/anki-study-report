@@ -25,12 +25,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .stage2-native-css-patch.b64 > /tmp/cards-native-css.patch.zst
+          cat .stage2-native-css/chunk-* | base64 --decode > /tmp/cards-native-css.patch.zst
           echo '2c2d6ae8e7cd8f2c9598fd3605573ac90f7e46a27f54af158fb7ede927cea703  /tmp/cards-native-css.patch.zst' | sha256sum --check --strict
           zstd --decompress --stdout /tmp/cards-native-css.patch.zst > /tmp/cards-native-css.patch
           echo '9f9949dfa272a43f53ef669f0d1facf309354286f82cc085359858765636bef9  /tmp/cards-native-css.patch' | sha256sum --check --strict
           git apply --index --whitespace=error /tmp/cards-native-css.patch
-          git rm .github/workflows/cards-native-css-fidelity-repair.yml .stage2-native-css-patch.b64
+          git rm -r .stage2-native-css .stage2-native-css-patch.b64 .github/workflows/cards-native-css-fidelity-repair.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Restore exact native Anki stylesheet fidelity'
