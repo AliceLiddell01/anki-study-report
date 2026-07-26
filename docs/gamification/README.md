@@ -9,7 +9,8 @@ G1 final outcome: DEFER_REVIEW_MODEL
 recommended Review XP research candidate: NONE
 G2: IN PROGRESS
 G2.1: COMPLETE
-G2.2: NEXT / NOT STARTED
+G2.2: COMPLETE
+G2.3: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -17,14 +18,29 @@ The canonical `gamification` branch contains isolated research contracts, fixtur
 
 ## Current G2 contracts
 
+### G2.1 problem contract
+
 - [Learn XP problem contract](learn-xp-problem-contract.md)
 - [G2.1 closeout](../../roadmap/gamification/g2-learn-xp-problem-contract.md)
-- [Machine-readable Learn XP contract](../../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
-- [Learn XP contract schema](../../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
+- [Machine-readable Learn XP problem contract](../../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
+- [Learn XP problem schema](../../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
 
 G2.1 freezes Learn XP terminology, scheduler/reward boundaries, four identity candidates, pending/confirmation minimum requirements, six anti-farming threat families, 19 protected invariants, privacy/claims boundaries and the G2.2 entry contract.
 
-G2.1 does not select an identity winner, lifecycle, reward amount, pending ratio, confirmation delay, candidate family or simulation matrix. G2.2 is not started.
+### G2.2 lifecycle model
+
+- [Human lifecycle and anti-farming model](learn-xp-lifecycle-model.md)
+- [Machine lifecycle model](../../research/gamification-sim/contracts/learn-xp-lifecycle-model-v1.json)
+- [Lifecycle model schema](../../research/gamification-sim/schemas/learn-xp-lifecycle-model-v1.schema.json)
+- [Lifecycle fixture schema](../../research/gamification-sim/schemas/learn-xp-lifecycle-fixture-v1.schema.json)
+- [Fixture manifest](../../research/gamification-sim/fixtures/learn-xp-lifecycle-v1/manifest.json)
+- [G2.2 closeout](../../roadmap/gamification/g2-learn-xp-lifecycle.md)
+
+G2.2 defines seven lifecycle states, 20 events and 12 deterministic transitions. Identity is factorized as `LearningEpisode<AchievementSubject>`; `CARD`, `NOTE` and `SIBLING_GROUP` remain unresolved subject candidates.
+
+The frozen fixture manifest contains 23 deterministic fixtures, covers six threat families and maps all 19 protected invariants. Focused validation and the full research suite passed.
+
+G2.2 does not select an achievement-subject winner, reward amount, pending ratio, numeric confirmation delay, candidate family or screening matrix. G2.3 is not started.
 
 ## Current G1 contracts
 
@@ -56,8 +72,8 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 introduces no simulation evidence and uses only contract/schema validation. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds only deterministic synthetic lifecycle fixtures and a research-only evaluator. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. Research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.2 is frozen pre-candidate-design; G2.3 is not started. Research assets remain outside Fast CI and `.ankiaddon` contents.

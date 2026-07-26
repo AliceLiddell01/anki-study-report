@@ -9,7 +9,8 @@ G1 final outcome: DEFER_REVIEW_MODEL
 recommended Review XP research candidate: NONE
 G2: IN PROGRESS
 G2.1: COMPLETE
-G2.2: NEXT / NOT STARTED
+G2.2: COMPLETE
+G2.3: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -55,6 +56,38 @@ three allowed final G2 outcomes
 G2.1 adds no executable command and runs no simulation. It does not select an identity winner, lifecycle, reward amount, pending ratio, confirmation delay, candidate family or matrix.
 
 The contract reuses existing `strict_json.py`, `canonical_json.py` and bounded workspace conventions as validation references. No generic validator framework or production code was added.
+
+## G2.2 Learn XP lifecycle artifacts
+
+- [Machine lifecycle model](contracts/learn-xp-lifecycle-model-v1.json)
+- [Lifecycle model schema](schemas/learn-xp-lifecycle-model-v1.schema.json)
+- [Lifecycle fixture schema](schemas/learn-xp-lifecycle-fixture-v1.schema.json)
+- [Human lifecycle model](../../docs/gamification/learn-xp-lifecycle-model.md)
+- [Fixture manifest](fixtures/learn-xp-lifecycle-v1/manifest.json)
+- [Research-only evaluator](src/gamification_sim/learn_lifecycle.py)
+- [Focused tests](tests/test_learn_lifecycle.py)
+- [G2.2 closeout](../../roadmap/gamification/g2-learn-xp-lifecycle.md)
+
+Frozen G2.2 state:
+
+```text
+model status: FROZEN_PRE_CANDIDATE_DESIGN
+states: 7
+events: 20
+transitions: 12
+identity architecture: FACTORIZED
+generic form: LearningEpisode<AchievementSubject>
+subject candidates: CARD; NOTE; SIBLING_GROUP
+subject winner: NONE
+fixtures: 23
+threat families: 6
+protected invariants: 19
+manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
+```
+
+The pre-conformance model was published at `63741bcc4d757cd131ab94d9e262042679460d6f`. Focused validation and one bounded full-suite retry after a concrete Cargo cache repair passed. No lifecycle semantics changed after conformance.
+
+G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix. G2.3 is not started.
 
 ## Current G1 artifacts
 
@@ -114,10 +147,10 @@ validate-confirmatory-evidence
 run-confirmatory
 ```
 
-No G2 command exists after G2.1.
+No G2 CLI command exists after G2.2. The lifecycle evaluator is research-only and is exercised through frozen fixtures and tests.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze and creates no new simulation evidence.
+G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence, but no candidate screening or production evidence.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
