@@ -1,9 +1,10 @@
 # Cards workspace по Prototype v3.2.3
 
-**Статус:** актуальный production UI contract для `#/cards` в draft PR #130  
-**Снимок:** 2026-07-26  
-**Implementation head:** `1f78b69574794c67149796343dde8cbdd4948fb4`  
-**Owner visual acceptance:** pending  
+**Статус:** актуальный production UI contract для `#/cards` в draft PR #130
+**Снимок:** 2026-07-26
+**Initial Stage 2 implementation:** `1f78b69574794c67149796343dde8cbdd4948fb4`
+**Bounded visual revision:** `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`
+**Owner visual acceptance:** pending
 **Следующий этап:** Inspection Profiles 1:1 только после решения владельца по Cards
 
 ## Назначение
@@ -298,15 +299,28 @@ State copy имеет RU/EN parity и объявляется через bounded 
 
 ## 9. Verification и evidence
 
-Stage 2 implementation проверена локально на runnable checkout:
+После bounded visual revision проверен production source `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`:
 
 ```text
 TypeScript typecheck: PASS
-focused Vitest: 7 files / 34 tests PASS
-Vite production build: PASS — 2279 modules
+focused Vitest: 10 files / 43 tests PASS
+Vite production build: PASS — 2280 modules
 bundle guard: PASS — 21 JavaScript chunks
+entry: 436925 bytes
+total JavaScript: 1411062 bytes
+gzip: 399064 bytes
 git diff --check: PASS
 ```
+
+Focused tests дополнительно закрепляют:
+
+- отсутствие лишнего page eyebrow;
+- три последовательные resolution surfaces;
+- recommendation-aware primary action;
+- transient resolved skeleton и единственный primary `К следующей карточке`;
+- подписанную кнопку закрытия drawer;
+- non-modal drawer focus/Escape contract;
+- RU/EN resource parity.
 
 Production visual evidence построено на:
 
@@ -314,8 +328,31 @@ Production visual evidence построено на:
 - настоящем React route `#/cards`;
 - serialized report/search payload из существующего real-deck E2E artifact;
 - media из committed APKG fixtures;
-- Chromium, DSF 1;
-- `1440×900` и `1024×768`.
+- Chromium `144.0.7559.96`, Debian 13, Node `22.16.0`, DSF 1;
+- `1440×900` и `1024×768`;
+- RU, light/dark.
+
+Revision evidence identity:
+
+```text
+name: cards-v323-production-revision-evidence.zip
+files: 88
+size: 14390374 bytes
+SHA-256: 7974e5b38d2003acc7e606845e1659d819eac593b9be894c8cec5611b751921c
+```
+
+Измеренная 1440 geometry:
+
+```text
+page usable width: 1380 px
+queue: 331 px
+workspace: 1034 px
+preview: 700 px / 67.7%
+resolution rail: 332 px / 32.1%
+right unused gutter: 30 px
+```
+
+При `1024×768` drawer имеет ширину `737 px`, остаётся немодальной `region` без backdrop и показывает primary CTA в первом viewport.
 
 Подробности, screenshot matrix, known differences и pixel diagnostics находятся в [Stage 2 integration report](../reports/core/c2-cards-v323-production-integration.md).
 
@@ -351,7 +388,8 @@ Generated screenshots, comparisons и capture-only payloads не коммитя�
 
 ```text
 Stage 2 implementation: COMPLETE
-Stage 2 production evidence: COMPLETE
+Stage 2 bounded visual revision: COMPLETE
+Stage 2 revision evidence: COMPLETE
 Cards owner visual acceptance: PENDING
 Stage 3 Inspection Profiles 1:1: NOT STARTED
 PR #130: OPEN / DRAFT / UNMERGED

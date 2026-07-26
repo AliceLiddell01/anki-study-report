@@ -42,7 +42,7 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты в core
 PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2: Cards 1:1 production integration — implementation/evidence COMPLETE, owner decision PENDING
+PR #130 Stage 2: Cards 1:1 production integration + bounded visual revision — COMPLETE, owner decision PENDING
 PR #130 Stage 3: Inspection Profiles 1:1 — NOT STARTED
 final verification / merge decision / C3 — NOT PERFORMED
 release — не начат
@@ -56,12 +56,15 @@ Current C2 remediation evidence:
 PR: #130 — OPEN / DRAFT / UNMERGED
 base core: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
 verified production candidate: a746172f8746eac82ff628d36a7a6328d9332acf
-Fast CI: 30173712679 — PASS
-standard/full + restart: 30174041436 — PASS
+Stage 1 Fast CI baseline: 30173712679 — PASS (pre-revision package)
+Stage 1 standard/full + restart baseline: 30174041436 — PASS (pre-revision package)
 package SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
 Stage 1 synchronization/overlay cleanup: complete
-Cards 1:1 production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
-Cards 1:1 implementation/evidence: COMPLETE / owner decision PENDING
+Cards 1:1 initial production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
+Cards bounded visual revision: 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
+Cards revision evidence: cards-v323-production-revision-evidence.zip
+Cards revision evidence SHA-256: 7974e5b38d2003acc7e606845e1659d819eac593b9be894c8cec5611b751921c
+Cards 1:1 implementation/revision/evidence: COMPLETE / owner decision PENDING
 Inspection Profiles 1:1: NOT STARTED
 PR merge/final verification/C3: NOT PERFORMED
 ```
