@@ -105,6 +105,28 @@ producer observations: current=55 / 4711, status=insufficient-history
 
 E2E-I6 corrective fix не является новым этапом и не активирует CI 7–12. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
 
+## Operations
+
+```text
+O1.1 — Complete / reviewable contract
+O1.2 — Review
+O1.3 — Planned
+```
+
+Operations long-lived branch основана на
+`core@62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f`. Public PR #147 закрыт и не
+используется из-за неправильной base `master` и literal-`\n` body.
+
+Canonical private reviews:
+
+- O1.1: [telemetry PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19);
+- O1.2: [telemetry PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20).
+
+O1.2 не добавляет Admin API/UI, Access resource, provider collector или
+deployment. Owner integration в `operations` остаётся отдельным решением.
+Следующий минимальный scope — `O1.3 — Protected Read-only Admin API`; он не
+начат.
+
 ## Рабочие правила
 
 - Desktop/laptop — основной target; mobile не является приоритетом без отдельной задачи.
