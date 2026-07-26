@@ -49,6 +49,11 @@ production code и tests
 - [E2E-I6 post-merge documentation sync](ci/e2e-i6-post-merge-documentation-sync.md)
 - [E2E-I6 bounded corrective fix](ci/e2e-i6-corrective-fix-closeout.md)
 
+## Operations
+
+- [O1.1 contract cleanup](operations/o1-1-contract-cleanup-closeout.md)
+- [O1.2 read model and maintenance evidence](operations/o1-2-read-model-maintenance-closeout.md)
+
 ## Research
 
 - [Gamification source audit — 2026-07-18](research/gamification-track-source-audit-2026-07-18.md)

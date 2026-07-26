@@ -37,7 +37,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
 | [Gamification `G`](gamification/README.md) | research и необязательный продукт | production не одобрен | G0 reconciliation |
-| [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
+| [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | O1.1 contract reviewable; O1.2 Review | owner integration, затем отдельный O1.3 |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
 | [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I6 завершены | нет активного этапа; CI 7–12 только по отдельному trigger |
