@@ -10,8 +10,37 @@ import { cssWithMediaToken } from "./cards/CardsDetail";
 describe("AnkiCardShadowPreview layout", () => {
   it("never lets scaled content exceed a narrow host width", () => {
     const layout = calculateAdaptivePreviewLayout({ mode: "preview", availableWidth: 180, contentWidth: 900, contentHeight: 2400 });
-    expect(layout.contentWidth * layout.scale).toBeLessThanOrEqual(layout.targetWidth + 0.001);
-    expect(layout.scale).toBeCloseTo(0.2, 6);
+    expect(layout.contentWidth * layout.scale).toBeLessThanOrEqual(layout.targetWidth - 20 + 0.001);
+    expect(layout.scale).toBeCloseTo(160 / 900, 6);
+    expect(layout.overflow).toBe(true);
+  });
+
+
+  it("fills a short compact card canvas to the available preview height without scaling glyphs", () => {
+    const layout = calculateAdaptivePreviewLayout({
+      mode: "preview",
+      availableWidth: 720,
+      availableHeight: 600,
+      contentWidth: 720,
+      contentHeight: 180,
+    });
+    expect(layout.scale).toBeCloseTo(700 / 720, 6);
+    expect(layout.hostHeight).toBe(600);
+    expect(layout.contentHeight).toBeCloseTo(580 / (700 / 720), 6);
+    expect(layout.overflow).toBe(false);
+  });
+
+  it("keeps long compact content width-fitted and clipped inside the same host", () => {
+    const layout = calculateAdaptivePreviewLayout({
+      mode: "preview",
+      availableWidth: 720,
+      availableHeight: 600,
+      contentWidth: 720,
+      contentHeight: 1200,
+    });
+    expect(layout.scale).toBeCloseTo(700 / 720, 6);
+    expect(layout.hostHeight).toBe(600);
+    expect(layout.contentHeight).toBe(1200);
     expect(layout.overflow).toBe(true);
   });
 
@@ -63,7 +92,10 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(darkCard.shellClassName).toContain("nightMode");
     expect(darkCard.styleText).toContain(".card.nightMode{background-color:rgb(47,47,49)}");
     expect(darkCard.styleText).toContain(".nightMode .term{color:rgb(245,245,245)}");
-    expect(darkCard.styleText).not.toContain("background: #111827");
+    expect(darkCard.styleText).toContain(":where(.card).nightMode");
+    expect(darkCard.styleText).toContain("background: #111827");
+    expect(darkCard.styleText).toContain('font-family: Arial, "Noto Sans JP", sans-serif');
+    expect(darkCard.styleText).toContain(".asr-shadow-card-viewport--preview > .card");
     expect(lightCard.styleText).toContain(".asr-shadow-card-shell--preview");
     expect(lightCard.styleText).toContain("overflow: hidden");
     expect(lightCard.styleText).not.toContain("overflow-y: auto");

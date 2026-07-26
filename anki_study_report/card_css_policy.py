@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
@@ -163,13 +164,21 @@ def _sanitize_qualified_rule(rule: Any) -> str:
     prelude = tuple(getattr(rule, "prelude", ()) or ())
     if not _selector_is_safe(prelude):
         return ""
-    declarations = _sanitize_declarations(getattr(rule, "content", ()) or ())
-    if not declarations:
-        return ""
     selector = _rewrite_scoped_selector_list(prelude)
     if not selector:
         return ""
+    declarations = _sanitize_declarations(
+        getattr(rule, "content", ()) or (),
+        normalize_default_root_font=_selector_targets_only_card_root(selector),
+    )
+    if not declarations:
+        return ""
     return f"{selector}{{{declarations}}}"
+
+
+def _selector_targets_only_card_root(selector: str) -> bool:
+    branches = [branch.strip() for branch in selector.split(",") if branch.strip()]
+    return bool(branches) and all(re.fullmatch(r":scope(?:\.[A-Za-z_][A-Za-z0-9_-]*)*", branch) for branch in branches)
 
 
 def _rewrite_scoped_selector_list(tokens: Iterable[Any]) -> str:
@@ -257,7 +266,7 @@ def _rewrite_scoped_selector(tokens: Iterable[Any]) -> str:
     return tinycss2.serialize(branch).strip()
 
 
-def _sanitize_declarations(tokens: Iterable[Any]) -> str:
+def _sanitize_declarations(tokens: Iterable[Any], *, normalize_default_root_font: bool = False) -> str:
     parsed = tinycss2.parse_declaration_list(tokens, skip_comments=True, skip_whitespace=True)
     if any(getattr(item, "type", "") == "error" for item in parsed):
         return ""
@@ -276,10 +285,33 @@ def _sanitize_declarations(tokens: Iterable[Any]) -> str:
         value = _serialize_safe_values(value_tokens, allow_url=name in _URL_PROPERTIES, allowed_extensions=_IMAGE_EXTENSIONS)
         if not value:
             continue
-        important = "!important" if bool(getattr(item, "important", False)) else ""
+        is_important = bool(getattr(item, "important", False))
+        if name == "font-family" and normalize_default_root_font and not is_important and _is_canonical_default_font_family(value_tokens):
+            value = 'Arial,"Noto Sans JP",sans-serif'
+        important = "!important" if is_important else ""
         declarations.append(f"{name}:{value}{important};")
     return "".join(declarations)
 
+
+
+def _is_canonical_default_font_family(tokens: Iterable[Any]) -> bool:
+    families: list[str] = []
+    current: list[Any] = []
+    for token in tokens:
+        if getattr(token, "type", "") == "literal" and getattr(token, "value", "") == ",":
+            families.append(tinycss2.serialize(current).strip())
+            current = []
+        else:
+            current.append(token)
+    families.append(tinycss2.serialize(current).strip())
+
+    normalized = []
+    for family in families:
+        value = family.strip().strip('"\'').strip().lower()
+        if not value:
+            return False
+        normalized.append(value)
+    return normalized in (["arial"], ["arial", "sans-serif"], ["sans-serif"])
 
 def _sanitize_font_face(rule: Any) -> str:
     prelude = tuple(getattr(rule, "prelude", ()) or ())

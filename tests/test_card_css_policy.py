@@ -165,3 +165,40 @@ def test_card_css_policy_does_not_expose_raw_stylesheet_on_parser_failure(monkey
     captured = capsys.readouterr()
     assert secret not in captured.out
     assert secret not in captured.err
+
+
+@pytest.mark.parametrize(
+    "declared",
+    ["Arial", "arial", "Arial, sans-serif", "sans-serif"],
+)
+def test_card_css_policy_normalizes_only_canonical_root_default_fonts(declared):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    sanitized = note_intelligence.sanitize_card_css(f".card {{ font-family: {declared}; }}")
+    assert 'font-family:Arial,"Noto Sans JP",sans-serif;' in sanitized
+
+
+@pytest.mark.parametrize(
+    "stylesheet, expected",
+    [
+        ('.card { font-family: "Hiragino Kaku Gothic Pro", "Meiryo", "Noto Sans JP", Arial, sans-serif; }', 'font-family:"Hiragino Kaku Gothic Pro","Meiryo","Noto Sans JP",Arial,sans-serif;'),
+        ('.card { font-family: Consolas, "JetBrains Mono", monospace; }', 'font-family:Consolas,"JetBrains Mono",monospace;'),
+        ('.field { font-family: Arial, sans-serif; }', 'font-family:Arial,sans-serif;'),
+        ('.card { font-family: Arial !important; }', 'font-family:Arial!important;'),
+    ],
+)
+def test_card_css_policy_preserves_custom_child_code_and_important_font_authority(stylesheet, expected):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    sanitized = note_intelligence.sanitize_card_css(stylesheet)
+    assert expected.replace(" ", "") in sanitized.replace(" ", "")
+    if '.field' in stylesheet:
+        assert 'Noto Sans JP' not in sanitized
+
+
+def test_card_css_policy_preserves_bundled_font_face_and_custom_root_family():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    stylesheet = '@font-face { font-family: myBundledFont; src: url("_jp.woff2"); } .card { font-family: myBundledFont; }'
+    sanitized = note_intelligence.sanitize_card_css(stylesheet)
+    assert '@font-face{font-family:myBundledFont;' in sanitized
+    assert '/api/media?name=_jp.woff2' in sanitized
+    assert ':scope{font-family:myBundledFont;}' in sanitized
+    assert 'Noto Sans JP' not in sanitized

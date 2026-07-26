@@ -72,4 +72,18 @@ describe("CardsInbox", () => {
     expect(html).toContain("Карточка только с медиа");
     expect(html).toContain("cards-inbox-item-identity");
   });
+  it("marks only the active row busy without weakening selection semantics", () => {
+    const html = renderToStaticMarkup(<CardsInbox items={items} activeId="card:1001" detailRegionId="cards-detail" drawerMode={false} drawerOpen={false} busy onActivate={vi.fn()} />);
+    const activeButton = html.match(/<button[^>]*data-card-id="1001"[^>]*>/)?.[0] ?? "";
+    const inactiveButton = html.match(/<button[^>]*data-card-id="1002"[^>]*>/)?.[0] ?? "";
+
+    expect(activeButton).toContain("is-active");
+    expect(activeButton).toContain("workspace-selected");
+    expect(activeButton).toContain("is-busy");
+    expect(activeButton).toContain('data-busy="true"');
+    expect(activeButton).toContain('aria-current="true"');
+    expect(inactiveButton).not.toContain("is-busy");
+    expect(inactiveButton).toContain('data-busy="false"');
+  });
+
 });

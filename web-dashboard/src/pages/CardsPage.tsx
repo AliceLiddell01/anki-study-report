@@ -345,7 +345,8 @@ function QueueState({
   if (workspace.queryStatus === "error" && !workspace.response) return <WorkspaceMessage alert title={t("states.errorTitle")} text={t("states.error")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}><RotateCw size={16} aria-hidden="true" />{t("retry")}</button>} />;
   if (workspace.response?.status === "unavailable") return <WorkspaceMessage alert title={t("states.unavailableTitle")} text={t("states.unavailable")} action={<button type="button" className="secondary-button" onClick={workspace.refresh}>{t("retry")}</button>} />;
   if (!visibleItems.length) return <WorkspaceMessage title={filtersActive ? t("states.filteredTitle") : t("states.emptyTitle")} text={filtersActive ? t("states.filtered") : t("states.empty")} action={filtersActive ? <button type="button" className="secondary-button" onClick={onClear}>{t("filters.clear")}</button> : undefined} />;
-  return <CardsInbox items={visibleItems} activeId={workspace.activeId} resolvedId={resolvedId} detailRegionId={detailRegionId} drawerMode={drawerMode} drawerOpen={drawerOpen} onActivate={onActivate} />;
+  const busy = workspace.queryStatus === "loading" || workspace.mutationPending || ["awaiting_recheck", "rechecking"].includes(workspace.resolution?.phase ?? "");
+  return <CardsInbox items={visibleItems} activeId={workspace.activeId} resolvedId={resolvedId} detailRegionId={detailRegionId} drawerMode={drawerMode} drawerOpen={drawerOpen} busy={busy} onActivate={onActivate} />;
 }
 
 function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof useCardsTriageWorkspace> }) {

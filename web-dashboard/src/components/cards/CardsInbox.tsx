@@ -10,6 +10,7 @@ export interface CardsInboxProps {
   detailRegionId: string;
   drawerMode: boolean;
   drawerOpen: boolean;
+  busy?: boolean;
   onActivate: (item: TriageItem, button: HTMLButtonElement) => void;
 }
 
@@ -20,6 +21,7 @@ export function CardsInbox({
   detailRegionId,
   drawerMode,
   drawerOpen,
+  busy = false,
   onActivate,
 }: CardsInboxProps) {
   return (
@@ -33,6 +35,7 @@ export function CardsInbox({
           detailRegionId={detailRegionId}
           drawerMode={drawerMode}
           drawerOpen={drawerOpen}
+          busy={busy && item.itemId === activeId}
           onActivate={onActivate}
         />
       ))}
@@ -47,6 +50,7 @@ function CardsInboxItem({
   detailRegionId,
   drawerMode,
   drawerOpen,
+  busy,
   onActivate,
 }: {
   item: TriageItem;
@@ -55,6 +59,7 @@ function CardsInboxItem({
   detailRegionId: string;
   drawerMode: boolean;
   drawerOpen: boolean;
+  busy?: boolean;
   onActivate: CardsInboxProps["onActivate"];
 }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
@@ -72,9 +77,10 @@ function CardsInboxItem({
       <button
         id={`${itemKey}-button`}
         type="button"
-        className={`cards-inbox-item workspace-interactive${active ? " is-active workspace-selected" : ""}${resolved ? " is-resolved" : ""}`}
+        className={`cards-inbox-item workspace-interactive${active ? " is-active workspace-selected" : ""}${busy ? " is-busy" : ""}${resolved ? " is-resolved" : ""}`}
         data-card-id={item.cardId}
         data-testid="cards-inbox-item"
+        data-busy={busy ? "true" : "false"}
         aria-current={active ? "true" : undefined}
         aria-labelledby={identityId}
         aria-describedby={describedBy}

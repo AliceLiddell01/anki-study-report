@@ -15,6 +15,7 @@ export interface AnkiPreviewModeConfig {
   maxHeight?: number;
   allowAutoHeight: boolean;
   verticalPadding: number;
+  horizontalPadding: number;
   audioButtonSize: number;
 }
 
@@ -30,6 +31,7 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     maxHeight: 190,
     allowAutoHeight: false,
     verticalPadding: 18,
+    horizontalPadding: 0,
     audioButtonSize: 30,
   },
   tile: {
@@ -43,6 +45,7 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     maxHeight: 340,
     allowAutoHeight: false,
     verticalPadding: 24,
+    horizontalPadding: 0,
     audioButtonSize: 36,
   },
   preview: {
@@ -55,7 +58,8 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     minHeight: 220,
     maxHeight: 440,
     allowAutoHeight: false,
-    verticalPadding: 24,
+    verticalPadding: 20,
+    horizontalPadding: 20,
     audioButtonSize: 40,
   },
   expanded: {
@@ -68,6 +72,7 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     minHeight: 1,
     allowAutoHeight: true,
     verticalPadding: 0,
+    horizontalPadding: 0,
     audioButtonSize: 40,
   },
 };
@@ -95,6 +100,7 @@ interface ShadowPreviewDocument {
 export interface AdaptivePreviewLayoutInput {
   mode: AnkiCardShadowPreviewMode;
   availableWidth: number;
+  availableHeight?: number;
   contentWidth: number;
   contentHeight: number;
 }
@@ -115,6 +121,7 @@ const SHADOW_BASE_CSS = `
   display: grid;
   place-items: center;
   width: 100%;
+  height: 100%;
   min-height: 100%;
   contain: content;
 }
@@ -155,6 +162,11 @@ const SHADOW_BASE_CSS = `
   height: var(--asr-preview-scaled-height);
 }
 
+.asr-shadow-card-shell--preview .asr-shadow-card-frame {
+  overflow: hidden;
+  border-radius: 9px;
+}
+
 .asr-shadow-card-viewport {
   position: absolute;
   inset: 0 auto auto 0;
@@ -164,6 +176,10 @@ const SHADOW_BASE_CSS = `
   transform-origin: top left;
 }
 
+.asr-shadow-card-viewport--preview {
+  height: var(--asr-preview-content-height);
+}
+
 .card {
   width: var(--asr-preview-base-width);
   min-height: var(--asr-preview-base-height);
@@ -171,7 +187,7 @@ const SHADOW_BASE_CSS = `
   padding: 24px;
   background: #ffffff;
   color: #111827;
-  font-family: Arial, sans-serif;
+  font-family: Arial, "Noto Sans JP", sans-serif;
   font-size: 28px;
   line-height: 1.45;
   text-align: center;
@@ -196,6 +212,11 @@ const SHADOW_BASE_CSS = `
   line-height: 1.5;
 }
 
+:where(.card).nightMode {
+  background: #111827;
+  color: #f8fafc;
+}
+
 .card pre {
   max-width: 100%;
   overflow: auto;
@@ -211,6 +232,7 @@ function measuredNumber(value: number, fallback: number): number {
 export function calculateAdaptivePreviewLayout({
   mode,
   availableWidth,
+  availableHeight,
   contentWidth,
   contentHeight,
 }: AdaptivePreviewLayoutInput): AdaptivePreviewLayout {
@@ -219,12 +241,30 @@ export function calculateAdaptivePreviewLayout({
   const measuredContentHeight = Math.max(config.baseHeight, measuredNumber(contentHeight, config.baseHeight));
   const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
   const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
-  const widthScale = targetWidth / measuredContentWidth;
+  const availableContentWidth = Math.max(1, targetWidth - config.horizontalPadding);
+  const widthScale = availableContentWidth / measuredContentWidth;
   let scale = Math.max(Number.EPSILON, Math.min(widthScale, config.maxScale));
 
   if (mode !== "preview" && !config.allowAutoHeight && config.maxHeight) {
     const heightScale = Math.max(Number.EPSILON, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
     scale = Math.max(Number.EPSILON, Math.min(scale, heightScale, config.maxScale));
+  }
+
+  if (mode === "preview") {
+    const hostHeight = Math.max(config.minHeight, measuredNumber(availableHeight ?? 0, config.targetHeight));
+    const availableCanvasHeight = Math.max(1, hostHeight - config.verticalPadding);
+    const minimumCanvasHeight = availableCanvasHeight / scale;
+    const canvasHeight = Math.max(measuredContentHeight, minimumCanvasHeight);
+    const scaledContentHeight = measuredContentHeight * scale + config.verticalPadding;
+    return {
+      scale,
+      hostHeight,
+      targetWidth,
+      contentWidth: measuredContentWidth,
+      contentHeight: canvasHeight,
+      measured: true,
+      overflow: scaledContentHeight > hostHeight + 1,
+    };
   }
 
   const scaledHeight = Math.ceil(measuredContentHeight * scale + config.verticalPadding);
@@ -257,6 +297,10 @@ function initialAdaptiveLayout(mode: AnkiCardShadowPreviewMode): AdaptivePreview
 }
 
 const SHADOW_SAFETY_CSS = `
+.asr-shadow-card-viewport--preview > .card {
+  min-height: var(--asr-preview-content-height);
+}
+
 .card img {
   max-width: 100%;
   height: auto;
@@ -453,6 +497,7 @@ function AnkiCardShadowPreviewComponent({
         const nextLayout = calculateAdaptivePreviewLayout({
           mode,
           availableWidth: hostRect.width || host.clientWidth || ANKI_PREVIEW_MODE_CONFIG[mode].targetWidth,
+          availableHeight: hostRect.height || host.clientHeight || ANKI_PREVIEW_MODE_CONFIG[mode].targetHeight,
           contentWidth: Math.max(card.scrollWidth, viewport.scrollWidth, cardRect.width, ANKI_PREVIEW_MODE_CONFIG[mode].baseWidth),
           contentHeight: Math.max(card.scrollHeight, viewport.scrollHeight, cardRect.height, ANKI_PREVIEW_MODE_CONFIG[mode].baseHeight),
         });
