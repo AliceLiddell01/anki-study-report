@@ -10,7 +10,8 @@ recommended Review XP research candidate: NONE
 G2: IN PROGRESS
 G2.1: COMPLETE
 G2.2: COMPLETE
-G2.3: NEXT / NOT STARTED
+G2.3: COMPLETE
+G2.4: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -40,7 +41,20 @@ G2.2 defines seven lifecycle states, 20 events and 12 deterministic transitions.
 
 The frozen fixture manifest contains 23 deterministic fixtures, covers six threat families and maps all 19 protected invariants. Focused validation and the full research suite passed.
 
-G2.2 does not select an achievement-subject winner, reward amount, pending ratio, numeric confirmation delay, candidate family or screening matrix. G2.3 is not started.
+G2.2 does not select an achievement-subject winner, reward amount, pending ratio, numeric confirmation delay, candidate family or screening matrix.
+
+### G2.3 candidate protocol
+
+- [Human candidate protocol](learn-xp-candidate-protocol.md)
+- [Machine candidate protocol](../../research/gamification-sim/contracts/learn-xp-candidate-protocol-v1.json)
+- [Candidate protocol schema](../../research/gamification-sim/schemas/learn-xp-candidate-protocol-v1.schema.json)
+- [Dry matrix generator](../../research/gamification-sim/src/gamification_sim/learn_candidate_protocol.py)
+- [Focused tests](../../research/gamification-sim/tests/test_learn_candidate_protocol.py)
+- [G2.3 closeout](../../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
+
+G2.3 freezes two families, four parameterizations, two subject strategies, two delay policies, eight candidates, two zero-reward reference variants, five hypotheses, 23 hard gates, 14 metrics and an exact deterministic `340/340` G2.4 dry matrix.
+
+Protocol status is `FROZEN_PRE_SCREENING_IMPLEMENTATION`; publication SHA is `41313c9369c76d331d489a9aa4b44da2497b3132`. Full research validation passed with `982` tests. Screening and G2.4 are not started.
 
 ## Current G1 contracts
 
@@ -72,8 +86,8 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds only deterministic synthetic lifecycle fixtures and a research-only evaluator. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds only prospective protocol, strict validation and dry matrix identities. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.2 is frozen pre-candidate-design; G2.3 is not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.3 is frozen pre-screening-implementation; G2.4 is not started. Research assets remain outside Fast CI and `.ankiaddon` contents.

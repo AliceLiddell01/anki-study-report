@@ -72,13 +72,20 @@ Learn XP contract — FROZEN_PRE_LIFECYCLE_ANALYSIS
 G2.2 — COMPLETE
 Learn XP lifecycle model — FROZEN_PRE_CANDIDATE_DESIGN
 identity architecture — FACTORIZED; LearningEpisode<AchievementSubject>
-achievement-subject candidates — CARD; NOTE; SIBLING_GROUP
-achievement-subject winner — NONE
 lifecycle states / events / transitions — 7 / 20 / 12
 fixtures / threat families / invariants — 23 / 6 / 19
 fixture manifest digest — 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
-reward amount / pending ratio / confirmation delay — NONE
-G2.3 — NEXT / NOT STARTED
+G2.3 — COMPLETE
+Learn XP candidate protocol — FROZEN_PRE_SCREENING_IMPLEMENTATION
+protocol publication SHA — 41313c9369c76d331d489a9aa4b44da2497b3132
+families / candidates / reference variants — 2 / 8 / 2
+subject strategies — S-CARD; S-NOTE-SIBLING
+NOTE/SIBLING_GROUP relation — OPERATIONALLY_EQUIVALENT
+delay policies — D1; D2
+pending split — 0.25 provisional / 0.75 settlement
+hypotheses / hard gates / metrics — 5 / 23 / 14
+G2.4 matrix budget — 340 deterministic units
+G2.4 — NEXT / NOT STARTED
 production integration — PROHIBITED
 ```
 
@@ -88,9 +95,11 @@ G2.1 заморозил отдельный Learn XP problem contract. Он от�
 
 G2.2 определил семь typed lifecycle states, 20 events и 12 deterministic transitions. Identity architecture factorized как `LearningEpisode<AchievementSubject>`: `LEARNING_EPISODE` является container, а `CARD`, `NOTE`, `SIBLING_GROUP` остаются невыбранными subject candidates.
 
-G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, покрывающие шесть threat families и все 19 invariants. Focused validation и full research suite прошли; model status — `FROZEN_PRE_CANDIDATE_DESIGN`.
+G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, покрывающие шесть threat families и все 19 invariants. Model status — `FROZEN_PRE_CANDIDATE_DESIGN`.
 
-G2.2 не выбрал achievement-subject winner, XP amount, pending ratio, numeric confirmation delay, candidate family или screening matrix. Screening не запускался. G2.3 не начат.
+G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
+
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; полный research suite — `982 passed`. Screening, outcomes и G2.4 не запускались.
 
 Точные источники:
 
@@ -102,8 +111,12 @@ G2.2 не выбрал achievement-subject winner, XP amount, pending ratio, num
 - [Learn XP human lifecycle model](gamification/learn-xp-lifecycle-model.md)
 - [Learn XP machine lifecycle model](../research/gamification-sim/contracts/learn-xp-lifecycle-model-v1.json)
 - [Learn XP lifecycle schemas](../research/gamification-sim/schemas/learn-xp-lifecycle-model-v1.schema.json)
+- [Learn XP human candidate protocol](gamification/learn-xp-candidate-protocol.md)
+- [Learn XP machine candidate protocol](../research/gamification-sim/contracts/learn-xp-candidate-protocol-v1.json)
+- [Learn XP candidate protocol schema](../research/gamification-sim/schemas/learn-xp-candidate-protocol-v1.schema.json)
 - [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
 - [G2.2 closeout](../roadmap/gamification/g2-learn-xp-lifecycle.md)
+- [G2.3 closeout](../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.

@@ -10,7 +10,8 @@ recommended Review XP research candidate: NONE
 G2: IN PROGRESS
 G2.1: COMPLETE
 G2.2: COMPLETE
-G2.3: NEXT / NOT STARTED
+G2.3: COMPLETE
+G2.4: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -87,7 +88,40 @@ manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c9
 
 The pre-conformance model was published at `63741bcc4d757cd131ab94d9e262042679460d6f`. Focused validation and one bounded full-suite retry after a concrete Cargo cache repair passed. No lifecycle semantics changed after conformance.
 
-G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix. G2.3 is not started.
+G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix.
+
+## G2.3 Learn XP candidate protocol artifacts
+
+- [Machine candidate protocol](contracts/learn-xp-candidate-protocol-v1.json)
+- [Strict Draft 2020-12 schema](schemas/learn-xp-candidate-protocol-v1.schema.json)
+- [Human candidate protocol](../../docs/gamification/learn-xp-candidate-protocol.md)
+- [Dry matrix generator](src/gamification_sim/learn_candidate_protocol.py)
+- [Focused protocol tests](tests/test_learn_candidate_protocol.py)
+- [G2.3 closeout](../../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
+
+Frozen G2.3 state:
+
+```text
+protocol status: FROZEN_PRE_SCREENING_IMPLEMENTATION
+protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
+families: 2
+parameterizations: 4
+subject strategies: 2
+delay policies: 2
+candidates: 8
+reference variants: 2
+hypotheses: 5
+hard gates: 23
+descriptive metrics: 14
+expected units: 340
+unique unit IDs: 340
+seed axis: ABSENT_DETERMINISTIC
+full research suite: 982 passed
+```
+
+G2.3 also consolidates lifecycle digest serialization into the shared helper and enforces exact direct-event types without changing the 31 frozen lifecycle results or fixture manifest digest.
+
+The protocol contains no screening results, candidate outcomes or survivors. G2.4 is not started.
 
 ## Current G1 artifacts
 
@@ -147,10 +181,10 @@ validate-confirmatory-evidence
 run-confirmatory
 ```
 
-No G2 CLI command exists after G2.2. The lifecycle evaluator is research-only and is exercised through frozen fixtures and tests.
+No G2 screening CLI exists after G2.3. `learn_candidate_protocol.py` only generates and validates the frozen dry matrix; it does not execute candidate rewards or assign outcomes.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence, but no candidate screening or production evidence.
+G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence. G2.3 adds prospective candidate protocol and dry matrix identities, but no screening outcomes or production evidence.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.

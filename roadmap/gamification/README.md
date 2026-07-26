@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Next / Not Started`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 Next / Not Started`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -150,15 +150,43 @@ Focused validation and the full research suite passed. The evaluator remains res
 
 ### G2.3 — Candidate protocol and hypothesis design
 
+**Status:** Complete.
+
+Artifacts:
+
+- [human candidate protocol](../../docs/gamification/learn-xp-candidate-protocol.md);
+- [machine candidate protocol](../../research/gamification-sim/contracts/learn-xp-candidate-protocol-v1.json);
+- [strict schema](../../research/gamification-sim/schemas/learn-xp-candidate-protocol-v1.schema.json);
+- [dry matrix generator](../../research/gamification-sim/src/gamification_sim/learn_candidate_protocol.py);
+- [G2.3 closeout](g2-learn-xp-candidate-protocol.md).
+
+Frozen status:
+
+```text
+protocol status: FROZEN_PRE_SCREENING_IMPLEMENTATION
+protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
+families / parameterizations: 2 / 4
+subject strategies / delay policies: 2 / 2
+candidates / reference variants: 8 / 2
+hypotheses / hard gates / metrics: 5 / 23 / 14
+expected units / unique IDs: 340 / 340
+seed axis: ABSENT_DETERMINISTIC
+full research suite: 982 passed
+screening executed: NO
+production approved: NO
+```
+
+G2.3 fixed lifecycle canonical serialization and direct-input typing without drift, then prospectively froze the candidate registry, allocation, delay, subject, gate, metric, survivor/tie, matrix and amendment boundaries.
+
+### G2.4 — Bounded Learn XP screening implementation
+
 **Status:** `NEXT / NOT STARTED`.
 
-G2.3 receives the frozen state/event/transition model, factorized identity architecture, unresolved subject candidates, abstract confirmation predicate, fixture manifest/digest and threat/invariant coverage.
-
-G2.3 may define candidate families, comparison hypotheses, numeric delays, pending ratios, amounts and a screening matrix only after separate activation. It must not infer rating truth, mastery, production readiness or semantic identity from private card content.
+G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. It may implement and execute only the frozen screening protocol; adaptive rescue variants and post-result matrix changes are prohibited.
 
 ### Later G2 stages
 
-Bounded screening, confirmatory evidence and final G2 decision may be defined only after G2.3 prospectively freezes its candidate protocol. No additional stage numbering is created by G2.2.
+Confirmatory evidence and final G2 decision may be defined only after G2.4 completes bounded screening under the published protocol. No additional stage numbering is created by G2.3.
 
 Allowed final G2 outcomes are frozen as:
 
@@ -196,4 +224,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1 and G2.2 are frozen research stages. G2.3 is not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is not started.
