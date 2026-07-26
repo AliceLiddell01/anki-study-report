@@ -105,3 +105,28 @@ C1.5R.6 покрывает:
 - настоящую матрицу Chromium в светлой и тёмной темах.
 
 Docker и real-Anki и приёмка на приватном профиле владельца выполнены в C1.5R.7.
+
+
+## Screenshot-first target audit — 2026-07-27
+
+The corrected Prototype/Production audit uses the same controlled identities (`Слова`, `Java`) and separates direct states from intentional interaction-model differences. Evidence validity is restored, but it does not accept the current production composition.
+
+Confirmed open target decisions:
+
+- whether the compact Prototype three-column editor remains mandatory;
+- whether production's long vertical editor is retained or recomposed;
+- inline dirty messaging versus confirmation modal;
+- Prototype overflow navigation versus persistent Settings sidebar at `1024px`;
+- QHD width utilization;
+- validation summary placement.
+
+Until the owner resolves these choices:
+
+```text
+screenshot-first audit: COMPLETE
+owner target decision: PENDING
+Profiles implementation: NOT STARTED
+Profiles acceptance: NOT READY
+```
+
+See [corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md).

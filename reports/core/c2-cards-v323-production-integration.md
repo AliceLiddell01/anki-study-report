@@ -923,3 +923,91 @@ production SHA: adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5
 ```
 
 Cards owner acceptance is not self-issued by this report.
+
+
+## Cards visual parity closure and corrected Profiles screenshot audit
+
+An independent review accepted native CSS fidelity but requested one final bounded Cards presentation correction and rejected several Profiles comparisons as mislabeled same-state evidence.
+
+### Cards correction
+
+Production commit: `ce45194e659aeba43f05a2b13cbf6f0583e601aa`.
+
+Changed behavior:
+
+- wide compact preview moves from approximately `0.90×` to measured `0.983×` for the exact Words anchor;
+- drawer and expanded answer use `1×` native scale when width permits;
+- drawer evidence is full-viewport `1024×768`, not a layer-only crop;
+- expanded-answer evidence is full-viewport `1440×900`, with surrounding page context;
+- modal dimensions match the accepted Prototype chrome contract;
+- no sanitizer, payload, backend, detector, action or Profiles source changed.
+
+Exact Cards comparison anchors remain:
+
+| Family | Card ID | Anchor |
+| --- | --- | --- |
+| Words | `1708095865696` | `工作` |
+| Grammar | `1781457470336` | `「A」より「B」（の）方が「C」` |
+| Java | `1780002619582` | `Что такое deep copy?` |
+
+### Corrected Profiles audit
+
+The rebuilt audit separates direct comparisons from intentional product differences.
+
+Direct same-identity/mode/theme pairs:
+
+- `Слова` Basic — light/dark;
+- `Java` Basic — light/dark;
+- `Java` Advanced — light/dark;
+- `Слова` Basic validation error — dark;
+- `Java` tabs focus — dark;
+- `Java` Advanced QHD — light.
+
+Not-directly-comparable evidence is stored separately:
+
+- Prototype inline dirty messaging versus production confirmation modal;
+- Prototype `1024` overflow navigation versus production persistent Settings sidebar;
+- Prototype inline route demonstration versus production real route navigation;
+- production language popover is labeled production-only and is not presented as a Settings navigation equivalent.
+
+No Inspection Profiles production code changed. The corrected evidence is valid for an owner target decision, but the current production composition still differs materially from Prototype; implementation remains `NOT STARTED`.
+
+### Verification
+
+```text
+Python focused: PASS — 57 tests
+Frontend focused: PASS — 9 files / 55 tests
+TypeScript: PASS
+Vite build: PASS — 2281 modules
+Bundle guard: PASS — 21 chunks
+entry: 437115 bytes
+total JavaScript: 1412401 bytes
+gzip: 399399 bytes
+git diff --check: PASS
+browser page errors: 0
+browser console errors: 0
+```
+
+### Evidence
+
+```text
+name: cards-visual-parity-and-profiles-audit-evidence.zip
+files: 121
+size: 20506900 bytes
+SHA-256: e2c1d35bb12088ad0d285371514789637be60025050f5a8ded6307048c6dd2da
+manifest content files: 119
+SHA256SUMS entries: 120
+self-verification: PASS
+production SHA: ce45194e659aeba43f05a2b13cbf6f0583e601aa
+```
+
+Status boundary:
+
+```text
+Cards visual parity closure: COMPLETE
+Cards owner acceptance: PENDING
+Inspection Profiles corrected screenshot-first audit: COMPLETE
+Inspection Profiles owner target decision: PENDING
+Inspection Profiles implementation: NOT STARTED
+PR-wide acceptance / merge: NOT PERFORMED
+```

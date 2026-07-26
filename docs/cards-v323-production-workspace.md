@@ -487,8 +487,9 @@ bounded visual revision: COMPLETE
 native Anki night-mode correction: COMPLETE
 final native preview and visual closure: COMPLETE
 native template CSS fidelity repair/evidence: COMPLETE
+Cards visual parity closure: COMPLETE
 Cards owner visual acceptance: PENDING
-Inspection Profiles screenshot-first capture: COMPLETE / OWNER REVIEW NOT PERFORMED
+Inspection Profiles corrected screenshot-first audit: COMPLETE / OWNER TARGET DECISION PENDING
 Inspection Profiles 1:1 implementation: NOT STARTED
 final integration: NOT RUN
 PR #130: OPEN / DRAFT / UNMERGED
@@ -522,3 +523,20 @@ adfe628 → complete bounded sanitizer output restored and fallback specificity 
 Exact same-card browser provenance uses committed `words-n1.apkg`, card `1649481469689`, note type `Слова`, ordinal `0`, template `Карточка 1`. Raw CSS, sanitized CSS, inspect/report payload and Shadow DOM style order are hashed in the evidence package.
 
 Visual comparison coverage also uses the exact Prototype card identities for Japanese Words (`1708095865696`, `工作`), Japanese Grammar (`1781457470336`) and Java (`1780002619582`, deep copy), with Prototype/Production side-by-side sheets in light/dark. All named Prototype Inspection Profiles / Settings contours were captured under the same state names for screenshot-first comparison; this is evidence collection only, not Profiles acceptance or implementation.
+
+
+## Cards visual parity closure after independent review
+
+Independent review accepted the repaired native template CSS path but found that the compact card was still scaled below the accepted reference and that drawer/modal evidence had been captured as isolated layers rather than as complete pages.
+
+The bounded correction at production commit `ce45194e659aeba43f05a2b13cbf6f0583e601aa` changes only Cards presentation:
+
+- compact preview base width is `660px`, producing approximately `0.983×` in the measured wide frame and `1×` in drawer/modal where width permits;
+- the `1024×768` drawer is evidenced as a complete viewport with the queue still visible and usable;
+- expanded answer uses the accepted `1040px` bounded modal width and `calc(100dvh - 112px)` height contract;
+- the redundant footer close action is removed; header close and Escape remain;
+- sanitizer, payload CSS, backend APIs, card template CSS and Profiles production code are unchanged.
+
+The primary evidence is `cards-visual-parity-and-profiles-audit-evidence.zip`, SHA-256 `e2c1d35bb12088ad0d285371514789637be60025050f5a8ded6307048c6dd2da`. It uses the exact Prototype card identities for Words (`1708095865696`), Grammar (`1781457470336`) and Java (`1780002619582`) and compares full pages rather than differently cropped layers.
+
+Cards owner acceptance is still not self-issued by this contract.
