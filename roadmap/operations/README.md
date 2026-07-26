@@ -2,7 +2,7 @@
 
 **Трек:** `O`  
 **Роль:** отдельные защищённые operational tools, не часть локального dashboard  
-**Снимок решения:** `2026-07-26`
+**Снимок решения:** `2026-07-27`
 
 ```text
 O1.1 — Complete / integrated
@@ -78,9 +78,9 @@ raw-event explorer, arbitrary segmentation и two-dimensional analytics
 
 ### O1.1 — Metrics, Query and Security Contract
 
-**Статус:** `Complete / integrated`
+**Статус:** `Complete / integrated`  
 **Canonical review:** telemetry
-[PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19)
+[PR #19](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/19)  
 **Telemetry operations merge:** `8ef613d61c7b8672d9143b0c3b710c2d81b2fa6b`
 
 Зафиксированы:
@@ -102,9 +102,9 @@ Operations branch от текущего `core`.
 
 ### O1.2 — Operational Read Model and Maintenance Evidence
 
-**Статус:** `Complete / corrected / integrated; not deployed`
+**Статус:** `Complete / corrected / integrated; not deployed`  
 **Canonical review:** telemetry
-[PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20)
+[PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20)  
 **Telemetry operations merge:** `bb1ae3c7e42da22f917128b9becde04ba7b0b4d8`
 
 Интегрированный Operations contract добавляет только:
@@ -136,10 +136,10 @@ reviewed lower cap или paid plan остаются отдельным реше
 
 ### O1.3 — Protected Read-only Admin API
 
-**Статус:** `Complete / integrated; not deployed`
+**Статус:** `Complete / integrated; not deployed`  
 **Canonical review:** telemetry
-[PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21)
-**Final telemetry head:** `755511ce20ffc65046503b2504d9edf6d7564e4f`
+[PR #21](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/21)  
+**Final telemetry head:** `755511ce20ffc65046503b2504d9edf6d7564e4f`  
 **Telemetry operations merge:** `1acb7abc6d9f2347ce59e3f2b52da3a0728140bb`
 
 Интегрированный scope:
@@ -168,10 +168,10 @@ source-specific coverage. Исправление принято тем же tele
 
 ### O1.4 — Provider Metrics Collector
 
-**Статус:** `Complete / integrated; not deployed`
+**Статус:** `Complete / integrated; not deployed`  
 **Canonical review:** telemetry
-[PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22)
-**Final telemetry head:** `03ad15c15917c192878a6fa4900430772964c95c`
+[PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22)  
+**Final telemetry head:** `03ad15c15917c192878a6fa4900430772964c95c`  
 **Telemetry operations merge:** `ebae6f71ec0dcf2ba044faf9dff2a58cde474263`
 
 Интегрированный scope:
@@ -201,33 +201,47 @@ Corrective closure в O1.5 integration ограничивает Worker metrics �
 snapshot overlap вместе с checkpoint и распространяет timeout на весь
 ограниченный response body.
 
-### O1.5 — Minimal Admin Console
+### O1.5 — Product Metrics v2 and Admin Console
 
-**Статус:** `Complete / integrated; not deployed`
-**Canonical review:** telemetry
-[PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23)
-**Final telemetry head:** `f21cd48ac03c555467a15676dc8af90fa14a7525`
-**Telemetry operations merge:** `0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6`
+**Статус:** `Complete / integrated; not deployed`  
+**Initial telemetry baseline:**
+[PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23),
+merge `0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6`  
+**Final redesign review:** telemetry
+[PR #24](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/24)  
+**Final telemetry head:** `1ce7c6c848fa4466d6824e965bd9b8f74bd7567f`  
+**Telemetry operations merge:** `450665efd80de8c38525017a32c82f2b1a55146b`
 
-Интегрированный scope:
+Интегрированный final scope:
 
-- четыре fixed owner-only страницы: Overview, Usage, Reliability и Privacy;
-- ровно 20 active fixed-query operations; future ingestion-rejections query
-  отсутствует;
-- Worker-first Static Assets после Access JWT, owner и origin validation;
-- семь состояний, suppression `<5`, exact zero и отсутствие reconstruction;
-- relative same-origin API, bounded decoder, maximum 3 requests, dedupe и
-  route/filter abort без polling/storage;
-- strict CSP, light/dark/reduced-motion, keyboard/landmarks и accessible
-  chart/table fallback;
-- отдельный Chromium/axe CI gate на 1440×900 и 1024×768;
-- bundle без sourcemaps, external runtime origins и committed dist.
+- 15 active fixed read-only product operations;
+- шесть owner-facing routes: Overview, Audience, Features, Reliability, Privacy
+  и Infrastructure;
+- Product Metrics v2 contracts версии `2.1.0`;
+- фиксированный `product.overview` из 19 cells и семи primary KPI;
+- Dashboard, Search, Entity Actions и Data health status groups;
+- infrastructure diagnostics изолированы на отдельном route и не подменяют
+  product health;
+- server-side primary/complementary/exhaustive suppression без скрытой
+  реконструкции в browser;
+- exact zero сохраняется, suppressed/unavailable values остаются `null`;
+- raw query и metric codes доступны только в сворачиваемом technical inspector;
+- per-route/per-operation abort и generation, bounded response decoder,
+  maximum three concurrent requests и отсутствие polling/storage;
+- grouped desktop rail, 1024 navigation popover, light/dark, reduced motion,
+  keyboard/focus/live-status и Chromium/axe gate.
+
+Canonical owner-provided prototype v3.2.3 прошёл ZIP integrity и 51/51 checksum
+verification. Reference comparison не выявил material mismatch; archive assets и
+screenshots не перенесены в repository.
 
 Final telemetry CI
-[run 30203326707](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30203326707)
-на exact head прошёл: verify, Chromium/axe, review artifacts, audit и OSV.
-Access provisioning, remote migrations, live GraphQL/Cron и deployment не
-выполнялись.
+[run 30219294751](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30219294751)
+на exact head прошёл полностью: contracts, security, 108 Vitest tests, обе D1
+migration suites, три dry-runs, audit, OSV, Chromium, axe и visual artifact.
+
+Access provisioning, remote migrations, live GraphQL/Cron, deployment и release
+не выполнялись.
 
 ### O1.6
 
