@@ -55,6 +55,7 @@ production code и tests
 - [O1.2 read model and maintenance evidence](operations/o1-2-read-model-maintenance-closeout.md)
 - [O1.2 capacity corrective integration](operations/o1-2-capacity-corrective-closeout.md)
 - [O1.3 protected read-only Admin API integration](operations/o1-3-protected-admin-api-closeout.md)
+- [O1.4 provider metrics collector integration](operations/o1-4-provider-metrics-collector-closeout.md)
 
 ## Research
 

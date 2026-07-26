@@ -7,9 +7,10 @@
 ```text
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
-O1.3 — Complete / integrated; not deployed
-O1.4 — Next
-O1.5–O1.6 — Planned
+O1.3 — Complete / corrected / integrated; not deployed
+O1.4 — Complete / integrated; not deployed
+O1.5 — Next
+O1.6 — Planned
 ```
 
 Operations — независимый трек. Он не добавляет административные credentials,
@@ -51,9 +52,10 @@ flowchart LR
     U[Local Anki add-on] -. no admin route or secret .-> W
 ```
 
-Cloudflare Access остаётся внешней защитой, а интегрированный O1.3 Admin Worker
-самостоятельно валидирует Access JWT, issuer, exact environment audience,
-время действия, owner identity и JWKS rotation. D1 остаётся server-side;
+Cloudflare Access остаётся внешней защитой, а интегрированный Admin Worker
+самостоятельно валидирует Access JWT до route dispatch и D1. Provider token
+доступен только отдельному Collector Worker; Admin Worker читает
+materialized snapshots из изолированного `ADMIN_DB`. D1 остаётся server-side;
 browser не задаёт SQL, table/column names, arbitrary grouping, sort или date
 range.
 
@@ -159,11 +161,43 @@ Final telemetry CI
 не применял remote D1 migration и не выполнял staging/production deployment.
 UI и provider collector не входят в этап.
 
-### O1.4–O1.6
+Corrective fix в составе O1.4 integration закрывает registry-wide differencing
+paths, сохраняет наблюдаемый exact zero отдельно от empty и уточняет
+source-specific coverage. Исправление принято тем же telemetry PR #22 без
+расширения deployment boundary.
 
-- `O1.4` — **Next**: least-privilege provider metrics collector и bounded
-  snapshots;
-- `O1.5` — minimal Admin Console поверх принятых fixed API operations;
+### O1.4 — Provider Metrics Collector
+
+**Статус:** `Complete / integrated; not deployed`
+**Canonical review:** telemetry
+[PR #22](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/22)
+**Final telemetry head:** `03ad15c15917c192878a6fa4900430772964c95c`
+**Telemetry operations merge:** `ebae6f71ec0dcf2ba044faf9dff2a58cde474263`
+
+Интегрированный scope:
+
+- отдельный no-route Collector Worker с least-privilege provider token;
+- изолированный `ADMIN_DB`, недоступный public ingestion Worker;
+- fixed pre-reviewed GraphQL templates без browser-controlled query surface;
+- bounded timeout, response size, retry и fail-closed parsing;
+- только завершённые provider intervals, bounded recent/backfill windows и
+  90-day retention;
+- idempotent scheduled runs, stale-run reconciliation и independent component
+  checkpoints;
+- conservative provider-reported precision без преобразования неизвестной
+  sampling metadata в exact;
+- source-specific freshness и typed unavailable/incomplete states в Admin API;
+- provider token отсутствует в Admin Worker и не сохраняется в D1.
+
+Final telemetry CI
+[run 30200494159](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30200494159)
+на exact head прошёл, включая OSV. Live GraphQL, remote migrations, Cloudflare
+resource mutation, staging/production deployment и Cron activation не
+выполнялись.
+
+### O1.5–O1.6
+
+- `O1.5` — **Next**: minimal Admin Console поверх принятых fixed API operations;
 - `O1.6` — verification, runbook и отдельный production gate.
 
 Каждый этап требует отдельного scope и owner decision.
@@ -176,7 +210,6 @@ UI и provider collector не входят в этап.
 - arbitrary SQL или generic query endpoint;
 - installation/account identity и raw-event explorer;
 - two-dimensional or user-level analytics;
-- `ADMIN_DB` до provider collector;
 - browser provider credentials;
 - Cloudflare resource mutation;
 - staging/production deployment;
