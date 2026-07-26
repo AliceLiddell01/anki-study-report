@@ -216,10 +216,12 @@ describe("Cards attention inbox", () => {
     const modal = document.querySelector('[data-testid="cards-preview-modal"]')!;
     expect(modal.getAttribute("role")).toBe("dialog");
     expect(modal.getAttribute("aria-modal")).toBe("true");
+    expect(modal.querySelector(".product-modal-footer")).toBeNull();
     expect(document.getElementById("dashboard-app-shell")!.inert).toBe(true);
     expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).toContain("remember");
     expect(modal.querySelector('[data-preview-side="back"]')?.innerHTML).not.toContain("覚える");
-    const close = Array.from(modal.querySelectorAll("button")).find((button) => button.textContent?.includes("Закрыть"))!;
+    const close = modal.querySelector<HTMLButtonElement>(".product-modal-close")!;
+    expect(close.getAttribute("aria-label")).toContain("Закрыть");
     await act(async () => close.click());
     await act(async () => { await Promise.resolve(); });
     await act(async () => root.unmount());

@@ -50,7 +50,7 @@ describe("Cards responsive visual contract", () => {
   });
 
   it("keeps answer modal chrome compact and respects reduced motion", () => {
-    expect(cardsCss).toMatch(/\.product-modal\.cards-answer-modal\s*\{[^}]*width:\s*min\(980px, 100%\)/s);
+    expect(cardsCss).toMatch(/\.product-modal\.cards-answer-modal\s*\{(?=[^}]*width:\s*min\(1040px, calc\(100vw - 48px\)\))(?=[^}]*max-height:\s*calc\(100dvh - 112px\))[^}]*\}/s);
     expect(cardsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.cards-detail-drawer\s*\{[^}]*animation:\s*none/s);
   });
 

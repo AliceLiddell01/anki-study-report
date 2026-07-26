@@ -49,7 +49,7 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     audioButtonSize: 36,
   },
   preview: {
-    baseWidth: 720,
+    baseWidth: 660,
     baseHeight: 420,
     targetWidth: 720,
     targetHeight: 390,

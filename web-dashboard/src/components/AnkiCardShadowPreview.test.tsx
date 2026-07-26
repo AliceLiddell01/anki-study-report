@@ -16,6 +16,20 @@ describe("AnkiCardShadowPreview layout", () => {
   });
 
 
+
+  it("keeps native card scale at 1 when the compact host can fit the accepted 660px canvas", () => {
+    const layout = calculateAdaptivePreviewLayout({
+      mode: "preview",
+      availableWidth: 720,
+      availableHeight: 600,
+      contentWidth: 660,
+      contentHeight: 420,
+    });
+    expect(layout.scale).toBe(1);
+    expect(layout.contentWidth).toBe(660);
+    expect(layout.hostHeight).toBe(600);
+  });
+
   it("fills a short compact card canvas to the available preview height without scaling glyphs", () => {
     const layout = calculateAdaptivePreviewLayout({
       mode: "preview",

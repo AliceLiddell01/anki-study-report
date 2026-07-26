@@ -306,7 +306,6 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
           testId="cards-preview-modal"
           portal
           className="cards-answer-modal"
-          footer={<button type="button" className="secondary-button" onClick={() => setExpanded(false)}>{t("preview.close")}</button>}
         >
           <CardPreview details={workspace.inspectResponse.details} side="back" nightMode={nightMode} />
         </AccessibleModal>
