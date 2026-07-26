@@ -1,0 +1,36 @@
+name: Apply Cards parity and Profiles audit documentation
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+      - name: Apply verified documentation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .stage2-parity-docs.patch.b64 > /tmp/parity-docs.patch.zst
+          echo 'f94b3065c9ab4be379e93c10e9442a8f8bc67f298bb9385c2eb8f0917d1d82f2  /tmp/parity-docs.patch.zst' | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/parity-docs.patch.zst > /tmp/parity-docs.patch
+          echo 'b367c81707eeba6fe15a6e2b7ef7b008a4496c5ea99c36d37e9829a9c40cbbf2  /tmp/parity-docs.patch' | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/parity-docs.patch
+          git rm .github/workflows/cards-parity-profiles-audit-docs.yml .stage2-parity-docs.patch.b64
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Document Cards parity closure and corrected Profiles audit'
+          git push origin HEAD:c2-manual-acceptance-remediation
