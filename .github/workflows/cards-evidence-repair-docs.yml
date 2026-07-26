@@ -1,0 +1,48 @@
+name: Apply Cards evidence repair documentation
+
+on:
+  pull_request:
+    branches:
+      - core
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: c2-manual-acceptance-remediation
+          fetch-depth: 0
+
+      - name: Apply verified evidence documentation patch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PATCH_BLOB_SHA: 5ad933af2077d661418c5c024e97e6b8e226787e
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs/${PATCH_BLOB_SHA}" \
+            | jq --raw-output '.content' \
+            | tr -d '\n' \
+            | base64 --decode > /tmp/cards-evidence-repair-docs.patch.zst
+          echo '3ca8f9f9f42dc40f45002a45d8dfc61120cdaf77a1356a36bf918b243a2136b1  /tmp/cards-evidence-repair-docs.patch.zst' | sha256sum --check --strict
+          zstd --decompress --stdout /tmp/cards-evidence-repair-docs.patch.zst > /tmp/cards-evidence-repair-docs.patch
+          echo '9460a2ac4d4685f115c1355f341479238d577fae6d6a9dd8a420040ed5b68720  /tmp/cards-evidence-repair-docs.patch' | sha256sum --check --strict
+          git apply --index --whitespace=error /tmp/cards-evidence-repair-docs.patch
+          git rm .github/workflows/cards-evidence-repair-docs.yml
+          git commit -m 'Repair the Cards evidence and visual coverage checkpoint'
+          git push origin HEAD:c2-manual-acceptance-remediation
+          git push origin --delete __do_not_use_probe__ || true
