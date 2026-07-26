@@ -53,6 +53,7 @@ production code и tests
 
 - [O1.1 contract cleanup](operations/o1-1-contract-cleanup-closeout.md)
 - [O1.2 read model and maintenance evidence](operations/o1-2-read-model-maintenance-closeout.md)
+- [O1.2 capacity corrective integration](operations/o1-2-capacity-corrective-closeout.md)
 
 ## Research
 
