@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   export:
-    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation' && contains(github.event.pull_request.head.sha, '')
+    if: github.event.pull_request.head.ref == 'c2-manual-acceptance-remediation'
     runs-on: ubuntu-latest
     steps:
       - name: Check out revision branch
@@ -25,6 +25,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          archive="$RUNNER_TEMP/revision-source.tar.zst"
+          checksum="$RUNNER_TEMP/revision-source.sha256"
           tar \
             --exclude=.git \
             --exclude='web-dashboard/node_modules' \
@@ -32,16 +34,17 @@ jobs:
             --exclude='**/coverage' \
             --exclude='**/test-results' \
             --exclude='**/playwright-report' \
-            -caf revision-source.tar.zst .
-          sha256sum revision-source.tar.zst > revision-source.sha256
+            -C "$GITHUB_WORKSPACE" \
+            -caf "$archive" .
+          sha256sum "$archive" > "$checksum"
 
       - name: Upload source snapshot
         uses: actions/upload-artifact@v4
         with:
           name: cards-revision-source
           path: |
-            revision-source.tar.zst
-            revision-source.sha256
+            ${{ runner.temp }}/revision-source.tar.zst
+            ${{ runner.temp }}/revision-source.sha256
           if-no-files-found: error
           retention-days: 1
 
