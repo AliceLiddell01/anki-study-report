@@ -1,7 +1,7 @@
 # O1.4 — public Provider Metrics Collector integration
 
 - Дата: `2026-07-26`
-- Статус: **integrated in telemetry operations; not deployed**
+- Статус: **corrected / integrated in telemetry operations; not deployed**
 - O1.3 telemetry basis:
   `1acb7abc6d9f2347ce59e3f2b52da3a0728140bb`
 - O1.4 final telemetry head:
@@ -34,6 +34,13 @@ Private telemetry repository содержит отдельный Provider Metric
 
 В том же integration исправлен O1.3: registry-wide differencing paths закрыты,
 exact zero отделён от empty, а source coverage и причины неполноты уточнены.
+
+Последующий corrective в telemetry PR #23 ограничил provider queries только
+native stored intervals: Worker `previous_24h/hour` (96 ≤ 100 rows), D1
+`previous_7d/day` или `previous_30d/day` (180 ≤ 180 rows). Snapshot overlap,
+новые points и checkpoint теперь заменяются атомарно; корректный empty очищает
+старый overlap, rollback и соседние окна проверены. Timeout охватывает полный
+bounded response body и decode.
 
 Public repository не копирует private query bodies, D1 schema, identifiers,
 секретную конфигурацию или закрытые fixtures.
@@ -68,9 +75,9 @@ Docker/real-Anki E2E не является gate.
 - remote D1 migration;
 - Cloudflare Access, Worker, route или Cron resource mutation;
 - staging или production deployment;
-- Admin UI и O1.5;
+- O1.5 deployment;
 - merge telemetry `operations` в `master`;
 - merge main `operations` в `core` или `master`.
 
-Следующий Operations этап — O1.5 minimal Admin Console, только отдельным scope и
-owner decision.
+Следующий Operations этап — O1.6 verification/runbook/production gate, только
+отдельным scope и owner decision.

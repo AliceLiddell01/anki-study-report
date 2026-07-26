@@ -8,8 +8,8 @@
 O1.1 — Complete / integrated
 O1.2 — Complete / integrated; not deployed
 O1.3 — Complete / corrected / integrated; not deployed
-O1.4 — Complete / integrated; not deployed
-O1.5 — Next
+O1.4 — Complete / corrected / integrated; not deployed
+O1.5 — Complete / integrated; not deployed
 O1.6 — Planned
 ```
 
@@ -102,7 +102,7 @@ Operations branch от текущего `core`.
 
 ### O1.2 — Operational Read Model and Maintenance Evidence
 
-**Статус:** `Complete / integrated; not deployed`
+**Статус:** `Complete / corrected / integrated; not deployed`
 **Canonical review:** telemetry
 [PR #20](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/20)
 **Telemetry operations merge:** `bb1ae3c7e42da22f917128b9becde04ba7b0b4d8`
@@ -195,10 +195,44 @@ Final telemetry CI
 resource mutation, staging/production deployment и Cron activation не
 выполнялись.
 
-### O1.5–O1.6
+Corrective closure в O1.5 integration ограничивает Worker metrics парой
+`previous_24h/hour`, D1 capacity — только `previous_7d/day` и
+`previous_30d/day`, доказывает row bounds 96/100 и 180/180, атомарно заменяет
+snapshot overlap вместе с checkpoint и распространяет timeout на весь
+ограниченный response body.
 
-- `O1.5` — **Next**: minimal Admin Console поверх принятых fixed API operations;
-- `O1.6` — verification, runbook и отдельный production gate.
+### O1.5 — Minimal Admin Console
+
+**Статус:** `Complete / integrated; not deployed`
+**Canonical review:** telemetry
+[PR #23](https://github.com/AliceLiddell01/anki-study-report-telemetry/pull/23)
+**Final telemetry head:** `f21cd48ac03c555467a15676dc8af90fa14a7525`
+**Telemetry operations merge:** `0d19bfda61fe2fe30d1e2e8652c5015f6a7915a6`
+
+Интегрированный scope:
+
+- четыре fixed owner-only страницы: Overview, Usage, Reliability и Privacy;
+- ровно 20 active fixed-query operations; future ingestion-rejections query
+  отсутствует;
+- Worker-first Static Assets после Access JWT, owner и origin validation;
+- семь состояний, suppression `<5`, exact zero и отсутствие reconstruction;
+- relative same-origin API, bounded decoder, maximum 3 requests, dedupe и
+  route/filter abort без polling/storage;
+- strict CSP, light/dark/reduced-motion, keyboard/landmarks и accessible
+  chart/table fallback;
+- отдельный Chromium/axe CI gate на 1440×900 и 1024×768;
+- bundle без sourcemaps, external runtime origins и committed dist.
+
+Final telemetry CI
+[run 30203326707](https://github.com/AliceLiddell01/anki-study-report-telemetry/actions/runs/30203326707)
+на exact head прошёл: verify, Chromium/axe, review artifacts, audit и OSV.
+Access provisioning, remote migrations, live GraphQL/Cron и deployment не
+выполнялись.
+
+### O1.6
+
+`O1.6` — **Next** только по отдельному scope: verification, runbook и production
+gate без автоматического deployment.
 
 Каждый этап требует отдельного scope и owner decision.
 
