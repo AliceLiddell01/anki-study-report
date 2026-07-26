@@ -1,0 +1,634 @@
+{
+  "$defs": {
+    "cohort20": {
+      "additionalProperties": false,
+      "properties": {
+        "365": {
+          "const": 20
+        },
+        "90": {
+          "const": 20
+        }
+      },
+      "required": [
+        "90",
+        "365"
+      ],
+      "type": "object"
+    },
+    "cohort24": {
+      "additionalProperties": false,
+      "properties": {
+        "365": {
+          "const": 24
+        },
+        "90": {
+          "const": 24
+        }
+      },
+      "required": [
+        "90",
+        "365"
+      ],
+      "type": "object"
+    },
+    "nativeCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "365": {
+          "const": 20
+        },
+        "90": {
+          "const": 24
+        }
+      },
+      "required": [
+        "90",
+        "365"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "review-xp-confirmatory-protocol-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "../schemas/review-xp-confirmatory-protocol-v1.schema.json"
+    },
+    "amendment_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "after_results": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "before_results": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "typo_or_link_only": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "before_results",
+        "after_results",
+        "typo_or_link_only"
+      ],
+      "type": "object"
+    },
+    "boundaries": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptive_search": {
+          "const": false
+        },
+        "approve_production": {
+          "const": false
+        },
+        "post_result_threshold_change": {
+          "const": false
+        },
+        "rank_survivors": {
+          "const": false
+        },
+        "select_final_candidate": {
+          "const": false
+        },
+        "start_g1_6": {
+          "const": false
+        }
+      },
+      "required": [
+        "rank_survivors",
+        "select_final_candidate",
+        "approve_production",
+        "start_g1_6",
+        "adaptive_search",
+        "post_result_threshold_change"
+      ],
+      "type": "object"
+    },
+    "core_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_units": {
+          "const": 576
+        },
+        "horizons": {
+          "items": false,
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "const": 90
+            },
+            {
+              "const": 365
+            }
+          ],
+          "type": "array"
+        },
+        "model_conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "MODEL-COHORT-20": {
+              "$ref": "#/$defs/cohort20"
+            },
+            "MODEL-COHORT-24": {
+              "$ref": "#/$defs/cohort24"
+            },
+            "MODEL-NATIVE-COHORT": {
+              "$ref": "#/$defs/nativeCondition"
+            }
+          },
+          "required": [
+            "MODEL-NATIVE-COHORT",
+            "MODEL-COHORT-20",
+            "MODEL-COHORT-24"
+          ],
+          "type": "object"
+        },
+        "policy_pairs": {
+          "items": false,
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "const": "retention-high-cycle"
+            },
+            {
+              "const": "retention-low-cycle"
+            },
+            {
+              "const": "intentional-backlog"
+            },
+            {
+              "const": "honest-backlog-return"
+            }
+          ],
+          "type": "array"
+        },
+        "replicas": {
+          "items": false,
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "const": 1
+            }
+          ],
+          "type": "array"
+        }
+      },
+      "required": [
+        "policy_pairs",
+        "horizons",
+        "replicas",
+        "model_conditions",
+        "expected_units"
+      ],
+      "type": "object"
+    },
+    "eligible_variants": {
+      "items": false,
+      "maxItems": 3,
+      "minItems": 3,
+      "prefixItems": [
+        {
+          "const": "R-CURRENT"
+        },
+        {
+          "const": "P-STEP-ZERO"
+        },
+        {
+          "const": "P-TAPER-ZERO-30D"
+        }
+      ],
+      "type": "array"
+    },
+    "expected_accounting": {
+      "additionalProperties": false,
+      "properties": {
+        "core_units": {
+          "const": 576
+        },
+        "persona_safety_units": {
+          "const": 192
+        },
+        "probe_units": {
+          "const": 72
+        },
+        "total_units": {
+          "const": 840
+        }
+      },
+      "required": [
+        "core_units",
+        "persona_safety_units",
+        "probe_units",
+        "total_units"
+      ],
+      "type": "object"
+    },
+    "fresh_seeds": {
+      "items": false,
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "const": 5978107021558220631
+        },
+        {
+          "const": 5509807251554775963
+        }
+      ],
+      "type": "array"
+    },
+    "outcome_rule": {
+      "additionalProperties": false,
+      "properties": {
+        "eligible": {
+          "const": "CONFIRMATORY_ELIGIBLE"
+        },
+        "eligible_when": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "inconclusive": {
+          "const": "CONFIRMATORY_INCONCLUSIVE"
+        },
+        "inconclusive_when": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "not_eligible": {
+          "const": "CONFIRMATORY_NOT_ELIGIBLE"
+        },
+        "not_eligible_when": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "eligible",
+        "not_eligible",
+        "inconclusive",
+        "eligible_when",
+        "not_eligible_when",
+        "inconclusive_when"
+      ],
+      "type": "object"
+    },
+    "persona_safety_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "construction": {
+          "const": "30 independent synthetic post-transition days"
+        },
+        "expected_units": {
+          "const": 192
+        },
+        "persona_ids": {
+          "items": false,
+          "maxItems": 16,
+          "minItems": 16,
+          "prefixItems": [
+            {
+              "const": "P01_NEW_SMALL"
+            },
+            {
+              "const": "P02_BEGINNER_REGULAR"
+            },
+            {
+              "const": "P03_MATURE_CONSISTENT"
+            },
+            {
+              "const": "P04_HIGH_VOLUME"
+            },
+            {
+              "const": "P05_SMALL_MATURE_COLLECTION"
+            },
+            {
+              "const": "P06_BACKLOG_RETURN"
+            },
+            {
+              "const": "P07_IRREGULAR_SCHEDULE"
+            },
+            {
+              "const": "P08_NO_FSRS"
+            },
+            {
+              "const": "P09_LOW_CONFIDENCE_FSRS"
+            },
+            {
+              "const": "P10_HIGH_RETENTION"
+            },
+            {
+              "const": "P11_LOW_RETENTION"
+            },
+            {
+              "const": "P12_MULTI_DEVICE"
+            },
+            {
+              "const": "P13_HEAVY_LAPSE"
+            },
+            {
+              "const": "P14_AUDIO_AND_LONG_PROMPTS"
+            },
+            {
+              "const": "P15_FILTERED_EXAM_PREP"
+            },
+            {
+              "const": "P16_ZERO_DUE"
+            }
+          ],
+          "type": "array"
+        },
+        "window_end_day": {
+          "const": 89
+        },
+        "window_start_day": {
+          "const": 60
+        }
+      },
+      "required": [
+        "persona_ids",
+        "window_start_day",
+        "window_end_day",
+        "construction",
+        "expected_units"
+      ],
+      "type": "object"
+    },
+    "probe_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_units": {
+          "const": 72
+        },
+        "probe_ids": {
+          "items": false,
+          "maxItems": 12,
+          "minItems": 12,
+          "prefixItems": [
+            {
+              "const": "INV-ORDINARY-UNIT"
+            },
+            {
+              "const": "INV-AGAIN-CREDIT"
+            },
+            {
+              "const": "INV-BUTTON-NEUTRAL"
+            },
+            {
+              "const": "INV-SESSION-INVARIANT"
+            },
+            {
+              "const": "INV-NO-RESPONSE-TIME"
+            },
+            {
+              "const": "INV-RESPONSE-VALIDITY"
+            },
+            {
+              "const": "ABUSE-DUPLICATE-REPLAY"
+            },
+            {
+              "const": "ABUSE-RELEARNING-LOOP"
+            },
+            {
+              "const": "ABUSE-PREVIEW-FARM"
+            },
+            {
+              "const": "ABUSE-FORCED-DUE"
+            },
+            {
+              "const": "ABUSE-MICRO-SCOPE-COMPLETION"
+            },
+            {
+              "const": "INV-RESEARCH-ONLY"
+            }
+          ],
+          "type": "array"
+        }
+      },
+      "required": [
+        "probe_ids",
+        "expected_units"
+      ],
+      "type": "object"
+    },
+    "protocol_id": {
+      "const": "review-xp-confirmatory-protocol"
+    },
+    "protocol_status": {
+      "const": "FROZEN_PRE_RESULTS"
+    },
+    "protocol_version": {
+      "const": 1
+    },
+    "rejected_variants": {
+      "items": false,
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "const": "P-STEP-NEUTRAL-RATIO"
+        },
+        {
+          "const": "P-TAPER-NEUTRAL-RATIO-30D"
+        }
+      ],
+      "type": "array"
+    },
+    "replay_ids": {
+      "items": false,
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "const": "PRIMARY"
+        },
+        {
+          "const": "SAME_INPUT_REPLAY"
+        }
+      ],
+      "type": "array"
+    },
+    "required_gates": {
+      "items": false,
+      "maxItems": 19,
+      "minItems": 19,
+      "prefixItems": [
+        {
+          "const": "GATE-ENDPOINT-CAP"
+        },
+        {
+          "const": "GATE-NO-CYCLING-GROWTH"
+        },
+        {
+          "const": "GATE-BASELINE-PRESERVED"
+        },
+        {
+          "const": "GATE-ZERO-SUPPRESSION"
+        },
+        {
+          "const": "GATE-HONEST-BACKLOG-FAIRNESS"
+        },
+        {
+          "const": "GATE-NO-BACKLOG-GAIN"
+        },
+        {
+          "const": "GATE-ORDINARY-UNIT"
+        },
+        {
+          "const": "GATE-AGAIN-CREDIT"
+        },
+        {
+          "const": "GATE-BUTTON-NEUTRAL"
+        },
+        {
+          "const": "GATE-SESSION-INVARIANT"
+        },
+        {
+          "const": "GATE-NO-RESPONSE-TIME-REWARD"
+        },
+        {
+          "const": "GATE-RESPONSE-VALIDITY"
+        },
+        {
+          "const": "GATE-DETERMINISTIC-REPLAY"
+        },
+        {
+          "const": "GATE-SECONDARY-SEED"
+        },
+        {
+          "const": "GATE-MODEL-CONDITION-SENSITIVITY"
+        },
+        {
+          "const": "GATE-PERSONA-SAFETY"
+        },
+        {
+          "const": "GATE-ABUSE-PROBES"
+        },
+        {
+          "const": "GATE-EVIDENCE-COMPLETE"
+        },
+        {
+          "const": "GATE-RESEARCH-ONLY"
+        }
+      ],
+      "type": "array"
+    },
+    "source_g1_4": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "bundle_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "evidence_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "evidence_json_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "historical_merge_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "implementation_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "manifest_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_sha",
+        "implementation_sha",
+        "historical_merge_sha",
+        "manifest_digest",
+        "evidence_digest",
+        "bundle_sha256",
+        "evidence_json_sha256"
+      ],
+      "type": "object"
+    },
+    "stage": {
+      "const": "G1.5"
+    },
+    "thresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "absolute_tolerance": {
+          "const": 1e-09
+        },
+        "again_attempt_credit": {
+          "const": 0.25
+        },
+        "endpoint_cap": {
+          "const": 0.03
+        },
+        "growth_operator": {
+          "const": "<="
+        },
+        "honest_backlog_operator": {
+          "const": ">="
+        },
+        "intentional_backlog_operator": {
+          "const": "<="
+        },
+        "ordinary_review_unit": {
+          "const": 1.0
+        }
+      },
+      "required": [
+        "absolute_tolerance",
+        "endpoint_cap",
+        "ordinary_review_unit",
+        "again_attempt_credit",
+        "growth_operator",
+        "honest_backlog_operator",
+        "intentional_backlog_operator"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "$schema",
+    "protocol_id",
+    "protocol_version",
+    "protocol_status",
+    "stage",
+    "source_g1_4",
+    "eligible_variants",
+    "rejected_variants",
+    "fresh_seeds",
+    "replay_ids",
+    "core_matrix",
+    "persona_safety_matrix",
+    "probe_matrix",
+    "expected_accounting",
+    "thresholds",
+    "required_gates",
+    "outcome_rule",
+    "boundaries",
+    "amendment_policy"
+  ],
+  "title": "Review XP confirmatory protocol v1",
+  "type": "object"
+}

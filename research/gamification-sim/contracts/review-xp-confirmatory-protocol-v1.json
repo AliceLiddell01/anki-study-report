@@ -1,0 +1,162 @@
+{
+  "$schema": "../schemas/review-xp-confirmatory-protocol-v1.schema.json",
+  "amendment_policy": {
+    "after_results": "any substantive defect requires disclosure, invalidation of affected results, a new protocol version, and a full rerun",
+    "before_results": "substantive changes require a new protocol version and fresh publication barrier",
+    "typo_or_link_only": "may retain version when scientific semantics and executable manifest are unchanged"
+  },
+  "boundaries": {
+    "adaptive_search": false,
+    "approve_production": false,
+    "post_result_threshold_change": false,
+    "rank_survivors": false,
+    "select_final_candidate": false,
+    "start_g1_6": false
+  },
+  "core_matrix": {
+    "expected_units": 576,
+    "horizons": [
+      90,
+      365
+    ],
+    "model_conditions": {
+      "MODEL-COHORT-20": {
+        "365": 20,
+        "90": 20
+      },
+      "MODEL-COHORT-24": {
+        "365": 24,
+        "90": 24
+      },
+      "MODEL-NATIVE-COHORT": {
+        "365": 20,
+        "90": 24
+      }
+    },
+    "policy_pairs": [
+      "retention-high-cycle",
+      "retention-low-cycle",
+      "intentional-backlog",
+      "honest-backlog-return"
+    ],
+    "replicas": [
+      0,
+      1
+    ]
+  },
+  "eligible_variants": [
+    "R-CURRENT",
+    "P-STEP-ZERO",
+    "P-TAPER-ZERO-30D"
+  ],
+  "expected_accounting": {
+    "core_units": 576,
+    "persona_safety_units": 192,
+    "probe_units": 72,
+    "total_units": 840
+  },
+  "fresh_seeds": [
+    5978107021558220631,
+    5509807251554775963
+  ],
+  "outcome_rule": {
+    "eligible": "CONFIRMATORY_ELIGIBLE",
+    "eligible_when": "all required gates PASS and evidence is complete",
+    "inconclusive": "CONFIRMATORY_INCONCLUSIVE",
+    "inconclusive_when": "evidence is incomplete, invalid, or cannot be interpreted under the frozen protocol",
+    "not_eligible": "CONFIRMATORY_NOT_ELIGIBLE",
+    "not_eligible_when": "evidence is complete and one or more required gates FAIL"
+  },
+  "persona_safety_matrix": {
+    "construction": "30 independent synthetic post-transition days",
+    "expected_units": 192,
+    "persona_ids": [
+      "P01_NEW_SMALL",
+      "P02_BEGINNER_REGULAR",
+      "P03_MATURE_CONSISTENT",
+      "P04_HIGH_VOLUME",
+      "P05_SMALL_MATURE_COLLECTION",
+      "P06_BACKLOG_RETURN",
+      "P07_IRREGULAR_SCHEDULE",
+      "P08_NO_FSRS",
+      "P09_LOW_CONFIDENCE_FSRS",
+      "P10_HIGH_RETENTION",
+      "P11_LOW_RETENTION",
+      "P12_MULTI_DEVICE",
+      "P13_HEAVY_LAPSE",
+      "P14_AUDIO_AND_LONG_PROMPTS",
+      "P15_FILTERED_EXAM_PREP",
+      "P16_ZERO_DUE"
+    ],
+    "window_end_day": 89,
+    "window_start_day": 60
+  },
+  "probe_matrix": {
+    "expected_units": 72,
+    "probe_ids": [
+      "INV-ORDINARY-UNIT",
+      "INV-AGAIN-CREDIT",
+      "INV-BUTTON-NEUTRAL",
+      "INV-SESSION-INVARIANT",
+      "INV-NO-RESPONSE-TIME",
+      "INV-RESPONSE-VALIDITY",
+      "ABUSE-DUPLICATE-REPLAY",
+      "ABUSE-RELEARNING-LOOP",
+      "ABUSE-PREVIEW-FARM",
+      "ABUSE-FORCED-DUE",
+      "ABUSE-MICRO-SCOPE-COMPLETION",
+      "INV-RESEARCH-ONLY"
+    ]
+  },
+  "protocol_id": "review-xp-confirmatory-protocol",
+  "protocol_status": "FROZEN_PRE_RESULTS",
+  "protocol_version": 1,
+  "rejected_variants": [
+    "P-STEP-NEUTRAL-RATIO",
+    "P-TAPER-NEUTRAL-RATIO-30D"
+  ],
+  "replay_ids": [
+    "PRIMARY",
+    "SAME_INPUT_REPLAY"
+  ],
+  "required_gates": [
+    "GATE-ENDPOINT-CAP",
+    "GATE-NO-CYCLING-GROWTH",
+    "GATE-BASELINE-PRESERVED",
+    "GATE-ZERO-SUPPRESSION",
+    "GATE-HONEST-BACKLOG-FAIRNESS",
+    "GATE-NO-BACKLOG-GAIN",
+    "GATE-ORDINARY-UNIT",
+    "GATE-AGAIN-CREDIT",
+    "GATE-BUTTON-NEUTRAL",
+    "GATE-SESSION-INVARIANT",
+    "GATE-NO-RESPONSE-TIME-REWARD",
+    "GATE-RESPONSE-VALIDITY",
+    "GATE-DETERMINISTIC-REPLAY",
+    "GATE-SECONDARY-SEED",
+    "GATE-MODEL-CONDITION-SENSITIVITY",
+    "GATE-PERSONA-SAFETY",
+    "GATE-ABUSE-PROBES",
+    "GATE-EVIDENCE-COMPLETE",
+    "GATE-RESEARCH-ONLY"
+  ],
+  "source_g1_4": {
+    "base_sha": "54dd47cc2817b9c07fad81da29fa666a0423c4e7",
+    "bundle_sha256": "bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be",
+    "evidence_digest": "836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694",
+    "evidence_json_sha256": "976e728df07fdf46c8e6037f79a5b81fd5ee3b0293d70f6ab03e4a0259483b5c",
+    "historical_merge_sha": "d855baf7355bba3f4014370cafba3fdc6d0c0e3c",
+    "implementation_sha": "a8857f111849e2e98744adda8e06fe1910bdf805",
+    "manifest_digest": "40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c"
+  },
+  "stage": "G1.5",
+  "thresholds": {
+    "absolute_tolerance": 1e-09,
+    "again_attempt_credit": 0.25,
+    "endpoint_cap": 0.03,
+    "growth_operator": "<=",
+    "honest_backlog_operator": ">=",
+    "intentional_backlog_operator": "<=",
+    "ordinary_review_unit": 1.0
+  }
+}
