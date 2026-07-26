@@ -44,7 +44,7 @@ describe("representative localized pages", () => {
     expect(statistics).toContain("Personal analytics center");
     expect(statistics).toContain("Key metrics");
     expect(cards).toContain("Cards");
-    expect(cards).toContain("Cards that need attention");
+    expect(cards).toContain("Review the reason, open the exact card in Anki, and recheck the outcome.");
     expect(cards).toContain("Attention inbox");
   });
 
