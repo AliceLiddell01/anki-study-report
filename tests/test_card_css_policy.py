@@ -202,3 +202,30 @@ def test_card_css_policy_preserves_bundled_font_face_and_custom_root_family():
     assert '/api/media?name=_jp.woff2' in sanitized
     assert ':scope{font-family:myBundledFont;}' in sanitized
     assert 'Noto Sans JP' not in sanitized
+
+
+def test_exact_words_fixture_preserves_native_root_night_and_accent_rules():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "cards" / "words-1649481469689.json").read_text(encoding="utf-8")
+    )
+    raw_css = fixture["rawCss"]
+
+    assert fixture["cardId"] == "1649481469689"
+    assert hashlib.sha256(raw_css.encode("utf-8")).hexdigest() == fixture["rawCssSha256"]
+
+    sanitized = note_intelligence.sanitize_card_css(raw_css)
+    compact = sanitized.replace(" ", "")
+
+    assert sanitized
+    assert hashlib.sha256(sanitized.encode("utf-8")).hexdigest() == fixture["sanitizedCssSha256"]
+    assert ":scope{font-family:" in sanitized
+    assert "background-color:#fcfcfc" in compact
+    assert ":scope.nightMode{background-color:#2f2f31;color:#dcdcdc;}" in compact
+    assert ".main-word{font-size:36px" in compact
+    assert ":scope.nightMode .main-word{color:#fff;}" in sanitized
+    assert ".word-focus{color:rgb(255,170,0);font-weight:bold;}" in compact

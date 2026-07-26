@@ -180,35 +180,35 @@ const SHADOW_BASE_CSS = `
   height: var(--asr-preview-content-height);
 }
 
-.card {
+:where(.card) {
   width: var(--asr-preview-base-width);
   min-height: var(--asr-preview-base-height);
   overflow: visible;
-  padding: 24px;
+  padding: 0;
   background: #ffffff;
   color: #111827;
   font-family: Arial, "Noto Sans JP", sans-serif;
-  font-size: 28px;
-  line-height: 1.45;
+  font-size: 20px;
+  line-height: 1.5;
   text-align: center;
 }
 
-.asr-shadow-card-viewport--table .card {
+:where(.asr-shadow-card-viewport--table) > :where(.card) {
   padding: 18px;
   font-size: 30px;
   line-height: 1.35;
 }
 
-.asr-shadow-card-viewport--tile .card {
+:where(.asr-shadow-card-viewport--tile) > :where(.card) {
   padding: 22px;
   font-size: 30px;
   line-height: 1.4;
 }
 
-.asr-shadow-card-viewport--preview .card,
-.asr-shadow-card-viewport--expanded .card {
-  padding: 28px;
-  font-size: 28px;
+:where(.asr-shadow-card-viewport--preview) > :where(.card),
+:where(.asr-shadow-card-viewport--expanded) > :where(.card) {
+  padding: 0;
+  font-size: 20px;
   line-height: 1.5;
 }
 

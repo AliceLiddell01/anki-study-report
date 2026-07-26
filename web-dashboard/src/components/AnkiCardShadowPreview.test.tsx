@@ -101,6 +101,24 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(lightCard.styleText).not.toContain("overflow-y: auto");
     expect(lightCard.styleText).not.toContain("overscroll-behavior: contain");
     expect(lightCard.styleText).toContain("background-color:rgb(250,240,220)");
+    expect(lightCard.styleText).toContain(":where(.card)");
+    expect(lightCard.styleText).toContain(":where(.asr-shadow-card-viewport--preview) > :where(.card)");
+    expect(lightCard.styleText).not.toContain(".asr-shadow-card-viewport--preview .card");
+  });
+
+  it("keeps mode fallbacks weaker than exact native template typography and spacing", () => {
+    const document = buildShadowPreviewDocument({
+      html: '<div class="main-word"><span class="word-focus">影</span></div>',
+      css: '@scope (.card){:scope{font-size:20px;line-height:1.6;padding:7px}:scope .main-word{font-size:36px}:scope .word-focus{color:rgb(255,170,0)}}',
+      cardOrd: 0,
+      nightMode: false,
+      mode: "preview",
+    });
+    const templateIndex = document.styleText.indexOf('@scope (.card)');
+    expect(templateIndex).toBeGreaterThan(document.styleText.indexOf(':where(.card)'));
+    expect(document.styleText).toContain(':where(.asr-shadow-card-viewport--preview) > :where(.card)');
+    expect(document.styleText).toContain('font-size:20px;line-height:1.6;padding:7px');
+    expect(document.styleText).not.toContain('.asr-shadow-card-viewport--preview .card');
   });
 
   it("updates shell and card nightMode classes without replacing the preview payload", async () => {

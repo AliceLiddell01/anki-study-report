@@ -1122,7 +1122,11 @@ def _dashboard_preview_html(value) -> str:
 
 
 def _dashboard_preview_css(value) -> str:
-    return sanitize_card_css(value)[:3000]
+    # The parser-backed sanitizer already applies a bounded output contract.
+    # Never slice the sanitized stylesheet afterwards: truncating in the
+    # middle of a rule invalidates the whole Shadow DOM stylesheet and causes
+    # native Anki template styling to fall back silently.
+    return sanitize_card_css(value)
 
 
 def _dashboard_attention_cards_status(status, cards) -> dict:

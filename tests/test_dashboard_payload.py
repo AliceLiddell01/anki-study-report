@@ -646,3 +646,48 @@ def assert_dashboard_contract(payload: dict) -> None:
 def assert_subset(actual: dict, expected: dict) -> None:
     for key, value in expected.items():
         assert actual.get(key) == value
+
+
+def test_dashboard_payload_preserves_complete_bounded_words_stylesheet():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    dashboard_payload = fresh_import_addon_module("dashboard_payload")
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    fixture = load_dashboard_fixture("normal_day")
+    words_fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "cards" / "words-1649481469689.json").read_text(encoding="utf-8")
+    )
+    expected_css = note_intelligence.sanitize_card_css(words_fixture["rawCss"])
+    assert len(expected_css) > 3000  # regression guard for the former payload slice
+
+    metrics = {
+        **fixture["metrics"],
+        "attention_cards": [
+            {
+                "cardId": int(words_fixture["cardId"]),
+                "deckName": "Words::N1::Lesson 5",
+                "frontPreview": "（影が伸びる。）",
+                "issues": ["repeated again"],
+                "renderedPreview": {
+                    "renderStatus": "available",
+                    "renderSource": "anki_native",
+                    "frontHtml": '<div class="main-word">（<span class="word-focus">影</span>が伸びる。）</div>',
+                    "backHtml": "",
+                    "css": words_fixture["rawCss"],
+                    "mediaRefs": [],
+                    "cardOrd": words_fixture["templateOrdinal"],
+                },
+            }
+        ],
+    }
+
+    payload = dashboard_payload.build_dashboard_report_payload(metrics, fixture["metadata"], cache_summary=fixture["cache"])
+    rendered = payload["attentionCards"][0]["renderedPreview"]
+
+    assert rendered["css"] == expected_css
+    assert len(rendered["css"]) == len(expected_css)
+    assert hashlib.sha256(rendered["css"].encode("utf-8")).hexdigest() == words_fixture["sanitizedCssSha256"]
+    assert rendered["css"].endswith("}")
+    assert ".word-focus{color:rgb(255, 170, 0);font-weight:bold;}" in rendered["css"]
