@@ -10,7 +10,11 @@ G1.3 protocol: Frozen / Complete
 G1.4 bounded screening: Complete
 G1.4 survivors: P-STEP-ZERO; P-TAPER-ZERO-30D
 G1.5: Complete; both survivors CONFIRMATORY_ELIGIBLE
-G1.6: Next / not started
+G1.6: Complete
+G1 final outcome: DEFER_REVIEW_MODEL
+recommended research candidate: NONE
+production integration: PROHIBITED
+G2: PLANNED / NOT STARTED
 ```
 
 The package is isolated under `research/gamification-sim/`. It has no production imports, root dependency changes, Fast CI/package/release integration, real Anki profile data, collection data or tokens.
@@ -44,6 +48,7 @@ rust-oracle/   isolated Rust implementation
 - [G1.5 strict schema](schemas/review-xp-confirmatory-protocol-v1.schema.json)
 - [G1.5 human protocol](../../docs/gamification/review-xp-confirmatory-protocol.md)
 - [G1.5 closeout](../../roadmap/gamification/g1-confirmatory-evidence.md)
+- [G1.6 decision and G1 closeout](../../roadmap/gamification/g1-review-xp-decision.md)
 
 G1.4 added an isolated typed mechanism registry, execution context and deterministic bounded-screening harness without changing production code, scheduler/FSRS semantics or the default `R-CURRENT` result.
 
@@ -76,6 +81,8 @@ external evidence bundle SHA-256:
 90b2132cbe46edeb2a28e6f9ae81de311807353dd5e0826cbe8d3a6af41a85fb
 ```
 
+G1.6 closed G1 with `DEFER_REVIEW_MODEL` and recommended no research candidate. The raw G1.4/G1.5 bundles were unavailable for the required continuity revalidation, while accepted aggregate evidence left STEP and TAPER tied under the frozen non-compensable criteria. Both candidates remain `CONFIRMATORY_ELIGIBLE`, not selected and not falsified. No research code, protocol, matrix or simulation changed.
+
 ## Available command surface
 
 The research package includes:
@@ -96,4 +103,4 @@ See the [technical reference](../../docs/gamification/review-xp-bounded-screenin
 
 G0.7, G1.2a, G1.4 and G1.5 are current synthetic evidence. The raw G1.4 bundle remains external to Git with SHA-256 `bdc2b9e25ce65937f7e01cdb96c67c1cb7444361253d0399ebb5662ba093b8be`; its semantic evidence digest is `836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694`. The raw G1.5 bundle remains external with SHA-256 `90b2132cbe46edeb2a28e6f9ae81de311807353dd5e0826cbe8d3a6af41a85fb`; its semantic evidence digest is `9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa`.
 
-Historical reports remain non-authoritative where they conflict. The package is research-only and is not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
+Those raw bundles were not available in the G1.6 ChatGPT execution environment, so G1.6 did not claim a fresh hash/inventory/detached-validator continuity PASS. Historical reports remain non-authoritative where they conflict. The package is research-only and is not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
