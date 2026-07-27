@@ -56,7 +56,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён. [Cards 1:1 production integration](docs/cards-v323-production-workspace.md), native CSS fidelity, AV/audio/media repair и финальный exact-card real-Anki evidence gate завершены; [финальный AV/media closeout](reports/core/c2-cards-final-av-media-evidence-closeout.md) фиксирует `PASS`. Формальный owner verdict `ACCEPT CARDS 1:1` ещё не зафиксирован. Inspection Profiles 1:1 не начата; merge PR, final verification и C3 не выполнялись.
+- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён. [Cards 1:1 production integration](docs/cards-v323-production-workspace.md), native CSS fidelity, AV/audio/media repair и финальный exact-card real-Anki evidence gate завершены и приняты владельцем: `ACCEPT CARDS 1:1`. Cards имеют статус `ACCEPTED / COMPLETE / FROZEN`; технических и accessibility blockers нет. Inspection Profiles 1:1 implementation не начата; PR #130 остаётся `OPEN / DRAFT / UNMERGED`, final verification, merge и C3 не выполнялись.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 

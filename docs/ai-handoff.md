@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-27
+**Снимок:** 2026-07-28
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -44,8 +44,11 @@ C2 base implementation/integration — завершены и влиты в core
 PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
 PR #130 Stage 2: Cards 1:1 composition + native CSS + AV/media repair — COMPLETE
 Cards final exact-card real-Anki evidence — PASS
-Cards formal owner verdict — PENDING
-Inspection Profiles corrected screenshot-first audit — COMPLETE / owner target decision PENDING
+Cards owner verdict — ACCEPT CARDS 1:1
+Cards status — ACCEPTED / COMPLETE / FROZEN
+Cards technical blockers — NONE
+Cards accessibility blockers — NONE
+Inspection Profiles corrected screenshot-first audit — COMPLETE
 PR #130 Stage 3: Inspection Profiles 1:1 implementation — NOT STARTED
 Settings shared regression sweep — NOT STARTED
 final verification / merge decision / C3 — NOT PERFORMED
@@ -54,38 +57,32 @@ release — не начат
 
 Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
 
-Current C2 remediation evidence:
+Current accepted Cards evidence:
 
 ```text
 PR: #130 — OPEN / DRAFT / UNMERGED
-base core: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+frozen PR base / merge-base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
 
 Stage 1 verified production candidate:
 a746172f8746eac82ff628d36a7a6328d9332acf
 
-Cards production AV/media repair:
-78dbcb031673f5504b22a7e57a14ed00570c7a3b
+Cards production package source:
+a162dde223b1bc40b6b0f566ae1fb5d665089359
 
-Cards AV/media regression coverage:
-3d4d0cca64d6f7ea7778d2684cea1287f3d7730a
-
-final package source SHA:
-ec0c2cc48c6f9b2a5aa06469223ec4f73e1eb2e7
-
-final E2E harness SHA:
-67aafd55120f8761e158ba838936d46881209f93
+Cards final evidence harness:
+5487bb32d43b11bbe618ec45e1b0e1e365fabb39
 
 exact package SHA-256:
-ce2d1a612e803c86b38ddb5da0de81884b4e24b7c622714b371a1bf032020f02
+e01b9dd3e3277d9ff0cafb9ac3a298a1459118056f07834a171662c91ae79357
 
 final evidence:
 cards-final-av-media-fidelity-evidence.zip
 
 final evidence size:
-56 313 355 bytes
+56 358 736 bytes
 
 final evidence SHA-256:
-3d8c9da5bd80bb48a6ea543bdba407cdc8751c708d7f9f990221d120f3516d8f
+539cf5f08c5f804fa6de3b87c87f0792e6d60777f0b40a9c413a0b912516dfc3
 
 exact card:
 1649481469689 / 影
@@ -94,9 +91,15 @@ standard browser smoke:
 19/19 PASS / 18 screenshots
 
 exact browser:
-6/6 scenarios PASS / 30 screenshots
+6/6 scenarios PASS / 32 screenshots
 
 replay reset:
+PASS
+
+visible keyboard focus light/dark:
+PASS
+
+accessible-name localization:
 PASS
 
 live GIF:
@@ -110,6 +113,9 @@ external=0 / Inspection Profiles requests=0 / page errors=0 / console errors=0 /
 
 evidence self-verification:
 PASS / missing=0 / unexpected=0 / mismatches=0
+
+owner visual assessment:
+average≈9.3/10 / minimum mandatory aspect=8.7/10
 ```
 
 Актуальные Cards contracts:
@@ -117,20 +123,33 @@ PASS / missing=0 / unexpected=0 / mismatches=0
 - [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md);
 - [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md).
 
+### Cards frozen boundary
+
+Cards production заморожен. Без новой доказанной регрессии запрещено менять Cards component composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный exact Cards real-Anki gate повторно не запускается без нового риска.
+
+После shared Settings changes допустим только короткий Cards regression smoke, если изменение действительно затронуло shared shell/styles.
+
 ### Visual coverage checkpoint
 
 `ACCEPT CARDS 1:1` принимает только route `#/cards`; это не означает принятие PR #130, Inspection Profiles, ready-for-review или merge.
 
 | Route / area | Текущее подтверждение | Статус |
 | --- | --- | --- |
-| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | technical PASS / owner verdict PENDING |
-| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | technical PASS / owner verdict PENDING |
-| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | technical PASS / owner verdict PENDING |
+| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | OWNER ACCEPTED / FROZEN |
+| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | OWNER ACCEPTED / FROZEN |
+| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
-| `#/settings/inspection-profiles` | corrected screenshot-first audit | AUDIT COMPLETE / OWNER TARGET DECISION PENDING |
+| `#/settings/inspection-profiles` | corrected screenshot-first audit | AUDIT COMPLETE / IMPLEMENTATION NOT STARTED |
 | Settings shared shell | только старые CI captures | NOT REVIEWED |
 | Other Settings routes | redesign не входит в текущий scope | OUT OF SCOPE / REGRESSION ONLY |
+
+Будущий visual acceptance threshold для Inspection Profiles:
+
+```text
+minimum acceptable result: 8.5/10
+preferred target: 9.0/10 or higher
+```
 
 Reports:
 

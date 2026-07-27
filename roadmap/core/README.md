@@ -2,7 +2,7 @@
 
 **Трек:** `C`
 **Роль:** единственный обязательный последовательный путь основного add-on
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-28
 
 Core не зависит от Gamification, Operations, Identity или Extensions. Platform / CI обслуживает delivery contour, но не меняет продуктовый scope без явной зависимости.
 
@@ -13,7 +13,7 @@ flowchart LR
     C1[C1 Cards v2<br/>complete] --> C2[C2 Hardening<br/>base merged]
     C2 --> S1[PR #130 Stage 1<br/>sync + overlay cleanup]
     S1 --> S2[Cards 1:1<br/>composition + bounded corrections]
-    S2 --> OC{Owner checkpoint<br/>Cards}
+    S2 --> OC[Owner checkpoint Cards<br/>ACCEPTED]
     OC --> PA[Inspection Profiles<br/>screenshot-first audit]
     PA --> S3[Inspection Profiles 1:1]
     S3 --> OP{Owner checkpoint<br/>Profiles}
@@ -40,8 +40,10 @@ flowchart LR
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты
 PR #130 Stage 1 sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2 Cards 1:1 — native CSS fidelity + visual parity closure COMPLETE; owner checkpoint PENDING
-Inspection Profiles corrected screenshot-first audit — COMPLETE; owner target decision PENDING
+PR #130 Stage 2 Cards 1:1 — ACCEPTED / COMPLETE / FROZEN
+Cards technical blockers — NONE
+Cards accessibility blockers — NONE
+Inspection Profiles corrected screenshot-first audit — COMPLETE; visual target locked
 PR #130 Stage 3 Inspection Profiles 1:1 implementation — NOT STARTED
 Settings shared regression sweep — NOT STARTED
 final verification и отдельное решение о merge PR #130 — NOT PERFORMED
@@ -86,8 +88,8 @@ problem
 **Implementation:** complete
 **Integration:** merged в `core`
 **Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
-**Stage 2 Cards 1:1:** native CSS fidelity и bounded visual parity closure complete; owner decision pending — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-v323-production-integration.md)
-**Inspection Profiles corrected screenshot-first audit:** complete; owner target decision pending, production changes not started
+**Stage 2 Cards 1:1:** owner accepted, complete и frozen — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-final-av-media-evidence-closeout.md)
+**Inspection Profiles corrected screenshot-first audit:** complete; production implementation not started
 **Stage 3 Inspection Profiles 1:1 implementation:** not started
 **Settings shared regression sweep:** not started
 
@@ -103,7 +105,7 @@ problem
 - согласованную motion/shape foundation;
 - exact Fast CI package и final `standard/full` с restart.
 
-Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`; final native preview/visual closure: `c2c2b65b399907010ff7e2d40307b1ded02a1bc3`; native template CSS fidelity repair: `adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5`; visual parity closure: `ce45194e659aeba43f05a2b13cbf6f0583e601aa`; repaired evidence: `cards-v323-production-final-evidence-repair.zip`, SHA-256 `ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8`; подробности: [Cards v3.2.3 integration report](../../reports/core/c2-cards-v323-production-integration.md).
+Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a7a6328d9332acf`; подробности: [C2 manual acceptance remediation closeout](../../reports/core/c2-manual-acceptance-remediation-closeout.md). Stage 2 initial Cards production commit: `1f78b69574794c67149796343dde8cbdd4948fb4`; bounded visual revision: `34a7680392ee7e17dc3ee826dad5bdf9808bc3d1`; native Anki night-mode correction: `f288595499904eadeb81c4ceab3da232581c30f5`; final native preview/visual closure: `c2c2b65b399907010ff7e2d40307b1ded02a1bc3`; native template CSS fidelity repair: `adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5`; visual parity closure: `ce45194e659aeba43f05a2b13cbf6f0583e601aa`; final accepted production package source: `a162dde223b1bc40b6b0f566ae1fb5d665089359`; final evidence harness: `5487bb32d43b11bbe618ec45e1b0e1e365fabb39`; final artifact: `cards-final-av-media-fidelity-evidence.zip`, SHA-256 `539cf5f08c5f804fa6de3b87c87f0792e6d60777f0b40a9c413a0b912516dfc3`; подробности: [Cards owner acceptance closeout](../../reports/core/c2-cards-final-av-media-evidence-closeout.md).
 
 Это closure существующего C2, а не новый numbered stage.
 
@@ -112,15 +114,24 @@ Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a
 | Критерий | Статус |
 | --- | --- |
 | security/CSP/sanitizer boundary не ослаблена | PASS |
-| targeted/final real-Anki gates соответствуют риску | PASS — final `standard/full` + restart |
+| targeted/final real-Anki gates соответствуют риску | PASS |
 | UI states работают на representative fixtures | PASS |
-| владелец принимает обновлённый smoke на приватной collection | PENDING |
+| владелец принимает Cards 1:1 на route `#/cards` | PASS — `ACCEPT CARDS 1:1` |
 
-`ACCEPT CARDS 1:1` относится только к route `#/cards` и не означает принятие PR #130. После Cards checkpoint обязательны отдельный screenshot-first Profiles audit, Profiles implementation/acceptance, Settings regression sweep, final verification и отдельное решение о merge; до этого C3 не начинается автоматически.
+Cards production frozen. Без новой доказанной регрессии запрещено менять Cards composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный тяжёлый Cards real-Anki gate не повторяется без нового риска.
+
+`ACCEPT CARDS 1:1` относится только к route `#/cards` и не означает принятие PR #130. После Cards checkpoint обязательны отдельные Profiles implementation/acceptance, Settings regression sweep, final verification и отдельное решение о merge; до этого C3 не начинается автоматически.
+
+Будущий visual acceptance threshold для Inspection Profiles:
+
+```text
+minimum acceptable result: 8.5/10
+preferred target: 9.0/10 or higher
+```
 
 ## C3 — Core UI & Shell Consolidation
 
-**Статус:** не активирован; возможен только после Cards/Profiles checkpoints, final verification и отдельного merge decision по PR #130
+**Статус:** не активирован; возможен только после Profiles checkpoint, final verification и отдельного merge decision по PR #130
 
 ### Цель
 
