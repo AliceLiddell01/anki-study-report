@@ -4,7 +4,7 @@
 **Protocol ID:** `learn-xp-confirmatory-protocol`
 **Version:** `1`
 **Status:** `FROZEN_PRE_RESULTS`
-**Results accessed:** `NO`
+**Results accessed:** `YES — CANONICAL RUN COMPLETE`
 **Production integration:** `PROHIBITED`
 
 ## Цель
@@ -158,3 +158,29 @@ After result access, a substantive defect requires disclosed invalidation, a new
 `CONFIRMATORY_ELIGIBLE` would mean only that a survivor passed the prospectively frozen synthetic, identity and explanation gates and may be considered by a separate final G2 decision stage.
 
 G2.5 performs no ranking, selects no final Learn XP model, approves no production amount and changes no add-on, dashboard, API, scheduler, FSRS, database, workflow, package or release surface.
+
+## Post-results closeout
+
+The protocol above remains the prospectively frozen design published at
+`903604245aaa540674f650b998d32f497b018f49`. The canonical run was executed only after that publication.
+
+```text
+expected / actual / unique: 216 / 216 / 216
+missing / extra / duplicates: 0 / 0 / 0
+manifest digest: 6224c9b363f18662328a89981dd2e8f303f14a10ac43771e74be220dc27d3f27
+evidence digest: d2d5327e382ae85b1fea575f9efed5604ed11905aff56ec19a005546726badbe
+canonical archive SHA-256: 4e96835f5517d8bd2e9ce350776b8e3bc24dc8878c74f1e5c0897d216506678e
+canonical evidence.json SHA-256: cc275780dfc98eaa8e683188815606568a7aaca80720e3ddeb5584914da61a4a
+identity evidence mode: SYNTHETIC_CONTRACT_ONLY
+```
+
+Outcomes:
+
+- `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
+- `C-PENDING-SPLIT-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
+- reason for both → `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`;
+- `R-NO-LEARN-XP-NOTE-SIBLING` → `REFERENCE_ONLY`.
+
+Detached validation and byte-identical reproduction passed. No cross-family
+ranking, winner, recommendation, final model selection, production approval,
+production integration or final decision stage was produced.

@@ -76,7 +76,7 @@ The first canonical attempt on `ef7c638a…` remains quarantined as `INVALID`. T
 - [Evidence schema](../../research/gamification-sim/schemas/learn-xp-confirmatory-evidence-v1.schema.json)
 - [Confirmatory harness](../../research/gamification-sim/src/gamification_sim/learn_confirmatory.py)
 - [Focused tests](../../research/gamification-sim/tests/test_learn_confirmatory.py)
-- [Pre-results stage record](../../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
+- [Confirmatory closeout](../../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 
 G2.5 prospectively freezes exactly two G2.4 survivors, one subject-matched zero-reward reference, 36 conditions per identity and `FORWARD`/`REVERSE` replay for exact `216` units. Identity evidence mode is `SYNTHETIC_CONTRACT_ONLY`; results have not been accessed, no outcomes have been assigned, and no cross-family ranking or final model selection is performed.
 
@@ -114,4 +114,18 @@ G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deter
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.4 is complete after the disclosed `HARNESS` correction and full replacement `340/340` rerun. G2.5 is active as frozen pre-results confirmatory research; results have not been accessed. Production integration remains prohibited, and research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.4 is complete after the disclosed `HARNESS` correction and full replacement `340/340` rerun. G2.5 confirmatory evidence is complete with both survivors classified `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. Production integration remains prohibited, and research assets remain outside Fast CI and `.ankiaddon` contents.
+
+### G2.5 canonical result
+
+The published G2.5 harness completed `216/216/216` units with `0/0/0`
+missing/extra/duplicates, detached validation and byte-identical reproduction.
+
+- `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
+- `C-PENDING-SPLIT-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
+- `R-NO-LEARN-XP-NOTE-SIBLING` → `REFERENCE_ONLY`;
+- identity evidence mode → `SYNTHETIC_CONTRACT_ONLY`;
+- inconclusive reason → `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`.
+
+No ranking, winner, recommendation, final model selection or production
+approval was produced.

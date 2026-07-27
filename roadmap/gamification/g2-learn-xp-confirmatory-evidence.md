@@ -1,34 +1,42 @@
-# G2.5 — Confirmatory evidence Learn XP
+# G2.5 — Learn XP confirmatory evidence closeout
 
-## Статус
+**Status:** `COMPLETE — CONFIRMATORY INCONCLUSIVE`
+**Base SHA:** `93be5ebac17c42d09272d0195a8b07f19af18274`
+**Protocol publication SHA:** `903604245aaa540674f650b998d32f497b018f49`
+**Results accessed:** `YES — AFTER PROTOCOL PUBLICATION`
+**Production integration:** `PROHIBITED`
+
+## Canonical evidence
 
 ```text
-G2.5: IN PROGRESS — PRE-RESULTS PROTOCOL AND IMPLEMENTATION
-protocol: FROZEN_PRE_RESULTS
-results accessed: NO
-final G2 decision stage: NOT STARTED
-production integration: PROHIBITED
+expected / actual / unique: 216 / 216 / 216
+missing / extra / duplicates: 0 / 0 / 0
+identity evidence mode: SYNTHETIC_CONTRACT_ONLY
+manifest digest: 6224c9b363f18662328a89981dd2e8f303f14a10ac43771e74be220dc27d3f27
+evidence digest: d2d5327e382ae85b1fea575f9efed5604ed11905aff56ec19a005546726badbe
+canonical archive SHA-256: 4e96835f5517d8bd2e9ce350776b8e3bc24dc8878c74f1e5c0897d216506678e
+canonical evidence.json SHA-256: cc275780dfc98eaa8e683188815606568a7aaca80720e3ddeb5584914da61a4a
+detached validation: PASS
+byte-identical reproduction: PASS
 ```
 
-## Цель
+## Outcomes
 
-Prospectively проверить отдельно два family-local survivors G2.4 на exact fresh 216-unit confirmatory matrix, не выполняя cross-family ranking и не выбирая final Learn XP model.
+| Identity | Outcome | Reason |
+|---|---|---|
+| `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` | `CONFIRMATORY_INCONCLUSIVE` | `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE` |
+| `C-PENDING-SPLIT-D1-NOTE-SIBLING` | `CONFIRMATORY_INCONCLUSIVE` | `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE` |
+| `R-NO-LEARN-XP-NOTE-SIBLING` | `REFERENCE_ONLY` | — |
 
-## Frozen scope
+The outcome is fail-closed: synthetic contract evidence was complete and
+reproducible, but no disposable Anki identity probe was available. Therefore
+neither survivor may be promoted to `CONFIRMATORY_ELIGIBLE`.
 
-- два exact survivors и один subject-matched zero-reward reference;
-- 16 core, 12 identity и 8 explainability conditions;
-- `FORWARD` и `REVERSE` deterministic replay;
-- exact G2.4 raw-evidence continuity и invalid-attempt isolation;
-- strict protocol/evidence schemas, harness, detached validator, CLI и external bundle writer;
-- `SYNTHETIC_CONTRACT_ONLY` identity mode с fail-closed inconclusive gate.
+## Boundaries
 
-## Out of scope
+The stage performed no cross-family ranking and produced no winner,
+recommendation, final Learn XP model, production approval or production
+integration. The final G2 decision stage remains not started.
 
-G2.4 rerun, D2/S-CARD/rescue variants, new ratio/delay/subject, ranking, final model, production integration, runtime/UI/API, Fast CI, Docker E2E, package и release.
-
-## Completion criteria
-
-Этап закрывается только после pre-results publication barrier, focused checks, одного full research suite, exact canonical run, detached evidence validation, byte-identical bundle reproduction, отдельных survivor outcomes, единого closeout, merge в `gamification` и cleanup.
-
-До этого документация не содержит confirmatory outcomes или result hashes.
+External evidence bundles remain owner-managed under `/home/kykla/Reports` and
+are not tracked by Git.

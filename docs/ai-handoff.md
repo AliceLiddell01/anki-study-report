@@ -91,12 +91,12 @@ replacement matrix — 340 / 340 unique; 0 / 0 / 0 missing / extra / duplicates
 manifest / evidence / bundle — fafff6ac14b00e268d25a9a7b3553aad94b0e6594b64b40722fd44eba4a91e1a / 5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6 / a2578fd2f7540cff10fdde0adc389afeaf8267dbf34185d2378467e6552ffa78
 F-CONFIRMATION-ONLY survivor — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 F-PENDING-CONFIRMED-SPLIT survivor — C-PENDING-SPLIT-D1-NOTE-SIBLING
-G2.5 — IN PROGRESS — FROZEN PRE-RESULTS
+G2.5 — COMPLETE — CONFIRMATORY INCONCLUSIVE
 G2.5 variants / reference — 2 / 1
 G2.5 conditions — 16 core / 12 identity / 8 explainability
 G2.5 replay / expected units — FORWARD+REVERSE / 216
 G2.5 identity evidence mode — SYNTHETIC_CONTRACT_ONLY
-G2.5 results accessed — NO
+G2.5 results accessed — YES — AFTER PROTOCOL PUBLICATION
 final G2 decision stage — NOT STARTED
 production integration — PROHIBITED
 ```
@@ -182,3 +182,13 @@ ChatGPT mode может использовать GitHub connector и консо�
 Codex mode работает непосредственно в локальном task worktree; созданные там scripts не требуют download/unblock ritual.
 
 Не начинать следующий roadmap stage автоматически только потому, что предыдущая техническая работа завершена.
+
+### G2.5 closeout
+
+Canonical confirmatory evidence completed on publication SHA `903604245aaa540674f650b998d32f497b018f49`:
+`216/216/216`, `0/0/0`, detached validation PASS and byte-identical
+reproduction PASS. Both G2.4 survivors are `CONFIRMATORY_INCONCLUSIVE` because
+the frozen identity mode was `SYNTHETIC_CONTRACT_ONLY` and the disposable Anki
+identity probe was unavailable. The zero-reward reference remains
+`REFERENCE_ONLY`. No ranking, winner, recommendation, final model selection or
+production approval was produced.

@@ -53,7 +53,7 @@ reports/    исторические evidence и завершённые пров
 - [Learn XP bounded screening technical reference](gamification/learn-xp-bounded-screening.md)
 - [G2.4 bounded screening closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
-- [G2.5 pre-results stage record](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
+- [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 
