@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-27
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -42,9 +42,12 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 C1 — завершён и принят
 C2 base implementation/integration — завершены и влиты в core
 PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
-PR #130 Stage 2: Cards 1:1 composition + native CSS repair + visual parity closure — COMPLETE, owner decision PENDING
+PR #130 Stage 2: Cards 1:1 composition + native CSS + AV/media repair — COMPLETE
+Cards final exact-card real-Anki evidence — PASS
+Cards formal owner verdict — PENDING
 Inspection Profiles corrected screenshot-first audit — COMPLETE / owner target decision PENDING
 PR #130 Stage 3: Inspection Profiles 1:1 implementation — NOT STARTED
+Settings shared regression sweep — NOT STARTED
 final verification / merge decision / C3 — NOT PERFORMED
 release — не начат
 ```
@@ -56,52 +59,84 @@ Current C2 remediation evidence:
 ```text
 PR: #130 — OPEN / DRAFT / UNMERGED
 base core: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
-verified production candidate: a746172f8746eac82ff628d36a7a6328d9332acf
-Stage 1 Fast CI baseline: 30173712679 — PASS (pre-revision package)
-Stage 1 standard/full + restart baseline: 30174041436 — PASS (pre-revision package)
-package SHA-256: 3f554a2db42d482edc852c0db8ff88173f02246c86b244e8d53c05fab106aa45
-Stage 1 synchronization/overlay cleanup: complete
-Cards 1:1 initial production commit: 1f78b69574794c67149796343dde8cbdd4948fb4
-Cards bounded visual revision: 34a7680392ee7e17dc3ee826dad5bdf9808bc3d1
-Cards native Anki night-mode correction: f288595499904eadeb81c4ceab3da232581c30f5
-Cards final visual production commit: c2c2b65b399907010ff7e2d40307b1ded02a1bc3
-Cards native template CSS fidelity repair: adfe628e45d8aac59df26f6a4e19b8e45c0cf5d5
-Cards visual parity closure: ce45194e659aeba43f05a2b13cbf6f0583e601aa
-Cards final visual evidence: cards-v323-production-final-visual-closure-evidence.zip
-Cards final visual evidence SHA-256: 6feef7766f9283316199430da3dc934b8ab91c5808bf6fe4ae7c589c8dd2599b
-Cards repaired micro-evidence: cards-v323-production-final-evidence-repair.zip
-Cards repaired micro-evidence SHA-256: ab2db7135ee3993e0e31668252b814694ae34d8adb1688398d5b3d13747e55d8
-Cards native template CSS fidelity artifact: cards-native-template-css-fidelity-repair-evidence.zip
-Cards native template CSS fidelity artifact SHA-256: 5885b4ac5e676685363855708d346bc030c697a24bdb70b41f6bbdef227cea6e
-Cards visual parity + Profiles audit artifact: cards-visual-parity-and-profiles-audit-evidence.zip
-Cards visual parity + Profiles audit SHA-256: e2c1d35bb12088ad0d285371514789637be60025050f5a8ded6307048c6dd2da
-Cards implementation/native CSS repair/visual parity evidence: COMPLETE / owner decision PENDING
-Inspection Profiles corrected screenshot-first audit: COMPLETE / owner target decision PENDING
-Inspection Profiles 1:1 implementation: NOT STARTED
-Settings shared regression sweep: NOT STARTED
-PR merge/final verification/C3: NOT PERFORMED
+
+Stage 1 verified production candidate:
+a746172f8746eac82ff628d36a7a6328d9332acf
+
+Cards production AV/media repair:
+78dbcb031673f5504b22a7e57a14ed00570c7a3b
+
+Cards AV/media regression coverage:
+3d4d0cca64d6f7ea7778d2684cea1287f3d7730a
+
+final package source SHA:
+ec0c2cc48c6f9b2a5aa06469223ec4f73e1eb2e7
+
+final E2E harness SHA:
+67aafd55120f8761e158ba838936d46881209f93
+
+exact package SHA-256:
+ce2d1a612e803c86b38ddb5da0de81884b4e24b7c622714b371a1bf032020f02
+
+final evidence:
+cards-final-av-media-fidelity-evidence.zip
+
+final evidence size:
+56 313 355 bytes
+
+final evidence SHA-256:
+3d8c9da5bd80bb48a6ea543bdba407cdc8751c708d7f9f990221d120f3516d8f
+
+exact card:
+1649481469689 / 影
+
+standard browser smoke:
+19/19 PASS / 18 screenshots
+
+exact browser:
+6/6 scenarios PASS / 30 screenshots
+
+replay reset:
+PASS
+
+live GIF:
+cross-scenario frame difference PASS
+
+deterministic GIF:
+frameCount=154
+
+network/security:
+external=0 / Inspection Profiles requests=0 / page errors=0 / console errors=0 / failed requests=0
+
+evidence self-verification:
+PASS / missing=0 / unexpected=0 / mismatches=0
 ```
 
-Актуальный Cards contract: [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md).
+Актуальные Cards contracts:
+
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md);
+- [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md).
 
 ### Visual coverage checkpoint
 
 `ACCEPT CARDS 1:1` принимает только route `#/cards`; это не означает принятие PR #130, Inspection Profiles, ready-for-review или merge.
 
-| Route / area | Prototype references | Current production captures | Reviewed | Owner verdict / next action |
-| --- | --- | --- | --- | --- |
-| `#/cards` wide | есть | exact same-card Words / Grammar / Java + native CSS provenance | да | owner decision PENDING |
-| `#/cards` drawer/modal | есть | есть | да | входит только в Cards checkpoint |
-| `#/cards` lifecycle | есть | repaired `still_active` отличается от `recheck_pending` | да | owner decision PENDING |
-| `#/settings/inspection-profiles` | есть | corrected same-identity direct pairs + separately labeled deviations | да, evidence-level | AUDIT COMPLETE / OWNER TARGET DECISION PENDING; production changes не выполнялись |
-| Settings shared shell | частично | только старые CI captures | нет | NOT REVIEWED |
-| Other Settings routes | redesign не входит в текущий scope | нужен только regression sweep | нет | OUT OF SCOPE / REGRESSION ONLY |
-
+| Route / area | Текущее подтверждение | Статус |
+| --- | --- | --- |
+| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | technical PASS / owner verdict PENDING |
+| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | technical PASS / owner verdict PENDING |
+| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | technical PASS / owner verdict PENDING |
+| replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
+| animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
+| `#/settings/inspection-profiles` | corrected screenshot-first audit | AUDIT COMPLETE / OWNER TARGET DECISION PENDING |
+| Settings shared shell | только старые CI captures | NOT REVIEWED |
+| Other Settings routes | redesign не входит в текущий scope | OUT OF SCOPE / REGRESSION ONLY |
 
 Reports:
 
 - [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
-- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md).
+- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
+- [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
 - [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md).
 
 ## Platform / CI
@@ -167,14 +202,16 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
 - Не возвращать legacy aliases без доказанной compatibility необходимости.
 - Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Для exact Cards AV/media использовать [специализированный runbook](cards-exact-av-media-e2e.md).
 - Successful unchanged exact-SHA gates не повторять.
 - Не создавать вложенную лестницу этапов вместо одной цельной задачи.
-- Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
+- Docs-only closeout не требует повторного Fast CI или Docker E2E.
 
 ## Режим работы
 
 - [Режимы ChatGPT и Codex](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
 - [Codex agent rules](codex-agent-rules.md)
 
 Сначала определите трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.
