@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 In Progress — Pre-results implementation`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 In Progress — post-results harness correction before valid rerun`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -180,9 +180,9 @@ G2.3 fixed lifecycle canonical serialization and direct-input typing without dri
 
 ### G2.4 — Bounded Learn XP screening implementation
 
-**Status:** `IN PROGRESS — PRE-RESULTS IMPLEMENTATION`.
+**Status:** `IN PROGRESS — POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN`.
 
-G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. The pre-results implementation is being prepared under the publication barrier; screening has not been executed. Adaptive rescue variants and post-result matrix changes are prohibited.
+G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. The first canonical attempt exposed results but is invalid because external archive reproduction inherited filesystem-specific tar member modes. A disclosed `HARNESS` correction fixes member mode to `0644`; no screening-design field changes. The invalid evidence is quarantined, and a new implementation commit plus full `340`-unit rerun are required. Adaptive rescue variants and post-result matrix changes remain prohibited.
 
 ### Later G2 stages
 

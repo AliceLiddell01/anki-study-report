@@ -11,7 +11,7 @@ G2: IN PROGRESS
 G2.1: COMPLETE
 G2.2: COMPLETE
 G2.3: COMPLETE
-G2.4: IN PROGRESS — PRE-RESULTS IMPLEMENTATION
+G2.4: IN PROGRESS — POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN
 production integration: PROHIBITED
 ```
 
@@ -56,7 +56,7 @@ G2.3 freezes two families, four parameterizations, two subject strategies, two d
 
 Protocol status is `FROZEN_PRE_SCREENING_IMPLEMENTATION`; publication SHA is `41313c9369c76d331d489a9aa4b44da2497b3132`. Full G2.3 research validation passed with `982` tests.
 
-### G2.4 pre-results implementation
+### G2.4 bounded screening and disclosed harness correction
 
 - [Technical reference](learn-xp-bounded-screening.md)
 - [Evidence schema](../../research/gamification-sim/schemas/learn-xp-bounded-screening-evidence-v1.schema.json)
@@ -64,7 +64,7 @@ Protocol status is `FROZEN_PRE_SCREENING_IMPLEMENTATION`; publication SHA is `41
 - [Allocation evaluator](../../research/gamification-sim/src/gamification_sim/learn_reward_allocation.py)
 - [Focused tests](../../research/gamification-sim/tests/test_learn_bounded_screening.py)
 
-G2.4 implementation is being prepared under the publication barrier. No canonical screening evidence, candidate outcomes or family survivors are present in this state.
+The first canonical G2.4 attempt exposed results but is invalid because archive member modes inherited filesystem-specific permissions and byte-identical bundle reproduction failed. The disclosed `HARNESS` correction fixes evidence tar members to `0644`, changes no frozen screening-design field, quarantines the prior bundle and requires a new implementation commit plus full `340`-unit rerun.
 
 ## Current G1 contracts
 
@@ -96,8 +96,8 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; the G2.4 pre-results implementation adds only synthetic harness/schema/tests and no results. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.3 remains frozen; G2.4 is in pre-results implementation and production integration remains prohibited. Research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.3 remains frozen; G2.4 is in post-results harness correction before a valid rerun and production integration remains prohibited. Research assets remain outside Fast CI and `.ankiaddon` contents.

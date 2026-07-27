@@ -278,3 +278,37 @@ production approved: false
 production integration: false
 G2.5 started: false
 ```
+
+
+## Post-results harness correction before valid rerun
+
+The first canonical attempt on implementation `ef7c638a70b7bbb7883f512309a1e248118a9203`
+completed the frozen `340`-unit matrix and exposed candidate/family results, but the
+attempt is **invalid** because byte-identical external archive reproduction failed.
+
+Recorded disclosure:
+
+```text
+results viewed: YES
+prior implementation SHA: ef7c638a70b7bbb7883f512309a1e248118a9203
+prior evidence digest: 51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726
+prior archive SHA-256: 58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3
+prior run status: INVALID
+classification: HARNESS
+root cause: TAR_MEMBER_MODE_INHERITED_FROM_OUTPUT_FILESYSTEM
+screening design changed: NO
+old/new evidence mixing: PROHIBITED
+required rerun: FULL_340_UNIT_MATRIX
+```
+
+The independent root cause is limited to external bundle serialization:
+`TarInfo.mode` inherited host filesystem permission bits. The first bundle was
+written on WSL DrvFS and the reproduction bundle on the Linux filesystem, so
+identical file contents could produce different tar member modes. The correction
+sets every regular evidence member mode to `0644`; it does not change families,
+ratios, delays, subject strategies, scenarios, unit IDs, gates, metrics,
+lexicographic ordering, statuses, tie policy or missing-data behavior.
+
+A new implementation commit, a full research-suite rerun and a completely new
+canonical `340`-unit evidence bundle are required. The invalid bundle remains
+quarantined and must not be merged with the replacement evidence.

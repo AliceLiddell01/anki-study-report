@@ -85,7 +85,7 @@ delay policies — D1; D2
 pending split — 0.25 provisional / 0.75 settlement
 hypotheses / hard gates / metrics — 5 / 23 / 14
 G2.4 matrix budget — 340 deterministic units
-G2.4 — IN PROGRESS / PRE-RESULTS IMPLEMENTATION
+G2.4 — IN PROGRESS / POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN
 production integration — PROHIBITED
 ```
 
@@ -99,7 +99,7 @@ G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, п
 
 G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
 
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. G2.4 pre-results harness/schema/tests подготавливаются под publication barrier; canonical screening, outcomes и G2.5 не запускались.
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` открыл результаты, но признан невалидным из-за filesystem-dependent tar member modes при bundle reproduction. Зафиксирована независимая `HARNESS` correction (`mode → 0644`), prior evidence изолирован, требуется новый implementation commit и полный `340`-unit rerun; G2.5 не начинался.
 
 Точные источники:
 

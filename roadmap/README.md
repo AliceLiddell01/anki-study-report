@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1 complete; G2 in progress; G2.1–G2.3 complete; protocol frozen; production не одобрен | G2.4 `IN PROGRESS — PRE-RESULTS IMPLEMENTATION`; отдельная активация |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1 complete; G2 in progress; G2.1–G2.3 complete; protocol frozen; production не одобрен | G2.4 `IN PROGRESS — POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN`; отдельная активация |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |

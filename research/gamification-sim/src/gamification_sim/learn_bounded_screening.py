@@ -46,6 +46,25 @@ FIXTURE_ROOT_RELATIVE_PATH = Path("fixtures/learn-xp-lifecycle-v1")
 FIXTURE_MANIFEST_RELATIVE_PATH = FIXTURE_ROOT_RELATIVE_PATH / "manifest.json"
 DRY_GENERATOR_RELATIVE_PATH = Path("src/gamification_sim/learn_candidate_protocol.py")
 PUBLICATION_SHA = "41313c9369c76d331d489a9aa4b44da2497b3132"
+
+POST_RESULTS_HARNESS_FIX = {
+    "amendment_version": "learn-xp-bounded-screening-post-results-fix-v1",
+    "classification": "HARNESS",
+    "prior_implementation_sha": "ef7c638a70b7bbb7883f512309a1e248118a9203",
+    "prior_evidence_digest": "51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726",
+    "prior_archive_sha256": "58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3",
+    "prior_run_status": "INVALID",
+    "results_viewed": True,
+    "independent_root_cause": "TAR_MEMBER_MODE_INHERITED_FROM_OUTPUT_FILESYSTEM",
+    "field_level_diff": [
+        "archive member mode: inherited filesystem mode -> 0644",
+    ],
+    "rationale": "Archive members must be byte-identical across DrvFS and Linux filesystems.",
+    "required_rerun": "FULL_340_UNIT_MATRIX",
+    "old_new_evidence_mixed": False,
+    "screening_design_changed": False,
+    "roadmap_note": "G2.4 post-results harness correction disclosed before rerun.",
+}
 STARTING_GAMIFICATION_SHA = "933325f8d2647d52cbc0d6859ff44ded0b6686c4"
 EXPECTED_UNITS = 340
 EXPECTED_CANDIDATES = 8
@@ -1331,9 +1350,10 @@ def run_learn_xp_screening(
         "references": references,
         "families": families,
         "amendments": {
-            "results_viewed_before_implementation_publication": False,
+            "results_viewed_before_implementation_publication": True,
             "substantive_amendments": [],
-            "execution_mapping": "EXPLICIT_PRE_RESULTS_ACCOUNTING_TRACE_V1",
+            "execution_mapping": "EXPLICIT_POST_RESULTS_HARNESS_FIX_TRACE_V1",
+            "post_results_bug_fixes": [dict(POST_RESULTS_HARNESS_FIX)],
         },
         "boundaries": {
             "adaptive_units": 0,
@@ -1430,6 +1450,14 @@ def validate_learn_xp_screening_evidence(
         raise ValueError("Learn reference aggregates mismatch")
     if payload["families"] != families:
         raise ValueError("Learn family outcomes mismatch")
+    expected_amendments = {
+        "results_viewed_before_implementation_publication": True,
+        "substantive_amendments": [],
+        "execution_mapping": "EXPLICIT_POST_RESULTS_HARNESS_FIX_TRACE_V1",
+        "post_results_bug_fixes": [dict(POST_RESULTS_HARNESS_FIX)],
+    }
+    if payload["amendments"] != expected_amendments:
+        raise ValueError("Learn post-results harness amendment disclosure mismatch")
     detached = dict(payload)
     stored = detached["evidence_digest"]
     detached["evidence_digest"] = ""
@@ -1499,6 +1527,7 @@ def _deterministic_tar_gz(source_dir: Path, archive_path: Path) -> None:
                 for path in sorted(source_dir.iterdir(), key=lambda item: item.name):
                     info = archive.gettarinfo(str(path), arcname=path.name)
                     info.mtime = 0
+                    info.mode = 0o644
                     info.uid = 0
                     info.gid = 0
                     info.uname = ""

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from gamification_sim.learn_bounded_screening import (
     EXPECTED_GATES,
     EXPECTED_METRICS,
     EXPECTED_UNITS,
+    POST_RESULTS_HARNESS_FIX,
     FROZEN_LIFECYCLE_RESULT_DIGESTS,
     LearnScreeningUnit,
     _accounting_trace,
@@ -292,6 +295,12 @@ def test_full_evidence_is_deterministic_complete_and_schema_valid(workspace, pro
     assert len(payload["references"]) == 2
     assert len(payload["families"]) == 2
     assert payload["shared_evidence"]["replay"]["pass"]
+    assert payload["amendments"] == {
+        "results_viewed_before_implementation_publication": True,
+        "substantive_amendments": [],
+        "execution_mapping": "EXPLICIT_POST_RESULTS_HARNESS_FIX_TRACE_V1",
+        "post_results_bug_fixes": [POST_RESULTS_HARNESS_FIX],
+    }
     assert all(len(item["gates"]) == EXPECTED_GATES for item in payload["candidates"])
     assert all(len(item["metrics"]) == EXPECTED_METRICS for item in payload["candidates"])
     assert {gate["scope"] for item in payload["candidates"] for gate in item["gates"]} == {
@@ -415,3 +424,47 @@ def test_external_bundle_is_deterministic(tmp_path, workspace, stub_git):
     assert first_archive.read_bytes() == second_archive.read_bytes()
     assert (first_dir / "FILES.sha256").read_text() == (second_dir / "FILES.sha256").read_text()
     assert "/home/" not in (first_dir / "command.txt").read_text()
+
+
+def test_external_bundle_is_mode_independent(tmp_path, workspace, stub_git):
+    payload = run_learn_xp_screening(
+        workspace,
+        implementation_sha=IMPL_SHA,
+        base_sha=BASE_SHA,
+        exact_command="safe command",
+    )
+    first_dir, first_archive = write_learn_xp_screening_bundle(payload, tmp_path / "first")
+    second_dir, second_archive = write_learn_xp_screening_bundle(payload, tmp_path / "second")
+
+    for path in first_dir.iterdir():
+        if path.is_file():
+            os.chmod(path, 0o777)
+    first_archive.unlink()
+    from gamification_sim.learn_bounded_screening import _deterministic_tar_gz
+    _deterministic_tar_gz(first_dir, first_archive)
+
+    for path in second_dir.iterdir():
+        if path.is_file():
+            os.chmod(path, 0o600)
+    second_archive.unlink()
+    _deterministic_tar_gz(second_dir, second_archive)
+
+    assert first_archive.read_bytes() == second_archive.read_bytes()
+    with tarfile.open(first_archive, "r:gz") as archive:
+        assert {member.mode for member in archive.getmembers()} == {0o644}
+
+
+def test_detached_validator_rejects_missing_post_results_disclosure(workspace, stub_git):
+    payload = run_learn_xp_screening(
+        workspace,
+        implementation_sha=IMPL_SHA,
+        base_sha=BASE_SHA,
+        exact_command="safe command",
+    )
+    bad = copy.deepcopy(payload)
+    bad["amendments"]["results_viewed_before_implementation_publication"] = False
+    bad["amendments"]["post_results_bug_fixes"] = []
+    bad["evidence_digest"] = ""
+    bad["evidence_digest"] = canonical_digest(bad)
+    with pytest.raises(ValueError):
+        validate_learn_xp_screening_evidence(bad, workspace=workspace)
