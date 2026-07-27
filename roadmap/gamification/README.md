@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 Next / Not Started`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 In Progress — post-results harness correction before valid rerun`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -178,11 +178,19 @@ production approved: NO
 
 G2.3 fixed lifecycle canonical serialization and direct-input typing without drift, then prospectively froze the candidate registry, allocation, delay, subject, gate, metric, survivor/tie, matrix and amendment boundaries.
 
-### G2.4 — Bounded Learn XP screening implementation
+### G2.4 — Bounded Learn XP screening
 
-**Status:** `NEXT / NOT STARTED`.
+**Status:** Complete.
 
-G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. It may implement and execute only the frozen screening protocol; adaptive rescue variants and post-result matrix changes are prohibited.
+Artifacts: [technical reference](../../docs/gamification/learn-xp-bounded-screening.md), [closeout](g2-learn-xp-bounded-screening.md), [evidence schema](../../research/gamification-sim/schemas/learn-xp-bounded-screening-evidence-v1.schema.json).
+
+The screened implementation is `548b27de6283b32fb27541db02ce6c8b65c29756`. The replacement run completed `340/340` unique units with `0/0/0` missing/extra/duplicates, 23 hard gates and 14 metrics per candidate, detached validation, deterministic replay and byte-identical external bundle reproduction. `F-CONFIRMATION-ONLY` retained `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `F-PENDING-CONFIRMED-SPLIT` retained `C-PENDING-SPLIT-D1-NOTE-SIBLING`. The earlier attempt remains quarantined as `INVALID`; its disclosed packaging correction changed no screening-design field. No cross-family ranking, final Learn XP model, production approval or integration was performed.
+
+### G2.5 — Confirmatory evidence
+
+**Status:** Next / Not Started.
+
+G2.5 requires a separate activation. G2.4 passes only family-local survivors, evidence identities, limitations and unresolved confirmatory questions; it does not define or execute a G2.5 matrix.
 
 ### Later G2 stages
 
@@ -224,4 +232,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is complete as research-only bounded screening. G2.5 and production integration have not started.
