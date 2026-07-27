@@ -1,28 +1,32 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-27
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
 ## Порядок чтения
 
-1. [`../README.md`](../README.md)
-2. этот файл;
-3. профильный roadmap;
-4. профильный contract в `docs/`;
-5. production code и tests;
-6. свежий closeout только когда он нужен задаче.
+1. [`../AGENTS.md`](../AGENTS.md);
+2. [`../README.md`](../README.md);
+3. этот файл;
+4. профильный roadmap;
+5. профильный contract в `docs/`;
+6. production code и tests;
+7. свежий closeout только когда он нужен задаче.
 
 При противоречиях:
 
 ```text
-production code и tests
-→ docs/
+current branch production code и tests
+→ current branch docs/
+→ PR/base branch contracts
 → roadmap/
 → reports/artifacts
 → старые планы и сообщения
 → предположения
 ```
+
+`master` является релизной веткой, а `core` — integration branch обязательного production Core-трека. Feature/remediation branch или открытый PR может содержать более свежее состояние своего scope, чем base branch. Перед выводами всегда определить current branch/PR, base/head SHA и merge state.
 
 ## Проект и границы
 
@@ -114,11 +118,15 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Successful unchanged exact-SHA gates не повторять.
 - Не создавать вложенную лестницу этапов вместо одной цельной задачи.
 - Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
+- Для нетривиальной реализации использовать локальный `.agents/task-contract.toml` и `python scripts/check_task_scope.py`.
 
 ## Режим работы
 
+- [Корневой auto-loaded entrypoint](../AGENTS.md)
+- [Компактный AI context bootstrap](ai-context-bootstrap.md)
 - [Режимы ChatGPT и Codex](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
 - [Codex agent rules](codex-agent-rules.md)
+- [Task contract template](templates/task-contract.toml)
 
-Сначала определите трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.
+Сначала определите фактическую branch/PR, трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.
