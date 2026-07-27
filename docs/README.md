@@ -10,9 +10,11 @@ reports/    исторические evidence и завершённые пров
 
 ## Начать отсюда
 
+- [Корневые правила AI-агента](../AGENTS.md)
 - [Обзор проекта](project-overview.md)
 - [Архитектура](architecture.md)
 - [Передача актуального контекста ИИ](ai-handoff.md)
+- [Компактный AI context bootstrap](ai-context-bootstrap.md)
 - [Карта roadmap](../roadmap/README.md)
 - [Исторические отчёты](../reports/README.md)
 
@@ -70,10 +72,14 @@ reports/    исторические evidence и завершённые пров
 
 ## Работа ИИ-агентов
 
+- [Корневой auto-loaded entrypoint](../AGENTS.md)
+- [Компактный переносимый контекст](ai-context-bootstrap.md)
 - [Режимы ChatGPT и Codex](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
 - [ChatGPT manual operations](chatgpt-manual-operations.md)
 - [Codex agent rules](codex-agent-rules.md)
 - [Codex local WSL environment](codex-local-environment.md)
+- [Шаблон локального task contract](templates/task-contract.toml)
+- Scope guard: `python scripts/check_task_scope.py`
 
 `ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/`, а не дублироваться в этом индексе.
