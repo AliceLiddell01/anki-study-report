@@ -1,14 +1,15 @@
 # Learn XP bounded screening — техническая справка G2.4
 
-**Stage:** `G2.4 — Bounded Learn XP screening implementation`  
-**Status:** `IN PROGRESS — PRE-RESULTS IMPLEMENTATION`  
-**Protocol:** `FROZEN_PRE_SCREENING_IMPLEMENTATION`  
-**Protocol publication SHA:** `41313c9369c76d331d489a9aa4b44da2497b3132`  
-**Starting gamification SHA:** `933325f8d2647d52cbc0d6859ff44ded0b6686c4`  
-**Screening executed:** `NO`  
+**Stage:** `G2.4 — Bounded Learn XP screening implementation`
+**Status:** `COMPLETE`
+**Protocol:** `FROZEN_PRE_SCREENING_IMPLEMENTATION`
+**Protocol publication SHA:** `41313c9369c76d331d489a9aa4b44da2497b3132`
+**Starting gamification SHA:** `933325f8d2647d52cbc0d6859ff44ded0b6686c4`
+**Screening executed:** `YES — VALID REPLACEMENT RUN`
+**Valid screened implementation:** `548b27de6283b32fb27541db02ce6c8b65c29756`
 **Production integration:** `PROHIBITED`
 
-Документ фиксирует исполнимое толкование frozen G2.3 protocol до просмотра результатов. Он не содержит candidate outcomes, survivor, family result или финального Learn XP решения.
+Документ был опубликован как pre-results execution reference до просмотра результатов G2.4. Его pre-results sections ниже сохраняются как historical frozen interpretation. В конце документа записан validated replacement outcome после disclosed invalid attempt; этот результат не является production approval.
 
 ## Назначение и границы
 

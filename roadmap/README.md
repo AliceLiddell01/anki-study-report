@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-27
 
 Roadmap разделён на один обязательный продуктовый путь **Core** и независимые либо условные треки. Больший номер не создаёт общей очереди между разными направлениями.
 
@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1 complete / DEFER<br/>G2.3 complete]
+    G[Gamification G<br/>G1 complete / DEFER<br/>G2.4 complete<br/>G2.5 frozen pre-results]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1 complete; G2 in progress; G2.1–G2.4 complete; production не одобрен | G2.5 только по отдельной активации; `NOT STARTED` |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1 complete; G2 in progress; G2.1–G2.4 complete; G2.5 frozen pre-results; production не одобрен | опубликовать G2.5 implementation до result access |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
