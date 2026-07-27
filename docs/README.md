@@ -55,10 +55,12 @@ reports/    исторические evidence и завершённые пров
 - [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
 - [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 - [G2.6 final Learn XP decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
+- [Core gamification economy problem contract](gamification/core-economy-problem-contract.md)
+- [G4.1 core economy contract closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 
-Gamification contracts и recommended research candidates являются research-only и не разрешают production integration.
+Gamification contracts и recommended research candidates являются research-only и не разрешают production integration. Initial G4 core economy содержит только Review и Learn; G3/Create XP deferred post-MVP.
 
 ## Architecture и API
 
