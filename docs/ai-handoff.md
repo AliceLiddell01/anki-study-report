@@ -111,7 +111,7 @@ G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, п
 
 G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
 
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection и production approval в G2.4 не выполнялись. G2.5 активирован отдельно: prospectively frozen protocol ограничен двумя survivors, одной reference, 36 conditions и двумя replay identities для exact 216 units; confirmatory results ещё не открывались.
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection и production approval в G2.4 не выполнялись. G2.5 был активирован отдельно и завершён на prospectively frozen matrix из двух survivors, одной reference, 36 conditions и двух replay identities: `216/216/216`, `0/0/0`, detached validation и byte-identical reproduction прошли. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`; reference осталась `REFERENCE_ONLY`. Ranking, winner, recommendation, final model selection и production approval не выполнялись.
 
 Точные источники:
 
@@ -132,7 +132,7 @@ Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 fu
 - [G2.3 closeout](../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
 - [G2.4 closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
-- [G2.5 pre-results stage record](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
+- [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
