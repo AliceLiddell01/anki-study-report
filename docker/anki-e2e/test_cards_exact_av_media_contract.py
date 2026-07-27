@@ -83,6 +83,10 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "focus: replayFocusProofs" in source
     assert "localized replay label mismatch" in source
     assert "documentLanguage" in source
+    assert '? "Play audio"' in source
+    assert ': "Воспроизвести аудио";' in source
+    assert "`Play audio: ${config.mp3.name}`" not in source
+    assert "`Воспроизвести аудио: ${config.mp3.name}`" not in source
     assert "inspectionProfileRequests.length === 0" in source
     assert "externalRequests.length === 0" in source
 

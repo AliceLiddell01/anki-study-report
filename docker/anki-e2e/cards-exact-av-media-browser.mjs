@@ -709,8 +709,8 @@ function assertExactMetrics(metrics, label) {
     ? "en"
     : "ru";
   const expectedReplayLabel = language === "en"
-    ? `Play audio: ${config.mp3.name}`
-    : `Воспроизвести аудио: ${config.mp3.name}`;
+    ? "Play audio"
+    : "Воспроизвести аудио";
   assert(
     replay.ariaLabel === expectedReplayLabel,
     `${label}: localized replay label mismatch ${
