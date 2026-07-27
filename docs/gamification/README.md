@@ -7,16 +7,20 @@ G0: COMPLETE
 G1: COMPLETE
 G1 final outcome: DEFER_REVIEW_MODEL
 recommended Review XP research candidate: NONE
-G2: IN PROGRESS
+G2: COMPLETE
 G2.1: COMPLETE
 G2.2: COMPLETE
 G2.3: COMPLETE
 G2.4: COMPLETE
 G2.5: COMPLETE — CONFIRMATORY INCONCLUSIVE
+G2.6: COMPLETE
+G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
+recommended Learn XP research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 production integration: PROHIBITED
+G3: PLANNED / NOT STARTED
 ```
 
-The canonical `gamification` branch contains isolated research contracts, fixtures, simulator code and accepted synthetic evidence. Research candidates and research outcomes are not production economies.
+The canonical `gamification` branch contains isolated research contracts, fixtures, simulator code, accepted synthetic evidence and bounded final-stage governance decisions. Research candidates and research outcomes are not production economies.
 
 ## Current G2 contracts
 
@@ -80,6 +84,12 @@ The first canonical attempt on `ef7c638a…` remains quarantined as `INVALID`. T
 
 G2.5 prospectively froze exactly two G2.4 survivors, one subject-matched zero-reward reference, 36 conditions per identity and `FORWARD`/`REVERSE` replay for exact `216` units. The canonical run completed `216/216/216` units with `0/0/0` missing/extra/duplicates, detached validation and byte-identical reproduction. Both survivors are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable under `SYNTHETIC_CONTRACT_ONLY`; the zero-reward reference is `REFERENCE_ONLY`. No cross-family ranking, winner, recommendation, final model selection or production approval was produced.
 
+### G2.6 final Learn XP decision
+
+- [Final decision and G2 closeout](../../roadmap/gamification/g2-learn-xp-decision.md)
+
+G2.6 closes G2 with `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` for bounded future design/research use. The explicit decision principle is `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`: both survivor families preserve the same bounded confirmed total and frozen safety properties, while confirmation-only adds no provisional reward exposure and has the smaller accounting/explanation surface. This governance decision preserves both G2.5 outcomes as `CONFIRMATORY_INCONCLUSIVE`, does not falsify the non-selected pending-split candidate and does not approve production.
+
 ## Current G1 contracts
 
 - [Review XP cross-horizon cycling problem](review-xp-cycling-problem.md)
@@ -110,22 +120,23 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes; G2.6 adds a docs-only governance recommendation without new simulation or evidence. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2.4 is complete after the disclosed `HARNESS` correction and full replacement `340/340` rerun. G2.5 confirmatory evidence is complete with both survivors classified `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. Production integration remains prohibited, and research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2 is complete with a bounded research recommendation, but the selected candidate remains `CONFIRMATORY_INCONCLUSIVE`, not confirmatory-eligible and not production-ready. Production integration remains prohibited, and research assets remain outside Fast CI and `.ankiaddon` contents.
 
-### G2.5 canonical result
+### G2 final result
 
-The published G2.5 harness completed `216/216/216` units with `0/0/0`
-missing/extra/duplicates, detached validation and byte-identical reproduction.
-
-- `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
-- `C-PENDING-SPLIT-D1-NOTE-SIBLING` → `CONFIRMATORY_INCONCLUSIVE`;
-- `R-NO-LEARN-XP-NOTE-SIBLING` → `REFERENCE_ONLY`;
-- identity evidence mode → `SYNTHETIC_CONTRACT_ONLY`;
-- inconclusive reason → `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`.
-
-No ranking, winner, recommendation, final model selection or production
-approval was produced.
+```text
+G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
+recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+decision basis: MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
+selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
+selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
+non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
+production approved: NO
+production integration: PROHIBITED
+G3: PLANNED / NOT STARTED
+```

@@ -2,9 +2,9 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1–G2.5 Complete`; `G2.5 Confirmatory Inconclusive`; final G2 decision stage not started; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended Learn XP research candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Planned / Not Started`; production integration not approved
 
-Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
+Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
 ## Branch and production policy
 
@@ -65,9 +65,26 @@ Review XP production integration remains prohibited.
 
 ## G2 — Learn XP specification and simulation
 
-**Status:** In Progress.
+**Status:** Complete.
 
 G2 is independent from Review XP. It does not inherit Review formula, candidate families, matrices, thresholds or G1 outcome.
+
+### Final state
+
+```text
+G2: COMPLETE
+G2.6: COMPLETE
+G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
+recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+decision basis: MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
+selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
+non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
+non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
+production integration: PROHIBITED
+G3: PLANNED / NOT STARTED
+```
+
+The recommendation is a bounded research/product governance choice. It does not change either G2.5 outcome, create confirmatory eligibility, prove human-learning or motivation benefit, or authorize production integration.
 
 ### G2.1 — Freeze Learn XP problem and contract
 
@@ -215,17 +232,32 @@ results accessed: YES — AFTER PROTOCOL PUBLICATION
 detached validation: PASS
 byte-identical reproduction: PASS
 cross-family ranking: NO
-final G2 decision stage: NOT STARTED
 production integration: PROHIBITED
 ```
 
 G2.5 checked each survivor separately. Both outcomes are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. It did not rerun G2.4, add D2 or `S-CARD`, choose a family winner, select a final Learn XP model or approve production integration.
 
-### Later G2 stages
+### G2.6 — Final Learn XP research model decision and G2 closure
 
-The separate final G2 decision stage may be defined only after this G2.5 closeout. G2.5 itself made no recommendation and selected no final Learn XP model.
+**Status:** Complete.
 
-Allowed final G2 outcomes are frozen as:
+Artifact: [final decision and G2 closeout](g2-learn-xp-decision.md).
+
+G2.6 selects the allowed final outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` under `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`.
+
+Decision rationale:
+
+1. both family-local models preserve the frozen bounded confirmed total `1.0 LRU`;
+2. neither candidate was falsified by G2.4/G2.5;
+3. the shared missing disposable identity probe does not distinguish allocation families;
+4. confirmation-only creates no provisional reward exposure;
+5. confirmation-only has the smaller accounting and explanation surface;
+6. no supported human benefit justifies the extra pending reward state;
+7. the recommendation is bounded research governance, not confirmatory eligibility or production approval.
+
+The non-selected `C-PENDING-SPLIT-D1-NOTE-SIBLING` remains `CONFIRMATORY_INCONCLUSIVE`, not selected, not falsified and not rejected as invalid.
+
+Allowed final G2 outcomes remain frozen as:
 
 ```text
 RECOMMEND_LEARN_XP_RESEARCH_MODEL
@@ -237,7 +269,7 @@ Recommendation means research model, not production readiness.
 
 ## G3 — Create XP specification and simulation
 
-**Status:** Planned after G2. Reward useful material state transitions without incentivizing low-quality card spam or repeated edits. Remote AI scoring and production integration remain out of scope.
+**Status:** Planned after G2 / Not Started. Reward useful material state transitions without incentivizing low-quality card spam or repeated edits. Remote AI scoring and production integration remain out of scope. G2 completion does not activate G3 automatically.
 
 ## G4 — Cross-domain economy calibration
 
@@ -261,4 +293,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.5 are complete research stages. G2.5 closed as confirmatory inconclusive; production integration and the final G2 decision stage have not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.6 are complete research/decision stages. G2 closed with a bounded recommendation while both G2.5 outcomes remain `CONFIRMATORY_INCONCLUSIVE`; production integration remains prohibited and G3 remains not started.

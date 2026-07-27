@@ -54,10 +54,11 @@ reports/    исторические evidence и завершённые пров
 - [G2.4 bounded screening closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
 - [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
+- [G2.6 final Learn XP decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 
-Gamification contracts являются research-only и не разрешают production integration.
+Gamification contracts и recommended research candidates являются research-only и не разрешают production integration.
 
 ## Architecture и API
 
@@ -91,4 +92,4 @@ Gamification contracts являются research-only и не разрешают
 - [Codex agent rules](codex-agent-rules.md)
 - [Codex local WSL environment](codex-local-environment.md)
 
-`ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/`, а не дублироваться в этом индексе.
+`ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/` или профильном canonical closeout, а не дублироваться в этом индексе.

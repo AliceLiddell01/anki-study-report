@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-27
+**Снимок:** 2026-07-28
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -66,7 +66,7 @@ G1 final outcome — DEFER_REVIEW_MODEL
 recommended Review XP research candidate — NONE
 P-STEP-ZERO — CONFIRMATORY_ELIGIBLE; not selected; not falsified
 P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; not selected; not falsified
-G2 — IN PROGRESS
+G2 — COMPLETE
 G2.1 — COMPLETE
 Learn XP contract — FROZEN_PRE_LIFECYCLE_ANALYSIS
 G2.2 — COMPLETE
@@ -97,8 +97,14 @@ G2.5 conditions — 16 core / 12 identity / 8 explainability
 G2.5 replay / expected units — FORWARD+REVERSE / 216
 G2.5 identity evidence mode — SYNTHETIC_CONTRACT_ONLY
 G2.5 results accessed — YES — AFTER PROTOCOL PUBLICATION
-final G2 decision stage — NOT STARTED
+G2.6 — COMPLETE
+G2 final outcome — RECOMMEND_LEARN_XP_RESEARCH_MODEL
+recommended Learn XP research candidate — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+decision basis — MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
+selected candidate G2.5 status — CONFIRMATORY_INCONCLUSIVE
+non-selected candidate — C-PENDING-SPLIT-D1-NOTE-SIBLING; not selected; not falsified
 production integration — PROHIBITED
+G3 — PLANNED / NOT STARTED
 ```
 
 G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует.
@@ -111,7 +117,11 @@ G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, п
 
 G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
 
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection и production approval в G2.4 не выполнялись. G2.5 был активирован отдельно и завершён на prospectively frozen matrix из двух survivors, одной reference, 36 conditions и двух replay identities: `216/216/216`, `0/0/0`, detached validation и byte-identical reproduction прошли. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`; reference осталась `REFERENCE_ONLY`. Ranking, winner, recommendation, final model selection и production approval не выполнялись.
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection и production approval в G2.4 не выполнялись.
+
+G2.5 был активирован отдельно и завершён на prospectively frozen matrix из двух survivors, одной reference, 36 conditions и двух replay identities: `216/216/216`, `0/0/0`, detached validation и byte-identical reproduction прошли. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`; reference осталась `REFERENCE_ONLY`. Ranking, winner, recommendation, final model selection и production approval в G2.5 не выполнялись.
+
+G2.6 закрыл G2 outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` и рекомендует `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` как bounded research model. Принцип `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE` выбирает меньшую provisional/accounting/explanation surface при одинаковом frozen confirmed total и отсутствии подтверждённой human benefit дополнительного pending reward state. G2.5 outcome выбранного кандидата остаётся `CONFIRMATORY_INCONCLUSIVE`; non-selected pending-split candidate не фальсифицирован и не отклонён как invalid. Recommendation не означает confirmatory eligibility, scientific superiority или production approval.
 
 Точные источники:
 
@@ -133,6 +143,7 @@ Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 fu
 - [G2.4 closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
 - [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
+- [G2.6 final decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
@@ -183,12 +194,16 @@ Codex mode работает непосредственно в локальном
 
 Не начинать следующий roadmap stage автоматически только потому, что предыдущая техническая работа завершена.
 
-### G2.5 closeout
+### G2 final closeout
 
-Canonical confirmatory evidence completed on publication SHA `903604245aaa540674f650b998d32f497b018f49`:
-`216/216/216`, `0/0/0`, detached validation PASS and byte-identical
-reproduction PASS. Both G2.4 survivors are `CONFIRMATORY_INCONCLUSIVE` because
-the frozen identity mode was `SYNTHETIC_CONTRACT_ONLY` and the disposable Anki
-identity probe was unavailable. The zero-reward reference remains
-`REFERENCE_ONLY`. No ranking, winner, recommendation, final model selection or
-production approval was produced.
+```text
+G2.6: COMPLETE
+G2: COMPLETE
+G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
+recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
+selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+production approved: NO
+production integration: PROHIBITED
+G3: PLANNED / NOT STARTED
+```
