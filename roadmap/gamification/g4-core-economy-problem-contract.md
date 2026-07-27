@@ -212,12 +212,15 @@ negative validation: 16 / 16 PASS
 
 ### Disclosed pre-merge schema correction
 
-Semantic PR review обнаружил, что в одном промежуточном schema commit definition maps были ошибочно вложены в `production_flags`. Этот intermediate state не был смёржен и не объявляется validated result.
+Semantic PR review обнаружил, что в одном промежуточном schema commit definition maps были ошибочно вложены в `production_flags`. Этот defective intermediate state остался в истории смёрженного PR, но был исправлен последующими commits до merge completion, отсутствует в final tree и не используется как validated result.
 
 Исправление:
 
 ```text
 classification: SCHEMA_STRUCTURE
+history reachable from merge commit: YES
+present in final tree: NO
+used as validated result: NO
 results accessed: NO — G4.1 has no simulation/results
 contract semantics changed: NO
 registries changed: NO
