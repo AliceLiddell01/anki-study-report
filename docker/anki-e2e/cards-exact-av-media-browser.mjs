@@ -68,6 +68,7 @@ const screenshots = [];
 const scenarios = [];
 const geometry = [];
 const gifScenarioFrames = [];
+const replayFocusProofs = [];
 let replayProof = null;
 let gifProof = null;
 let fixedFrameProof = null;
@@ -150,6 +151,14 @@ try {
         const groupPath = path.join(exactScreenshotsRoot, `${scenario.name}-media-block.png`);
         await captureRect(activePage, displayedMetrics.compositionGroup, groupPath);
         screenshots.push(recordScreenshot(groupPath, { kind: "media-block", scenario: scenario.name, theme: scenario.theme }));
+
+        const focusProof = await proveReplayFocus(
+          activePage,
+          exactScreenshotsRoot,
+          scenario.theme,
+        );
+        replayFocusProofs.push(focusProof);
+        screenshots.push(...focusProof.screenshots);
       }
 
       const gifCaptureMode = scenario.kind === "expanded"
@@ -226,6 +235,27 @@ try {
   }
 
   gifProof = proveGifAnimation(gifScenarioFrames);
+
+  assert(
+    replayFocusProofs.length === config.themes.length,
+    `replay focus proof count mismatch: ${
+      JSON.stringify(replayFocusProofs)
+    }`,
+  );
+  assert(
+    replayFocusProofs.every(
+      (item) => (
+        item.keyboardFocused
+        && item.screenshotDiffers
+        && item.focusStyle.outlineWidthPx >= 2
+        && item.focusStyle.outlineStyle !== "none"
+        && item.focusStyle.boxShadow !== "none"
+      ),
+    ),
+    `replay focus evidence is incomplete: ${
+      JSON.stringify(replayFocusProofs)
+    }`,
+  );
 
   assert(replayProof?.first?.playEvent && replayProof?.first?.playingEvent, "first replay did not reach play/playing");
   assert(replayProof?.playCalls >= 2, "second replay did not invoke play()");
@@ -566,6 +596,8 @@ async function shadowMetrics(page, mode) {
         buttonRect: rect(button),
         buttonStyle: style(button),
         audioName: audio ? mediaName(audio.src) : "",
+        ariaLabel: button?.getAttribute("aria-label") || "",
+        documentLanguage: document.documentElement.lang || "",
       },
       gif,
       png,
@@ -673,6 +705,22 @@ function assertExactMetrics(metrics, label) {
     `${label}: replay structure mismatch ${JSON.stringify(replay)}`,
   );
   assert(replay.audioName === config.mp3.name, `${label}: wrong audio ${replay.audioName}`);
+  const language = replay.documentLanguage.toLowerCase().startsWith("en")
+    ? "en"
+    : "ru";
+  const expectedReplayLabel = language === "en"
+    ? `Play audio: ${config.mp3.name}`
+    : `Воспроизвести аудио: ${config.mp3.name}`;
+  assert(
+    replay.ariaLabel === expectedReplayLabel,
+    `${label}: localized replay label mismatch ${
+      JSON.stringify({
+        language: replay.documentLanguage,
+        actual: replay.ariaLabel,
+        expected: expectedReplayLabel,
+      })
+    }`,
+  );
   assertMediaGeometry(metrics.gif, `${label} GIF`, {
     expectedNatural: { width: 160, height: 120 },
     expectedComputed: { width: 160, height: 120 },
@@ -724,24 +772,126 @@ function geometryProjection(metrics) {
   };
 }
 
-async function proveReplayLifecycle(page, outputRoot) {
+async function proveReplayFocus(page, outputRoot, theme) {
   const host = exactHost(page, "preview", "wide");
   const button = host.locator(".asr-card-replay-button");
-  const defaultPath = path.join(outputRoot, "replay-default.png");
-  await capturePageClip(page, button, defaultPath);
+  const paddingPx = 8;
+
+  await button.evaluate((element) => element.blur());
+  const defaultPath = path.join(
+    outputRoot,
+    `replay-default-${theme}.png`,
+  );
+  const defaultBytes = await capturePageClip(
+    page,
+    button,
+    defaultPath,
+    paddingPx,
+  );
 
   await button.focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
-  const keyboardFocused = await host.evaluate((element) => element.shadowRoot?.activeElement?.classList.contains("asr-card-replay-button") === true);
-  assert(keyboardFocused, "keyboard focus did not return to the replay button");
-  const focusPath = path.join(outputRoot, "replay-keyboard-focus.png");
-  await capturePageClip(page, button, focusPath);
+
+  const keyboardFocused = await host.evaluate(
+    (element) => (
+      element.shadowRoot?.activeElement?.classList
+        .contains("asr-card-replay-button") === true
+    ),
+  );
+  assert(
+    keyboardFocused,
+    `${theme}: keyboard focus did not return to the replay button`,
+  );
+
+  const focusStyle = await host.evaluate((element) => {
+    const replayButton = element.shadowRoot
+      ?.querySelector(".asr-card-replay-button");
+    if (!(replayButton instanceof HTMLButtonElement)) {
+      throw new Error("replay button is unavailable for focus proof");
+    }
+    const computed = getComputedStyle(replayButton);
+    return {
+      outlineStyle: computed.outlineStyle,
+      outlineWidth: computed.outlineWidth,
+      outlineWidthPx: Number.parseFloat(computed.outlineWidth),
+      outlineColor: computed.outlineColor,
+      outlineOffset: computed.outlineOffset,
+      boxShadow: computed.boxShadow,
+    };
+  });
+
+  assert(
+    Number.isFinite(focusStyle.outlineWidthPx)
+      && focusStyle.outlineWidthPx >= 2
+      && focusStyle.outlineStyle !== "none"
+      && focusStyle.boxShadow !== "none",
+    `${theme}: computed focus indicator is not strong enough: ${
+      JSON.stringify(focusStyle)
+    }`,
+  );
+
+  const focusPath = path.join(
+    outputRoot,
+    `replay-keyboard-focus-${theme}.png`,
+  );
+  const focusBytes = await capturePageClip(
+    page,
+    button,
+    focusPath,
+    paddingPx,
+  );
+
+  const defaultSha256 = crypto
+    .createHash("sha256")
+    .update(defaultBytes)
+    .digest("hex");
+  const focusSha256 = crypto
+    .createHash("sha256")
+    .update(focusBytes)
+    .digest("hex");
+  const screenshotDiffers = defaultSha256 !== focusSha256;
+
+  assert(
+    screenshotDiffers,
+    `${theme}: replay focus screenshot matches the default capture`,
+  );
+
+  return {
+    theme,
+    keyboardFocused,
+    paddingPx,
+    focusStyle,
+    defaultSha256,
+    focusSha256,
+    screenshotDiffers,
+    screenshots: [
+      recordScreenshot(defaultPath, {
+        kind: "replay-default",
+        scenario: `wide-${theme}`,
+        theme,
+        paddingPx,
+      }),
+      recordScreenshot(focusPath, {
+        kind: "replay-keyboard-focus",
+        scenario: `wide-${theme}`,
+        theme,
+        paddingPx,
+      }),
+    ],
+  };
+}
+
+async function proveReplayLifecycle(page, outputRoot) {
+  const host = exactHost(page, "preview", "wide");
+  const button = host.locator(".asr-card-replay-button");
 
   await host.evaluate((element) => {
     const audio = element.shadowRoot.querySelector("audio.asr-card-audio");
     audio.pause();
-    if (Number.isFinite(audio.duration) && audio.duration > 0.1) audio.currentTime = 0.08;
+    if (Number.isFinite(audio.duration) && audio.duration > 0.1) {
+      audio.currentTime = 0.08;
+    }
     const originalPlay = audio.play.bind(audio);
     window.__asrReplayProof = {
       playCalls: 0,
@@ -778,10 +928,13 @@ async function proveReplayLifecycle(page, outputRoot) {
   await button.click();
   await page.waitForFunction(() => {
     const proof = window.__asrReplayProof;
-    return proof?.playEvent && proof?.playingEvent && proof?.promiseResolved;
+    return proof?.playEvent
+      && proof?.playingEvent
+      && proof?.promiseResolved;
   }, null, { timeout: 15000 });
+
   const playingPath = path.join(outputRoot, "replay-playing.png");
-  await capturePageClip(page, button, playingPath);
+  await capturePageClip(page, button, playingPath, 8);
   await page.waitForTimeout(250);
 
   const first = await host.evaluate((element) => {
@@ -793,10 +946,20 @@ async function proveReplayLifecycle(page, outputRoot) {
       readyState: audio.readyState,
       networkState: audio.networkState,
       duration: audio.duration,
-      playedRanges: [...Array(audio.played.length)].map((_, index) => [audio.played.start(index), audio.played.end(index)]),
+      playedRanges: [...Array(audio.played.length)].map(
+        (_, index) => [
+          audio.played.start(index),
+          audio.played.end(index),
+        ],
+      ),
     };
   });
-  assert(first.playEventCurrentTime <= 0.03, `audio was not reset before first play event: ${JSON.stringify(first)}`);
+  assert(
+    first.playEventCurrentTime <= 0.03,
+    `audio was not reset before first play event: ${
+      JSON.stringify(first)
+    }`,
+  );
 
   const secondSetup = await host.evaluate(async (element) => {
     const audio = element.shadowRoot.querySelector(
@@ -914,24 +1077,34 @@ async function proveReplayLifecycle(page, outputRoot) {
   const pageErrorsBeforeRejection = pageErrors.length;
   await host.evaluate((element) => {
     const audio = element.shadowRoot.querySelector("audio.asr-card-audio");
-    audio.play = () => Promise.reject(new DOMException("intentional E2E rejection", "NotAllowedError"));
+    audio.play = () => Promise.reject(
+      new DOMException(
+        "intentional E2E rejection",
+        "NotAllowedError",
+      ),
+    );
   });
   await button.click();
   await page.waitForTimeout(250);
-  const rejectedPromiseHandled = pageErrors.length === pageErrorsBeforeRejection;
+  const rejectedPromiseHandled =
+    pageErrors.length === pageErrorsBeforeRejection;
 
-  const response = [...mediaResponses].reverse().find((item) => item.name === config.mp3.name);
+  const response = [...mediaResponses]
+    .reverse()
+    .find((item) => item.name === config.mp3.name);
   return {
     first,
     second,
     playCalls: second.playCalls,
     mediaHttp200: response?.status === 200,
-    keyboardFocused,
     rejectedPromiseHandled,
     screenshots: [
-      recordScreenshot(defaultPath, { kind: "replay-default", scenario: "wide-light", theme: "light" }),
-      recordScreenshot(focusPath, { kind: "replay-keyboard-focus", scenario: "wide-light", theme: "light" }),
-      recordScreenshot(playingPath, { kind: "replay-playing", scenario: "wide-light", theme: "light" }),
+      recordScreenshot(playingPath, {
+        kind: "replay-playing",
+        scenario: "wide-light",
+        theme: "light",
+        paddingPx: 8,
+      }),
     ],
   };
 }
@@ -1091,10 +1264,21 @@ async function extractDeterministicGifFrame(page, outputRoot) {
   };
 }
 
-async function capturePageClip(page, locator, outputPath) {
-  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" }));
+async function capturePageClip(
+  page,
+  locator,
+  outputPath,
+  padding = 0,
+) {
+  await locator.evaluate(
+    (element) => element.scrollIntoView({
+      block: "center",
+      inline: "center",
+      behavior: "auto",
+    }),
+  );
   await page.waitForTimeout(100);
-  const clip = await locator.evaluate((element) => {
+  const clip = await locator.evaluate((element, paddingValue) => {
     const rect = element.getBoundingClientRect();
     const documentElement = document.documentElement;
     const body = document.body;
@@ -1110,16 +1294,47 @@ async function capturePageClip(page, locator, outputPath) {
       body?.scrollHeight || 0,
       body?.clientHeight || 0,
     );
-    const x = Math.max(0, Number(rect.left) + window.scrollX);
-    const y = Math.max(0, Number(rect.top) + window.scrollY);
-    const width = Math.min(Number(rect.width), Math.max(1, documentWidth - x));
-    const height = Math.min(Number(rect.height), Math.max(1, documentHeight - y));
+    const resolvedPadding = Math.max(
+      0,
+      Number(paddingValue) || 0,
+    );
+    const left = Number(rect.left) + window.scrollX;
+    const top = Number(rect.top) + window.scrollY;
+    const right = left + Number(rect.width);
+    const bottom = top + Number(rect.height);
+    const x = Math.max(0, left - resolvedPadding);
+    const y = Math.max(0, top - resolvedPadding);
+    const clippedRight = Math.min(
+      documentWidth,
+      right + resolvedPadding,
+    );
+    const clippedBottom = Math.min(
+      documentHeight,
+      bottom + resolvedPadding,
+    );
+    const width = clippedRight - x;
+    const height = clippedBottom - y;
     if (!(width > 0 && height > 0)) {
-      throw new Error(`screenshot clip is unavailable: ${JSON.stringify({ x, y, width, height })}`);
+      throw new Error(
+        `screenshot clip is unavailable: ${
+          JSON.stringify({
+            x,
+            y,
+            width,
+            height,
+            padding: resolvedPadding,
+          })
+        }`,
+      );
     }
     return { x, y, width, height };
+  }, padding);
+  return page.screenshot({
+    path: outputPath,
+    animations: "allow",
+    caret: "hide",
+    clip,
   });
-  return page.screenshot({ path: outputPath, animations: "allow", caret: "hide", clip });
 }
 
 async function captureRect(page, value, outputPath) {
@@ -1195,7 +1410,9 @@ async function writeReports() {
       browser: { headless: true, deviceScaleFactor: 1, locale: "en-US", timezone: "UTC" },
     },
     scenarios,
-    replay: replayProof,
+    replay: replayProof
+      ? { ...replayProof, focus: replayFocusProofs }
+      : null,
     animation: gifProof,
     deterministicFrame: fixedFrameProof ? { ...fixedFrameProof, path: fixedFrameProof.relativePath, relativePath: undefined } : null,
     mediaResponses,

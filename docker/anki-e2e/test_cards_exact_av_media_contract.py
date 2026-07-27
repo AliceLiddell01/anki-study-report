@@ -54,7 +54,9 @@ def test_exact_api_counts_complete_class_tokens_without_prefix_collisions() -> N
 def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     source = read("cards-exact-av-media-browser.mjs")
     assert "locator.screenshot" not in source
-    assert 'page.screenshot({ path: outputPath, animations: "allow", caret: "hide", clip })' in source
+    assert 'return page.screenshot({' in source
+    assert 'animations: "allow"' in source
+    assert "right + resolvedPadding" in source
     assert 'if (expectedSide === "front") return !imageNames.includes(config.png)' in source
     assert "return imageNames.includes(config.png)" in source
     assert "browserFramesDiffer" in source
@@ -74,6 +76,13 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "seekableRanges" in source
     assert "second replay pre-seek did not settle" not in source
     assert "rejectedPromiseHandled" in source
+    assert "replayFocusProofs" in source
+    assert "replay focus screenshot matches the default capture" in source
+    assert "outlineWidthPx >= 2" in source
+    assert "paddingPx = 8" in source
+    assert "focus: replayFocusProofs" in source
+    assert "localized replay label mismatch" in source
+    assert "documentLanguage" in source
     assert "inspectionProfileRequests.length === 0" in source
     assert "externalRequests.length === 0" in source
 
