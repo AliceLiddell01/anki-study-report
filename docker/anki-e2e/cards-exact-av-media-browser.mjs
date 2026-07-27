@@ -458,14 +458,15 @@ async function shadowMetrics(page, mode) {
     };
     const leafElements = [...root.querySelectorAll("*")].filter((element) => element.children.length === 0 && visible(element));
     const normalized = (value) => String(value || "").replace(/\s+/g, " ").trim();
-    const suru = leafElements.find((element) => {
-      const text = normalized(element.textContent);
-      return text.length <= 30 && (text.includes("（する）") || text.includes("(する)") || text === "する");
-    });
+    const wordFocusCandidates = [...root.querySelectorAll(".word-focus")]
+      .filter((element) => visible(element) && normalized(element.textContent) === config.word);
+    const wordFocus = wordFocusCandidates[0] || null;
     const exampleCandidates = [...root.querySelectorAll(".example-item, .examples, .jp, .ru, .example-focus")]
       .filter((element) => visible(element) && normalized(element.textContent).length >= 4);
-    const example = exampleCandidates[0] || leafElements.find((element) => normalized(element.textContent).length >= 12);
-    const parts = [wrapper, button, [...root.querySelectorAll("img")].find((image) => mediaName(image.src) === config.gif), suru, example]
+    const example = host.dataset.previewSide === "back"
+      ? (exampleCandidates[0] || leafElements.find((element) => normalized(element.textContent).length >= 12) || null)
+      : null;
+    const parts = [wrapper, button, [...root.querySelectorAll("img")].find((image) => mediaName(image.src) === config.gif), wordFocus, example]
       .filter(Boolean)
       .map(rect)
       .filter(Boolean);
@@ -487,7 +488,7 @@ async function shadowMetrics(page, mode) {
     const gif = mediaMetric(config.gif);
     const png = mediaMetric(config.png);
     const replayRect = rect(wrapper || button);
-    const suruRect = rect(suru);
+    const wordFocusRect = rect(wordFocus);
     const exampleRect = rect(example);
     return {
       mode,
@@ -512,13 +513,21 @@ async function shadowMetrics(page, mode) {
       },
       gif,
       png,
-      suru: { text: normalized(suru?.textContent), rect: suruRect, style: style(suru) },
+      wordFocus: {
+        count: wordFocusCandidates.length,
+        text: normalized(wordFocus?.textContent),
+        rect: wordFocusRect,
+        style: style(wordFocus),
+      },
       example: { textLength: normalized(example?.textContent).length, rect: exampleRect, style: style(example) },
       compositionGroup: union,
       gaps: {
         audioToImage: replayRect && gif?.rect ? gif.rect.top - replayRect.bottom : null,
-        imageToSuru: gif?.rect && suruRect ? suruRect.top - gif.rect.bottom : null,
-        imageRowToExample: gif?.rect && exampleRect ? exampleRect.top - Math.max(gif.rect.bottom, suruRect?.bottom || gif.rect.bottom) : null,
+        imageToWordFocus: gif?.rect && wordFocusRect ? wordFocusRect.top - gif.rect.bottom : null,
+        wordFocusToExample: wordFocusRect && exampleRect ? exampleRect.top - wordFocusRect.bottom : null,
+        imageRowToExample: gif?.rect && exampleRect
+          ? exampleRect.top - Math.max(gif.rect.bottom, wordFocusRect?.bottom || gif.rect.bottom)
+          : null,
       },
       rawSoundMarkers: (card?.textContent?.match(/\[sound:/gi) || []).length,
       rawPlayMarkers: (card?.textContent?.match(/\[anki:play:/gi) || []).length,
@@ -559,8 +568,15 @@ function assertExactMetrics(metrics, label) {
   } else {
     throw new Error(`${label}: unexpected preview side ${metrics.side}`);
   }
-  assert(metrics.suru.rect, `${label}: (する) geometry is unavailable`);
-  assert(metrics.example.rect, `${label}: example geometry is unavailable`);
+  assert(
+    metrics.wordFocus.count === 1 && metrics.wordFocus.text === config.word && metrics.wordFocus.rect,
+    `${label}: exact word-focus geometry mismatch ${JSON.stringify(metrics.wordFocus)}`,
+  );
+  if (metrics.side === "back") {
+    assert(metrics.example.rect, `${label}: back-side example geometry is unavailable`);
+  } else {
+    assert(metrics.example.rect === null, `${label}: front-side example geometry must be absent`);
+  }
   assert(metrics.compositionGroup, `${label}: composition group geometry is unavailable`);
   assert(!metrics.rawSoundMarkers && !metrics.rawPlayMarkers && !metrics.scripts && !metrics.externalMedia, `${label}: safety metric failed`);
 }
@@ -578,11 +594,12 @@ function geometryProjection(metrics) {
     imageRect: metrics.gif?.rect || metrics.png?.rect,
     gifRect: metrics.gif?.rect,
     pngRect: metrics.png?.rect,
-    suruRect: metrics.suru.rect,
+    wordFocusRect: metrics.wordFocus.rect,
     exampleRect: metrics.example.rect,
     groupRect: group,
     audioToImageGap: metrics.gaps.audioToImage,
-    imageToSuruGap: metrics.gaps.imageToSuru,
+    imageToWordFocusGap: metrics.gaps.imageToWordFocus,
+    wordFocusToExampleGap: metrics.gaps.wordFocusToExample,
     imageRowToExampleGap: metrics.gaps.imageRowToExample,
     groupCenterX: group ? group.left + group.width / 2 : null,
     groupCenterY: group ? group.top + group.height / 2 : null,

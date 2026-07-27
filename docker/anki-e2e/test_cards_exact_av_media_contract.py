@@ -64,6 +64,25 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "externalRequests.length === 0" in source
 
 
+def test_exact_geometry_targets_the_exact_word_and_side_aware_examples() -> None:
+    source = read("cards-exact-av-media-browser.mjs")
+    assert 'root.querySelectorAll(".word-focus")' in source
+    assert 'normalized(element.textContent) === config.word' in source
+    assert 'wordFocusCandidates.length' in source
+    assert 'metrics.wordFocus.text === config.word' in source
+    assert 'host.dataset.previewSide === "back"' in source
+    assert 'metrics.side === "back"' in source
+    assert 'front-side example geometry must be absent' in source
+    assert "wordFocusRect" in source
+    assert "imageToWordFocusGap" in source
+    assert "wordFocusToExampleGap" in source
+    assert "(する)" not in source
+    assert "（する）" not in source
+    assert "suruRect" not in source
+    assert "imageToSuru" not in source
+    assert "metrics.suru" not in source
+
+
 def test_exact_host_runner_uses_strict_mounts_and_state_guards() -> None:
     source = read("run-cards-exact-av-media-host.sh")
     assert 'EXPECTED_BRANCH="c2-manual-acceptance-remediation"' in source
