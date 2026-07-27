@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 import py_compile
 import subprocess
@@ -12,6 +13,18 @@ def read(name: str) -> str:
     return (E2E / name).read_text(encoding="utf-8")
 
 
+def load_python(name: str):
+    path = E2E / name
+    spec = importlib.util.spec_from_file_location(
+        f"asr_test_{path.stem.replace('-', '_')}",
+        path,
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_exact_scope_is_integrated_into_canonical_contour_without_profiles() -> None:
     run = read("run-e2e.sh")
     api = read("cards-exact-av-media-api.py")
@@ -21,6 +34,20 @@ def test_exact_scope_is_integrated_into_canonical_contour_without_profiles() -> 
     assert '/e2e/bin/cards-exact-av-media-browser.mjs' in run
     assert '/e2e/bin/cards-exact-av-media-evidence.py' in run
     assert "/api/inspection-profiles/" not in api
+
+
+def test_exact_api_counts_complete_class_tokens_without_prefix_collisions() -> None:
+    api = load_python("cards-exact-av-media-api.py")
+    html = (
+        '<span class="asr-card-replay">'
+        '<button class="asr-card-replay-button replay-button"></button>'
+        '<audio class="asr-card-replay-audio"></audio>'
+        '</span>'
+    )
+    assert api.count_class_token(html, "asr-card-replay") == 1
+    assert api.count_class_token(html, "asr-card-replay-button") == 1
+    assert api.count_class_token(html, "asr-card-replay-audio") == 1
+    assert api.count_class_token(html, "replay-button") == 1
 
 
 def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
@@ -42,7 +69,10 @@ def test_exact_host_runner_uses_strict_mounts_and_state_guards() -> None:
     assert 'EXPECTED_BRANCH="c2-manual-acceptance-remediation"' in source
     assert "git status --porcelain=v1" in source
     assert "validate_e2e_harness_reuse.py" in source
-    assert source.count('--mount "type=bind,source=') == 5
+    assert source.count('--mount "type=bind,source=') == 6
+    assert 'target=/cleanup' in source
+    assert "--entrypoint /bin/sh" in source
+    assert "temporary Docker data could not be removed" in source
     assert "docker run -v" not in source
     assert "--volume" not in source
     assert "require_file" in source

@@ -33,6 +33,27 @@ class MediaParser(HTMLParser):
             self.sources.append((tag.lower(), media_name(src)))
 
 
+class ClassTokenCounter(HTMLParser):
+    def __init__(self, token: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self.token = token
+        self.count = 0
+
+    def handle_starttag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if name.lower() != "class" or value is None:
+                continue
+            if self.token in value.split():
+                self.count += 1
+
+
+def count_class_token(html: str, token: str) -> int:
+    parser = ClassTokenCounter(token)
+    parser.feed(html)
+    parser.close()
+    return parser.count
+
+
 def media_name(src: str) -> str:
     parsed = urlparse(src)
     query = parse_qs(parsed.query)
@@ -220,8 +241,8 @@ def main() -> int:
             raise AssertionError(f"unsafe media path accepted: {name} HTTP {status}")
         unsafe[name] = {"status": status, "contentType": content_type, "sizeBytes": len(body)}
 
-    front_replay_wrappers = count(front, r'class="[^"]*\basr-card-replay\b')
-    front_replay_buttons = count(front, r'class="[^"]*\basr-card-replay-button\b')
+    front_replay_wrappers = count_class_token(front, "asr-card-replay")
+    front_replay_buttons = count_class_token(front, "asr-card-replay-button")
     front_audio_elements = count(front, r"<audio\b")
     if (front_replay_wrappers, front_replay_buttons, front_audio_elements) != (1, 1, 1):
         raise AssertionError(

@@ -137,9 +137,21 @@ changed_paths_file="$(mktemp)"
 reuse_report="$(mktemp)"
 temp_root=""
 cleanup() {
+  set +e
   rm -f "$changed_paths_file" "$reuse_report"
   if [ -n "$temp_root" ] && [ -d "$temp_root" ]; then
-    rm -rf "$temp_root"
+    rm -rf "$temp_root" 2>/dev/null
+    if [ -d "$temp_root" ] && command -v docker >/dev/null 2>&1; then
+      docker run --rm --user 0:0 --entrypoint /bin/sh \
+        --mount "type=bind,source=$temp_root,target=/cleanup" \
+        "$image" \
+        -c 'find /cleanup -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +' \
+        >/dev/null 2>&1
+      rm -rf "$temp_root" 2>/dev/null
+    fi
+    if [ -d "$temp_root" ]; then
+      printf '[WARN] temporary Docker data could not be removed: %s\n' "$temp_root" >&2
+    fi
   fi
 }
 trap cleanup EXIT
