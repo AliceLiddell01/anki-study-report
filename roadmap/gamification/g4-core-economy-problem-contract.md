@@ -22,8 +22,9 @@ repository: AliceLiddell01/anki-study-report
 target branch: gamification
 starting gamification HEAD: abb1d26e416d29f64d505546cca74de0f7379eab
 task branch: g4-1-core-economy-problem-contract
-PR: RECORDED_AFTER_CREATION
-reviewed pre-closeout HEAD: RECORDED_AFTER_VALIDATION
+PR: #163
+PR base: gamification
+reviewed pre-closeout HEAD: 148a1b8105469acaa9c05270cc352777246ff198
 final merge SHA: RECORDED_IN_EXTERNAL_REPORT_AFTER_VERIFIED_MERGE
 master changed: NO
 AGENTS.md: NOT FOUND
@@ -80,6 +81,8 @@ contract_id: core-economy-problem-contract
 version: 1
 status: FROZEN_PRE_NORMALIZATION_ANALYSIS
 schema draft: https://json-schema.org/draft/2020-12/schema
+contract Git blob: bcacdee21303f975c73f8a81b3127f98d5713c5a
+schema Git blob: a968deb113119d5315a647521504f5ecef6b944a
 ```
 
 ## Input evidence ledger
@@ -146,7 +149,7 @@ production storage/API/UI: NOT_DESIGNED
 
 ## Validation
 
-Focused validation completed before repository mutation:
+Focused validation completed before repository mutation and exact committed blobs were rechecked after publication:
 
 ```text
 strict duplicate-key-safe JSON parse: PASS
@@ -164,10 +167,16 @@ threat coverage: 14 / 14 PASS
 invariant coverage: 28 / 28 PASS
 final outcome coverage: 3 / 3 PASS
 G4.2 entry coverage: 14 / 14 PASS
-invariant threat/persona/G4.2 references: PASS
+invariant coverage policy: THREAT + PERSONA + G4_2_ENTRY
 Markdown code-fence balance: PASS
 private-path scan: PASS
 secret/token scan: PASS
+contract local/Git blob equality: PASS
+schema local/Git blob equality: PASS
+branch ancestry before closeout update: ahead 11 / behind 0
+changed-path allowlist: exact 10 paths
+production paths changed: NO
+research execution code/tests changed: NO
 ```
 
 Negative samples rejected:
@@ -198,7 +207,7 @@ jsonschema: 4.26.0
 
 Project-local Python 3.11 WSL execution was not independently available in the connector sandbox. The contract/schema are data-only Draft 2020-12 artifacts and no production/runtime Python code was changed.
 
-## Expected changed paths
+## Exact changed paths
 
 ```text
 docs/README.md
