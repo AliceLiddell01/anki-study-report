@@ -19,6 +19,7 @@ production code и tests
 - [C2 Core hardening](core/c2-core-hardening-ui-remediation.md)
 - [C2 post-merge manual acceptance remediation — Stage 1](core/c2-manual-acceptance-remediation-closeout.md)
 - [C2 Cards Prototype v3.2.3 production integration — Stage 2](core/c2-cards-v323-production-integration.md)
+- [C2 Cards final AV/audio/media evidence closeout](core/c2-cards-final-av-media-evidence-closeout.md)
 - [C2 Inspection Profiles corrected screenshot-first audit](core/c2-inspection-profiles-screenshot-audit.md)
 
 Остальные C1.5R reports остаются в [`reports/core/`](core/).
