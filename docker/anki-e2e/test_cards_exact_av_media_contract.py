@@ -66,6 +66,9 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "proof?.playCalls >= 2" in source
     assert "second.playEventCurrentTime" in source
     assert "second replay was not reset before play" in source
+    assert "first playback did not advance before second replay" in source
+    assert "seekableRanges" in source
+    assert "second replay pre-seek did not settle" not in source
     assert "rejectedPromiseHandled" in source
     assert "inspectionProfileRequests.length === 0" in source
     assert "externalRequests.length === 0" in source

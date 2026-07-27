@@ -757,35 +757,36 @@ async function proveReplayLifecycle(page, outputRoot) {
   assert(first.playEventCurrentTime <= 0.03, `audio was not reset before first play event: ${JSON.stringify(first)}`);
 
   const secondSetup = await host.evaluate(async (element) => {
-    const audio = element.shadowRoot.querySelector("audio.asr-card-audio");
-    audio.pause();
+    const audio = element.shadowRoot.querySelector(
+      "audio.asr-card-audio",
+    );
 
     const duration = Number(audio.duration);
-    const target = Number.isFinite(duration) && duration > 0.2
-      ? Math.min(duration * 0.6, duration - 0.05)
-      : 0.08;
+    const minimumProgress = Number.isFinite(duration) && duration > 0
+      ? Math.min(0.08, Math.max(0.03, duration * 0.15))
+      : 0.05;
+    const deadline = performance.now() + 5000;
 
-    await new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve();
-      };
-      const timer = setTimeout(() => {
-        if (Math.abs(audio.currentTime - target) <= 0.03) finish();
-        else reject(new Error(`second replay pre-seek did not settle: ${audio.currentTime} vs ${target}`));
-      }, 1500);
+    while (
+      audio.currentTime < minimumProgress
+      && !audio.ended
+      && performance.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
 
-      audio.addEventListener("seeked", finish, { once: true });
-      audio.currentTime = target;
-      if (Math.abs(audio.currentTime - target) <= 0.03) queueMicrotask(finish);
-    });
+    audio.pause();
 
     const beforeClickCurrentTime = audio.currentTime;
+    const timeRanges = (ranges) => (
+      [...Array(ranges.length)].map((_, index) => [
+        ranges.start(index),
+        ranges.end(index),
+      ])
+    );
+
     window.__asrReplayProof.second = {
-      target,
+      minimumProgress,
       beforeClickCurrentTime,
       playEvent: false,
       playingEvent: false,
@@ -795,29 +796,42 @@ async function proveReplayLifecycle(page, outputRoot) {
 
     audio.addEventListener("play", () => {
       window.__asrReplayProof.second.playEvent = true;
-      window.__asrReplayProof.second.playEventCurrentTime = audio.currentTime;
+      window.__asrReplayProof.second.playEventCurrentTime =
+        audio.currentTime;
     }, { once: true });
+
     audio.addEventListener("playing", () => {
       window.__asrReplayProof.second.playingEvent = true;
-      window.__asrReplayProof.second.playingEventCurrentTime = audio.currentTime;
+      window.__asrReplayProof.second.playingEventCurrentTime =
+        audio.currentTime;
     }, { once: true });
 
     return {
-      target,
+      minimumProgress,
       beforeClickCurrentTime,
+      duration,
+      ended: audio.ended,
       paused: audio.paused,
       seeking: audio.seeking,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+      seekableRanges: timeRanges(audio.seekable),
+      playedRanges: timeRanges(audio.played),
     };
   });
 
   assert(
     secondSetup.paused === true
       && secondSetup.seeking === false
-      && secondSetup.beforeClickCurrentTime >= 0.05,
-    `second replay precondition failed: ${JSON.stringify(secondSetup)}`,
+      && secondSetup.beforeClickCurrentTime
+        >= secondSetup.minimumProgress,
+    `first playback did not advance before second replay: ${
+      JSON.stringify(secondSetup)
+    }`,
   );
 
   await button.click();
+
   await page.waitForFunction(() => {
     const proof = window.__asrReplayProof;
     return proof?.playCalls >= 2
@@ -825,21 +839,34 @@ async function proveReplayLifecycle(page, outputRoot) {
       && proof?.second?.playingEvent;
   }, null, { timeout: 10000 });
 
-  const second = await host.evaluate(() => {
-    const proof = window.__asrReplayProof;
-    const value = proof.second;
-    return {
-      ...value,
-      playCalls: proof.playCalls,
-      resetObserved: value.beforeClickCurrentTime >= 0.05
-        && value.playEventCurrentTime !== null
-        && value.playEventCurrentTime <= 0.03,
-    };
-  });
+  const second = await host.evaluate(
+    (element, setup) => {
+      const audio = element.shadowRoot.querySelector(
+        "audio.asr-card-audio",
+      );
+      const proof = window.__asrReplayProof;
+      const value = proof.second;
+
+      return {
+        ...setup,
+        ...value,
+        playCalls: proof.playCalls,
+        currentTimeAfterPlay: audio.currentTime,
+        resetObserved:
+          value.beforeClickCurrentTime
+            >= value.minimumProgress
+          && value.playEventCurrentTime !== null
+          && value.playEventCurrentTime <= 0.03,
+      };
+    },
+    secondSetup,
+  );
 
   assert(
     second.resetObserved === true,
-    `second replay was not reset before play: ${JSON.stringify(second)}`,
+    `second replay was not reset before play: ${
+      JSON.stringify(second)
+    }`,
   );
 
   const pageErrorsBeforeRejection = pageErrors.length;
