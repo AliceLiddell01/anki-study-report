@@ -11,7 +11,8 @@ G2: IN PROGRESS
 G2.1: COMPLETE
 G2.2: COMPLETE
 G2.3: COMPLETE
-G2.4: IN PROGRESS — POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN
+G2.4: COMPLETE
+G2.5: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -59,12 +60,13 @@ Protocol status is `FROZEN_PRE_SCREENING_IMPLEMENTATION`; publication SHA is `41
 ### G2.4 bounded screening and disclosed harness correction
 
 - [Technical reference](learn-xp-bounded-screening.md)
+- [G2.4 closeout](../../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Evidence schema](../../research/gamification-sim/schemas/learn-xp-bounded-screening-evidence-v1.schema.json)
 - [Screening harness](../../research/gamification-sim/src/gamification_sim/learn_bounded_screening.py)
 - [Allocation evaluator](../../research/gamification-sim/src/gamification_sim/learn_reward_allocation.py)
 - [Focused tests](../../research/gamification-sim/tests/test_learn_bounded_screening.py)
 
-The first canonical G2.4 attempt exposed results but is invalid because archive member modes inherited filesystem-specific permissions and byte-identical bundle reproduction failed. The disclosed `HARNESS` correction fixes evidence tar members to `0644`, changes no frozen screening-design field, quarantines the prior bundle and requires a new implementation commit plus full `340`-unit rerun.
+The first canonical attempt on `ef7c638a…` remains quarantined as `INVALID`. The disclosed packaging-only `HARNESS` correction was published as `548b27de6283b32fb27541db02ce6c8b65c29756` and changed no frozen screening-design field. The replacement matrix completed `340/340` unique units with detached validation and byte-identical bundle reproduction. Family survivors are `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` and `C-PENDING-SPLIT-D1-NOTE-SIBLING`; no cross-family ranking or final model selection was performed.
 
 ## Current G1 contracts
 

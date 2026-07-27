@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-26
+**Снимок:** 2026-07-27
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -85,7 +85,13 @@ delay policies — D1; D2
 pending split — 0.25 provisional / 0.75 settlement
 hypotheses / hard gates / metrics — 5 / 23 / 14
 G2.4 matrix budget — 340 deterministic units
-G2.4 — IN PROGRESS / POST-RESULTS HARNESS CORRECTION BEFORE VALID RERUN
+G2.4 — COMPLETE
+screened implementation SHA — 548b27de6283b32fb27541db02ce6c8b65c29756
+replacement matrix — 340 / 340 unique; 0 / 0 / 0 missing / extra / duplicates
+manifest / evidence / bundle — fafff6ac14b00e268d25a9a7b3553aad94b0e6594b64b40722fd44eba4a91e1a / 5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6 / a2578fd2f7540cff10fdde0adc389afeaf8267dbf34185d2378467e6552ffa78
+F-CONFIRMATION-ONLY survivor — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+F-PENDING-CONFIRMED-SPLIT survivor — C-PENDING-SPLIT-D1-NOTE-SIBLING
+G2.5 — NEXT / NOT STARTED
 production integration — PROHIBITED
 ```
 
@@ -99,7 +105,7 @@ G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, п
 
 G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
 
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` открыл результаты, но признан невалидным из-за filesystem-dependent tar member modes при bundle reproduction. Зафиксирована независимая `HARNESS` correction (`mode → 0644`), prior evidence изолирован, требуется новый implementation commit и полный `340`-unit rerun; G2.5 не начинался.
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection, production approval и G2.5 не выполнялись.
 
 Точные источники:
 
@@ -118,6 +124,7 @@ Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 fu
 - [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
 - [G2.2 closeout](../roadmap/gamification/g2-learn-xp-lifecycle.md)
 - [G2.3 closeout](../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
+- [G2.4 closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.

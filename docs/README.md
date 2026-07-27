@@ -51,6 +51,7 @@ reports/    исторические evidence и завершённые пров
 - [Learn XP lifecycle and anti-farming model](gamification/learn-xp-lifecycle-model.md)
 - [Learn XP candidate protocol](gamification/learn-xp-candidate-protocol.md)
 - [Learn XP bounded screening technical reference](gamification/learn-xp-bounded-screening.md)
+- [G2.4 bounded screening closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 

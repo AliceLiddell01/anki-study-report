@@ -265,50 +265,54 @@ Interrupted run можно продолжать только на том же im
 
 Нельзя утверждать human-learning benefit, motivation benefit, optimal delay, optimal pending ratio, final Learn XP model или production readiness.
 
-## Текущее pre-results состояние
+## Canonical replacement result
 
 ```text
-implementation publication SHA: NOT YET RECORDED
-results viewed before implementation publication: false
-screening executed: NO
-candidate outcomes: NONE
-family outcomes: NONE
-final model selected: false
+screened implementation SHA: 548b27de6283b32fb27541db02ce6c8b65c29756
+base SHA: 933325f8d2647d52cbc0d6859ff44ded0b6686c4
+protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
+expected / actual / unique: 340 / 340 / 340
+missing / extra / duplicates: 0 / 0 / 0
+manifest digest: fafff6ac14b00e268d25a9a7b3553aad94b0e6594b64b40722fd44eba4a91e1a
+evidence digest: 5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6
+evidence.json SHA-256: d0d79802f8512fa40730aac5c377d75021ff39100330483a784c43ce20b09462
+external bundle SHA-256: a2578fd2f7540cff10fdde0adc389afeaf8267dbf34185d2378467e6552ffa78
+detached validation: PASS
+deterministic replay: PASS
+byte-identical bundle reproduction: PASS
 production approved: false
 production integration: false
 G2.5 started: false
 ```
 
-
-## Post-results harness correction before valid rerun
-
-The first canonical attempt on implementation `ef7c638a70b7bbb7883f512309a1e248118a9203`
-completed the frozen `340`-unit matrix and exposed candidate/family results, but the
-attempt is **invalid** because byte-identical external archive reproduction failed.
-
-Recorded disclosure:
+Family-local outcomes:
 
 ```text
-results viewed: YES
-prior implementation SHA: ef7c638a70b7bbb7883f512309a1e248118a9203
-prior evidence digest: 51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726
-prior archive SHA-256: 58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3
-prior run status: INVALID
-classification: HARNESS
-root cause: TAR_MEMBER_MODE_INHERITED_FROM_OUTPUT_FILESYSTEM
-screening design changed: NO
-old/new evidence mixing: PROHIBITED
-required rerun: FULL_340_UNIT_MATRIX
+F-CONFIRMATION-ONLY
+→ C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+
+F-PENDING-CONFIRMED-SPLIT
+→ C-PENDING-SPLIT-D1-NOTE-SIBLING
 ```
 
-The independent root cause is limited to external bundle serialization:
-`TarInfo.mode` inherited host filesystem permission bits. The first bundle was
-written on WSL DrvFS and the reproduction bundle on the Linux filesystem, so
-identical file contents could produce different tar member modes. The correction
-sets every regular evidence member mode to `0644`; it does not change families,
-ratios, delays, subject strategies, scenarios, unit IDs, gates, metrics,
-lexicographic ordering, statuses, tie policy or missing-data behavior.
+Все восемь candidates получили `SCREENING_ELIGIBLE`; обе reference variants остались `REFERENCE_ONLY`. Cross-family ranking не выполнялся, final Learn XP model не выбирался.
 
-A new implementation commit, a full research-suite rerun and a completely new
-canonical `340`-unit evidence bundle are required. The invalid bundle remains
-quarantined and must not be merged with the replacement evidence.
+## Disclosed invalid attempt
+
+Первый canonical attempt на `ef7c638a70b7bbb7883f512309a1e248118a9203` выполнил frozen matrix и открыл результаты, но был целиком признан `INVALID`, поскольку byte-identical archive reproduction зависела от filesystem-derived `TarInfo.mode`.
+
+```text
+classification: HARNESS
+prior evidence digest: 51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726
+prior archive SHA-256: 58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3
+results viewed: true
+screening design changed: false
+required rerun: FULL_340_UNIT_MATRIX
+old/new evidence mixed: false
+```
+
+Correction sets every regular tar member mode to `0644`; families, ratios, delays, subject strategies, scenarios, unit IDs, gates, metrics, lexicographic ordering, statuses, tie policy and missing-data behavior did not change. Replacement evidence includes the required post-results amendment and preserves the invalid bundle only as quarantined external evidence.
+
+## Continuation boundary
+
+G2.4 is complete. The external canonical bundle remains owner-managed and is not committed to Git. Any G2.5 work requires a separate activation and must start from the two family-local survivors, exact evidence identities, known limitations and unresolved confirmatory questions. G2.4 does not authorize a cross-family winner, final model or production integration.
