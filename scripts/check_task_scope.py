@@ -135,11 +135,11 @@ def changed_paths(base_ref: str, include_untracked: bool = True) -> list[str]:
     paths: set[str] = set()
 
     # Three-dot comparison covers committed changes from the merge base to HEAD.
-    committed = run_git(["diff", "--name-only", "--diff-filter=ACMRTUXB", f"{base_ref}...HEAD"])
+    committed = run_git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", f"{base_ref}...HEAD"])
     paths.update(committed.splitlines())
 
     # Include staged and unstaged work that is not in HEAD yet.
-    worktree = run_git(["diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD"])
+    worktree = run_git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", "HEAD"])
     paths.update(worktree.splitlines())
 
     if include_untracked:
