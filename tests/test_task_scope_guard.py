@@ -109,6 +109,36 @@ def test_changed_paths_includes_committed_worktree_and_untracked(tmp_path, monke
     ]
 
 
+def test_changed_paths_includes_deleted_file(tmp_path, monkeypatch):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "scope-guard@example.invalid")
+    git("config", "user.name", "Scope Guard Test")
+    deleted = repository / "deleted.txt"
+    deleted.write_text("tracked\n", encoding="utf-8")
+    git("add", "deleted.txt")
+    git("commit", "-m", "base")
+    base = git("rev-parse", "HEAD")
+
+    deleted.unlink()
+    git("add", "-u")
+    git("commit", "-m", "delete")
+
+    monkeypatch.chdir(repository)
+    assert guard.changed_paths(base) == ["deleted.txt"]
+
+
 def test_cli_explicit_paths_pass_and_fail(tmp_path, capsys):
     contract = tmp_path / "task.toml"
     contract.write_text(
