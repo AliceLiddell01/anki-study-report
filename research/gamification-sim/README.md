@@ -8,16 +8,14 @@ G1: COMPLETE
 G1 final outcome: DEFER_REVIEW_MODEL
 recommended Review XP research candidate: NONE
 G2: COMPLETE
-G2.1: COMPLETE
-G2.2: COMPLETE
-G2.3: COMPLETE
-G2.4: COMPLETE
-G2.5: COMPLETE — CONFIRMATORY INCONCLUSIVE
-G2.6: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
 recommended Learn XP research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+G3: DEFERRED / POST-MVP / NOT STARTED
+G4: IN PROGRESS
+G4.1: COMPLETE
+core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G4.2: NEXT / NOT STARTED
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```
 
 The package is isolated under `research/gamification-sim/`. It has no production imports, root dependency changes, Fast CI/package/release integration, real Anki profile data, collection data or tokens.
@@ -37,6 +35,40 @@ tests/         Python research tests
 rust-oracle/   isolated Rust implementation
 ```
 
+## G4.1 core economy contract artifacts
+
+- [Machine contract](contracts/core-economy-problem-contract-v1.json)
+- [Strict Draft 2020-12 schema](schemas/core-economy-problem-contract-v1.schema.json)
+- [Human contract](../../docs/gamification/core-economy-problem-contract.md)
+- [G4.1 closeout](../../roadmap/gamification/g4-core-economy-problem-contract.md)
+
+Frozen G4.1 state:
+
+```text
+contract_id: core-economy-problem-contract
+version: 1
+status: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G3: DEFERRED_POST_MVP_NOT_STARTED
+G3 blocks G4/G5/G6: false
+initial domains: REVIEW_DOMAIN; LEARN_DOMAIN
+excluded domain: CREATE_DOMAIN
+Review winner: NONE
+Learn candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+terminology: 30
+personas: 9
+threats: 14
+invariants: 28
+allowed outcomes: 3
+G4.2 requirements: 14
+G4.2 started: false
+production approved: false
+```
+
+The machine contract preserves `P-STEP-ZERO` and `P-TAPER-ZERO-30D` as an explicit Review uncertainty axis. It preserves the Learn identity limitation `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`. It selects no conversion ratio, normalized XP, productive-day threshold, level curve, streak, Momentum or recovery formula.
+
+G4.1 adds no evaluator, CLI command, candidate registry, matrix, fixture trace or simulation. Its strict schema freezes the exact registries and rejects selected numeric/production state.
+
 ## G2.1 Learn XP artifacts
 
 - [Machine problem contract](contracts/learn-xp-problem-contract-v1.json)
@@ -44,24 +76,7 @@ rust-oracle/   isolated Rust implementation
 - [Human problem contract](../../docs/gamification/learn-xp-problem-contract.md)
 - [G2.1 closeout](../../roadmap/gamification/g2-learn-xp-problem-contract.md)
 
-G2.1 freezes:
-
-```text
-problem statement and terminology
-Anki scheduler-state / Learn XP research-state boundary
-identity candidates: CARD, NOTE, SIBLING_GROUP, LEARNING_EPISODE
-pending and confirmation minimum requirements
-rewardable/non-rewardable category boundary
-six anti-farming threat families
-19 protected invariants
-privacy and claims boundaries
-G2.2 entry contract
-three allowed final G2 outcomes
-```
-
-G2.1 adds no executable command and runs no simulation. It does not select an identity winner, lifecycle, reward amount, pending ratio, confirmation delay, candidate family or matrix.
-
-The contract reuses existing `strict_json.py`, `canonical_json.py` and bounded workspace conventions as validation references. No generic validator framework or production code was added.
+G2.1 freezes problem/terminology, scheduler/reward boundary, four identity candidates, pending/confirmation minimum requirements, six anti-farming threat families, 19 invariants, privacy/claims boundaries and three final outcomes.
 
 ## G2.2 Learn XP lifecycle artifacts
 
@@ -74,26 +89,12 @@ The contract reuses existing `strict_json.py`, `canonical_json.py` and bounded w
 - [Focused tests](tests/test_learn_lifecycle.py)
 - [G2.2 closeout](../../roadmap/gamification/g2-learn-xp-lifecycle.md)
 
-Frozen G2.2 state:
-
 ```text
 model status: FROZEN_PRE_CANDIDATE_DESIGN
-states: 7
-events: 20
-transitions: 12
-identity architecture: FACTORIZED
-generic form: LearningEpisode<AchievementSubject>
-subject candidates: CARD; NOTE; SIBLING_GROUP
-subject winner: NONE
-fixtures: 23
-threat families: 6
-protected invariants: 19
-manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
+states / events / transitions: 7 / 20 / 12
+identity architecture: LearningEpisode<AchievementSubject>
+fixtures / threats / invariants: 23 / 6 / 19
 ```
-
-The pre-conformance model was published at `63741bcc4d757cd131ab94d9e262042679460d6f`. Focused validation and one bounded full-suite retry after a concrete Cargo cache repair passed. No lifecycle semantics changed after conformance.
-
-G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix.
 
 ## G2.3 Learn XP candidate protocol artifacts
 
@@ -104,29 +105,14 @@ G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievemen
 - [Focused protocol tests](tests/test_learn_candidate_protocol.py)
 - [G2.3 closeout](../../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
 
-Frozen G2.3 state:
-
 ```text
 protocol status: FROZEN_PRE_SCREENING_IMPLEMENTATION
-protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
-families: 2
-parameterizations: 4
-subject strategies: 2
-delay policies: 2
-candidates: 8
-reference variants: 2
-hypotheses: 5
-hard gates: 23
-descriptive metrics: 14
+families / parameterizations: 2 / 4
+subject strategies / delay policies: 2 / 2
+candidates / references: 8 / 2
+hypotheses / gates / metrics: 5 / 23 / 14
 expected units: 340
-unique unit IDs: 340
-seed axis: ABSENT_DETERMINISTIC
-full research suite: 982 passed
 ```
-
-G2.3 also consolidates lifecycle digest serialization into the shared helper and enforces exact direct-event types without changing the 31 frozen lifecycle results or fixture manifest digest.
-
-The protocol contains no screening results, candidate outcomes or survivors.
 
 ## G2.4 Learn XP bounded-screening artifacts
 
@@ -137,7 +123,7 @@ The protocol contains no screening results, candidate outcomes or survivors.
 - [Technical reference](../../docs/gamification/learn-xp-bounded-screening.md)
 - [G2.4 closeout](../../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 
-The implementation consumes only the frozen `340/340` manifest generated by `learn_candidate_protocol.py`. The first canonical attempt on `ef7c638a…` is quarantined as `INVALID`; its results-viewed disclosure remains in the replacement evidence. The packaging-only `HARNESS` correction normalizes tar member mode to `0644` and was published as `548b27de6283b32fb27541db02ce6c8b65c29756` without changing families, delays, subjects, units, gates, metrics or selection rules. The replacement run completed `340/340` unique units, detached recomputation and byte-identical bundle reproduction.
+The valid replacement run completed `340/340` unique units with detached validation and byte-identical reproduction. Family survivors are `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` and `C-PENDING-SPLIT-D1-NOTE-SIBLING`.
 
 ## G2.5 Learn XP confirmatory artifacts
 
@@ -149,21 +135,19 @@ The implementation consumes only the frozen `340/340` manifest generated by `lea
 - [Focused tests](tests/test_learn_confirmatory.py)
 - [Confirmatory closeout](../../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 
-The prospectively published matrix completed `216/216/216` units with `0/0/0` missing/extra/duplicates, detached validation and byte-identical reproduction. Both survivors are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable under `SYNTHETIC_CONTRACT_ONLY`; the zero-reward reference is `REFERENCE_ONLY`. No ranking, winner, recommendation, final model or production approval was produced by G2.5.
+The matrix completed `216/216/216`. Both survivors remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable; reference is `REFERENCE_ONLY`.
 
 ## G2.6 final Learn XP decision
 
 - [Final decision and G2 closeout](../../roadmap/gamification/g2-learn-xp-decision.md)
 
-G2.6 is docs-only and adds no command, protocol field, schema, simulation, matrix or evidence. It closes G2 with:
-
 ```text
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
-recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+recommended candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 decision basis: MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
 ```
 
-The selected model preserves the same frozen `1.0 LRU` confirmed total as the pending-split survivor, while creating no provisional reward exposure and requiring the smaller accounting/explanation surface. Both G2.5 outcomes remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. The non-selected pending-split candidate remains non-falsified and is not rejected as invalid. The recommendation is not confirmatory eligibility, human-learning evidence, motivation evidence or production approval.
+The recommendation is not confirmatory eligibility, human-learning evidence or production approval.
 
 ## Current G1 artifacts
 
@@ -182,36 +166,7 @@ The selected model preserves the same frozen `1.0 LRU` confirmed total as the pe
 - [G1.5 closeout](../../roadmap/gamification/g1-confirmatory-evidence.md)
 - [G1.6 decision and G1 closeout](../../roadmap/gamification/g1-review-xp-decision.md)
 
-G1.4 executed exact 160-unit bounded screening and retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`.
-
-```text
-screened implementation SHA:
-a8857f111849e2e98744adda8e06fe1910bdf805
-
-canonical G1.4 merge SHA:
-d855baf7355bba3f4014370cafba3fdc6d0c0e3c
-
-manifest digest:
-40297310ef11318f940ddee8a6f5e1d1b20df93d914c4d7442eb4681f60da57c
-
-evidence digest:
-836b069046c6173190bf21b6f6c1e03613f9dc2fe6083327513df9d2205fe694
-```
-
-G1.5 executed the prospectively published 840-unit confirmatory matrix on implementation `7ae7a26cf0591dfc7f004f3b378eb3bff8b7d2c8`. Both survivors received `CONFIRMATORY_ELIGIBLE`.
-
-```text
-manifest digest:
-eea4e2ed6da087f7ac45eb56d9390b23e44ce52837b5f1d015afb3276049c728
-
-evidence digest:
-9b4d6aa41bf2392aac273784b45b28ff88210e05ea04533bf440d6522ad75afa
-
-external evidence bundle SHA-256:
-90b2132cbe46edeb2a28e6f9ae81de311807353dd5e0826cbe8d3a6af41a85fb
-```
-
-G1.6 closed G1 with `DEFER_REVIEW_MODEL` and recommended no research candidate. Both candidates remain eligible, not selected and not falsified.
+G1.4 retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`. G1.5 marked both `CONFIRMATORY_ELIGIBLE`; G1.6 selected no winner and closed G1 with `DEFER_REVIEW_MODEL`.
 
 ## Available command surface
 
@@ -229,25 +184,16 @@ run-learn-xp-confirmatory
 validate-learn-xp-confirmatory-evidence
 ```
 
-The G2.4 and G2.5 commands remain historical research-only surfaces. G2.6 adds no executable command and reruns no matrix.
+G4.1 adds no executable command. Existing G1/G2 commands remain historical research-only surfaces.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence. G2.3 adds prospective candidate protocol and dry matrix identities. G2.4 records one invalid disclosed synthetic attempt and one valid full replacement run. G2.5 records a prospectively published, deterministic confirmatory run with two fail-closed inconclusive candidate outcomes. G2.6 records a bounded research/product governance recommendation without adding evidence or changing frozen outcomes. The valid external bundles remain owner-managed and are not part of Git; no production evidence or approval exists.
+G0.7, G1.2a, G1.4/G1.5 and G2.4/G2.5 are synthetic evidence. G4.1 records a prospective problem contract and owner decision without adding evidence or changing frozen G1/G2 outcomes.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
 
-## G2 final status
-
 ```text
-G2: COMPLETE
-G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
-recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
-selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
-selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
-non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
+G4.2: NEXT / NOT STARTED
 production approved: NO
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```
