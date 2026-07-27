@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Iterable, NamedTuple, Sequence
 
 DEFAULT_CONTRACT = Path(".agents/task-contract.toml")
+ALLOWED_MODES = {"chatgpt", "codex"}
+ALLOWED_TRACKS = {"core", "gamification", "operations", "identity", "extensions", "platform"}
 
 BUILTIN_FORBIDDEN = (
     ".venv/**",
@@ -41,6 +43,9 @@ BUILTIN_FORBIDDEN = (
 
 class Contract(NamedTuple):
     task: str
+    mode: str
+    track: str
+    branch: str
     base_ref: str
     allowed_paths: tuple[str, ...]
     forbidden_paths: tuple[str, ...]
@@ -100,6 +105,9 @@ def load_contract(path: Path) -> Contract:
         raise ValueError("Unsupported or missing schema_version; expected 1.")
 
     task = str(data.get("task", "")).strip()
+    mode = str(data.get("mode", "")).strip()
+    track = str(data.get("track", "")).strip()
+    branch = str(data.get("branch", "")).strip()
     base_ref = str(data.get("base_ref", "")).strip()
     allowed = tuple(str(item).strip() for item in data.get("allowed_paths", ()) if str(item).strip())
     forbidden = tuple(
@@ -108,6 +116,12 @@ def load_contract(path: Path) -> Contract:
 
     if not task or task.startswith("REPLACE:"):
         raise ValueError("The task field is not filled in.")
+    if mode not in ALLOWED_MODES:
+        raise ValueError(f"mode must be one of: {', '.join(sorted(ALLOWED_MODES))}.")
+    if track not in ALLOWED_TRACKS:
+        raise ValueError(f"track must be one of: {', '.join(sorted(ALLOWED_TRACKS))}.")
+    if not branch or branch.startswith("REPLACE:"):
+        raise ValueError("The branch field is not filled in.")
     if not base_ref:
         raise ValueError("The base_ref field is required.")
     if not allowed or any(item == "REPLACE/ME" for item in allowed):
@@ -115,6 +129,9 @@ def load_contract(path: Path) -> Contract:
 
     return Contract(
         task=task,
+        mode=mode,
+        track=track,
+        branch=branch,
         base_ref=base_ref,
         allowed_paths=allowed,
         forbidden_paths=forbidden,
@@ -129,6 +146,13 @@ def run_git(args: Sequence[str]) -> str:
         text=True,
     )
     return completed.stdout
+
+
+def current_branch() -> str:
+    branch = run_git(["branch", "--show-current"]).strip()
+    if not branch:
+        raise ValueError("Detached HEAD is not allowed for task-scope validation.")
+    return branch
 
 
 def changed_paths(base_ref: str, include_untracked: bool = True) -> list[str]:
@@ -182,11 +206,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         contract = load_contract(args.contract)
         base_ref = args.base or contract.base_ref
-        paths = (
-            sorted({normalize_path(path) for path in args.paths if normalize_path(path)})
-            if args.paths is not None
-            else changed_paths(base_ref, include_untracked=not args.no_untracked)
-        )
+        if args.paths is not None:
+            branch = None
+            paths = sorted({normalize_path(path) for path in args.paths if normalize_path(path)})
+        else:
+            branch = current_branch()
+            if branch != contract.branch:
+                raise ValueError(
+                    f"Current branch {branch!r} does not match contract branch {contract.branch!r}."
+                )
+            paths = changed_paths(base_ref, include_untracked=not args.no_untracked)
         unexpected, forbidden = validate_paths(
             paths,
             allowed_paths=contract.allowed_paths,
@@ -197,6 +226,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     print(f"Task: {contract.task}")
+    print(f"Mode / track: {contract.mode} / {contract.track}")
+    if branch is not None:
+        print(f"Branch: {branch}")
     print(f"Base: {base_ref}")
     print(f"Changed paths: {len(paths)}")
 
