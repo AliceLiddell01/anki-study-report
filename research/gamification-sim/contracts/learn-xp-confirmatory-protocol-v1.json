@@ -1,0 +1,589 @@
+{
+  "amendment_policy": {
+    "after_results": "invalidate full run, disclose, isolate and rerun all 216 units",
+    "before_results": "version update, field-level diff, rationale and new publication barrier"
+  },
+  "claims_boundary": {
+    "allowed": "prospectively frozen synthetic/identity/explanation gate outcome only",
+    "human_learning": false,
+    "motivation": false,
+    "optimality": false,
+    "retention": false
+  },
+  "condition_groups": [
+    {
+      "count": 16,
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "count": 12,
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "count": 8,
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    }
+  ],
+  "condition_registry": [
+    {
+      "condition_id": "C-CORE-D1-BEFORE-MINIMUM",
+      "description": "1439 minutes and day delta 1 must not confirm.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-D1-EXACT-MINIMUM",
+      "description": "1440 minutes and day delta 1 is the inclusive D1 minimum.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-D1-DAY-NOT-MET",
+      "description": "Elapsed minimum without day delta must not confirm.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-D1-JUST-INSIDE-EXPIRY",
+      "description": "10079 minutes and day delta 6 remains inside the window.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-D1-EXACT-ELAPSED-EXPIRY",
+      "description": "10080 minutes is expired.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-D1-EXACT-DAY-EXPIRY",
+      "description": "Day delta 7 is expired.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-FAILED-INDEPENDENT-RETRIEVAL",
+      "description": "Failure does not confirm and does not penalize.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-FAILURE-THEN-SUCCESS",
+      "description": "Later success inside the same window settles once.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-REPEATED-AGAIN-RETRY",
+      "description": "Again and retries do not multiply pending or gain.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-SAME-CHAIN-GOOD-EASY",
+      "description": "Same-chain Good/Easy never confirms.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-RESET-BEFORE-CONFIRM",
+      "description": "Reset before confirmation creates no fresh achievement.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-RESET-AFTER-CONFIRM",
+      "description": "Reset after confirmation cannot reopen the identity.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-UNDO-CANCEL-INVALIDATE",
+      "description": "Undo/cancel/invalidate voids terminal non-confirmed value.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-LEARNING-ROUTE-EQUIVALENCE",
+      "description": "Empty, one, multi and interday routes preserve achievement eligibility.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-FILTERED-SESSION-DAY",
+      "description": "Filtered deck, session split and Anki-day boundary create no gain.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "C-CORE-NOTE-SIBLING-PROLIFERATION",
+      "description": "Reverse, cloze and template proliferation does not multiply NOTE-SIBLING.",
+      "group_id": "CORE_ROBUSTNESS"
+    },
+    {
+      "condition_id": "I-STANDARD-TWO-TEMPLATES",
+      "description": "One synthetic note with two standard templates.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-FRONT-BACK-REVERSE",
+      "description": "Front/back reverse siblings share one note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-ADJACENT-CLOZE",
+      "description": "Adjacent cloze siblings share one note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-CROSS-DECK-OVERRIDE",
+      "description": "Sibling cards may route across decks without identity split.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-BURY-ENABLED",
+      "description": "Bury enabled does not redefine note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-BURY-DISABLED",
+      "description": "Bury disabled does not redefine note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-FIELD-EDIT-STABLE",
+      "description": "Field edits preserve stable non-content note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-TEMPLATE-ADD-REMOVE",
+      "description": "Template add/remove preserves explicit provenance.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-DUPLICATE-NEW-NOTE",
+      "description": "A duplicate note receives a distinct note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-RESET-RESCHEDULE-STABLE",
+      "description": "Reset/reschedule preserves note identity.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-EXPLICIT-IMPORT-CONTINUITY",
+      "description": "Explicit import continuity is accepted.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "I-DELETE-REIMPORT-AMBIGUOUS",
+      "description": "Delete/reimport without continuity fails closed.",
+      "group_id": "IDENTITY_COMPATIBILITY"
+    },
+    {
+      "condition_id": "E-CONFIRMATION-ONLY-AWAITING",
+      "description": "Confirmation-only before confirmation explains zero allocation.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-PENDING-SPLIT-PROVISIONAL",
+      "description": "Pending split explains 0.25 non-spendable provisional LRU.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-CONFIRMED-SETTLED",
+      "description": "Confirmed state explains exactly 1.0 settled LRU.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-FAILED-RETRIEVAL",
+      "description": "Failed retrieval explains no confirmation and no penalty.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-EXPIRED",
+      "description": "Expired state explains zero retained LRU.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-CANCELLED-INVALIDATED",
+      "description": "Cancelled/invalidated state explains zero retained LRU.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-IDENTITY-AMBIGUITY",
+      "description": "Identity ambiguity fails closed without private content.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    },
+    {
+      "condition_id": "E-REFERENCE-ZERO",
+      "description": "Reference explains zero LRU and REFERENCE_ONLY.",
+      "group_id": "EXPLAINABILITY_OBSERVABILITY"
+    }
+  ],
+  "cross_family_contrast_boundary": {
+    "descriptive_only": true,
+    "ranking": false,
+    "recommendation": false,
+    "winner_field": false
+  },
+  "expected_budget": {
+    "duplicate_units": 0,
+    "expected_unique_units": 216,
+    "expected_units": 216,
+    "extra_units": 0,
+    "missing_units": 0
+  },
+  "explanation_contract": {
+    "forbidden_claims": [
+      "learned",
+      "mastered",
+      "retention improved",
+      "motivation improved",
+      "optimal",
+      "production-ready"
+    ],
+    "required_fields": [
+      "state_code",
+      "allocation_code",
+      "provisional_lru",
+      "confirmed_lru",
+      "settled_total_lru",
+      "window_code",
+      "reason_codes",
+      "subject_strategy",
+      "identity_continuity_code",
+      "claim_boundary_code"
+    ]
+  },
+  "final_decision_handoff": {
+    "stage": "final G2 decision stage",
+    "started": false,
+    "status": "NEXT / NOT STARTED"
+  },
+  "g2_4_evidence_continuity": {
+    "bundle_sha256": "a2578fd2f7540cff10fdde0adc389afeaf8267dbf34185d2378467e6552ffa78",
+    "evidence_digest": "5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6",
+    "evidence_json_sha256": "d0d79802f8512fa40730aac5c377d75021ff39100330483a784c43ce20b09462",
+    "implementation_sha": "548b27de6283b32fb27541db02ce6c8b65c29756",
+    "invalid_bundle_sha256": "58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3",
+    "invalid_evidence_digest": "51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726",
+    "invalid_implementation_sha": "ef7c638a70b7bbb7883f512309a1e248118a9203",
+    "manifest_digest": "fafff6ac14b00e268d25a9a7b3553aad94b0e6594b64b40722fd44eba4a91e1a",
+    "merge_sha": "93be5ebac17c42d09272d0195a8b07f19af18274"
+  },
+  "hard_gates": [
+    {
+      "gate_id": "GATE-G2-1-CONTINUITY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-G2-2-CONTINUITY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-G2-3-CONTINUITY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-G2-4-RAW-EVIDENCE-CONTINUITY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-G2-4-INVALID-ATTEMPT-ISOLATION",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-EXACT-CONFIRMATORY-MANIFEST",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-FRESH-CONDITIONS",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-REFERENCE-ZERO",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-D1-MINIMUM-BOUNDARY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-D1-EXPIRY-BOUNDARY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-INDEPENDENT-CONFIRMATION",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-HONEST-AGAIN-NO-PENALTY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-SAME-CHAIN-CONFIRMATION",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-PENDING-IDEMPOTENT",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-PENDING-NON-SPENDABLE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-CONFIRMED-TOTAL-CAP",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-TERMINAL-VOID",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-RESET-REIMPORT-GAIN",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-SIBLING-TEMPLATE-GAIN",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-CONFIGURATION-INVARIANCE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-SESSION-DAY-FILTERED-INVARIANCE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NOTE-SIBLING-IDENTITY-CONTINUITY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-PRIVATE-CONTENT",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-EXPLANATION-COMPLETE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-MASTERY-CLAIM",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-DETERMINISTIC-REPLAY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-EVIDENCE-COMPLETE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-BUNDLE-REPRODUCIBLE",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-RESEARCH-ONLY",
+      "non_compensable": true
+    },
+    {
+      "gate_id": "GATE-NO-PRODUCTION-APPROVAL",
+      "non_compensable": true
+    }
+  ],
+  "hypotheses": [
+    {
+      "candidate_scope": "C-CONFIRMATION-ONLY-D1-NOTE-SIBLING",
+      "claim": "Zero until valid independent confirmation, then exactly 1.0 LRU.",
+      "falsification": "Any fresh condition creates duplicate, negative, terminal-retained or over-cap allocation.",
+      "hypothesis_id": "H-CONFIRMATION-ONLY-ROBUSTNESS",
+      "missing_data_behavior": "Missing required evidence makes the candidate inconclusive.",
+      "non_claim": "No human-learning, mastery, motivation, retention or production claim.",
+      "required_conditions": [
+        "C-CORE-D1-BEFORE-MINIMUM",
+        "C-CORE-D1-EXACT-MINIMUM",
+        "C-CORE-D1-DAY-NOT-MET",
+        "C-CORE-D1-JUST-INSIDE-EXPIRY",
+        "C-CORE-D1-EXACT-ELAPSED-EXPIRY",
+        "C-CORE-D1-EXACT-DAY-EXPIRY",
+        "C-CORE-FAILED-INDEPENDENT-RETRIEVAL",
+        "C-CORE-FAILURE-THEN-SUCCESS",
+        "C-CORE-REPEATED-AGAIN-RETRY",
+        "C-CORE-SAME-CHAIN-GOOD-EASY",
+        "C-CORE-RESET-BEFORE-CONFIRM",
+        "C-CORE-RESET-AFTER-CONFIRM",
+        "C-CORE-UNDO-CANCEL-INVALIDATE",
+        "C-CORE-LEARNING-ROUTE-EQUIVALENCE",
+        "C-CORE-FILTERED-SESSION-DAY",
+        "C-CORE-NOTE-SIBLING-PROLIFERATION"
+      ]
+    },
+    {
+      "candidate_scope": "C-PENDING-SPLIT-D1-NOTE-SIBLING",
+      "claim": "Exactly 0.25 provisional once, non-spendable, then settle to exactly 1.0 LRU.",
+      "falsification": "Retry, configuration, session or identity attacks increase allocation or retain terminal value.",
+      "hypothesis_id": "H-PENDING-SPLIT-ROBUSTNESS",
+      "missing_data_behavior": "Missing required evidence makes the candidate inconclusive.",
+      "non_claim": "No claim that provisional value is mastery or spendable XP.",
+      "required_conditions": [
+        "C-CORE-D1-BEFORE-MINIMUM",
+        "C-CORE-D1-EXACT-MINIMUM",
+        "C-CORE-D1-DAY-NOT-MET",
+        "C-CORE-D1-JUST-INSIDE-EXPIRY",
+        "C-CORE-D1-EXACT-ELAPSED-EXPIRY",
+        "C-CORE-D1-EXACT-DAY-EXPIRY",
+        "C-CORE-FAILED-INDEPENDENT-RETRIEVAL",
+        "C-CORE-FAILURE-THEN-SUCCESS",
+        "C-CORE-REPEATED-AGAIN-RETRY",
+        "C-CORE-SAME-CHAIN-GOOD-EASY",
+        "C-CORE-RESET-BEFORE-CONFIRM",
+        "C-CORE-RESET-AFTER-CONFIRM",
+        "C-CORE-UNDO-CANCEL-INVALIDATE",
+        "C-CORE-LEARNING-ROUTE-EQUIVALENCE",
+        "C-CORE-FILTERED-SESSION-DAY",
+        "C-CORE-NOTE-SIBLING-PROLIFERATION"
+      ]
+    },
+    {
+      "candidate_scope": "BOTH_SURVIVORS",
+      "claim": "Synthetic siblings of one note group together; distinct notes do not; ambiguity fails closed.",
+      "falsification": "Stable synthetic identity fragments, collides, or uses private content.",
+      "hypothesis_id": "H-NOTE-SIBLING-IDENTITY-CONTINUITY",
+      "missing_data_behavior": "Unavailable disposable Anki identity evidence makes this hypothesis inconclusive.",
+      "non_claim": "NOTE-SIBLING is not declared the true conceptual identity.",
+      "required_conditions": [
+        "I-STANDARD-TWO-TEMPLATES",
+        "I-FRONT-BACK-REVERSE",
+        "I-ADJACENT-CLOZE",
+        "I-CROSS-DECK-OVERRIDE",
+        "I-BURY-ENABLED",
+        "I-BURY-DISABLED",
+        "I-FIELD-EDIT-STABLE",
+        "I-TEMPLATE-ADD-REMOVE",
+        "I-DUPLICATE-NEW-NOTE",
+        "I-RESET-RESCHEDULE-STABLE",
+        "I-EXPLICIT-IMPORT-CONTINUITY",
+        "I-DELETE-REIMPORT-AMBIGUOUS"
+      ]
+    },
+    {
+      "candidate_scope": "ALL_VARIANTS",
+      "claim": "Explanation evidence is deterministic, complete and non-private.",
+      "falsification": "Required fields are missing or forbidden claims appear.",
+      "hypothesis_id": "H-EXPLANATION-BOUNDARY",
+      "missing_data_behavior": "Missing fields make the affected outcome inconclusive.",
+      "non_claim": "No learned/mastered/optimal/retention/motivation/production-ready wording.",
+      "required_conditions": [
+        "E-CONFIRMATION-ONLY-AWAITING",
+        "E-PENDING-SPLIT-PROVISIONAL",
+        "E-CONFIRMED-SETTLED",
+        "E-FAILED-RETRIEVAL",
+        "E-EXPIRED",
+        "E-CANCELLED-INVALIDATED",
+        "E-IDENTITY-AMBIGUITY",
+        "E-REFERENCE-ZERO"
+      ]
+    },
+    {
+      "candidate_scope": "STAGE",
+      "claim": "G2.5 executes only after independent validation of the exact valid G2.4 raw bundle.",
+      "falsification": "Archive, inventory, hashes, detached validation, accounting or isolation fails.",
+      "hypothesis_id": "H-G2-4-EVIDENCE-CONTINUITY",
+      "missing_data_behavior": "Canonical G2.5 execution is prohibited.",
+      "non_claim": "A closeout summary alone cannot replace raw evidence.",
+      "required_conditions": []
+    }
+  ],
+  "identity": {
+    "final_decision_stage_started": false,
+    "final_model_selected": false,
+    "production_approved": false,
+    "production_integration": false,
+    "protocol_id": "learn-xp-confirmatory-protocol",
+    "ranking_performed": false,
+    "results_accessed": false,
+    "status": "FROZEN_PRE_RESULTS",
+    "version": 1
+  },
+  "identity_evidence_mode": "SYNTHETIC_CONTRACT_ONLY",
+  "matrix_axes": {
+    "adaptive_units": 0,
+    "condition_groups": 36,
+    "replay_identities": 2,
+    "replica": 0,
+    "seed": null,
+    "variants": 3
+  },
+  "metrics": [
+    "pending_allocations_created",
+    "confirmed_settlements",
+    "total_settled_lru",
+    "unconfirmed_provisional_exposure",
+    "active_pending_peak",
+    "time_to_confirmation",
+    "expiry_cancel_invalidation_count",
+    "duplicate_retry_gain",
+    "configuration_session_gain",
+    "subject_collision_fragmentation",
+    "identity_continuity_failures",
+    "explanation_field_completeness",
+    "forbidden_claim_count",
+    "reference_nonzero_allocation"
+  ],
+  "outcome_semantics": {
+    "allowed": [
+      "CONFIRMATORY_ELIGIBLE",
+      "CONFIRMATORY_NOT_ELIGIBLE",
+      "CONFIRMATORY_INCONCLUSIVE"
+    ],
+    "complete_all_required_gates": "CONFIRMATORY_ELIGIBLE",
+    "complete_gate_failure": "CONFIRMATORY_NOT_ELIGIBLE",
+    "missing_required_evidence": "CONFIRMATORY_INCONCLUSIVE",
+    "reference": "REFERENCE_ONLY"
+  },
+  "production_flags": {
+    "production_approved": false,
+    "production_integration": false
+  },
+  "reference": {
+    "candidate_id": "R-NO-LEARN-XP-NOTE-SIBLING",
+    "confirmation_lru": 0.0,
+    "family_id": "REFERENCE",
+    "outcome": "REFERENCE_ONLY",
+    "pending_lru": 0.0
+  },
+  "replay_identities": [
+    "FORWARD",
+    "REVERSE"
+  ],
+  "scope": {
+    "in_scope": [
+      "fresh confirmatory robustness",
+      "synthetic identity compatibility",
+      "research explainability",
+      "detached evidence"
+    ],
+    "out_of_scope": [
+      "new ratios",
+      "new delays",
+      "new subjects",
+      "cross-family ranking",
+      "final model",
+      "production integration"
+    ]
+  },
+  "source_contracts": {
+    "g2_1_contract_blob": "cef3a60bac31eab12faf40f1f2d27221dafc6cc4",
+    "g2_2_model_blob": "d892f98485789150807c8e8280cb5194943dd1d2",
+    "g2_3_protocol_blob": "f2fda31abcc9a9990229a3193d589214222de241",
+    "g2_4_harness_blob": "10980716fb3f058d402ed3d47f1450045892d086"
+  },
+  "unit_identity": {
+    "algorithm": "SHA-256_CANONICAL_JSON",
+    "execution_order_independent": true,
+    "path_independent": true,
+    "source_g2_4_evidence_digest": "5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6"
+  },
+  "variants": [
+    {
+      "candidate_id": "C-CONFIRMATION-ONLY-D1-NOTE-SIBLING",
+      "confirmation_lru": 1.0,
+      "family_id": "F-CONFIRMATION-ONLY",
+      "pending_lru": 0.0
+    },
+    {
+      "candidate_id": "C-PENDING-SPLIT-D1-NOTE-SIBLING",
+      "confirmation_lru": 0.75,
+      "family_id": "F-PENDING-CONFIRMED-SPLIT",
+      "pending_lru": 0.25
+    }
+  ]
+}

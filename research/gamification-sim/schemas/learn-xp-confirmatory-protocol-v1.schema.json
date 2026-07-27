@@ -1,0 +1,564 @@
+{
+  "$id": "https://anki-study-report.local/schemas/learn-xp-confirmatory-protocol-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "amendment_policy": {
+      "const": {
+        "after_results": "invalidate full run, disclose, isolate and rerun all 216 units",
+        "before_results": "version update, field-level diff, rationale and new publication barrier"
+      }
+    },
+    "claims_boundary": {
+      "const": {
+        "allowed": "prospectively frozen synthetic/identity/explanation gate outcome only",
+        "human_learning": false,
+        "motivation": false,
+        "optimality": false,
+        "retention": false
+      }
+    },
+    "condition_groups": {
+      "const": [
+        {
+          "count": 16,
+          "group_id": "CORE_ROBUSTNESS"
+        },
+        {
+          "count": 12,
+          "group_id": "IDENTITY_COMPATIBILITY"
+        },
+        {
+          "count": 8,
+          "group_id": "EXPLAINABILITY_OBSERVABILITY"
+        }
+      ]
+    },
+    "condition_registry": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "enum": [
+              "C-CORE-D1-BEFORE-MINIMUM",
+              "C-CORE-D1-EXACT-MINIMUM",
+              "C-CORE-D1-DAY-NOT-MET",
+              "C-CORE-D1-JUST-INSIDE-EXPIRY",
+              "C-CORE-D1-EXACT-ELAPSED-EXPIRY",
+              "C-CORE-D1-EXACT-DAY-EXPIRY",
+              "C-CORE-FAILED-INDEPENDENT-RETRIEVAL",
+              "C-CORE-FAILURE-THEN-SUCCESS",
+              "C-CORE-REPEATED-AGAIN-RETRY",
+              "C-CORE-SAME-CHAIN-GOOD-EASY",
+              "C-CORE-RESET-BEFORE-CONFIRM",
+              "C-CORE-RESET-AFTER-CONFIRM",
+              "C-CORE-UNDO-CANCEL-INVALIDATE",
+              "C-CORE-LEARNING-ROUTE-EQUIVALENCE",
+              "C-CORE-FILTERED-SESSION-DAY",
+              "C-CORE-NOTE-SIBLING-PROLIFERATION",
+              "I-STANDARD-TWO-TEMPLATES",
+              "I-FRONT-BACK-REVERSE",
+              "I-ADJACENT-CLOZE",
+              "I-CROSS-DECK-OVERRIDE",
+              "I-BURY-ENABLED",
+              "I-BURY-DISABLED",
+              "I-FIELD-EDIT-STABLE",
+              "I-TEMPLATE-ADD-REMOVE",
+              "I-DUPLICATE-NEW-NOTE",
+              "I-RESET-RESCHEDULE-STABLE",
+              "I-EXPLICIT-IMPORT-CONTINUITY",
+              "I-DELETE-REIMPORT-AMBIGUOUS",
+              "E-CONFIRMATION-ONLY-AWAITING",
+              "E-PENDING-SPLIT-PROVISIONAL",
+              "E-CONFIRMED-SETTLED",
+              "E-FAILED-RETRIEVAL",
+              "E-EXPIRED",
+              "E-CANCELLED-INVALIDATED",
+              "E-IDENTITY-AMBIGUITY",
+              "E-REFERENCE-ZERO"
+            ]
+          },
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "group_id": {
+            "enum": [
+              "CORE_ROBUSTNESS",
+              "IDENTITY_COMPATIBILITY",
+              "EXPLAINABILITY_OBSERVABILITY"
+            ]
+          }
+        },
+        "required": [
+          "condition_id",
+          "group_id",
+          "description"
+        ],
+        "type": "object"
+      },
+      "maxItems": 36,
+      "minItems": 36,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "cross_family_contrast_boundary": {
+      "const": {
+        "descriptive_only": true,
+        "ranking": false,
+        "recommendation": false,
+        "winner_field": false
+      }
+    },
+    "expected_budget": {
+      "const": {
+        "duplicate_units": 0,
+        "expected_unique_units": 216,
+        "expected_units": 216,
+        "extra_units": 0,
+        "missing_units": 0
+      }
+    },
+    "explanation_contract": {
+      "const": {
+        "forbidden_claims": [
+          "learned",
+          "mastered",
+          "retention improved",
+          "motivation improved",
+          "optimal",
+          "production-ready"
+        ],
+        "required_fields": [
+          "state_code",
+          "allocation_code",
+          "provisional_lru",
+          "confirmed_lru",
+          "settled_total_lru",
+          "window_code",
+          "reason_codes",
+          "subject_strategy",
+          "identity_continuity_code",
+          "claim_boundary_code"
+        ]
+      }
+    },
+    "final_decision_handoff": {
+      "const": {
+        "stage": "final G2 decision stage",
+        "started": false,
+        "status": "NEXT / NOT STARTED"
+      }
+    },
+    "g2_4_evidence_continuity": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_sha256": {
+          "const": "a2578fd2f7540cff10fdde0adc389afeaf8267dbf34185d2378467e6552ffa78"
+        },
+        "evidence_digest": {
+          "const": "5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6"
+        },
+        "evidence_json_sha256": {
+          "const": "d0d79802f8512fa40730aac5c377d75021ff39100330483a784c43ce20b09462"
+        },
+        "implementation_sha": {
+          "const": "548b27de6283b32fb27541db02ce6c8b65c29756"
+        },
+        "invalid_bundle_sha256": {
+          "const": "58989ea862be86e2edb0c71b19aec520214af7bb0abe08791d7f72396d66b2c3"
+        },
+        "invalid_evidence_digest": {
+          "const": "51ef8d8caa55a2579795a72f5af1576da69da224a5023190d5fde6c145aac726"
+        },
+        "invalid_implementation_sha": {
+          "const": "ef7c638a70b7bbb7883f512309a1e248118a9203"
+        },
+        "manifest_digest": {
+          "const": "fafff6ac14b00e268d25a9a7b3553aad94b0e6594b64b40722fd44eba4a91e1a"
+        },
+        "merge_sha": {
+          "const": "93be5ebac17c42d09272d0195a8b07f19af18274"
+        }
+      },
+      "required": [
+        "bundle_sha256",
+        "evidence_digest",
+        "evidence_json_sha256",
+        "implementation_sha",
+        "invalid_bundle_sha256",
+        "invalid_evidence_digest",
+        "invalid_implementation_sha",
+        "manifest_digest",
+        "merge_sha"
+      ],
+      "type": "object"
+    },
+    "hard_gates": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "gate_id": {
+            "enum": [
+              "GATE-G2-1-CONTINUITY",
+              "GATE-G2-2-CONTINUITY",
+              "GATE-G2-3-CONTINUITY",
+              "GATE-G2-4-RAW-EVIDENCE-CONTINUITY",
+              "GATE-G2-4-INVALID-ATTEMPT-ISOLATION",
+              "GATE-EXACT-CONFIRMATORY-MANIFEST",
+              "GATE-FRESH-CONDITIONS",
+              "GATE-REFERENCE-ZERO",
+              "GATE-D1-MINIMUM-BOUNDARY",
+              "GATE-D1-EXPIRY-BOUNDARY",
+              "GATE-INDEPENDENT-CONFIRMATION",
+              "GATE-HONEST-AGAIN-NO-PENALTY",
+              "GATE-NO-SAME-CHAIN-CONFIRMATION",
+              "GATE-PENDING-IDEMPOTENT",
+              "GATE-PENDING-NON-SPENDABLE",
+              "GATE-CONFIRMED-TOTAL-CAP",
+              "GATE-TERMINAL-VOID",
+              "GATE-NO-RESET-REIMPORT-GAIN",
+              "GATE-NO-SIBLING-TEMPLATE-GAIN",
+              "GATE-CONFIGURATION-INVARIANCE",
+              "GATE-SESSION-DAY-FILTERED-INVARIANCE",
+              "GATE-NOTE-SIBLING-IDENTITY-CONTINUITY",
+              "GATE-NO-PRIVATE-CONTENT",
+              "GATE-EXPLANATION-COMPLETE",
+              "GATE-NO-MASTERY-CLAIM",
+              "GATE-DETERMINISTIC-REPLAY",
+              "GATE-EVIDENCE-COMPLETE",
+              "GATE-BUNDLE-REPRODUCIBLE",
+              "GATE-RESEARCH-ONLY",
+              "GATE-NO-PRODUCTION-APPROVAL"
+            ]
+          },
+          "non_compensable": {
+            "const": true
+          }
+        },
+        "required": [
+          "gate_id",
+          "non_compensable"
+        ],
+        "type": "object"
+      },
+      "maxItems": 30,
+      "minItems": 30,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "hypotheses": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_scope": {
+            "type": "string"
+          },
+          "claim": {
+            "type": "string"
+          },
+          "falsification": {
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "pattern": "^H-[A-Z0-9-]+$",
+            "type": "string"
+          },
+          "missing_data_behavior": {
+            "type": "string"
+          },
+          "non_claim": {
+            "type": "string"
+          },
+          "required_conditions": {
+            "items": {
+              "enum": [
+                "C-CORE-D1-BEFORE-MINIMUM",
+                "C-CORE-D1-EXACT-MINIMUM",
+                "C-CORE-D1-DAY-NOT-MET",
+                "C-CORE-D1-JUST-INSIDE-EXPIRY",
+                "C-CORE-D1-EXACT-ELAPSED-EXPIRY",
+                "C-CORE-D1-EXACT-DAY-EXPIRY",
+                "C-CORE-FAILED-INDEPENDENT-RETRIEVAL",
+                "C-CORE-FAILURE-THEN-SUCCESS",
+                "C-CORE-REPEATED-AGAIN-RETRY",
+                "C-CORE-SAME-CHAIN-GOOD-EASY",
+                "C-CORE-RESET-BEFORE-CONFIRM",
+                "C-CORE-RESET-AFTER-CONFIRM",
+                "C-CORE-UNDO-CANCEL-INVALIDATE",
+                "C-CORE-LEARNING-ROUTE-EQUIVALENCE",
+                "C-CORE-FILTERED-SESSION-DAY",
+                "C-CORE-NOTE-SIBLING-PROLIFERATION",
+                "I-STANDARD-TWO-TEMPLATES",
+                "I-FRONT-BACK-REVERSE",
+                "I-ADJACENT-CLOZE",
+                "I-CROSS-DECK-OVERRIDE",
+                "I-BURY-ENABLED",
+                "I-BURY-DISABLED",
+                "I-FIELD-EDIT-STABLE",
+                "I-TEMPLATE-ADD-REMOVE",
+                "I-DUPLICATE-NEW-NOTE",
+                "I-RESET-RESCHEDULE-STABLE",
+                "I-EXPLICIT-IMPORT-CONTINUITY",
+                "I-DELETE-REIMPORT-AMBIGUOUS",
+                "E-CONFIRMATION-ONLY-AWAITING",
+                "E-PENDING-SPLIT-PROVISIONAL",
+                "E-CONFIRMED-SETTLED",
+                "E-FAILED-RETRIEVAL",
+                "E-EXPIRED",
+                "E-CANCELLED-INVALIDATED",
+                "E-IDENTITY-AMBIGUITY",
+                "E-REFERENCE-ZERO"
+              ]
+            },
+            "minItems": 0,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "candidate_scope",
+          "claim",
+          "non_claim",
+          "required_conditions",
+          "falsification",
+          "missing_data_behavior"
+        ],
+        "type": "object"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "final_decision_stage_started": {
+          "const": false
+        },
+        "final_model_selected": {
+          "const": false
+        },
+        "production_approved": {
+          "const": false
+        },
+        "production_integration": {
+          "const": false
+        },
+        "protocol_id": {
+          "const": "learn-xp-confirmatory-protocol"
+        },
+        "ranking_performed": {
+          "const": false
+        },
+        "results_accessed": {
+          "const": false
+        },
+        "status": {
+          "const": "FROZEN_PRE_RESULTS"
+        },
+        "version": {
+          "const": 1
+        }
+      },
+      "required": [
+        "protocol_id",
+        "version",
+        "status",
+        "results_accessed",
+        "ranking_performed",
+        "final_model_selected",
+        "production_approved",
+        "production_integration",
+        "final_decision_stage_started"
+      ],
+      "type": "object"
+    },
+    "identity_evidence_mode": {
+      "const": "SYNTHETIC_CONTRACT_ONLY"
+    },
+    "matrix_axes": {
+      "const": {
+        "adaptive_units": 0,
+        "condition_groups": 36,
+        "replay_identities": 2,
+        "replica": 0,
+        "seed": null,
+        "variants": 3
+      }
+    },
+    "metrics": {
+      "const": [
+        "pending_allocations_created",
+        "confirmed_settlements",
+        "total_settled_lru",
+        "unconfirmed_provisional_exposure",
+        "active_pending_peak",
+        "time_to_confirmation",
+        "expiry_cancel_invalidation_count",
+        "duplicate_retry_gain",
+        "configuration_session_gain",
+        "subject_collision_fragmentation",
+        "identity_continuity_failures",
+        "explanation_field_completeness",
+        "forbidden_claim_count",
+        "reference_nonzero_allocation"
+      ]
+    },
+    "outcome_semantics": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "const": [
+            "CONFIRMATORY_ELIGIBLE",
+            "CONFIRMATORY_NOT_ELIGIBLE",
+            "CONFIRMATORY_INCONCLUSIVE"
+          ]
+        },
+        "complete_all_required_gates": {
+          "const": "CONFIRMATORY_ELIGIBLE"
+        },
+        "complete_gate_failure": {
+          "const": "CONFIRMATORY_NOT_ELIGIBLE"
+        },
+        "missing_required_evidence": {
+          "const": "CONFIRMATORY_INCONCLUSIVE"
+        },
+        "reference": {
+          "const": "REFERENCE_ONLY"
+        }
+      },
+      "required": [
+        "complete_all_required_gates",
+        "complete_gate_failure",
+        "missing_required_evidence",
+        "reference",
+        "allowed"
+      ],
+      "type": "object"
+    },
+    "production_flags": {
+      "const": {
+        "production_approved": false,
+        "production_integration": false
+      }
+    },
+    "reference": {
+      "const": {
+        "candidate_id": "R-NO-LEARN-XP-NOTE-SIBLING",
+        "confirmation_lru": 0.0,
+        "family_id": "REFERENCE",
+        "outcome": "REFERENCE_ONLY",
+        "pending_lru": 0.0
+      }
+    },
+    "replay_identities": {
+      "const": [
+        "FORWARD",
+        "REVERSE"
+      ]
+    },
+    "scope": {
+      "additionalProperties": false,
+      "properties": {
+        "in_scope": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "out_of_scope": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "in_scope",
+        "out_of_scope"
+      ],
+      "type": "object"
+    },
+    "source_contracts": {
+      "additionalProperties": false,
+      "properties": {
+        "g2_1_contract_blob": {
+          "const": "cef3a60bac31eab12faf40f1f2d27221dafc6cc4"
+        },
+        "g2_2_model_blob": {
+          "const": "d892f98485789150807c8e8280cb5194943dd1d2"
+        },
+        "g2_3_protocol_blob": {
+          "const": "f2fda31abcc9a9990229a3193d589214222de241"
+        },
+        "g2_4_harness_blob": {
+          "const": "10980716fb3f058d402ed3d47f1450045892d086"
+        }
+      },
+      "required": [
+        "g2_1_contract_blob",
+        "g2_2_model_blob",
+        "g2_3_protocol_blob",
+        "g2_4_harness_blob"
+      ],
+      "type": "object"
+    },
+    "unit_identity": {
+      "const": {
+        "algorithm": "SHA-256_CANONICAL_JSON",
+        "execution_order_independent": true,
+        "path_independent": true,
+        "source_g2_4_evidence_digest": "5144665ad75110cfd5817b6d76c9791274bf206ee25d01d34ed05e72f45d3da6"
+      }
+    },
+    "variants": {
+      "const": [
+        {
+          "candidate_id": "C-CONFIRMATION-ONLY-D1-NOTE-SIBLING",
+          "confirmation_lru": 1.0,
+          "family_id": "F-CONFIRMATION-ONLY",
+          "pending_lru": 0.0
+        },
+        {
+          "candidate_id": "C-PENDING-SPLIT-D1-NOTE-SIBLING",
+          "confirmation_lru": 0.75,
+          "family_id": "F-PENDING-CONFIRMED-SPLIT",
+          "pending_lru": 0.25
+        }
+      ]
+    }
+  },
+  "required": [
+    "identity",
+    "source_contracts",
+    "g2_4_evidence_continuity",
+    "scope",
+    "variants",
+    "reference",
+    "condition_groups",
+    "condition_registry",
+    "replay_identities",
+    "identity_evidence_mode",
+    "hypotheses",
+    "hard_gates",
+    "metrics",
+    "outcome_semantics",
+    "matrix_axes",
+    "unit_identity",
+    "expected_budget",
+    "explanation_contract",
+    "cross_family_contrast_boundary",
+    "amendment_policy",
+    "claims_boundary",
+    "final_decision_handoff",
+    "production_flags"
+  ],
+  "type": "object"
+}

@@ -23,6 +23,9 @@ fsrs = ["fsrs==6.3.1"]
 
 [project.scripts]
 gamification-sim = "gamification_sim.cli:main"
+validate-learn-xp-confirmatory = "gamification_sim.learn_confirmatory:validate_protocol_cli"
+run-learn-xp-confirmatory = "gamification_sim.learn_confirmatory:run_cli"
+validate-learn-xp-confirmatory-evidence = "gamification_sim.learn_confirmatory:validate_evidence_cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

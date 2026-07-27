@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 In Progress — post-results harness correction before valid rerun`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1–G2.5 Complete`; `G2.5 Confirmatory Inconclusive`; final G2 decision stage not started; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -188,13 +188,42 @@ The screened implementation is `548b27de6283b32fb27541db02ce6c8b65c29756`. The r
 
 ### G2.5 — Confirmatory evidence
 
-**Status:** Next / Not Started.
+**Status:** Complete — Confirmatory Inconclusive.
 
-G2.5 requires a separate activation. G2.4 passes only family-local survivors, evidence identities, limitations and unresolved confirmatory questions; it does not define or execute a G2.5 matrix.
+Artifacts:
+
+- [human confirmatory protocol](../../docs/gamification/learn-xp-confirmatory-protocol.md);
+- [machine confirmatory protocol](../../research/gamification-sim/contracts/learn-xp-confirmatory-protocol-v1.json);
+- [protocol schema](../../research/gamification-sim/schemas/learn-xp-confirmatory-protocol-v1.schema.json);
+- [evidence schema](../../research/gamification-sim/schemas/learn-xp-confirmatory-evidence-v1.schema.json);
+- [confirmatory harness](../../research/gamification-sim/src/gamification_sim/learn_confirmatory.py);
+- [focused tests](../../research/gamification-sim/tests/test_learn_confirmatory.py);
+- [confirmatory closeout](g2-learn-xp-confirmatory-evidence.md).
+
+Canonical closeout state:
+
+```text
+survivors / reference: 2 / 1
+condition groups: 16 core / 12 identity / 8 explainability
+replay identities: FORWARD / REVERSE
+expected / actual / unique: 216 / 216 / 216
+missing / extra / duplicates: 0 / 0 / 0
+identity evidence mode: SYNTHETIC_CONTRACT_ONLY
+candidate outcomes: CONFIRMATORY_INCONCLUSIVE / CONFIRMATORY_INCONCLUSIVE
+reference outcome: REFERENCE_ONLY
+results accessed: YES — AFTER PROTOCOL PUBLICATION
+detached validation: PASS
+byte-identical reproduction: PASS
+cross-family ranking: NO
+final G2 decision stage: NOT STARTED
+production integration: PROHIBITED
+```
+
+G2.5 checked each survivor separately. Both outcomes are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. It did not rerun G2.4, add D2 or `S-CARD`, choose a family winner, select a final Learn XP model or approve production integration.
 
 ### Later G2 stages
 
-Confirmatory evidence and final G2 decision may be defined only after G2.4 completes bounded screening under the published protocol. No additional stage numbering is created by G2.3.
+The separate final G2 decision stage may be defined only after this G2.5 closeout. G2.5 itself made no recommendation and selected no final Learn XP model.
 
 Allowed final G2 outcomes are frozen as:
 
@@ -232,4 +261,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is complete as research-only bounded screening. G2.5 and production integration have not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.5 are complete research stages. G2.5 closed as confirmatory inconclusive; production integration and the final G2 decision stage have not started.
