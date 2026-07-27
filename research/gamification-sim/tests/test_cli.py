@@ -310,3 +310,24 @@ def test_cargo_environment_preserves_target_dir(monkeypatch, tmp_path):
     environment = cargo_environment()
     assert environment["CARGO_TARGET_DIR"] == str(target)
     assert environment["CARGO_TERM_COLOR"] == "never"
+
+
+def test_learn_xp_screening_commands_are_registered():
+    from gamification_sim.cli import build_parser
+
+    parser = build_parser()
+    validate = parser.parse_args(["validate-learn-xp-screening"])
+    run = parser.parse_args([
+        "run-learn-xp-screening",
+        "--implementation-sha", "a" * 40,
+        "--base-sha", "b" * 40,
+        "--no-write",
+    ])
+    detached = parser.parse_args([
+        "validate-learn-xp-screening-evidence",
+        "evidence.json",
+    ])
+    assert validate.command == "validate-learn-xp-screening"
+    assert run.command == "run-learn-xp-screening"
+    assert run.no_write is True
+    assert detached.command == "validate-learn-xp-screening-evidence"

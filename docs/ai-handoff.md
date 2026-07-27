@@ -85,7 +85,7 @@ delay policies — D1; D2
 pending split — 0.25 provisional / 0.75 settlement
 hypotheses / hard gates / metrics — 5 / 23 / 14
 G2.4 matrix budget — 340 deterministic units
-G2.4 — NEXT / NOT STARTED
+G2.4 — IN PROGRESS / PRE-RESULTS IMPLEMENTATION
 production integration — PROHIBITED
 ```
 
@@ -99,7 +99,7 @@ G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, п
 
 G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
 
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; полный research suite — `982 passed`. Screening, outcomes и G2.4 не запускались.
+Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. G2.4 pre-results harness/schema/tests подготавливаются под publication barrier; canonical screening, outcomes и G2.5 не запускались.
 
 Точные источники:
 
@@ -114,6 +114,7 @@ Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; пол�
 - [Learn XP human candidate protocol](gamification/learn-xp-candidate-protocol.md)
 - [Learn XP machine candidate protocol](../research/gamification-sim/contracts/learn-xp-candidate-protocol-v1.json)
 - [Learn XP candidate protocol schema](../research/gamification-sim/schemas/learn-xp-candidate-protocol-v1.schema.json)
+- [Learn XP bounded screening technical reference](gamification/learn-xp-bounded-screening.md)
 - [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
 - [G2.2 closeout](../roadmap/gamification/g2-learn-xp-lifecycle.md)
 - [G2.3 closeout](../roadmap/gamification/g2-learn-xp-candidate-protocol.md)

@@ -50,6 +50,7 @@ reports/    исторические evidence и завершённые пров
 - [Learn XP problem contract](gamification/learn-xp-problem-contract.md)
 - [Learn XP lifecycle and anti-farming model](gamification/learn-xp-lifecycle-model.md)
 - [Learn XP candidate protocol](gamification/learn-xp-candidate-protocol.md)
+- [Learn XP bounded screening technical reference](gamification/learn-xp-bounded-screening.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 

@@ -59,6 +59,15 @@ from .confirmatory import (
     validate_confirmatory_manifest,
     write_confirmatory_reports,
 )
+from .learn_bounded_screening import (
+    STARTING_GAMIFICATION_SHA,
+    build_learn_screening_manifest,
+    load_and_validate_learn_xp_screening_evidence,
+    render_learn_xp_screening_summary,
+    run_learn_xp_screening,
+    validate_learn_screening_manifest,
+    write_learn_xp_screening_bundle,
+)
 from .validation import close
 from .workspace import ResearchWorkspace, default_output_root, resolve_research_workspace
 
@@ -218,6 +227,26 @@ def build_parser() -> argparse.ArgumentParser:
     confirmatory.add_argument("--output-dir", type=Path)
     confirmatory.add_argument("--no-write", action="store_true")
 
+    subparsers.add_parser(
+        "validate-learn-xp-screening",
+        help="validate the frozen G2.4 protocol and exact 340-unit implementation manifest",
+    )
+
+    validate_learn_evidence = subparsers.add_parser(
+        "validate-learn-xp-screening-evidence",
+        help="strictly validate detached G2.4 Learn XP screening evidence",
+    )
+    validate_learn_evidence.add_argument("evidence", type=Path)
+
+    learn_screening = subparsers.add_parser(
+        "run-learn-xp-screening",
+        help="run the frozen G2.4 340-unit Learn XP bounded screening",
+    )
+    learn_screening.add_argument("--implementation-sha", required=True)
+    learn_screening.add_argument("--base-sha", required=True)
+    learn_screening.add_argument("--output-dir", type=Path)
+    learn_screening.add_argument("--no-write", action="store_true")
+
     rust = subparsers.add_parser("verify-rust-oracle", help="verify Python/Rust deterministic parity")
     rust.add_argument("--parameter-set", required=True)
     rust.add_argument("--corpus", type=Path)
@@ -260,6 +289,47 @@ def _emit_run(result, args) -> int:
 
 
 def _run_new_command(args, workspace: ResearchWorkspace) -> int:
+    if args.command == "validate-learn-xp-screening":
+        head = subprocess.run(
+            ["git", "-C", str(workspace.root), "rev-parse", "HEAD"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ).stdout.strip()
+        manifest = build_learn_screening_manifest(
+            workspace,
+            implementation_sha=head,
+            base_sha=STARTING_GAMIFICATION_SHA,
+        )
+        protocol = load_strict_json(workspace.path("contracts/learn-xp-candidate-protocol-v1.json"))
+        validate_learn_screening_manifest(manifest, protocol=protocol)
+        print(
+            f"VALID {manifest['manifest_version']} "
+            f"{manifest['actual_unique_units']} unique units "
+            f"{manifest['manifest_digest']}"
+        )
+        return 0
+    if args.command == "validate-learn-xp-screening-evidence":
+        payload = load_and_validate_learn_xp_screening_evidence(
+            args.evidence,
+            workspace=workspace,
+        )
+        print(f"VALID {payload['evidence_version']} {payload['evidence_digest']}")
+        return 0
+    if args.command == "run-learn-xp-screening":
+        payload = run_learn_xp_screening(
+            workspace,
+            implementation_sha=args.implementation_sha,
+            base_sha=args.base_sha,
+            exact_command=" ".join(sys.argv),
+        )
+        print(render_learn_xp_screening_summary(payload), end="")
+        if not args.no_write:
+            run_dir, archive = write_learn_xp_screening_bundle(payload, args.output_dir)
+            print(f"evidence: {run_dir}", file=sys.stderr)
+            print(f"archive: {archive}", file=sys.stderr)
+        return 0
     if args.command == "validate-confirmatory-protocol":
         manifest = build_confirmatory_manifest(workspace)
         validate_confirmatory_manifest(manifest)

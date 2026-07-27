@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 Next / Not Started`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 In Progress`; `G2.1 Complete`; `G2.2 Complete`; `G2.3 Complete`; `G2.4 In Progress — Pre-results implementation`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts and evidence do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -180,9 +180,9 @@ G2.3 fixed lifecycle canonical serialization and direct-input typing without dri
 
 ### G2.4 — Bounded Learn XP screening implementation
 
-**Status:** `NEXT / NOT STARTED`.
+**Status:** `IN PROGRESS — PRE-RESULTS IMPLEMENTATION`.
 
-G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. It may implement and execute only the frozen screening protocol; adaptive rescue variants and post-result matrix changes are prohibited.
+G2.4 receives the exact `340`-unit matrix, versioned protocol, eight candidates, two references, 30 scenarios, 23 hard gates and deterministic unit identity. The pre-results implementation is being prepared under the publication barrier; screening has not been executed. Adaptive rescue variants and post-result matrix changes are prohibited.
 
 ### Later G2 stages
 
@@ -224,4 +224,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.3 are frozen research stages. G2.4 is in pre-results implementation; screening and production integration have not started.
