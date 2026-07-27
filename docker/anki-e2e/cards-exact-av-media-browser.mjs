@@ -896,99 +896,166 @@ async function proveReplayLifecycle(page, outputRoot) {
 
 async function proveGifAnimation(page, outputRoot) {
   const host = exactHost(page, "preview", "wide");
-  const payload = await host.evaluate(async (element, gifName) => {
-    const image = [...element.shadowRoot.querySelectorAll("img")]
-      .find((candidate) => {
-        const url = new URL(candidate.src, window.location.href);
-        const name = url.searchParams.get("name")
-          || decodeURIComponent(url.pathname.split("/").pop() || "");
-        return name === gifName;
-      });
 
-    if (!image) throw new Error(`GIF image not found: ${gifName}`);
-    if (!image.complete || !image.naturalWidth || !image.naturalHeight) {
-      await image.decode();
-    }
+  await host.evaluate((element) => {
+    element.scrollIntoView({
+      block: "center",
+      inline: "center",
+      behavior: "auto",
+    });
+  });
 
-    const canvas = document.createElement("canvas");
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("2D canvas context is unavailable");
+  await page.waitForTimeout(100);
 
-    const intervalMs = 100;
-    const maxSamples = 60;
-    const unique = new Map();
-    const startedAt = performance.now();
-
-    for (let sampleIndex = 0; sampleIndex < maxSamples; sampleIndex += 1) {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const pngBase64 = canvas.toDataURL("image/png").split(",", 2)[1];
-
-      if (!unique.has(pngBase64)) {
-        unique.set(pngBase64, {
-          sampleIndex,
-          elapsedMs: Math.round(performance.now() - startedAt),
-          pngBase64,
-        });
-        if (unique.size >= 3) break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-
-    return {
-      readiness: {
-        complete: image.complete,
-        naturalWidth: image.naturalWidth,
-        naturalHeight: image.naturalHeight,
-      },
-      intervalMs,
-      maxSamples,
-      uniqueFrames: [...unique.values()],
-    };
-  }, config.gif.name);
+  const metrics = await shadowMetrics(page, "preview");
+  const gifRect = metrics.gif?.rect;
 
   assert(
-    payload.readiness.complete
-      && payload.readiness.naturalWidth === 160
-      && payload.readiness.naturalHeight === 120,
-    `GIF readiness/geometry failed: ${JSON.stringify(payload.readiness)}`,
+    metrics.gif?.complete === true
+      && metrics.gif.naturalWidth === 160
+      && metrics.gif.naturalHeight === 120
+      && gifRect
+      && gifRect.width > 0
+      && gifRect.height > 0,
+    `GIF readiness/geometry failed: ${
+      JSON.stringify(metrics.gif)
+    }`,
   );
 
+  const clip = await page.evaluate((rect) => {
+    const documentElement = document.documentElement;
+    const body = document.body;
+
+    const documentWidth = Math.max(
+      documentElement.scrollWidth,
+      documentElement.clientWidth,
+      body?.scrollWidth || 0,
+      body?.clientWidth || 0,
+    );
+
+    const documentHeight = Math.max(
+      documentElement.scrollHeight,
+      documentElement.clientHeight,
+      body?.scrollHeight || 0,
+      body?.clientHeight || 0,
+    );
+
+    const left = Number(rect.left ?? rect.x);
+    const top = Number(rect.top ?? rect.y);
+    const x = Math.max(0, left + window.scrollX);
+    const y = Math.max(0, top + window.scrollY);
+
+    const width = Math.min(
+      Number(rect.width),
+      Math.max(1, documentWidth - x),
+    );
+
+    const height = Math.min(
+      Number(rect.height),
+      Math.max(1, documentHeight - y),
+    );
+
+    if (!(width > 0 && height > 0)) {
+      throw new Error(
+        `GIF screenshot clip is unavailable: ${
+          JSON.stringify({ x, y, width, height })
+        }`,
+      );
+    }
+
+    return { x, y, width, height };
+  }, gifRect);
+
+  const intervalMs = 100;
+  const maxSamples = 60;
+  const unique = new Map();
+  const startedAt = Date.now();
+
+  for (
+    let sampleIndex = 0;
+    sampleIndex < maxSamples;
+    sampleIndex += 1
+  ) {
+    const bytes = await page.screenshot({
+      animations: "allow",
+      caret: "hide",
+      clip,
+    });
+
+    const sha256 = crypto
+      .createHash("sha256")
+      .update(bytes)
+      .digest("hex");
+
+    if (!unique.has(sha256)) {
+      unique.set(sha256, {
+        sampleIndex,
+        elapsedMs: Date.now() - startedAt,
+        sha256,
+        bytes,
+      });
+
+      if (unique.size >= 3) {
+        break;
+      }
+    }
+
+    await page.waitForTimeout(intervalMs);
+  }
+
   const frameRows = [];
-  for (const [frameIndex, item] of payload.uniqueFrames.entries()) {
-    const bytes = Buffer.from(item.pngBase64, "base64");
-    const framePath = path.join(outputRoot, `gif-browser-frame-${frameIndex}.png`);
-    await fs.writeFile(framePath, bytes);
+
+  for (const [frameIndex, item] of [
+    ...unique.values()
+  ].entries()) {
+    const framePath = path.join(
+      outputRoot,
+      `gif-browser-frame-${frameIndex}.png`,
+    );
+
+    await fs.writeFile(framePath, item.bytes);
+
     frameRows.push({
       index: frameIndex,
       sampleIndex: item.sampleIndex,
       waitMs: item.elapsedMs,
       path: framePath,
-      sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+      sha256: item.sha256,
     });
   }
 
-  const uniqueHashes = new Set(frameRows.map((item) => item.sha256));
+  const uniqueHashes = new Set(
+    frameRows.map((item) => item.sha256),
+  );
+
   return {
-    readiness: payload.readiness,
+    readiness: {
+      complete: metrics.gif.complete,
+      naturalWidth: metrics.gif.naturalWidth,
+      naturalHeight: metrics.gif.naturalHeight,
+    },
     sourceGifSha256: config.gif.sha256,
-    samplingMethod: "live HTMLImageElement -> CanvasRenderingContext2D.drawImage",
-    samplingIntervalMs: payload.intervalMs,
-    maxSamples: payload.maxSamples,
+    samplingMethod:
+      "Playwright page.screenshot clip (animations=allow)",
+    samplingIntervalMs: intervalMs,
+    maxSamples,
+    clip,
     browserFramesDiffer: uniqueHashes.size >= 2,
     uniqueFrameCount: uniqueHashes.size,
-    frames: frameRows.map((item) => ({ ...item, path: relative(item.path) })),
-    screenshots: frameRows.map((item) => recordScreenshot(item.path, {
-      kind: "gif-browser-frame",
-      scenario: "wide-light",
-      theme: "light",
-      frameIndex: item.index,
-      waitMs: item.waitMs,
-      sampleIndex: item.sampleIndex,
+    frames: frameRows.map((item) => ({
+      ...item,
+      path: relative(item.path),
     })),
+    screenshots: frameRows.map((item) =>
+      recordScreenshot(item.path, {
+        kind: "gif-browser-frame",
+        scenario: "wide-light",
+        theme: "light",
+        frameIndex: item.index,
+        waitMs: item.waitMs,
+        sampleIndex: item.sampleIndex,
+      }),
+    ),
   };
 }
 

@@ -59,7 +59,8 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "return imageNames.includes(config.png)" in source
     assert "browserFramesDiffer" in source
     assert 'canvas.toDataURL("image/png")' in source
-    assert "CanvasRenderingContext2D.drawImage" in source
+    assert "Playwright page.screenshot clip (animations=allow)" in source
+    assert "live HTMLImageElement -> CanvasRenderingContext2D.drawImage" not in source
     assert "maxSamples = 60" in source
     assert 'decoder.decode({ frameIndex: 0, completeFramesOnly: true })' in source
     assert "const proof = window.__asrReplayProof;" in source
