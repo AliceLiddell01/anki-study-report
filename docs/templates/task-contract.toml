@@ -1,0 +1,47 @@
+# Локальный task contract для AI-агента.
+#
+# Скопировать в `.agents/task-contract.toml`, заполнить и не коммитить.
+# `.agents/` уже исключён из Git.
+#
+# Scope guard:
+#   python scripts/check_task_scope.py
+#
+# Явное изменение scope допустимо только до продолжения реализации и с объяснением
+# причины в task notes / финальном отчёте.
+
+schema_version = 1
+
+task = "REPLACE: один конечный результат задачи"
+mode = "REPLACE: chatgpt | codex"
+track = "REPLACE: core | gamification | operations | identity | extensions | platform"
+base_ref = "origin/core"
+
+# Информационные поля. Scope guard их не интерпретирует.
+in_scope = [
+  "REPLACE: конкретное изменение",
+]
+out_of_scope = [
+  "REPLACE: соседние этапы, cleanup и refactor",
+]
+acceptance_criteria = [
+  "REPLACE: наблюдаемое условие завершения",
+]
+verification = [
+  "REPLACE: focused checks",
+]
+stop_conditions = [
+  "Требуется изменение вне allowed_paths.",
+  "Обнаружен второй одинаковый failure без новой диагностической информации.",
+  "Фактический branch/base не совпадает с этим contract.",
+]
+
+# Git-style glob patterns относительно корня репозитория.
+# Разрешай только необходимые файлы/каталоги. Не используй `**` для всего repo.
+allowed_paths = [
+  "REPLACE/ME",
+]
+
+# Дополнительные task-specific запреты. Built-in generated/runtime запреты
+# применяются всегда и имеют приоритет над allowed_paths.
+forbidden_paths = [
+]
