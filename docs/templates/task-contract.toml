@@ -14,6 +14,7 @@ schema_version = 1
 task = "REPLACE: один конечный результат задачи"
 mode = "REPLACE: chatgpt | codex"
 track = "REPLACE: core | gamification | operations | identity | extensions | platform"
+branch = "REPLACE: current task branch"
 base_ref = "origin/core"
 
 # Информационные поля. Scope guard их не интерпретирует.
