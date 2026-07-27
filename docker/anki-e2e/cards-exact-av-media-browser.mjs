@@ -67,6 +67,7 @@ const mediaResponses = [];
 const screenshots = [];
 const scenarios = [];
 const geometry = [];
+const gifScenarioFrames = [];
 let replayProof = null;
 let gifProof = null;
 let fixedFrameProof = null;
@@ -151,11 +152,50 @@ try {
         screenshots.push(recordScreenshot(groupPath, { kind: "media-block", scenario: scenario.name, theme: scenario.theme }));
       }
 
+      const gifCaptureMode = scenario.kind === "expanded"
+        ? "expanded"
+        : "preview";
+      const gifCaptureMetrics = await shadowMetrics(
+        activePage,
+        gifCaptureMode,
+      );
+      const gifScenarioPath = path.join(
+        exactScreenshotsRoot,
+        `${scenario.name}-gif-frame.png`,
+      );
+      const gifScenarioBytes = await captureRect(
+        activePage,
+        gifCaptureMetrics.gif.rect,
+        gifScenarioPath,
+      );
+      const gifScenarioFrame = {
+        scenario: scenario.name,
+        theme: scenario.theme,
+        side: gifCaptureMetrics.side,
+        complete: gifCaptureMetrics.gif.complete,
+        naturalWidth: gifCaptureMetrics.gif.naturalWidth,
+        naturalHeight: gifCaptureMetrics.gif.naturalHeight,
+        renderedWidth: gifCaptureMetrics.gif.rect.width,
+        renderedHeight: gifCaptureMetrics.gif.rect.height,
+        capturedAtEpochMs: Date.now(),
+        path: gifScenarioPath,
+        sha256: crypto
+          .createHash("sha256")
+          .update(gifScenarioBytes)
+          .digest("hex"),
+      };
+      gifScenarioFrames.push(gifScenarioFrame);
+      screenshots.push(recordScreenshot(gifScenarioPath, {
+        kind: "gif-browser-frame",
+        scenario: scenario.name,
+        theme: scenario.theme,
+        side: gifCaptureMetrics.side,
+        capturedAtEpochMs: gifScenarioFrame.capturedAtEpochMs,
+      }));
+
       if (scenario.name === "wide-light") {
         replayProof = await proveReplayLifecycle(activePage, exactScreenshotsRoot);
         screenshots.push(...replayProof.screenshots);
-        gifProof = await proveGifAnimation(activePage, exactScreenshotsRoot);
-        screenshots.push(...gifProof.screenshots);
         fixedFrameProof = await extractDeterministicGifFrame(activePage, exactScreenshotsRoot);
         screenshots.push(recordScreenshot(fixedFrameProof.path, {
           kind: "gif-fixed-frame",
@@ -184,6 +224,8 @@ try {
       activeScenario = null;
     }
   }
+
+  gifProof = proveGifAnimation(gifScenarioFrames);
 
   assert(replayProof?.first?.playEvent && replayProof?.first?.playingEvent, "first replay did not reach play/playing");
   assert(replayProof?.playCalls >= 2, "second replay did not invoke play()");
@@ -894,168 +936,99 @@ async function proveReplayLifecycle(page, outputRoot) {
   };
 }
 
-async function proveGifAnimation(page, outputRoot) {
-  const host = exactHost(page, "preview", "wide");
-
-  await host.evaluate((element) => {
-    element.scrollIntoView({
-      block: "center",
-      inline: "center",
-      behavior: "auto",
-    });
-  });
-
-  await page.waitForTimeout(100);
-
-  const metrics = await shadowMetrics(page, "preview");
-  const gifRect = metrics.gif?.rect;
-
+function proveGifAnimation(frameRows) {
+  const expectedCount = buildScenarios(config).length;
   assert(
-    metrics.gif?.complete === true
-      && metrics.gif.naturalWidth === 160
-      && metrics.gif.naturalHeight === 120
-      && gifRect
-      && gifRect.width > 0
-      && gifRect.height > 0,
-    `GIF readiness/geometry failed: ${
-      JSON.stringify(metrics.gif)
+    frameRows.length === expectedCount,
+    `GIF scenario capture count mismatch: ${
+      JSON.stringify({
+        actual: frameRows.length,
+        expected: expectedCount,
+      })
     }`,
   );
 
-  const clip = await page.evaluate((rect) => {
-    const documentElement = document.documentElement;
-    const body = document.body;
-
-    const documentWidth = Math.max(
-      documentElement.scrollWidth,
-      documentElement.clientWidth,
-      body?.scrollWidth || 0,
-      body?.clientWidth || 0,
+  for (const frame of frameRows) {
+    assert(
+      frame.complete === true
+        && frame.naturalWidth === 160
+        && frame.naturalHeight === 120,
+      `GIF scenario readiness mismatch: ${JSON.stringify(frame)}`,
     );
-
-    const documentHeight = Math.max(
-      documentElement.scrollHeight,
-      documentElement.clientHeight,
-      body?.scrollHeight || 0,
-      body?.clientHeight || 0,
-    );
-
-    const left = Number(rect.left ?? rect.x);
-    const top = Number(rect.top ?? rect.y);
-    const x = Math.max(0, left + window.scrollX);
-    const y = Math.max(0, top + window.scrollY);
-
-    const width = Math.min(
-      Number(rect.width),
-      Math.max(1, documentWidth - x),
-    );
-
-    const height = Math.min(
-      Number(rect.height),
-      Math.max(1, documentHeight - y),
-    );
-
-    if (!(width > 0 && height > 0)) {
-      throw new Error(
-        `GIF screenshot clip is unavailable: ${
-          JSON.stringify({ x, y, width, height })
-        }`,
-      );
-    }
-
-    return { x, y, width, height };
-  }, gifRect);
-
-  const intervalMs = 100;
-  const maxSamples = 60;
-  const unique = new Map();
-  const startedAt = Date.now();
-
-  for (
-    let sampleIndex = 0;
-    sampleIndex < maxSamples;
-    sampleIndex += 1
-  ) {
-    const bytes = await page.screenshot({
-      animations: "allow",
-      caret: "hide",
-      clip,
-    });
-
-    const sha256 = crypto
-      .createHash("sha256")
-      .update(bytes)
-      .digest("hex");
-
-    if (!unique.has(sha256)) {
-      unique.set(sha256, {
-        sampleIndex,
-        elapsedMs: Date.now() - startedAt,
-        sha256,
-        bytes,
-      });
-
-      if (unique.size >= 3) {
-        break;
-      }
-    }
-
-    await page.waitForTimeout(intervalMs);
   }
 
-  const frameRows = [];
-
-  for (const [frameIndex, item] of [
-    ...unique.values()
-  ].entries()) {
-    const framePath = path.join(
-      outputRoot,
-      `gif-browser-frame-${frameIndex}.png`,
-    );
-
-    await fs.writeFile(framePath, item.bytes);
-
-    frameRows.push({
-      index: frameIndex,
-      sampleIndex: item.sampleIndex,
-      waitMs: item.elapsedMs,
-      path: framePath,
-      sha256: item.sha256,
-    });
+  const grouped = new Map();
+  for (const frame of frameRows) {
+    const width = Math.round(frame.renderedWidth);
+    const height = Math.round(frame.renderedHeight);
+    const key = `${frame.theme}:${width}x${height}`;
+    const rows = grouped.get(key) || [];
+    rows.push(frame);
+    grouped.set(key, rows);
   }
 
-  const uniqueHashes = new Set(
-    frameRows.map((item) => item.sha256),
+  const comparisonGroups = [...grouped.entries()]
+    .filter(([, rows]) => rows.length >= 2)
+    .map(([key, rows]) => {
+      const uniqueHashes = new Set(rows.map((item) => item.sha256));
+      const timestamps = rows
+        .map((item) => item.capturedAtEpochMs)
+        .sort((left, right) => left - right);
+      return {
+        key,
+        captureCount: rows.length,
+        uniqueFrameCount: uniqueHashes.size,
+        firstCaptureEpochMs: timestamps[0],
+        lastCaptureEpochMs: timestamps.at(-1),
+        elapsedMs: timestamps.at(-1) - timestamps[0],
+        scenarios: rows.map((item) => item.scenario),
+        hashes: [...uniqueHashes],
+      };
+    });
+
+  const proofGroup = comparisonGroups.find(
+    (group) => (
+      group.captureCount >= 2
+      && group.uniqueFrameCount >= 2
+      && group.elapsedMs > 0
+    ),
+  );
+
+  assert(
+    proofGroup,
+    `animated GIF cross-scenario captures did not differ: ${
+      JSON.stringify(comparisonGroups)
+    }`,
   );
 
   return {
     readiness: {
-      complete: metrics.gif.complete,
-      naturalWidth: metrics.gif.naturalWidth,
-      naturalHeight: metrics.gif.naturalHeight,
+      captureCount: frameRows.length,
+      complete: frameRows.every((item) => item.complete === true),
+      naturalWidth: 160,
+      naturalHeight: 120,
     },
     sourceGifSha256: config.gif.sha256,
     samplingMethod:
-      "Playwright page.screenshot clip (animations=allow)",
-    samplingIntervalMs: intervalMs,
-    maxSamples,
-    clip,
-    browserFramesDiffer: uniqueHashes.size >= 2,
-    uniqueFrameCount: uniqueHashes.size,
+      "cross-scenario Playwright page.screenshot clip (animations=allow)",
+    comparisonRule:
+      "same theme and rounded rendered dimensions; at least two timestamps and two hashes",
+    comparisonGroup: proofGroup.key,
+    comparisonGroups,
+    browserFramesDiffer: true,
+    uniqueFrameCount: proofGroup.uniqueFrameCount,
     frames: frameRows.map((item) => ({
       ...item,
       path: relative(item.path),
     })),
-    screenshots: frameRows.map((item) =>
-      recordScreenshot(item.path, {
-        kind: "gif-browser-frame",
-        scenario: "wide-light",
-        theme: "light",
-        frameIndex: item.index,
-        waitMs: item.waitMs,
-        sampleIndex: item.sampleIndex,
-      }),
-    ),
+    screenshots: frameRows.map((item) => ({
+      path: relative(item.path),
+      kind: "gif-browser-frame",
+      scenario: item.scenario,
+      theme: item.theme,
+      side: item.side,
+      capturedAtEpochMs: item.capturedAtEpochMs,
+    })),
   };
 }
 

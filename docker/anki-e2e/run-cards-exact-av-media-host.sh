@@ -326,12 +326,17 @@ PY
 )"
   fi
   failure_zip="$output_dir/cards-exact-av-media-failure-${head:0:8}.zip"
+  failure_args=(
+    --artifacts "$output_dir"
+    --process-log "$process_log"
+    --output "$failure_zip"
+    --home "$HOME"
+  )
+  if [ -n "$token" ]; then
+    failure_args+=(--token "$token")
+  fi
   python3 "$repo/docker/anki-e2e/cards-exact-av-media-failure.py" \
-    --artifacts "$output_dir" \
-    --process-log "$process_log" \
-    --output "$failure_zip" \
-    --token "$token" \
-    --home "$HOME" || true
+    "${failure_args[@]}" || true
   failure_sha="$(sha256sum "$failure_zip" 2>/dev/null | awk '{print $1}')"
   first_problem="$(python3 - "$output_dir" <<'PY'
 import json,sys

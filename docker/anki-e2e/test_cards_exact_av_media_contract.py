@@ -59,9 +59,12 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "return imageNames.includes(config.png)" in source
     assert "browserFramesDiffer" in source
     assert 'canvas.toDataURL("image/png")' in source
-    assert "Playwright page.screenshot clip (animations=allow)" in source
+    assert "cross-scenario Playwright page.screenshot clip (animations=allow)" in source
+    assert "gifScenarioFrames" in source
+    assert "comparisonGroups" in source
+    assert "same theme and rounded rendered dimensions" in source
     assert "live HTMLImageElement -> CanvasRenderingContext2D.drawImage" not in source
-    assert "maxSamples = 60" in source
+    assert "maxSamples = 60" not in source
     assert 'decoder.decode({ frameIndex: 0, completeFramesOnly: true })' in source
     assert "const proof = window.__asrReplayProof;" in source
     assert "proof?.playCalls >= 2" in source
@@ -113,6 +116,10 @@ def test_exact_host_runner_uses_strict_mounts_and_state_guards() -> None:
     assert "require_dir" in source
     assert "Output path already exists and is not an empty directory" in source
     assert "Do not rerun." in source
+    assert "failure_args=(" in source
+    assert 'if [ -n "$token" ]; then' in source
+    assert 'failure_args+=(--token "$token")' in source
+    assert '--token "$token" \\' not in source
 
 
 def test_final_evidence_contract_is_self_verifying() -> None:
