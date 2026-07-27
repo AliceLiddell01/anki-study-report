@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 import py_compile
 import subprocess
@@ -57,8 +58,14 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert 'if (expectedSide === "front") return !imageNames.includes(config.png)' in source
     assert "return imageNames.includes(config.png)" in source
     assert "browserFramesDiffer" in source
+    assert 'canvas.toDataURL("image/png")' in source
+    assert "CanvasRenderingContext2D.drawImage" in source
+    assert "maxSamples = 60" in source
     assert 'decoder.decode({ frameIndex: 0, completeFramesOnly: true })' in source
-    assert 'window.__asrReplayProof?.playCalls >= 2' in source
+    assert "const proof = window.__asrReplayProof;" in source
+    assert "proof?.playCalls >= 2" in source
+    assert "second.playEventCurrentTime" in source
+    assert "second replay was not reset before play" in source
     assert "rejectedPromiseHandled" in source
     assert "inspectionProfileRequests.length === 0" in source
     assert "externalRequests.length === 0" in source
@@ -77,6 +84,9 @@ def test_exact_geometry_targets_the_exact_word_and_side_aware_examples() -> None
     assert "wordFocusRect" in source
     assert "imageToWordFocusGap" in source
     assert "wordFocusToExampleGap" in source
+    assert source.count("expectedNatural: { width: 160, height: 120 }") == 1
+    assert "aspect ratio was not preserved" in source
+    assert "failureScenario = activeScenario || lastScenario" in source
     assert "(する)" not in source
     assert "（する）" not in source
     assert "suruRect" not in source
@@ -125,6 +135,11 @@ def test_final_evidence_contract_is_self_verifying() -> None:
 
 
 def test_new_harness_files_parse() -> None:
+    assert os.access(
+        E2E / "cards-exact-av-media-browser.mjs",
+        os.X_OK,
+    ), "exact browser harness must remain executable"
+
     for name in (
         "cards-exact-av-media-scenario.py",
         "cards-exact-av-media-api.py",

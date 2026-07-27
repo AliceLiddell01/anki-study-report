@@ -73,6 +73,7 @@ let fixedFrameProof = null;
 let activeContext = null;
 let activePage = null;
 let activeScenario = null;
+let lastScenario = null;
 let status = "FAIL";
 let failure = null;
 
@@ -84,6 +85,7 @@ const browser = await chromium.launch({
 try {
   for (const scenario of buildScenarios(config)) {
     activeScenario = scenario.name;
+    lastScenario = scenario.name;
     activeContext = await browser.newContext({
       viewport: { width: scenario.width, height: scenario.height },
       deviceScaleFactor: 1,
@@ -201,17 +203,18 @@ try {
   await createContactSheet(browser, contactSheetPath, screenshots);
   status = "PASS";
 } catch (error) {
+  const failureScenario = activeScenario || lastScenario;
   failure = {
     errorType: String(error?.name || "Error"),
     message: safeText(error?.message || error),
-    activeScenario,
+    activeScenario: failureScenario,
   };
   if (activePage) {
-    const failurePath = path.join(failureScreenshots, `exact-${safeName(activeScenario || "unknown")}.png`);
+    const failurePath = path.join(failureScreenshots, `exact-${safeName(failureScenario || "unknown")}.png`);
     await activePage.screenshot({ path: failurePath, fullPage: true, animations: "allow", caret: "hide" }).catch(() => {});
   }
   if (activeContext) {
-    const tracePath = path.join(traceDir, `exact-${safeName(activeScenario || "unknown")}.zip`);
+    const tracePath = path.join(traceDir, `exact-${safeName(failureScenario || "unknown")}.zip`);
     await activeContext.tracing.stop({ path: tracePath }).catch(() => {});
   }
 } finally {
@@ -466,7 +469,18 @@ async function shadowMetrics(page, mode) {
     const example = host.dataset.previewSide === "back"
       ? (exampleCandidates[0] || leafElements.find((element) => normalized(element.textContent).length >= 12) || null)
       : null;
-    const parts = [wrapper, button, [...root.querySelectorAll("img")].find((image) => mediaName(image.src) === config.gif), wordFocus, example]
+    const gifElement = [...root.querySelectorAll("img")]
+      .find((image) => mediaName(image.src) === config.gif);
+    const pngElement = [...root.querySelectorAll("img")]
+      .find((image) => mediaName(image.src) === config.png);
+    const parts = [
+      wrapper,
+      button,
+      gifElement,
+      host.dataset.previewSide === "back" ? pngElement : null,
+      wordFocus,
+      example,
+    ]
       .filter(Boolean)
       .map(rect)
       .filter(Boolean);
@@ -543,13 +557,70 @@ async function shadowMetrics(page, mode) {
   });
 }
 
-function assertMediaGeometry(media, label) {
+function assertMediaGeometry(
+  media,
+  label,
+  { expectedNatural = null, expectedComputed = null } = {},
+) {
   assert(media, `${label}: media is missing`);
   assert(media.complete === true, `${label}: image is not complete`);
-  assert(media.naturalWidth === 160 && media.naturalHeight === 120, `${label}: intrinsic geometry mismatch`);
+
+  const naturalWidth = Number(media.naturalWidth);
+  const naturalHeight = Number(media.naturalHeight);
+  assert(
+    Number.isFinite(naturalWidth) && naturalWidth > 0
+      && Number.isFinite(naturalHeight) && naturalHeight > 0,
+    `${label}: intrinsic geometry is unavailable ${JSON.stringify(media)}`,
+  );
+
+  if (expectedNatural) {
+    assert(
+      naturalWidth === expectedNatural.width
+        && naturalHeight === expectedNatural.height,
+      `${label}: intrinsic geometry mismatch ${JSON.stringify({
+        actual: { width: naturalWidth, height: naturalHeight },
+        expected: expectedNatural,
+      })}`,
+    );
+  }
+
   const computedWidth = Number.parseFloat(media.style?.width || "");
   const computedHeight = Number.parseFloat(media.style?.height || "");
-  assert(Math.abs(computedWidth - 160) <= 1 && Math.abs(computedHeight - 120) <= 1, `${label}: template geometry mismatch`);
+  assert(
+    Number.isFinite(computedWidth) && computedWidth > 0
+      && Number.isFinite(computedHeight) && computedHeight > 0,
+    `${label}: computed geometry is unavailable ${JSON.stringify(media.style)}`,
+  );
+
+  if (expectedComputed) {
+    assert(
+      Math.abs(computedWidth - expectedComputed.width) <= 1
+        && Math.abs(computedHeight - expectedComputed.height) <= 1,
+      `${label}: template geometry mismatch ${JSON.stringify({
+        actual: { width: computedWidth, height: computedHeight },
+        expected: expectedComputed,
+      })}`,
+    );
+  }
+
+  const naturalAspect = naturalWidth / naturalHeight;
+  const computedAspect = computedWidth / computedHeight;
+  assert(
+    Math.abs(naturalAspect - computedAspect) <= 0.02,
+    `${label}: aspect ratio was not preserved ${JSON.stringify({
+      naturalAspect,
+      computedAspect,
+      naturalWidth,
+      naturalHeight,
+      computedWidth,
+      computedHeight,
+    })}`,
+  );
+
+  assert(
+    media.rect && media.rect.width > 0 && media.rect.height > 0,
+    `${label}: rendered rectangle is unavailable ${JSON.stringify(media.rect)}`,
+  );
 }
 
 function assertExactMetrics(metrics, label) {
@@ -560,7 +631,10 @@ function assertExactMetrics(metrics, label) {
     `${label}: replay structure mismatch ${JSON.stringify(replay)}`,
   );
   assert(replay.audioName === config.mp3.name, `${label}: wrong audio ${replay.audioName}`);
-  assertMediaGeometry(metrics.gif, `${label} GIF`);
+  assertMediaGeometry(metrics.gif, `${label} GIF`, {
+    expectedNatural: { width: 160, height: 120 },
+    expectedComputed: { width: 160, height: 120 },
+  });
   if (metrics.side === "front") {
     assert(metrics.png === null, `${label}: answer-only PNG leaked into front preview`);
   } else if (metrics.side === "back") {
@@ -682,23 +756,91 @@ async function proveReplayLifecycle(page, outputRoot) {
   });
   assert(first.playEventCurrentTime <= 0.03, `audio was not reset before first play event: ${JSON.stringify(first)}`);
 
-  await host.evaluate((element) => {
+  const secondSetup = await host.evaluate(async (element) => {
     const audio = element.shadowRoot.querySelector("audio.asr-card-audio");
-    audio.currentTime = Math.min(0.08, Number.isFinite(audio.duration) ? Math.max(0.01, audio.duration / 2) : 0.08);
-    window.__asrReplayProof.beforeSecondClick = audio.currentTime;
-  });
-  await button.click();
-  await page.waitForFunction(() => window.__asrReplayProof?.playCalls >= 2, null, { timeout: 5000 });
-  await page.waitForTimeout(100);
-  const second = await host.evaluate((element) => {
-    const audio = element.shadowRoot.querySelector("audio.asr-card-audio");
+    audio.pause();
+
+    const duration = Number(audio.duration);
+    const target = Number.isFinite(duration) && duration > 0.2
+      ? Math.min(duration * 0.6, duration - 0.05)
+      : 0.08;
+
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        if (Math.abs(audio.currentTime - target) <= 0.03) finish();
+        else reject(new Error(`second replay pre-seek did not settle: ${audio.currentTime} vs ${target}`));
+      }, 1500);
+
+      audio.addEventListener("seeked", finish, { once: true });
+      audio.currentTime = target;
+      if (Math.abs(audio.currentTime - target) <= 0.03) queueMicrotask(finish);
+    });
+
+    const beforeClickCurrentTime = audio.currentTime;
+    window.__asrReplayProof.second = {
+      target,
+      beforeClickCurrentTime,
+      playEvent: false,
+      playingEvent: false,
+      playEventCurrentTime: null,
+      playingEventCurrentTime: null,
+    };
+
+    audio.addEventListener("play", () => {
+      window.__asrReplayProof.second.playEvent = true;
+      window.__asrReplayProof.second.playEventCurrentTime = audio.currentTime;
+    }, { once: true });
+    audio.addEventListener("playing", () => {
+      window.__asrReplayProof.second.playingEvent = true;
+      window.__asrReplayProof.second.playingEventCurrentTime = audio.currentTime;
+    }, { once: true });
+
     return {
-      beforeClickCurrentTime: window.__asrReplayProof.beforeSecondClick,
-      currentTimeAfterClick: audio.currentTime,
-      playCalls: window.__asrReplayProof.playCalls,
-      resetObserved: audio.currentTime < window.__asrReplayProof.beforeSecondClick,
+      target,
+      beforeClickCurrentTime,
+      paused: audio.paused,
+      seeking: audio.seeking,
     };
   });
+
+  assert(
+    secondSetup.paused === true
+      && secondSetup.seeking === false
+      && secondSetup.beforeClickCurrentTime >= 0.05,
+    `second replay precondition failed: ${JSON.stringify(secondSetup)}`,
+  );
+
+  await button.click();
+  await page.waitForFunction(() => {
+    const proof = window.__asrReplayProof;
+    return proof?.playCalls >= 2
+      && proof?.second?.playEvent
+      && proof?.second?.playingEvent;
+  }, null, { timeout: 10000 });
+
+  const second = await host.evaluate(() => {
+    const proof = window.__asrReplayProof;
+    const value = proof.second;
+    return {
+      ...value,
+      playCalls: proof.playCalls,
+      resetObserved: value.beforeClickCurrentTime >= 0.05
+        && value.playEventCurrentTime !== null
+        && value.playEventCurrentTime <= 0.03,
+    };
+  });
+
+  assert(
+    second.resetObserved === true,
+    `second replay was not reset before play: ${JSON.stringify(second)}`,
+  );
 
   const pageErrorsBeforeRejection = pageErrors.length;
   await host.evaluate((element) => {
@@ -727,40 +869,90 @@ async function proveReplayLifecycle(page, outputRoot) {
 
 async function proveGifAnimation(page, outputRoot) {
   const host = exactHost(page, "preview", "wide");
-  const images = host.locator("img");
-  const names = await images.evaluateAll((nodes) => nodes.map((image) => {
-    const url = new URL(image.src, window.location.href);
-    return url.searchParams.get("name") || decodeURIComponent(url.pathname.split("/").pop() || "");
-  }));
-  const index = names.indexOf(config.gif.name);
-  assert(index >= 0, `${config.gif.name} not found in preview: ${JSON.stringify(names)}`);
-  const gif = images.nth(index);
-  const readiness = await gif.evaluate((image) => ({
-    complete: image.complete,
-    naturalWidth: image.naturalWidth,
-    naturalHeight: image.naturalHeight,
-  }));
-  assert(readiness.complete && readiness.naturalWidth === 160 && readiness.naturalHeight === 120, "GIF readiness/geometry failed");
+  const payload = await host.evaluate(async (element, gifName) => {
+    const image = [...element.shadowRoot.querySelectorAll("img")]
+      .find((candidate) => {
+        const url = new URL(candidate.src, window.location.href);
+        const name = url.searchParams.get("name")
+          || decodeURIComponent(url.pathname.split("/").pop() || "");
+        return name === gifName;
+      });
 
-  const waits = [0, 450, 900];
+    if (!image) throw new Error(`GIF image not found: ${gifName}`);
+    if (!image.complete || !image.naturalWidth || !image.naturalHeight) {
+      await image.decode();
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("2D canvas context is unavailable");
+
+    const intervalMs = 100;
+    const maxSamples = 60;
+    const unique = new Map();
+    const startedAt = performance.now();
+
+    for (let sampleIndex = 0; sampleIndex < maxSamples; sampleIndex += 1) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pngBase64 = canvas.toDataURL("image/png").split(",", 2)[1];
+
+      if (!unique.has(pngBase64)) {
+        unique.set(pngBase64, {
+          sampleIndex,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          pngBase64,
+        });
+        if (unique.size >= 3) break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    return {
+      readiness: {
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      },
+      intervalMs,
+      maxSamples,
+      uniqueFrames: [...unique.values()],
+    };
+  }, config.gif.name);
+
+  assert(
+    payload.readiness.complete
+      && payload.readiness.naturalWidth === 160
+      && payload.readiness.naturalHeight === 120,
+    `GIF readiness/geometry failed: ${JSON.stringify(payload.readiness)}`,
+  );
+
   const frameRows = [];
-  for (const [frameIndex, waitMs] of waits.entries()) {
-    if (waitMs) await page.waitForTimeout(waitMs - waits[frameIndex - 1]);
+  for (const [frameIndex, item] of payload.uniqueFrames.entries()) {
+    const bytes = Buffer.from(item.pngBase64, "base64");
     const framePath = path.join(outputRoot, `gif-browser-frame-${frameIndex}.png`);
-    const buffer = await capturePageClip(page, gif, framePath);
+    await fs.writeFile(framePath, bytes);
     frameRows.push({
       index: frameIndex,
-      waitMs,
+      sampleIndex: item.sampleIndex,
+      waitMs: item.elapsedMs,
       path: framePath,
-      sha256: crypto.createHash("sha256").update(buffer).digest("hex"),
+      sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
     });
   }
-  const unique = new Set(frameRows.map((item) => item.sha256));
+
+  const uniqueHashes = new Set(frameRows.map((item) => item.sha256));
   return {
-    readiness,
+    readiness: payload.readiness,
     sourceGifSha256: config.gif.sha256,
-    browserFramesDiffer: unique.size >= 2,
-    uniqueFrameCount: unique.size,
+    samplingMethod: "live HTMLImageElement -> CanvasRenderingContext2D.drawImage",
+    samplingIntervalMs: payload.intervalMs,
+    maxSamples: payload.maxSamples,
+    browserFramesDiffer: uniqueHashes.size >= 2,
+    uniqueFrameCount: uniqueHashes.size,
     frames: frameRows.map((item) => ({ ...item, path: relative(item.path) })),
     screenshots: frameRows.map((item) => recordScreenshot(item.path, {
       kind: "gif-browser-frame",
@@ -768,6 +960,7 @@ async function proveGifAnimation(page, outputRoot) {
       theme: "light",
       frameIndex: item.index,
       waitMs: item.waitMs,
+      sampleIndex: item.sampleIndex,
     })),
   };
 }
