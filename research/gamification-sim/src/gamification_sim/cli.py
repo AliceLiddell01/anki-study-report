@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -288,6 +289,12 @@ def _emit_run(result, args) -> int:
     return 0 if result.passed else 1
 
 
+
+def _canonical_learn_xp_command() -> str:
+    """Return a public, shell-safe CLI command without the private launcher path."""
+    return shlex.join(["gamification-sim", *sys.argv[1:]])
+
+
 def _run_new_command(args, workspace: ResearchWorkspace) -> int:
     if args.command == "validate-learn-xp-screening":
         head = subprocess.run(
@@ -322,7 +329,7 @@ def _run_new_command(args, workspace: ResearchWorkspace) -> int:
             workspace,
             implementation_sha=args.implementation_sha,
             base_sha=args.base_sha,
-            exact_command=" ".join(sys.argv),
+            exact_command=_canonical_learn_xp_command(),
         )
         print(render_learn_xp_screening_summary(payload), end="")
         if not args.no_write:

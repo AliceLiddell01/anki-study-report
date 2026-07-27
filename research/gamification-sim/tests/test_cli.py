@@ -331,3 +331,28 @@ def test_learn_xp_screening_commands_are_registered():
     assert run.command == "run-learn-xp-screening"
     assert run.no_write is True
     assert detached.command == "validate-learn-xp-screening-evidence"
+
+def test_learn_xp_command_normalizes_private_launcher_and_quotes(monkeypatch):
+    from gamification_sim.cli import _canonical_learn_xp_command
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "/opt/task-environment/bin/gamification-sim",
+            "run-learn-xp-screening",
+            "--implementation-sha",
+            "a" * 40,
+            "--base-sha",
+            "b" * 40,
+            "--label",
+            "value with spaces",
+        ],
+    )
+
+    command = _canonical_learn_xp_command()
+
+    assert command.startswith("gamification-sim run-learn-xp-screening ")
+    assert "/opt/task-environment" not in command
+    assert "'value with spaces'" in command
+

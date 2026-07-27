@@ -211,15 +211,17 @@ Stored `PASS`, candidate status, survivor или family outcome не счита�
 PYTHONPATH=src python -m gamification_sim --research-root . validate-learn-xp-screening
 ```
 
-Canonical run разрешён только после non-force push implementation commit и подтверждения remote SHA equality:
+Canonical run разрешён только после non-force push implementation commit и подтверждения remote SHA equality. Для canonical provenance используется installed console entry point; launcher path нормализуется до публичного `gamification-sim`, а private workspace/output roots передаются только через environment:
 
 ```bash
-PYTHONPATH=src python -m gamification_sim --research-root . run-learn-xp-screening \
+export GAMIFICATION_SIM_RESEARCH_ROOT="$(pwd)"
+export GAMIFICATION_SIM_OUTPUT_DIR="<external-output-root>"
+gamification-sim run-learn-xp-screening \
   --implementation-sha <published-implementation-sha> \
   --base-sha 933325f8d2647d52cbc0d6859ff44ded0b6686c4
 ```
 
-`--output-dir` поддерживается, но canonical run может получать внешний root через workspace environment, чтобы private absolute path не попадал в canonical evidence. `--no-write` выполняет in-memory run без bundle.
+`--output-dir` поддерживается для обычных запусков, но canonical run не передаёт private absolute paths в argv. `--no-write` выполняет in-memory run без bundle.
 
 Detached evidence:
 
