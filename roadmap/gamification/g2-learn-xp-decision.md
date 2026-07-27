@@ -22,12 +22,13 @@ repository: AliceLiddell01/anki-study-report
 target branch: gamification
 starting gamification HEAD: ef953149972229f5ec08bfb2da2bbdd4a28a0fbb
 task branch: g2-6-learn-xp-decision
-PR: PENDING_UNTIL_CREATED
-final merge SHA: PENDING_UNTIL_VERIFIED_MERGE
+PR: #162 — Завершить G2 и зафиксировать решение по Learn XP
+reviewed pre-metadata head: ba8cb18a75b643593a9f75c3aafad6676254fef1
+final merge SHA: RECORDED_IN_FINAL_CHATGPT_REPORT_AFTER_VERIFIED_MERGE
 master changed: NO
 ```
 
-Точный PR, commit sequence и resulting `gamification` HEAD проверяются после публикации branch и записываются в финальном ChatGPT-отчёте. Self-referential final commit/merge identity не подставляется в pre-merge document.
+The pre-merge document records the exact PR and the head used for the full semantic diff review. The self-referential metadata commit and final merge identity are verified after publication and recorded in the final ChatGPT report.
 
 ## Decision policy
 
@@ -234,7 +235,7 @@ The recommendation authorizes only bounded future design/research use of the sel
 
 ## Documentation scope
 
-Expected docs-only G2.6 path set:
+Exact docs-only G2.6 path set:
 
 ```text
 docs/README.md
@@ -250,22 +251,28 @@ Frozen G2.1–G2.5 contracts, schemas, source code, tests and historical closeou
 
 ## Verification
 
-Required final verification before merge:
+Performed on PR #162 before the metadata-only closeout update:
 
 ```text
-starting branch/HEAD guard
-changed-path allowlist
-full PR diff review
-whitespace / conflict-marker check
-Markdown code-fence balance
-relative-link target audit
-status consistency and stale-wording search
-private absolute path scan
-secret/token scan
-no production paths changed
-no machine contract/schema/code changed
-merge ancestry and resulting gamification HEAD verification
+starting gamification HEAD guard: PASS — ef953149972229f5ec08bfb2da2bbdd4a28a0fbb
+branch ancestry: PASS — ahead 7 / behind 0
+changed-path allowlist: PASS — exact 7 Markdown paths
+full semantic PR diff review: PASS — head ba8cb18a75b643593a9f75c3aafad6676254fef1
+whitespace / conflict-marker review: PASS
+Markdown code-fence balance: PASS
+relative-link target audit for added links: PASS
+status consistency and stale-wording review: PASS
+private absolute path scan of additions: PASS
+secret/token scan of additions: PASS
+production paths changed: NO
+machine contract/schema/code/test paths changed: NO
+PR base: gamification
+PR mergeable: YES
+combined status checks: 0
+workflow runs: 0
 ```
+
+The final metadata-only delta records PR identity and this verification ledger. It requires one final read-only PR diff/head/ancestry check before merge.
 
 Not run by design:
 
