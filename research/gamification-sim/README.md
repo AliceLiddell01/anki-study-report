@@ -16,8 +16,12 @@ G2.5: COMPLETE — CONFIRMATORY INCONCLUSIVE
 G2.6: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
 recommended Learn XP research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+G3: DEFERRED / POST-MVP / NOT STARTED
+G4: IN PROGRESS
+G4.1: COMPLETE
+core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G4.2: NEXT / NOT STARTED
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```
 
 The package is isolated under `research/gamification-sim/`. It has no production imports, root dependency changes, Fast CI/package/release integration, real Anki profile data, collection data or tokens.
@@ -36,6 +40,34 @@ src/           Python research package
 tests/         Python research tests
 rust-oracle/   isolated Rust implementation
 ```
+
+## G4.1 core economy problem contract
+
+- [Machine contract](contracts/core-economy-problem-contract-v1.json)
+- [Strict Draft 2020-12 schema](schemas/core-economy-problem-contract-v1.schema.json)
+- [Human contract](../../docs/gamification/core-economy-problem-contract.md)
+- [G4.1 closeout](../../roadmap/gamification/g4-core-economy-problem-contract.md)
+
+Frozen state:
+
+```text
+contract_id: core-economy-problem-contract
+version: 1
+status: FROZEN_PRE_NORMALIZATION_ANALYSIS
+initial domains: REVIEW_DOMAIN; LEARN_DOMAIN
+Create XP: EXCLUDED / DEFERRED WITH G3
+Review uncertainty: P-STEP-ZERO; P-TAPER-ZERO-30D
+Review winner: NONE
+Learn candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+terminology / personas / threats / invariants: 30 / 9 / 14 / 28
+allowed final outcomes: 3
+G4.2 requirements: 14
+G4.2 started: false
+production approved: false
+```
+
+G3 is deferred until after the first stable Gamification release, is outside the first-MVP critical path and does not block G4, G5 or G6. G4.1 adds no evaluator, CLI command, candidate registry, matrix, fixture trace or simulation. It selects no conversion ratio, normalized XP, productive-day threshold, level curve, streak, Momentum or recovery formula.
 
 ## G2.1 Learn XP artifacts
 
@@ -229,25 +261,26 @@ run-learn-xp-confirmatory
 validate-learn-xp-confirmatory-evidence
 ```
 
-The G2.4 and G2.5 commands remain historical research-only surfaces. G2.6 adds no executable command and reruns no matrix.
+The G2.4 and G2.5 commands remain historical research-only surfaces. G4.1 adds no executable command and reruns no matrix.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence. G2.3 adds prospective candidate protocol and dry matrix identities. G2.4 records one invalid disclosed synthetic attempt and one valid full replacement run. G2.5 records a prospectively published, deterministic confirmatory run with two fail-closed inconclusive candidate outcomes. G2.6 records a bounded research/product governance recommendation without adding evidence or changing frozen outcomes. The valid external bundles remain owner-managed and are not part of Git; no production evidence or approval exists.
+G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence. G2.3 adds prospective candidate protocol and dry matrix identities. G2.4 records one invalid disclosed synthetic attempt and one valid full replacement run. G2.5 records a prospectively published, deterministic confirmatory run with two fail-closed inconclusive candidate outcomes. G2.6 records a bounded research/product governance recommendation without adding evidence or changing frozen outcomes. G4.1 prospectively freezes the two-domain core economy problem without adding evidence or changing G1/G2 outcomes. The valid external bundles remain owner-managed and are not part of Git; no production evidence or approval exists.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
 
-## G2 final status
+## G2 canonical evidence identity retained for G4 input
 
 ```text
-G2: COMPLETE
-G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
-recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
-selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
-selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
-non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
-production approved: NO
-production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
+protocol publication SHA: 903604245aaa540674f650b998d32f497b018f49
+expected / actual / unique: 216 / 216 / 216
+missing / extra / duplicates: 0 / 0 / 0
+manifest digest: 6224c9b363f18662328a89981dd2e8f303f14a10ac43771e74be220dc27d3f27
+evidence digest: d2d5327e382ae85b1fea575f9efed5604ed11905aff56ec19a005546726badbe
+canonical archive SHA-256: 4e96835f5517d8bd2e9ce350776b8e3bc24dc8878c74f1e5c0897d216506678e
+canonical evidence.json SHA-256: cc275780dfc98eaa8e683188815606568a7aaca80720e3ddeb5584914da61a4a
+detached validation: PASS
+byte-identical reproduction: PASS
 ```
+
+`C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` and `C-PENDING-SPLIT-D1-NOTE-SIBLING` remain `CONFIRMATORY_INCONCLUSIVE` with reason `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`. `R-NO-LEARN-XP-NOTE-SIBLING` remains `REFERENCE_ONLY`.

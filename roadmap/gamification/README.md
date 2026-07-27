@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended Learn XP research candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Planned / Not Started`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended Learn XP research candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4 In Progress`; `G4.1 Complete`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -61,7 +61,7 @@ production integration: PROHIBITED
 
 G1.2a classified the root cause as `ROOT_CAUSE_PARTIALLY_LOCALIZED` / `MEDIUM`. G1.4 retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`; G1.5 marked both `CONFIRMATORY_ELIGIBLE`. G1.6 selected no winner because raw evidence continuity could not be freshly revalidated and accepted aggregates did not provide a non-arbitrary tie-breaker.
 
-Review XP production integration remains prohibited.
+Review XP production integration remains prohibited. G4 preserves both candidates as an explicit uncertainty axis.
 
 ## G2 — Learn XP specification and simulation
 
@@ -81,7 +81,6 @@ selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
 non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
 non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```
 
 The recommendation is a bounded research/product governance choice. It does not change either G2.5 outcome, create confirmatory eligibility, prove human-learning or motivation benefit, or authorize production integration.
@@ -269,11 +268,85 @@ Recommendation means research model, not production readiness.
 
 ## G3 — Create XP specification and simulation
 
-**Status:** Planned after G2 / Not Started. Reward useful material state transitions without incentivizing low-quality card spam or repeated edits. Remote AI scoring and production integration remain out of scope. G2 completion does not activate G3 automatically.
+**Status:** Deferred / Post-MVP / Not Started.
 
-## G4 — Cross-domain economy calibration
+```text
+critical path for first Gamification MVP: NO
+blocks G4: NO
+blocks G5: NO
+blocks G6: NO
+production integration: PROHIBITED
+```
 
-**Status:** Planned after G1–G3. Calibrate Review/Learn/Create conversion, level curve, productive-day scale, streak, Momentum, planned rest and recovery as one bounded research economy.
+G3/Create XP is excluded from the initial core economy. It may be activated only when all three conditions are met:
+
+```text
+FIRST_STABLE_GAMIFICATION_RELEASE
+AND SEPARATE_OWNER_DECISION
+AND CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER
+```
+
+G3.1, Create lifecycle, candidates, reward units, formulas and simulation are intentionally undefined.
+
+## G4 — Core gamification economy calibration
+
+**Status:** In Progress.
+
+G4 prospectively defines and later investigates a bounded, explainable and manipulation-resistant economy for:
+
+```text
+Review XP
++
+Learn XP
+```
+
+Create XP is excluded and G3 is not a dependency.
+
+### Dependencies
+
+```text
+G1: COMPLETE
+G2: COMPLETE
+G3: NOT REQUIRED / DEFERRED POST-MVP
+```
+
+### G4.1 — Freeze core gamification economy problem and contract
+
+**Status:** Complete.
+
+Artifacts:
+
+- [human core economy contract](../../docs/gamification/core-economy-problem-contract.md)
+- [machine contract](../../research/gamification-sim/contracts/core-economy-problem-contract-v1.json)
+- [strict Draft 2020-12 schema](../../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
+- [G4.1 closeout](g4-core-economy-problem-contract.md)
+
+```text
+contract_id: core-economy-problem-contract
+version: 1
+status: FROZEN_PRE_NORMALIZATION_ANALYSIS
+initial domains: REVIEW_DOMAIN; LEARN_DOMAIN
+Create XP: EXCLUDED
+Review winner: NONE
+Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+terminology / personas / threats / invariants: 30 / 9 / 14 / 28
+allowed final outcomes: 3
+G4.2: NEXT / NOT STARTED
+production integration: PROHIBITED
+```
+
+G4.1 selects no conversion ratio, normalized XP, productive-day threshold, level curve, streak, Momentum or recovery formula. It creates no candidate registry, screening matrix or simulation.
+
+### G4.2 — Input normalization and uncertainty model
+
+**Status:** Next / Not Started.
+
+G4.2 must preserve both Review candidates, the selected Learn research input and its identity limitation while defining typed domain inputs and a common normalization interface without selecting production amounts or formulas.
+
+### Later G4 stages
+
+Candidate families, exact matrices and simulation may be introduced only prospectively after G4.2. No later G4 stage is activated by this closeout.
 
 ## G5 — Production architecture foundation
 
@@ -293,4 +366,4 @@ Recommendation means research model, not production readiness.
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G2.1–G2.6 are complete research/decision stages. G2 closed with a bounded recommendation while both G2.5 outcomes remain `CONFIRMATORY_INCONCLUSIVE`; production integration remains prohibited and G3 remains not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G1 and G2 remain complete with their frozen outcomes; G3 is deferred and non-blocking; G4.1 is a research contract freeze. G4.2 and all production work remain not started.

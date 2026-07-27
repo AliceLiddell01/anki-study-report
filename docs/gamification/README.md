@@ -16,11 +16,65 @@ G2.5: COMPLETE — CONFIRMATORY INCONCLUSIVE
 G2.6: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
 recommended Learn XP research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+G3: DEFERRED / POST-MVP / NOT STARTED
+G3 blocks G4/G5/G6: NO
+G4: IN PROGRESS
+G4.1: COMPLETE
+core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G4.2: NEXT / NOT STARTED
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```
 
-The canonical `gamification` branch contains isolated research contracts, fixtures, simulator code, accepted synthetic evidence and bounded final-stage governance decisions. Research candidates and research outcomes are not production economies.
+The canonical `gamification` branch contains isolated research contracts, fixtures, simulator code, accepted synthetic evidence and bounded governance decisions. Research candidates and research outcomes are not production economies.
+
+## Current G4 contracts
+
+### G4.1 core economy problem contract
+
+- [Human core economy contract](core-economy-problem-contract.md)
+- [Machine contract](../../research/gamification-sim/contracts/core-economy-problem-contract-v1.json)
+- [Strict Draft 2020-12 schema](../../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
+- [G4.1 closeout](../../roadmap/gamification/g4-core-economy-problem-contract.md)
+
+G4.1 freezes the problem and boundaries for a two-domain core economy:
+
+```text
+REVIEW_DOMAIN
+LEARN_DOMAIN
+```
+
+`CREATE_DOMAIN` is excluded. G3 is deferred until after the first stable Gamification release, is not on the first-MVP critical path and does not block G4, G5 or G6. Reactivation requires a separate owner decision and a concrete evidence-backed trigger.
+
+The Review input remains an explicit uncertainty axis:
+
+```text
+P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+Review winner: NONE
+```
+
+The Learn input remains bounded by its source evidence:
+
+```text
+C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+G2.5 status: CONFIRMATORY_INCONCLUSIVE
+reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+confirmatory eligible: NO
+production ready: NO
+```
+
+Contract inventory:
+
+```text
+terminology: 30
+personas: 9
+threat families: 14
+protected invariants: 28
+allowed final outcomes: 3
+G4.2 requirements: 14
+```
+
+No conversion ratio, normalized XP, daily cap, productive-day threshold, level curve, streak, Momentum or recovery formula was selected. No candidate registry, matrix, simulation or production implementation was started.
 
 ## Current G2 contracts
 
@@ -116,27 +170,29 @@ G1 closed with `DEFER_REVIEW_MODEL`. `P-STEP-ZERO` and `P-TAPER-ZERO-30D` remain
 - [Review session and Anki-day aggregation](anki-review-session-and-day.md)
 - [Review simulation specification](anki-review-simulation-spec.md)
 
-These are references for terminology, research discipline and protected invariants. Their Review XP formulas, candidates and matrices do not define Learn XP automatically.
+These are references for terminology, research discipline and protected invariants. Their Review XP formulas, candidates and matrices do not define Learn XP automatically or determine G4 normalization automatically.
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes; G2.6 adds a docs-only governance recommendation without new simulation or evidence. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes; G2.6 adds a docs-only governance recommendation without new simulation or evidence. G4.1 prospectively freezes the two-domain core-economy problem without adding simulation or real-user evidence. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G4 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2 is complete with a bounded research recommendation, but the selected candidate remains `CONFIRMATORY_INCONCLUSIVE`, not confirmatory-eligible and not production-ready. Production integration remains prohibited, and research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2 remains complete with a bounded research recommendation, and its selected candidate remains `CONFIRMATORY_INCONCLUSIVE`, not confirmatory-eligible and not production-ready. G4.1 is a research contract freeze; G4.2 remains not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
 
-### G2 final result
+### G4.1 final state
 
 ```text
-G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
-recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
-decision basis: MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
-selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
-selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-non-selected candidate: C-PENDING-SPLIT-D1-NOTE-SIBLING
-non-selected candidate status: CONFIRMATORY_INCONCLUSIVE; not selected; not falsified
+G3: DEFERRED / POST-MVP / NOT STARTED
+G3 blocks G4/G5/G6: NO
+G4: IN PROGRESS
+G4.1: COMPLETE
+contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+Review inputs: P-STEP-ZERO; P-TAPER-ZERO-30D
+Review winner: NONE
+Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+G4.2: NEXT / NOT STARTED
 production approved: NO
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
 ```

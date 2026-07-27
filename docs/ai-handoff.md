@@ -104,10 +104,20 @@ decision basis — MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
 selected candidate G2.5 status — CONFIRMATORY_INCONCLUSIVE
 non-selected candidate — C-PENDING-SPLIT-D1-NOTE-SIBLING; not selected; not falsified
 production integration — PROHIBITED
-G3 — PLANNED / NOT STARTED
+G3 — DEFERRED / POST-MVP / NOT STARTED
+G3 critical path — NO
+G3 blocks G4/G5/G6 — NO
+G4 — IN PROGRESS
+G4.1 — COMPLETE
+core economy contract — FROZEN_PRE_NORMALIZATION_ANALYSIS
+core economy domains — REVIEW_DOMAIN; LEARN_DOMAIN
+Create XP — EXCLUDED / DEFERRED WITH G3
+Review winner — NONE
+G4.2 — NEXT / NOT STARTED
+production integration — PROHIBITED
 ```
 
-G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует.
+G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует. G4 сохраняет `P-STEP-ZERO` и `P-TAPER-ZERO-30D` как explicit uncertainty axis и не выбирает hidden default.
 
 G2.1 заморозил отдельный Learn XP problem contract. Он отделяет официальные Anki states `New/Learning/Review/Relearn` от Learn XP research lifecycle, фиксирует четыре identity candidates, pending/confirmation minimum requirements, шесть anti-farming threat families, 19 protected invariants, privacy/claims boundary и entry contract G2.2.
 
@@ -122,6 +132,32 @@ Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 fu
 G2.5 был активирован отдельно и завершён на prospectively frozen matrix из двух survivors, одной reference, 36 conditions и двух replay identities: `216/216/216`, `0/0/0`, detached validation и byte-identical reproduction прошли. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`; reference осталась `REFERENCE_ONLY`. Ranking, winner, recommendation, final model selection и production approval в G2.5 не выполнялись.
 
 G2.6 закрыл G2 outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` и рекомендует `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` как bounded research model. Принцип `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE` выбирает меньшую provisional/accounting/explanation surface при одинаковом frozen confirmed total и отсутствии подтверждённой human benefit дополнительного pending reward state. G2.5 outcome выбранного кандидата остаётся `CONFIRMATORY_INCONCLUSIVE`; non-selected pending-split candidate не фальсифицирован и не отклонён как invalid. Recommendation не означает confirmatory eligibility, scientific superiority или production approval.
+
+G3/Create XP не отменён, но отложен до периода после первого стабильного Gamification release, исключён из initial economy и не блокирует G4, G5 или G6. Activation требует одновременно `FIRST_STABLE_GAMIFICATION_RELEASE`, `SEPARATE_OWNER_DECISION` и `CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER`. G3.1, lifecycle, candidates, units, formulas и simulation не определены.
+
+G4.1 заморозил problem contract двухдоменной core economy:
+
+```text
+Review XP
++
+Learn XP
+```
+
+Machine identity и inventory:
+
+```text
+contract_id — core-economy-problem-contract
+version — 1
+status — FROZEN_PRE_NORMALIZATION_ANALYSIS
+terminology — 30
+personas — 9
+threat families — 14
+protected invariants — 28
+allowed final G4 outcomes — 3
+G4.2 requirements — 14
+```
+
+G4.1 не выбирает Review winner, Review/Learn ratio, normalized XP, productive-day threshold, level curve, streak, Momentum, recovery formula, candidate registry, matrix или seed. G4.2 остаётся `NEXT / NOT STARTED`.
 
 Точные источники:
 
@@ -145,6 +181,10 @@ G2.6 закрыл G2 outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` и рекоме
 - [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 - [G2.6 final decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
 - [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
+- [Core economy problem contract](gamification/core-economy-problem-contract.md)
+- [Core economy machine contract](../research/gamification-sim/contracts/core-economy-problem-contract-v1.json)
+- [Core economy strict schema](../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
+- [G4.1 closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
 
@@ -180,6 +220,7 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Harness failure не объявлять production failure без подтверждения.
 - Docs/contracts-only sync не требует повторного Fast CI или Docker E2E.
 - Для Gamification target и PR base — `gamification`, даже если общие environment docs приводят Core-примеры.
+- Не начинать G4.2 автоматически после G4.1.
 
 ## Режим работы
 
@@ -205,5 +246,20 @@ selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
 selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
 production approved: NO
 production integration: PROHIBITED
-G3: PLANNED / NOT STARTED
+```
+
+### G4.1 closeout
+
+```text
+G3: DEFERRED / POST-MVP / NOT STARTED
+G4: IN PROGRESS
+G4.1: COMPLETE
+contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+Review inputs: P-STEP-ZERO; P-TAPER-ZERO-30D
+Review winner: NONE
+Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+G4.2: NEXT / NOT STARTED
+production approved: NO
+production integration: PROHIBITED
 ```
