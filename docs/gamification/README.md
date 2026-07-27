@@ -12,7 +12,7 @@ G2.1: COMPLETE
 G2.2: COMPLETE
 G2.3: COMPLETE
 G2.4: COMPLETE
-G2.5: IN PROGRESS — FROZEN PRE-RESULTS
+G2.5: COMPLETE — CONFIRMATORY INCONCLUSIVE
 production integration: PROHIBITED
 ```
 
@@ -78,7 +78,7 @@ The first canonical attempt on `ef7c638a…` remains quarantined as `INVALID`. T
 - [Focused tests](../../research/gamification-sim/tests/test_learn_confirmatory.py)
 - [Confirmatory closeout](../../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 
-G2.5 prospectively freezes exactly two G2.4 survivors, one subject-matched zero-reward reference, 36 conditions per identity and `FORWARD`/`REVERSE` replay for exact `216` units. Identity evidence mode is `SYNTHETIC_CONTRACT_ONLY`; results have not been accessed, no outcomes have been assigned, and no cross-family ranking or final model selection is performed.
+G2.5 prospectively froze exactly two G2.4 survivors, one subject-matched zero-reward reference, 36 conditions per identity and `FORWARD`/`REVERSE` replay for exact `216` units. The canonical run completed `216/216/216` units with `0/0/0` missing/extra/duplicates, detached validation and byte-identical reproduction. Both survivors are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable under `SYNTHETIC_CONTRACT_ONLY`; the zero-reward reference is `REFERENCE_ONLY`. No cross-family ranking, winner, recommendation, final model selection or production approval was produced.
 
 ## Current G1 contracts
 
@@ -110,7 +110,7 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
+G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G2 research artifacts.
 
 ## Production integration boundary
 
