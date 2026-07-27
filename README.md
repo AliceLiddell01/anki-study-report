@@ -12,7 +12,8 @@
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
 - Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
 - доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки;
-- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting.
+- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting;
+- repository-owned exact Cards AV/audio/media gate с self-verifying evidence.
 
 ## Куда идти дальше
 
@@ -24,6 +25,7 @@
 | Посмотреть планы и зависимости | [Карта roadmap](roadmap/README.md) |
 | Найти исторические подтверждения | [Индекс отчётов](reports/README.md) |
 | Запустить проверки | [Матрица тестирования](docs/test-matrix.md) · [Политика запусков](docs/verification-run-policy.md) |
+| Проверить exact Cards AV/media | [Cards exact AV/audio/media E2E](docs/cards-exact-av-media-e2e.md) |
 | Собрать или выпустить add-on | [Packaging и release](docs/packaging-release.md) |
 | Внести вклад | [CONTRIBUTING](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
 
@@ -54,7 +56,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён, [Cards 1:1 production integration](docs/cards-v323-production-workspace.md) по Prototype v3.2.3 реализована и ожидает решения владельца; [полный Stage 2 report](reports/core/c2-cards-v323-production-integration.md) фиксирует verification и visual evidence. Inspection Profiles 1:1 ещё не начата; merge PR, final verification и C3 не выполнялись.
+- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён. [Cards 1:1 production integration](docs/cards-v323-production-workspace.md), native CSS fidelity, AV/audio/media repair и финальный exact-card real-Anki evidence gate завершены; [финальный AV/media closeout](reports/core/c2-cards-final-av-media-evidence-closeout.md) фиксирует `PASS`. Формальный owner verdict `ACCEPT CARDS 1:1` ещё не зафиксирован. Inspection Profiles 1:1 не начата; merge PR, final verification и C3 не выполнялись.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
