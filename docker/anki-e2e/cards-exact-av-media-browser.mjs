@@ -539,7 +539,7 @@ async function shadowMetrics(page, mode) {
     };
   }, {
     mode,
-    config: { gif: config.gif.name, mp3: config.mp3.name, png: config.png.name },
+    config: { word: config.word, gif: config.gif.name, mp3: config.mp3.name, png: config.png.name },
   });
 }
 

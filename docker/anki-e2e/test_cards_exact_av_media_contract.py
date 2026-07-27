@@ -68,6 +68,7 @@ def test_exact_geometry_targets_the_exact_word_and_side_aware_examples() -> None
     source = read("cards-exact-av-media-browser.mjs")
     assert 'root.querySelectorAll(".word-focus")' in source
     assert 'normalized(element.textContent) === config.word' in source
+    assert 'config: { word: config.word, gif: config.gif.name' in source
     assert 'wordFocusCandidates.length' in source
     assert 'metrics.wordFocus.text === config.word' in source
     assert 'host.dataset.previewSide === "back"' in source
