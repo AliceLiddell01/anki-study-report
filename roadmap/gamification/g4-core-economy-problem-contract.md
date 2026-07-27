@@ -24,13 +24,13 @@ starting gamification HEAD: abb1d26e416d29f64d505546cca74de0f7379eab
 task branch: g4-1-core-economy-problem-contract
 PR: #163
 PR base: gamification
-reviewed pre-closeout HEAD: 148a1b8105469acaa9c05270cc352777246ff198
+validated pre-closeout HEAD: f0f76ce3f694e64555743ec9f3d6e891cf0c0305
 final merge SHA: RECORDED_IN_EXTERNAL_REPORT_AFTER_VERIFIED_MERGE
 master changed: NO
 AGENTS.md: NOT FOUND
 ```
 
-G4.1 выполняется как один research-contract PR с base `gamification`. Production runtime, dashboard, API, scheduler, FSRS, package, workflows и `master` не изменяются.
+G4.1 выполнен как один research-contract PR с base `gamification`. Production runtime, dashboard, API, scheduler, FSRS, package, workflows и `master` не изменяются.
 
 ## Owner decision
 
@@ -81,8 +81,10 @@ contract_id: core-economy-problem-contract
 version: 1
 status: FROZEN_PRE_NORMALIZATION_ANALYSIS
 schema draft: https://json-schema.org/draft/2020-12/schema
-contract Git blob: bcacdee21303f975c73f8a81b3127f98d5713c5a
-schema Git blob: a968deb113119d5315a647521504f5ecef6b944a
+contract Git blob: dda1336328df7e79bc5ba1978a102faf5ca40e14
+schema Git blob: d124ce0aafccd84c38c142c1fb8319ef91877f87
+contract SHA-256: acfefc0754dbd05bacf729d7a19ed1ea0c2ded51cfb9cef98b78bdeb6906be6f
+schema SHA-256: bb83a51ad25fc774c45e54d2c11e412e1ffcc7a5e436d043302690313cb334c7
 ```
 
 ## Input evidence ledger
@@ -117,9 +119,13 @@ Candidate разрешён только как bounded research input. `1.0 LRU`
 
 ```text
 terminology: 30
+terminology definitions: 30
 personas: 9
+persona definitions: 9
 threat families: 14
+threat definitions: 14
 protected invariants: 28
+per-invariant coverage records: 28
 candidate source categories: 2
 non-rewardable surfaces: 26
 allowed final outcomes: 3
@@ -149,31 +155,31 @@ production storage/API/UI: NOT_DESIGNED
 
 ## Validation
 
-Focused validation completed before repository mutation and exact committed blobs were rechecked after publication:
+Focused validation выполнен на exact serialized bytes, опубликованных в Git:
 
 ```text
 strict duplicate-key-safe JSON parse: PASS
 Draft 2020-12 schema self-check: PASS
 contract-schema validation: PASS
+contract local/Git blob equality: PASS
+schema local/Git blob equality: PASS
 human/machine identity parity: PASS
 status parity: PASS
 Review input parity: PASS
 Learn input parity: PASS
 G3 deferral parity: PASS
 domain scope parity: PASS
-terminology coverage: 30 / 30 PASS
-persona coverage: 9 / 9 PASS
-threat coverage: 14 / 14 PASS
-invariant coverage: 28 / 28 PASS
+terminology registry/definition parity: 30 / 30 PASS
+persona registry/definition parity: 9 / 9 PASS
+threat registry/definition parity: 14 / 14 PASS
+invariant registry/definition parity: 28 / 28 PASS
+invariant threat/persona/G4.2 references: PASS
 final outcome coverage: 3 / 3 PASS
 G4.2 entry coverage: 14 / 14 PASS
-invariant coverage policy: THREAT + PERSONA + G4_2_ENTRY
 Markdown code-fence balance: PASS
+relative-link target review: PASS
 private-path scan: PASS
 secret/token scan: PASS
-contract local/Git blob equality: PASS
-schema local/Git blob equality: PASS
-branch ancestry before closeout update: ahead 11 / behind 0
 changed-path allowlist: exact 10 paths
 production paths changed: NO
 research execution code/tests changed: NO
@@ -195,7 +201,30 @@ G4.2 marked started
 numeric conversion ratio
 numeric level curve
 real-data category in allowed data
+missing terminology definition
+invalid invariant threat reference
 duplicate JSON key
+```
+
+```text
+negative validation: 16 / 16 PASS
+```
+
+### Disclosed pre-merge schema correction
+
+Semantic PR review обнаружил, что в одном промежуточном schema commit definition maps были ошибочно вложены в `production_flags`. Этот intermediate state не был смёржен и не объявляется validated result.
+
+Исправление:
+
+```text
+classification: SCHEMA_STRUCTURE
+results accessed: NO — G4.1 has no simulation/results
+contract semantics changed: NO
+registries changed: NO
+numeric policy introduced: NO
+required rerun: focused contract/schema validation
+focused rerun: PASS
+final schema blob: d124ce0aafccd84c38c142c1fb8319ef91877f87
 ```
 
 Validation environment available to ChatGPT:
@@ -205,7 +234,7 @@ Python: 3.13.5
 jsonschema: 4.26.0
 ```
 
-Project-local Python 3.11 WSL execution was not independently available in the connector sandbox. The contract/schema are data-only Draft 2020-12 artifacts and no production/runtime Python code was changed.
+Project-local Python 3.11 WSL execution не была независимо доступна в connector sandbox. Contract/schema являются data-only Draft 2020-12 artifacts; production/runtime Python code не менялся.
 
 ## Exact changed paths
 
@@ -223,6 +252,23 @@ roadmap/gamification/g4-core-economy-problem-contract.md
 ```
 
 Top-level `README.md` не требуется: его entrypoint и high-level track statement остаются корректными.
+
+## Pull request pre-merge state
+
+```text
+PR: #163
+base: gamification
+head: g4-1-core-economy-problem-contract
+base SHA: abb1d26e416d29f64d505546cca74de0f7379eab
+validated contract/schema head: f0f76ce3f694e64555743ec9f3d6e891cf0c0305
+branch ahead / behind before final closeout commit: 16 / 0
+changed files: 10
+mergeable: YES
+combined status checks: 0
+workflow runs: 0
+```
+
+Ноль workflow runs фиксируется как факт. Это не `CI PASS`; для docs/contracts/schema-only contour current policy допускает focused local validation без Fast CI и Docker E2E.
 
 ## Not run
 
@@ -252,6 +298,20 @@ production implementation
 - WSL owner checkout/worktree/tool state не проверялся локальной командой в этой connector-сессии.
 
 Эти ограничения являются входами G4.2, а не blocker G4.1.
+
+## Proof that G3 does not block G4/G5/G6
+
+Machine и human contracts синхронно фиксируют:
+
+```text
+G3 critical path: false
+G3 blocks G4: false
+G3 blocks G5: false
+G3 blocks G6: false
+G3 initial economy included: false
+```
+
+Activation требует release + owner decision + evidence-backed trigger. Ни G3.1, ни Create XP model не определялись.
 
 ## Next stage boundary
 
