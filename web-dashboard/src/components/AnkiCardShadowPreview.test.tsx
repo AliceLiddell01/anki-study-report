@@ -4,8 +4,31 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AnkiCardShadowPreview, buildShadowPreviewDocument, calculateAdaptivePreviewLayout } from "./AnkiCardShadowPreview";
+import {
+  AnkiCardShadowPreview,
+  buildShadowPreviewDocument,
+  calculateAdaptivePreviewLayout,
+  enhanceReplayControls,
+} from "./AnkiCardShadowPreview";
 import { cssWithMediaToken } from "./cards/CardsDetail";
+
+function replayCard(): HTMLDivElement {
+  const card = document.createElement("div");
+  card.innerHTML = `
+    <span class="asr-card-replay">
+      <button
+        type="button"
+        class="asr-card-replay-button"
+        aria-label="stale label"
+      ></button>
+      <audio
+        class="asr-card-audio"
+        src="/api/media?name=%E5%BD%B1.mp3&token=redacted"
+      ></audio>
+    </span>
+  `;
+  return card;
+}
 
 describe("AnkiCardShadowPreview layout", () => {
   it("never lets scaled content exceed a narrow host width", () => {
@@ -169,5 +192,45 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(cssWithMediaToken('.card{background:url("https://evil.invalid/a.png")}')).toBe(
       '.card{background:url("https://evil.invalid/a.png")}',
     );
+  });
+
+  it("uses the supplied localized accessible name for the icon-only replay control", () => {
+    const card = replayCard();
+
+    enhanceReplayControls(card, "Воспроизвести аудио");
+    expect(
+      card.querySelector("button")?.getAttribute("aria-label"),
+    ).toBe("Воспроизвести аудио");
+
+    enhanceReplayControls(card, "Play audio");
+    expect(
+      card.querySelector("button")?.getAttribute("aria-label"),
+    ).toBe("Play audio");
+  });
+
+  it("overrides a stale card-provided replay label", () => {
+    const card = replayCard();
+
+    enhanceReplayControls(card, "Play audio");
+
+    expect(
+      card.querySelector("button")?.getAttribute("aria-label"),
+    ).not.toBe("stale label");
+  });
+
+  it("keeps a strong two-color focus fallback without overriding template specificity", () => {
+    const document = buildShadowPreviewDocument({
+      html: "",
+      mode: "preview",
+    });
+
+    expect(document.styleText).toContain(
+      "outline: 2px solid #f9f9f9",
+    );
+    expect(document.styleText).toContain("outline-offset: 0");
+    expect(document.styleText).toContain(
+      "box-shadow: 0 0 0 4px #193146",
+    );
+    expect(document.styleText).not.toContain("!important");
   });
 });

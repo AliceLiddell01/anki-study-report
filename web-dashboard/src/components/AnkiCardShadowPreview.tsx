@@ -87,6 +87,7 @@ export interface AnkiCardShadowPreviewProps {
   mode: AnkiCardShadowPreviewMode;
   side?: AnkiCardShadowPreviewSide;
   className?: string;
+  replayLabelPrefix?: string;
 }
 
 interface ShadowPreviewDocument {
@@ -352,10 +353,15 @@ const SHADOW_SAFETY_CSS = `
   display: none;
 }
 
-/* Accessibility fallback only. Template focus rules can override it. */
+/*
+ * Accessibility fallback only. The light/dark pair follows the W3C C40
+ * two-color pattern so one band remains visible on variable card backgrounds.
+ * Template rules with greater specificity remain authoritative.
+ */
 :where(.card) :where(.asr-card-replay-button):focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.28);
-  outline-offset: 2px;
+  outline: 2px solid #f9f9f9;
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px #193146;
 }
 
 .card .asr-card-media-missing {
@@ -393,7 +399,14 @@ function createReplaySvg(ownerDocument: Document): SVGSVGElement {
  * Adds Anki's documented presentation hooks after sanitization without
  * allowing card-owned SVG or script execution through the HTML sanitizer.
  */
-export function enhanceReplayControls(root: ParentNode): void {
+function localizedReplayLabel(label: string): string {
+  return label.trim() || "Play audio";
+}
+
+export function enhanceReplayControls(
+  root: ParentNode,
+  replayLabelPrefix = "Play audio",
+): void {
   root.querySelectorAll<HTMLElement>(".asr-card-replay").forEach((wrapper) => {
     const audio = wrapper.querySelector<HTMLAudioElement>("audio.asr-card-audio");
     if (!audio) {
@@ -405,15 +418,15 @@ export function enhanceReplayControls(root: ParentNode): void {
       button = wrapper.ownerDocument.createElement("button");
       button.type = "button";
       button.className = "asr-card-replay-button";
-      button.setAttribute("aria-label", "Play audio");
       wrapper.insertBefore(button, audio);
     }
 
     button.classList.add("replay-button");
     button.dataset.asrReplayEnhanced = "true";
-    if (!button.getAttribute("aria-label")) {
-      button.setAttribute("aria-label", "Play audio");
-    }
+    button.setAttribute(
+      "aria-label",
+      localizedReplayLabel(replayLabelPrefix),
+    );
     button.replaceChildren(createReplaySvg(wrapper.ownerDocument));
   });
 }
@@ -466,6 +479,7 @@ function AnkiCardShadowPreviewComponent({
   mode,
   side = "front",
   className = "",
+  replayLabelPrefix = "Play audio",
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<AdaptivePreviewLayout>(() => initialAdaptiveLayout(mode));
@@ -503,7 +517,7 @@ function AnkiCardShadowPreviewComponent({
     card.className = shadowDocument.cardClassName;
     card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
-    enhanceReplayControls(card);
+    enhanceReplayControls(card, replayLabelPrefix);
 
     const frame = document.createElement("div");
     frame.className = "asr-shadow-card-frame";
@@ -604,7 +618,7 @@ function AnkiCardShadowPreviewComponent({
       });
       shadowRoot.removeEventListener("click", handleReplayClick);
     };
-  }, [mode, shadowDocument]);
+  }, [mode, replayLabelPrefix, shadowDocument]);
 
   return (
     <div

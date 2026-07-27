@@ -370,6 +370,7 @@ export function CardPreview({ details, side, nightMode }: { details: SearchCardD
         cardOrd={preview.cardOrd || details.templateOrdinal}
         renderSource={preview.renderSource || ""}
         nightMode={nightMode}
+        replayLabelPrefix={t("preview.playAudio")}
       />
     </div>
   );

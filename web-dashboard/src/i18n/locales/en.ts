@@ -994,6 +994,7 @@ const en = {
           answerTitle: "Answer",
           expandedTitle: "Expanded answer preview",
           close: "Close answer preview",
+          playAudio: "Play audio",
           loading: "Loading the safe front…",
           stale: "The card is unavailable or was deleted.",
           failed: "The preview could not be loaded. Reasons and actions remain available.",
