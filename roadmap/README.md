@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1 complete / DEFER<br/>G2 complete / RECOMMEND<br/>G3 planned]
+    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4.1 complete]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,13 +36,13 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1 complete; G2 complete; outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; production не одобрен | G3 planned / not started; только по отдельной активации |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1/G2 complete; G3 deferred post-MVP и не блокирует G4–G6; G4 in progress; G4.1 complete; production не одобрен | G4.2 Input normalization and uncertainty model — next / not started |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
 | [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I6 и bounded corrective fix завершены | нет активного этапа; CI 7–12 только по отдельному trigger |
 
-Профильный [`roadmap/gamification/README.md`](gamification/README.md) является источником актуального статуса Gamification внутри ветки `gamification`. Core mirror не переопределяет завершённые G0–G2.
+Профильный [`roadmap/gamification/README.md`](gamification/README.md) является источником актуального статуса Gamification внутри ветки `gamification`. Core mirror не переопределяет завершённые G0–G2 и frozen G4 contracts.
 
 ## Как читать roadmap
 
@@ -69,7 +69,7 @@ production/research code и tests
 - `roadmap/` — будущее развитие и зависимости;
 - `reports/` — исторические audits, measurements и closeout evidence.
 
-Завершённые run IDs, SHA и artifacts не дублируются в корневой roadmap. Они находятся в [reports](../reports/README.md) или профильном canonical closeout.
+Завершённые run IDs, SHA и artifacts не дублируются в корневой roadmap. Они находятся в [reports](../reports/README.md) или профильных canonical closeouts.
 
 ## Общие правила
 
@@ -82,7 +82,7 @@ production/research code и tests
 7. Merge, release и publication — разные решения.
 8. Один крупный этап не дробится на бесконечную лестницу подпунктов.
 9. Research candidate не называется production-ready до отдельного решения.
-10. Завершение research stage не активирует следующий stage автоматически.
+10. G3/Create XP не входит в initial core economy и возвращается только после первого стабильного Gamification release, отдельного owner decision и evidence-backed trigger.
 
 ## Словарь статусов
 
