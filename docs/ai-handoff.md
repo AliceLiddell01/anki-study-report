@@ -50,7 +50,8 @@ Cards technical blockers — NONE
 Cards accessibility blockers — NONE
 Inspection Profiles corrected screenshot-first audit — COMPLETE
 PR #130 Stage 3: Inspection Profiles 1:1 implementation — NOT STARTED
-Settings shared regression sweep — NOT STARTED
+WP1 Settings shared shell — IMPLEMENTATION CANDIDATE DELIVERED
+WP1 Settings external visual review — PENDING
 final verification / merge decision / C3 — NOT PERFORMED
 release — не начат
 ```
@@ -141,8 +142,8 @@ Cards production заморожен. Без новой доказанной ре
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
 | `#/settings/inspection-profiles` | corrected screenshot-first audit | AUDIT COMPLETE / IMPLEMENTATION NOT STARTED |
-| Settings shared shell | только старые CI captures | NOT REVIEWED |
-| Other Settings routes | redesign не входит в текущий scope | OUT OF SCOPE / REGRESSION ONLY |
+| Settings shared shell | production matrix: 1440/1024/QHD, RU/EN, light/dark; ARIA/axe/keyboard/network evidence | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
 
 Будущий visual acceptance threshold для Inspection Profiles:
 
@@ -156,7 +157,8 @@ Reports:
 - [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
 - [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
 - [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
-- [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md).
+- [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
+- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md).
 
 ## Platform / CI
 
