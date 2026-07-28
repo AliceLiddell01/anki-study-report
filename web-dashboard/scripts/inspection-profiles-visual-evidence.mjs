@@ -22,6 +22,7 @@ const directories = {
   comparisons: path.join(evidenceRoot, "comparisons"),
   overlays: path.join(evidenceRoot, "overlays"),
   pixelDiffs: path.join(evidenceRoot, "pixel-diffs"),
+  prototype: path.join(evidenceRoot, "prototype-references"),
 };
 await Promise.all(Object.values(directories).map((directory) => mkdir(directory, { recursive: true })));
 
@@ -141,7 +142,33 @@ const fixtureItems = [
 ];
 
 function profilesResponse(fixture) {
-  const items = fixture === "empty" ? [] : fixtureItems;
+  let items = fixture === "empty" ? [] : fixtureItems;
+  if (fixture === "basic-review") {
+    items = fixtureItems.map((item) => item.structure.noteTypeId === "2" ? {
+      ...item,
+      suggestion: {
+        ...item.suggestion,
+        confidence: 0.62,
+        unresolvedFields: [item.structure.fields[3]],
+        warnings: ["review_mappings"],
+      },
+    } : item);
+  }
+  if (fixture === "basic-zero") {
+    items = fixtureItems.map((item) => item.structure.noteTypeId === "2" ? {
+      ...item,
+      suggestion: { ...item.suggestion, checks: [] },
+    } : item);
+  }
+  if (fixture === "basic-custom") {
+    items = fixtureItems.map((item) => item.structure.noteTypeId === "2" ? {
+      ...item,
+      suggestion: {
+        ...item.suggestion,
+        fieldMappings: item.suggestion.fieldMappings.map((mapping, index) => index === 3 ? { ...mapping, role: "custom_explanation" } : mapping),
+      },
+    } : item);
+  }
   const storeStatus = fixture === "store-unavailable" ? "unavailable" : items.some((item) => item.storedProfile) ? "available" : "empty";
   return {
     schemaVersion: 1,
@@ -326,6 +353,9 @@ async function prepareScenario(page, scenario) {
   }[scenario.select] ?? '.inspection-note-button[title="Java"]';
   await page.locator(noteSelector).evaluate((element) => element.click());
   await page.locator("[data-testid='inspection-basic-editor']").waitFor({ state: "visible" });
+  if (scenario.selectedTemplates) {
+    await page.getByLabel(scenario.language === "ru" ? "Только выбранные шаблоны" : "Selected templates only").click();
+  }
   if (scenario.advanced || scenario.fixture === "dirty") {
     await page.getByRole("tab", { name: scenario.language === "ru" ? "Расширенное" : "Advanced" }).click();
     await page.locator("#inspection-advanced-panel").waitFor({ state: "visible" });
@@ -419,7 +449,7 @@ async function capture(page, scenario) {
   await resetScrollPositions(page);
   await page.screenshot({ path: path.join(directories.full, fullName), fullPage: false, animations: "disabled" });
   report.captures.push({ scenario: scenario.id, filename: fullName, width: scenario.width, height: scenario.height, theme: scenario.theme, language: scenario.language, fixture: scenario.fixture ?? "default" });
-  if (scenario.fixture && scenario.fixture !== "dirty") {
+  if (["loading", "load-error", "empty", "no-matches", "store-unavailable"].includes(scenario.fixture)) {
     const ariaFilename = `${scenario.id}.aria.yml`;
     const aria = await page.locator('[data-testid="settings-layout-shell"]').ariaSnapshot();
     await writeFile(path.join(directories.aria, ariaFilename), `${aria}\n`, "utf8");
@@ -439,6 +469,16 @@ async function capture(page, scenario) {
     "profiles-editor-identity": ".inspection-editor-identity",
     "profiles-editor-tabs": ".inspection-mode-switch",
     "profiles-editor-body-start": "#inspection-basic-mode-panel, #inspection-advanced-panel",
+    "basic-full-panel": ".inspection-basic",
+    "basic-setup-summary": ".inspection-guided-summary",
+    "basic-field-mappings": ".inspection-basic-fields",
+    "basic-field-row": ".inspection-basic-row",
+    "basic-requirements": ".inspection-basic-requirements",
+    "basic-requirement-row": ".inspection-requirement-row",
+    "basic-add-requirement": ".inspection-add-requirement",
+    "basic-template-scope": ".inspection-basic-scope",
+    "basic-inline-error": ".inspection-inline-error",
+    "basic-body-to-action-boundary": ".inspection-primary-actions",
   };
   try {
     for (const [region, selector] of Object.entries(regionSelectors)) {
@@ -602,6 +642,10 @@ async function verifyVisualStates(page) {
 async function verifyBasicInteractions(page, language) {
   const rows = page.locator(".inspection-requirement-row");
   const initialCount = await rows.count();
+  const priority = page.locator("#inspection-basic-priority-0");
+  await priority.selectOption("low");
+  if (await priority.inputValue() !== "low") throw new Error("Basic priority did not update");
+  await page.locator("#inspection-basic-new-requirement").selectOption("min_text_length");
   const add = page.getByRole("button", { name: language === "ru" ? "Добавить" : "Add", exact: true });
   await add.click();
   await rows.nth(initialCount).waitFor({ state: "visible" });
@@ -610,6 +654,9 @@ async function verifyBasicInteractions(page, language) {
   if (addFocusId !== `inspection-basic-requirement-${initialCount}`) {
     throw new Error(`Add requirement focus moved to ${addFocusId || "no element"}`);
   }
+  const minLength = page.locator(`#inspection-basic-min-length-${initialCount}`);
+  await minLength.fill("12");
+  if (await minLength.inputValue() !== "12") throw new Error("Basic minimum length did not update");
   await rows.nth(initialCount).getByRole("button", { name: new RegExp(language === "ru" ? "^Удалить требование:" : "^Remove requirement:") }).click();
   await rows.nth(initialCount).waitFor({ state: "detached" });
   await page.waitForFunction((id) => document.activeElement?.id === id, `inspection-basic-requirement-${initialCount - 1}`);
@@ -618,8 +665,24 @@ async function verifyBasicInteractions(page, language) {
     throw new Error(`Remove requirement focus moved to ${removeFocusId || "no element"}`);
   }
 
+  await page.locator("#inspection-basic-new-requirement").selectOption("one_of_roles_non_empty");
+  await add.click();
+  await rows.nth(initialCount).waitFor({ state: "visible" });
+  const multiRoleChoices = rows.nth(initialCount).locator(".inspection-basic-role-choices input");
+  await multiRoleChoices.nth(2).check();
+  if (!await multiRoleChoices.nth(2).isChecked()) throw new Error("Basic multi-role checkbox did not update");
+  await rows.nth(initialCount).getByRole("button", { name: new RegExp(language === "ru" ? "^Удалить требование:" : "^Remove requirement:") }).click();
+  await rows.nth(initialCount).waitFor({ state: "detached" });
+
+  const selectedScope = page.getByLabel(language === "ru" ? "Только выбранные шаблоны" : "Selected templates only");
+  await selectedScope.click();
+  const templateChoices = page.locator(".inspection-basic-template-list input");
+  await templateChoices.nth(1).check();
+  if (!await templateChoices.nth(1).isChecked()) throw new Error("Basic template checkbox did not update");
+  await templateChoices.nth(1).uncheck();
+  if (await templateChoices.nth(1).isChecked()) throw new Error("Basic template checkbox did not clear");
+
   const requiredMapping = page.locator("#inspection-basic-role-1");
-  const originalValue = await requiredMapping.inputValue();
   await requiredMapping.selectOption("");
   if (await requiredMapping.inputValue() !== "") throw new Error("Cleared Basic mapping restored a stale controlled value");
   await page.getByRole("button", { name: language === "ru" ? "Проверить настройку" : "Check setup", exact: true }).click();
@@ -633,12 +696,15 @@ async function verifyBasicInteractions(page, language) {
   if (controlFocusId !== "inspection-basic-role-1") throw new Error(`Error link focus moved to ${controlFocusId || "no element"}`);
   const basicSelected = await page.locator("#inspection-mode-basic").getAttribute("aria-selected");
   if (basicSelected !== "true") throw new Error("Error link did not keep the Basic tab selected");
-  await requiredMapping.selectOption(originalValue);
-
   report.interactions.basic = {
     initialRequirementCount: initialCount,
     addFocusId,
     removeFocusId,
+    priorityChanged: true,
+    minLengthChanged: true,
+    multiRoleChecked: true,
+    selectedTemplateScope: true,
+    templateToggled: true,
     clearedMappingRemainedEmpty: true,
     validationStayedClientSide: true,
     summaryFocusId,
@@ -679,6 +745,12 @@ async function visualStyle(locator) {
 const scenarios = [
   { id: "1440-ru-light-java-basic", width: 1440, height: 900, theme: "light", language: "ru" },
   { id: "1440-ru-light-identity", width: 1440, height: 900, theme: "light", language: "ru", select: "words" },
+  { id: "1440-en-light-java-basic", width: 1440, height: 900, theme: "light", language: "en" },
+  { id: "1440-ru-dark-java-basic", width: 1440, height: 900, theme: "dark", language: "ru" },
+  { id: "1440-ru-light-review-basic", width: 1440, height: 900, theme: "light", language: "ru", fixture: "basic-review" },
+  { id: "1440-ru-light-zero-requirements", width: 1440, height: 900, theme: "light", language: "ru", fixture: "basic-zero" },
+  { id: "1440-en-light-custom-role", width: 1440, height: 900, theme: "light", language: "en", fixture: "basic-custom" },
+  { id: "1440-ru-light-multi-template-selected", width: 1440, height: 900, theme: "light", language: "ru", select: "words", selectedTemplates: true },
   { id: "1440-ru-dark-java-advanced", width: 1440, height: 900, theme: "dark", language: "ru", advanced: true },
   { id: "1440-en-light-long-labels", width: 1440, height: 900, theme: "light", language: "en", select: "long" },
   { id: "1024-ru-light-compact", width: 1024, height: 768, theme: "light", language: "ru" },
@@ -729,10 +801,12 @@ for (const scenario of scenarios) {
 }
 
 {
-  const scenario = { id: "1440-ru-light-basic-interactions", width: 1440, height: 900, theme: "light", language: "ru" };
+  const scenario = { id: "1024-ru-light-cleared-mapping-error", width: 1024, height: 768, theme: "light", language: "ru", select: "words" };
   const { context, page } = await openScenario(browser, scenario);
   await prepareScenario(page, scenario);
   await verifyBasicInteractions(page, scenario.language);
+  report.geometry[scenario.id] = await geometry(page);
+  await capture(page, scenario);
   await context.close();
 }
 
@@ -832,6 +906,9 @@ async function measurePrototypeGeometry(browserInstance) {
       editorBodyStart: await rectangle(page, "[role='tabpanel']"),
     };
     report.prototypeGeometry[target.id] = prototype;
+    const prototypeCapture = `prototype-${target.id}-live.png`;
+    await page.screenshot({ path: path.join(directories.prototype, prototypeCapture), fullPage: false, animations: "disabled" });
+    report.prototypeGeometry[target.id].capture = prototypeCapture;
     const production = report.geometry[target.productionId];
     const prototypeIdentityTitleRowHeight = prototype.identity?.height ?? null;
     const prototypeEditorHeaderHeight = prototype.identityHeader?.height ?? null;
@@ -864,13 +941,15 @@ async function measurePrototypeGeometry(browserInstance) {
 async function createComparisons() {
   const pairs = [
     { prototype: "profiles-1440-light-java-basic.png", production: "1440-ru-light-java-basic.png", id: "1440-ru-light-basic", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
+    { prototype: "prototype-1024-ru-light-basic-live.png", production: "1024-ru-light-compact.png", id: "1024-ru-light-basic", prototypeMask: { x: 304, y: 332, width: 702, height: 436 }, evidencePrototype: true },
+    { prototype: "prototype-2560-ru-light-basic-live.png", production: "2560-ru-light-basic.png", id: "2560-ru-light-basic", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 }, evidencePrototype: true },
     { prototype: "profiles-1440-dark-java-advanced.png", production: "1440-ru-dark-java-advanced.png", id: "1440-ru-dark-advanced", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
     { prototype: "profiles-1024-light-nav-menu-open.png", production: "1024-ru-light-overflow.png", id: "1024-ru-light-overflow", prototypeMask: { x: 304, y: 330, width: 702, height: 438 } },
     { prototype: "profiles-qhd-100-light-advanced.png", production: "2560-ru-light-advanced.png", id: "2560-ru-light-advanced", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 } },
   ];
   const comparisonBrowser = await chromium.launch({ headless: true });
   for (const pair of pairs) {
-    const prototypeBytes = await readFile(path.join(prototypeRoot, pair.prototype));
+    const prototypeBytes = await readFile(path.join(pair.evidencePrototype ? directories.prototype : prototypeRoot, pair.prototype));
     const productionBytes = await readFile(path.join(directories.full, pair.production));
     const productionGeometry = report.geometry[pair.production.replace(/\.png$/, "")] ?? report.geometry[pair.id.replace("light-basic", "light-java-basic").replace("dark-advanced", "dark-java-advanced")];
     const editor = productionGeometry?.editor;
