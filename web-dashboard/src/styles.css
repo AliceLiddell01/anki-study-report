@@ -1644,3 +1644,336 @@ main.app-content-safe-inset {
   line-height: 1;
   transform: translateX(1px);
 }
+
+/* Settings shell WP1 visual remediation — shared route header and bounded responsive composition */
+main.app-content-safe-inset:has(.settings-layout-shell) {
+  max-width: none;
+}
+
+.settings-layout-shell {
+  min-width: 0;
+  display: grid;
+  grid-template-areas:
+    "header header"
+    "nav content";
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.settings-route-header-slot {
+  grid-area: header;
+  min-width: 0;
+}
+
+.settings-route-header-portal {
+  min-width: 0;
+}
+
+.settings-route-header-portal > .settings-page-header,
+.settings-route-header-portal > .inspection-page-header,
+.settings-route-header-portal > section,
+.settings-route-header-portal > header {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-route-header-portal h1 {
+  scroll-margin-top: 6rem;
+}
+
+.settings-nav-shell {
+  grid-area: nav;
+  min-width: 0;
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100dvh - 7rem);
+  overflow: auto;
+  padding: .78rem .7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: .9rem;
+  background: color-mix(in srgb, var(--surface-2) 96%, transparent);
+  box-shadow: var(--shadow-panel);
+}
+
+.settings-route-content {
+  grid-area: content;
+  min-width: 0;
+}
+
+.settings-nav-intro {
+  padding: 0 .42rem .68rem;
+}
+
+.settings-nav-intro p {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.settings-nav-intro span {
+  display: block;
+  margin-top: .18rem;
+  color: var(--text-muted);
+  font-size: .68rem;
+  line-height: 1.4;
+}
+
+.settings-nav-row,
+.settings-nav,
+.settings-nav-section,
+.settings-nav-links {
+  min-width: 0;
+}
+
+.settings-nav {
+  display: grid;
+  gap: .72rem;
+}
+
+.settings-nav-section-label {
+  padding: 0 .42rem .26rem;
+  color: var(--text-muted);
+  font-size: .62rem;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.settings-nav-links {
+  display: grid;
+  gap: .14rem;
+}
+
+.settings-nav-link,
+.settings-nav-overflow-link {
+  min-height: 2.3rem;
+  display: flex;
+  align-items: center;
+  gap: .52rem;
+  border: 1px solid transparent;
+  border-radius: .58rem;
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 650;
+  line-height: 1.25;
+  outline: none;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.settings-nav-link {
+  padding: .44rem .55rem;
+}
+
+.settings-nav-link:hover,
+.settings-nav-overflow-link:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.settings-nav-link:focus-visible,
+.settings-nav-overflow-link:focus-visible {
+  border-color: color-mix(in srgb, var(--status-warning) 74%, var(--accent-primary));
+  color: var(--text-primary);
+  outline: 3px solid color-mix(in srgb, var(--status-warning) 72%, transparent);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-nav-link[aria-current="page"],
+.settings-nav-overflow-link[aria-current="page"] {
+  border-color: color-mix(in srgb, var(--accent-primary) 60%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--surface-2));
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+.settings-nav-overflow {
+  display: none;
+}
+
+.settings-nav-overflow-trigger {
+  min-height: 2.3rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .32rem;
+  padding: .42rem .58rem;
+  border: 1px solid var(--border-strong);
+  border-radius: .58rem;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  outline: none;
+}
+
+.settings-nav-overflow-trigger:hover {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--surface-2));
+}
+
+.settings-nav-overflow-trigger[data-active-route="true"] {
+  border-color: color-mix(in srgb, var(--accent-primary) 65%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--surface-2));
+  box-shadow: inset 0 -3px 0 var(--accent-primary);
+}
+
+.settings-nav-overflow-trigger[aria-expanded="true"] {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 24%, transparent);
+}
+
+.settings-nav-overflow-trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--status-warning) 74%, var(--accent-primary));
+  outline: 3px solid color-mix(in srgb, var(--status-warning) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.settings-nav-overflow-trigger svg {
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.settings-nav-overflow-trigger svg.is-open {
+  transform: rotate(180deg);
+}
+
+.settings-nav-overflow-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + .32rem);
+  right: 0;
+  width: min(13.75rem, calc(100vw - 2rem));
+  padding: .34rem;
+  border: 1px solid var(--border-strong);
+  border-radius: .7rem;
+  background: color-mix(in srgb, var(--surface-2) 98%, transparent);
+  box-shadow: var(--shadow-popover);
+}
+
+.settings-nav-overflow-link {
+  width: 100%;
+  padding: .52rem .6rem;
+}
+
+.settings-route-header-slot [data-focus-key="route-target"]:focus {
+  border-radius: .28rem;
+  outline: 3px solid color-mix(in srgb, var(--status-warning) 72%, var(--accent-primary));
+  outline-offset: 4px;
+}
+
+@media (min-width: 1900px) {
+  .settings-layout-shell {
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .settings-route-content > form,
+  .settings-route-content > .grid:not(.inspection-workspace-page),
+  .settings-route-content > [class*="settings"]:not(.inspection-workspace-page) {
+    max-width: 132rem;
+  }
+}
+
+@media (max-width: 1120px) {
+  .settings-layout-shell {
+    grid-template-areas:
+      "header"
+      "nav"
+      "content";
+    grid-template-columns: minmax(0, 1fr);
+    gap: .75rem;
+  }
+
+  .settings-nav-shell {
+    z-index: 30;
+    top: 4.15rem;
+    max-height: none;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    overflow: visible;
+    padding: .42rem .5rem;
+    border-radius: .78rem;
+  }
+
+  .settings-nav-intro {
+    flex: none;
+    padding: 0 .14rem 0 .08rem;
+  }
+
+  .settings-nav-intro p {
+    font-size: .88rem;
+  }
+
+  .settings-nav-intro span,
+  .settings-nav-section-label {
+    display: none;
+  }
+
+  .settings-nav-row {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: .32rem;
+  }
+
+  .settings-nav {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: .18rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .settings-nav-section,
+  .settings-nav-links {
+    display: contents;
+  }
+
+  .settings-nav-section--overflow {
+    display: none;
+  }
+
+  .settings-nav-link {
+    min-height: 2.18rem;
+    flex: none;
+    padding: .38rem .52rem;
+    white-space: nowrap;
+  }
+
+  .settings-nav-link[aria-current="page"] {
+    box-shadow: inset 0 -3px 0 var(--accent-primary);
+  }
+
+  .settings-nav-overflow {
+    position: relative;
+    display: block;
+    flex: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-nav-link,
+  .settings-nav-overflow-link,
+  .settings-nav-overflow-trigger,
+  .settings-nav-overflow-trigger svg {
+    transition: none;
+  }
+}
+

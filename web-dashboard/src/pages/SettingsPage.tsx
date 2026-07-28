@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { localeForLanguage } from "../i18n/language";
 import { CheckboxControl, SettingRow, SettingsFormActions, SettingsSection } from "../components/SettingsControls";
+import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import { cardAttentionState } from "../lib/cardAttention";
 import { formatInteger, safeText } from "../lib/formatters";
 import { usePublicSettingsForm } from "../lib/settingsApi";
@@ -116,7 +117,8 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
 
   return (
     <form className="grid gap-5" onSubmit={(event) => { event.preventDefault(); if (settingsForm.dirty && !settingsForm.saving) void settingsForm.save(); }}>
-      <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
+      <SettingsRouteHeader>
+        <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className={`status-pill status-${statusTone(status)}`}>{cacheStatusLabel(status)}</span>
@@ -148,8 +150,9 @@ function SettingsPage({ report }: { report: StudyReport | null }) {
             </button>
           </div>
         </div>
-        {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
-      </section>
+          {message ? <p className="mt-4 text-sm leading-6 text-report-muted">{message}</p> : null}
+        </section>
+      </SettingsRouteHeader>
 
       <SettingsSection title={t("dataSettings.collectionTitle")} description={t("dataSettings.collectionDescription")}>
         <SettingRow id="track-sessions" label={t("dataSettings.trackSessions")} description={t("dataSettings.trackSessionsDescription")}>

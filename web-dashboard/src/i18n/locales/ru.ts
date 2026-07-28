@@ -98,6 +98,8 @@ const ru = {
       diagnosticsGroup: "Диагностика",
       sources: "Источники данных",
       logs: "Логи",
+      more: "Ещё",
+      additionalSections: "Дополнительные разделы настроек",
     },
   },
   pages: {

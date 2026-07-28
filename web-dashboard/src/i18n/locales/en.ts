@@ -102,6 +102,8 @@ const en = {
       diagnosticsGroup: "Diagnostics",
       sources: "Data sources",
       logs: "Logs",
+      more: "More",
+      additionalSections: "Additional Settings sections",
     },
   },
   pages: {

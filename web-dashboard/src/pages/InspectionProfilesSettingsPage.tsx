@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
 import RefreshButton from "../components/RefreshButton";
+import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import AdvancedProfileDisclosure from "../components/inspection-profiles/AdvancedProfileDisclosure";
 import BasicProfileEditor from "../components/inspection-profiles/BasicProfileEditor";
 import ProfileValidationResult from "../components/inspection-profiles/ProfileValidationResult";
@@ -127,15 +128,17 @@ export default function InspectionProfilesSettingsPage() {
 
   return (
     <div className="inspection-workspace-page workspace-page">
-      <header className="inspection-page-header">
-        <div>
-          <h1 className="workspace-page-title">{t("inspectionProfiles.title")}</h1>
-          <p className="workspace-body">{t("inspectionProfiles.description")}</p>
-          <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
-        </div>
-        <RefreshButton label={copyForLanguage(profileLanguage(i18n.resolvedLanguage)).refreshCatalog} pending={workspace.loadState === "loading"} onClick={() => void workspace.reload(true, true)} />
-        {workspace.status === "catalog_refreshed" ? <p className="inspection-catalog-refresh-status" role="status">{statusLabel(t, workspace.status)}</p> : null}
-      </header>
+      <SettingsRouteHeader>
+        <header className="inspection-page-header">
+          <div>
+            <h1 className="workspace-page-title">{t("inspectionProfiles.title")}</h1>
+            <p className="workspace-body">{t("inspectionProfiles.description")}</p>
+            <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
+          </div>
+          <RefreshButton label={copyForLanguage(profileLanguage(i18n.resolvedLanguage)).refreshCatalog} pending={workspace.loadState === "loading"} onClick={() => void workspace.reload(true, true)} />
+          {workspace.status === "catalog_refreshed" ? <p className="inspection-catalog-refresh-status" role="status">{statusLabel(t, workspace.status)}</p> : null}
+        </header>
+      </SettingsRouteHeader>
 
       {workspace.loadState === "error" ? (
         <section className="inspection-load-state workspace-state is-error" role="alert">
