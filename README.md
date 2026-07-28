@@ -19,6 +19,7 @@
 
 | Задача | Документ |
 | --- | --- |
+| Начать работу AI-агента | [Корневые правила](AGENTS.md) · [Компактный context bootstrap](docs/ai-context-bootstrap.md) |
 | Понять проект и архитектуру | [Обзор проекта](docs/project-overview.md) · [Архитектура](docs/architecture.md) |
 | Найти актуальный контракт | [Индекс документации](docs/README.md) |
 | Узнать текущее состояние | [AI handoff](docs/ai-handoff.md) |

@@ -1,80 +1,190 @@
-# Repository agent guidance
+# AGENTS.md
 
-## Project entry points
+Этот файл — короткая автоматически загружаемая точка входа для AI-агентов.
+Он не заменяет профильные документы, production code или tests.
 
-Before non-trivial work, read the relevant parts of `README.md`,
-`docs/ai-handoff.md`, `roadmap/core/README.md`, profile documentation and
-reports, production code, tests, `docs/test-matrix.md`, and
+## Первые действия
+
+Перед анализом или изменением репозитория:
+
+1. Определи фактический режим: ChatGPT с GitHub connector или Codex с локальным checkout.
+2. Зафиксируй repository, текущую branch, `HEAD`, base branch/PR и dirty/untracked files.
+3. Прочитай:
+   - `README.md`;
+   - `docs/ai-handoff.md`;
+   - профильный roadmap и current contract;
+   - production code и tests затронутого scope.
+4. Для нетривиальной реализации создай `.agents/task-contract.toml` из
+   `docs/templates/task-contract.toml`.
+5. Не начинай реализацию, пока цель, out of scope, allowed paths и completion criteria
+   не образуют одну ограниченную задачу.
+
+Команды локального preflight:
+
+```bash
+git status --short --branch
+git branch --show-current
+git rev-parse HEAD
+git diff --stat
+git ls-files --others --exclude-standard
+```
+
+## Роли веток
+
+Не считай default branch автоматически самым актуальным рабочим состоянием.
+
+- `master` — релизная ветка. Не использовать её как базу feature work и не менять
+  напрямую без явной release/merge задачи владельца.
+- `core` — integration branch обязательного production Core-трека.
+- Feature/remediation branch или открытый PR, основанный на `core`, может содержать
+  более свежее рабочее состояние своего scope, чем сама `core`.
+- `gamification` и её feature branches — отдельный research/product track.
+  Research evidence не является production approval и не переносится в Core молча.
+- Operations, Identity, Extensions и Platform/CI оцениваются по фактической текущей
+  branch/PR и профильному roadmap. Не смешивай независимые треки.
+- При работе через GitHub connector сначала прочитай metadata текущего PR:
+  `base`, `head`, SHA, draft/merge state и changed files.
+
+При конфликте используй:
+
+```text
+current branch production code and tests
+→ current branch README and focused docs
+→ base branch contracts
+→ fresh relevant reports/artifacts
+→ older plans/messages
+→ assumptions
+```
+
+## Режимы работы
+
+Общие правила: `docs/ai-work-modes.md`.
+
+- ChatGPT + GitHub connector: `docs/chatgpt-work-mode.md`.
+- Codex + local checkout: `docs/codex-agent-rules.md`.
+- WSL environment: `docs/codex-local-environment.md`.
+- Ручные checkpointed операции: `docs/chatgpt-manual-operations.md`.
+- Компактный внешний контекст: `docs/ai-context-bootstrap.md`.
+
+Не смешивай полномочия режимов. GitHub Actions не является заменой локальному shell,
+Git или `gh`.
+
+## Task contract и scope guard
+
+Для нетривиального code/docs change используй:
+
+```bash
+mkdir -p .agents
+cp docs/templates/task-contract.toml .agents/task-contract.toml
+```
+
+Заполни contract до изменения кода. В нём обязательны:
+
+- одна конечная цель;
+- base ref;
+- in scope и out of scope;
+- allowed paths;
+- acceptance criteria;
+- выбранные проверки;
+- stop conditions.
+
+Перед commit и в финале выполни:
+
+```bash
+python scripts/check_task_scope.py
+git diff --check
+```
+
+Scope guard не разрешает неожиданный файл только потому, что он оказался удобным
+для исправления. Если задача реально требует расширения scope, сначала обнови contract
+и явно объясни причину.
+
+## Как менять код
+
+1. Прочитай изменяемый code path, его callers/consumers и релевантные tests.
+2. Для regression сначала добавь воспроизводящую проверку либо зафиксируй, почему
+   автоматический тест невозможен.
+3. Внеси минимальное изменение в правильный слой.
+4. Проверь полный diff от base, а не только последний изменённый файл.
+5. При изменении payload/public behavior синхронно обнови backend, frontend
+   types/validators, tests и docs.
+6. Shared helper не изменяется без проверки основных consumers.
+7. Не делай adjacent refactor/cleanup, если он не нужен для correctness, security
+   или completion criteria текущей задачи.
+
+## Project-specific Core boundaries
+
+- Перед изменением Core UI прочитай `roadmap/core/README.md`, профильные
+  contracts/reports, production code, tests, `docs/test-matrix.md` и
+  `docs/verification-run-policy.md`.
+- Payload или public-behavior change обновляет все затронутые слои вместе:
+  backend implementation, frontend types/parsers, tests и documentation.
+- Cards имеет статус `ACCEPTED / COMPLETE / FROZEN`. Без новой доказанной
+  regression не меняй Cards composition, queue, rail, drawer, expanded answer,
+  native preview, AV/audio/GIF/media paths, Shadow DOM или Cards-specific
+  styling ради Settings.
+- После shared-shell changes выполняй только Cards regression smoke,
+  пропорциональный фактическому риску.
+- Codex не назначает numerical visual score и не объявляет owner visual
+  acceptance. Evidence должно содержать объективные screenshots, geometry,
+  diffs и deviation ledger.
+- Artifact считается complete только после inventory, checksum и CRC
+  validation.
+
+## Неприкосновенные границы
+
+Запрещено без отдельного обоснованного решения:
+
+- давать frontend прямой доступ к Anki collection;
+- открывать dashboard server наружу или ослаблять token validation;
+- ослаблять sanitizer, media validation, action allowlists или preview isolation;
+- логировать token, полный token-bearing URL, profile data или secrets;
+- менять production code ради устаревшего test/harness assertion;
+- редактировать generated dashboard assets вручную;
+- коммитить `.ankiaddon`, archives, logs, screenshots, profile/runtime data,
+  caches, `node_modules` или E2E outputs;
+- добавлять speculative routes, APIs, compatibility aliases или placeholders;
+- переносить research code/evidence в package или Fast CI без отдельного решения;
+- выполнять release, deployment, publication или merge в `master` без прямого
+  разрешения владельца.
+
+## Проверки и stop-loss
+
+Выбирай проверки по `docs/test-matrix.md` и
 `docs/verification-run-policy.md`.
 
-## Source-of-truth priority
+```text
+focused checks
+→ canonical non-Docker/Fast CI when required
+→ one targeted real-Anki scope
+→ final full only when actual diff requires it
+```
 
-Use this order when sources disagree:
+- Successful unchanged exact-SHA gate не повторяется.
+- Docker E2E не используется как пошаговый debugger.
+- После failure сначала изучи первый failed step, logs, artifacts и root cause.
+- После двух одинаковых или смежных failures без новой информации остановись.
+- По умолчанию: один implementation pass, один diff review, один bounded remediation.
+- Новый review не превращается в повторный аудит всего неизменившегося проекта.
+- Честный `Paused/Incomplete` лучше бесконечной цепочки blind fixes и reruns.
 
-1. current production code and tests;
-2. current README and profile documentation;
-3. fresh reports and evidence;
-4. old plans and historical reports;
-5. assumptions.
+## Финальный отчёт
 
-Separate confirmed facts from assumptions and do not invent missing results.
+Всегда отделяй:
 
-## Architecture and security invariants
+```text
+Mode:
+Repository / target branch:
+Branch / base / HEAD:
+Commit(s) / PR:
 
-Without a separate, evidence-backed decision, do not:
+Подтверждено:
+Изменено:
+Проверки:
+Не запускалось:
+Ограничения:
+Следующий шаг:
+```
 
-- give the frontend direct access to the Anki collection;
-- expose the local server beyond its intended boundary;
-- weaken token validation or log dashboard tokens or token-bearing URLs;
-- weaken sanitizer, media validation, or action allowlists;
-- turn card preview into an unsafe iframe or JavaScript surface;
-- hand-edit generated dashboard assets.
-
-## Frontend / backend contract rule
-
-A payload or public-behavior change must update every affected layer together:
-backend implementation, frontend types and parsers, tests, and documentation.
-Do not change only one side of a contract.
-
-## Cards frozen boundary
-
-Cards is `ACCEPTED / COMPLETE / FROZEN`. Without a newly demonstrated
-regression, do not change Cards component composition, queue, rail, drawer,
-expanded answer, native card preview, AV/audio/GIF/media paths, Shadow DOM, or
-Cards-specific styling to support unrelated Settings work. After shared-shell
-changes, run only a focused Cards regression smoke proportional to risk.
-
-## Testing and verification policy
-
-Choose checks by risk. Do not run heavy Docker or real-Anki E2E without a
-measured need. Never report a test, build, or browser result without its actual
-output. After the final mutation, run one consolidated verification. An
-artifact is complete only after inventory, checksum, and CRC validation.
-
-## Git and PR policy
-
-Work on the current task branch. Without explicit owner approval, do not create
-a branch or PR, rebase, merge, force-push, mark a PR ready for review, merge a
-PR, or publish a release. Preserve unrelated user changes. Commit messages must
-describe the actual result.
-
-## Artifact hygiene
-
-Do not commit logs, screenshots, evidence archives, runtime output, caches,
-profile data, tokens, `.ankiaddon` files, or Playwright output unless the path
-is intentionally a versioned fixture.
-
-## Visual-review policy
-
-Codex does not assign a numerical visual score or claim owner visual
-acceptance. Produce objective screenshots, geometry measurements, diffs, and a
-deviation report, then leave the visual verdict to the owner or external
-reviewer. Tests and accessibility results do not substitute for visual parity.
-
-## Workflow stop-loss
-
-Use direct repository commands and existing tools. The allowed cycle is one
-implementation pass, one full verification, at most one bounded visual
-correction pass, and one final verification. If the browser harness fails
-repeatedly, fix the root cause in the existing repository-owned harness; do not
-create a ladder of one-off runner, repair, resume, or finalizer scripts.
+Не утверждай, что файл, code path, command, CI run, log или artifact проверен, если
+он фактически не был открыт или выполнен.
