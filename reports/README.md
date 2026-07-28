@@ -52,6 +52,7 @@ production code и tests
 ## Research
 
 - [Gamification source audit — 2026-07-18](research/gamification-track-source-audit-2026-07-18.md)
+- [G4.3 candidate economy protocol post-merge closeout — 2026-07-28](research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md)
 - [FSRS helper reference inventory](research/fsrs-helper-reference-inventory.md)
 - [Statistics reference inventory](research/statistics-reference-inventory.md)
 
