@@ -11,9 +11,10 @@ beforeAll(async () => {
 });
 
 describe("Inspection Profiles visual contract", () => {
-  it("keeps the catalog at 280-320px and stacks it at 1024px", () => {
-    expect(inspectionCss).toMatch(/\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*minmax\(280px, 320px\) minmax\(0, 1fr\)/s);
-    expect(inspectionCss).toMatch(/@media \(max-width: 1024px\)[\s\S]*?\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  it("keeps a bounded catalog beside the editor through 1024px", () => {
+    expect(inspectionCss).toMatch(/\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*clamp\(288px, 20vw, 320px\) minmax\(0, 1fr\)/s);
+    expect(inspectionCss).toMatch(/@media \(max-width: 1024px\)[\s\S]*?\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*minmax\(248px, 270px\) minmax\(0, 1fr\)/s);
+    expect(inspectionCss).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(inspectionCss).toMatch(/\.inspection-search input\s*\{[^}]*grid-column:\s*1 \/ -1/s);
   });
 

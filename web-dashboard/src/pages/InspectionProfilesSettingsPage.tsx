@@ -6,6 +6,7 @@ import RefreshButton from "../components/RefreshButton";
 import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import AdvancedProfileDisclosure from "../components/inspection-profiles/AdvancedProfileDisclosure";
 import BasicProfileEditor from "../components/inspection-profiles/BasicProfileEditor";
+import EditorModeTabs, { type InspectionEditorMode } from "../components/inspection-profiles/EditorModeTabs";
 import ProfileValidationResult from "../components/inspection-profiles/ProfileValidationResult";
 import { useInspectionProfilesWorkspace } from "../hooks/useInspectionProfilesWorkspace";
 import { friendlyDetectedKind, profileLanguage } from "../lib/inspectionProfileBasicView";
@@ -13,16 +14,15 @@ import { parseInspectionProfileDocument } from "../lib/inspectionProfilesApi";
 import type { InspectionProfile, InspectionProfileState, InspectionProfileSummary } from "../types/inspectionProfiles";
 import "../styles/inspectionProfiles.css";
 
-const STATE_ORDER: Record<InspectionProfileState, number> = {
-  needs_review: 0,
-  confirmed: 1,
-  suggested: 2,
-  not_configured: 3,
-  disabled: 4,
-};
+const PROFILE_STATES: InspectionProfileState[] = [
+  "needs_review",
+  "confirmed",
+  "suggested",
+  "not_configured",
+  "disabled",
+];
 
 type ConfirmAction = "save_draft" | "disable" | "delete" | "replace_suggestion" | "start_empty" | null;
-type EditorMode = "basic" | "advanced";
 
 export default function InspectionProfilesSettingsPage() {
   const { t, i18n } = useTranslation("pages");
@@ -32,24 +32,15 @@ export default function InspectionProfilesSettingsPage() {
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [editorMode, setEditorMode] = useState<EditorMode>("basic");
+  const [editorMode, setEditorMode] = useState<InspectionEditorMode>("basic");
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => setEditorMode("basic"), [workspace.selectedNoteTypeId]);
 
   const filteredItems = useMemo(() => workspace.items
     .filter((item) => stateFilter === "all" || item.effectiveState === stateFilter)
-    .filter((item) => item.structure.name.toLocaleLowerCase(i18n.resolvedLanguage).includes(search.trim().toLocaleLowerCase(i18n.resolvedLanguage)))
-    .sort((left, right) => STATE_ORDER[left.effectiveState] - STATE_ORDER[right.effectiveState]
-      || left.structure.name.localeCompare(right.structure.name, i18n.resolvedLanguage)), [i18n.resolvedLanguage, search, stateFilter, workspace.items]);
-
-  const summary = useMemo(() => ({
-    total: workspace.items.length,
-    confirmed: workspace.items.filter((item) => item.effectiveState === "confirmed").length,
-    needs_review: workspace.items.filter((item) => item.effectiveState === "needs_review").length,
-    not_configured: workspace.items.filter((item) => item.effectiveState === "not_configured").length,
-    disabled: workspace.items.filter((item) => item.effectiveState === "disabled").length,
-  }), [workspace.items]);
+    .filter((item) => item.structure.name.toLocaleLowerCase(i18n.resolvedLanguage).includes(search.trim().toLocaleLowerCase(i18n.resolvedLanguage))),
+  [i18n.resolvedLanguage, search, stateFilter, workspace.items]);
 
   const requestSelection = (noteTypeId: string) => {
     if (workspace.select(noteTypeId)) return;
@@ -133,7 +124,6 @@ export default function InspectionProfilesSettingsPage() {
           <div>
             <h1 className="workspace-page-title">{t("inspectionProfiles.title")}</h1>
             <p className="workspace-body">{t("inspectionProfiles.description")}</p>
-            <p className="inspection-safety-note workspace-meta">{t("inspectionProfiles.safety")}</p>
           </div>
           <RefreshButton label={copyForLanguage(profileLanguage(i18n.resolvedLanguage)).refreshCatalog} pending={workspace.loadState === "loading"} onClick={() => void workspace.reload(true, true)} />
           {workspace.status === "catalog_refreshed" ? <p className="inspection-catalog-refresh-status" role="status">{statusLabel(t, workspace.status)}</p> : null}
@@ -155,22 +145,19 @@ export default function InspectionProfilesSettingsPage() {
         </section>
       ) : null}
 
-      <dl className="inspection-summary" aria-label={t("inspectionProfiles.summary.label")}>
-        <SummaryMetric label={t("inspectionProfiles.summary.total")} value={summary.total} />
-        <SummaryMetric label={t("inspectionProfiles.states.confirmed")} value={summary.confirmed} />
-        <SummaryMetric label={t("inspectionProfiles.states.needs_review")} value={summary.needs_review} />
-        <SummaryMetric label={t("inspectionProfiles.states.not_configured")} value={summary.not_configured} />
-        {summary.disabled ? <SummaryMetric label={t("inspectionProfiles.states.disabled")} value={summary.disabled} /> : null}
-      </dl>
-
       <div className="inspection-workspace">
         <aside className="inspection-catalog workspace-region" aria-labelledby="inspection-catalog-title">
           <div className="inspection-catalog-header">
             <h2 id="inspection-catalog-title" className="workspace-section-title">{t("inspectionProfiles.catalog.title")}</h2>
-            <span>{workspace.catalog?.returnedCount ?? 0}/{workspace.catalog?.totalCount ?? 0}</span>
+            <span>
+              <span className="sr-only">{t("inspectionProfiles.catalog.count", { returned: workspace.catalog?.returnedCount ?? 0, total: workspace.catalog?.totalCount ?? 0 })}</span>
+              <span aria-hidden="true">{workspace.catalog?.returnedCount ?? 0}/{workspace.catalog?.totalCount ?? 0}</span>
+            </span>
           </div>
-          <label className="inspection-search" htmlFor="inspection-profile-search"><span><Search size={16} aria-hidden="true" />{t("inspectionProfiles.catalog.search")}</span><input id="inspection-profile-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-          <label className="inspection-filter" htmlFor="inspection-profile-state-filter">{t("inspectionProfiles.catalog.stateFilter")}<select id="inspection-profile-state-filter" value={stateFilter} onChange={(event) => setStateFilter(event.target.value as InspectionProfileState | "all")}><option value="all">{t("inspectionProfiles.catalog.allStates")}</option>{Object.keys(STATE_ORDER).map((state) => <option key={state} value={state}>{t(`inspectionProfiles.states.${state}`)}</option>)}</select></label>
+          <div className="inspection-catalog-controls">
+            <label className="inspection-search" htmlFor="inspection-profile-search"><span><Search size={15} aria-hidden="true" />{t("inspectionProfiles.catalog.search")}</span><input id="inspection-profile-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+            <label className="inspection-filter" htmlFor="inspection-profile-state-filter">{t("inspectionProfiles.catalog.stateFilter")}<select id="inspection-profile-state-filter" value={stateFilter} onChange={(event) => setStateFilter(event.target.value as InspectionProfileState | "all")}><option value="all">{t("inspectionProfiles.catalog.allStates")}</option>{PROFILE_STATES.map((state) => <option key={state} value={state}>{t(`inspectionProfiles.states.${state}`)}</option>)}</select></label>
+          </div>
           {(search || stateFilter !== "all") ? <button type="button" className="inspection-clear-filters" onClick={() => { setSearch(""); setStateFilter("all"); }}>{t("inspectionProfiles.catalog.clearFilters")}</button> : null}
           {workspace.loadState === "loading" ? <p className="inspection-catalog-empty" role="status">{t("inspectionProfiles.load.loading")}</p> : null}
           {workspace.loadState === "ready" && !workspace.items.length ? <p className="inspection-catalog-empty">{t("inspectionProfiles.catalog.empty")}</p> : null}
@@ -220,8 +207,8 @@ function ProfileWorkspace({ item, draft, workspace, editorMode, onEditorModeChan
   item: InspectionProfileSummary;
   draft: InspectionProfile;
   workspace: ReturnType<typeof useInspectionProfilesWorkspace>;
-  editorMode: EditorMode;
-  onEditorModeChange: (mode: EditorMode) => void;
+  editorMode: InspectionEditorMode;
+  onEditorModeChange: (mode: InspectionEditorMode) => void;
   operationMessage: string;
   operationError: boolean;
   onValidate: () => void;
@@ -252,39 +239,43 @@ function ProfileWorkspace({ item, draft, workspace, editorMode, onEditorModeChan
 
   return (
     <div className="inspection-editor-stack">
-      <section className="inspection-editor-header">
-        <div>
-          <p>{t("inspectionProfiles.editor.noteType")}</p>
+      <section className="inspection-editor-identity">
+        <div className="inspection-identity-title">
+          <p className="inspection-identity-kicker">{t("inspectionProfiles.editor.noteType")}</p>
           <h2>{item.structure.name}</h2>
+          <p className="inspection-profile-identity">{copy.profileLabel}: <strong>{draft.displayName}</strong> · {detectedKind.label}</p>
           <div className="inspection-header-badges">
             <span className={`inspection-state-badge is-${item.effectiveState}`}>{t(`inspectionProfiles.states.${item.effectiveState}`)}</span>
+            {workspace.generatedDraft ? <span className="inspection-custom-badge">{copy.browserDraft}</span> : null}
             {workspace.dirty ? <span className="inspection-dirty-badge">{t("inspectionProfiles.editor.unsaved")}</span> : null}
           </div>
         </div>
-        <dl>
+        <div className={`inspection-lifecycle is-${item.effectiveState}`} role={item.effectiveState === "needs_review" ? "alert" : "status"}>
+          <strong>{guidance.title}</strong>
+          <span>{guidance.description}</span>
+          {item.effectiveState === "needs_review" ? <small>{reasonLabel(item.stateReason, language)}</small> : null}
+        </div>
+        <dl className="inspection-identity-metrics">
           <div><dt>{copy.detectedKind}</dt><dd>{detectedKind.label}</dd></div>
           <div><dt>{t("inspectionProfiles.editor.fields")}</dt><dd>{item.structure.fields.length}</dd></div>
           <div><dt>{t("inspectionProfiles.editor.templates")}</dt><dd>{item.structure.templates.length}</dd></div>
         </dl>
       </section>
 
-      <section className={`inspection-state-guidance workspace-state is-${item.effectiveState}`} role={item.effectiveState === "needs_review" ? "alert" : "status"}>
-        <div className="inspection-milestone-title"><span className="inspection-milestone" aria-hidden="true">1</span><strong>{guidance.title}</strong></div>
-        <p>{guidance.description}</p>
-        {item.effectiveState === "needs_review" ? <p>{reasonLabel(item.stateReason, language)}</p> : null}
-      </section>
-
-      <div className="inspection-mode-switch" role="tablist" aria-label={copy.editorModeLabel}>
-        <button id="inspection-mode-basic" type="button" role="tab" aria-selected={editorMode === "basic"} aria-controls="inspection-basic-mode-panel" tabIndex={editorMode === "basic" ? 0 : -1} className={editorMode === "basic" ? "is-active" : ""} onClick={() => onEditorModeChange("basic")}>{copy.basicMode}</button>
-        <button id="inspection-mode-advanced" type="button" role="tab" aria-selected={editorMode === "advanced"} aria-controls="inspection-advanced-panel" tabIndex={editorMode === "advanced" ? 0 : -1} className={editorMode === "advanced" ? "is-active" : ""} onClick={() => onEditorModeChange("advanced")}>
-          <span>{copy.advancedMode}</span>
-          {advancedErrorCount ? <span className="inspection-mode-error-count" aria-label={copy.advancedErrors(advancedErrorCount)}>{advancedErrorCount}</span> : null}
-          {workspace.dirty ? <span className="inspection-mode-dirty">{copy.changed}</span> : null}
-        </button>
-      </div>
+      <EditorModeTabs
+        mode={editorMode}
+        label={copy.editorModeLabel}
+        basicLabel={copy.basicMode}
+        advancedLabel={copy.advancedMode}
+        advancedErrorCount={advancedErrorCount}
+        changed={workspace.dirty}
+        changedLabel={copy.changed}
+        advancedErrorsLabel={copy.advancedErrors}
+        onChange={onEditorModeChange}
+      />
 
       {editorMode === "basic" ? (
-        <section id="inspection-basic-mode-panel" role="tabpanel" aria-labelledby="inspection-mode-basic">
+        <section id="inspection-basic-mode-panel" role="tabpanel" aria-labelledby="inspection-mode-basic" tabIndex={0}>
           <BasicProfileEditor item={item} draft={draft} onChange={workspace.setDraftFromUser} errors={workspace.fieldErrors} />
         </section>
       ) : <AdvancedProfileDisclosure item={item} draft={draft} errors={workspace.fieldErrors} onChange={workspace.setDraftFromUser} />}
@@ -351,10 +342,6 @@ function NoteTypeButton({ item, selected, onClick }: { item: InspectionProfileSu
   return <button type="button" className={`inspection-note-button workspace-interactive${selected ? " is-selected workspace-selected" : ""}`} aria-pressed={selected} title={item.structure.name} onClick={onClick}><span className="inspection-note-name">{item.structure.name}</span><span className={`inspection-state-badge is-${item.effectiveState}`}>{t(`inspectionProfiles.states.${item.effectiveState}`)}</span><small>{kind} · {t(`inspectionProfiles.stateHints.${item.effectiveState}`)}</small><span className="inspection-note-meta workspace-meta">{t("inspectionProfiles.catalog.structure", { fields: item.structure.fields.length, templates: item.structure.templates.length })}</span></button>;
 }
 
-function SummaryMetric({ label, value }: { label: string; value: number }) {
-  return <div><dt>{label}</dt><dd>{value}</dd></div>;
-}
-
 function ErrorSummary({ errors, onNavigate }: { errors: Record<string, string>; onNavigate: (path: string) => void }) {
   const { t } = useTranslation("pages");
   return <section className="inspection-error-summary" role="alert" aria-labelledby="inspection-errors-title"><h3 id="inspection-errors-title" tabIndex={-1}>{t("inspectionProfiles.errors.title")}</h3><p>{t("inspectionProfiles.errors.description")}</p><ul>{Object.entries(errors).map(([path, value]) => <li key={path}><button type="button" onClick={() => onNavigate(path)}>{fieldLabel(t, path)}: {t(`inspectionProfiles.errors.${value}`, { defaultValue: value })}</button></li>)}</ul></section>;
@@ -410,9 +397,9 @@ function reasonLabel(reason: string | null, language: "ru" | "en"): string {
 
 function pageCopy(language: "ru" | "en") {
   return language === "ru" ? {
-    detectedKind: "Распознанный вид", editorModeLabel: "Режим редактора профиля", basicMode: "Основное", advancedMode: "Расширенное", changed: "Изменено", advancedErrors: (count: number) => `Ошибок в расширенном режиме: ${count}`, actionsLabel: "Действия профиля", checkSetup: "Проверить настройку", confirmEnable: "Подтвердить и включить", reviewConfirm: "Проверить и подтвердить снова", reviewEnable: "Проверить и включить", validateConfirmChanges: "Проверить и подтвердить изменения", enabled: "Включено", enabledHelp: "Профиль уже authoritative; повторное подтверждение без изменений не требуется.", primaryHelp: "Backend сначала проверит структуру и ограниченный пример, затем сохранит профиль только при успехе.", saveDraft: "Сохранить как черновик", saveChanges: "Сохранить изменения", working: "Выполняется…", blockingHelp: "Разрешите неоднозначность или исправьте обязательные ссылки перед включением.", profileTools: "Инструменты профиля", profileToolsHelp: "Импорт, экспорт, сброс и destructive actions", resetSuggestion: "Восстановить предложенную настройку", reviewServer: "Обновить сведения о сервере",
+    detectedKind: "Распознанный вид", profileLabel: "Профиль", browserDraft: "Черновик в браузере", editorModeLabel: "Режим редактора профиля", basicMode: "Основное", advancedMode: "Расширенное", changed: "Изменено", advancedErrors: (count: number) => `Ошибок в расширенном режиме: ${count}`, actionsLabel: "Действия профиля", checkSetup: "Проверить настройку", confirmEnable: "Подтвердить и включить", reviewConfirm: "Проверить и подтвердить снова", reviewEnable: "Проверить и включить", validateConfirmChanges: "Проверить и подтвердить изменения", enabled: "Включено", enabledHelp: "Профиль уже authoritative; повторное подтверждение без изменений не требуется.", primaryHelp: "Backend сначала проверит структуру и ограниченный пример, затем сохранит профиль только при успехе.", saveDraft: "Сохранить как черновик", saveChanges: "Сохранить изменения", working: "Выполняется…", blockingHelp: "Разрешите неоднозначность или исправьте обязательные ссылки перед включением.", profileTools: "Инструменты профиля", profileToolsHelp: "Импорт, экспорт, сброс и destructive actions", resetSuggestion: "Восстановить предложенную настройку", reviewServer: "Обновить сведения о сервере",
   } : {
-    detectedKind: "Detected kind", editorModeLabel: "Profile editor mode", basicMode: "Basic", advancedMode: "Advanced", changed: "Changed", advancedErrors: (count: number) => `Advanced mode errors: ${count}`, actionsLabel: "Profile actions", checkSetup: "Check setup", confirmEnable: "Confirm and enable", reviewConfirm: "Review and confirm again", reviewEnable: "Review and enable", validateConfirmChanges: "Validate and confirm changes", enabled: "Enabled", enabledHelp: "The profile is already authoritative; unchanged profiles do not need reconfirmation.", primaryHelp: "The backend validates the structure and a bounded sample before saving only on success.", saveDraft: "Save as draft", saveChanges: "Save changes", working: "Working…", blockingHelp: "Resolve ambiguity or fix required references before enabling the profile.", profileTools: "Profile tools", profileToolsHelp: "Import, export, reset, and destructive actions", resetSuggestion: "Restore suggested setup", reviewServer: "Refresh server information",
+    detectedKind: "Detected kind", profileLabel: "Profile", browserDraft: "Browser draft", editorModeLabel: "Profile editor mode", basicMode: "Basic", advancedMode: "Advanced", changed: "Changed", advancedErrors: (count: number) => `Advanced mode errors: ${count}`, actionsLabel: "Profile actions", checkSetup: "Check setup", confirmEnable: "Confirm and enable", reviewConfirm: "Review and confirm again", reviewEnable: "Review and enable", validateConfirmChanges: "Validate and confirm changes", enabled: "Enabled", enabledHelp: "The profile is already authoritative; unchanged profiles do not need reconfirmation.", primaryHelp: "The backend validates the structure and a bounded sample before saving only on success.", saveDraft: "Save as draft", saveChanges: "Save changes", working: "Working…", blockingHelp: "Resolve ambiguity or fix required references before enabling the profile.", profileTools: "Profile tools", profileToolsHelp: "Import, export, reset, and destructive actions", resetSuggestion: "Restore suggested setup", reviewServer: "Refresh server information",
   };
 }
 

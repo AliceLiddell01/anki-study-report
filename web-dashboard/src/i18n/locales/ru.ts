@@ -121,6 +121,7 @@ const ru = {
       },
       catalog: {
         title: "Типы записей", search: "Поиск по названию", stateFilter: "Состояние", allStates: "Все состояния",
+        count: "Показано {{returned}} из {{total}} типов записей",
         clearFilters: "Очистить фильтры", empty: "В коллекции нет доступных типов записей.", noMatches: "По фильтрам ничего не найдено.",
         structure: "Полей: {{fields}} · шаблонов: {{templates}}", truncated: "Показано {{count}} из {{total}} типов. Каталог ограничен безопасным лимитом.",
       },

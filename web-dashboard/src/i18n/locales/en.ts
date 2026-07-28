@@ -125,6 +125,7 @@ const en = {
       },
       catalog: {
         title: "Note types", search: "Search by name", stateFilter: "State", allStates: "All states",
+        count: "Showing {{returned}} of {{total}} note types",
         clearFilters: "Clear filters", empty: "No available note types were found in the collection.", noMatches: "No note types match these filters.",
         structure: "Fields: {{fields}} · templates: {{templates}}", truncated: "Showing {{count}} of {{total}} note types. The catalog is safely bounded.",
       },

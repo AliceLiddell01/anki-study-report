@@ -78,7 +78,7 @@
   background: rgb(var(--color-bg));
   font-synthesis: none;
   font-family:
-    "Inter",
+    "Adwaita Sans",
     "Segoe UI",
     "Noto Sans",
     "Yu Gothic UI",
@@ -567,7 +567,7 @@ body {
   margin: 0;
   min-width: 320px;
   font-family:
-    "Inter",
+    "Adwaita Sans",
     "Segoe UI",
     "Noto Sans",
     "Yu Gothic UI",
@@ -596,7 +596,7 @@ h1,
 h2,
 h3 {
   font-family:
-    "Inter",
+    "Adwaita Sans",
     "Segoe UI",
     "Noto Sans",
     "Yu Gothic UI",
@@ -1976,4 +1976,3 @@ main.app-content-safe-inset:has(.settings-layout-shell) {
     transition: none;
   }
 }
-
