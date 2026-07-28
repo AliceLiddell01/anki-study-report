@@ -44,7 +44,8 @@ describe("AnkiCardShadowPreview AV fidelity", () => {
     expect(wrapper).not.toBeNull();
     expect(button?.classList.contains("replay-button")).toBe(true);
     expect(button?.dataset.asrReplayEnhanced).toBe("true");
-    expect(button?.getAttribute("aria-label")).toBe("Play audio 影.mp3");
+    expect(button?.getAttribute("aria-label")).toBe("Play audio");
+    expect(button?.getAttribute("aria-label")).not.toContain("影.mp3");
     expect(button?.querySelectorAll("svg")).toHaveLength(1);
     expect(button?.querySelectorAll("svg circle")).toHaveLength(1);
     expect(button?.querySelectorAll("svg path")).toHaveLength(1);
