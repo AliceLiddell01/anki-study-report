@@ -66,6 +66,7 @@ G1 final outcome — DEFER_REVIEW_MODEL
 recommended Review XP research candidate — NONE
 P-STEP-ZERO — CONFIRMATORY_ELIGIBLE; not selected; not falsified
 P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; not selected; not falsified
+
 G2 — COMPLETE
 G2.1 — COMPLETE
 Learn XP contract — FROZEN_PRE_LIFECYCLE_ANALYSIS
@@ -104,46 +105,75 @@ decision basis — MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
 selected candidate G2.5 status — CONFIRMATORY_INCONCLUSIVE
 non-selected candidate — C-PENDING-SPLIT-D1-NOTE-SIBLING; not selected; not falsified
 production integration — PROHIBITED
+
 G3 — DEFERRED / POST-MVP / NOT STARTED
 G3 critical path — NO
 G3 blocks G4/G5/G6 — NO
+
 G4 — IN PROGRESS
 G4.1 — COMPLETE
 core economy contract — FROZEN_PRE_NORMALIZATION_ANALYSIS
 core economy domains — REVIEW_DOMAIN; LEARN_DOMAIN
 Create XP — EXCLUDED / DEFERRED WITH G3
 Review winner — NONE
-G4.2 — NEXT / NOT STARTED
+G4.2 — COMPLETE
+input/uncertainty model — FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+Review uncertainty axis — REVIEW_MODEL_AXIS_V1
+Review default / averaging — NONE / PROHIBITED
+axes — SESSION; ANKI_DAY; CALENDAR_DAY
+G4.3 — NEXT / NOT STARTED
+simulation — NOT STARTED
 production integration — PROHIBITED
 ```
 
-G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует. G4 сохраняет `P-STEP-ZERO` и `P-TAPER-ZERO-30D` как explicit uncertainty axis и не выбирает hidden default.
+### G1 Review input
 
-G2.1 заморозил отдельный Learn XP problem contract. Он отделяет официальные Anki states `New/Learning/Review/Relearn` от Learn XP research lifecycle, фиксирует четыре identity candidates, pending/confirmation minimum requirements, шесть anti-farming threat families, 19 protected invariants, privacy/claims boundary и entry contract G2.2.
+G1.6 закрыл Review XP outcome `DEFER_REVIEW_MODEL`; production approval отсутствует. `P-STEP-ZERO` и `P-TAPER-ZERO-30D` остаются `CONFIRMATORY_ELIGIBLE`, не выбраны и не фальсифицированы.
 
-G2.2 определил семь typed lifecycle states, 20 events и 12 deterministic transitions. Identity architecture factorized как `LearningEpisode<AchievementSubject>`: `LEARNING_EPISODE` является container, а `CARD`, `NOTE`, `SIBLING_GROUP` остаются невыбранными subject candidates.
-
-G2.2 опубликовал research-only evaluator и 23 synthetic fixtures, покрывающие шесть threat families и все 19 invariants. Model status — `FROZEN_PRE_CANDIDATE_DESIGN`.
-
-G2.3 устранил duplicate canonical digest helper, запретил direct-input coercion и доказал отсутствие drift на 31 frozen lifecycle case. Затем prospectively заморозил две Learn XP families, две delay policies, две operational subject strategies, восемь candidates, две reference variants и exact deterministic G2.4 budget `340/340`.
-
-Protocol publication SHA — `41313c9369c76d331d489a9aa4b44da2497b3132`; G2.3 full research suite — `982 passed`. Первый canonical G2.4 attempt на `ef7c638a…` был изолирован как `INVALID` после failure byte-identical archive reproduction. Packaging-only `HARNESS` correction (`TarInfo.mode → 0644`) опубликована как `548b27de6283b32fb27541db02ce6c8b65c29756` без изменения screening design. Полный replacement run завершён `340/340`, detached validation и deterministic reproduction прошли. Внутри `F-CONFIRMATION-ONLY` выбран `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`, внутри `F-PENDING-CONFIRMED-SPLIT` — `C-PENDING-SPLIT-D1-NOTE-SIBLING`. Cross-family ranking, final model selection и production approval в G2.4 не выполнялись.
-
-G2.5 был активирован отдельно и завершён на prospectively frozen matrix из двух survivors, одной reference, 36 conditions и двух replay identities: `216/216/216`, `0/0/0`, detached validation и byte-identical reproduction прошли. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`; reference осталась `REFERENCE_ONLY`. Ranking, winner, recommendation, final model selection и production approval в G2.5 не выполнялись.
-
-G2.6 закрыл G2 outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` и рекомендует `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` как bounded research model. Принцип `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE` выбирает меньшую provisional/accounting/explanation surface при одинаковом frozen confirmed total и отсутствии подтверждённой human benefit дополнительного pending reward state. G2.5 outcome выбранного кандидата остаётся `CONFIRMATORY_INCONCLUSIVE`; non-selected pending-split candidate не фальсифицирован и не отклонён как invalid. Recommendation не означает confirmatory eligibility, scientific superiority или production approval.
-
-G3/Create XP не отменён, но отложен до периода после первого стабильного Gamification release, исключён из initial economy и не блокирует G4, G5 или G6. Activation требует одновременно `FIRST_STABLE_GAMIFICATION_RELEASE`, `SEPARATE_OWNER_DECISION` и `CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER`. G3.1, lifecycle, candidates, units, formulas и simulation не определены.
-
-G4.1 заморозил problem contract двухдоменной core economy:
+G4 сохраняет оба candidates как explicit `REVIEW_MODEL_AXIS_V1`:
 
 ```text
-Review XP
-+
-Learn XP
+selection: NONE
+default: NONE
+aggregation: PARALLEL_SEPARATE
+averaging: PROHIBITED
+winner criterion: NOT_DEFINED
 ```
 
-Machine identity и inventory:
+Raw G1 bundles не объявляются freshly revalidated.
+
+### G2 Learn input
+
+G2.1 заморозил отдельный Learn XP problem contract. Он отделяет официальные Anki states от Learn XP research lifecycle, фиксирует identity candidates, pending/confirmation requirements, шесть threat families, 19 invariants, privacy/claims и entry contract G2.2.
+
+G2.2 определил семь states, 20 events и 12 transitions. Identity factorized как `LearningEpisode<AchievementSubject>`. G2.3 prospectively заморозил две families, две delay policies, две subject strategies, восемь candidates, две references и exact `340/340` G2.4 budget.
+
+Первый G2.4 attempt на `ef7c638a…` изолирован как `INVALID`. Packaging-only correction опубликована как `548b27de…`; valid replacement run завершён `340/340` с detached validation и byte-identical reproduction.
+
+G2.5 завершён на `216/216/216` units. Оба survivors получили `CONFIRMATORY_INCONCLUSIVE` из-за `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`.
+
+G2.6 рекомендует `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` под `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`. Recommendation не означает confirmatory eligibility, scientific superiority или production approval. Frozen `1.0 LRU` остаётся source accounting value, а не common economy XP.
+
+### G3 owner decision
+
+G3/Create XP не отменён, но исключён из initial economy и не блокирует G4/G5/G6. Activation требует одновременно:
+
+```text
+FIRST_STABLE_GAMIFICATION_RELEASE
+AND SEPARATE_OWNER_DECISION
+AND CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER
+```
+
+G3.1, Create lifecycle, candidates, units, formulas и simulation не определены.
+
+### G4.1 problem contract
+
+Canonical artifacts:
+
+- [human contract](gamification/core-economy-problem-contract.md)
+- [machine contract](../research/gamification-sim/contracts/core-economy-problem-contract-v1.json)
+- [strict schema](../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
+- [G4.1 closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
 
 ```text
 contract_id — core-economy-problem-contract
@@ -154,37 +184,55 @@ personas — 9
 threat families — 14
 protected invariants — 28
 allowed final G4 outcomes — 3
-G4.2 requirements — 14
 ```
 
-G4.1 не выбирает Review winner, Review/Learn ratio, normalized XP, productive-day threshold, level curve, streak, Momentum, recovery formula, candidate registry, matrix или seed. G4.2 остаётся `NEXT / NOT STARTED`.
+Canonical PR #164 chronology:
+
+```text
+defective intermediate schema commit reachable from merged history — YES
+defective schema present in final tree — NO
+defective schema used as validated result — NO
+```
+
+### G4.2 input normalization and uncertainty model
+
+Canonical artifacts:
+
+- [human model](gamification/core-economy-input-normalization-model.md)
+- [machine contract](../research/gamification-sim/contracts/core-economy-input-normalization-v1.json)
+- [strict schema](../research/gamification-sim/schemas/core-economy-input-normalization-v1.schema.json)
+- [G4.2 closeout](../roadmap/gamification/g4-core-economy-input-normalization.md)
+
+```text
+contract_id — core-economy-input-normalization
+version — 1
+status — FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+domain input types — 2
+common interface record types — 4
+axes — SESSION; ANKI_DAY; CALENDAR_DAY
+dispositions — 7
+fail-closed reasons — 18
+personas — 9
+fixture requirements — 15
+threats / invariants — 14 / 28
+validation rules — 24
+G4.3 requirements — 14
+```
+
+G4.2 определяет typed Review/Learn records, common interface, decomposable contribution/day placeholders, explicit axes, fail-closed dispositions, persona descriptors и future fixture requirements.
+
+G4.2 не выбирает Review winner/default, averaging, Review/Learn ratio, common unit, XP amount, cap, threshold, level curve, streak/Momentum/recovery formula, candidate families, exact traces, matrix или seed. G4.3 и simulation не начаты.
 
 Точные источники:
 
 - [`../roadmap/gamification/README.md`](../roadmap/gamification/README.md)
 - [Gamification docs index](gamification/README.md)
-- [Learn XP human problem contract](gamification/learn-xp-problem-contract.md)
-- [Learn XP machine problem contract](../research/gamification-sim/contracts/learn-xp-problem-contract-v1.json)
-- [Learn XP problem schema](../research/gamification-sim/schemas/learn-xp-problem-contract-v1.schema.json)
-- [Learn XP human lifecycle model](gamification/learn-xp-lifecycle-model.md)
-- [Learn XP machine lifecycle model](../research/gamification-sim/contracts/learn-xp-lifecycle-model-v1.json)
-- [Learn XP lifecycle schemas](../research/gamification-sim/schemas/learn-xp-lifecycle-model-v1.schema.json)
-- [Learn XP human candidate protocol](gamification/learn-xp-candidate-protocol.md)
-- [Learn XP machine candidate protocol](../research/gamification-sim/contracts/learn-xp-candidate-protocol-v1.json)
-- [Learn XP candidate protocol schema](../research/gamification-sim/schemas/learn-xp-candidate-protocol-v1.schema.json)
-- [Learn XP bounded screening technical reference](gamification/learn-xp-bounded-screening.md)
-- [G2.1 closeout](../roadmap/gamification/g2-learn-xp-problem-contract.md)
-- [G2.2 closeout](../roadmap/gamification/g2-learn-xp-lifecycle.md)
-- [G2.3 closeout](../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
-- [G2.4 closeout](../roadmap/gamification/g2-learn-xp-bounded-screening.md)
-- [Learn XP confirmatory protocol](gamification/learn-xp-confirmatory-protocol.md)
-- [G2.5 confirmatory closeout](../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
-- [G2.6 final decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
-- [G1.6 decision and G1 closeout](../roadmap/gamification/g1-review-xp-decision.md)
-- [Core economy problem contract](gamification/core-economy-problem-contract.md)
-- [Core economy machine contract](../research/gamification-sim/contracts/core-economy-problem-contract-v1.json)
-- [Core economy strict schema](../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
+- [G1.6 decision](../roadmap/gamification/g1-review-xp-decision.md)
+- [G2.6 decision](../roadmap/gamification/g2-learn-xp-decision.md)
+- [G4.1 contract](gamification/core-economy-problem-contract.md)
 - [G4.1 closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
+- [G4.2 model](gamification/core-economy-input-normalization-model.md)
+- [G4.2 closeout](../roadmap/gamification/g4-core-economy-input-normalization.md)
 
 `gamification → master`, production integration, package inclusion и release запрещены без отдельного owner decision.
 
@@ -220,7 +268,7 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Harness failure не объявлять production failure без подтверждения.
 - Docs/contracts-only sync не требует повторного Fast CI или Docker E2E.
 - Для Gamification target и PR base — `gamification`, даже если общие environment docs приводят Core-примеры.
-- Не начинать G4.2 автоматически после G4.1.
+- Не начинать G4.3 автоматически после G4.2.
 
 ## Режим работы
 
@@ -235,31 +283,23 @@ Codex mode работает непосредственно в локальном
 
 Не начинать следующий roadmap stage автоматически только потому, что предыдущая техническая работа завершена.
 
-### G2 final closeout
-
-```text
-G2.6: COMPLETE
-G2: COMPLETE
-G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
-recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
-selected candidate G2.5 status: CONFIRMATORY_INCONCLUSIVE
-selected candidate reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-production approved: NO
-production integration: PROHIBITED
-```
-
-### G4.1 closeout
+### G4.2 closeout
 
 ```text
 G3: DEFERRED / POST-MVP / NOT STARTED
 G4: IN PROGRESS
 G4.1: COMPLETE
-contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G4.2: COMPLETE
+model: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
 Review inputs: P-STEP-ZERO; P-TAPER-ZERO-30D
-Review winner: NONE
+Review winner / default: NONE / NONE
+Review averaging: PROHIBITED
 Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status: CONFIRMATORY_INCONCLUSIVE
-G4.2: NEXT / NOT STARTED
+axes: SESSION; ANKI_DAY; CALENDAR_DAY
+numeric policy: NOT SELECTED
+G4.3: NEXT / NOT STARTED
+simulation: NOT STARTED
 production approved: NO
 production integration: PROHIBITED
 ```
