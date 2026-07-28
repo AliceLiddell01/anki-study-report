@@ -16,10 +16,11 @@ flowchart LR
     S2 --> OC[Owner checkpoint Cards<br/>ACCEPTED]
     OC --> PA[Inspection Profiles<br/>screenshot-first audit]
     PA --> S3[WP2 corrective candidate]
-    S3 --> B3[WP3 Basic candidate]
-    B3 --> OP{Owner checkpoint<br/>Profiles}
-    OP --> FV[Final verification]
-    FV --> MI{Separate PR #130<br/>merge decision}
+    S3 --> B3[WP3 Basic correction]
+    B3 --> A4[WP4 Advanced]
+    A4 --> CL[WP5/WP6 closeout]
+    CL --> FV[Exact merged CI/E2E]
+    FV --> MI[PR #130 merged into core]
     MI --> C3[C3 UI & Shell]
     C3 --> C4[C4 First-party Data]
     C4 --> C5[C5 Today v2]
@@ -50,14 +51,17 @@ WP1 Settings owner visual assessment — 6/10 (исторический verdict 
 WP1 Settings visual language — PROVISIONAL
 WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
 WP2 corrective candidate — DELIVERED / EXTERNAL REVIEW 7.8/10 / OWNER ACCEPTANCE NOT GRANTED
-WP2 visual debt — OPEN
 Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
-WP3 Inspection Profiles Basic — IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING
-WP4 Inspection Profiles Advanced — NOT STARTED
-WP2 consolidated automated verification — PASS
-отдельное решение о merge PR #130 — NOT PERFORMED
+WP3 Inspection Profiles Basic correction — COMPLETE
+WP4 Inspection Profiles Advanced — COMPLETE
+WP5 states/validation/accessibility — COMPLETE
+WP6 final visual/system evidence — COMPLETE
+Inspection Profiles — COMPLETE FOR C2 CLOSEOUT
+PR #130 — MERGED INTO CORE / 57eeca039247ab0522555b1292fc1f25c66976fd
+Fast CI — 30408497011 / PASS ON MERGED CORE
+real-Anki standard/full + restart — 30408746188 / PASS ON MERGED CORE
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
-release — не начат
+release/master — NOT TOUCHED
 ```
 
 ## Правила поставки
@@ -96,7 +100,7 @@ problem
 
 **Implementation:** complete
 **Integration:** merged в `core`
-**Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
+**Stage 1 synchronization/rejected-overlay cleanup:** complete
 **Stage 2 Cards 1:1:** owner accepted, complete и frozen — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-final-av-media-evidence-closeout.md)
 **Inspection Profiles corrected screenshot-first audit:** complete
 **WP1 Settings shared shell:** structural foundation delivered; owner visual
@@ -109,10 +113,20 @@ review `7.8/10`; owner acceptance not granted; visual debt remains open —
 [report](../../reports/core/c2-inspection-profiles-wp2-corrective-pass.md)
 **Owner progression decision:** start WP3 without treating that decision as WP2
 acceptance
-**WP3 Inspection Profiles Basic:** implementation candidate delivered; external
-visual review pending —
-[report](../../reports/core/c2-inspection-profiles-wp3-basic-implementation.md)
-**WP4 Inspection Profiles Advanced:** not started
+
+**WP3 Inspection Profiles Basic:** correction complete —
+[historical implementation report](../../reports/core/c2-inspection-profiles-wp3-basic-implementation.md)
+
+**WP4 Inspection Profiles Advanced:** complete
+
+**WP5 states/validation/accessibility:** complete
+
+**WP6 visual/system evidence:** complete; objective evidence does not claim a
+numerical score or owner visual acceptance
+
+**PR #130 integration:** merged into `core`; exact merged package passed Fast CI
+and real-Anki `standard/full` with restart —
+[final integration closeout](../../reports/core/c2-pr130-final-integration-closeout.md)
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 
@@ -135,13 +149,18 @@ Stage 1 проверенный production candidate: `a746172f8746eac82ff628d36a
 | Критерий | Статус |
 | --- | --- |
 | security/CSP/sanitizer boundary не ослаблена | PASS |
-| targeted/final real-Anki gates соответствуют риску | PASS |
+| targeted/final real-Anki gates соответствуют риску | PASS — 30408746188 |
 | UI states работают на representative fixtures | PASS |
 | владелец принимает Cards 1:1 на route `#/cards` | PASS — `ACCEPT CARDS 1:1` |
+| Inspection Profiles WP3–WP6 закрыты | PASS |
+| PR #130 merged package проверен exact Fast CI | PASS — 30408497011 |
 
 Cards production frozen. Без новой доказанной регрессии запрещено менять Cards composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный тяжёлый Cards real-Anki gate не повторяется без нового риска.
 
-`ACCEPT CARDS 1:1` относится только к route `#/cards` и не означает принятие PR #130. После Cards checkpoint обязательны отдельные Profiles implementation/acceptance, Settings regression sweep, final verification и отдельное решение о merge; до этого C3 не начинается автоматически.
+`ACCEPT CARDS 1:1` относится только к route `#/cards`. Последующие Profiles
+implementation/closeout, Settings regression sweep, final verification и
+отдельное merge decision завершены; PR #130 влит в `core`. C3 при этом не
+активирован автоматически.
 
 Ранее заданный владельцем целевой порог для будущего Inspection Profiles
 acceptance, а не оценка текущего candidate:
@@ -153,7 +172,8 @@ preferred target: 9.0/10 or higher
 
 ## C3 — Core UI & Shell Consolidation
 
-**Статус:** не активирован; возможен только после Profiles checkpoint, final verification и отдельного merge decision по PR #130
+**Статус:** не активирован; prerequisites C2/PR #130 закрыты, но старт C3
+требует отдельного решения
 
 ### Цель
 

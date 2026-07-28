@@ -60,14 +60,18 @@ WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
 WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
 WP2 bounded corrective pass external visual review — 7.8/10 (историческая внешняя оценка)
 WP2 owner acceptance — NOT GRANTED
-WP2 visual debt — OPEN
 Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
-WP3 Inspection Profiles Basic — IMPLEMENTATION CANDIDATE DELIVERED
-WP3 external visual review — PENDING
-WP4 Inspection Profiles Advanced — NOT STARTED
-WP2 consolidated automated verification — PASS
-PR-wide merge decision / C3 — NOT PERFORMED
-release — не начат
+WP3 Inspection Profiles Basic correction — COMPLETE
+WP4 Inspection Profiles Advanced — COMPLETE
+WP5 states/validation/accessibility — COMPLETE
+WP6 final visual/system evidence — COMPLETE
+Inspection Profiles — COMPLETE FOR C2 CLOSEOUT
+PR #130 — MERGED INTO CORE
+merged core SHA — 57eeca039247ab0522555b1292fc1f25c66976fd
+Fast CI — 30408497011 / PASS ON MERGED CORE
+real-Anki standard/full + restart — 30408746188 / PASS ON MERGED CORE
+C3 — NOT STARTED
+release/master — NOT TOUCHED
 ```
 
 Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
@@ -75,7 +79,7 @@ release — не начат
 Current accepted Cards evidence:
 
 ```text
-PR: #130 — OPEN / DRAFT / UNMERGED
+PR: #130 — MERGED INTO CORE
 frozen PR base / merge-base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
 
 Stage 1 verified production candidate:
@@ -146,7 +150,9 @@ Cards production заморожен. Без новой доказанной ре
 
 ### Visual coverage checkpoint
 
-`ACCEPT CARDS 1:1` принимает только route `#/cards`; это не означает принятие PR #130, Inspection Profiles, ready-for-review или merge.
+`ACCEPT CARDS 1:1` относится только к route `#/cards`. PR #130 позднее прошёл
+отдельный Profiles closeout, exact merged Fast CI/E2E и был влит в `core`;
+это не активирует C3 и не означает release.
 
 | Route / area | Текущее подтверждение | Статус |
 | --- | --- | --- |
@@ -156,9 +162,9 @@ Cards production заморожен. Без новой доказанной ре
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
 | `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
-| `#/settings/inspection-profiles` corrective frame | 18 production captures, 117 region captures, ARIA/axe/keyboard/network evidence и prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL REVIEW 7.8/10 / OWNER ACCEPTANCE NOT GRANTED / VISUAL DEBT OPEN |
-| `#/settings/inspection-profiles` Basic | bounded two-column guided editor, responsive/focus/validation evidence и Prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
-| `#/settings/inspection-profiles` Advanced | production internals не изменены | WP4 NOT STARTED |
+| `#/settings/inspection-profiles` corrective frame | historical WP2 candidate и external review сохранены как baseline | HISTORICAL / SUPERSEDED BY FINAL C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Basic | two-column 1024/QHD composition, strict routing, focus и unmasked comparisons | COMPLETE FOR C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Advanced | authored strict mappings/checks/templates editor; three QHD columns; missing references remain visible | COMPLETE FOR C2 CLOSEOUT |
 | Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
 | Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
 
@@ -179,7 +185,8 @@ Reports:
 - [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
 - [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
 - [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md);
-- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md).
+- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md);
+- [PR #130 final integration closeout](../reports/core/c2-pr130-final-integration-closeout.md).
 
 ## Platform / CI
 
