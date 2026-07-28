@@ -83,7 +83,7 @@ schema Git blob:
 6a5c312ac873fdcb86c4ec820842f759061c5253
 
 human doc Git blob:
-b8fd53917eab9a1433d301383c76617de5ebb85f
+72478cb841a93fe678e290c7e5ce54502b7420b2
 
 contract SHA-256:
 1834c2b4cdf3b3b92067db3d90dd7a5779ae43054e4accf582d8dbab3b08ac8d
@@ -92,7 +92,7 @@ schema SHA-256:
 54f14a26a66816bfb7f8a410bafa7946c1857a01e0e9558b8cce86df805cce23
 
 human doc SHA-256:
-c851b14aaaab068d730ce7553d69593fb4d783e509830f4acb9badfa10de9c08
+996bce4c2f3e9fadb1d8546f93ef533384769ce568749a9b7de022ca7dd447f9
 ```
 
 ## Contract inventory
@@ -433,4 +433,38 @@ scheduler/FSRS/due dates changed: NO
 database/ledger changed: NO
 package/workflows/release changed: NO
 master changed: NO
+```
+
+## G4.3 bounded provenance correction
+
+The G4.2 closeout previously recorded the pre-final human-document identity.
+The human document itself remains unchanged at the exact bytes merged by PR #165.
+
+```text
+old identity:
+pre-final human-document state
+
+old pre-final human blob:
+b8fd53917eab9a1433d301383c76617de5ebb85f
+
+old pre-final human SHA-256:
+c851b14aaaab068d730ce7553d69593fb4d783e509830f4acb9badfa10de9c08
+
+current identity:
+final merged human-document bytes
+
+current final merged human blob:
+72478cb841a93fe678e290c7e5ce54502b7420b2
+
+current final merged human SHA-256:
+996bce4c2f3e9fadb1d8546f93ef533384769ce568749a9b7de022ca7dd447f9
+
+G4.2 human document changed:
+NO
+
+G4.2 semantics changed:
+NO
+
+G4.2 contract/schema changed:
+NO
 ```
