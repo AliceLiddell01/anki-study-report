@@ -48,6 +48,12 @@ Basic открыт по умолчанию и читается как одна g
 
 Вехи обычного пути: состояние, suggestion, используемые поля, требования, scope карточек, validation и confirmation. Field и requirement rows остаются самостоятельными интерактивными объектами, но секции разделяются типографикой и интервалами, а не вложенными panel/card.
 
+На широком editor Basic использует ограниченную двухколоночную композицию:
+сопоставления полей находятся слева, а требования и scope карточек — справа.
+При ширине editor не более 760 px секции складываются в одну колонку; строки
+сопоставления сохраняют подпись и selector рядом до 480 px. На QHD ширина
+guided surface ограничена, чтобы форма не растягивалась на весь workspace.
+
 Basic никогда не показывает:
 
 - slugs ролей;
@@ -75,6 +81,11 @@ Basic и Advanced — взаимоисключающие tabs одного edito
 
 Ошибки Advanced обозначаются на tab. После явной неудачной validation фокус переходит на сводку ошибок; ссылки переключают режим и фокусируют соответствующие строгие элементы управления.
 
+Ошибки, для которых существует Basic control, остаются в Basic: ссылка из
+сводки переводит фокус на точный selector или input и сохраняет
+`aria-invalid`/`aria-describedby`. Только Advanced-only ошибка переключает
+режим перед переводом фокуса.
+
 ## Хранение и авторитетность
 
 - autosave отсутствует;
@@ -90,7 +101,7 @@ Basic и Advanced — взаимоисключающие tabs одного edito
 
 На широких размерах используется split-компоновка каталога и editor. При 1024 px компоновка складывается без горизонтального overflow. Внутренние 3→2→1-column grids реагируют container queries на фактическую ширину editor, а не только на viewport.
 
-Validation остаётся persistent inline рядом с action region; необязательный toast статичен и не перекрывает форму. Пустое состояние использует одну поверхность без иллюстрации и прямо объясняет, что generated draft не сохраняется и не включается автоматически.
+Validation остаётся persistent inline рядом с action region; необязательный toast статичен и не перекрывает форму. Добавление требования переводит фокус в новый row; удаление — в следующий или предыдущий row, а при отсутствии соседей — в кнопку добавления. Пустое состояние использует одну поверхность без иллюстрации и прямо объясняет, что generated draft не сохраняется и не включается автоматически.
 
 ## Граница проверки
 
@@ -107,26 +118,21 @@ C1.5R.6 покрывает:
 Docker и real-Anki и приёмка на приватном профиле владельца выполнены в C1.5R.7.
 
 
-## Screenshot-first target audit — 2026-07-27
+## Delivery checkpoint — 2026-07-29
 
-The corrected Prototype/Production audit uses the same controlled identities (`Слова`, `Java`) and separates direct states from intentional interaction-model differences. Evidence validity is restored, but it does not accept the current production composition.
-
-Confirmed open target decisions:
-
-- whether the compact Prototype three-column editor remains mandatory;
-- whether production's long vertical editor is retained or recomposed;
-- inline dirty messaging versus confirmation modal;
-- Prototype overflow navigation versus persistent Settings sidebar at `1024px`;
-- QHD width utilization;
-- validation summary placement.
-
-Until the owner resolves these choices:
+Corrected WP2 evidence remains the frame baseline, but WP2 owner acceptance was
+not granted and its visual debt remains open. The owner separately authorized
+WP3 to proceed without accepting WP2.
 
 ```text
-screenshot-first audit: COMPLETE
-owner target decision: PENDING
-Profiles implementation: NOT STARTED
+WP2 frame: CORRECTIVE CANDIDATE DELIVERED
+WP2 external review: 7.8/10 (historical external assessment)
+WP2 owner acceptance: NOT GRANTED
+WP3 Basic: IMPLEMENTATION CANDIDATE DELIVERED
+WP3 external visual review: PENDING
+WP4 Advanced: NOT STARTED
 Profiles acceptance: NOT READY
 ```
 
-See [corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md).
+See the [corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md)
+and [WP3 Basic implementation report](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md).

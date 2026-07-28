@@ -54,8 +54,13 @@ WP1 Settings owner visual assessment — 6/10 (исторический verdict 
 WP1 Settings visual language — PROVISIONAL
 WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
 WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
-WP2 bounded corrective pass external visual review — PENDING
-WP3 Inspection Profiles Basic — NOT STARTED
+WP2 bounded corrective pass external visual review — 7.8/10 (историческая внешняя оценка)
+WP2 owner acceptance — NOT GRANTED
+WP2 visual debt — OPEN
+Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
+WP3 Inspection Profiles Basic — IMPLEMENTATION CANDIDATE DELIVERED
+WP3 external visual review — PENDING
+WP4 Inspection Profiles Advanced — NOT STARTED
 WP2 consolidated automated verification — PASS
 PR-wide merge decision / C3 — NOT PERFORMED
 release — не начат
@@ -147,8 +152,9 @@ Cards production заморожен. Без новой доказанной ре
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
 | `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
-| `#/settings/inspection-profiles` corrective frame | 18 production captures, 117 region captures, ARIA/axe/keyboard/network evidence и prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
-| `#/settings/inspection-profiles` Basic/Advanced internals | текущие production-native editors сохранены без перекомпоновки | WP3 NOT STARTED |
+| `#/settings/inspection-profiles` corrective frame | 18 production captures, 117 region captures, ARIA/axe/keyboard/network evidence и prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL REVIEW 7.8/10 / OWNER ACCEPTANCE NOT GRANTED / VISUAL DEBT OPEN |
+| `#/settings/inspection-profiles` Basic | bounded two-column guided editor, responsive/focus/validation evidence и Prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| `#/settings/inspection-profiles` Advanced | production internals не изменены | WP4 NOT STARTED |
 | Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
 | Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
 
@@ -168,7 +174,8 @@ Reports:
 - [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
 - [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
 - [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
-- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md).
+- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md);
+- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md).
 
 ## Platform / CI
 

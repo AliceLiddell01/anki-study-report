@@ -16,7 +16,8 @@ flowchart LR
     S2 --> OC[Owner checkpoint Cards<br/>ACCEPTED]
     OC --> PA[Inspection Profiles<br/>screenshot-first audit]
     PA --> S3[WP2 corrective candidate]
-    S3 --> OP{Owner checkpoint<br/>Profiles}
+    S3 --> B3[WP3 Basic candidate]
+    B3 --> OP{Owner checkpoint<br/>Profiles}
     OP --> FV[Final verification]
     FV --> MI{Separate PR #130<br/>merge decision}
     MI --> C3[C3 UI & Shell]
@@ -48,8 +49,11 @@ WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
 WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
 WP1 Settings visual language — PROVISIONAL
 WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
-WP2 corrective candidate — DELIVERED / EXTERNAL REVIEW PENDING
-WP3 Inspection Profiles Basic — BLOCKED UNTIL WP2 OWNER ACCEPTANCE / NOT STARTED
+WP2 corrective candidate — DELIVERED / EXTERNAL REVIEW 7.8/10 / OWNER ACCEPTANCE NOT GRANTED
+WP2 visual debt — OPEN
+Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
+WP3 Inspection Profiles Basic — IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING
+WP4 Inspection Profiles Advanced — NOT STARTED
 WP2 consolidated automated verification — PASS
 отдельное решение о merge PR #130 — NOT PERFORMED
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
@@ -100,9 +104,15 @@ assessment `6/10` — исторический verdict владельца; visua
 [report](../../reports/core/c2-settings-shell-wp1-implementation.md)
 **WP2 original Inspection Profiles frame candidate:** request changes —
 [historical report](../../reports/core/c2-inspection-profiles-wp2-frame-implementation.md)
-**WP2 bounded corrective candidate:** delivered; external visual review pending —
+**WP2 bounded corrective candidate:** delivered; historical external visual
+review `7.8/10`; owner acceptance not granted; visual debt remains open —
 [report](../../reports/core/c2-inspection-profiles-wp2-corrective-pass.md)
-**WP3 Inspection Profiles Basic:** not started; blocked until WP2 owner acceptance
+**Owner progression decision:** start WP3 without treating that decision as WP2
+acceptance
+**WP3 Inspection Profiles Basic:** implementation candidate delivered; external
+visual review pending —
+[report](../../reports/core/c2-inspection-profiles-wp3-basic-implementation.md)
+**WP4 Inspection Profiles Advanced:** not started
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 
