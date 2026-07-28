@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended Learn XP research candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4 In Progress`; `G4.1 Complete`; production integration not approved
+**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; recommended Learn XP research candidate `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4 In Progress`; `G4.1/G4.2 Complete`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -114,18 +114,7 @@ simulation executed: NO
 production approved: NO
 ```
 
-G2.1 freezes:
-
-- problem statement and glossary;
-- official Anki scheduler-state versus Learn XP research-state boundary;
-- identity candidate set;
-- pending/confirmed minimum requirements;
-- rewardable/non-rewardable boundary;
-- anti-farming threat taxonomy;
-- button, step, configuration, session, reset and duplicate-object invariants;
-- privacy/claims boundary;
-- G2.2 entry contract;
-- versioning and three-state final G2 outcome boundary.
+G2.1 freezes problem/glossary, scheduler/reward boundary, identity candidates, pending/confirmed minimum requirements, rewardable boundary, anti-farming taxonomy, protected invariants, privacy/claims, G2.2 entry and final-outcome boundary.
 
 Official Anki semantics and peer-reviewed spacing/retrieval research are methodological inputs only. They do not determine exact confirmation delay, amount, ratio, mastery, motivation or retention claims.
 
@@ -142,20 +131,14 @@ Artifacts:
 - [fixture manifest](../../research/gamification-sim/fixtures/learn-xp-lifecycle-v1/manifest.json);
 - [G2.2 closeout](g2-learn-xp-lifecycle.md).
 
-Frozen status:
-
 ```text
 model status: FROZEN_PRE_CANDIDATE_DESIGN
-states: 7
-events: 20
-transitions: 12
+states / events / transitions: 7 / 20 / 12
 identity architecture: FACTORIZED
 generic form: LearningEpisode<AchievementSubject>
 subject candidates: CARD; NOTE; SIBLING_GROUP
 subject winner: NONE
-fixtures: 23
-threat families: 6
-protected invariants: 19
+fixtures / threat families / invariants: 23 / 6 / 19
 manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
 XP amount / pending ratio / numeric delay: NONE
 candidate family / screening matrix: NONE
@@ -176,8 +159,6 @@ Artifacts:
 - [dry matrix generator](../../research/gamification-sim/src/gamification_sim/learn_candidate_protocol.py);
 - [G2.3 closeout](g2-learn-xp-candidate-protocol.md).
 
-Frozen status:
-
 ```text
 protocol status: FROZEN_PRE_SCREENING_IMPLEMENTATION
 protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
@@ -192,7 +173,7 @@ screening executed: NO
 production approved: NO
 ```
 
-G2.3 fixed lifecycle canonical serialization and direct-input typing without drift, then prospectively froze the candidate registry, allocation, delay, subject, gate, metric, survivor/tie, matrix and amendment boundaries.
+G2.3 fixed lifecycle canonical serialization and direct-input typing without drift, then prospectively froze candidate, allocation, delay, subject, gate, metric, survivor/tie, matrix and amendment boundaries.
 
 ### G2.4 — Bounded Learn XP screening
 
@@ -216,8 +197,6 @@ Artifacts:
 - [focused tests](../../research/gamification-sim/tests/test_learn_confirmatory.py);
 - [confirmatory closeout](g2-learn-xp-confirmatory-evidence.md).
 
-Canonical closeout state:
-
 ```text
 survivors / reference: 2 / 1
 condition groups: 16 core / 12 identity / 8 explainability
@@ -234,7 +213,7 @@ cross-family ranking: NO
 production integration: PROHIBITED
 ```
 
-G2.5 checked each survivor separately. Both outcomes are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. It did not rerun G2.4, add D2 or `S-CARD`, choose a family winner, select a final Learn XP model or approve production integration.
+Both outcomes remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable.
 
 ### G2.6 — Final Learn XP research model decision and G2 closure
 
@@ -242,29 +221,9 @@ G2.5 checked each survivor separately. Both outcomes are `CONFIRMATORY_INCONCLUS
 
 Artifact: [final decision and G2 closeout](g2-learn-xp-decision.md).
 
-G2.6 selects the allowed final outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` under `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`.
-
-Decision rationale:
-
-1. both family-local models preserve the frozen bounded confirmed total `1.0 LRU`;
-2. neither candidate was falsified by G2.4/G2.5;
-3. the shared missing disposable identity probe does not distinguish allocation families;
-4. confirmation-only creates no provisional reward exposure;
-5. confirmation-only has the smaller accounting and explanation surface;
-6. no supported human benefit justifies the extra pending reward state;
-7. the recommendation is bounded research governance, not confirmatory eligibility or production approval.
+G2.6 selects `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` under `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`. Both family-local models preserve `1.0 LRU`; neither was falsified; confirmation-only has no provisional exposure and the smaller accounting/explanation surface. The recommendation is bounded research governance, not confirmatory eligibility or production approval.
 
 The non-selected `C-PENDING-SPLIT-D1-NOTE-SIBLING` remains `CONFIRMATORY_INCONCLUSIVE`, not selected, not falsified and not rejected as invalid.
-
-Allowed final G2 outcomes remain frozen as:
-
-```text
-RECOMMEND_LEARN_XP_RESEARCH_MODEL
-REJECT_LEARN_XP_MODEL
-DEFER_LEARN_XP_MODEL
-```
-
-Recommendation means research model, not production readiness.
 
 ## G3 — Create XP specification and simulation
 
@@ -332,7 +291,6 @@ Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status: CONFIRMATORY_INCONCLUSIVE
 terminology / personas / threats / invariants: 30 / 9 / 14 / 28
 allowed final outcomes: 3
-G4.2: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -340,13 +298,46 @@ G4.1 selects no conversion ratio, normalized XP, productive-day threshold, level
 
 ### G4.2 — Input normalization and uncertainty model
 
+**Status:** Complete.
+
+Artifacts:
+
+- [human input/uncertainty model](../../docs/gamification/core-economy-input-normalization-model.md)
+- [machine contract](../../research/gamification-sim/contracts/core-economy-input-normalization-v1.json)
+- [strict Draft 2020-12 schema](../../research/gamification-sim/schemas/core-economy-input-normalization-v1.schema.json)
+- [G4.2 closeout](g4-core-economy-input-normalization.md)
+
+```text
+contract_id: core-economy-input-normalization
+version: 1
+status: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+domain input types: REVIEW_DOMAIN_INPUT; LEARN_DOMAIN_INPUT
+Review axis: REVIEW_MODEL_AXIS_V1
+Review members: P-STEP-ZERO; P-TAPER-ZERO-30D
+Review winner/default: NONE / NONE
+Review averaging: PROHIBITED
+Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+axes: SESSION; ANKI_DAY; CALENDAR_DAY
+dispositions / fail-closed reasons: 7 / 18
+personas / fixture requirements: 9 / 15
+threats / invariants: 14 / 28
+numeric normalization: NOT SELECTED
+simulation: NOT STARTED
+production integration: PROHIBITED
+```
+
+G4.2 freezes typed source records, contribution/day placeholders, Review uncertainty, Learn limitation propagation, independent axes, fail-closed dispositions, persona descriptors, deterministic fixture requirements, provenance and G4.3 entry.
+
+It creates no normalization formula, candidate family, exact trace, matrix or result.
+
+### G4.3 — Candidate economy protocol and hypothesis design
+
 **Status:** Next / Not Started.
 
-G4.2 must preserve both Review candidates, the selected Learn research input and its identity limitation while defining typed domain inputs and a common normalization interface without selecting production amounts or formulas.
+G4.3 may define candidate normalization/conversion/productive-day/level/streak/rest/Momentum/recovery families only prospectively. It must preserve both Review candidates and the Learn limitation, publish hard gates, metrics, exact synthetic traces and matrix before results, and must not use real user data or production code.
 
-### Later G4 stages
-
-Candidate families, exact matrices and simulation may be introduced only prospectively after G4.2. No later G4 stage is activated by this closeout.
+No G4.3 candidate family, matrix, screening or simulation is activated by G4.2 completion.
 
 ## G5 — Production architecture foundation
 
@@ -366,4 +357,4 @@ Candidate families, exact matrices and simulation may be introduced only prospec
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G1 and G2 remain complete with their frozen outcomes; G3 is deferred and non-blocking; G4.1 is a research contract freeze. G4.2 and all production work remain not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G1 and G2 retain their frozen outcomes; G3 is deferred and non-blocking; G4.1 and G4.2 are research-contract freezes. G4.3, simulation and all production work remain not started.
