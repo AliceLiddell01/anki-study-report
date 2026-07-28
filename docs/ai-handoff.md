@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-28
+**Снимок:** 2026-07-29
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -49,11 +49,13 @@ Cards status — ACCEPTED / COMPLETE / FROZEN
 Cards technical blockers — NONE
 Cards accessibility blockers — NONE
 Inspection Profiles corrected screenshot-first audit — COMPLETE
-WP1 Settings shared shell — IMPLEMENTATION CANDIDATE DELIVERED
-WP1 Settings external visual review — PENDING
-WP2 Inspection Profiles header/catalog/workspace frame — IMPLEMENTATION CANDIDATE DELIVERED
-WP2 Inspection Profiles external visual review — PENDING
-Inspection Profiles Basic/Advanced inner implementation — NOT STARTED
+WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
+WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
+WP1 Settings visual language — PROVISIONAL
+WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
+WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 bounded corrective pass external visual review — PENDING
+WP3 Inspection Profiles Basic — NOT STARTED
 WP2 consolidated automated verification — PASS
 PR-wide merge decision / C3 — NOT PERFORMED
 release — не начат
@@ -144,12 +146,14 @@ Cards production заморожен. Без новой доказанной ре
 | `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
-| `#/settings/inspection-profiles` frame | production matrix, state coverage, ARIA/axe/keyboard/network evidence and prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
-| `#/settings/inspection-profiles` Basic/Advanced internals | current production-native editors preserved | NOT STARTED |
-| Settings shared shell | production matrix: 1440/1024/QHD, RU/EN, light/dark; ARIA/axe/keyboard/network evidence | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
+| `#/settings/inspection-profiles` corrective frame | 18 production captures, 117 region captures, ARIA/axe/keyboard/network evidence и prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| `#/settings/inspection-profiles` Basic/Advanced internals | текущие production-native editors сохранены без перекомпоновки | WP3 NOT STARTED |
+| Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
 | Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
 
-Будущий visual acceptance threshold для Inspection Profiles:
+Ранее заданный владельцем целевой порог для будущего Inspection Profiles
+acceptance, а не оценка текущего candidate:
 
 ```text
 minimum acceptable result: 8.5/10
@@ -163,7 +167,8 @@ Reports:
 - [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
 - [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
 - [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
-- [WP2 Inspection Profiles workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md).
+- [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
+- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md).
 
 ## Platform / CI
 

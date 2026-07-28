@@ -2,7 +2,7 @@
 
 **Трек:** `C`
 **Роль:** единственный обязательный последовательный путь основного add-on
-**Снимок:** 2026-07-28
+**Снимок:** 2026-07-29
 
 Core не зависит от Gamification, Operations, Identity или Extensions. Platform / CI обслуживает delivery contour, но не меняет продуктовый scope без явной зависимости.
 
@@ -15,7 +15,7 @@ flowchart LR
     S1 --> S2[Cards 1:1<br/>composition + bounded corrections]
     S2 --> OC[Owner checkpoint Cards<br/>ACCEPTED]
     OC --> PA[Inspection Profiles<br/>screenshot-first audit]
-    PA --> S3[Inspection Profiles 1:1]
+    PA --> S3[WP2 corrective candidate]
     S3 --> OP{Owner checkpoint<br/>Profiles}
     OP --> FV[Final verification]
     FV --> MI{Separate PR #130<br/>merge decision}
@@ -44,11 +44,12 @@ PR #130 Stage 2 Cards 1:1 — ACCEPTED / COMPLETE / FROZEN
 Cards technical blockers — NONE
 Cards accessibility blockers — NONE
 Inspection Profiles corrected screenshot-first audit — COMPLETE; visual target locked
-WP1 Settings shared shell — IMPLEMENTATION CANDIDATE DELIVERED
-WP1 Settings external visual review — PENDING
-WP2 Inspection Profiles header/catalog/workspace frame — IMPLEMENTATION CANDIDATE DELIVERED
-WP2 Inspection Profiles external visual review — PENDING
-Inspection Profiles Basic/Advanced inner implementation — NOT STARTED
+WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
+WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
+WP1 Settings visual language — PROVISIONAL
+WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
+WP2 corrective candidate — DELIVERED / EXTERNAL REVIEW PENDING
+WP3 Inspection Profiles Basic — BLOCKED UNTIL WP2 OWNER ACCEPTANCE / NOT STARTED
 WP2 consolidated automated verification — PASS
 отдельное решение о merge PR #130 — NOT PERFORMED
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
@@ -94,9 +95,14 @@ problem
 **Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
 **Stage 2 Cards 1:1:** owner accepted, complete и frozen — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-final-av-media-evidence-closeout.md)
 **Inspection Profiles corrected screenshot-first audit:** complete
-**WP1 Settings shared shell:** implementation candidate delivered; external visual review pending — [report](../../reports/core/c2-settings-shell-wp1-implementation.md)
-**WP2 Inspection Profiles header/catalog/workspace frame:** implementation candidate delivered; external visual review pending — [report](../../reports/core/c2-inspection-profiles-wp2-frame-implementation.md)
-**Inspection Profiles Basic/Advanced inner implementation:** not started
+**WP1 Settings shared shell:** structural foundation delivered; owner visual
+assessment `6/10` — исторический verdict владельца; visual language provisional —
+[report](../../reports/core/c2-settings-shell-wp1-implementation.md)
+**WP2 original Inspection Profiles frame candidate:** request changes —
+[historical report](../../reports/core/c2-inspection-profiles-wp2-frame-implementation.md)
+**WP2 bounded corrective candidate:** delivered; external visual review pending —
+[report](../../reports/core/c2-inspection-profiles-wp2-corrective-pass.md)
+**WP3 Inspection Profiles Basic:** not started; blocked until WP2 owner acceptance
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 
@@ -127,7 +133,8 @@ Cards production frozen. Без новой доказанной регресси
 
 `ACCEPT CARDS 1:1` относится только к route `#/cards` и не означает принятие PR #130. После Cards checkpoint обязательны отдельные Profiles implementation/acceptance, Settings regression sweep, final verification и отдельное решение о merge; до этого C3 не начинается автоматически.
 
-Будущий visual acceptance threshold для Inspection Profiles:
+Ранее заданный владельцем целевой порог для будущего Inspection Profiles
+acceptance, а не оценка текущего candidate:
 
 ```text
 minimum acceptable result: 8.5/10

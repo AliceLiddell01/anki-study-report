@@ -1,5 +1,10 @@
 # C2 / PR #130 — Inspection Profiles WP2 workspace frame
 
+> **Исторический статус original candidate: `REQUEST CHANGES`.**
+> Этот отчёт сохранён как baseline исходного WP2 candidate и superseded
+> [bounded corrective pass](c2-inspection-profiles-wp2-corrective-pass.md).
+> Его evidence не является подтверждением принятия исправленного candidate.
+
 Дата evidence run: 2026-07-29  
 Ветка: `c2-manual-acceptance-remediation`  
 Remote branch до WP2 push: `dc095698e223bfe55bacece1a515abe847ec513b`  
@@ -9,9 +14,8 @@ Evidence harness commit: `8dbd80302a9629fb0726f141435b52817ba5aba6`
 ## Статус
 
 ```text
-WP2 Inspection Profiles frame:
-IMPLEMENTATION CANDIDATE DELIVERED
-EXTERNAL VISUAL REVIEW PENDING
+WP2 original Inspection Profiles frame candidate:
+REQUEST CHANGES
 
 Cards:
 ACCEPTED / COMPLETE / FROZEN
@@ -20,9 +24,11 @@ Inspection Profiles inner implementation:
 NOT STARTED
 ```
 
-Этот WP2 продолжает существующий C2 / PR #130 и не является новым roadmap
-stage. Codex не выносит визуальный verdict и не заявляет owner acceptance:
-решение должно быть принято внешним reviewer по объективному evidence.
+Этот исторический WP2 продолжал существующий C2 / PR #130 и не являлся новым
+roadmap stage. После внешнего review original candidate получил `REQUEST
+CHANGES`; корректирующий implementation candidate и его актуальное evidence
+описаны в отдельном отчёте. Автоматизированные проверки исходного candidate не
+заменяли visual verdict или owner acceptance.
 
 ## Реализованный scope
 
@@ -109,8 +115,9 @@ comparisons, deviation report, harness source, manifest и `SHA256SUMS`.
 
 ## Оставшиеся границы
 
-- внешний visual review и owner acceptance: PENDING;
-- Inspection Profiles Basic/Advanced inner implementation: NOT STARTED;
+- original candidate: REQUEST CHANGES;
+- исправления: см. [bounded corrective pass](c2-inspection-profiles-wp2-corrective-pass.md);
+- WP3 Inspection Profiles Basic: NOT STARTED;
 - PR-wide merge decision: NOT PERFORMED;
 - PR #130 должен оставаться `OPEN / DRAFT / UNMERGED`;
 - C3, ready-for-review, merge и release не активированы.
