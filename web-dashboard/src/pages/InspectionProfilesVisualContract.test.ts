@@ -43,7 +43,9 @@ describe("Inspection Profiles visual contract", () => {
 
   it("uses editor container width for dense internal grids", () => {
     expect(inspectionCss).toMatch(/\.inspection-editor\s*\{[^}]*container:\s*inspection-editor \/ inline-size/s);
+    expect(inspectionCss).toMatch(/\.inspection-basic\s*\{[^}]*width:\s*min\(100%, 78rem\)[^}]*grid-template-columns:\s*minmax\(0, 1\.55fr\) minmax\(18rem, 1fr\)/s);
     expect(inspectionCss).toContain("@container inspection-editor (max-width: 900px)");
+    expect(inspectionCss).toContain("@container inspection-editor (max-width: 760px)");
     expect(inspectionCss).toContain("@container inspection-editor (max-width: 640px)");
   });
 });

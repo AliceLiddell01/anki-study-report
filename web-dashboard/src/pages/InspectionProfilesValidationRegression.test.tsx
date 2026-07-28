@@ -109,6 +109,11 @@ describe("Inspection Profiles controlled validation regression", () => {
     expect(document.activeElement?.id).toBe("inspection-errors-title");
     expect(document.activeElement).not.toBe(document.body);
 
+    const mappingError = container.querySelector<HTMLButtonElement>(".inspection-error-summary button")!;
+    await click(mappingError);
+    expect(document.activeElement?.id).toBe("inspection-basic-role-1");
+    expect(container.querySelector("#inspection-mode-basic")?.getAttribute("aria-selected")).toBe("true");
+
     meaning = container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")!;
     await change(meaning, "1");
     meaning = container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")!;

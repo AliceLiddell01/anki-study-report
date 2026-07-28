@@ -63,6 +63,18 @@ describe("BasicProfileEditor", () => {
     expect(current.checks).toHaveLength(1);
   });
 
+  it("keeps focus inside the requirement flow after add and remove", async () => {
+    await render();
+    await clickWithoutRender(button("Add"));
+    await renderAndFrame();
+    expect(document.activeElement?.id).toBe("inspection-basic-requirement-1");
+
+    const remove = [...container.querySelectorAll<HTMLButtonElement>(".inspection-icon-button")][1]!;
+    await clickWithoutRender(remove);
+    await renderAndFrame();
+    expect(document.activeElement?.id).toBe("inspection-basic-requirement-0");
+  });
+
   it("shows friendly template names without ordinal copy", async () => {
     await render();
     const selectedScope = [...container.querySelectorAll<HTMLInputElement>("input[type='radio']")][1]!;
@@ -73,12 +85,28 @@ describe("BasicProfileEditor", () => {
     expect(container.textContent).not.toContain("Ordinal");
   });
 
+  it("requires an explicit all-templates choice instead of collapsing the last selected template", async () => {
+    await render();
+    const selectedScope = [...container.querySelectorAll<HTMLInputElement>("input[type='radio']")][1]!;
+    await act(async () => selectedScope.click());
+    await render();
+    const checkedTemplates = [...container.querySelectorAll<HTMLInputElement>(".inspection-basic-template-list input:checked")];
+    expect(checkedTemplates).toHaveLength(1);
+    expect(checkedTemplates[0]?.disabled).toBe(true);
+    expect(current.appliesTo.templateOrdinals).toEqual([0]);
+  });
+
   async function render() {
     await act(async () => root.render(<BasicProfileEditor item={item} draft={current} errors={{}} onChange={(next) => { current = structuredClone(next); }} />));
     await settle();
   }
   async function settle() { await act(async () => { await Promise.resolve(); }); }
   async function click(element: HTMLElement) { await act(async () => element.click()); await render(); }
+  async function clickWithoutRender(element: HTMLElement) { await act(async () => element.click()); }
+  async function renderAndFrame() {
+    await render();
+    await act(async () => { await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())); });
+  }
   async function change(element: HTMLSelectElement, value: string) { await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); }); await render(); }
   function button(text: string) { const match = [...container.querySelectorAll<HTMLButtonElement>("button")].find((element) => element.textContent?.trim() === text); if (!match) throw new Error(`Missing ${text}`); return match; }
 });

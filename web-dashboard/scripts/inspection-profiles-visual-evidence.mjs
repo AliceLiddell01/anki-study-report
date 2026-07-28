@@ -379,6 +379,10 @@ async function geometry(page) {
     lifecycle: ".inspection-lifecycle",
     tabs: ".inspection-mode-switch",
     editorBodyStart: "#inspection-basic-mode-panel, #inspection-advanced-panel",
+    basic: ".inspection-basic",
+    basicFields: ".inspection-basic-fields",
+    basicRequirements: ".inspection-basic-requirements",
+    basicScope: ".inspection-basic-scope",
   };
   const entries = await Promise.all(Object.entries(selectors).map(async ([name, selector]) => [name, await rectangle(page, selector)]));
   const font = await page.evaluate(() => {
@@ -595,6 +599,54 @@ async function verifyVisualStates(page) {
   await focusTarget.focus();
 }
 
+async function verifyBasicInteractions(page, language) {
+  const rows = page.locator(".inspection-requirement-row");
+  const initialCount = await rows.count();
+  const add = page.getByRole("button", { name: language === "ru" ? "Добавить" : "Add", exact: true });
+  await add.click();
+  await rows.nth(initialCount).waitFor({ state: "visible" });
+  await page.waitForFunction((id) => document.activeElement?.id === id, `inspection-basic-requirement-${initialCount}`);
+  const addFocusId = await page.evaluate(() => document.activeElement?.id ?? "");
+  if (addFocusId !== `inspection-basic-requirement-${initialCount}`) {
+    throw new Error(`Add requirement focus moved to ${addFocusId || "no element"}`);
+  }
+  await rows.nth(initialCount).getByRole("button", { name: new RegExp(language === "ru" ? "^Удалить требование:" : "^Remove requirement:") }).click();
+  await rows.nth(initialCount).waitFor({ state: "detached" });
+  await page.waitForFunction((id) => document.activeElement?.id === id, `inspection-basic-requirement-${initialCount - 1}`);
+  const removeFocusId = await page.evaluate(() => document.activeElement?.id ?? "");
+  if (removeFocusId !== `inspection-basic-requirement-${initialCount - 1}`) {
+    throw new Error(`Remove requirement focus moved to ${removeFocusId || "no element"}`);
+  }
+
+  const requiredMapping = page.locator("#inspection-basic-role-1");
+  const originalValue = await requiredMapping.inputValue();
+  await requiredMapping.selectOption("");
+  if (await requiredMapping.inputValue() !== "") throw new Error("Cleared Basic mapping restored a stale controlled value");
+  await page.getByRole("button", { name: language === "ru" ? "Проверить настройку" : "Check setup", exact: true }).click();
+  await page.locator("#inspection-errors-title").waitFor({ state: "visible" });
+  await page.waitForFunction(() => document.activeElement?.id === "inspection-errors-title");
+  const summaryFocusId = await page.evaluate(() => document.activeElement?.id ?? "");
+  if (summaryFocusId !== "inspection-errors-title") throw new Error(`Validation error summary focus moved to ${summaryFocusId || "no element"}`);
+  await page.locator(".inspection-error-summary button").first().click();
+  await page.waitForFunction(() => document.activeElement?.id === "inspection-basic-role-1");
+  const controlFocusId = await page.evaluate(() => document.activeElement?.id ?? "");
+  if (controlFocusId !== "inspection-basic-role-1") throw new Error(`Error link focus moved to ${controlFocusId || "no element"}`);
+  const basicSelected = await page.locator("#inspection-mode-basic").getAttribute("aria-selected");
+  if (basicSelected !== "true") throw new Error("Error link did not keep the Basic tab selected");
+  await requiredMapping.selectOption(originalValue);
+
+  report.interactions.basic = {
+    initialRequirementCount: initialCount,
+    addFocusId,
+    removeFocusId,
+    clearedMappingRemainedEmpty: true,
+    validationStayedClientSide: true,
+    summaryFocusId,
+    controlFocusId,
+    basicTabSelected: true,
+  };
+}
+
 async function reachByKeyboard(page, target) {
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -632,6 +684,7 @@ const scenarios = [
   { id: "1024-ru-light-compact", width: 1024, height: 768, theme: "light", language: "ru" },
   { id: "1024-ru-light-selected-focus", width: 1024, height: 768, theme: "light", language: "ru", visualStates: true },
   { id: "1024-en-dark-compact", width: 1024, height: 768, theme: "dark", language: "en" },
+  { id: "2560-ru-light-basic", width: 2560, height: 1440, theme: "light", language: "ru" },
   { id: "2560-ru-light-advanced", width: 2560, height: 1440, theme: "light", language: "ru", advanced: true },
   { id: "1440-ru-light-needs-review", width: 1440, height: 900, theme: "light", language: "ru", select: "needs_review" },
   { id: "1440-ru-light-disabled", width: 1440, height: 900, theme: "light", language: "ru", select: "disabled" },
@@ -663,12 +716,23 @@ for (const scenario of scenarios) {
   if (scenario.width === 2560 && state.editor?.width < 1500) throw new Error(`${scenario.id}: editor did not expand at QHD`);
   if (scenario.width === 2560 && state.identityInner?.width > 1320) throw new Error(`${scenario.id}: identity inner layout is not bounded`);
   if (scenario.width === 2560 && state.lifecycle?.width > 400) throw new Error(`${scenario.id}: lifecycle content is too wide`);
+  if (scenario.id === "2560-ru-light-basic" && (state.basic?.width < 1000 || state.basic?.width > 1280)) {
+    throw new Error(`${scenario.id}: Basic inner layout width ${state.basic?.width ?? "missing"} is not bounded`);
+  }
   if (scenario.id === "1440-ru-light-java-basic") {
     await verifyTabs(page, scenario.language);
   }
   if (scenario.id === "1024-ru-light-compact") await verifyLongLabelLayout(page);
   if (scenario.visualStates) await verifyVisualStates(page);
   await capture(page, scenario);
+  await context.close();
+}
+
+{
+  const scenario = { id: "1440-ru-light-basic-interactions", width: 1440, height: 900, theme: "light", language: "ru" };
+  const { context, page } = await openScenario(browser, scenario);
+  await prepareScenario(page, scenario);
+  await verifyBasicInteractions(page, scenario.language);
   await context.close();
 }
 
@@ -740,6 +804,7 @@ async function measurePrototypeGeometry(browserInstance) {
   const targets = [
     { id: "1440-ru-light-basic", productionId: "1440-ru-light-java-basic", width: 1440, height: 900, state: "main" },
     { id: "1024-ru-light-basic", productionId: "1024-ru-light-compact", width: 1024, height: 768, state: "main" },
+    { id: "2560-ru-light-basic", productionId: "2560-ru-light-basic", width: 2560, height: 1440, state: "main" },
     { id: "2560-ru-light-advanced", productionId: "2560-ru-light-advanced", width: 2560, height: 1440, state: "advanced" },
   ];
   const prototypeUrl = pathToFileURL(path.join(prototypeRoot, "prototype.html")).href;

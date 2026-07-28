@@ -161,8 +161,9 @@ export default function InspectionProfilesSettingsPage() {
               onReplaceSuggestion={() => workspace.dirty ? setConfirmAction("replace_suggestion") : workspace.replaceWithSuggestion()}
               onStartEmpty={() => workspace.dirty ? setConfirmAction("start_empty") : workspace.startEmpty()}
               onRevealAdvancedError={(path) => {
-                setEditorMode("advanced");
-                window.setTimeout(() => document.getElementById(controlIdForError(path))?.focus(), 0);
+                const basicControlId = basicControlIdForError(path);
+                setEditorMode(basicControlId ? "basic" : "advanced");
+                window.setTimeout(() => document.getElementById(basicControlId ?? controlIdForError(path))?.focus(), 0);
               }}
             />
           ) : null}
@@ -299,7 +300,7 @@ function ErrorSummary({ errors, onNavigate }: { errors: Record<string, string>; 
 }
 
 function isAdvancedError(path: string): boolean {
-  return ["fieldMappings", "checks", "appliesTo", "displayName"].some((segment) => path.includes(segment));
+  return basicControlIdForError(path) === null;
 }
 
 function ActionConfirmation({ action, noteTypeName, onClose, onConfirm }: { action: Exclude<ConfirmAction, null>; noteTypeName: string; onClose: () => void; onConfirm: () => void }) {
@@ -382,5 +383,13 @@ function controlIdForError(path: string): string {
   if (check) return check[2] === "roles" ? `inspection-check-kind-${check[1]}` : `inspection-check-length-${check[1]}`;
   if (path.includes("appliesTo")) return "inspection-advanced-panel";
   return "inspection-profile-display-name";
+}
+function basicControlIdForError(path: string): string | null {
+  const mapping = path.match(/fieldMappings\.(\d+)\.fields/);
+  if (mapping) return `inspection-basic-role-${mapping[1]}`;
+  const check = path.match(/checks\.(\d+)\.(roles|minLength)/);
+  if (check) return check[2] === "roles" ? `inspection-basic-check-role-${check[1]}` : `inspection-basic-min-length-${check[1]}`;
+  if (path === "profile.appliesTo.templateOrdinals") return "inspection-basic-template-scope";
+  return null;
 }
 function safeFileName(value: string): string { return value.normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "profile"; }
