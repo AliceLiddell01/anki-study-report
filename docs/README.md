@@ -57,10 +57,12 @@ reports/    исторические evidence и завершённые пров
 - [G2.6 final Learn XP decision and G2 closeout](../roadmap/gamification/g2-learn-xp-decision.md)
 - [Core gamification economy problem contract](gamification/core-economy-problem-contract.md)
 - [G4.1 core economy contract closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
+- [Core economy input normalization and uncertainty model](gamification/core-economy-input-normalization-model.md)
+- [G4.2 input normalization closeout](../roadmap/gamification/g4-core-economy-input-normalization.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 
-Gamification contracts и recommended research candidates являются research-only и не разрешают production integration. Initial G4 core economy содержит только Review и Learn; G3/Create XP deferred post-MVP.
+Gamification contracts и recommended research candidates являются research-only и не разрешают production integration. Initial G4 core economy содержит только Review и Learn; G3/Create XP deferred post-MVP. G4.2 определяет typed normalization boundary, но не numeric policy.
 
 ## Architecture и API
 
