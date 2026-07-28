@@ -114,7 +114,18 @@ simulation executed: NO
 production approved: NO
 ```
 
-G2.1 freezes problem/glossary, scheduler/reward boundary, identity candidates, pending/confirmed minimum requirements, rewardable boundary, anti-farming taxonomy, protected invariants, privacy/claims, G2.2 entry and final-outcome boundary.
+G2.1 freezes:
+
+- problem statement and glossary;
+- official Anki scheduler-state versus Learn XP research-state boundary;
+- identity candidate set;
+- pending/confirmed minimum requirements;
+- rewardable/non-rewardable boundary;
+- anti-farming threat taxonomy;
+- button, step, configuration, session, reset and duplicate-object invariants;
+- privacy/claims boundary;
+- G2.2 entry contract;
+- versioning and three-state final G2 outcome boundary.
 
 Official Anki semantics and peer-reviewed spacing/retrieval research are methodological inputs only. They do not determine exact confirmation delay, amount, ratio, mastery, motivation or retention claims.
 
@@ -213,7 +224,7 @@ cross-family ranking: NO
 production integration: PROHIBITED
 ```
 
-Both outcomes remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable.
+G2.5 checked each survivor separately. Both outcomes are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. It did not rerun G2.4, add D2 or `S-CARD`, choose a family winner, select a final Learn XP model or approve production integration.
 
 ### G2.6 — Final Learn XP research model decision and G2 closure
 
@@ -221,9 +232,29 @@ Both outcomes remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki ide
 
 Artifact: [final decision and G2 closeout](g2-learn-xp-decision.md).
 
-G2.6 selects `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` under `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`. Both family-local models preserve `1.0 LRU`; neither was falsified; confirmation-only has no provisional exposure and the smaller accounting/explanation surface. The recommendation is bounded research governance, not confirmatory eligibility or production approval.
+G2.6 selects the allowed final outcome `RECOMMEND_LEARN_XP_RESEARCH_MODEL` and recommends `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` under `MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE`.
+
+Decision rationale:
+
+1. both family-local models preserve the frozen bounded confirmed total `1.0 LRU`;
+2. neither candidate was falsified by G2.4/G2.5;
+3. the shared missing disposable identity probe does not distinguish allocation families;
+4. confirmation-only creates no provisional reward exposure;
+5. confirmation-only has the smaller accounting and explanation surface;
+6. no supported human benefit justifies the extra pending reward state;
+7. the recommendation is bounded research governance, not confirmatory eligibility or production approval.
 
 The non-selected `C-PENDING-SPLIT-D1-NOTE-SIBLING` remains `CONFIRMATORY_INCONCLUSIVE`, not selected, not falsified and not rejected as invalid.
+
+Allowed final G2 outcomes remain frozen as:
+
+```text
+RECOMMEND_LEARN_XP_RESEARCH_MODEL
+REJECT_LEARN_XP_MODEL
+DEFER_LEARN_XP_MODEL
+```
+
+Recommendation means research model, not production readiness.
 
 ## G3 — Create XP specification and simulation
 
