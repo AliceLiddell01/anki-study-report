@@ -22,9 +22,9 @@ repository: AliceLiddell01/anki-study-report
 target branch: gamification
 starting gamification HEAD: 80197fbd0425347cd9d8b59ff616ffe6000674f9
 task branch: g4-2-input-normalization-model
-PR: RECORDED_AFTER_CREATION
+PR: #165
 PR base: gamification
-validated pre-closeout HEAD: RECORDED_AFTER_VALIDATION
+validated pre-closeout HEAD: 8002cef1f11c8c9f52c7b8d3c889be4e3db69c8c
 final merge SHA: RECORDED_IN_EXTERNAL_REPORT_AFTER_VERIFIED_MERGE
 master changed: NO
 AGENTS.md: NOT FOUND
@@ -360,6 +360,23 @@ roadmap/gamification/g4-core-economy-input-normalization.md
 ```
 
 Top-level `README.md`, G4.1 artifacts, G1/G2 contracts/schemas, research execution code/tests and production paths remain unchanged.
+
+## Pull request pre-merge state
+
+```text
+PR: #165
+base: gamification
+head: g4-2-input-normalization-model
+base SHA: 80197fbd0425347cd9d8b59ff616ffe6000674f9
+validated pre-closeout HEAD: 8002cef1f11c8c9f52c7b8d3c889be4e3db69c8c
+branch ahead / behind before final closeout commit: 14 / 0
+changed files: 10
+mergeable: YES
+combined status checks: 0
+workflow runs: 0
+```
+
+Zero workflow runs is recorded as a fact, not as `CI PASS`.
 
 ## Not run
 
