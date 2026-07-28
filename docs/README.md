@@ -59,10 +59,13 @@ reports/    исторические evidence и завершённые пров
 - [G4.1 core economy contract closeout](../roadmap/gamification/g4-core-economy-problem-contract.md)
 - [Core economy input normalization and uncertainty model](gamification/core-economy-input-normalization-model.md)
 - [G4.2 input normalization closeout](../roadmap/gamification/g4-core-economy-input-normalization.md)
+- [Core economy candidate protocol](gamification/core-economy-candidate-protocol.md)
+- [G4.3 candidate protocol closeout](../roadmap/gamification/g4-core-economy-candidate-protocol.md)
+- [G4.3 post-merge report](../reports/research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md)
 - [Review XP candidate protocol](gamification/review-xp-candidate-protocol.md)
 - [Review XP confirmatory protocol](gamification/review-xp-confirmatory-protocol.md)
 
-Gamification contracts и recommended research candidates являются research-only и не разрешают production integration. Initial G4 core economy содержит только Review и Learn; G3/Create XP deferred post-MVP. G4.2 определяет typed normalization boundary, но не numeric policy.
+Gamification contracts и recommended research candidates являются research-only и не разрешают production integration. Initial G4 core economy содержит только Review и Learn; G3/Create XP deferred post-MVP. G4.3 prospectively заморозил candidate families, hypotheses, hard gates, metrics, exact synthetic scenarios и dry screening matrix. Screening, simulation, winner selection и production integration не начаты; G4.4 остаётся отдельным следующим этапом.
 
 ## Architecture и API
 

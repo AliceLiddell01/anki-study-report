@@ -1,6 +1,6 @@
 # Обзор проекта
 
-**Снимок:** 2026-07-18
+**Снимок:** 2026-07-28
 
 Anki Study Report — локальное расширение для Anki 26.05+, которое объясняет учебный прогресс, нагрузку и обнаруженные проблемы через отчёт Markdown/HTML и dashboard на React.
 
@@ -47,8 +47,8 @@ Inspection Profiles не изменяют объекты Anki. Очередь Ca
 
 Завершённая продуктовая работа сохранена как Stage 0–9.5. Будущая работа разделена на независимые треки:
 
-- [Core](../roadmap/core/README.md): `C1 Cards v2`, затем `C2 Core 1.0`; `C3` — только для доказанных пробелов;
-- [Геймификация](../roadmap/gamification/README.md): параллельное исследовательское и продуктовое направление, ещё не одобренное для production;
+- [Core](../roadmap/core/README.md): C1 завершён; C2 implementation/integration влиты, owner acceptance требует bounded remediation; затем обязательны C3–C6;
+- [Геймификация](../roadmap/gamification/README.md): независимый research/product track; G4.3 завершён как `FROZEN_PRE_SCREENING`, G4.4 ещё не начат, production integration запрещена;
 - [Эксплуатация телеметрии](../roadmap/operations/README.md): отдельные защищённые внутренние инструменты;
 - [Идентификация](../roadmap/identity/README.md): условный gate непрерывности;
 - [Расширения](../roadmap/extensions/README.md): условная или отложенная экосистема first-party;
@@ -89,6 +89,15 @@ Core не зависит от геймификации, аккаунтов, ад
 
 - контракты локального client находятся в этом репозитории;
 - контракты ingestion, retention, deletion и deployment находятся в отдельном приватном репозитории телеметрии.
+
+### Gamification research
+
+- current contract index: `docs/gamification/README.md`;
+- track status and stage dependencies: `roadmap/gamification/README.md`;
+- current G4.3 closeout: `roadmap/gamification/g4-core-economy-candidate-protocol.md`;
+- historical post-merge report: `reports/research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md`.
+
+Research contracts, fixtures and dry matrices remain outside the production add-on, dashboard API, Fast CI and release package until a separate owner decision.
 
 ## Важные инварианты
 

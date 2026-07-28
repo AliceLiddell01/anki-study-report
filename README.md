@@ -55,8 +55,9 @@ reports/             исторические отчёты и evidence
 ## Текущее направление
 
 - **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
+- **Gamification:** G4.3 завершён и зафиксирован как `FROZEN_PRE_SCREENING`; G4.4 — следующая отдельная работа и ещё не начата; результаты и production approval отсутствуют.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
-- **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
+- **Остальные треки:** Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
 Точные статусы и критерии находятся в [roadmap](roadmap/README.md); run IDs, SHA и исторические результаты — в [reports](reports/README.md).
 
