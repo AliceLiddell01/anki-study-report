@@ -100,6 +100,36 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => root.unmount());
   });
 
+  it("preserves the current inbox and active item while an explicit refresh is pending", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let queryCount = 0;
+    let resolveRefresh: ((value: Response) => void) | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) {
+        queryCount += 1;
+        if (queryCount === 1) return ok(response([first], 0, null));
+        return new Promise<Response>((resolve) => { resolveRefresh = resolve; });
+      }
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await waitUntil(() => latestWorkspace?.inspectStatus === "ready");
+
+    await act(async () => latestWorkspace!.refresh());
+    await waitUntil(() => latestWorkspace?.refreshStatus === "pending");
+    expect(latestWorkspace!.response?.items).toEqual([first]);
+    expect(latestWorkspace!.activeItem?.itemId).toBe(first.itemId);
+
+    await act(async () => resolveRefresh?.(ok(response([first, second], 0, null))));
+    await waitUntil(() => latestWorkspace?.refreshStatus === "success");
+    expect(latestWorkspace!.response?.items).toEqual([first, second]);
+    expect(latestWorkspace!.activeItem?.itemId).toBe(first.itemId);
+    await act(async () => root.unmount());
+  });
+
   it("prevents stale inspect responses and reuses cached exact-card details", async () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const inspectCalls: string[] = [];
@@ -328,6 +358,11 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => { await latestWorkspace!.recheckActive(); });
     expect(latestWorkspace!.lastOutcome?.phase).toBe("resolved");
     expect(latestWorkspace!.lastOutcome?.reconciliation?.removed.map((value) => value.reasonId)).toEqual(["learning:1"]);
+    expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1001", "1002"]);
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1001");
+    expect(latestWorkspace!.activeItem?.reasons).toEqual([]);
+    expect(latestWorkspace!.focusRequest.version).toBe(0);
+    await act(async () => latestWorkspace!.advanceResolved());
     expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1002"]);
     expect(latestWorkspace!.activeItem?.cardId).toBe("1002");
     expect(latestWorkspace!.focusRequest.itemId).toBe("card:1002");

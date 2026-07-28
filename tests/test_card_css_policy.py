@@ -70,6 +70,38 @@ def test_card_css_policy_scopes_safe_visual_rules_and_rewrites_local_media():
     assert "@media" in sanitized
 
 
+def test_card_css_policy_rewrites_native_root_and_ordinal_selectors_per_branch():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+
+    sanitized = note_intelligence.sanitize_card_css(
+        """
+        .card { background-color: rgb(250, 240, 220); color: rgb(20, 30, 40); }
+        .card.card1, .card1 { text-align: center; }
+        .card .term, .card.card1 .answer { font-weight: 700; }
+        .nightMode .card, .card.nightMode { color: white; }
+        .nightMode .term, .nightMode .answer strong { color: rgb(204, 204, 204); }
+        @media (max-width: 700px) { .card.card1 .term { font-size: 20px; } }
+        """
+    )
+    compact = sanitized.replace(" ", "")
+
+    assert ":scope{background-color:rgb(250,240,220);color:rgb(20,30,40);}" in compact
+    assert ":scope.card1,:scope.card1{text-align:center;}" in compact
+    assert ":scope .term,:scope.card1 .answer{font-weight:700;}" in sanitized
+    assert ":scope.nightMode,:scope.nightMode{color:white;}" in compact
+    assert ":scope.nightMode .term" in sanitized
+    assert ":scope.nightMode .answer strong" in sanitized
+    assert "color:rgb(204,204,204);" in compact
+    assert "@media (max-width: 700px){:scope.card1 .term{font-size:20px;}}" in sanitized
+    assert ".card.card1" not in sanitized
+
+
+@pytest.mark.parametrize("selector", ["body .card", "html .card", ":root .card"])
+def test_card_css_policy_rejects_document_root_selectors(selector):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    assert note_intelligence.sanitize_card_css(f"{selector}{{color:red}}") == ""
+
+
 def test_card_css_policy_allows_only_safe_local_font_faces():
     note_intelligence = fresh_import_addon_module("note_intelligence")
 
@@ -133,3 +165,67 @@ def test_card_css_policy_does_not_expose_raw_stylesheet_on_parser_failure(monkey
     captured = capsys.readouterr()
     assert secret not in captured.out
     assert secret not in captured.err
+
+
+@pytest.mark.parametrize(
+    "declared",
+    ["Arial", "arial", "Arial, sans-serif", "sans-serif"],
+)
+def test_card_css_policy_normalizes_only_canonical_root_default_fonts(declared):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    sanitized = note_intelligence.sanitize_card_css(f".card {{ font-family: {declared}; }}")
+    assert 'font-family:Arial,"Noto Sans JP",sans-serif;' in sanitized
+
+
+@pytest.mark.parametrize(
+    "stylesheet, expected",
+    [
+        ('.card { font-family: "Hiragino Kaku Gothic Pro", "Meiryo", "Noto Sans JP", Arial, sans-serif; }', 'font-family:"Hiragino Kaku Gothic Pro","Meiryo","Noto Sans JP",Arial,sans-serif;'),
+        ('.card { font-family: Consolas, "JetBrains Mono", monospace; }', 'font-family:Consolas,"JetBrains Mono",monospace;'),
+        ('.field { font-family: Arial, sans-serif; }', 'font-family:Arial,sans-serif;'),
+        ('.card { font-family: Arial !important; }', 'font-family:Arial!important;'),
+    ],
+)
+def test_card_css_policy_preserves_custom_child_code_and_important_font_authority(stylesheet, expected):
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    sanitized = note_intelligence.sanitize_card_css(stylesheet)
+    assert expected.replace(" ", "") in sanitized.replace(" ", "")
+    if '.field' in stylesheet:
+        assert 'Noto Sans JP' not in sanitized
+
+
+def test_card_css_policy_preserves_bundled_font_face_and_custom_root_family():
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    stylesheet = '@font-face { font-family: myBundledFont; src: url("_jp.woff2"); } .card { font-family: myBundledFont; }'
+    sanitized = note_intelligence.sanitize_card_css(stylesheet)
+    assert '@font-face{font-family:myBundledFont;' in sanitized
+    assert '/api/media?name=_jp.woff2' in sanitized
+    assert ':scope{font-family:myBundledFont;}' in sanitized
+    assert 'Noto Sans JP' not in sanitized
+
+
+def test_exact_words_fixture_preserves_native_root_night_and_accent_rules():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    note_intelligence = fresh_import_addon_module("note_intelligence")
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "cards" / "words-1649481469689.json").read_text(encoding="utf-8")
+    )
+    raw_css = fixture["rawCss"]
+
+    assert fixture["cardId"] == "1649481469689"
+    assert hashlib.sha256(raw_css.encode("utf-8")).hexdigest() == fixture["rawCssSha256"]
+
+    sanitized = note_intelligence.sanitize_card_css(raw_css)
+    compact = sanitized.replace(" ", "")
+
+    assert sanitized
+    assert hashlib.sha256(sanitized.encode("utf-8")).hexdigest() == fixture["sanitizedCssSha256"]
+    assert ":scope{font-family:" in sanitized
+    assert "background-color:#fcfcfc" in compact
+    assert ":scope.nightMode{background-color:#2f2f31;color:#dcdcdc;}" in compact
+    assert ".main-word{font-size:36px" in compact
+    assert ":scope.nightMode .main-word{color:#fff;}" in sanitized
+    assert ".word-focus{color:rgb(255,170,0);font-weight:bold;}" in compact

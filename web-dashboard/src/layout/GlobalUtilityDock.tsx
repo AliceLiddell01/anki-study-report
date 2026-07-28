@@ -68,7 +68,7 @@ function GlobalUtilityDock({
           aria-label={t("utility.languageButton")}
           aria-haspopup="menu"
           aria-expanded={languageMenuOpen}
-          aria-controls="language-selector-menu"
+          aria-controls={languageMenuOpen ? "language-selector-menu" : undefined}
           aria-describedby={languageMenuOpen ? undefined : "language-selector-tooltip"}
           data-testid="language-selector"
           onClick={() => setLanguageMenuOpen((open) => !open)}

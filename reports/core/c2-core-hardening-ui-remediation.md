@@ -235,3 +235,46 @@ C2 candidate: готов к решению о merge
 merge в core: не выполнен
 release/deployment/publication: не выполнялись
 ```
+
+## 11. Post-merge manual acceptance remediation
+
+После включения C2 в `core` владелец провёл ручную проверку Cards и Inspection Profiles. Этот раздел — append-only follow-up к C2, а не новый C2.x stage. Восстановленный base: `edb140b1197910aae31500a40e4a8287cc46b760`; рабочая ветка: `c2-manual-acceptance-remediation`.
+
+Owner evidence было передано как пять screenshots в `C:\Users\KykLa\Desktop\cards`: APKG/wide/light, synthetic/expanded/light, synthetic/wide light/dark и synthetic/1024/light. Оно подтвердило потерю native background в preview, вложенную прокрутку/лишний нижний объём широкого Inspector и конфликт drawer с узким layout. Screenshots Inspection Profiles не были переданы; эти замечания воспроизведены по current DOM/CSS и покрыты deterministic frontend/browser contracts.
+
+### 11.1 Выполненные изменения
+
+- Parser-backed selector rewrite переносит `.card`, `.card.card1`, `.card .child` и root night-mode selectors на Shadow preview `:scope`, сохраняя fail-closed policy, запрет document/host escape и отсутствие внешних loads.
+- Compact preview больше не создаёт вертикальный scroll container и не выводит dashboard dark theme как native night mode. Wide Inspector участвует в page scroll; собственный scroll остаётся у queue, drawer и modal.
+- Metadata, причины и actions сгруппированы как различимые soft regions. `Suspend`, `Bury`, `Open in Anki` и recheck показывают отдельные pending/success/failure/no-change результаты рядом с action zone.
+- Basic и Advanced стали взаимоисключающими tabpanels одного strict draft. Basic остаётся default; mode switch не сохраняет и не подтверждает профиль. Dirty/error count видны на Advanced tab.
+- Внутренние grids Inspection Profiles используют container width editor и переходят 3→2→1 columns. Operation status перенесён в action region; catalog refresh сохраняет draft.
+- Field-role suggestion использует Unicode NFKC, CamelCase/PascalCase/кириллические границы, token/phrase scoring и ограниченные RU/EN aliases. Близкие и low-confidence результаты остаются unresolved; несколько уверенных exact fields одной роли сохраняются с name+ordinal.
+- Общий dashboard foundation получил bounded motion/radius/surface tokens и shared refresh control. Refresh сохраняет старый usable content и active item под `aria-busy`; ошибка не уничтожает предыдущую очередь. Reduced motion выключает rotation/transform motion, сохраняя функциональный loading state.
+
+### 11.2 Acceptance ledger
+
+| ID | Статус | Результат и evidence |
+| --- | --- | --- |
+| `MA-CARDS-01` | fixed | `.card` root/background и descendants применяются через parser-token `:scope`; computed-style browser regression проверяет exact colors без external requests |
+| `MA-CARDS-02` | fixed | compact front и expanded answer сохраняют native background; dark dashboard не навязывает night mode |
+| `MA-CARDS-03` | fixed | compact preview имеет clipped overflow и не владеет wheel; wide Inspector использует page scroll |
+| `MA-CARDS-04` | fixed | отдельный scroll оставлен queue/drawer/modal; artificial Inspector safe-area удалён |
+| `MA-CARDS-05` | fixed | action/Open/recheck feedback разделяет pending, result, no changes, failure и canonical outcome |
+| `MA-PROFILES-01` | fixed | Basic/Advanced взаимоисключающие, Basic default, один strict draft без autosave/autoconfirm |
+| `MA-PROFILES-02` | fixed | editor container queries обеспечивают 3→2→1 grids и отсутствие overlap на 1024 px |
+| `MA-PROFILES-03` | fixed | понятные CamelCase/PascalCase/кириллические field names получают weighted role suggestions |
+| `MA-PROFILES-04` | mitigated | multiple exact fields одной роли сохраняются; ambiguous/low-confidence fields остаются unresolved для ручного решения |
+| `MA-PROFILES-05` | fixed | notice hierarchy сокращена, validation/conflict/action status находятся рядом с action region |
+| `MA-UI-01` | fixed | shared refresh сохраняет usable content, active item, control dimensions и focus; pending/error/success доступны через ARIA |
+| `MA-UI-02` | fixed | общие motion/radius/surface roles применены к Cards, Profiles и shared controls; reduced-motion path статичен |
+
+### 11.3 Security и контракты
+
+Wire payload/schema, Inspection Profiles v1, Triage v4/recheck v1 и exact-card authority не изменены. Preview по-прежнему не использует iframe или JavaScript, не читает network/filesystem при sanitization и разрешает media только через локальную validated boundary. CSP не ослаблена. Field inference остаётся локальной, детерминированной suggestion-only эвристикой: raw note values не логируются и не отправляются наружу.
+
+### 11.4 Проверка follow-up
+
+На момент фиксации раздела выполнены focused Python role/profile tests, focused frontend hook/page/component/visual-contract tests, TypeScript typecheck, `node --check` browser smoke и `git diff --check`. Полный локальный контур, Fast CI exact SHA, targeted `standard/cards` с restart и final `standard/full` должны быть сопоставлены с exact head в draft PR; их run IDs нельзя предзаписывать в коммит.
+
+Manual real-profile gate остаётся `PENDING`: владелец должен повторно проверить native compact/expanded backgrounds и реальные `Suspend`, `Bury`, `Open in Anki`, recheck и Inspection Profiles на своей установке. Автоматический доступ к приватному профилю не выполнялся.

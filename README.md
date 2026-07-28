@@ -12,7 +12,8 @@
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
 - Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
 - доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки;
-- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting.
+- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting;
+- repository-owned exact Cards AV/audio/media gate с self-verifying evidence.
 
 ## Куда идти дальше
 
@@ -25,6 +26,7 @@
 | Посмотреть планы и зависимости | [Карта roadmap](roadmap/README.md) |
 | Найти исторические подтверждения | [Индекс отчётов](reports/README.md) |
 | Запустить проверки | [Матрица тестирования](docs/test-matrix.md) · [Политика запусков](docs/verification-run-policy.md) |
+| Проверить exact Cards AV/media | [Cards exact AV/audio/media E2E](docs/cards-exact-av-media-e2e.md) |
 | Собрать или выпустить add-on | [Packaging и release](docs/packaging-release.md) |
 | Внести вклад | [CONTRIBUTING](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
 
@@ -55,7 +57,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
+- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён. [Cards 1:1 production integration](docs/cards-v323-production-workspace.md), native CSS fidelity, AV/audio/media repair и финальный exact-card real-Anki evidence gate завершены и приняты владельцем: `ACCEPT CARDS 1:1`. Cards имеют статус `ACCEPTED / COMPLETE / FROZEN`; технических и accessibility blockers нет. WP1 Settings shell и [WP2 Inspection Profiles workspace frame](reports/core/c2-inspection-profiles-wp2-frame-implementation.md) поставлены как implementation candidates; их external visual review pending, Basic/Advanced Profiles internals не начаты. PR #130 остаётся `OPEN / DRAFT / UNMERGED`; merge decision и C3 не выполнялись.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 

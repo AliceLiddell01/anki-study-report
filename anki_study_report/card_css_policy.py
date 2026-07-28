@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
@@ -163,14 +164,109 @@ def _sanitize_qualified_rule(rule: Any) -> str:
     prelude = tuple(getattr(rule, "prelude", ()) or ())
     if not _selector_is_safe(prelude):
         return ""
-    declarations = _sanitize_declarations(getattr(rule, "content", ()) or ())
+    selector = _rewrite_scoped_selector_list(prelude)
+    if not selector:
+        return ""
+    declarations = _sanitize_declarations(
+        getattr(rule, "content", ()) or (),
+        normalize_default_root_font=_selector_targets_only_card_root(selector),
+    )
     if not declarations:
         return ""
-    selector = tinycss2.serialize(prelude).strip()
     return f"{selector}{{{declarations}}}"
 
 
-def _sanitize_declarations(tokens: Iterable[Any]) -> str:
+def _selector_targets_only_card_root(selector: str) -> bool:
+    branches = [branch.strip() for branch in selector.split(",") if branch.strip()]
+    return bool(branches) and all(re.fullmatch(r":scope(?:\.[A-Za-z_][A-Za-z0-9_-]*)*", branch) for branch in branches)
+
+
+def _rewrite_scoped_selector_list(tokens: Iterable[Any]) -> str:
+    """Map native Anki root selectors to the actual ``@scope`` root.
+
+    Anki applies ``.card`` and ordinal classes to the reviewer root itself.
+    Inside ``@scope (.card)``, keeping a leading ``.card`` would instead look
+    for a nested card.  Selector-list branches are rewritten independently so
+    an ambiguous branch can fail closed without changing another branch's
+    meaning.
+    """
+
+    branches: list[list[Any]] = [[]]
+    for token in tokens:
+        if getattr(token, "type", "") == "literal" and getattr(token, "value", "") == ",":
+            branches.append([])
+        else:
+            branches[-1].append(token)
+    rewritten: list[str] = []
+    for branch in branches:
+        value = _rewrite_scoped_selector(branch)
+        if not value:
+            return ""
+        rewritten.append(value)
+    return ",".join(rewritten)
+
+
+def _rewrite_scoped_selector(tokens: Iterable[Any]) -> str:
+    branch = list(tokens)
+    while branch and getattr(branch[0], "type", "") in {"comment", "whitespace"}:
+        branch.pop(0)
+    while branch and getattr(branch[-1], "type", "") in {"comment", "whitespace"}:
+        branch.pop()
+    if not branch:
+        return ""
+
+    # Document roots are not part of the isolated Shadow DOM preview.  Reject
+    # them instead of retaining a selector that could acquire new meaning.
+    for token in branch:
+        if getattr(token, "type", "") == "ident" and str(
+            getattr(token, "lower_value", getattr(token, "value", ""))
+        ).lower() in {"html", "body"}:
+            return ""
+
+    def class_name_at(index: int) -> str:
+        if index + 1 >= len(branch):
+            return ""
+        dot, name = branch[index], branch[index + 1]
+        if getattr(dot, "type", "") != "literal" or getattr(dot, "value", "") != ".":
+            return ""
+        if getattr(name, "type", "") != "ident":
+            return ""
+        return str(getattr(name, "value", "") or "")
+
+    def root_tail(value: Iterable[Any]) -> str:
+        tail = list(value)
+        serialized = tinycss2.serialize(tail).strip()
+        if serialized and tail and getattr(tail[0], "type", "") in {"comment", "whitespace"}:
+            return f" {serialized}"
+        return serialized
+
+    first_class = class_name_at(0)
+    if first_class.lower() == "card":
+        return f":scope{root_tail(branch[2:])}"
+    if first_class.lower().startswith("card") and first_class[4:].isdigit():
+        return f":scope{tinycss2.serialize(branch).strip()}"
+
+    # Native Anki styles commonly use `.nightMode .card`; the preview mirrors
+    # that context by placing nightMode on the exact card root.
+    if first_class.lower() == "nightmode":
+        index = 2
+        while index < len(branch) and getattr(branch[index], "type", "") in {"comment", "whitespace"}:
+            index += 1
+        nested_class = class_name_at(index)
+        if nested_class.lower() == "card":
+            return f":scope.nightMode{root_tail(branch[index + 2:])}"
+        if nested_class.lower().startswith("card") and nested_class[4:].isdigit():
+            return f":scope.nightMode{tinycss2.serialize(branch[index:]).strip()}"
+        # Native Anki also uses `.nightMode .child` selectors.  Because the
+        # actual nightMode class is mirrored on the scoped card root, replace
+        # the leading context class with the explicit scope root while keeping
+        # the descendant/compound selector tail intact.
+        return f":scope.nightMode{root_tail(branch[2:])}"
+
+    return tinycss2.serialize(branch).strip()
+
+
+def _sanitize_declarations(tokens: Iterable[Any], *, normalize_default_root_font: bool = False) -> str:
     parsed = tinycss2.parse_declaration_list(tokens, skip_comments=True, skip_whitespace=True)
     if any(getattr(item, "type", "") == "error" for item in parsed):
         return ""
@@ -189,10 +285,33 @@ def _sanitize_declarations(tokens: Iterable[Any]) -> str:
         value = _serialize_safe_values(value_tokens, allow_url=name in _URL_PROPERTIES, allowed_extensions=_IMAGE_EXTENSIONS)
         if not value:
             continue
-        important = "!important" if bool(getattr(item, "important", False)) else ""
+        is_important = bool(getattr(item, "important", False))
+        if name == "font-family" and normalize_default_root_font and not is_important and _is_canonical_default_font_family(value_tokens):
+            value = 'Arial,"Noto Sans JP",sans-serif'
+        important = "!important" if is_important else ""
         declarations.append(f"{name}:{value}{important};")
     return "".join(declarations)
 
+
+
+def _is_canonical_default_font_family(tokens: Iterable[Any]) -> bool:
+    families: list[str] = []
+    current: list[Any] = []
+    for token in tokens:
+        if getattr(token, "type", "") == "literal" and getattr(token, "value", "") == ",":
+            families.append(tinycss2.serialize(current).strip())
+            current = []
+        else:
+            current.append(token)
+    families.append(tinycss2.serialize(current).strip())
+
+    normalized = []
+    for family in families:
+        value = family.strip().strip('"\'').strip().lower()
+        if not value:
+            return False
+        normalized.append(value)
+    return normalized in (["arial"], ["arial", "sans-serif"], ["sans-serif"])
 
 def _sanitize_font_face(rule: Any) -> str:
     prelude = tuple(getattr(rule, "prelude", ()) or ())

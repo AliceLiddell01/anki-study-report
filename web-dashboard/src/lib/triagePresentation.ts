@@ -36,6 +36,8 @@ export function stateLabel(item: TriageItem, t: TFunction): string {
 }
 
 export function recommendedStep(item: TriageItem, t: TFunction): string {
+  if (item.cardState.suspended) return t("inspector.recommendUnsuspend");
+  if (item.cardState.buried) return t("inspector.recommendUnbury");
   return item.reasons.some((reason) => reason.family === "content")
     ? t("inspector.recommendProfile")
     : t("inspector.recommendAnki");

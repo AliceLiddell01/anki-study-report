@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-27
+**Снимок:** 2026-07-29
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -44,13 +44,142 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 
 ```text
 C1 — завершён и принят
-C2 implementation/integration — завершены и влиты в core
-C2 owner acceptance — открыта bounded remediation
-C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
+C2 base implementation/integration — завершены и влиты в core
+PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
+PR #130 Stage 2: Cards 1:1 composition + native CSS + AV/media repair — COMPLETE
+Cards final exact-card real-Anki evidence — PASS
+Cards owner verdict — ACCEPT CARDS 1:1
+Cards status — ACCEPTED / COMPLETE / FROZEN
+Cards technical blockers — NONE
+Cards accessibility blockers — NONE
+Inspection Profiles corrected screenshot-first audit — COMPLETE
+WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
+WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
+WP1 Settings visual language — PROVISIONAL
+WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
+WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 bounded corrective pass external visual review — 7.8/10 (историческая внешняя оценка)
+WP2 owner acceptance — NOT GRANTED
+WP2 visual debt — OPEN
+Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
+WP3 Inspection Profiles Basic — IMPLEMENTATION CANDIDATE DELIVERED
+WP3 external visual review — PENDING
+WP4 Inspection Profiles Advanced — NOT STARTED
+WP2 consolidated automated verification — PASS
+PR-wide merge decision / C3 — NOT PERFORMED
 release — не начат
 ```
 
 Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
+
+Current accepted Cards evidence:
+
+```text
+PR: #130 — OPEN / DRAFT / UNMERGED
+frozen PR base / merge-base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+
+Stage 1 verified production candidate:
+a746172f8746eac82ff628d36a7a6328d9332acf
+
+Cards production package source:
+a162dde223b1bc40b6b0f566ae1fb5d665089359
+
+Cards final evidence harness:
+5487bb32d43b11bbe618ec45e1b0e1e365fabb39
+
+exact package SHA-256:
+e01b9dd3e3277d9ff0cafb9ac3a298a1459118056f07834a171662c91ae79357
+
+final evidence:
+cards-final-av-media-fidelity-evidence.zip
+
+final evidence size:
+56 358 736 bytes
+
+final evidence SHA-256:
+539cf5f08c5f804fa6de3b87c87f0792e6d60777f0b40a9c413a0b912516dfc3
+
+exact card:
+1649481469689 / 影
+
+standard browser smoke:
+19/19 PASS / 18 screenshots
+
+exact browser:
+6/6 scenarios PASS / 32 screenshots
+
+replay reset:
+PASS
+
+visible keyboard focus light/dark:
+PASS
+
+accessible-name localization:
+PASS
+
+live GIF:
+cross-scenario frame difference PASS
+
+deterministic GIF:
+frameCount=154
+
+network/security:
+external=0 / Inspection Profiles requests=0 / page errors=0 / console errors=0 / failed requests=0
+
+evidence self-verification:
+PASS / missing=0 / unexpected=0 / mismatches=0
+
+owner visual assessment:
+average≈9.3/10 / minimum mandatory aspect=8.7/10
+```
+
+Актуальные Cards contracts:
+
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md);
+- [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md).
+
+### Cards frozen boundary
+
+Cards production заморожен. Без новой доказанной регрессии запрещено менять Cards component composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный exact Cards real-Anki gate повторно не запускается без нового риска.
+
+После shared Settings changes допустим только короткий Cards regression smoke, если изменение действительно затронуло shared shell/styles.
+
+### Visual coverage checkpoint
+
+`ACCEPT CARDS 1:1` принимает только route `#/cards`; это не означает принятие PR #130, Inspection Profiles, ready-for-review или merge.
+
+| Route / area | Текущее подтверждение | Статус |
+| --- | --- | --- |
+| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | OWNER ACCEPTED / FROZEN |
+| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | OWNER ACCEPTED / FROZEN |
+| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
+| replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
+| animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
+| `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
+| `#/settings/inspection-profiles` corrective frame | 18 production captures, 117 region captures, ARIA/axe/keyboard/network evidence и prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL REVIEW 7.8/10 / OWNER ACCEPTANCE NOT GRANTED / VISUAL DEBT OPEN |
+| `#/settings/inspection-profiles` Basic | bounded two-column guided editor, responsive/focus/validation evidence и Prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| `#/settings/inspection-profiles` Advanced | production internals не изменены | WP4 NOT STARTED |
+| Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
+| Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
+
+Ранее заданный владельцем целевой порог для будущего Inspection Profiles
+acceptance, а не оценка текущего candidate:
+
+```text
+minimum acceptable result: 8.5/10
+preferred target: 9.0/10 or higher
+```
+
+Reports:
+
+- [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
+- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
+- [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
+- [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
+- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
+- [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
+- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md);
+- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md).
 
 ## Platform / CI
 
@@ -115,6 +244,7 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
 - Не возвращать legacy aliases без доказанной compatibility необходимости.
 - Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Для exact Cards AV/media использовать [специализированный runbook](cards-exact-av-media-e2e.md).
 - Successful unchanged exact-SHA gates не повторять.
 - Не создавать вложенную лестницу этапов вместо одной цельной задачи.
 - Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
@@ -126,6 +256,7 @@ E2E-I6 corrective fix не является новым этапом и не ак
 - [Компактный AI context bootstrap](ai-context-bootstrap.md)
 - [Режимы ChatGPT и Codex](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
 - [Codex agent rules](codex-agent-rules.md)
 - [Task contract template](templates/task-contract.toml)
 

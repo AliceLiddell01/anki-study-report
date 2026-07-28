@@ -131,7 +131,7 @@ function TopNav({ activeRoute, onOpenWhatsNew = () => undefined }: { activeRoute
             aria-label={t("profile.trigger")}
             aria-haspopup="menu"
             aria-expanded={profileMenuOpen}
-            aria-controls="profile-menu"
+            aria-controls={profileMenuOpen ? "profile-menu" : undefined}
             onClick={() => setProfileMenuOpen((current) => !current)}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {

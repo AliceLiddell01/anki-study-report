@@ -53,6 +53,25 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
     onChange({ ...draft, checks: draft.checks.map((check, current) => current === index ? next : check) });
   };
 
+  const focusAfterChange = (id: string) => {
+    window.requestAnimationFrame(() => document.getElementById(id)?.focus());
+  };
+
+  const addRequirement = () => {
+    const nextIndex = draft.checks.length;
+    onChange({ ...draft, checks: [...draft.checks, createCheck(draft, newKind)] });
+    focusAfterChange(`inspection-basic-requirement-${nextIndex}`);
+  };
+
+  const removeRequirement = (index: number) => {
+    const remainingCount = draft.checks.length - 1;
+    const focusId = remainingCount === 0
+      ? "inspection-basic-new-requirement"
+      : `inspection-basic-requirement-${Math.min(index, remainingCount - 1)}`;
+    onChange({ ...draft, checks: draft.checks.filter((_, current) => current !== index) });
+    focusAfterChange(focusId);
+  };
+
   const missingTemplates = draft.appliesTo.templateOrdinals.filter(
     (ordinal) => !item.structure.templates.some((template) => template.ordinal === ordinal),
   );
@@ -65,13 +84,12 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
           <h3 id="inspection-guided-summary-title">{view.detectedKind.label}</h3>
           <p>{view.detectedKind.description}</p>
         </div>
-        <dl>
-          <div><dt>{copy.confidence}</dt><dd>{copy.confidenceLabels[view.confidence]}</dd></div>
-          <div><dt>{copy.recognizedFields}</dt><dd>{draft.fieldMappings.length}</dd></div>
-          <div><dt>{copy.requirements}</dt><dd>{draft.checks.length}</dd></div>
-        </dl>
+        <p className={`inspection-confidence is-${view.confidence}`}>
+          <span>{copy.confidence}</span>
+          <strong>{copy.confidenceLabels[view.confidence]}</strong>
+        </p>
         {(view.unresolvedFields.length > 0 || view.warnings.length > 0) ? (
-          <div className="inspection-basic-warning" role="alert">
+          <div className="inspection-basic-warning">
             <AlertTriangle size={18} aria-hidden="true" />
             <div>
               <strong>{copy.reviewRequired}</strong>
@@ -82,7 +100,13 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
         ) : null}
       </section>
 
-      <fieldset className="inspection-basic-section inspection-basic-fields">
+      <fieldset
+        id="inspection-basic-fields"
+        className="inspection-basic-section inspection-basic-fields"
+        aria-describedby={errors["profile.fieldMappings"] ? "inspection-basic-fields-error" : undefined}
+        aria-invalid={Boolean(errors["profile.fieldMappings"]) || undefined}
+        tabIndex={-1}
+      >
         <legend><span className="inspection-milestone" aria-hidden="true">3</span>{copy.fieldsTitle}</legend>
         <p className="inspection-help">{copy.fieldsHelp}</p>
         <div className="inspection-basic-list">
@@ -104,7 +128,8 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                     id={selectId}
                     className="form-control"
                     value={role.mapping.fields[0]?.ordinal ?? ""}
-                    aria-describedby={error ? `${selectId}-error` : `${selectId}-help`}
+                    aria-describedby={error || role.blockingIssue ? `${selectId}-error` : `${selectId}-help`}
+                    aria-invalid={Boolean(error || role.blockingIssue) || undefined}
                     onChange={(event) => updateMapping(index, event.target.value)}
                   >
                     <option value="">{copy.chooseField}</option>
@@ -122,10 +147,16 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
           })}
         </div>
         {!draft.fieldMappings.length ? <p className="inspection-basic-empty">{copy.noRoles}</p> : null}
-        {errors["profile.fieldMappings"] ? <p className="inspection-inline-error">{copy.duplicateField}</p> : null}
+        {errors["profile.fieldMappings"] ? <p id="inspection-basic-fields-error" className="inspection-inline-error">{copy.duplicateField}</p> : null}
       </fieldset>
 
-      <fieldset className="inspection-basic-section inspection-basic-requirements">
+      <fieldset
+        id="inspection-basic-requirements"
+        className="inspection-basic-section inspection-basic-requirements"
+        aria-describedby={errors["profile.checks"] ? "inspection-basic-requirements-error" : undefined}
+        aria-invalid={Boolean(errors["profile.checks"]) || undefined}
+        tabIndex={-1}
+      >
         <legend><span className="inspection-milestone" aria-hidden="true">4</span>{copy.requirementsTitle}</legend>
         <p className="inspection-help">{copy.requirementsHelp}</p>
         <div className="inspection-basic-list">
@@ -135,7 +166,12 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
             const lengthError = errors[`profile.checks.${index}.minLength`];
             const multiRole = check.kind === "one_of_roles_non_empty" || check.kind === "all_roles_non_empty";
             return (
-              <fieldset className="inspection-requirement-row" key={check.checkId}>
+              <fieldset
+                id={`inspection-basic-requirement-${index}`}
+                className="inspection-requirement-row"
+                key={check.checkId}
+                tabIndex={-1}
+              >
                 <legend className="sr-only">{requirement.title}</legend>
                 <div className="inspection-requirement-heading">
                   <div>
@@ -147,7 +183,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                     type="button"
                     className="inspection-icon-button"
                     aria-label={`${copy.removeRequirement}: ${requirement.title}`}
-                    onClick={() => onChange({ ...draft, checks: draft.checks.filter((_, current) => current !== index) })}
+                    onClick={() => removeRequirement(index)}
                   >
                     <Trash2 size={17} aria-hidden="true" />
                   </button>
@@ -171,20 +207,27 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                       <span>{copy.fieldPurpose}</span>
                       <select
                         id={`inspection-basic-check-role-${index}`}
-                        className="form-control"
-                        value={check.roles[0] ?? ""}
-                        aria-describedby={rolesError ? `inspection-basic-check-role-${index}-error` : undefined}
+                      className="form-control"
+                      value={check.roles[0] ?? ""}
+                      aria-describedby={rolesError ? `inspection-basic-check-role-${index}-error` : undefined}
+                      aria-invalid={Boolean(rolesError || requirement.blockingIssue) || undefined}
                         onChange={(event) => updateCheck(index, { ...check, roles: event.target.value ? [event.target.value] : [] })}
                       >
                         <option value="">{copy.choosePurpose}</option>
-                        {draft.fieldMappings.map((mapping) => <option key={mapping.role} value={mapping.role}>{friendlyRole(mapping.role, language).label}</option>)}
+                        {draft.fieldMappings.map((mapping, mappingIndex) => <option key={`${mapping.role}:${mappingIndex}`} value={mapping.role}>{friendlyRole(mapping.role, language).label}</option>)}
                       </select>
                     </label>
                   ) : (
-                    <fieldset className="inspection-basic-role-choices" aria-describedby={rolesError ? `inspection-basic-check-role-${index}-error` : undefined}>
+                    <fieldset
+                      id={`inspection-basic-check-role-${index}`}
+                      className="inspection-basic-role-choices"
+                      aria-describedby={rolesError ? `inspection-basic-check-role-${index}-error` : undefined}
+                      aria-invalid={Boolean(rolesError || requirement.blockingIssue) || undefined}
+                      tabIndex={-1}
+                    >
                       <legend>{copy.fieldPurposes}</legend>
-                      {draft.fieldMappings.map((mapping) => (
-                        <label key={mapping.role}>
+                      {draft.fieldMappings.map((mapping, mappingIndex) => (
+                        <label key={`${mapping.role}:${mappingIndex}`}>
                           <input
                             type="checkbox"
                             checked={check.roles.includes(mapping.role)}
@@ -209,6 +252,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                         max="10000"
                         value={check.minLength}
                         aria-describedby={lengthError ? `inspection-basic-min-length-${index}-error` : undefined}
+                        aria-invalid={Boolean(lengthError) || undefined}
                         onChange={(event) => updateCheck(index, { ...check, minLength: Number(event.target.value) })}
                       />
                     </label>
@@ -221,6 +265,7 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
           })}
         </div>
         {!draft.checks.length ? <p className="inspection-basic-empty">{copy.noRequirements}</p> : null}
+        {errors["profile.checks"] ? <p id="inspection-basic-requirements-error" className="inspection-inline-error">{copy.duplicateCheckIds}</p> : null}
         <div className="inspection-add-requirement">
           <label htmlFor="inspection-basic-new-requirement">
             <span>{copy.addRequirement}</span>
@@ -232,14 +277,23 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
             type="button"
             className="secondary-button"
             disabled={!draft.fieldMappings.length}
-            onClick={() => onChange({ ...draft, checks: [...draft.checks, createCheck(draft, newKind)] })}
+            onClick={addRequirement}
           >
             <Plus size={16} aria-hidden="true" />{copy.add}
           </button>
         </div>
       </fieldset>
 
-      <fieldset className="inspection-basic-section inspection-basic-scope">
+      <fieldset
+        id="inspection-basic-template-scope"
+        className="inspection-basic-section inspection-basic-scope"
+        aria-describedby={[
+          draft.appliesTo.templateOrdinals.length > 0 ? "inspection-basic-template-keep-one" : "",
+          missingTemplates.length || errors["profile.appliesTo.templateOrdinals"] ? "inspection-basic-template-scope-error" : "",
+        ].filter(Boolean).join(" ") || undefined}
+        aria-invalid={Boolean(missingTemplates.length || errors["profile.appliesTo.templateOrdinals"]) || undefined}
+        tabIndex={-1}
+      >
         <legend><span className="inspection-milestone" aria-hidden="true">5</span>{copy.scopeTitle}</legend>
         {item.structure.templates.length === 1 ? (
           <div className="inspection-one-template">
@@ -263,6 +317,8 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
                     <input
                       type="checkbox"
                       checked={draft.appliesTo.templateOrdinals.includes(template.ordinal)}
+                      disabled={draft.appliesTo.templateOrdinals.length === 1 && draft.appliesTo.templateOrdinals.includes(template.ordinal)}
+                      aria-describedby="inspection-basic-template-keep-one"
                       onChange={(event) => {
                         const ordinals = event.target.checked
                           ? [...draft.appliesTo.templateOrdinals, template.ordinal].sort((a, b) => a - b)
@@ -277,7 +333,8 @@ export default function BasicProfileEditor({ item, draft, onChange, errors }: Ba
             ) : null}
           </>
         )}
-        {missingTemplates.length || errors["profile.appliesTo.templateOrdinals"] ? <p className="inspection-inline-error">{copy.missingTemplate}</p> : null}
+        {draft.appliesTo.templateOrdinals.length > 0 ? <p id="inspection-basic-template-keep-one" className="inspection-help inspection-scope-help">{copy.keepOneTemplate}</p> : null}
+        {missingTemplates.length || errors["profile.appliesTo.templateOrdinals"] ? <p id="inspection-basic-template-scope-error" className="inspection-inline-error">{copy.missingTemplate}</p> : null}
       </fieldset>
     </div>
   );
@@ -297,22 +354,22 @@ function requirementKindLabel(kind: InspectionProfileCheckKind, language: "ru" |
 
 function guidedCopy(language: "ru" | "en") {
   return language === "ru" ? {
-    suggestedSetup: "Предложенная настройка", confidence: "Надёжность", recognizedFields: "Распознано полей", requirements: "Требований",
+    suggestedSetup: "Предложенная настройка", confidence: "Надёжность",
     confidenceLabels: { high: "Высокая", review: "Рекомендуется проверка", insufficient: "Недостаточно данных" },
     reviewRequired: "Нужна проверка", unresolved: "Не определены поля", warningFallback: "Подсказка содержит предупреждение — проверьте сопоставления перед включением.",
     fieldsTitle: "Какие поля используются", fieldsHelp: "Свяжите понятные роли с точными полями выбранного типа записи Anki.", custom: "Пользовательская роль",
     ankiField: "Поле Anki", chooseField: "Выберите поле", usedElsewhere: "уже используется", multipleAdvanced: "Несколько полей сохранены; точную комбинацию можно изменить в расширенных настройках.", exactFieldHelp: "Используется точное имя поля текущего типа записи.", invalidField: "Выберите доступное поле.", noRoles: "Подсказка не определила роли. Используйте расширенные настройки или начните с пустого профиля.", duplicateField: "Одно поле нельзя незаметно использовать для конфликтующих ролей.",
-    requirementsTitle: "Что проверять", requirementsHelp: "Требования компилируются только в поддерживаемые декларативные проверки Inspection Profile v1.", fieldsUsed: "Поля", removeRequirement: "Удалить требование",
-    priority: "Важность", high: "Высокая", medium: "Средняя", low: "Низкая", fieldPurpose: "Проверяемая роль", fieldPurposes: "Проверяемые роли", choosePurpose: "Выберите роль", minLength: "Минимум символов", invalidLength: "Введите целое число от 1 до 10000.", noRequirements: "Требований пока нет. Профиль можно сохранить как черновик, но перед включением добавьте необходимые проверки.", addRequirement: "Добавить безопасное требование", add: "Добавить",
-    scopeTitle: "Какие карточки проверять", allCards: "Все карточки этого типа записи", singleTemplate: "Шаблон", allTemplates: "Все шаблоны карточек", allTemplatesHelp: "Профиль применяется ко всем карточкам, создаваемым этим типом записи.", selectedTemplates: "Только выбранные шаблоны", selectedTemplatesHelp: "Выберите шаблоны по понятным именам.", missingTemplate: "Один из сохранённых шаблонов больше не существует. Проверьте область и подтвердите профиль заново.",
+    requirementsTitle: "Правила проверки", requirementsHelp: "Добавьте понятные требования к содержимому карточек. Изменения останутся в черновике до явного сохранения.", fieldsUsed: "Поля", removeRequirement: "Удалить требование",
+    priority: "Важность", high: "Высокая", medium: "Средняя", low: "Низкая", fieldPurpose: "Проверяемая роль", fieldPurposes: "Проверяемые роли", choosePurpose: "Выберите роль", minLength: "Минимум символов", invalidLength: "Введите целое число от 1 до 10000.", duplicateCheckIds: "Идентификаторы требований должны быть уникальными.", noRequirements: "Требований пока нет. Профиль можно сохранить как черновик, но перед включением добавьте необходимые проверки.", addRequirement: "Добавить безопасное требование", add: "Добавить",
+    scopeTitle: "Какие карточки проверять", allCards: "Все карточки этого типа записи", singleTemplate: "Шаблон", allTemplates: "Все шаблоны карточек", allTemplatesHelp: "Профиль применяется ко всем карточкам, создаваемым этим типом записи.", selectedTemplates: "Только выбранные шаблоны", selectedTemplatesHelp: "Выберите шаблоны по понятным именам.", keepOneTemplate: "Чтобы выбрать все шаблоны, используйте вариант «Все шаблоны карточек».", missingTemplate: "Один из сохранённых шаблонов больше не существует. Проверьте область и подтвердите профиль заново.",
   } : {
-    suggestedSetup: "Suggested setup", confidence: "Confidence", recognizedFields: "Recognized fields", requirements: "Requirements",
+    suggestedSetup: "Suggested setup", confidence: "Confidence",
     confidenceLabels: { high: "High", review: "Review recommended", insufficient: "Insufficient" },
     reviewRequired: "Review required", unresolved: "Unresolved fields", warningFallback: "The suggestion contains a warning. Review the mappings before enabling it.",
     fieldsTitle: "Fields used", fieldsHelp: "Map friendly roles to exact fields from the selected Anki note type.", custom: "Custom role",
     ankiField: "Anki field", chooseField: "Choose a field", usedElsewhere: "already used", multipleAdvanced: "Multiple fields are preserved; edit the exact combination in Advanced settings.", exactFieldHelp: "The exact field name from this note type is used.", invalidField: "Choose an available field.", noRoles: "The suggestion did not detect roles. Use Advanced settings or start with an empty profile.", duplicateField: "A field cannot be silently claimed by conflicting roles.",
-    requirementsTitle: "Requirements", requirementsHelp: "Requirements compile only to the supported Inspection Profile v1 declarative checks.", fieldsUsed: "Fields", removeRequirement: "Remove requirement",
-    priority: "Priority", high: "High", medium: "Medium", low: "Low", fieldPurpose: "Checked role", fieldPurposes: "Checked roles", choosePurpose: "Choose a role", minLength: "Minimum characters", invalidLength: "Enter an integer from 1 to 10000.", noRequirements: "There are no requirements yet. The profile can be saved as a draft, but add the necessary checks before enabling it.", addRequirement: "Add a safe requirement", add: "Add",
-    scopeTitle: "Card scope", allCards: "All cards from this note type", singleTemplate: "Template", allTemplates: "All card templates", allTemplatesHelp: "The profile applies to every card generated by this note type.", selectedTemplates: "Selected templates only", selectedTemplatesHelp: "Choose templates by their friendly names.", missingTemplate: "A saved template no longer exists. Review the scope and reconfirm the profile.",
+    requirementsTitle: "Inspection rules", requirementsHelp: "Add clear card-content requirements. Changes remain in the draft until you explicitly save them.", fieldsUsed: "Fields", removeRequirement: "Remove requirement",
+    priority: "Priority", high: "High", medium: "Medium", low: "Low", fieldPurpose: "Checked role", fieldPurposes: "Checked roles", choosePurpose: "Choose a role", minLength: "Minimum characters", invalidLength: "Enter an integer from 1 to 10000.", duplicateCheckIds: "Requirement IDs must be unique.", noRequirements: "There are no requirements yet. The profile can be saved as a draft, but add the necessary checks before enabling it.", addRequirement: "Add a safe requirement", add: "Add",
+    scopeTitle: "Card scope", allCards: "All cards from this note type", singleTemplate: "Template", allTemplates: "All card templates", allTemplatesHelp: "The profile applies to every card generated by this note type.", selectedTemplates: "Selected templates only", selectedTemplatesHelp: "Choose templates by their friendly names.", keepOneTemplate: "To include every template, choose “All card templates”.", missingTemplate: "A saved template no longer exists. Review the scope and reconfirm the profile.",
   };
 }

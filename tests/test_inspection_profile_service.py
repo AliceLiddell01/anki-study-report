@@ -153,6 +153,26 @@ def test_suggestions_are_deterministic_non_authoritative_and_do_not_contain_samp
     assert "rawFields" not in str(first)
 
 
+def test_suggestion_preserves_multiple_exact_fields_and_leaves_low_confidence_unresolved():
+    custom = {
+        "id": 987,
+        "name": "Custom vocabulary",
+        "type": 0,
+        "flds": [
+            {"name": "Word", "ord": 0},
+            {"name": "Vocabulary", "ord": 1},
+            {"name": "Mystery", "ord": 2},
+        ],
+        "tmpls": [{"name": "Card 1", "ord": 0, "qfmt": "{{Word}} {{Vocabulary}}", "afmt": "{{Mystery}}"}],
+    }
+
+    suggestion = service.suggest_inspection_profile(service.build_note_type_structure(custom))
+    term = next(item for item in suggestion["fieldMappings"] if item["role"] == "term")
+    assert term["fields"] == [{"ordinal": 0, "name": "Word"}, {"ordinal": 1, "name": "Vocabulary"}]
+    assert suggestion["unresolvedFields"] == [{"ordinal": 2, "name": "Mystery"}]
+    assert suggestion["warnings"] == ["unresolved_fields", "no_checks_suggested"]
+
+
 def test_validate_v2_selects_a_bounded_deterministic_note_type_sample_without_values():
     structure = service.build_note_type_structure(model())
     profile = confirmed_profile(structure)

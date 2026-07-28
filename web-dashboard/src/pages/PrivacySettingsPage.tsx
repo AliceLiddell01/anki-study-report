@@ -9,6 +9,7 @@ import {
   type TelemetryPurpose,
 } from "../lib/productNoticesApi";
 import { checkConnectionAndSendNow, deleteTelemetryData } from "../lib/telemetryApi";
+import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import { privacyTelemetryStatusCopy } from "./privacyTelemetryStatusCopy";
 
 const PrivacyNoticeContent = lazy(() => import("../components/PrivacyNoticeContent"));
@@ -112,11 +113,38 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
     setDeleting(false);
   };
 
+  const routeHeader = (
+    <SettingsRouteHeader>
+      <section className="settings-page-header rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="brand-icon-badge mt-0.5 h-10 w-10 shrink-0 rounded-lg border border-report-blue/35 bg-report-blue/10 text-report-blue">
+            <ShieldCheck size={20} aria-hidden="true" />
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-report-blue">{t("privacy.settings.eyebrow")}</p>
+            <h1 className="mt-1 text-2xl font-semibold text-report-text">{t("privacy.settings.title")}</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-report-secondary">{t("privacy.settings.description")}</p>
+          </div>
+        </div>
+      </section>
+    </SettingsRouteHeader>
+  );
+
   if (!response) {
-    return <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">{t("privacy.settings.loading")}</section>;
+    return (
+      <>
+        {routeHeader}
+        <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">{t("privacy.settings.loading")}</section>
+      </>
+    );
   }
   if (!response.ok || !response.privacy) {
-    return <section className="rounded-xl border border-report-danger/45 bg-ink-850 p-5 shadow-panel">{t("privacy.settings.loadFailed")}</section>;
+    return (
+      <>
+        {routeHeader}
+        <section className="rounded-xl border border-report-danger/45 bg-ink-850 p-5 shadow-panel">{t("privacy.settings.loadFailed")}</section>
+      </>
+    );
   }
 
   const telemetry = response.privacy.telemetry;
@@ -141,24 +169,16 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
     (code && PUBLIC_TELEMETRY_ERRORS.has(code) ? code : "unknown") as keyof typeof telemetryCopy.error
   ];
   return (
-    <div className="grid gap-5">
-      <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
-        <div className="flex items-start gap-3">
-          <span className="brand-icon-badge mt-0.5 h-10 w-10 shrink-0 rounded-lg border border-report-blue/35 bg-report-blue/10 text-report-blue">
-            <ShieldCheck size={20} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-report-blue">{t("privacy.settings.eyebrow")}</p>
-            <h1 className="mt-1 text-2xl font-semibold text-report-text">{t("privacy.settings.title")}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-report-secondary">{t("privacy.settings.description")}</p>
-          </div>
-        </div>
-        <dl className="privacy-status-grid mt-5">
-          <div><dt>{t("privacy.settings.status")}</dt><dd>{t(`privacy.status.${statusKey}`)}</dd></div>
-          <div><dt>{t("privacy.settings.noticeVersion")}</dt><dd>{telemetry.privacyNoticeVersion}</dd></div>
-          <div><dt>{t("privacy.settings.decidedAt")}</dt><dd><LocalizedDateTime value={telemetry.decidedAt} fallback={t("privacy.settings.notDecided")} /></dd></div>
-        </dl>
-      </section>
+    <>
+      {routeHeader}
+      <div className="grid gap-5">
+        <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
+          <dl className="privacy-status-grid">
+            <div><dt>{t("privacy.settings.status")}</dt><dd>{t(`privacy.status.${statusKey}`)}</dd></div>
+            <div><dt>{t("privacy.settings.noticeVersion")}</dt><dd>{telemetry.privacyNoticeVersion}</dd></div>
+            <div><dt>{t("privacy.settings.decidedAt")}</dt><dd><LocalizedDateTime value={telemetry.decidedAt} fallback={t("privacy.settings.notDecided")} /></dd></div>
+          </dl>
+        </section>
 
       <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel">
         <h2 className="text-lg font-semibold text-report-text">{t("privacy.settings.connectionTitle")}</h2>
@@ -289,6 +309,7 @@ export default function PrivacySettingsPage({ onOpenWhatsNew }: { onOpenWhatsNew
 </Suspense>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

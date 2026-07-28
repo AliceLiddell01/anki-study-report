@@ -112,6 +112,25 @@ Scope guard не разрешает неожиданный файл только
 7. Не делай adjacent refactor/cleanup, если он не нужен для correctness, security
    или completion criteria текущей задачи.
 
+## Project-specific Core boundaries
+
+- Перед изменением Core UI прочитай `roadmap/core/README.md`, профильные
+  contracts/reports, production code, tests, `docs/test-matrix.md` и
+  `docs/verification-run-policy.md`.
+- Payload или public-behavior change обновляет все затронутые слои вместе:
+  backend implementation, frontend types/parsers, tests и documentation.
+- Cards имеет статус `ACCEPTED / COMPLETE / FROZEN`. Без новой доказанной
+  regression не меняй Cards composition, queue, rail, drawer, expanded answer,
+  native preview, AV/audio/GIF/media paths, Shadow DOM или Cards-specific
+  styling ради Settings.
+- После shared-shell changes выполняй только Cards regression smoke,
+  пропорциональный фактическому риску.
+- Codex не назначает numerical visual score и не объявляет owner visual
+  acceptance. Evidence должно содержать объективные screenshots, geometry,
+  diffs и deviation ledger.
+- Artifact считается complete только после inventory, checksum и CRC
+  validation.
+
 ## Неприкосновенные границы
 
 Запрещено без отдельного обоснованного решения:
