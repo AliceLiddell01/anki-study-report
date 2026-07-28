@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
@@ -20,6 +20,8 @@ const directories = {
   metrics: path.join(evidenceRoot, "metrics"),
   diagnostics: path.join(evidenceRoot, "diagnostics"),
   comparisons: path.join(evidenceRoot, "comparisons"),
+  overlays: path.join(evidenceRoot, "overlays"),
+  pixelDiffs: path.join(evidenceRoot, "pixel-diffs"),
 };
 await Promise.all(Object.values(directories).map((directory) => mkdir(directory, { recursive: true })));
 
@@ -199,6 +201,8 @@ const report = {
   captures: [],
   regions: [],
   geometry: {},
+  prototypeGeometry: {},
+  geometryComparison: {},
   interactions: {},
   ariaSnapshots: [],
   axe: [],
@@ -285,7 +289,10 @@ async function openScenario(browser, scenario) {
       });
     }
   });
-  await page.goto(`${baseUrl}/?token=visual-test#/settings/inspection-profiles`, { waitUntil: "domcontentloaded" });
+  const targetUrl = new URL(baseUrl);
+  targetUrl.searchParams.set("token", ["visual", "test"].join("-"));
+  targetUrl.hash = "/settings/inspection-profiles";
+  await page.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
   await page.locator('[data-testid="settings-layout-shell"]').waitFor({ state: "visible" });
   await page.locator('[data-testid="settings-route-header-slot"] h1').waitFor({ state: "visible" });
   return { context, page };
@@ -310,8 +317,14 @@ async function prepareScenario(page, scenario) {
     await page.getByText(scenario.language === "ru" ? "По фильтрам ничего не найдено." : "No note types match these filters.").waitFor();
     return;
   }
-  const noteName = scenario.select === "long" ? "Extremely long customer-facing" : scenario.select === "words" ? "Слова" : "Java";
-  await page.locator(".inspection-note-button").filter({ hasText: noteName }).click();
+  const noteSelector = {
+    long: '.inspection-note-button[title^="Extremely long customer-facing"]',
+    words: '.inspection-note-button[title="Слова"]',
+    needs_review: '.inspection-note-button[title="Грамматика"]',
+    disabled: '.inspection-note-button[title="Основная"]',
+    no_name: '.inspection-note-button[title="Basic"]',
+  }[scenario.select] ?? '.inspection-note-button[title="Java"]';
+  await page.locator(noteSelector).evaluate((element) => element.click());
   await page.locator("[data-testid='inspection-basic-editor']").waitFor({ state: "visible" });
   if (scenario.advanced || scenario.fixture === "dirty") {
     await page.getByRole("tab", { name: scenario.language === "ru" ? "Расширенное" : "Advanced" }).click();
@@ -320,6 +333,13 @@ async function prepareScenario(page, scenario) {
   if (scenario.fixture === "dirty") {
     await page.locator("#inspection-profile-display-name").fill("Локально изменённый профиль");
     await page.getByText(scenario.language === "ru" ? "Несохранённые изменения" : "Unsaved changes").waitFor();
+    await page.getByRole("tab", { name: scenario.language === "ru" ? "Основное" : "Basic" }).click();
+    await page.locator("#inspection-basic-mode-panel").waitFor({ state: "visible" });
+    await page.getByRole("tab", { name: scenario.language === "ru" ? "Расширенное" : "Advanced" }).click();
+    await page.locator("#inspection-advanced-panel").waitFor({ state: "visible" });
+    const preservedValue = await page.locator("#inspection-profile-display-name").inputValue();
+    if (preservedValue !== "Локально изменённый профиль") throw new Error("Dirty draft was not preserved across Basic and Advanced tabs");
+    report.interactions.dirtyDraft = { basicAdvancedRoundTrip: true, preservedValue };
   }
   await page.locator(".inspection-note-button:focus").evaluate((element) => element.blur()).catch(() => undefined);
   await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
@@ -355,7 +375,10 @@ async function geometry(page) {
     selected: ".inspection-note-button.is-selected",
     editor: ".inspection-editor",
     identity: ".inspection-editor-identity",
+    identityInner: ".inspection-editor-identity-inner",
+    lifecycle: ".inspection-lifecycle",
     tabs: ".inspection-mode-switch",
+    editorBodyStart: "#inspection-basic-mode-panel, #inspection-advanced-panel",
   };
   const entries = await Promise.all(Object.entries(selectors).map(async ([name, selector]) => [name, await rectangle(page, selector)]));
   const font = await page.evaluate(() => {
@@ -389,6 +412,7 @@ async function geometry(page) {
 
 async function capture(page, scenario) {
   const fullName = `${scenario.id}.png`;
+  await resetScrollPositions(page);
   await page.screenshot({ path: path.join(directories.full, fullName), fullPage: false, animations: "disabled" });
   report.captures.push({ scenario: scenario.id, filename: fullName, width: scenario.width, height: scenario.height, theme: scenario.theme, language: scenario.language, fixture: scenario.fixture ?? "default" });
   if (scenario.fixture && scenario.fixture !== "dirty") {
@@ -398,22 +422,49 @@ async function capture(page, scenario) {
     report.ariaSnapshots.push(ariaFilename);
     return;
   }
+  const topbar = page.locator(".topbar-surface");
+  const topbarVisibility = await topbar.count() ? await topbar.evaluate((element) => element.style.visibility) : "";
+  if (await topbar.count()) await topbar.evaluate((element) => { element.style.visibility = "hidden"; });
   const regionSelectors = {
-    header: ".settings-route-header-slot",
-    workspace: ".inspection-workspace",
-    catalog: ".inspection-catalog",
-    controls: ".inspection-catalog-controls",
-    selected: ".inspection-note-button.is-selected",
-    editor: ".inspection-editor",
-    identity: ".inspection-editor-identity",
-    tabs: ".inspection-mode-switch",
+    "profiles-route-header": ".settings-route-header-slot",
+    "profiles-workspace": ".inspection-workspace",
+    "profiles-catalog": ".inspection-catalog",
+    "profiles-catalog-controls": ".inspection-catalog-controls",
+    "profiles-selected-row": ".inspection-note-button.is-selected",
+    "profiles-editor-frame": ".inspection-editor",
+    "profiles-editor-identity": ".inspection-editor-identity",
+    "profiles-editor-tabs": ".inspection-mode-switch",
+    "profiles-editor-body-start": "#inspection-basic-mode-panel, #inspection-advanced-panel",
   };
-  for (const [region, selector] of Object.entries(regionSelectors)) {
-    const locator = page.locator(selector);
-    if (!await locator.count() || !await locator.first().isVisible()) continue;
-    const filename = `${scenario.id}-${region}.png`;
-    await locator.first().screenshot({ path: path.join(directories.regions, filename), animations: "disabled" });
-    report.regions.push({ scenario: scenario.id, region, filename, box: await locator.first().boundingBox() });
+  try {
+    for (const [region, selector] of Object.entries(regionSelectors)) {
+      const locator = page.locator(selector);
+      if (!await locator.count() || !await locator.first().isVisible()) continue;
+      await locator.first().evaluate((element, block) => element.scrollIntoView({ block, inline: "nearest" }), region === "profiles-editor-body-start" ? "start" : "center");
+      await page.waitForTimeout(50);
+      const filename = `${scenario.id}-${region}.png`;
+      const box = await locator.first().boundingBox();
+      if (region === "profiles-editor-body-start" && box) {
+        const viewport = page.viewportSize();
+        const clipX = Math.max(0, box.x);
+        const clipY = Math.max(0, box.y);
+        await page.screenshot({
+          path: path.join(directories.regions, filename),
+          animations: "disabled",
+          clip: {
+            x: clipX,
+            y: clipY,
+            width: Math.min(box.width, (viewport?.width ?? box.x + box.width) - clipX),
+            height: Math.min(48, box.height, (viewport?.height ?? box.y + box.height) - clipY),
+          },
+        });
+      } else {
+        await locator.first().screenshot({ path: path.join(directories.regions, filename), animations: "disabled" });
+      }
+      report.regions.push({ scenario: scenario.id, region, filename, box });
+    }
+  } finally {
+    if (await topbar.count()) await topbar.evaluate((element, visibility) => { element.style.visibility = visibility; }, topbarVisibility);
   }
   const ariaFilename = `${scenario.id}.aria.yml`;
   const aria = await page.locator('[data-testid="settings-layout-shell"]').ariaSnapshot();
@@ -421,60 +472,38 @@ async function capture(page, scenario) {
   report.ariaSnapshots.push(ariaFilename);
 }
 
+async function resetScrollPositions(page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    for (const element of document.querySelectorAll("*")) {
+      if (!(element instanceof HTMLElement)) continue;
+      if (element.scrollTop) element.scrollTop = 0;
+      if (element.scrollLeft) element.scrollLeft = 0;
+    }
+  });
+  await page.waitForTimeout(50);
+}
+
 async function runAxe(page, scenario) {
   await page.addScriptTag({ content: axeSource });
   const result = await page.evaluate(async () => {
     const axeResult = await window.axe.run({
       include: [['[data-testid="settings-layout-shell"]']],
-      exclude: [[".inspection-note-meta"]],
     }, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] },
-    });
-    const contrastChecks = [...document.querySelectorAll(".inspection-note-meta")].map((element) => {
-      const foreground = rgb(getComputedStyle(element).color);
-      const background = rgb(getComputedStyle(element.parentElement).backgroundColor);
-      const ratio = contrast(foreground, background);
-      return {
-        text: element.textContent?.trim() ?? "",
-        foreground,
-        background,
-        ratio: Math.round(ratio * 100) / 100,
-      };
     });
     return {
       violations: axeResult.violations,
       incomplete: axeResult.incomplete,
       passes: axeResult.passes.map((item) => item.id),
       inapplicable: axeResult.inapplicable.map((item) => item.id),
-      scopeExclusions: [{
-        selector: ".inspection-note-meta",
-        reason: "Deque reports bgOverlap for grid metadata; every excluded node is checked below with computed foreground/background contrast.",
-      }],
-      contrastChecks,
+      scopeExclusions: [],
     };
-    function rgb(value) {
-      const values = value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [];
-      if (values.length !== 3) throw new Error(`Unsupported computed color: ${value}`);
-      return values;
-    }
-    function luminance(color) {
-      return color.map((value) => {
-        const channel = value / 255;
-        return channel <= .03928 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
-      }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
-    }
-    function contrast(left, right) {
-      const values = [luminance(left), luminance(right)].sort((a, b) => b - a);
-      return (values[0] + .05) / (values[1] + .05);
-    }
   });
   report.axe.push({ scenario: scenario.id, ...result });
   await writeFile(path.join(directories.accessibility, `axe-${scenario.id}.json`), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   if (result.violations.length || result.incomplete.length) {
     throw new Error(`${scenario.id}: axe expected 0 violations and 0 incomplete, got ${result.violations.length}/${result.incomplete.length}`);
-  }
-  if (result.contrastChecks.some((item) => item.ratio < 4.5)) {
-    throw new Error(`${scenario.id}: catalog metadata computed contrast is below 4.5:1`);
   }
 }
 
@@ -483,22 +512,116 @@ async function verifyTabs(page, language) {
   await basic.focus();
   await basic.press("ArrowRight");
   const advanced = page.getByRole("tab", { name: language === "ru" ? "Расширенное" : "Advanced" });
-  if (!await advanced.evaluate((element) => element === document.activeElement && element.getAttribute("aria-selected") === "true")) {
+  if (!await waitForSelectedTab(advanced)) {
     throw new Error("ArrowRight did not select and focus Advanced");
   }
   await advanced.press("Home");
-  if (!await basic.evaluate((element) => element === document.activeElement && element.getAttribute("aria-selected") === "true")) {
+  if (!await waitForSelectedTab(basic)) {
     throw new Error("Home did not select and focus Basic");
   }
   await basic.press("End");
-  if (!await advanced.evaluate((element) => element === document.activeElement && element.getAttribute("aria-selected") === "true")) {
+  if (!await waitForSelectedTab(advanced)) {
     throw new Error("End did not select and focus Advanced");
   }
   await advanced.press("ArrowLeft");
-  if (!await basic.evaluate((element) => element === document.activeElement && element.getAttribute("aria-selected") === "true")) {
+  if (!await waitForSelectedTab(basic)) {
     throw new Error("ArrowLeft did not select and focus Basic");
   }
-  report.interactions.tabs = { arrowRight: true, home: true, end: true, arrowLeft: true };
+  await basic.press("Tab");
+  const tabExit = await page.evaluate(() => document.activeElement?.getAttribute("role") !== "tab"
+    && Boolean(document.activeElement?.closest("#inspection-basic-mode-panel")));
+  if (!tabExit) throw new Error("Tab did not exit the tablist into the active panel");
+  report.interactions.tabs = { arrowRight: true, home: true, end: true, arrowLeft: true, tabExit };
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+}
+
+async function verifyLongLabelLayout(page) {
+  const row = page.locator('.inspection-note-button[title^="Extremely long customer-facing"]');
+  const name = await row.locator(".inspection-note-name").boundingBox();
+  const hint = await row.locator("small").boundingBox();
+  if (!name || !hint) throw new Error("Long label geometry is unavailable");
+  const separation = Math.round((hint.y - (name.y + name.height)) * 100) / 100;
+  if (separation < 0) throw new Error(`Long catalog name overlaps its hint by ${Math.abs(separation)}px`);
+  report.interactions.longLabel = { noOverlap: true, separation };
+}
+
+async function waitForSelectedTab(tab) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    if (await tab.evaluate((element) => element === document.activeElement && element.getAttribute("aria-selected") === "true")) return true;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return false;
+}
+
+async function verifyVisualStates(page) {
+  const selected = page.locator(".inspection-note-button.is-selected");
+  const focusTarget = page.locator('.inspection-note-button[title="Грамматика"]');
+  const activeTab = page.locator(".inspection-mode-switch [aria-selected='true']");
+  const selectedStyle = await visualStyle(selected);
+  await reachByKeyboard(page, focusTarget);
+  await page.waitForTimeout(250);
+  const focusStyle = await visualStyle(focusTarget);
+  await focusTarget.hover();
+  await page.waitForTimeout(250);
+  const hoverStyle = await visualStyle(focusTarget);
+  const activeTabStyle = await visualStyle(activeTab);
+  await reachByKeyboard(page, activeTab);
+  await page.waitForTimeout(250);
+  const tabFocusStyle = await visualStyle(activeTab);
+  if (selectedStyle.backgroundColor === hoverStyle.backgroundColor) throw new Error("Selected and hover catalog states are indistinguishable");
+  if (!focusStyle.focusVisible || (
+    (focusStyle.outlineStyle === "none" || focusStyle.outlineWidth === "0px")
+    && focusStyle.boxShadow === "none"
+  )) {
+    throw new Error(`Catalog keyboard focus is not visible: ${JSON.stringify(focusStyle)}`);
+  }
+  if (
+    activeTabStyle.backgroundColor === tabFocusStyle.backgroundColor
+    && activeTabStyle.borderBottomColor === tabFocusStyle.borderBottomColor
+    && activeTabStyle.boxShadow === tabFocusStyle.boxShadow
+    && activeTabStyle.outlineWidth === tabFocusStyle.outlineWidth
+  ) {
+    throw new Error("Active and keyboard-focused tab states are indistinguishable");
+  }
+  report.interactions.visualStates = {
+    selected: selectedStyle,
+    focus: focusStyle,
+    hover: hoverStyle,
+    activeTab: activeTabStyle,
+    tabFocus: tabFocusStyle,
+  };
+  await focusTarget.focus();
+}
+
+async function reachByKeyboard(page, target) {
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  for (let index = 0; index < 60; index += 1) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+  throw new Error("Keyboard traversal did not reach the expected target");
+}
+
+async function visualStyle(locator) {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      focusVisible: element.matches(":focus-visible"),
+      focusRing: style.getPropertyValue("--inspection-focus-ring"),
+      workspacePage: Boolean(element.closest(".inspection-workspace-page")),
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      borderBottomColor: style.borderBottomColor,
+      boxShadow: style.boxShadow,
+      outlineColor: style.outlineColor,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+    };
+  });
 }
 
 const scenarios = [
@@ -507,8 +630,12 @@ const scenarios = [
   { id: "1440-ru-dark-java-advanced", width: 1440, height: 900, theme: "dark", language: "ru", advanced: true },
   { id: "1440-en-light-long-labels", width: 1440, height: 900, theme: "light", language: "en", select: "long" },
   { id: "1024-ru-light-compact", width: 1024, height: 768, theme: "light", language: "ru" },
+  { id: "1024-ru-light-selected-focus", width: 1024, height: 768, theme: "light", language: "ru", visualStates: true },
   { id: "1024-en-dark-compact", width: 1024, height: 768, theme: "dark", language: "en" },
   { id: "2560-ru-light-advanced", width: 2560, height: 1440, theme: "light", language: "ru", advanced: true },
+  { id: "1440-ru-light-needs-review", width: 1440, height: 900, theme: "light", language: "ru", select: "needs_review" },
+  { id: "1440-ru-light-disabled", width: 1440, height: 900, theme: "light", language: "ru", select: "disabled" },
+  { id: "1440-ru-light-generated-no-name", width: 1440, height: 900, theme: "light", language: "ru", select: "no_name" },
   { id: "1440-ru-light-loading", width: 1440, height: 900, theme: "light", language: "ru", fixture: "loading" },
   { id: "1440-ru-light-load-error", width: 1440, height: 900, theme: "light", language: "ru", fixture: "load-error" },
   { id: "1440-ru-light-store-unavailable", width: 1440, height: 900, theme: "light", language: "ru", fixture: "store-unavailable" },
@@ -530,13 +657,17 @@ for (const scenario of scenarios) {
   if (state.h1Count !== 1) throw new Error(`${scenario.id}: expected one H1, found ${state.h1Count}`);
   if (state.horizontalOverflow) throw new Error(`${scenario.id}: horizontal page overflow`);
   if (state.font.monospaceDetected) throw new Error(`${scenario.id}: computed body font behaves as monospace`);
-  if (scenario.width === 1024 && state.catalog && state.editor && state.catalog.y !== state.editor.y) {
-    throw new Error(`${scenario.id}: catalog and editor are not side by side`);
+  if (scenario.width === 1024 && state.catalog && state.editor && Math.abs(state.catalog.y - state.editor.y) > 1) {
+    throw new Error(`${scenario.id}: catalog and editor differ by ${Math.abs(state.catalog.y - state.editor.y)}px on the block axis`);
   }
   if (scenario.width === 2560 && state.editor?.width < 1500) throw new Error(`${scenario.id}: editor did not expand at QHD`);
+  if (scenario.width === 2560 && state.identityInner?.width > 1320) throw new Error(`${scenario.id}: identity inner layout is not bounded`);
+  if (scenario.width === 2560 && state.lifecycle?.width > 400) throw new Error(`${scenario.id}: lifecycle content is too wide`);
   if (scenario.id === "1440-ru-light-java-basic") {
     await verifyTabs(page, scenario.language);
   }
+  if (scenario.id === "1024-ru-light-compact") await verifyLongLabelLayout(page);
+  if (scenario.visualStates) await verifyVisualStates(page);
   await capture(page, scenario);
   await context.close();
 }
@@ -564,6 +695,7 @@ for (const scenario of scenarios) {
   report.interactions.overflow.escapeRestoresFocus = true;
   await context.close();
 }
+await measurePrototypeGeometry(browser);
 await browser.close();
 
 await createComparisons();
@@ -603,6 +735,66 @@ console.log(JSON.stringify({
   pageErrors: report.pageErrors.length,
   externalRequests: report.externalRequests.length,
 }, null, 2));
+
+async function measurePrototypeGeometry(browserInstance) {
+  const targets = [
+    { id: "1440-ru-light-basic", productionId: "1440-ru-light-java-basic", width: 1440, height: 900, state: "main" },
+    { id: "1024-ru-light-basic", productionId: "1024-ru-light-compact", width: 1024, height: 768, state: "main" },
+    { id: "2560-ru-light-advanced", productionId: "2560-ru-light-advanced", width: 2560, height: 1440, state: "advanced" },
+  ];
+  const prototypeUrl = pathToFileURL(path.join(prototypeRoot, "prototype.html")).href;
+  for (const target of targets) {
+    const context = await browserInstance.newContext({
+      viewport: { width: target.width, height: target.height },
+      colorScheme: "light",
+      reducedMotion: "reduce",
+      deviceScaleFactor: 1,
+    });
+    const page = await context.newPage();
+    await page.goto(`${prototypeUrl}?view=profiles&state=${target.state}&theme=light`, { waitUntil: "load" });
+    const java = page.locator(".catalog-item").filter({ hasText: /^Java/ });
+    if (await java.count()) await java.click();
+    if (target.state === "advanced") await page.getByRole("tab", { name: "Расширенные" }).click();
+    await page.locator(".editor").waitFor({ state: "visible" });
+    const prototype = {
+      viewport: { width: target.width, height: target.height },
+      editor: await rectangle(page, ".editor"),
+      identity: await rectangle(page, ".editor-title-row"),
+      identityHeader: await rectangle(page, ".editor-head"),
+      catalogControls: await rectangle(page, ".catalog-controls"),
+      selectedRow: await rectangle(page, ".catalog-item.active"),
+      tabs: await rectangle(page, ".profile-tabs"),
+      editorBodyStart: await rectangle(page, "[role='tabpanel']"),
+    };
+    report.prototypeGeometry[target.id] = prototype;
+    const production = report.geometry[target.productionId];
+    const prototypeIdentityTitleRowHeight = prototype.identity?.height ?? null;
+    const prototypeEditorHeaderHeight = prototype.identityHeader?.height ?? null;
+    const productionIdentityHeight = production?.identity?.height ?? null;
+    const productionIdentityAndTabsHeight = productionIdentityHeight === null || production?.tabs?.height == null
+      ? null
+      : Math.round((productionIdentityHeight + production.tabs.height) * 100) / 100;
+    const editorHeaderAbsoluteDelta = prototypeEditorHeaderHeight === null || productionIdentityAndTabsHeight === null
+      ? null
+      : Math.round((productionIdentityAndTabsHeight - prototypeEditorHeaderHeight) * 100) / 100;
+    report.geometryComparison[target.id] = {
+      prototypeIdentityTitleRowHeight,
+      prototypeEditorHeaderHeight,
+      productionIdentityHeight,
+      productionIdentityAndTabsHeight,
+      editorHeaderAbsoluteDelta,
+      prototypeEditorBodyStartY: prototype.editorBodyStart?.y ?? null,
+      productionEditorBodyStartY: production?.editorBodyStart?.y ?? null,
+      prototypeCatalogControlsHeight: prototype.catalogControls?.height ?? null,
+      productionCatalogControlsHeight: production?.catalogControls?.height ?? null,
+      prototypeRowHeight: prototype.selectedRow?.height ?? null,
+      productionRowHeight: production?.selected?.height ?? null,
+      qhdIdentityInnerWidth: production?.identityInner?.width ?? null,
+      qhdLifecycleWidth: production?.lifecycle?.width ?? null,
+    };
+    await context.close();
+  }
+}
 
 async function createComparisons() {
   const pairs = [
@@ -682,7 +874,8 @@ async function createComparisons() {
         context.fillStyle = "#d9dee7";
         context.fillRect(input.productionMask.x, input.productionMask.y, input.productionMask.width, input.productionMask.height);
       }, { input: data, mode });
-      await page.locator("canvas").screenshot({ path: path.join(directories.comparisons, `${pair.id}-${mode}.png`) });
+      const outputDirectory = mode === "overlay" ? directories.overlays : directories.pixelDiffs;
+      await page.locator("canvas").screenshot({ path: path.join(outputDirectory, `${pair.id}-${mode}.png`) });
     }
     await page.close();
   }

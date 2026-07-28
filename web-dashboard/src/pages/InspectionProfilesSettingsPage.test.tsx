@@ -3,6 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveInspectionProfileDisplayIdentity } from "../components/inspection-profiles/InspectionProfileEditorIdentity";
+import { filterAndSortInspectionProfileItems } from "../components/inspection-profiles/InspectionProfilesCatalog";
 import i18n from "../i18n";
 import type { InspectionProfileSummary, InspectionProfilesQueryResponse } from "../types/inspectionProfiles";
 import InspectionProfilesSettingsPage from "./InspectionProfilesSettingsPage";
@@ -80,23 +82,33 @@ const programming = noteType("2", "Programming Q&A", "programming", ["Question",
 const confirmed = noteType("3", "Confirmed Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
   { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
 ], "confirmed");
+confirmed.storedProfile!.displayName = "Stored profile identity";
 const needsReview = noteType("4", "Changed Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
   { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
 ], "needs_review");
 const disabled = noteType("5", "Disabled Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
   { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
 ], "disabled");
+const suggested = noteType("6", "Draft Basic", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+], "suggested");
+const longRussian = noteType("7", "Очень длинное название пользовательского типа записи для проверки переноса без потери текста", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+]);
+const longEnglish = noteType("8", "Extremely long customer-facing note type name for stable duplicate-like ordering", "generic", ["Front", "Back"], [["question", "Front"], ["answer", "Back"]], [
+  { checkId: "front-required", kind: "non_empty", roles: ["question"], mode: "any", priority: "high" },
+]);
 
 const queryResponse: InspectionProfilesQueryResponse = {
   schemaVersion: 1,
   status: "available",
   store,
-  totalCount: 5,
-  returnedCount: 5,
+  totalCount: 8,
+  returnedCount: 8,
   limit: 500,
   truncated: false,
   skippedCount: 0,
-  items: [japanese, programming, confirmed, needsReview, disabled],
+  items: [japanese, programming, confirmed, needsReview, disabled, suggested, longRussian, longEnglish],
 };
 
 describe("Inspection Profiles guided settings workspace", () => {
@@ -123,12 +135,13 @@ describe("Inspection Profiles guided settings workspace", () => {
 
   it("materializes a clean generated Japanese draft immediately and switches without a discard dialog", async () => {
     await renderPage();
-    expect([...container.querySelectorAll<HTMLButtonElement>(".inspection-note-button")].map((item) => item.title)).toEqual([
-      "Japanese Vocabulary",
-      "Programming Q&A",
-      "Confirmed Basic",
+    expect([...container.querySelectorAll<HTMLButtonElement>(".inspection-note-button")].map((item) => item.getAttribute("aria-pressed"))).toEqual([
+      "false", "false", "false", "false", "false", "false", "false", "false",
+    ]);
+    expect([...container.querySelectorAll<HTMLButtonElement>(".inspection-note-button")].map((item) => item.title).slice(0, 3)).toEqual([
       "Changed Basic",
-      "Disabled Basic",
+      "Confirmed Basic",
+      "Draft Basic",
     ]);
     await click(noteButton("Japanese Vocabulary"));
     const basic = container.querySelector<HTMLElement>("[data-testid='inspection-basic-editor']")!;
@@ -202,6 +215,7 @@ describe("Inspection Profiles guided settings workspace", () => {
   it("does not require reconfirmation for an unchanged confirmed profile", async () => {
     await renderPage();
     await click(noteButton("Confirmed Basic"));
+    expect(container.querySelector(".inspection-profile-identity")?.textContent).toContain("Stored profile identity");
     expect(container.textContent).toContain("Включено");
     expect(exactButton("Подтвердить и включить")).toBeUndefined();
     expect(exactButton("Проверить настройку")).toBeDefined();
@@ -210,7 +224,7 @@ describe("Inspection Profiles guided settings workspace", () => {
   it("integrates state into the compact catalog and exposes one lifecycle primary action", async () => {
     await renderPage();
     expect(container.querySelector(".inspection-summary")).toBeNull();
-    expect(container.querySelector(".inspection-catalog-header")?.textContent).toContain("5/5");
+    expect(container.querySelector(".inspection-catalog-header")?.textContent).toContain("8/8");
     expect(container.querySelector(".inspection-empty-editor")?.textContent).toContain("не сохранится и не включит проверки автоматически");
 
     await click(noteButton("Japanese Vocabulary"));
@@ -244,6 +258,8 @@ describe("Inspection Profiles guided settings workspace", () => {
     await i18n.changeLanguage("en");
     await renderPage();
     await click(noteButton("Programming Q&A"));
+    expect(container.querySelector(".inspection-profile-identity")?.textContent).toContain("Proposed profile: Programming question/answer");
+    expect(container.querySelector(".inspection-profile-identity")?.textContent).not.toContain("Profile: Programming Q&A");
     expect(container.textContent).toContain("Suggested setup");
     expect(container.textContent).toContain("Question is required");
     expect(container.textContent).toContain("Confirm and enable");
@@ -261,6 +277,79 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(document.activeElement?.classList.contains("workspace-selected")).toBe(false);
   });
 
+  it("sorts filtered catalog items by lifecycle priority without mutating the source array", () => {
+    const source = [disabled, longEnglish, confirmed, japanese, suggested, needsReview, programming];
+    const originalIds = source.map((item) => item.structure.noteTypeId);
+    const result = filterAndSortInspectionProfileItems(source, "all", "", "en");
+    expect(result.map((item) => item.effectiveState)).toEqual([
+      "needs_review",
+      "confirmed",
+      "suggested",
+      "not_configured",
+      "not_configured",
+      "not_configured",
+      "disabled",
+    ]);
+    const notConfiguredNames = result
+      .filter((item) => item.effectiveState === "not_configured")
+      .map((item) => item.structure.name);
+    expect(notConfiguredNames).toEqual([...notConfiguredNames].sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base", numeric: true })));
+    expect(source.map((item) => item.structure.noteTypeId)).toEqual(originalIds);
+
+    const filtered = filterAndSortInspectionProfileItems(source, "all", "basic", "en");
+    expect(filtered.map((item) => item.effectiveState)).toEqual(["needs_review", "confirmed", "suggested", "disabled"]);
+  });
+
+  it("keeps search, state filtering, clear filters, long names, and selected state coherent", async () => {
+    await renderPage();
+    await click(noteButton(longRussian.structure.name));
+    expect(noteButton(longRussian.structure.name).getAttribute("aria-pressed")).toBe("true");
+
+    const state = container.querySelector<HTMLSelectElement>("#inspection-profile-state-filter")!;
+    await change(state, "not_configured");
+    expect(noteButton(longRussian.structure.name).getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector(".inspection-clear-filters")).toBeTruthy();
+
+    const search = container.querySelector<HTMLInputElement>("#inspection-profile-search")!;
+    await change(search, "Extremely long");
+    expect(noteButton(longEnglish.structure.name).title).toBe(longEnglish.structure.name);
+    expect(container.querySelector(".inspection-note-list")?.textContent).not.toContain(longRussian.structure.name);
+
+    await click(container.querySelector<HTMLButtonElement>(".inspection-clear-filters")!);
+    expect(container.querySelector(".inspection-clear-filters")).toBeNull();
+    expect(noteButton(longRussian.structure.name).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("uses truthful generated identities and an explicit no-name fallback in RU and EN", async () => {
+    await renderPage();
+    await click(noteButton("Programming Q&A"));
+    const ruIdentity = container.querySelector(".inspection-profile-identity")!;
+    expect(ruIdentity.textContent).toContain("Предлагаемый профиль: Вопрос по программированию");
+    expect(ruIdentity.getAttribute("data-identity-source")).toBe("suggestion");
+    expect((container.querySelector(".inspection-editor-identity")?.textContent?.match(/Вопрос по программированию/g) ?? [])).toHaveLength(1);
+
+    await click(noteButton(longEnglish.structure.name));
+    expect(container.querySelector(".inspection-profile-identity")?.textContent).toContain("Предлагаемый профиль: Пока без отдельного имени");
+    expect(container.querySelector(".inspection-profile-identity")?.getAttribute("data-identity-source")).toBe("explicit-fallback");
+
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+    await settle();
+    await click(noteButton("Programming Q&A"));
+    expect(container.querySelector(".inspection-profile-identity")?.textContent).toContain("Proposed profile: Programming question/answer");
+
+    const resolved = resolveInspectionProfileDisplayIdentity({
+      item: longEnglish,
+      draft: { ...longEnglish.storedProfile!, displayName: longEnglish.structure.name },
+      generatedDraft: true,
+      detectedKindLabel: "General front/back",
+      detectedKindMeaningful: false,
+      noIndependentName: "No separate name yet",
+    });
+    expect(resolved).toEqual({ value: "No separate name yet", source: "explicit-fallback" });
+  });
+
   async function renderPage() { await act(async () => root.render(<InspectionProfilesSettingsPage />)); await settle(); }
   async function settle() { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); }
   async function click(element: HTMLElement) { await act(async () => element.click()); await settle(); }
@@ -271,7 +360,14 @@ describe("Inspection Profiles guided settings workspace", () => {
     });
     await settle();
   }
-  async function change(element: HTMLSelectElement | HTMLInputElement, value: string) { await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); }); await settle(); }
+  async function change(element: HTMLSelectElement | HTMLInputElement, value: string) {
+    await act(async () => {
+      const prototype = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLSelectElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(element, value);
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+  }
   function button(text: string) { const match = exactButton(text); if (!match) throw new Error(`missing button ${text}`); return match; }
   function exactButton(text: string) { return [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text); }
   function primaryButtons() { return [...container.querySelectorAll<HTMLButtonElement>(".inspection-primary-actions .primary-button")]; }

@@ -132,6 +132,8 @@ const en = {
       editor: {
         selectTitle: "Choose a note type", selectDescription: "Choose a note type on the left to inspect its structure and configure checks.", selectSafety: "A local draft will appear; it is not saved and does not enable checks automatically.",
         noteType: "Anki note type", kind: "Kind", fields: "Fields", templates: "Templates", unsaved: "Unsaved changes",
+        profileLabel: "Profile", proposedProfile: "Proposed profile", proposedProfileNoName: "No separate name yet", browserDraft: "Browser draft",
+        structureSummary: "{{kind}} · {{fields}} fields · {{templates}} templates", structureCounts: "{{fields}} fields · {{templates}} templates",
         notConfiguredTitle: "No profile is configured", notConfiguredDescription: "Use the local suggestion or start with an empty declarative configuration.",
         displayName: "Profile name", displayNameHelp: "A local descriptive name; it does not rename the Anki note type.",
       },

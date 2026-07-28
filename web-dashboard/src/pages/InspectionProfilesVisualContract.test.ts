@@ -15,7 +15,19 @@ describe("Inspection Profiles visual contract", () => {
     expect(inspectionCss).toMatch(/\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*clamp\(288px, 20vw, 320px\) minmax\(0, 1fr\)/s);
     expect(inspectionCss).toMatch(/@media \(max-width: 1024px\)[\s\S]*?\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*minmax\(248px, 270px\) minmax\(0, 1fr\)/s);
     expect(inspectionCss).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.inspection-workspace\s*\{[^}]*grid-template-columns:\s*1fr/s);
-    expect(inspectionCss).toMatch(/\.inspection-search input\s*\{[^}]*grid-column:\s*1 \/ -1/s);
+    expect(inspectionCss).toMatch(/\.inspection-workspace\s*\{[^}]*gap:\s*0;[^}]*border:\s*1px solid/s);
+    expect(inspectionCss).toMatch(/\.inspection-catalog-controls\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(5\.8rem, \.5fr\) auto/s);
+  });
+
+  it("bounds identity content and keeps selected, focus, hover, active, and dirty semantics separate", () => {
+    expect(inspectionCss).toMatch(/\.inspection-editor-identity-inner\s*\{[^}]*width:\s*min\(100%, 82rem\)[^}]*grid-template-columns:\s*minmax\(18rem, 42rem\) minmax\(15rem, 24rem\)/s);
+    expect(inspectionCss).toMatch(/\.inspection-note-button:hover\s*\{[^}]*inspection-hover-surface/s);
+    expect(inspectionCss).toMatch(/\.inspection-note-button:focus-visible\s*\{[^}]*inspection-focus-ring/s);
+    expect(inspectionCss).toMatch(/\.inspection-note-button\.is-selected\s*\{[^}]*inspection-selected-surface/s);
+    expect(inspectionCss).toMatch(/\.inspection-mode-switch button\.is-active\s*\{[^}]*border-bottom-color:\s*var\(--accent-primary\)/s);
+    expect(inspectionCss).toMatch(/\.inspection-mode-dirty\s*\{[^}]*status-warning/s);
+    expect(inspectionCss).toContain("@media (forced-colors: active)");
+    expect(inspectionCss).not.toMatch(/\.inspection-note-button:hover,[\s\S]*?status-warning/s);
   });
 
   it("flattens Basic sections while preserving bordered interactive rows", () => {

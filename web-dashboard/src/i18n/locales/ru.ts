@@ -128,6 +128,8 @@ const ru = {
       editor: {
         selectTitle: "Выберите тип записи", selectDescription: "Слева выберите тип записи, чтобы увидеть его структуру и настроить проверки.", selectSafety: "Появится локальный черновик: он не сохранится и не включит проверки автоматически.",
         noteType: "Тип записи Anki", kind: "Вид", fields: "Поля", templates: "Шаблоны", unsaved: "Есть несохранённые изменения",
+        profileLabel: "Профиль", proposedProfile: "Предлагаемый профиль", proposedProfileNoName: "Пока без отдельного имени", browserDraft: "Черновик в браузере",
+        structureSummary: "{{kind}} · полей: {{fields}} · шаблонов: {{templates}}", structureCounts: "Полей: {{fields}} · шаблонов: {{templates}}",
         notConfiguredTitle: "Профиль ещё не настроен", notConfiguredDescription: "Используйте локальную подсказку или начните с пустой декларативной конфигурации.",
         displayName: "Название профиля", displayNameHelp: "Локальное понятное название; оно не переименовывает тип записи Anki.",
       },
