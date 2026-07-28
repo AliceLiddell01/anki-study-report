@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4.1 complete]
+    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4.1/G4.2 complete]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1/G2 complete; G3 deferred post-MVP и не блокирует G4–G6; G4 in progress; G4.1 complete; production не одобрен | G4.2 Input normalization and uncertainty model — next / not started |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1/G2 complete; G3 deferred post-MVP и не блокирует G4–G6; G4 in progress; G4.1/G4.2 complete; production не одобрен | G4.3 Candidate economy protocol and hypothesis design — next / not started |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
@@ -83,6 +83,7 @@ production/research code и tests
 8. Один крупный этап не дробится на бесконечную лестницу подпунктов.
 9. Research candidate не называется production-ready до отдельного решения.
 10. G3/Create XP не входит в initial core economy и возвращается только после первого стабильного Gamification release, отдельного owner decision и evidence-backed trigger.
+11. G4.2 normalization boundary не является numeric economy policy и не активирует G4.3 автоматически.
 
 ## Словарь статусов
 
