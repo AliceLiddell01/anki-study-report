@@ -428,7 +428,12 @@ export function validateClientDraft(profile: InspectionProfile): Record<string, 
   const checkIds = profile.checks.map((check) => check.checkId);
   if (new Set(checkIds).size !== checkIds.length) errors["profile.checks"] = "duplicate_check_ids";
   profile.checks.forEach((check, index) => {
-    if (!check.roles.length || check.roles.some((role) => !roles.includes(role))) {
+    if (!/^[a-z][a-z0-9_-]{0,79}$/.test(check.checkId)) {
+      errors[`profile.checks.${index}.checkId`] = "invalid_check_id";
+    } else if (checkIds.indexOf(check.checkId) !== index) {
+      errors[`profile.checks.${index}.checkId`] = "duplicate_check_ids";
+    }
+    if (!check.roles.length || new Set(check.roles).size !== check.roles.length || check.roles.some((role) => !roles.includes(role))) {
       errors[`profile.checks.${index}.roles`] = "select_role";
     }
     if (check.kind === "min_text_length" && (!Number.isInteger(check.minLength) || check.minLength < 1 || check.minLength > 10_000)) {

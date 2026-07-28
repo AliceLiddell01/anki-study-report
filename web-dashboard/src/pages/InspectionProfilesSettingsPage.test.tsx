@@ -190,9 +190,25 @@ describe("Inspection Profiles guided settings workspace", () => {
     expect(container.querySelector("[role='tab'][aria-selected='true']")?.textContent).toContain("Основное");
     expect(container.querySelector("[data-testid='inspection-basic-editor']")?.textContent).not.toContain("meaning-required");
     expect(container.querySelector("#inspection-advanced-panel")).toBeNull();
-    await click(button("Расширенное"));
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-advanced")!);
     expect(container.querySelector("[data-testid='inspection-basic-editor']")).toBeNull();
-    expect(container.querySelector("#inspection-advanced-panel")?.textContent).toContain("meaning-required");
+    expect(container.querySelector<HTMLInputElement>("#inspection-check-id-0")?.value).toBe("meaning-required");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("round-trips Basic and Advanced edits through one unsaved strict draft", async () => {
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
+    await change(container.querySelector<HTMLSelectElement>("#inspection-basic-priority-0")!, "low");
+
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-advanced")!);
+    expect(container.querySelector<HTMLSelectElement>("#inspection-check-priority-0")?.value).toBe("low");
+    await change(container.querySelector<HTMLInputElement>("#inspection-role-1")!, "definition");
+
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-basic")!);
+    expect(container.querySelector<HTMLSelectElement>("#inspection-basic-check-role-0")?.value).toBe("definition");
+    expect(container.querySelector<HTMLSelectElement>("#inspection-basic-role-1")?.value).toBe("1");
+    expect(mocks.validate).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
@@ -364,7 +380,7 @@ describe("Inspection Profiles guided settings workspace", () => {
     await act(async () => {
       const prototype = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLSelectElement.prototype;
       Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(element, value);
-      element.dispatchEvent(new Event("change", { bubbles: true }));
+      element.dispatchEvent(new Event(element instanceof HTMLInputElement ? "input" : "change", { bubbles: true }));
     });
     await settle();
   }

@@ -128,6 +128,59 @@ describe("Inspection Profiles controlled validation regression", () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 
+  it("routes aggregate mappings and checks errors to Basic groups without an Advanced count", async () => {
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-advanced")!);
+
+    const meaningRole = container.querySelector<HTMLInputElement>("#inspection-role-1")!;
+    await changeInput(meaningRole, "term");
+    await click(button("Проверить настройку"));
+
+    expect(container.querySelector("#inspection-mode-advanced .inspection-mode-error-count")).toBeNull();
+    const mappingsError = container.querySelector<HTMLButtonElement>(".inspection-error-summary button")!;
+    await click(mappingsError);
+    expect(container.querySelector("#inspection-mode-basic")?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement?.id).toBe("inspection-basic-fields");
+
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-advanced")!);
+    await changeInput(container.querySelector<HTMLInputElement>("#inspection-role-1")!, "meaning");
+    await click(container.querySelector<HTMLButtonElement>("#inspection-mode-basic")!);
+    mocks.validate.mockResolvedValueOnce({
+      schemaVersion: 2,
+      valid: false,
+      effectiveState: "suggested",
+      stateReason: null,
+      fieldErrors: { "profile.checks": "duplicate_check_ids" },
+      preview: { status: "unavailable", requestedCount: 10, evaluatedCount: 0, missingCardIds: [], failureCount: 0, truncated: false, items: [] },
+    });
+    await click(button("Проверить настройку"));
+    expect(container.querySelector("#inspection-mode-advanced .inspection-mode-error-count")).toBeNull();
+    const checksError = container.querySelector<HTMLButtonElement>(".inspection-error-summary button")!;
+    await click(checksError);
+    expect(document.activeElement?.id).toBe("inspection-basic-requirements");
+  });
+
+  it("routes Advanced-only errors to the exact control and reports the exact badge count", async () => {
+    mocks.validate.mockResolvedValueOnce({
+      schemaVersion: 2,
+      valid: false,
+      effectiveState: "suggested",
+      stateReason: null,
+      fieldErrors: { "profile.checks.0.checkId": "invalid_check_id" },
+      preview: { status: "unavailable", requestedCount: 10, evaluatedCount: 0, missingCardIds: [], failureCount: 0, truncated: false, items: [] },
+    });
+    await renderPage();
+    await click(noteButton("Japanese Vocabulary"));
+    await click(button("Проверить настройку"));
+
+    expect(container.querySelector("#inspection-mode-advanced .inspection-mode-error-count")?.textContent).toBe("1");
+    await click(container.querySelector<HTMLButtonElement>(".inspection-error-summary button")!);
+    expect(container.querySelector("#inspection-mode-advanced")?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement?.id).toBe("inspection-check-id-0");
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   async function renderPage() {
     await act(async () => root.render(<InspectionProfilesSettingsPage />));
     await settle();
@@ -149,6 +202,14 @@ describe("Inspection Profiles controlled validation regression", () => {
     await act(async () => {
       element.value = value;
       element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+  }
+
+  async function changeInput(element: HTMLInputElement, value: string) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(element, value);
+      element.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await settle();
   }

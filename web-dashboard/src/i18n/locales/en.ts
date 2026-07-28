@@ -172,7 +172,7 @@ const en = {
       conflict: { title: "The profile changed in another operation", description: "The server is already at revision {{revision}}. Your browser draft was preserved and not overwritten.", reviewServer: "Refresh server version", reloadDiscard: "Load server version and discard draft" },
       errors: {
         title: "Fix the profile", description: "The backend remains authoritative. Go to each listed section to correct it.", required: "Enter a value.",
-        duplicate_roles: "Roles must be unique.", invalid_role: "Use a valid role ID.", select_field: "Select at least one field.", duplicate_check_ids: "Check IDs must be unique.", select_role: "Select an existing role.", invalid_min_length: "Enter an integer from 1 to 10000.",
+        duplicate_roles: "Roles must be unique.", invalid_role: "Use a valid role ID.", select_field: "Select at least one field.", duplicate_check_ids: "Check IDs must be unique.", invalid_check_id: "Use a valid check ID.", select_role: "Select an existing role.", invalid_min_length: "Enter an integer from 1 to 10000.",
       },
       actions: {
         retry: "Try again", useSuggestion: "Use suggestion", startEmpty: "Start empty", import: "Import JSON", export: "Export JSON",

@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import i18n from "../../i18n";
+import { validateClientDraft } from "../../hooks/useInspectionProfilesWorkspace";
 import type { InspectionProfile, InspectionProfileSummary } from "../../types/inspectionProfiles";
 import BasicProfileEditor from "./BasicProfileEditor";
 
@@ -93,7 +94,21 @@ describe("BasicProfileEditor", () => {
     const checkedTemplates = [...container.querySelectorAll<HTMLInputElement>(".inspection-basic-template-list input:checked")];
     expect(checkedTemplates).toHaveLength(1);
     expect(checkedTemplates[0]?.disabled).toBe(true);
+    expect(checkedTemplates[0]?.getAttribute("aria-describedby")).toBe("inspection-basic-template-keep-one");
+    expect(container.querySelector("#inspection-basic-template-keep-one")?.textContent).toContain("All card templates");
     expect(current.appliesTo.templateOrdinals).toEqual([0]);
+  });
+
+  it("strictly rejects empty, zero, negative, decimal, and oversized minimum lengths", () => {
+    const withLength = (minLength: number) => ({
+      ...structuredClone(draft),
+      checks: [{ checkId: "answer-length", kind: "min_text_length" as const, roles: ["answer"], mode: "any" as const, priority: "medium" as const, minLength }],
+    });
+    for (const value of [0, -1, 1.5, 10_001]) {
+      expect(validateClientDraft(withLength(value))["profile.checks.0.minLength"]).toBe("invalid_min_length");
+    }
+    expect(validateClientDraft(withLength(1))["profile.checks.0.minLength"]).toBeUndefined();
+    expect(validateClientDraft(withLength(10_000))["profile.checks.0.minLength"]).toBeUndefined();
   });
 
   async function render() {

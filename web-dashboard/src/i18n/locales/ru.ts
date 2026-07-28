@@ -168,7 +168,7 @@ const ru = {
       conflict: { title: "Профиль изменён в другой операции", description: "На сервере уже revision {{revision}}. Ваш черновик сохранён только в браузере и не перезаписан.", reviewServer: "Обновить серверную версию", reloadDiscard: "Загрузить серверную и отбросить черновик" },
       errors: {
         title: "Исправьте профиль", description: "Backend остаётся источником истины. Перейдите к каждому указанному разделу.", required: "Укажите значение.",
-        duplicate_roles: "Роли должны быть уникальны.", invalid_role: "Используйте допустимый ID роли.", select_field: "Выберите хотя бы одно поле.", duplicate_check_ids: "ID проверок должны быть уникальны.", select_role: "Выберите существующую роль.", invalid_min_length: "Введите целое число от 1 до 10000.",
+        duplicate_roles: "Роли должны быть уникальны.", invalid_role: "Используйте допустимый ID роли.", select_field: "Выберите хотя бы одно поле.", duplicate_check_ids: "ID проверок должны быть уникальны.", invalid_check_id: "Используйте допустимый ID проверки.", select_role: "Выберите существующую роль.", invalid_min_length: "Введите целое число от 1 до 10000.",
       },
       actions: {
         retry: "Повторить", useSuggestion: "Использовать подсказку", startEmpty: "Начать с пустого", import: "Импорт JSON", export: "Экспорт JSON",

@@ -18,7 +18,7 @@ export default function AdvancedProfileDisclosure({ item, draft, errors, onChang
         <strong>{ru ? "Точная структура профиля" : "Exact profile structure"}</strong>
         <small>{ru ? "Роли, ordinal, check kind, mode и стабильные ID" : "Roles, ordinals, check kinds, modes, and stable IDs"}</small>
       </div>
-        <section className="inspection-panel">
+        <section className="inspection-panel inspection-advanced-identity">
           <label className="inspection-display-name" htmlFor="inspection-profile-display-name">
             {ru ? "Название профиля" : "Profile name"}
             <input
@@ -26,15 +26,24 @@ export default function AdvancedProfileDisclosure({ item, draft, errors, onChang
               className="form-control"
               value={draft.displayName}
               aria-describedby={errors["profile.displayName"] ? "inspection-profile-display-name-error" : "inspection-profile-display-name-help"}
+              aria-invalid={Boolean(errors["profile.displayName"]) || undefined}
               onChange={(event) => onChange({ ...draft, displayName: event.target.value })}
             />
           </label>
           <p id="inspection-profile-display-name-help" className="inspection-help">{ru ? "Локальное название; тип записи Anki не переименовывается." : "A local name; the Anki note type is not renamed."}</p>
           {errors["profile.displayName"] ? <p id="inspection-profile-display-name-error" className="inspection-inline-error">{ru ? "Укажите название." : "Enter a name."}</p> : null}
         </section>
-        <TemplateScopeEditor item={item} draft={draft} onChange={onChange} errors={errors} />
-        <FieldMappingsEditor item={item} draft={draft} onChange={onChange} errors={errors} />
-        <ChecksEditor draft={draft} onChange={onChange} errors={errors} />
+        <div className="inspection-advanced-grid">
+          <div className="inspection-advanced-column is-mappings">
+            <FieldMappingsEditor item={item} draft={draft} onChange={onChange} errors={errors} />
+          </div>
+          <div className="inspection-advanced-column is-checks">
+            <ChecksEditor draft={draft} onChange={onChange} errors={errors} />
+          </div>
+          <div className="inspection-advanced-column is-templates">
+            <TemplateScopeEditor item={item} draft={draft} onChange={onChange} errors={errors} />
+          </div>
+        </div>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import { Download, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
 import RefreshButton from "../components/RefreshButton";
@@ -162,8 +163,8 @@ export default function InspectionProfilesSettingsPage() {
               onStartEmpty={() => workspace.dirty ? setConfirmAction("start_empty") : workspace.startEmpty()}
               onRevealAdvancedError={(path) => {
                 const basicControlId = basicControlIdForError(path);
-                setEditorMode(basicControlId ? "basic" : "advanced");
-                window.setTimeout(() => document.getElementById(basicControlId ?? controlIdForError(path))?.focus(), 0);
+                flushSync(() => setEditorMode(basicControlId ? "basic" : "advanced"));
+                document.getElementById(basicControlId ?? controlIdForError(path))?.focus();
               }}
             />
           ) : null}
@@ -377,16 +378,23 @@ function fieldLabel(t: Translate, path: string): string {
   return t("inspectionProfiles.editor.displayName");
 }
 function controlIdForError(path: string): string {
-  const mapping = path.match(/fieldMappings\.(\d+)/);
-  if (mapping) return `inspection-role-${mapping[1]}`;
-  const check = path.match(/checks\.(\d+)\.(roles|minLength)/);
-  if (check) return check[2] === "roles" ? `inspection-check-kind-${check[1]}` : `inspection-check-length-${check[1]}`;
-  if (path.includes("appliesTo")) return "inspection-advanced-panel";
+  const mapping = path.match(/fieldMappings\.(\d+)\.(role|fields)/);
+  if (mapping) return mapping[2] === "role" ? `inspection-role-${mapping[1]}` : `inspection-mapping-${mapping[1]}`;
+  const check = path.match(/checks\.(\d+)\.(checkId|kind|priority|mode|roles|minLength)/);
+  if (check) {
+    if (check[2] === "checkId") return `inspection-check-id-${check[1]}`;
+    if (check[2] === "roles") return `inspection-check-roles-${check[1]}`;
+    if (check[2] === "minLength") return `inspection-check-length-${check[1]}`;
+    return `inspection-check-${check[2]}-${check[1]}`;
+  }
+  if (path.includes("appliesTo")) return "inspection-template-scope";
   return "inspection-profile-display-name";
 }
 function basicControlIdForError(path: string): string | null {
+  if (path === "profile.fieldMappings") return "inspection-basic-fields";
   const mapping = path.match(/fieldMappings\.(\d+)\.fields/);
   if (mapping) return `inspection-basic-role-${mapping[1]}`;
+  if (path === "profile.checks") return "inspection-basic-requirements";
   const check = path.match(/checks\.(\d+)\.(roles|minLength)/);
   if (check) return check[2] === "roles" ? `inspection-basic-check-role-${check[1]}` : `inspection-basic-min-length-${check[1]}`;
   if (path === "profile.appliesTo.templateOrdinals") return "inspection-basic-template-scope";
