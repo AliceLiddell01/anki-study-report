@@ -19,10 +19,12 @@ const directories = {
   accessibility: path.join(evidenceRoot, "accessibility"),
   metrics: path.join(evidenceRoot, "metrics"),
   diagnostics: path.join(evidenceRoot, "diagnostics"),
-  comparisons: path.join(evidenceRoot, "comparisons"),
+  comparisonsFrame: path.join(evidenceRoot, "comparisons", "frame"),
+  comparisonsBasic: path.join(evidenceRoot, "comparisons", "basic"),
+  comparisonsAdvanced: path.join(evidenceRoot, "comparisons", "advanced"),
   overlays: path.join(evidenceRoot, "overlays"),
   pixelDiffs: path.join(evidenceRoot, "pixel-diffs"),
-  prototype: path.join(evidenceRoot, "prototype-references"),
+  prototype: path.join(evidenceRoot, "prototype"),
 };
 await Promise.all(Object.values(directories).map((directory) => mkdir(directory, { recursive: true })));
 
@@ -238,6 +240,7 @@ const report = {
   unexpectedRequests: [],
   requestFailures: [],
   expectedRequestAborts: [],
+  expectedConsoleErrors: [],
   consoleErrors: [],
   pageErrors: [],
   externalRequests: [],
@@ -245,6 +248,25 @@ const report = {
 
 function response(route, status, body) {
   return route.fulfill({ status, contentType: "application/json; charset=utf-8", body: JSON.stringify(body) });
+}
+
+function validationResponse(valid, fieldErrors = {}) {
+  return {
+    schemaVersion: 2,
+    valid,
+    effectiveState: valid ? "confirmed" : "suggested",
+    stateReason: null,
+    fieldErrors,
+    preview: {
+      status: "unavailable",
+      requestedCount: 10,
+      evaluatedCount: 0,
+      missingCardIds: [],
+      failureCount: 0,
+      truncated: false,
+      items: [],
+    },
+  };
 }
 
 async function configureContext(context, scenario) {
@@ -273,6 +295,15 @@ async function configureContext(context, scenario) {
       if (scenario.fixture === "load-error") return response(route, 200, { ok: false, error: "inspection_profiles_unavailable" });
       return response(route, 200, { ok: true, response: profilesResponse(scenario.fixture) });
     }
+    if (key === "POST /api/inspection-profiles/validate" && ["backend-invalid", "conflict"].includes(scenario.fixture)) {
+      const result = scenario.fixture === "backend-invalid"
+        ? validationResponse(false, { "profile.checks.0.checkId": "invalid_check_id" })
+        : validationResponse(true);
+      return response(route, 200, { ok: true, response: result });
+    }
+    if (key === "POST /api/inspection-profiles/update" && scenario.fixture === "conflict") {
+      return response(route, 409, { ok: false, error: "inspection_profile_revision_conflict", currentRevision: 7 });
+    }
     report.unexpectedRequests.push({ scenario: scenario.id, key });
     return response(route, 599, { ok: false, error: "unexpected_visual_fixture_request" });
   });
@@ -289,7 +320,13 @@ async function openScenario(browser, scenario) {
   await configureContext(context, scenario);
   const page = await context.newPage();
   page.on("console", (message) => {
-    if (message.type() === "error") report.consoleErrors.push({ scenario: scenario.id, text: message.text() });
+    if (message.type() !== "error") return;
+    const entry = { scenario: scenario.id, text: message.text() };
+    if (scenario.fixture === "conflict" && entry.text.includes("409 (Conflict)")) {
+      report.expectedConsoleErrors.push({ ...entry, reason: "Expected revision-conflict response." });
+      return;
+    }
+    report.consoleErrors.push(entry);
   });
   page.on("pageerror", (error) => report.pageErrors.push({ scenario: scenario.id, text: error.message }));
   page.on("requestfailed", (request) => {
@@ -299,8 +336,13 @@ async function openScenario(browser, scenario) {
       url: request.url().replace(/token=[^&]*/g, "token=<redacted>"),
       error: request.failure()?.errorText ?? "unknown",
     };
-    if (scenario.fixture === "loading" && failure.error === "net::ERR_ABORTED") {
-      report.expectedRequestAborts.push({ ...failure, reason: "Context closed after the loading-state capture." });
+    if (failure.error === "net::ERR_ABORTED" && new URL(request.url()).pathname === "/api/inspection-profiles/query") {
+      report.expectedRequestAborts.push({
+        ...failure,
+        reason: scenario.fixture === "loading"
+          ? "Context closed after the loading-state capture."
+          : "React lifecycle cancelled a superseded query before the awaited scenario response completed.",
+      });
       return;
     }
     report.requestFailures.push(failure);
@@ -371,18 +413,46 @@ async function prepareScenario(page, scenario) {
     if (preservedValue !== "Локально изменённый профиль") throw new Error("Dirty draft was not preserved across Basic and Advanced tabs");
     report.interactions.dirtyDraft = { basicAdvancedRoundTrip: true, preservedValue };
   }
-  await page.locator(".inspection-note-button:focus").evaluate((element) => element.blur()).catch(() => undefined);
-  await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
+  if (scenario.fixture === "backend-invalid") {
+    await page.getByRole("button", { name: scenario.language === "ru" ? "Проверить настройку" : "Check setup", exact: true }).click();
+    await page.locator("#inspection-errors-title").waitFor({ state: "visible" });
+  }
+  if (scenario.fixture === "conflict") {
+    await page.locator("#inspection-basic-priority-0").selectOption("low");
+    await page.getByRole("button", { name: scenario.language === "ru" ? "Подтвердить и включить" : "Confirm and enable", exact: true }).click();
+    await page.locator(".inspection-conflict").waitFor({ state: "visible" });
+  }
+  if (scenario.fixture === "tools") {
+    await page.locator(".inspection-tools-disclosure").evaluate((element) => { element.open = true; });
+    await page.locator(".inspection-profile-tools .danger-button").click();
+    await page.getByRole("dialog").waitFor({ state: "visible" });
+  }
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.evaluate(async () => {
+    if (!document.fonts?.ready) return;
+    await Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => setTimeout(resolve, 750)),
+    ]);
+  });
   await page.waitForTimeout(60);
 }
 
-function rectangle(page, selector) {
-  return page.locator(selector).evaluate((element) => {
+async function rectangle(page, selector) {
+  const locator = page.locator(selector).first();
+  if (!await locator.count()) return null;
+  return locator.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
     return {
       x: round(rect.x),
       y: round(rect.y),
+      viewportX: round(rect.x),
+      viewportY: round(rect.y),
+      pageX: round(rect.x + window.scrollX),
+      pageY: round(rect.y + window.scrollY),
       width: round(rect.width),
       height: round(rect.height),
       display: style.display,
@@ -390,7 +460,7 @@ function rectangle(page, selector) {
       fontFamily: style.fontFamily,
     };
     function round(value) { return Math.round(value * 100) / 100; }
-  }).catch(() => null);
+  });
 }
 
 async function geometry(page) {
@@ -413,6 +483,16 @@ async function geometry(page) {
     basicFields: ".inspection-basic-fields",
     basicRequirements: ".inspection-basic-requirements",
     basicScope: ".inspection-basic-scope",
+    advanced: ".inspection-advanced-grid",
+    advancedMappings: ".inspection-advanced-column.is-mappings",
+    advancedChecks: ".inspection-advanced-column.is-checks",
+    advancedTemplates: ".inspection-advanced-column.is-templates",
+    firstBasicControl: ".inspection-basic-row > label",
+    validation: ".inspection-error-summary, .inspection-validation-result",
+    actions: ".inspection-primary-actions",
+    tools: ".inspection-tools-disclosure",
+    conflict: ".inspection-conflict",
+    modal: "[role='dialog']",
   };
   const entries = await Promise.all(Object.entries(selectors).map(async ([name, selector]) => [name, await rectangle(page, selector)]));
   const font = await page.evaluate(() => {
@@ -456,6 +536,27 @@ async function capture(page, scenario) {
     report.ariaSnapshots.push(ariaFilename);
     return;
   }
+  const detailedScenarios = new Set([
+    "1440-ru-light-java-basic",
+    "1440-ru-dark-java-basic",
+    "1440-ru-dark-java-advanced",
+    "1024-ru-light-compact",
+    "1024-en-dark-compact",
+    "2560-ru-light-basic",
+    "2560-ru-light-advanced",
+    "1440-ru-light-dirty",
+    "1440-ru-light-backend-invalid",
+    "1440-ru-light-conflict",
+    "1440-en-light-tools",
+    "1024-ru-light-cleared-mapping-error",
+  ]);
+  if (!detailedScenarios.has(scenario.id)) {
+    const ariaFilename = `${scenario.id}.aria.yml`;
+    const aria = await page.locator('[data-testid="settings-layout-shell"]').ariaSnapshot();
+    await writeFile(path.join(directories.aria, ariaFilename), `${aria}\n`, "utf8");
+    report.ariaSnapshots.push(ariaFilename);
+    return;
+  }
   const topbar = page.locator(".topbar-surface");
   const topbarVisibility = await topbar.count() ? await topbar.evaluate((element) => element.style.visibility) : "";
   if (await topbar.count()) await topbar.evaluate((element) => { element.style.visibility = "hidden"; });
@@ -479,33 +580,69 @@ async function capture(page, scenario) {
     "basic-template-scope": ".inspection-basic-scope",
     "basic-inline-error": ".inspection-inline-error",
     "basic-body-to-action-boundary": ".inspection-primary-actions",
+    "advanced-full-panel": ".inspection-advanced-grid",
+    "advanced-field-mappings": ".inspection-advanced-column.is-mappings",
+    "advanced-checks": ".inspection-advanced-column.is-checks",
+    "advanced-template-scope": ".inspection-advanced-column.is-templates",
+    "validation-summary": ".inspection-error-summary, .inspection-validation-result",
+    "profile-actions": ".inspection-primary-actions",
+    "profile-tools": ".inspection-tools-disclosure",
+    "revision-conflict": ".inspection-conflict",
+    "confirmation-modal": "[role='dialog']",
   };
+  const frameRegions = [
+    "profiles-route-header", "profiles-workspace", "profiles-catalog",
+    "profiles-selected-row", "profiles-editor-identity", "profiles-editor-tabs",
+    "profiles-editor-body-start", "basic-body-to-action-boundary",
+  ];
+  const basicRegions = ["basic-full-panel", "basic-field-mappings", "basic-requirements", "basic-template-scope"];
+  const advancedRegions = ["advanced-full-panel", "advanced-field-mappings", "advanced-checks", "advanced-template-scope"];
+  const allowedRegions = scenario.id === "1440-ru-light-java-basic"
+    ? new Set([...frameRegions, ...basicRegions])
+    : scenario.advanced
+      ? new Set(["profiles-editor-tabs", "advanced-full-panel", ...advancedRegions.slice(1)])
+      : scenario.id === "1024-ru-light-cleared-mapping-error"
+        ? new Set(["profiles-editor-tabs", "basic-full-panel", "basic-inline-error", "basic-body-to-action-boundary"])
+        : scenario.fixture === "backend-invalid"
+          ? new Set(["profiles-editor-tabs", "validation-summary", "profile-actions"])
+          : scenario.fixture === "conflict"
+            ? new Set(["revision-conflict", "profile-actions"])
+            : scenario.fixture === "tools"
+              ? new Set(["profile-tools", "confirmation-modal"])
+              : scenario.fixture === "dirty"
+                ? new Set(["profiles-editor-tabs", "advanced-full-panel", "basic-body-to-action-boundary"])
+                : new Set(["profiles-workspace", "basic-full-panel", "basic-field-mappings", "basic-requirements", "basic-template-scope"]);
   try {
     for (const [region, selector] of Object.entries(regionSelectors)) {
+      if (!allowedRegions.has(region)) continue;
       const locator = page.locator(selector);
       if (!await locator.count() || !await locator.first().isVisible()) continue;
       await locator.first().evaluate((element, block) => element.scrollIntoView({ block, inline: "nearest" }), region === "profiles-editor-body-start" ? "start" : "center");
       await page.waitForTimeout(50);
       const filename = `${scenario.id}-${region}.png`;
-      const box = await locator.first().boundingBox();
-      if (region === "profiles-editor-body-start" && box) {
+      const viewportBox = await locator.first().boundingBox();
+      const pageBox = viewportBox ? await locator.first().evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return { x: rect.x + window.scrollX, y: rect.y + window.scrollY, width: rect.width, height: rect.height };
+      }) : null;
+      if (region === "profiles-editor-body-start" && viewportBox) {
         const viewport = page.viewportSize();
-        const clipX = Math.max(0, box.x);
-        const clipY = Math.max(0, box.y);
+        const clipX = Math.max(0, viewportBox.x);
+        const clipY = Math.max(0, viewportBox.y);
         await page.screenshot({
           path: path.join(directories.regions, filename),
           animations: "disabled",
           clip: {
             x: clipX,
             y: clipY,
-            width: Math.min(box.width, (viewport?.width ?? box.x + box.width) - clipX),
-            height: Math.min(48, box.height, (viewport?.height ?? box.y + box.height) - clipY),
+            width: Math.min(viewportBox.width, (viewport?.width ?? viewportBox.x + viewportBox.width) - clipX),
+            height: Math.min(48, viewportBox.height, (viewport?.height ?? viewportBox.y + viewportBox.height) - clipY),
           },
         });
       } else {
         await locator.first().screenshot({ path: path.join(directories.regions, filename), animations: "disabled" });
       }
-      report.regions.push({ scenario: scenario.id, region, filename, box });
+      report.regions.push({ scenario: scenario.id, region, filename, pageBox, viewportBox });
     }
   } finally {
     if (await topbar.count()) await topbar.evaluate((element, visibility) => { element.style.visibility = visibility; }, topbarVisibility);
@@ -532,7 +669,7 @@ async function runAxe(page, scenario) {
   await page.addScriptTag({ content: axeSource });
   const result = await page.evaluate(async () => {
     const axeResult = await window.axe.run({
-      include: [['[data-testid="settings-layout-shell"]']],
+      include: [["#dashboard-app-shell"]],
     }, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] },
     });
@@ -767,16 +904,28 @@ const scenarios = [
   { id: "1440-ru-light-empty", width: 1440, height: 900, theme: "light", language: "ru", fixture: "empty" },
   { id: "1440-ru-light-no-matches", width: 1440, height: 900, theme: "light", language: "ru", fixture: "no-matches" },
   { id: "1440-ru-light-dirty", width: 1440, height: 900, theme: "light", language: "ru", fixture: "dirty" },
+  { id: "1440-ru-light-backend-invalid", width: 1440, height: 900, theme: "light", language: "ru", fixture: "backend-invalid" },
+  { id: "1440-ru-light-conflict", width: 1440, height: 900, theme: "light", language: "ru", fixture: "conflict" },
+  { id: "1440-en-light-tools", width: 1440, height: 900, theme: "light", language: "en", fixture: "tools", select: "words" },
 ];
 
 const browser = await chromium.launch({ headless: true });
 for (const scenario of scenarios) {
+  console.log(`capture:${scenario.id}`);
   const { context, page } = await openScenario(browser, scenario);
-  if (scenario.id === "1440-ru-light-java-basic" || scenario.id === "1024-en-dark-compact") {
-    await page.locator(".inspection-note-button").first().waitFor({ state: "visible" });
+  await prepareScenario(page, scenario);
+  if ([
+    "1440-ru-light-java-basic",
+    "1440-ru-dark-java-advanced",
+    "1024-en-dark-compact",
+    "1440-ru-light-load-error",
+    "1440-ru-light-backend-invalid",
+    "1440-ru-light-conflict",
+    "1440-en-light-tools",
+  ].includes(scenario.id)) {
+    await resetScrollPositions(page);
     await runAxe(page, scenario);
   }
-  await prepareScenario(page, scenario);
   const state = await geometry(page);
   report.geometry[scenario.id] = state;
   if (state.h1Count !== 1) throw new Error(`${scenario.id}: expected one H1, found ${state.h1Count}`);
@@ -788,8 +937,27 @@ for (const scenario of scenarios) {
   if (scenario.width === 2560 && state.editor?.width < 1500) throw new Error(`${scenario.id}: editor did not expand at QHD`);
   if (scenario.width === 2560 && state.identityInner?.width > 1320) throw new Error(`${scenario.id}: identity inner layout is not bounded`);
   if (scenario.width === 2560 && state.lifecycle?.width > 400) throw new Error(`${scenario.id}: lifecycle content is too wide`);
-  if (scenario.id === "2560-ru-light-basic" && (state.basic?.width < 1000 || state.basic?.width > 1280)) {
-    throw new Error(`${scenario.id}: Basic inner layout width ${state.basic?.width ?? "missing"} is not bounded`);
+  if (scenario.id === "2560-ru-light-basic" && (!state.basic || !state.editor || state.basic.width < state.editor.width * .9)) {
+    throw new Error(`${scenario.id}: Basic does not use the available editor width`);
+  }
+  if (scenario.id === "2560-ru-light-basic" && state.firstBasicControl?.width > 390) {
+    throw new Error(`${scenario.id}: Basic controls are not individually bounded`);
+  }
+  if (scenario.id === "1024-ru-light-compact" && (
+    !state.basicFields
+    || !state.basicRequirements
+    || state.basicFields.x >= state.basicRequirements.x
+    || state.basicScope?.x !== state.basicRequirements.x
+  )) {
+    throw new Error(`${scenario.id}: Basic did not preserve fields-left and requirements/scope-right composition`);
+  }
+  if (scenario.id === "2560-ru-light-advanced" && (
+    !state.advancedMappings
+    || !state.advancedChecks
+    || !state.advancedTemplates
+    || !(state.advancedMappings.x < state.advancedChecks.x && state.advancedChecks.x < state.advancedTemplates.x)
+  )) {
+    throw new Error(`${scenario.id}: Advanced did not render three ordered columns`);
   }
   if (scenario.id === "1440-ru-light-java-basic") {
     await verifyTabs(page, scenario.language);
@@ -857,6 +1025,7 @@ await writeFile(path.join(directories.diagnostics, "network-ledger.json"), `${JS
   externalRequests: report.externalRequests,
 }, null, 2)}\n`, "utf8");
 await writeFile(path.join(directories.diagnostics, "console-page-errors.json"), `${JSON.stringify({
+  expectedConsoleErrors: report.expectedConsoleErrors,
   consoleErrors: report.consoleErrors,
   pageErrors: report.pageErrors,
 }, null, 2)}\n`, "utf8");
@@ -869,6 +1038,7 @@ console.log(JSON.stringify({
   unexpectedRequests: report.unexpectedRequests.length,
   requestFailures: report.requestFailures.length,
   expectedRequestAborts: report.expectedRequestAborts.length,
+  expectedConsoleErrors: report.expectedConsoleErrors.length,
   consoleErrors: report.consoleErrors.length,
   pageErrors: report.pageErrors.length,
   externalRequests: report.externalRequests.length,
@@ -940,12 +1110,12 @@ async function measurePrototypeGeometry(browserInstance) {
 
 async function createComparisons() {
   const pairs = [
-    { prototype: "profiles-1440-light-java-basic.png", production: "1440-ru-light-java-basic.png", id: "1440-ru-light-basic", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
-    { prototype: "prototype-1024-ru-light-basic-live.png", production: "1024-ru-light-compact.png", id: "1024-ru-light-basic", prototypeMask: { x: 304, y: 332, width: 702, height: 436 }, evidencePrototype: true },
-    { prototype: "prototype-2560-ru-light-basic-live.png", production: "2560-ru-light-basic.png", id: "2560-ru-light-basic", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 }, evidencePrototype: true },
-    { prototype: "profiles-1440-dark-java-advanced.png", production: "1440-ru-dark-java-advanced.png", id: "1440-ru-dark-advanced", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
-    { prototype: "profiles-1024-light-nav-menu-open.png", production: "1024-ru-light-overflow.png", id: "1024-ru-light-overflow", prototypeMask: { x: 304, y: 330, width: 702, height: 438 } },
-    { prototype: "profiles-qhd-100-light-advanced.png", production: "2560-ru-light-advanced.png", id: "2560-ru-light-advanced", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 } },
+    { prototype: "profiles-1440-light-java-basic.png", production: "1440-ru-light-java-basic.png", id: "1440-ru-light-basic", scope: "basic", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
+    { prototype: "prototype-1024-ru-light-basic-live.png", production: "1024-ru-light-compact.png", id: "1024-ru-light-basic", scope: "basic", prototypeMask: { x: 304, y: 332, width: 702, height: 436 }, evidencePrototype: true },
+    { prototype: "prototype-2560-ru-light-basic-live.png", production: "2560-ru-light-basic.png", id: "2560-ru-light-basic", scope: "basic", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 }, evidencePrototype: true },
+    { prototype: "profiles-1440-dark-java-advanced.png", production: "1440-ru-dark-java-advanced.png", id: "1440-ru-dark-advanced", scope: "advanced", prototypeMask: { x: 576, y: 260, width: 838, height: 640 } },
+    { prototype: "profiles-1024-light-nav-menu-open.png", production: "1024-ru-light-overflow.png", id: "1024-ru-light-overflow", scope: "frame", prototypeMask: { x: 304, y: 330, width: 702, height: 438 } },
+    { prototype: "profiles-qhd-100-light-advanced.png", production: "2560-ru-light-advanced.png", id: "2560-ru-light-advanced", scope: "advanced", prototypeMask: { x: 670, y: 291, width: 1861, height: 1149 } },
   ];
   const comparisonBrowser = await chromium.launch({ headless: true });
   for (const pair of pairs) {
@@ -964,15 +1134,17 @@ async function createComparisons() {
       prototypeMask: pair.prototypeMask,
       productionMask,
       labels: [`PROTOTYPE — ${pair.prototype}`, `PRODUCTION — ${pair.production}`],
+      mask: true,
     };
     await page.setContent("<!doctype html><meta charset='utf-8'><canvas></canvas>");
     await page.evaluate(async (input) => {
+      globalThis.renderProfilesComparison = async (comparison) => {
       const load = (base64) => new Promise((resolve) => {
         const image = new Image();
         image.onload = () => resolve(image);
         image.src = `data:image/png;base64,${base64}`;
       });
-      const [prototype, production] = await Promise.all([load(input.prototype), load(input.production)]);
+      const [prototype, production] = await Promise.all([load(comparison.prototype), load(comparison.production)]);
       const canvas = document.querySelector("canvas");
       const context = canvas.getContext("2d");
       const gap = 20;
@@ -983,15 +1155,24 @@ async function createComparisons() {
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.fillStyle = "#17263b";
       context.font = "700 16px sans-serif";
-      context.fillText(input.labels[0], 12, 24);
-      context.fillText(input.labels[1], prototype.width + gap + 12, 24);
+      context.fillText(comparison.labels[0], 12, 24);
+      context.fillText(comparison.labels[1], prototype.width + gap + 12, 24);
       context.drawImage(prototype, 0, labelHeight);
       context.drawImage(production, prototype.width + gap, labelHeight);
-      context.fillStyle = "#d9dee7";
-      context.fillRect(input.prototypeMask.x, input.prototypeMask.y + labelHeight, input.prototypeMask.width, input.prototypeMask.height);
-      context.fillRect(prototype.width + gap + input.productionMask.x, input.productionMask.y + labelHeight, input.productionMask.width, input.productionMask.height);
+      if (comparison.mask) {
+        context.fillStyle = "#d9dee7";
+        context.fillRect(comparison.prototypeMask.x, comparison.prototypeMask.y + labelHeight, comparison.prototypeMask.width, comparison.prototypeMask.height);
+        context.fillRect(prototype.width + gap + comparison.productionMask.x, comparison.productionMask.y + labelHeight, comparison.productionMask.width, comparison.productionMask.height);
+      }
+      };
+      await globalThis.renderProfilesComparison(input);
     }, data);
-    await page.locator("canvas").screenshot({ path: path.join(directories.comparisons, `${pair.id}-side-by-side.png`) });
+    await page.locator("canvas").screenshot({ path: path.join(directories.comparisonsFrame, `${pair.id}-frame-side-by-side.png`) });
+    if (pair.scope !== "frame") {
+      await page.evaluate(async (input) => globalThis.renderProfilesComparison(input), { ...data, mask: false });
+      const scopeDirectory = pair.scope === "basic" ? directories.comparisonsBasic : directories.comparisonsAdvanced;
+      await page.locator("canvas").screenshot({ path: path.join(scopeDirectory, `${pair.id}-unmasked-side-by-side.png`) });
+    }
     for (const mode of ["overlay", "difference"]) {
       await page.setContent("<!doctype html><meta charset='utf-8'><canvas></canvas>");
       await page.evaluate(async ({ input, mode }) => {
@@ -1008,15 +1189,11 @@ async function createComparisons() {
         context.fillStyle = "white";
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(prototype, 0, 0);
-        context.fillStyle = "#d9dee7";
-        context.fillRect(input.prototypeMask.x, input.prototypeMask.y, input.prototypeMask.width, input.prototypeMask.height);
         if (mode === "overlay") context.globalAlpha = .5;
         if (mode === "difference") context.globalCompositeOperation = "difference";
         context.drawImage(production, 0, 0);
         context.globalAlpha = 1;
         context.globalCompositeOperation = "source-over";
-        context.fillStyle = "#d9dee7";
-        context.fillRect(input.productionMask.x, input.productionMask.y, input.productionMask.width, input.productionMask.height);
       }, { input: data, mode });
       const outputDirectory = mode === "overlay" ? directories.overlays : directories.pixelDiffs;
       await page.locator("canvas").screenshot({ path: path.join(outputDirectory, `${pair.id}-${mode}.png`) });
