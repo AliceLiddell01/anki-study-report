@@ -220,9 +220,10 @@ tree: bbd3a2409df479557460d991494de8526143367f
 
 Artifact содержит manifest, SHA256SUMS, source identities, Prototype
 references, production captures, comparisons, overlays, pixel diffs, metrics,
-accessibility, interactions, diagnostics, report и exact harness source.
-Финальные ZIP size/SHA-256/CRC фиксируются после docs-only commit, чтобы
-`finalDocsHead` был записан отдельно от screenshot implementation source.
+accessibility, interactions, diagnostics, report и exact harness source. Он
+пересобран после документационного delivery head, поэтому `finalDocsHead`
+записан отдельно от screenshot implementation source. Финальные ZIP
+size/SHA-256/CRC опубликованы в body PR #130 и итоговом отчёте.
 
 ## Findings ledger
 
@@ -256,10 +257,11 @@ Profiles owner acceptance, ready-for-review и merge не заявляются.
 | --- | --- |
 | `ddbd7ec7fcb166ffcd7dfbef8ee9da0838326076` | `feat: recompose guided profile editor` |
 | `1f60e9d3fa6989e4c01fd03033a0f3d35f12668a` | `test: expand guided editor browser evidence` |
+| `70e0b89b2152245b7b458d8fdbe7d8d12aff3519` | `docs: document guided editor candidate` |
 
-Оба commit отправлены в
-`origin/c2-manual-acceptance-remediation`. Финальный docs-only commit и
-local/remote equality записываются после синхронизации документации.
+Implementation, harness и основная документационная синхронизация отправлены
+в `origin/c2-manual-acceptance-remediation`. Финальный delivery head совпадает
+с remote; его точный SHA записан в external evidence provenance.
 
 ## Docs и PR
 
@@ -271,5 +273,6 @@ local/remote equality записываются после синхронизац
 - `docs/guided-inspection-profiles.md`;
 - этот implementation report.
 
-Body существующего PR #130 обновляется после push финального docs-only commit.
-PR остаётся draft и unmerged. WP4 Advanced не начат.
+Body существующего PR #130 обновлён после push документации и содержит
+фактические проверки, evidence identity и явные границы acceptance. PR остаётся
+draft и unmerged. WP4 Advanced не начат.
