@@ -20,7 +20,9 @@ G3: DEFERRED / POST-MVP / NOT STARTED
 G4: IN PROGRESS
 G4.1: COMPLETE
 core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
-G4.2: NEXT / NOT STARTED
+G4.2: COMPLETE
+input/uncertainty model: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+G4.3: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -48,8 +50,6 @@ rust-oracle/   isolated Rust implementation
 - [Human contract](../../docs/gamification/core-economy-problem-contract.md)
 - [G4.1 closeout](../../roadmap/gamification/g4-core-economy-problem-contract.md)
 
-Frozen state:
-
 ```text
 contract_id: core-economy-problem-contract
 version: 1
@@ -62,12 +62,67 @@ Learn candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status: CONFIRMATORY_INCONCLUSIVE
 terminology / personas / threats / invariants: 30 / 9 / 14 / 28
 allowed final outcomes: 3
-G4.2 requirements: 14
-G4.2 started: false
 production approved: false
 ```
 
-G3 is deferred until after the first stable Gamification release, is outside the first-MVP critical path and does not block G4, G5 or G6. G4.1 adds no evaluator, CLI command, candidate registry, matrix, fixture trace or simulation. It selects no conversion ratio, normalized XP, productive-day threshold, level curve, streak, Momentum or recovery formula.
+G4.1 adds no evaluator, CLI command, candidate registry, matrix, fixture trace or simulation and selects no numeric policy.
+
+The corrected canonical schema chronology is:
+
+```text
+defective intermediate commit reachable from merged history: YES
+defective schema present in final tree: NO
+defective schema used as validated result: NO
+```
+
+## G4.2 input normalization and uncertainty contract
+
+- [Machine contract](contracts/core-economy-input-normalization-v1.json)
+- [Strict Draft 2020-12 schema](schemas/core-economy-input-normalization-v1.schema.json)
+- [Human model](../../docs/gamification/core-economy-input-normalization-model.md)
+- [G4.2 closeout](../../roadmap/gamification/g4-core-economy-input-normalization.md)
+
+```text
+contract_id: core-economy-input-normalization
+version: 1
+status: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+domain input types: REVIEW_DOMAIN_INPUT; LEARN_DOMAIN_INPUT
+common interface records: 4
+axes: SESSION; ANKI_DAY; CALENDAR_DAY
+dispositions: 7
+fail-closed reasons: 18
+personas: 9
+fixture requirements: 15
+threats / invariants: 14 / 28
+validation rules: 24
+G4.3 requirements: 14
+```
+
+Review uncertainty:
+
+```text
+axis: REVIEW_MODEL_AXIS_V1
+members: P-STEP-ZERO; P-TAPER-ZERO-30D
+selection: NONE
+default: NONE
+aggregation: PARALLEL_SEPARATE
+averaging: PROHIBITED
+```
+
+Learn limitation:
+
+```text
+candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+status: CONFIRMATORY_INCONCLUSIVE
+reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+source unit: LRU
+frozen source total: 1.0
+common economy XP: false
+```
+
+The standalone schema validates the canonical contract and exposes strict `$defs` for Review/Learn inputs, normalization input, contribution record, daily input/result, persona descriptors and fixture requirements.
+
+G4.2 adds no evaluator or CLI command. It creates no candidate family, exact trace, matrix, simulation or result and selects no ratio, normalized unit/value, cap, productive-day threshold, level curve, streak, Momentum or recovery formula.
 
 ## G2.1 Learn XP artifacts
 
@@ -76,24 +131,7 @@ G3 is deferred until after the first stable Gamification release, is outside the
 - [Human problem contract](../../docs/gamification/learn-xp-problem-contract.md)
 - [G2.1 closeout](../../roadmap/gamification/g2-learn-xp-problem-contract.md)
 
-G2.1 freezes:
-
-```text
-problem statement and terminology
-Anki scheduler-state / Learn XP research-state boundary
-identity candidates: CARD, NOTE, SIBLING_GROUP, LEARNING_EPISODE
-pending and confirmation minimum requirements
-rewardable/non-rewardable category boundary
-six anti-farming threat families
-19 protected invariants
-privacy and claims boundaries
-G2.2 entry contract
-three allowed final G2 outcomes
-```
-
-G2.1 adds no executable command and runs no simulation. It does not select an identity winner, lifecycle, reward amount, pending ratio, confirmation delay, candidate family or matrix.
-
-The contract reuses existing `strict_json.py`, `canonical_json.py` and bounded workspace conventions as validation references. No generic validator framework or production code was added.
+G2.1 freezes the problem, scheduler/reward boundary, four identity candidates, pending/confirmation requirements, six threat families, 19 invariants, privacy/claims and G2.2 entry. It selects no identity winner, amount, ratio, delay, candidate family or matrix.
 
 ## G2.2 Learn XP lifecycle artifacts
 
@@ -106,26 +144,15 @@ The contract reuses existing `strict_json.py`, `canonical_json.py` and bounded w
 - [Focused tests](tests/test_learn_lifecycle.py)
 - [G2.2 closeout](../../roadmap/gamification/g2-learn-xp-lifecycle.md)
 
-Frozen G2.2 state:
-
 ```text
 model status: FROZEN_PRE_CANDIDATE_DESIGN
-states: 7
-events: 20
-transitions: 12
-identity architecture: FACTORIZED
-generic form: LearningEpisode<AchievementSubject>
+states / events / transitions: 7 / 20 / 12
+identity architecture: LearningEpisode<AchievementSubject>
 subject candidates: CARD; NOTE; SIBLING_GROUP
 subject winner: NONE
-fixtures: 23
-threat families: 6
-protected invariants: 19
+fixtures / threats / invariants: 23 / 6 / 19
 manifest digest: 4e39fa6eb8d95de00765ae65b9efe54c542794f2f541735086707319717d0c93
 ```
-
-The pre-conformance model was published at `63741bcc4d757cd131ab94d9e262042679460d6f`. Focused validation and one bounded full-suite retry after a concrete Cargo cache repair passed. No lifecycle semantics changed after conformance.
-
-G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix.
 
 ## G2.3 Learn XP candidate protocol artifacts
 
@@ -136,29 +163,14 @@ G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievemen
 - [Focused protocol tests](tests/test_learn_candidate_protocol.py)
 - [G2.3 closeout](../../roadmap/gamification/g2-learn-xp-candidate-protocol.md)
 
-Frozen G2.3 state:
-
 ```text
 protocol status: FROZEN_PRE_SCREENING_IMPLEMENTATION
-protocol publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
-families: 2
-parameterizations: 4
-subject strategies: 2
-delay policies: 2
-candidates: 8
-reference variants: 2
-hypotheses: 5
-hard gates: 23
-descriptive metrics: 14
-expected units: 340
-unique unit IDs: 340
-seed axis: ABSENT_DETERMINISTIC
+publication SHA: 41313c9369c76d331d489a9aa4b44da2497b3132
+families / candidates / references: 2 / 8 / 2
+hypotheses / hard gates / metrics: 5 / 23 / 14
+expected / unique units: 340 / 340
 full research suite: 982 passed
 ```
-
-G2.3 also consolidates lifecycle digest serialization into the shared helper and enforces exact direct-event types without changing the 31 frozen lifecycle results or fixture manifest digest.
-
-The protocol contains no screening results, candidate outcomes or survivors.
 
 ## G2.4 Learn XP bounded-screening artifacts
 
@@ -169,7 +181,7 @@ The protocol contains no screening results, candidate outcomes or survivors.
 - [Technical reference](../../docs/gamification/learn-xp-bounded-screening.md)
 - [G2.4 closeout](../../roadmap/gamification/g2-learn-xp-bounded-screening.md)
 
-The implementation consumes only the frozen `340/340` manifest generated by `learn_candidate_protocol.py`. The first canonical attempt on `ef7c638a…` is quarantined as `INVALID`; its results-viewed disclosure remains in the replacement evidence. The packaging-only `HARNESS` correction normalizes tar member mode to `0644` and was published as `548b27de6283b32fb27541db02ce6c8b65c29756` without changing families, delays, subjects, units, gates, metrics or selection rules. The replacement run completed `340/340` unique units, detached recomputation and byte-identical bundle reproduction.
+The first canonical attempt on `ef7c638a…` remains quarantined as `INVALID`. The packaging-only correction was published as `548b27de6283b32fb27541db02ce6c8b65c29756`. The valid replacement completed `340/340` unique units, detached validation and byte-identical reproduction.
 
 ## G2.5 Learn XP confirmatory artifacts
 
@@ -181,13 +193,11 @@ The implementation consumes only the frozen `340/340` manifest generated by `lea
 - [Focused tests](tests/test_learn_confirmatory.py)
 - [Confirmatory closeout](../../roadmap/gamification/g2-learn-xp-confirmatory-evidence.md)
 
-The prospectively published matrix completed `216/216/216` units with `0/0/0` missing/extra/duplicates, detached validation and byte-identical reproduction. Both survivors are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable under `SYNTHETIC_CONTRACT_ONLY`; the zero-reward reference is `REFERENCE_ONLY`. No ranking, winner, recommendation, final model or production approval was produced by G2.5.
+The prospectively published matrix completed `216/216/216` units with `0/0/0` missing/extra/duplicates, detached validation and byte-identical reproduction. Both survivors are `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable; the reference is `REFERENCE_ONLY`.
 
 ## G2.6 final Learn XP decision
 
 - [Final decision and G2 closeout](../../roadmap/gamification/g2-learn-xp-decision.md)
-
-G2.6 is docs-only and adds no command, protocol field, schema, simulation, matrix or evidence. It closes G2 with:
 
 ```text
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
@@ -195,7 +205,7 @@ recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 decision basis: MINIMIZE_UNVALIDATED_REWARD_STATE_SURFACE
 ```
 
-The selected model preserves the same frozen `1.0 LRU` confirmed total as the pending-split survivor, while creating no provisional reward exposure and requiring the smaller accounting/explanation surface. Both G2.5 outcomes remain `CONFIRMATORY_INCONCLUSIVE` because the disposable Anki identity probe was unavailable. The non-selected pending-split candidate remains non-falsified and is not rejected as invalid. The recommendation is not confirmatory eligibility, human-learning evidence, motivation evidence or production approval.
+The selected model preserves `1.0 LRU`, creates no provisional exposure and has the smaller accounting/explanation surface. The selected and non-selected candidates retain `CONFIRMATORY_INCONCLUSIVE`; the recommendation is not production approval.
 
 ## Current G1 artifacts
 
@@ -213,6 +223,22 @@ The selected model preserves the same frozen `1.0 LRU` confirmed total as the pe
 - [G1.5 human protocol](../../docs/gamification/review-xp-confirmatory-protocol.md)
 - [G1.5 closeout](../../roadmap/gamification/g1-confirmatory-evidence.md)
 - [G1.6 decision and G1 closeout](../../roadmap/gamification/g1-review-xp-decision.md)
+
+G1.4 retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`. G1.5 marked both `CONFIRMATORY_ELIGIBLE`. G1.6 closed with `DEFER_REVIEW_MODEL`, selected no winner and preserved both candidates as eligible, unselected and non-falsified.
+
+## Retained G1/G2 evidence identities
+
+G2.1 reuses existing `strict_json.py`, `canonical_json.py` and bounded workspace conventions as validation references. No generic validator framework or production code was added.
+
+The pre-conformance G2.2 model was published at `63741bcc4d757cd131ab94d9e262042679460d6f`. Focused validation and one bounded full-suite retry after a concrete Cargo cache repair passed. No lifecycle semantics changed after conformance. G2.2 selects no XP amount, pending ratio, numeric confirmation delay, achievement-subject winner, candidate family or screening matrix.
+
+G2.3 consolidates lifecycle digest serialization into the shared helper and enforces exact direct-event types without changing the 31 frozen lifecycle results or fixture manifest digest. Its protocol contains no screening results, candidate outcomes or survivors.
+
+The G2.4 implementation consumes only the frozen `340/340` manifest generated by `learn_candidate_protocol.py`. The first canonical attempt on `ef7c638a…` is quarantined as `INVALID`; its results-viewed disclosure remains in replacement evidence. The packaging-only `HARNESS` correction normalizes tar member mode to `0644` and was published as `548b27de6283b32fb27541db02ce6c8b65c29756` without changing families, delays, subjects, units, gates, metrics or selection rules.
+
+G2.5 used `SYNTHETIC_CONTRACT_ONLY`; the zero-reward reference remains `REFERENCE_ONLY`. No ranking, winner, recommendation, final model or production approval was produced by G2.5.
+
+G2.6 is docs-only and adds no command, protocol field, schema, simulation, matrix or evidence. The non-selected pending-split candidate remains non-falsified and is not rejected as invalid. The recommendation is not confirmatory eligibility, human-learning evidence, motivation evidence or production approval.
 
 G1.4 executed exact 160-unit bounded screening and retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`.
 
@@ -261,11 +287,11 @@ run-learn-xp-confirmatory
 validate-learn-xp-confirmatory-evidence
 ```
 
-The G2.4 and G2.5 commands remain historical research-only surfaces. G4.1 adds no executable command and reruns no matrix.
+The G2.4/G2.5 commands remain historical research-only surfaces. G4.1 and G4.2 add no executable command and rerun no matrix.
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1 is a prospective contract freeze. G2.2 adds deterministic synthetic lifecycle fixtures and conformance evidence. G2.3 adds prospective candidate protocol and dry matrix identities. G2.4 records one invalid disclosed synthetic attempt and one valid full replacement run. G2.5 records a prospectively published, deterministic confirmatory run with two fail-closed inconclusive candidate outcomes. G2.6 records a bounded research/product governance recommendation without adding evidence or changing frozen outcomes. G4.1 prospectively freezes the two-domain core economy problem without adding evidence or changing G1/G2 outcomes. The valid external bundles remain owner-managed and are not part of Git; no production evidence or approval exists.
+G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1–G2.6 preserve their contract/evidence/governance chronology. G4.1 freezes the two-domain problem. G4.2 freezes the input/uncertainty/axis/fail-closed boundary without adding results or changing G1/G2 outcomes. External evidence bundles remain owner-managed and outside Git.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
 

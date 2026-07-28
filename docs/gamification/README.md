@@ -21,7 +21,9 @@ G3 blocks G4/G5/G6: NO
 G4: IN PROGRESS
 G4.1: COMPLETE
 core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
-G4.2: NEXT / NOT STARTED
+G4.2: COMPLETE
+input/uncertainty model: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
+G4.3: NEXT / NOT STARTED
 production integration: PROHIBITED
 ```
 
@@ -36,45 +38,58 @@ The canonical `gamification` branch contains isolated research contracts, fixtur
 - [Strict Draft 2020-12 schema](../../research/gamification-sim/schemas/core-economy-problem-contract-v1.schema.json)
 - [G4.1 closeout](../../roadmap/gamification/g4-core-economy-problem-contract.md)
 
-G4.1 freezes the problem and boundaries for a two-domain core economy:
+G4.1 freezes the two-domain problem for `REVIEW_DOMAIN` and `LEARN_DOMAIN`, excludes `CREATE_DOMAIN`, preserves both Review candidates and the inconclusive Learn limitation, and selects no numeric economy policy.
+
+### G4.2 input normalization and uncertainty model
+
+- [Human input/uncertainty model](core-economy-input-normalization-model.md)
+- [Machine contract](../../research/gamification-sim/contracts/core-economy-input-normalization-v1.json)
+- [Strict Draft 2020-12 schema](../../research/gamification-sim/schemas/core-economy-input-normalization-v1.schema.json)
+- [G4.2 closeout](../../roadmap/gamification/g4-core-economy-input-normalization.md)
+
+G4.2 freezes:
 
 ```text
-REVIEW_DOMAIN
-LEARN_DOMAIN
+REVIEW_DOMAIN_INPUT
+LEARN_DOMAIN_INPUT
+NORMALIZATION_INPUT
+DOMAIN_CONTRIBUTION_RECORD
+DAILY_AGGREGATION_INPUT
+DAILY_AGGREGATION_RESULT_PLACEHOLDER
 ```
 
-`CREATE_DOMAIN` is excluded. G3 is deferred until after the first stable Gamification release, is not on the first-MVP critical path and does not block G4, G5 or G6. Reactivation requires a separate owner decision and a concrete evidence-backed trigger.
-
-The Review input remains an explicit uncertainty axis:
+Review remains an explicit parallel uncertainty axis:
 
 ```text
-P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
-P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected; not falsified
-Review winner: NONE
+axis: REVIEW_MODEL_AXIS_V1
+members: P-STEP-ZERO; P-TAPER-ZERO-30D
+selection: NONE
+default: NONE
+averaging: PROHIBITED
 ```
 
-The Learn input remains bounded by its source evidence:
+Learn remains bounded by its source evidence:
 
 ```text
-C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
-G2.5 status: CONFIRMATORY_INCONCLUSIVE
-reason: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+status: CONFIRMATORY_INCONCLUSIVE
+limitation: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
 confirmatory eligible: NO
 production ready: NO
+common economy XP: NO
 ```
 
-Contract inventory:
+Axes are explicitly separated:
 
 ```text
-terminology: 30
-personas: 9
-threat families: 14
-protected invariants: 28
-allowed final outcomes: 3
-G4.2 requirements: 14
+SESSION
+ANKI_DAY
+CALENDAR_DAY
 ```
 
-No conversion ratio, normalized XP, daily cap, productive-day threshold, level curve, streak, Momentum or recovery formula was selected. No candidate registry, matrix, simulation or production implementation was started.
+The contract contains 7 dispositions, 18 fail-closed reasons, 9 persona descriptors, 15 future fixture requirements, 14 threats, 28 invariants and 14 G4.3 entry requirements.
+
+No conversion ratio, normalized unit/value, cap, productive-day threshold, level curve, streak, Momentum or recovery formula was selected. No candidate family, exact trace, matrix, simulation or production implementation was started.
 
 ## Current G2 contracts
 
@@ -170,29 +185,32 @@ G1 closed with `DEFER_REVIEW_MODEL`. `P-STEP-ZERO` and `P-TAPER-ZERO-30D` remain
 - [Review session and Anki-day aggregation](anki-review-session-and-day.md)
 - [Review simulation specification](anki-review-simulation-spec.md)
 
-These are references for terminology, research discipline and protected invariants. Their Review XP formulas, candidates and matrices do not define Learn XP automatically or determine G4 normalization automatically.
+These are references for terminology, research discipline and protected invariants. Their Review XP formulas, candidates and matrices do not determine G4 normalization automatically.
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2.1 is a prospective contract freeze; G2.2 adds deterministic synthetic lifecycle fixtures and a research-only evaluator; G2.3 adds prospective protocol and dry matrix identities; G2.4 contains a disclosed invalid synthetic attempt and a packaging-only correction before a valid full rerun; G2.5 contains prospectively published deterministic confirmatory evidence with two fail-closed inconclusive candidate outcomes; G2.6 adds a docs-only governance recommendation without new simulation or evidence. G4.1 prospectively freezes the two-domain core-economy problem without adding simulation or real-user evidence. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G4 research artifacts.
+G1 evidence is synthetic. G2.1–G2.6 retain their prospective/evidence/governance chronology. G4.1 freezes the two-domain problem. G4.2 freezes typed input/uncertainty/axis/fail-closed boundaries without adding exact traces, simulation or real-user evidence. No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G4 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G2 remains complete with a bounded research recommendation, and its selected candidate remains `CONFIRMATORY_INCONCLUSIVE`, not confirmatory-eligible and not production-ready. G4.1 is a research contract freeze; G4.2 remains not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G4.2 is a research contract freeze; G4.3 remains not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
 
-### G4.1 final state
+### G4.2 final state
 
 ```text
 G3: DEFERRED / POST-MVP / NOT STARTED
-G3 blocks G4/G5/G6: NO
 G4: IN PROGRESS
 G4.1: COMPLETE
-contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
+G4.2: COMPLETE
+model: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
 Review inputs: P-STEP-ZERO; P-TAPER-ZERO-30D
-Review winner: NONE
+Review winner/default: NONE / NONE
 Learn input: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status: CONFIRMATORY_INCONCLUSIVE
-G4.2: NEXT / NOT STARTED
+axes: SESSION; ANKI_DAY; CALENDAR_DAY
+numeric policy: NOT SELECTED
+G4.3: NEXT / NOT STARTED
+simulation: NOT STARTED
 production approved: NO
 production integration: PROHIBITED
 ```
