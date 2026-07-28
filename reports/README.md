@@ -21,6 +21,8 @@ production code и tests
 - [C2 Cards Prototype v3.2.3 production integration — Stage 2](core/c2-cards-v323-production-integration.md)
 - [C2 Cards final AV/audio/media evidence closeout](core/c2-cards-final-av-media-evidence-closeout.md)
 - [C2 Inspection Profiles corrected screenshot-first audit](core/c2-inspection-profiles-screenshot-audit.md)
+- [C2 WP1 Settings shared shell](core/c2-settings-shell-wp1-implementation.md)
+- [C2 WP2 Inspection Profiles workspace frame](core/c2-inspection-profiles-wp2-frame-implementation.md)
 
 Остальные C1.5R reports остаются в [`reports/core/`](core/).
 

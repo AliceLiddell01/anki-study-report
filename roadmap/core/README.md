@@ -44,10 +44,13 @@ PR #130 Stage 2 Cards 1:1 — ACCEPTED / COMPLETE / FROZEN
 Cards technical blockers — NONE
 Cards accessibility blockers — NONE
 Inspection Profiles corrected screenshot-first audit — COMPLETE; visual target locked
-PR #130 Stage 3 Inspection Profiles 1:1 implementation — NOT STARTED
 WP1 Settings shared shell — IMPLEMENTATION CANDIDATE DELIVERED
 WP1 Settings external visual review — PENDING
-final verification и отдельное решение о merge PR #130 — NOT PERFORMED
+WP2 Inspection Profiles header/catalog/workspace frame — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 Inspection Profiles external visual review — PENDING
+Inspection Profiles Basic/Advanced inner implementation — NOT STARTED
+WP2 consolidated automated verification — PASS
+отдельное решение о merge PR #130 — NOT PERFORMED
 C3–C6 — обязательный будущий путь; C3 не активирован автоматически
 release — не начат
 ```
@@ -90,9 +93,10 @@ problem
 **Integration:** merged в `core`
 **Stage 1 synchronization/rejected-overlay cleanup:** complete в draft PR #130
 **Stage 2 Cards 1:1:** owner accepted, complete и frozen — [contract](../../docs/cards-v323-production-workspace.md), [report](../../reports/core/c2-cards-final-av-media-evidence-closeout.md)
-**Inspection Profiles corrected screenshot-first audit:** complete; production implementation not started
-**Stage 3 Inspection Profiles 1:1 implementation:** not started
+**Inspection Profiles corrected screenshot-first audit:** complete
 **WP1 Settings shared shell:** implementation candidate delivered; external visual review pending — [report](../../reports/core/c2-settings-shell-wp1-implementation.md)
+**WP2 Inspection Profiles header/catalog/workspace frame:** implementation candidate delivered; external visual review pending — [report](../../reports/core/c2-inspection-profiles-wp2-frame-implementation.md)
+**Inspection Profiles Basic/Advanced inner implementation:** not started
 
 Полный implementation ledger: [C2 closeout](../../reports/core/c2-core-hardening-ui-remediation.md).
 

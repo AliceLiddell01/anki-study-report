@@ -49,10 +49,13 @@ Cards status — ACCEPTED / COMPLETE / FROZEN
 Cards technical blockers — NONE
 Cards accessibility blockers — NONE
 Inspection Profiles corrected screenshot-first audit — COMPLETE
-PR #130 Stage 3: Inspection Profiles 1:1 implementation — NOT STARTED
 WP1 Settings shared shell — IMPLEMENTATION CANDIDATE DELIVERED
 WP1 Settings external visual review — PENDING
-final verification / merge decision / C3 — NOT PERFORMED
+WP2 Inspection Profiles header/catalog/workspace frame — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 Inspection Profiles external visual review — PENDING
+Inspection Profiles Basic/Advanced inner implementation — NOT STARTED
+WP2 consolidated automated verification — PASS
+PR-wide merge decision / C3 — NOT PERFORMED
 release — не начат
 ```
 
@@ -141,7 +144,8 @@ Cards production заморожен. Без новой доказанной ре
 | `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
 | replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
 | animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
-| `#/settings/inspection-profiles` | corrected screenshot-first audit | AUDIT COMPLETE / IMPLEMENTATION NOT STARTED |
+| `#/settings/inspection-profiles` frame | production matrix, state coverage, ARIA/axe/keyboard/network evidence and prototype comparisons | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
+| `#/settings/inspection-profiles` Basic/Advanced internals | current production-native editors preserved | NOT STARTED |
 | Settings shared shell | production matrix: 1440/1024/QHD, RU/EN, light/dark; ARIA/axe/keyboard/network evidence | IMPLEMENTATION CANDIDATE DELIVERED / EXTERNAL VISUAL REVIEW PENDING |
 | Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
 
@@ -158,7 +162,8 @@ Reports:
 - [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
 - [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
 - [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
-- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md).
+- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
+- [WP2 Inspection Profiles workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md).
 
 ## Platform / CI
 
