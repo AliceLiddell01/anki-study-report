@@ -3,7 +3,7 @@
 ## Status
 
 ```text
-Mode: ChatGPT
+Mode: ChatGPT + owner-executed bounded WSL publisher
 G4: IN PROGRESS
 G4.1: COMPLETE
 G4.2: COMPLETE
@@ -14,31 +14,36 @@ G4.4: NEXT / NOT STARTED
 Review winner: NONE
 preferred research direction: GRACEFUL_DEGRADATION
 results: NOT_AVAILABLE
+screening: NOT_STARTED
 simulation: NOT_STARTED
 production approved: NO
 production integration: PROHIBITED
 ```
 
-## Repository / delivery
+## Repository and delivery
 
 ```text
 repository: AliceLiddell01/anki-study-report
 target branch: gamification
 starting gamification HEAD: a46e920cea0bbe97f2d0c785965febf0a52ed9e7
 task branch: g4-3-candidate-economy-protocol
+protocol publication HEAD: 801a0112fa1af9334b0992725056da4292bc5d94
+final PR head: 8b22851abbd71f661957fefcbde84548fdcd38f4
 PR: #166
 PR base: gamification
-protocol publication HEAD: 801a0112fa1af9334b0992725056da4292bc5d94
-final PR head / merge SHA: RECORDED_IN_EXTERNAL_REPORT_AFTER_VERIFIED_MERGE
-AGENTS.md: NOT FOUND
+merge SHA: 0d42e7bbee80b99de7e3369071c9a2dcdc6ba6bb
+remote task branch: DELETED
+owner local worktree: REMOVED
+owner local task branch: DELETED
 master changed: NO
-local owner execution: OWNER_EXECUTED
+AGENTS.md: NOT FOUND AT STAGE START
 ```
+
+The original owner runner returned `EXIT_CODE=1` only after the successful merge because safe local branch deletion compared the task branch with the unrelated current owner checkout branch. The owner subsequently removed the already-merged local task branch. This cleanup event changed no repository content and does not alter the G4.3 verdict.
 
 ## G4.2 artifact identity correction
 
-The stale ledger entry described the pre-final human-document state. The current
-document remains the exact final bytes merged by PR #165.
+The stale ledger entry described a pre-final human-document state. The human document remained the exact final bytes merged by PR #165.
 
 ```text
 old pre-final human blob:
@@ -65,30 +70,30 @@ NO
 
 Only `roadmap/gamification/g4-core-economy-input-normalization.md` was corrected.
 
-## Frozen protocol inventory
+## Frozen owner principle and source boundary
 
 ```text
 owner principle:
 GRACEFUL_DEGRADATION_OVER_ABRUPT_CUTOFF
 
+preferred research direction:
+TAPER / RECOVERY
+
+abrupt uncertainty policy:
+RETAINED AS CONTROL
+
 Review source members:
 P-STEP-ZERO
 P-TAPER-ZERO-30D
 
-Review winner:
-NONE
+Review winner/default:
+NONE / NONE
 
 Review evaluation:
 PARALLEL_SEPARATE
 
 Review averaging:
 PROHIBITED
-
-preferred research direction:
-TAPER / RECOVERY
-
-abrupt policy:
-RETAINED AS CONTROL
 
 Learn input:
 C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
@@ -99,6 +104,15 @@ CONFIRMATORY_INCONCLUSIVE
 Learn limitation:
 DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
 
+Create domain:
+EXCLUDED / DEFERRED WITH G3
+```
+
+Graceful degradation is a preferred research direction, not a selected winner. Both Review members remain mandatory and separate. A hard failure under one member cannot be hidden by averaging or by the other member.
+
+## Frozen protocol inventory
+
+```text
 primitive policies:
 20
 
@@ -130,10 +144,9 @@ matrix digest:
 9f0ad95f8e99b3e25d19d859f88afa13a0b5b3b9efc99427facde336e146241c
 ```
 
-The matrix uses `CURATED_BOUNDED_FACTORIAL_DESIGN`; a full Cartesian product is
-prohibited. Hard failures under one Review member cannot be hidden by averaging.
+The matrix uses `CURATED_BOUNDED_FACTORIAL_DESIGN`; a full primitive Cartesian product is prohibited.
 
-## Canonical artifacts and identities at publication HEAD
+## Canonical artifacts at publication HEAD
 
 - `roadmap/gamification/g4-core-economy-input-normalization.md` — blob `f608099bd0c607700511419ade9ea638b95aa60c`, SHA-256 `d4a8391142697edd68318f8baf521bad115888e5b4f29de703979bbaff545165`, `11211` bytes
 - `docs/gamification/core-economy-candidate-protocol.md` — blob `398041e9b20e8bab3697d43131e4f429662b744a`, SHA-256 `0ebbb587f1e405923bc692bb54124bcdf1810b92a2f5626d2c303f2c35249fda`, `31802` bytes
@@ -144,7 +157,7 @@ prohibited. Hard failures under one Review member cannot be hidden by averaging.
 - `research/gamification-sim/matrices/core-economy-screening-matrix-v1.json` — blob `7fa618af1bb3513b4bd6a0f158acb7bc5d38e835`, SHA-256 `daba6406b60698dd0c2f4cd990f2923396bd23d0a4c0861891fe3632ccebaf13`, `306832` bytes
 - `research/gamification-sim/schemas/core-economy-screening-matrix-v1.schema.json` — blob `bddb1ae14c886738735482c60e4781386650a272`, SHA-256 `917b86215e65d4ccc536b694dd49bac1c288ecccf212f1ed5743d35b74a610b3`, `7366` bytes
 
-The G4.3 closeout identity is recorded after its commit in the external report.
+The closeout document itself was finalized in commit `8b22851abbd71f661957fefcbde84548fdcd38f4` and merged by `0d42e7bbee80b99de7e3369071c9a2dcdc6ba6bb`.
 
 ## Validation
 
@@ -173,7 +186,10 @@ changed-path allowlist: exact 9 paths
 secret/private-path scan: PASS
 production boundary: PASS
 research execution boundary: PASS
+workflow checks: 0
 ```
+
+`workflow checks: 0` is not represented as `CI PASS`. No workflow was configured or triggered for this research-only PR.
 
 ## No-results proof
 
@@ -184,6 +200,7 @@ all matrix rows: NOT_RUN
 screening executed: NO
 simulation: NOT_STARTED
 G4.4: NEXT / NOT STARTED
+winner: NONE
 production approved: NO
 ```
 
@@ -202,7 +219,9 @@ package / .ankiaddon validation
 production implementation
 ```
 
-## Changed paths
+These checks were outside the stage risk surface. G4.3 changed only research contracts, schemas, deterministic synthetic fixtures, a dry matrix and documentation.
+
+## Changed paths in PR #166
 
 ```text
 roadmap/gamification/g4-core-economy-input-normalization.md
@@ -218,20 +237,24 @@ roadmap/gamification/g4-core-economy-candidate-protocol.md
 
 ## Boundaries and limitations
 
-- No G4 result was available or viewed while candidates, gates, metrics, traces,
-  and matrix were frozen.
+- No G4 result was available or viewed while candidates, gates, metrics, traces and matrix were frozen.
 - Review winner remains unresolved and both source members remain mandatory.
 - Learn remains `CONFIRMATORY_INCONCLUSIVE`; its identity limitation propagates.
 - External references are design patterns, not Anki economy evidence.
-- No human motivation, retention, mastery, balance, optimality, or prevention of
-  all farming is claimed.
-- No production runtime, dashboard, API, storage, scheduler, FSRS, package,
-  workflow, or release surface changed.
+- No human motivation, retention, mastery, balance, optimality or prevention of all farming is claimed.
+- No production runtime, dashboard, API, storage, scheduler, FSRS, package, workflow or release surface changed.
+- G4.4 is not activated by this closeout or by the later documentation sync.
 
-## G4.4 entry contract
+## Final verdict
 
-`G4.4 — Bounded core-economy screening and simulation` remains inactive. Entry
-requires exact publication SHA, candidate/scenario/matrix identities, valid
-schemas, frozen gates and metrics, Review sensitivity, propagated Learn
-limitation, detached validation, synthetic-only data, no production code, and a
-separate owner decision.
+```text
+G4_3_VERDICT=COMPLETE
+PROTOCOL_STATUS=FROZEN_PRE_SCREENING
+PR_NUMBER=166
+FINAL_PR_HEAD=8b22851abbd71f661957fefcbde84548fdcd38f4
+MERGE_SHA=0d42e7bbee80b99de7e3369071c9a2dcdc6ba6bb
+RESULTS=NOT_AVAILABLE
+G4_4=NOT_STARTED
+SIMULATION=NOT_STARTED
+PRODUCTION=PROHIBITED
+```
