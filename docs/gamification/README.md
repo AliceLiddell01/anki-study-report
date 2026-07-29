@@ -5,8 +5,8 @@
 ```text
 G0: COMPLETE
 G1: COMPLETE
-G1 final outcome: DEFER_REVIEW_MODEL
-recommended Review XP research candidate: NONE
+G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended Review XP research candidate: P-TAPER-ZERO-30D
 
 G2: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
@@ -16,15 +16,14 @@ selected candidate evidence status: CONFIRMATORY_INCONCLUSIVE
 G3: DEFERRED / POST-MVP / NOT STARTED
 G3 blocks G4/G5/G6: NO
 
-G4: IN PROGRESS
+G4: COMPLETE
 G4.1: COMPLETE
 G4.2: COMPLETE
 G4.3: COMPLETE
-candidate protocol: FROZEN_PRE_SCREENING
-stage outcome: PROTOCOL_FROZEN
-G4.4: NEXT / NOT STARTED
-results: NOT_AVAILABLE
-simulation: NOT_STARTED
+accepted candidate protocol: v4 FROZEN_AND_EXECUTED
+G4.4: COMPLETE
+results: AVAILABLE
+final G4 outcome: REJECT
 production integration: PROHIBITED
 ```
 
@@ -83,7 +82,7 @@ common economy XP: NO
 
 Axes are explicitly separated as `SESSION`, `ANKI_DAY` and `CALENDAR_DAY`.
 
-### G4.3 — candidate economy protocol and hypothesis design
+### G4.3 — candidate economy protocol and hypothesis design (historical v1)
 
 - [Human candidate protocol](core-economy-candidate-protocol.md)
 - [Machine candidate protocol](../../research/gamification-sim/contracts/core-economy-candidate-protocol-v1.json)
@@ -118,19 +117,31 @@ matrix digest: 9f0ad95f8e99b3e25d19d859f88afa13a0b5b3b9efc99427facde336e146241c
 
 The design rule is `CURATED_BOUNDED_FACTORIAL_DESIGN`; the full primitive Cartesian product is prohibited. A hard failure under one Review member cannot be hidden by averaging or by the other member.
 
-G4.3 is prospective only:
+Historical v1 was prospective only:
 
 ```text
-results: NOT_AVAILABLE
+historical v1 results: NOT_AVAILABLE
 all matrix rows: NOT_RUN
 screening executed: NO
 simulation: NOT_STARTED
-winner: NONE
+historical v1 winner: NONE
 production approved: NO
-G4.4: NEXT / NOT STARTED
+historical v1 next stage: G4.4 / NOT STARTED
 ```
 
 PR #166 merged the frozen protocol into `gamification` at merge commit `0d42e7bbee80b99de7e3369071c9a2dcdc6ba6bb`. This identity records publication, not a screening result.
+
+### G4.4 — bounded screening and final G4 decision
+
+- [Technical G4.4 evidence and dimension ledger](core-economy-bounded-screening.md)
+- [Canonical G4.4 closeout](../../roadmap/gamification/g4-core-economy-bounded-screening.md)
+- [Research-to-future-work handoff](core-economy-research-handoff.md)
+- [Accepted v4 result manifest](../../research/gamification-sim/results/core-economy-screening-manifest-v4.json)
+- [Accepted v4 row results](../../research/gamification-sim/results/core-economy-screening-results-v4.json)
+
+V4 completed `1275/1275/1275` deterministic rows with `0/0/0` missing/extra/duplicates and byte-identical reproduction. Every recommendation-eligible integrated bundle failed a non-compensable hard gate, so final G4 outcome is `REJECT` and no integrated bundle is selected.
+
+Review winner is `P-TAPER-ZERO-30D`; Learn winner/input remains `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING` with `CONFIRMATORY_INCONCLUSIVE` and `DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE`. These are bounded research choices, not production approval.
 
 ## Current G2 contracts
 
@@ -180,7 +191,7 @@ G2 closes with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`. The selected bounded input r
 - [G1.5 confirmatory evidence](../../roadmap/gamification/g1-confirmatory-evidence.md)
 - [G1.6 decision](../../roadmap/gamification/g1-review-xp-decision.md)
 
-G1 closes with `DEFER_REVIEW_MODEL`. `P-STEP-ZERO` and `P-TAPER-ZERO-30D` remain confirmatory-eligible, not selected and not falsified.
+G1 originally closed with `DEFER_REVIEW_MODEL`. The owner-authorized G4 closure resolves the tie in favor of `P-TAPER-ZERO-30D` because the gradual boundary causes less legitimate-context harm than immediate STEP zeroing. `P-STEP-ZERO` remains confirmatory-eligible and non-falsified.
 
 ## Review research references
 
@@ -194,13 +205,13 @@ These are references for terminology, research discipline and protected invarian
 
 ## Evidence and privacy boundary
 
-G1 evidence is synthetic. G2 retains its prospective/evidence/governance chronology. G4.1 freezes the two-domain problem; G4.2 freezes typed input, uncertainty and axis boundaries; G4.3 freezes candidate families and deterministic dry screening inputs before any result access.
+G1 evidence is synthetic. G2 retains its prospective/evidence/governance chronology. G4.1/G4.2 remain frozen inputs; G4.3 v4 was published before replacement execution; G4.4 accepted deterministic synthetic results and closed G4 with `REJECT`.
 
 No real card text, note fields, media, profile paths, usernames, tokens, raw revlog or identifiable learning history enter G4 research artifacts.
 
 ## Production integration boundary
 
-No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G4.3 is a research protocol freeze; G4.4, screening and simulation remain not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
+No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G4.4 closure does not activate G5/G6. Research assets remain outside Fast CI and `.ankiaddon` contents.
 
 ## G4.3 v2 corrective protocol
 
@@ -213,9 +224,12 @@ No production add-on, dashboard, payload, API, scheduler, FSRS, database, workfl
 
 ```text
 G4.3 v1: SUPERSEDED_PRE_EXECUTION
-G4.3 v2: FROZEN_PRE_SCREENING
-scenarios / matrix rows: 41 / 864
-results: NOT_AVAILABLE
-G4.4: NEXT / NOT STARTED
+G4.3 v2: SUPERSEDED_PRE_EXECUTION
+G4.3 v3: INVALIDATED_AFTER_SCREENING
+G4.3 v4: FROZEN_AND_EXECUTED
+scenarios / matrix rows: 52 / 1275
+results: AVAILABLE
+G4.4: COMPLETE
+final G4 outcome: REJECT
 production: PROHIBITED
 ```

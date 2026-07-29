@@ -6,14 +6,30 @@
 Mode: ChatGPT
 G1.6: COMPLETE
 G1: COMPLETE
-G1 final outcome: DEFER_REVIEW_MODEL
-recommended research candidate: NONE
+G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended research candidate: P-TAPER-ZERO-30D
+historical G1.6 outcome: DEFER_REVIEW_MODEL
 production approved: NO
 production integration: PROHIBITED
-G2: PLANNED / NOT STARTED
+G2: COMPLETE
 ```
 
-G1 закрыт допустимым machine-protocol outcome `DEFER_REVIEW_MODEL`. Это не отклонение Review model: оба survivor остаются `CONFIRMATORY_ELIGIBLE`, но G1.6 не получил доступ к обязательным raw bundles G1.4/G1.5 и поэтому не мог заново подтвердить evidence continuity. Даже по принятым canonical summaries кандидаты неразличимы без нового post-hoc ranking criterion.
+## Owner-authorized final selection during G4 closure
+
+Историческое G1.6 решение `DEFER_REVIEW_MODEL` остается фактом своего checkpoint: тогда frozen criteria не содержали tie-breaker. При финальном G4 closure владелец явно потребовал выбрать winner, а accepted G4.4 evidence подтвердил равенство aggregate outcomes обоих members (`606` rows, `12` unexpected failures, `17` unexpected control passes для каждого).
+
+Применён неарбитрарный governance tie-breaker:
+
+```text
+1. minimize legitimate-context harm
+2. then minimize policy complexity
+```
+
+`P-TAPER-ZERO-30D` выбран research winner: он не обнуляет допустимый post-transition context мгновенно, а снижает его в зафиксированном окне 60–90 дней. `P-STEP-ZERO` проще, но наносит больший immediate boundary harm и остаётся non-selected, non-falsified alternative. Это решение не доказывает human-learning superiority и не разрешает production integration. Review averaging остаётся запрещённым.
+
+Ниже сохранено исходное обоснование historical G1.6 defer.
+
+G1.6 закрыл checkpoint допустимым machine-protocol outcome `DEFER_REVIEW_MODEL`. Это не отклонение Review model: оба survivor остались `CONFIRMATORY_ELIGIBLE`, но G1.6 не получил доступ к обязательным raw bundles G1.4/G1.5 и поэтому не мог заново подтвердить evidence continuity. Даже по принятым canonical summaries кандидаты были неразличимы без дополнительного governance criterion.
 
 ## Repository / branch / PR
 
@@ -150,22 +166,22 @@ Supported: gradual transition, all accepted G1.4/G1.5 gates PASS, no observed sy
 
 Not established: that a linear 30-day shape is causally correct, easier for users to understand, or safer in production.
 
-## Selected allowed outcome
+## Historical G1.6 selected outcome
 
 ```text
-final G1 outcome: DEFER_REVIEW_MODEL
-recommended research candidate: NONE
+historical G1.6 outcome: DEFER_REVIEW_MODEL
+historical G1.6 recommended research candidate: NONE
 ```
 
 Exact unresolved dependency:
 
 > The canonical G1.4 and G1.5 raw bundles were not available to G1.6 for required hash, `FILES.sha256`, inventory and detached-validator continuity checks; accepted aggregate evidence also leaves STEP and TAPER tied under the frozen non-compensable criteria.
 
-## Status of both candidates
+## Status of both candidates at G1.6
 
 ```text
 P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
-P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected at G1.6; not falsified
 ```
 
 Neither candidate is promoted to production or called production-ready.
@@ -248,10 +264,11 @@ No raw evidence, task logs, temporary extracted payloads, runtime outputs or pri
 ```text
 G1: COMPLETE
 G1.6: COMPLETE
-G1 final outcome: DEFER_REVIEW_MODEL
-recommended research candidate: NONE
+historical G1.6 outcome: DEFER_REVIEW_MODEL
+current G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended research candidate: P-TAPER-ZERO-30D
 production integration: PROHIBITED
-G2: PLANNED / NOT STARTED
+G2: COMPLETE
 ```
 
-G2 was not started.
+G2 and G4 were completed after the historical G1.6 checkpoint.
