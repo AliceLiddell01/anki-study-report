@@ -40,16 +40,17 @@ describe("AnkiCardShadowPreview layout", () => {
 
 
 
-  it("keeps native card scale at 1 when the compact host can fit the accepted 660px canvas", () => {
+  it("keeps native card scale at 1 and stretches its template-owned canvas across the host", () => {
     const layout = calculateAdaptivePreviewLayout({
       mode: "preview",
-      availableWidth: 720,
+      availableWidth: 1000,
       availableHeight: 600,
       contentWidth: 660,
       contentHeight: 420,
     });
     expect(layout.scale).toBe(1);
-    expect(layout.contentWidth).toBe(660);
+    expect(layout.targetWidth).toBe(1000);
+    expect(layout.contentWidth).toBe(980);
     expect(layout.hostHeight).toBe(600);
   });
 
@@ -131,8 +132,9 @@ describe("AnkiCardShadowPreview layout", () => {
     expect(darkCard.styleText).toContain(".nightMode .term{color:rgb(245,245,245)}");
     expect(darkCard.styleText).toContain(":where(.card).nightMode");
     expect(darkCard.styleText).toContain("background: #111827");
-    expect(darkCard.styleText).toContain('font-family: Arial, "Noto Sans JP", sans-serif');
+    expect(darkCard.styleText).toContain('font-family: "Yu Gothic", "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif');
     expect(darkCard.styleText).toContain(".asr-shadow-card-viewport--preview > .card");
+    expect(darkCard.styleText).toContain("width: var(--asr-preview-content-width)");
     expect(lightCard.styleText).toContain(".asr-shadow-card-shell--preview");
     expect(lightCard.styleText).toContain("overflow: hidden");
     expect(lightCard.styleText).not.toContain("overflow-y: auto");

@@ -11,15 +11,37 @@ const second = item("1002", "Second", reason("content:2", "content.audio_missing
 
 let latestWorkspace: ReturnType<typeof useCardsTriageWorkspace> | null = null;
 let harnessDeckIds = ["3"];
+let harnessInitialLearningPeriodDays: 7 | 30 | 90 | undefined;
 
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
   latestWorkspace = null;
   harnessDeckIds = ["3"];
+  harnessInitialLearningPeriodDays = undefined;
 });
 
 describe("useCardsTriageWorkspace", () => {
+  it("uses the restored learning period for its first query after navigation", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    harnessInitialLearningPeriodDays = 30;
+    let initialScope: { periodStartMs: number; periodEndMs: number } | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) {
+        initialScope = body.scope;
+        return ok(response([first], 0, null));
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+
+    const root = await mount();
+    expect(latestWorkspace!.learningPeriodDays).toBe(30);
+    expect(initialScope!.periodEndMs - initialScope!.periodStartMs).toBe(30 * 86400000);
+    await act(async () => root.unmount());
+  });
+
   it("uses an explicit period and performs exactly one bounded continuation request per activation", async () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
@@ -461,7 +483,7 @@ async function mount() {
 }
 
 function Harness() {
-  latestWorkspace = useCardsTriageWorkspace(harnessDeckIds);
+  latestWorkspace = useCardsTriageWorkspace(harnessDeckIds, harnessInitialLearningPeriodDays);
   return <div>{latestWorkspace.queryStatus}:{latestWorkspace.response?.items.length ?? 0}:{latestWorkspace.continuationStatus}</div>;
 }
 

@@ -4,6 +4,7 @@ export const cardsWorkspaceV323 = {
     title: "Cards",
     description: "Review the reason, open the exact card in Anki, and recheck the outcome.",
     refreshing: "Refreshing the queue…",
+    dismissNotice: "Dismiss notification",
     filters: {
       searchPlaceholder: "Find a card or deck",
       open: "Filters",
@@ -38,6 +39,7 @@ export const cardsWorkspaceV323 = {
     title: "Карточки",
     description: "Разберите причину, откройте точную карточку в Anki и перепроверьте результат.",
     refreshing: "Обновляем очередь…",
+    dismissNotice: "Закрыть уведомление",
     filters: {
       searchPlaceholder: "Найти карточку или колоду",
       open: "Фильтры",

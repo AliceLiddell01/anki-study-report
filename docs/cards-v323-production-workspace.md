@@ -540,3 +540,33 @@ The bounded correction at production commit `ce45194e659aeba43f05a2b13cbf6f0583e
 The primary evidence is `cards-visual-parity-and-profiles-audit-evidence.zip`, SHA-256 `e2c1d35bb12088ad0d285371514789637be60025050f5a8ded6307048c6dd2da`. It uses the exact Prototype card identities for Words (`1708095865696`), Grammar (`1781457470336`) and Java (`1780002619582`) and compares full pages rather than differently cropped layers.
 
 Cards owner acceptance is still not self-issued by this contract.
+
+## Owner-requested gentle responsive revision
+
+Новая явная owner revision размораживает только presentation и local Cards UX,
+не меняя payload, sanitizer, media routes, action allowlists или resolution
+lifecycle.
+
+Актуальный контракт:
+
+- wide workspace имеет bounded viewport-relative height и не растягивает нижнюю
+  часть документа на 1440p/4K;
+- queue, inspector, rows, rail sections и native preview используют мягкие
+  скругления, тонкие borders и стабильные shadows;
+- refresh feedback и coverage/profile warnings являются компактными
+  dismissible overlays; success refresh автоматически исчезает;
+- Cards UI и unstyled native preview используют Japanese-first system font
+  stack, а template-owned custom fonts остаются авторитетными;
+- native `.card` canvas растягивается до внутренней Shadow preview frame по
+  ширине и высоте без увеличения glyph scale; template-owned light/dark
+  background поэтому не обрывается боковыми dashboard-полями;
+- priority, reason, deck, text search и learning period сохраняются в
+  session-scoped storage и восстанавливаются при переходе на другой dashboard
+  route и обратно;
+- canonical owner-facing matrix снимается exact real-Anki E2E на
+  `1920x1080`, `2560x1440`, `3840x2160` при DSF 1 и `fullPage=false`;
+- interaction gallery использует primary `1920x1080`, включая отдельный
+  dark capture для native card fill.
+
+Owner visual acceptance по-прежнему назначает только владелец после просмотра
+объективных screenshots и geometry report.

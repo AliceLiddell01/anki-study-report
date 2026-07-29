@@ -1,4 +1,4 @@
-import { RotateCw, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { RotateCw, SlidersHorizontal, TriangleAlert, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import AccessibleModal from "../components/AccessibleModal";
@@ -22,6 +22,7 @@ type PriorityFilter = "all" | TriagePriority;
 type ReasonFilter = "all" | "learning" | "content" | string;
 
 export const CARDS_WIDE_WORKSPACE_QUERY = "(min-width: 1200px)";
+export const CARDS_FILTER_SESSION_KEY = "anki-study-report.cards.filters.v1";
 const REASON_CODES = [
   "learning.leech",
   "learning.repeated_again",
@@ -34,23 +35,41 @@ const REASON_CODES = [
   "content.required_group_missing",
 ] as const;
 
+interface PersistedCardsFilters {
+  priority: PriorityFilter;
+  reason: ReasonFilter;
+  deck: string;
+  textFilter: string;
+  learningPeriodDays: LearningPeriodDays;
+}
+
+const DEFAULT_CARDS_FILTERS: PersistedCardsFilters = {
+  priority: "all",
+  reason: "all",
+  deck: "all",
+  textFilter: "",
+  learningPeriodDays: 7,
+};
+
 export default function CardsPage({ report }: { report: StudyReport | null; loadState: LoadState }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
   const resolvedTheme = useResolvedTheme();
   const nightMode = resolvedTheme === "dark";
+  const initialFilters = useRef<PersistedCardsFilters>(readPersistedCardsFilters()).current;
   const deckIds = useMemo(
     () => (report?.deckHub?.scope.selectedDeckIds ?? []).map(String),
     [report?.deckHub?.scope.selectedDeckIds],
   );
-  const workspace = useCardsTriageWorkspace(deckIds);
+  const workspace = useCardsTriageWorkspace(deckIds, initialFilters.learningPeriodDays);
   const isWide = useMediaQuery(CARDS_WIDE_WORKSPACE_QUERY, true);
-  const [priority, setPriority] = useState<PriorityFilter>("all");
-  const [reason, setReason] = useState<ReasonFilter>("all");
-  const [deck, setDeck] = useState("all");
-  const [textFilter, setTextFilter] = useState("");
+  const [priority, setPriority] = useState<PriorityFilter>(initialFilters.priority);
+  const [reason, setReason] = useState<ReasonFilter>(initialFilters.reason);
+  const [deck, setDeck] = useState(initialFilters.deck);
+  const [textFilter, setTextFilter] = useState(initialFilters.textFilter);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [refreshNoticeDismissed, setRefreshNoticeDismissed] = useState(false);
   const activatorRef = useRef<HTMLElement | null>(null);
   const queueHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const refreshButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -80,6 +99,21 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
     if (workspace.refreshStatus === "pending") refreshStatusRef.current?.focus();
     else if (previous === "pending" && (workspace.refreshStatus === "success" || workspace.refreshStatus === "error")) refreshButtonRef.current?.focus();
   }, [workspace.refreshStatus]);
+  useEffect(() => {
+    setRefreshNoticeDismissed(false);
+    if (workspace.refreshStatus !== "success") return;
+    const timeout = window.setTimeout(() => setRefreshNoticeDismissed(true), 4500);
+    return () => window.clearTimeout(timeout);
+  }, [workspace.refreshStatus]);
+  useEffect(() => {
+    persistCardsFilters({
+      priority,
+      reason,
+      deck,
+      textFilter,
+      learningPeriodDays: workspace.learningPeriodDays,
+    });
+  }, [deck, priority, reason, textFilter, workspace.learningPeriodDays]);
 
   const allItems = workspace.response?.items ?? [];
   const resolvedId = workspace.resolution?.phase === "resolved" ? workspace.activeId : null;
@@ -88,6 +122,11 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
     () => [...new Set(allItems.map((item) => item.deck.name).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
     [allItems],
   );
+  useEffect(() => {
+    if (workspace.queryStatus === "ready" && deck !== "all" && !decks.includes(deck)) {
+      setDeck("all");
+    }
+  }, [deck, decks, workspace.queryStatus]);
   const visibleItems = useMemo(() => {
     const needle = textFilter.trim().toLocaleLowerCase();
     return allItems.filter((item) => {
@@ -161,22 +200,29 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
         </div>
       </header>
 
-      <div
-        ref={refreshStatusRef}
-        className={`cards-refresh-status is-${workspace.refreshStatus}`}
-        tabIndex={-1}
-        role={workspace.refreshStatus === "error" ? "alert" : "status"}
-        aria-live={workspace.refreshStatus === "error" ? undefined : "polite"}
-        data-testid="cards-refresh-status"
-      >
-        {workspace.refreshStatus === "pending" ? <><RotateCw size={15} aria-hidden="true" />{t("refreshing")}</> : null}
-        {workspace.refreshStatus === "success" ? t("refreshed") : null}
-        {workspace.refreshStatus === "error" && workspace.response ? (
-          <><span>{t("refreshFailedStale")}</span><button type="button" className="tertiary-button" onClick={workspace.refresh}>{t("retry")}</button></>
-        ) : null}
-      </div>
+      <div className="cards-notice-tray" data-testid="cards-notice-tray">
+        <div
+          ref={refreshStatusRef}
+          className={`cards-refresh-status is-${workspace.refreshStatus}`}
+          tabIndex={-1}
+          role={workspace.refreshStatus === "error" ? "alert" : "status"}
+          aria-live={workspace.refreshStatus === "error" ? undefined : "polite"}
+          data-testid="cards-refresh-status"
+        >
+          {!refreshNoticeDismissed && workspace.refreshStatus === "pending" ? <><RotateCw size={15} aria-hidden="true" />{t("refreshing")}</> : null}
+          {!refreshNoticeDismissed && workspace.refreshStatus === "success" ? <span>{t("refreshed")}</span> : null}
+          {!refreshNoticeDismissed && workspace.refreshStatus === "error" && workspace.response ? (
+            <><span>{t("refreshFailedStale")}</span><button type="button" className="tertiary-button" onClick={workspace.refresh}>{t("retry")}</button></>
+          ) : null}
+          {!refreshNoticeDismissed && (workspace.refreshStatus === "success" || (workspace.refreshStatus === "error" && workspace.response)) ? (
+            <button type="button" className="cards-notice-close" aria-label={t("dismissNotice")} onClick={() => setRefreshNoticeDismissed(true)}>
+              <X size={15} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
 
-      <CardsWorkspaceWarnings workspace={workspace} />
+        <CardsWorkspaceWarnings workspace={workspace} />
+      </div>
       {workspace.lastOutcome && workspace.lastOutcome.itemId !== workspace.activeId ? (
         <div className={`cards-inbox-warning cards-resolution-outcome workspace-state is-${workspace.lastOutcome.phase}`} data-testid="cards-resolution-outcome">
           <strong>{t(`resolution.states.${workspace.lastOutcome.phase}.title`)}</strong>
@@ -314,6 +360,38 @@ export default function CardsPage({ report }: { report: StudyReport | null; load
   );
 }
 
+function readPersistedCardsFilters(): PersistedCardsFilters {
+  if (typeof window === "undefined") return DEFAULT_CARDS_FILTERS;
+  try {
+    const raw = window.sessionStorage.getItem(CARDS_FILTER_SESSION_KEY);
+    if (!raw) return DEFAULT_CARDS_FILTERS;
+    const parsed = JSON.parse(raw) as Partial<PersistedCardsFilters>;
+    const priority = parsed.priority === "high" || parsed.priority === "medium" || parsed.priority === "low"
+      ? parsed.priority
+      : "all";
+    const reason = parsed.reason === "learning"
+      || parsed.reason === "content"
+      || REASON_CODES.includes(parsed.reason as (typeof REASON_CODES)[number])
+      ? parsed.reason as ReasonFilter
+      : "all";
+    const deck = typeof parsed.deck === "string" && parsed.deck.length <= 512 ? parsed.deck : "all";
+    const textFilter = typeof parsed.textFilter === "string" ? parsed.textFilter.slice(0, 512) : "";
+    const learningPeriodDays = parsed.learningPeriodDays === 30 || parsed.learningPeriodDays === 90 ? parsed.learningPeriodDays : 7;
+    return { priority, reason, deck, textFilter, learningPeriodDays };
+  } catch {
+    return DEFAULT_CARDS_FILTERS;
+  }
+}
+
+function persistCardsFilters(filters: PersistedCardsFilters): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(CARDS_FILTER_SESSION_KEY, JSON.stringify(filters));
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+}
+
 function safeInboxId(value: string): string {
   return `cards-inbox-${value.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
@@ -350,17 +428,42 @@ function QueueState({
 
 function CardsWorkspaceWarnings({ workspace }: { workspace: ReturnType<typeof useCardsTriageWorkspace> }) {
   const { t } = useTranslation("pages", { keyPrefix: "cards.workspace" });
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
+  useEffect(() => setDismissed(new Set()), [workspace.response?.generatedAtMs]);
+  const dismiss = (key: string) => setDismissed((current) => new Set(current).add(key));
+  const showProfiles = workspace.response?.contentChecks.status === "profiles_need_review" && !dismissed.has("profiles");
+  const showPartial = workspace.response?.status === "partial" && !dismissed.has("partial");
+  const showTruncated = workspace.response?.truncated && !dismissed.has("truncated");
   return (
     <div className="cards-inbox-warnings">
-      {workspace.response?.contentChecks.status === "profiles_need_review" ? (
+      {showProfiles ? (
         <div className="cards-inbox-warning workspace-state">
           <TriangleAlert size={17} aria-hidden="true" />
-          <span><strong>{t("profiles.title", { count: workspace.response.contentChecks.needsReviewProfileCount })}</strong> {t("profiles.description")}</span>
+          <span><strong>{t("profiles.title", { count: workspace.response?.contentChecks.needsReviewProfileCount ?? 0 })}</strong> {t("profiles.description")}</span>
           <a className="tertiary-button" href="#/settings/inspection-profiles">{t("profiles.action")}</a>
+          <button type="button" className="cards-notice-close" aria-label={t("dismissNotice")} onClick={() => dismiss("profiles")}>
+            <X size={15} aria-hidden="true" />
+          </button>
         </div>
       ) : null}
-      {workspace.response?.status === "partial" ? <div className="cards-inbox-warning workspace-state is-partial"><TriangleAlert size={16} aria-hidden="true" />{t("states.partial")}</div> : null}
-      {workspace.response?.truncated ? <div className="cards-inbox-warning workspace-state is-partial"><TriangleAlert size={16} aria-hidden="true" />{t("states.responseTruncated", { count: workspace.response.limit })}</div> : null}
+      {showPartial ? (
+        <div className="cards-inbox-warning workspace-state is-partial">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{t("states.partial")}</span>
+          <button type="button" className="cards-notice-close" aria-label={t("dismissNotice")} onClick={() => dismiss("partial")}>
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
+      {showTruncated ? (
+        <div className="cards-inbox-warning workspace-state is-partial">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{t("states.responseTruncated", { count: workspace.response?.limit ?? 0 })}</span>
+          <button type="button" className="cards-notice-close" aria-label={t("dismissNotice")} onClick={() => dismiss("truncated")}>
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -12,7 +12,7 @@ beforeAll(async () => {
   globalCss = readFileSync("src/styles.css", "utf8");
 
   it("keeps preview frame ownership outside the native card while filling the compact host", () => {
-    expect(cardsCss).toMatch(/\.cards-detail-preview-frame\s*\{[^}]*place-items:\s*stretch[^}]*overflow:\s*hidden[^}]*background:\s*transparent/s);
+    expect(cardsCss).toMatch(/\.cards-detail-preview-frame\s*\{[^}]*place-items:\s*stretch[^}]*overflow:\s*hidden[^}]*padding:\s*\.72rem[^}]*border:\s*1px solid[^}]*border-radius:\s*1\.18rem/s);
     expect(globalCss).toMatch(/\.anki-card-shadow-preview--preview\s*\{[^}]*height:\s*100%[^}]*border-radius:\s*0\.82rem[^}]*box-shadow:/s);
     expect(cardsCss).not.toMatch(/\.cards-detail-preview-frame\s*\{[^}]*background:\s*#(?:2f2f31|111827)/is);
   });
@@ -55,7 +55,7 @@ describe("Cards responsive visual contract", () => {
   });
 
   it("keeps preview frame ownership outside the native card while filling the compact host", () => {
-    expect(cardsCss).toMatch(/\.cards-detail-preview-frame\s*\{[^}]*place-items:\s*stretch[^}]*overflow:\s*hidden[^}]*background:\s*transparent/s);
+    expect(cardsCss).toMatch(/\.cards-detail-preview-frame\s*\{[^}]*place-items:\s*stretch[^}]*overflow:\s*hidden[^}]*padding:\s*\.72rem[^}]*border:\s*1px solid[^}]*border-radius:\s*1\.18rem/s);
     expect(globalCss).toMatch(/\.anki-card-shadow-preview--preview\s*\{[^}]*height:\s*100%[^}]*border-radius:\s*0\.82rem[^}]*box-shadow:/s);
     expect(cardsCss).not.toMatch(/\.cards-detail-preview-frame\s*\{[^}]*background:\s*#(?:2f2f31|111827)/is);
   });
@@ -73,6 +73,19 @@ describe("Cards responsive visual contract", () => {
     expect(cardsCss).toMatch(/\.cards-inbox-active-filters > span\s*\{[^}]*border-radius:\s*999px[^}]*min-height:\s*24px/s);
     expect(cardsCss).toMatch(/\.cards-detail-actions > \.primary-button\s*\{[^}]*background:\s*var\(--accent-primary\)[^}]*color:\s*#ffffff/s);
     expect(cardsCss).toMatch(/\.cards-detail-actions > \.primary-button:disabled\s*\{[^}]*background:[^}]*box-shadow:\s*none[^}]*opacity:\s*\.68/s);
+  });
+
+  it("bounds wide workspaces independently from tall desktop viewports", () => {
+    expect(cardsCss).toMatch(/--cards-workspace-height:\s*clamp\(690px,\s*72dvh,\s*840px\)/);
+    expect(cardsCss).toMatch(/\.cards-inbox-queue\s*\{[^}]*height:\s*var\(--cards-workspace-height\)[^}]*min-height:\s*0[^}]*max-height:\s*none/s);
+    expect(cardsCss).toMatch(/\.cards-inbox-inspector\s*\{[^}]*height:\s*var\(--cards-workspace-height\)[^}]*min-height:\s*0[^}]*max-height:\s*none/s);
+    expect(cardsCss).toMatch(/\.cards-detail-workspace-body\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/s);
+  });
+
+  it("uses overlay notices so dismissal does not reflow the workspace", () => {
+    expect(cardsCss).toMatch(/\.cards-notice-tray\s*\{[^}]*position:\s*absolute[^}]*pointer-events:\s*none/s);
+    expect(cardsCss).toMatch(/\.cards-notice-close\s*\{[^}]*display:\s*inline-grid/s);
+    expect(cardsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.cards-inbox-warning\s*\{[^}]*animation:\s*none/s);
   });
 
 });
