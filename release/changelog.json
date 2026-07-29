@@ -5,6 +5,31 @@
   },
   "releases": [
     {
+      "version": "1.3.1",
+      "date": "2026-07-29",
+      "sections": [
+        {
+          "type": "fixed",
+          "items": [
+            {
+              "id": "cards_cyrillic_font_metrics",
+              "text": {
+                "ru": "Исправлено чрезмерное растяжение кириллицы в русской версии рабочего пространства «Карточки» на Windows.",
+                "en": "Fixed excessive Cyrillic spacing in the Russian Cards workspace on Windows."
+              }
+            },
+            {
+              "id": "dashboard_client_disconnect_tracebacks",
+              "text": {
+                "ru": "Предотвращён вывод лишних трассировок при отмене браузером локальной загрузки медиафайла.",
+                "en": "Prevented noisy tracebacks when the browser cancels a local media response."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.3.0",
       "date": "2026-07-29",
       "sections": [
