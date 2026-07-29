@@ -1,7 +1,7 @@
 # Gamification track
 
-**Track:** `G`  
-**Role:** parallel research/product direction  
+**Track:** `G`
+**Role:** parallel research/product direction
 **Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; `G3 Deferred / Post-MVP / Not Started`; `G4 In Progress`; `G4.1–G4.3 Complete`; `G4.4 Next / Not Started`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
@@ -290,3 +290,15 @@ Add one named workflow/domain at a time; no generic life-tracking framework or s
 ## Production boundary
 
 No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G1 and G2 retain their frozen outcomes; G3 is deferred and non-blocking; G4.1–G4.3 are research-contract freezes. G4.4, screening, simulation and all production work remain not started.
+
+## G4.3 corrective republication
+
+```text
+G4.3: COMPLETE
+G4.3 v1: SUPERSEDED_PRE_EXECUTION
+G4.3 v1 results: NOT_AVAILABLE
+G4.3 v2: FROZEN_PRE_SCREENING
+G4.4: NEXT / NOT STARTED
+```
+
+See [G4.3 v2 closeout](g4-core-economy-candidate-protocol-v2.md).

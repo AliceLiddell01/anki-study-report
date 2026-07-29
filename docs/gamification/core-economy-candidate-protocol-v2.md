@@ -1,11 +1,11 @@
 # Core Gamification Economy — corrective candidate protocol G4.3 v2
 
-**Contract ID:** `core-economy-candidate-protocol`  
-**Version:** `2`  
-**Stage:** `G4.3 — corrective republication before screening`  
-**Status:** `FROZEN_PRE_SCREENING`  
-**Results:** `NOT_AVAILABLE`  
-**G4.4:** `NEXT / NOT STARTED`  
+**Contract ID:** `core-economy-candidate-protocol`
+**Version:** `2`
+**Stage:** `G4.3 — corrective republication before screening`
+**Status:** `FROZEN_PRE_SCREENING`
+**Results:** `NOT_AVAILABLE`
+**G4.4:** `NEXT / NOT STARTED`
 **Production integration:** `PROHIBITED`
 
 ```text
@@ -221,10 +221,10 @@ silently reused.
 
 ## 7. Curated bounded factorial design
 
-Primitive policies: **19**  
-Candidate bundles: **21**  
-Hypotheses: **20**  
-Hard gates: **29**  
+Primitive policies: **19**
+Candidate bundles: **21**
+Hypotheses: **20**
+Hard gates: **29**
 Metrics: **22**
 
 The design includes isolated pair coverage for:
@@ -243,8 +243,8 @@ full Cartesian product and adaptive post-result rows are prohibited.
 
 ## 8. Scenario registry and dry matrix
 
-Scenarios: **32**  
-Matrix rows: **720**
+Scenarios: **41**
+Matrix rows: **864**
 
 The scenario registry contains only synthetic records and includes maximum
 contextual false positive, zero-context denominator, abrupt/stepped/confidence
@@ -274,7 +274,7 @@ result = NOT_AVAILABLE
 Expected / unique / missing / extra:
 
 ```text
-720 / 720 / 0 / 0
+864 / 864 / 0 / 0
 ```
 
 ## 9. Validation and reproducibility
@@ -315,3 +315,26 @@ simulation: NOT_STARTED
 Review winner: NONE
 production: PROHIBITED
 ```
+
+
+## 11. Frozen source-contract continuity
+
+The v2 registry reuses the exact frozen G4.1/G4.2 coverage identities rather than
+introducing replacement persona, threat or invariant namespaces.
+
+```text
+personas: 9 / 9
+threats: 14 / 14
+invariants: 28 / 28
+G4.1 contract blob: dda1336328df7e79bc5ba1978a102faf5ca40e14
+G4.2 contract blob: 0cf1bbb6f3f088d48b4c78bcc37145dacc8cebc5
+```
+
+The committed 40-sample negative corpus refreshes all dependent artifact digests
+and derived row identities for semantic mutations, then requires the prospectively
+declared error code. Explicit digest and row-ID samples alone preserve their
+corrupted identities. Therefore a negative sample cannot pass merely because an
+unrelated stale digest or stale derived row ID fails first.
+
+Cross-artifact protocol, pipeline, scenario, matrix and row digest references are
+validated in addition to each artifact self-digest.

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import gamification_sim.core_economy_protocol_v2 as protocol_v2
 from jsonschema import Draft202012Validator
 
 from gamification_sim.core_economy_protocol_v2 import (
@@ -44,17 +45,17 @@ def artifacts() -> tuple[dict, dict, dict, dict]:
 def test_valid_canonical_v2_artifacts_and_human_parity() -> None:
     summary = validate_workspace(ROOT, repository_root=REPOSITORY_ROOT)
     assert summary == {
-        "protocol_digest": "3db6a7399d8e0d95e1625585c0c191eb4e298ea5427be7f52bcaa5f27bbde001",
-        "pipeline_digest": "c00a51aafa0fd6a092677cbbf25475a6e722062ab848509c977b0759121f231a",
-        "scenario_digest": "857503cf63e8a700f774e9e4b40bcc9b90b3abfda716c682be7efd97416c78be",
-        "matrix_digest": "41e68fdfad8590d7fb9a9d763039573f903741b21292caa75e98c359170ea55e",
+        "protocol_digest": "f13f85e627297d328bcd30481924ff139f43c78d84b72f57a2ce6543cdcddd8b",
+        "pipeline_digest": "6fe8d3f1b8b830dc258b7ca096428bc2ef53f5354ad2aa4aed2d35a76f04f6d2",
+        "scenario_digest": "83c89cd3667fe866a423f8a2cf9d58ce344030c4e2f65316559d8391de21edb7",
+        "matrix_digest": "27a511b0601b259de6a75d62b6900193ead6fe38deea04e9d20230980af9ff0f",
         "candidate_count": 19,
         "bundle_count": 21,
         "hypothesis_count": 20,
         "gate_count": 29,
         "metric_count": 22,
-        "scenario_count": 32,
-        "row_count": 720,
+        "scenario_count": 41,
+        "row_count": 864,
         "negative_sample_count": 40,
         "negative_samples": 40,
         "negative_corpus": "PASS",
@@ -69,8 +70,8 @@ def test_schema_self_check_and_exact_inventory_bounds() -> None:
         Draft202012Validator(schema).validate(generated[name])
     assert schemas["protocol"]["properties"]["candidate_registry"]["minItems"] == 19
     assert schemas["protocol"]["properties"]["candidate_registry"]["maxItems"] == 19
-    assert schemas["scenarios"]["properties"]["scenarios"]["minItems"] == 32
-    assert schemas["matrix"]["properties"]["rows"]["maxItems"] == 720
+    assert schemas["scenarios"]["properties"]["scenarios"]["minItems"] == 41
+    assert schemas["matrix"]["properties"]["rows"]["maxItems"] == 864
 
 
 def test_deterministic_byte_identical_regeneration_and_digests() -> None:
@@ -167,8 +168,8 @@ def test_operator_order_is_typed_deterministic_and_distinct() -> None:
 
 def test_matrix_exactness_review_pair_and_no_results() -> None:
     protocol, pipeline, scenarios, matrix = artifacts()
-    assert matrix["row_count"] == len(matrix["rows"]) == 720
-    assert len({row["row_id"] for row in matrix["rows"]}) == 720
+    assert matrix["row_count"] == len(matrix["rows"]) == 864
+    assert len({row["row_id"] for row in matrix["rows"]}) == 864
     assert matrix["coverage"]["missing"] == matrix["coverage"]["extra"] == matrix["coverage"]["duplicates"] == 0
     scenario_map = {item["scenario_id"]: item for item in scenarios["scenarios"]}
     for row in matrix["rows"]:
@@ -211,3 +212,66 @@ def test_research_only_module_has_no_production_or_remote_imports() -> None:
     assert pipeline["production_flags"]["g4_4_started"] is False
     assert scenarios["g4_4_started"] is False
     assert matrix["g4_4_started"] is False
+
+
+def test_frozen_g41_g42_coverage_identities_are_exact() -> None:
+    protocol, _, scenarios, matrix = artifacts()
+    assert protocol["coverage_registry"]["personas"] == [
+        "BEGINNER_HEAVY", "MATURE_DECK", "BALANCED", "BACKLOG_RETURNER",
+        "LOW_VOLUME_CONSISTENT", "INTENSIVE_LEARNER",
+        "ALTERNATING_INTENSIVE_LIGHT", "PLANNED_REST_SCHEDULE", "IRREGULAR_LEGITIMATE",
+    ]
+    assert len(protocol["coverage_registry"]["threats"]) == 14
+    assert len(protocol["coverage_registry"]["invariants"]) == 28
+    assert {item["persona_id"] for item in scenarios["scenarios"]} == set(protocol["coverage_registry"]["personas"])
+    assert matrix["coverage"]["personas"] == 9
+    assert matrix["coverage"]["threats"] == 14
+    assert matrix["coverage"]["invariants"] == 28
+
+
+def test_cross_artifact_and_row_digest_references_are_exact() -> None:
+    protocol, pipeline, scenarios, matrix = artifacts()
+    assert protocol["artifact_registry"]["pipeline"]["digest"] == pipeline["identity"]["artifact_digest"]
+    assert protocol["artifact_registry"]["scenarios"]["digest"] == scenarios["identity"]["artifact_digest"]
+    assert protocol["artifact_registry"]["matrix"]["digest"] == matrix["identity"]["artifact_digest"]
+    assert scenarios["protocol_digest"] == protocol["identity"]["artifact_digest"]
+    assert scenarios["pipeline_digest"] == pipeline["identity"]["artifact_digest"]
+    assert matrix["protocol_digest"] == protocol["identity"]["artifact_digest"]
+    assert matrix["pipeline_digest"] == pipeline["identity"]["artifact_digest"]
+    assert matrix["scenario_registry_digest"] == scenarios["identity"]["artifact_digest"]
+    assert all(row["protocol_digest"] == protocol["identity"]["artifact_digest"] for row in matrix["rows"])
+    assert all(row["pipeline_digest"] == pipeline["identity"]["artifact_digest"] for row in matrix["rows"])
+    assert all(row["scenario_registry_digest"] == scenarios["identity"]["artifact_digest"] for row in matrix["rows"])
+
+
+def test_negative_row_identity_refresh_is_targeted() -> None:
+    canonical = protocol_v2.build_all()
+    schemas = protocol_v2.build_schemas(canonical)
+    corpus = protocol_v2.load_strict_json(
+        ROOT / protocol_v2.NEGATIVE_CORPUS_PATH,
+        max_bytes=4 * 1024 * 1024,
+    )
+    human = HUMAN_PATH.read_text(encoding="utf-8")
+    samples = {sample["sample_id"]: sample for sample in corpus["samples"]}
+
+    semantic_sample = samples["NEG-22-REVIEW-MEMBER-MISMATCH"]
+    mutated, mutated_human = protocol_v2.apply_negative_sample(
+        canonical,
+        human,
+        semantic_sample,
+    )
+    protocol_v2._refresh_negative_artifacts(mutated, preserve_row_ids=False)
+    with pytest.raises(protocol_v2.ProtocolValidationError) as semantic_error:
+        protocol_v2._validate_negative_artifacts(mutated, schemas, mutated_human)
+    assert semantic_error.value.code == "REVIEW_MEMBER_SOURCE_MISMATCH"
+
+    row_id_sample = samples["NEG-20-WRONG-ROW-ID"]
+    mutated, mutated_human = protocol_v2.apply_negative_sample(
+        canonical,
+        human,
+        row_id_sample,
+    )
+    protocol_v2._refresh_negative_artifacts(mutated, preserve_row_ids=True)
+    with pytest.raises(protocol_v2.ProtocolValidationError) as row_id_error:
+        protocol_v2._validate_negative_artifacts(mutated, schemas, mutated_human)
+    assert row_id_error.value.code == "ROW_ID_MISMATCH"

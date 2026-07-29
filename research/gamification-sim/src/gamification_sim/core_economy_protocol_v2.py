@@ -15,8 +15,8 @@ from .strict_json import load_strict_json
 
 PROTOCOL_VERSION = 2
 PIPELINE_VERSION = 2
-VALIDATOR_VERSION = "core-economy-protocol-v2-validator-1"
-GENERATOR_VERSION = "core-economy-protocol-v2-generator-1"
+VALIDATOR_VERSION = "core-economy-protocol-v2-validator-3"
+GENERATOR_VERSION = "core-economy-protocol-v2-generator-2"
 EPSILON = 1e-12
 ROUNDING_DECIMALS = 12
 
@@ -46,55 +46,61 @@ REVIEW_MEMBERS = ("P-STEP-ZERO", "P-TAPER-ZERO-30D")
 LEARN_CANDIDATE = "C-CONFIRMATION-ONLY-D1-NOTE-SIBLING"
 LEARN_LIMITATION = "DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE"
 PERSONA_IDS = (
-    "P01_NEW_SMALL",
-    "P02_BEGINNER_REGULAR",
-    "P03_MATURE_CONSISTENT",
-    "P04_HIGH_VOLUME",
-    "P05_SMALL_MATURE_COLLECTION",
-    "P06_BACKLOG_RETURN",
-    "P07_IRREGULAR_SCHEDULE",
-    "P08_NO_FSRS",
-    "P09_LOW_CONFIDENCE_FSRS",
+    'BEGINNER_HEAVY',
+    'MATURE_DECK',
+    'BALANCED',
+    'BACKLOG_RETURNER',
+    'LOW_VOLUME_CONSISTENT',
+    'INTENSIVE_LEARNER',
+    'ALTERNATING_INTENSIVE_LIGHT',
+    'PLANNED_REST_SCHEDULE',
+    'IRREGULAR_LEGITIMATE',
 )
 THREAT_IDS = (
-    "T-FALSE-POSITIVE-CUTOFF",
-    "T-VERIFIED-BASE-SUPPRESSION",
-    "T-CROSS-DOMAIN-CROWDOUT",
-    "T-RAW-VOLUME-FARMING",
-    "T-SESSION-SPLIT-FARMING",
-    "T-BACKLOG-METADATA-FARMING",
-    "T-CONFIGURATION-FARMING",
-    "T-TIMEZONE-CLOCK-FARMING",
-    "T-DUPLICATE-REPLAY",
-    "T-MISSING-EVIDENCE",
-    "T-MOMENTUM-SNOWBALL",
-    "T-RECOVERY-BONUS-LOOP",
+    'DOMAIN_IMBALANCE',
+    'RAW_VOLUME_FARMING',
+    'BACKLOG_FARMING',
+    'NEW_MATERIAL_FLOODING',
+    'SESSION_SPLIT_FARMING',
+    'CALENDAR_BOUNDARY_FARMING',
+    'CONFIGURATION_FARMING',
+    'ANSWER_BEHAVIOR_FARMING',
+    'STREAK_PRESSURE',
+    'PLANNED_REST_EXPLOIT',
+    'RECOVERY_BONUS_LOOP',
+    'MOMENTUM_SNOWBALL',
+    'UNCERTAINTY_COLLAPSE',
+    'EXPLANATION_OPACITY',
 )
 INVARIANT_IDS = (
-    "I-CREATE-EXCLUDED",
-    "I-REVIEW-PAIR-SEPARATE",
-    "I-LEARN-LIMITATION-PRESERVED",
-    "I-VERIFIED-BASE-PRESERVED",
-    "I-HONEST-AGAIN-PRESERVED",
-    "I-NO-NEGATIVE-XP",
-    "I-NO-LEVEL-LOSS",
-    "I-SESSION-SPLIT-NEUTRAL",
-    "I-BACKLOG-NEUTRAL",
-    "I-CONFIGURATION-NEUTRAL",
-    "I-TIMEZONE-NEUTRAL",
-    "I-PLANNED-REST-NEUTRAL",
-    "I-STREAK-NOT-MULTIPLIER",
-    "I-MOMENTUM-NOT-MULTIPLIER",
-    "I-RECOVERY-NO-BONUS",
-    "I-FALSE-POSITIVE-CONTEXT-BOUNDED",
-    "I-CROSS-DOMAIN-MARGINALITY",
-    "I-CROSS-DOMAIN-DECOMPOSITION",
-    "I-DAILY-SCALE-DIFFERENTIABLE",
-    "I-DETERMINISTIC-REPLAY",
-    "I-EXPLANATION-DECOMPOSABLE",
-    "I-SYNTHETIC-ONLY",
-    "I-RESEARCH-ONLY",
-    "I-PRODUCTION-PROHIBITED",
+    'INV-G3-CREATE-XP-EXCLUDED',
+    'INV-REVIEW-UNCERTAINTY-PRESERVED',
+    'INV-LEARN-LIMITATION-PRESERVED',
+    'INV-SCHEDULER-UNCHANGED',
+    'INV-FSRS-UNCHANGED',
+    'INV-DUE-DATES-UNCHANGED',
+    'INV-NO-DIRECT-BUTTON-PRICING',
+    'INV-HONEST-AGAIN-NOT-PUNISHED',
+    'INV-NO-RESPONSE-TIME-REWARD',
+    'INV-NO-TIME-SPENT-REWARD',
+    'INV-NO-SESSION-SPLIT-GAIN',
+    'INV-NO-BACKLOG-SIZE-GAIN',
+    'INV-NO-NEW-MATERIAL-FLOOD-GAIN',
+    'INV-NO-CONFIGURATION-GAIN',
+    'INV-XP-NONNEGATIVE',
+    'INV-LEVEL-MONOTONIC',
+    'INV-PLANNED-REST-NEUTRAL',
+    'INV-NO-ABSENCE-XP-DEBT',
+    'INV-RECOVERY-NO-BONUS-LOOP',
+    'INV-STREAK-NO-XP-MULTIPLIER',
+    'INV-MOMENTUM-BOUNDED-NONSPENDABLE',
+    'INV-MOMENTUM-NO-RECURSIVE-MULTIPLIER',
+    'INV-DETERMINISTIC-REPLAY',
+    'INV-DECOMPOSABLE-EVIDENCE',
+    'INV-EXPLAINABLE-CONTRIBUTIONS',
+    'INV-RESEARCH-ONLY',
+    'INV-NO-REAL-USER-DATA',
+    'INV-NO-PRODUCTION-APPROVAL',
 )
 
 class ProtocolValidationError(ValueError):
@@ -687,8 +693,8 @@ def build_protocol(*, pipeline_digest: str = "PENDING", scenario_digest: str = "
             "g4_2_correction_method": "STALE_CLOSEOUT_IDENTITY_LEDGER_CORRECTION",
         },
         "source_contracts": {
-            "g4_1": {"artifact_id": "core-economy-problem-contract", "version": 1, "status": "FROZEN_PRE_NORMALIZATION_ANALYSIS"},
-            "g4_2": {"artifact_id": "core-economy-input-normalization", "version": 1, "status": "FROZEN_PRE_CANDIDATE_FAMILY_DESIGN"},
+            "g4_1": {"artifact_id": "core-economy-problem-contract", "version": 1, "status": "FROZEN_PRE_NORMALIZATION_ANALYSIS", "blob_sha": "dda1336328df7e79bc5ba1978a102faf5ca40e14"},
+            "g4_2": {"artifact_id": "core-economy-input-normalization", "version": 1, "status": "FROZEN_PRE_CANDIDATE_FAMILY_DESIGN", "blob_sha": "0cf1bbb6f3f088d48b4c78bcc37145dacc8cebc5"},
             "review_reward": {"attempt_credit": 0.25, "outcome_credit": 0.65, "neutral_context_credit": 0.10, "ordinary_success": 1.0, "maximum_success": 1.32},
         },
         "domain_registry": ["REVIEW_DOMAIN", "LEARN_DOMAIN"],
@@ -760,7 +766,7 @@ def build_protocol(*, pipeline_digest: str = "PENDING", scenario_digest: str = "
     return _finalize_digest(protocol)
 
 
-def _event(sequence: int, *, review_units: float = 0.0, learn_lru: float = 0.0, verified_base: float = 0.0, positive_context: float = 0.0, uncertainty_signal: str = "NORMAL", planned_rest: bool = False, session_id: str = "S1", trace_role: str = "WORK") -> dict[str, Any]:
+def _event(sequence: int, *, review_units: float = 0.0, learn_lru: float = 0.0, verified_base: float = 0.0, positive_context: float = 0.0, uncertainty_signal: str = "NORMAL", planned_rest: bool = False, session_id: str = "S1", trace_role: str = "WORK", metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
     return {
         "sequence": sequence,
         "event_type": "SYNTHETIC_DOMAIN_CONTRIBUTION",
@@ -773,6 +779,7 @@ def _event(sequence: int, *, review_units: float = 0.0, learn_lru: float = 0.0, 
         "planned_rest": planned_rest,
         "session_id": session_id,
         "trace_role": trace_role,
+        "metadata": dict(metadata or {}),
     }
 
 
@@ -805,6 +812,7 @@ def _scenario(
     review_pair_required: bool = True,
     replay: Sequence[str] = ("FORWARD",),
     trace_parameters: Mapping[str, Any] | None = None,
+    expected_validation_disposition: str = "VALID",
 ) -> dict[str, Any]:
     return {
         "scenario_id": scenario_id,
@@ -829,7 +837,7 @@ def _scenario(
         "replay_directions": list(replay),
         "threat_ids": sorted(set(threats)),
         "invariant_ids": sorted(set(invariants)),
-        "expected_validation_disposition": "VALID",
+        "expected_validation_disposition": expected_validation_disposition,
         "result_status": "NOT_AVAILABLE",
     }
 
@@ -853,8 +861,8 @@ def build_scenarios(protocol_digest: str, pipeline_digest: str) -> dict[str, Any
             scenario_id, "FALSE_POSITIVE", PERSONA_IDS[index], description,
             [_event(1, review_units=base + context, verified_base=base, positive_context=context, trace_role="NORMAL_REFERENCE"), _event(2, review_units=base, verified_base=base, positive_context=context, uncertainty_signal="ISOLATED_ANOMALY", trace_role="ANOMALY")],
             bundle_tags=["UNCERTAINTY"], gates=fp_gates, metrics=fp_metrics,
-            threats=["T-FALSE-POSITIVE-CUTOFF", "T-VERIFIED-BASE-SUPPRESSION"],
-            invariants=["I-FALSE-POSITIVE-CONTEXT-BOUNDED", "I-VERIFIED-BASE-PRESERVED", "I-EXPLANATION-DECOMPOSABLE"],
+            threats=["UNCERTAINTY_COLLAPSE", "ANSWER_BEHAVIOR_FARMING"],
+            invariants=["INV-HONEST-AGAIN-NOT-PUNISHED", "INV-EXPLAINABLE-CONTRIBUTIONS", "INV-DECOMPOSABLE-EVIDENCE"],
             replay=("FORWARD", "REVERSE"),
             trace_parameters={"matched_verified_base": base, "matched_positive_context": context, "matched_total": base + context},
         ))
@@ -862,19 +870,19 @@ def build_scenarios(protocol_digest: str, pipeline_digest: str) -> dict[str, Any
         "SC-FP-RECOVERY", "FALSE_POSITIVE", PERSONA_IDS[3], "isolated anomaly followed by four normal evidence-bearing days",
         [_event(1, review_units=1.2, verified_base=1.08, positive_context=0.12, uncertainty_signal="ISOLATED_ANOMALY"), *[_event(i, review_units=1.2, verified_base=1.08, positive_context=0.12, uncertainty_signal="NORMAL") for i in range(2, 6)]],
         bundle_tags=["UNCERTAINTY", "RECOVERY"], gates=fp_gates + ["HG-RECOVERY-NO-BONUS-LOOP"], metrics=fp_metrics + ["M-TIME-TO-RECOVERY", "M-RECOVERY-LOOP-DELTA"],
-        threats=["T-FALSE-POSITIVE-CUTOFF", "T-RECOVERY-BONUS-LOOP"], invariants=["I-FALSE-POSITIVE-CONTEXT-BOUNDED", "I-RECOVERY-NO-BONUS"], replay=("FORWARD", "REVERSE"),
+        threats=["UNCERTAINTY_COLLAPSE", "RECOVERY_BONUS_LOOP"], invariants=["INV-HONEST-AGAIN-NOT-PUNISHED", "INV-RECOVERY-NO-BONUS-LOOP"], replay=("FORWARD", "REVERSE"),
     ))
     scenarios.append(_scenario(
         "SC-FP-REPEATED-CONFLICT", "FALSE_POSITIVE", PERSONA_IDS[8], "repeated conflicting evidence may reach stronger restriction",
         [_event(i, review_units=1.2, verified_base=1.08, positive_context=0.12, uncertainty_signal="CONFLICT") for i in range(1, 5)],
         bundle_tags=["UNCERTAINTY"], gates=fp_gates, metrics=fp_metrics + ["M-POLICY-COMPLEXITY"],
-        threats=["T-MISSING-EVIDENCE", "T-FALSE-POSITIVE-CUTOFF"], invariants=["I-VERIFIED-BASE-PRESERVED", "I-EXPLANATION-DECOMPOSABLE"], replay=("FORWARD", "REVERSE"),
+        threats=["EXPLANATION_OPACITY", "UNCERTAINTY_COLLAPSE"], invariants=["INV-EXPLAINABLE-CONTRIBUTIONS", "INV-DECOMPOSABLE-EVIDENCE"], replay=("FORWARD", "REVERSE"),
     ))
     scenarios.append(_scenario(
         "SC-PIPELINE-NONLINEAR-ORDER", "PIPELINE", PERSONA_IDS[8], "component-wise normalization order distinguishes aggregate-first nonlinear behavior",
         [_event(1, review_units=1.32, verified_base=1.0, positive_context=0.32, uncertainty_signal="ISOLATED_ANOMALY")],
         bundle_tags=["UNCERTAINTY", "CROSS_DOMAIN"], gates=["HG-VERIFIED-BASE-PRESERVED", "HG-DETERMINISTIC-REPLAY", "HG-DECOMPOSABLE-EXPLANATION"], metrics=["M-VERIFIED-BASE-PRESERVATION", "M-EXPLANATION-DECOMPOSABILITY"],
-        threats=["T-VERIFIED-BASE-SUPPRESSION"], invariants=["I-VERIFIED-BASE-PRESERVED", "I-DETERMINISTIC-REPLAY", "I-EXPLANATION-DECOMPOSABLE"], replay=("FORWARD", "REVERSE"),
+        threats=["ANSWER_BEHAVIOR_FARMING"], invariants=["INV-EXPLAINABLE-CONTRIBUTIONS", "INV-DETERMINISTIC-REPLAY", "INV-DECOMPOSABLE-EVIDENCE"], replay=("FORWARD", "REVERSE"),
         trace_parameters={"nonlinear_anchor": 1.32, "selected_order": "COMPONENTWISE_AFTER_UNCERTAINTY"},
     ))
 
@@ -893,26 +901,26 @@ def build_scenarios(protocol_digest: str, pipeline_digest: str) -> dict[str, Any
         scenarios.append(_scenario(
             scenario_id, "CROSS_DOMAIN", PERSONA_IDS[offset % len(PERSONA_IDS)], description, _workload_events(reviews, learns),
             bundle_tags=["CROSS_DOMAIN", "XDOMAIN_DAILY"], gates=x_gates, metrics=x_metrics,
-            threats=["T-CROSS-DOMAIN-CROWDOUT", "T-RAW-VOLUME-FARMING"],
-            invariants=["I-CROSS-DOMAIN-MARGINALITY", "I-CROSS-DOMAIN-DECOMPOSITION", "I-DAILY-SCALE-DIFFERENTIABLE"],
+            threats=["DOMAIN_IMBALANCE", "RAW_VOLUME_FARMING"],
+            invariants=["INV-EXPLAINABLE-CONTRIBUTIONS", "INV-DECOMPOSABLE-EVIDENCE", "INV-EXPLAINABLE-CONTRIBUTIONS"],
         ))
 
     for reviews in (5, 10, 30, 100, 300):
         scenarios.append(_scenario(
             f"SC-DAILY-REVIEW-{reviews}", "DAILY_SCALE", PERSONA_IDS[reviews % len(PERSONA_IDS)], f"legitimate day with {reviews} ordinary Reviews", _workload_events(reviews, 0),
             bundle_tags=["DAILY", "XDOMAIN_DAILY"], gates=daily_gates, metrics=daily_metrics,
-            threats=["T-RAW-VOLUME-FARMING"], invariants=["I-DAILY-SCALE-DIFFERENTIABLE", "I-NO-NEGATIVE-XP"],
+            threats=["RAW_VOLUME_FARMING"], invariants=["INV-EXPLAINABLE-CONTRIBUTIONS", "INV-XP-NONNEGATIVE"],
         ))
     for learns in (1, 5, 10, 30):
         scenarios.append(_scenario(
             f"SC-DAILY-LEARN-{learns}", "DAILY_SCALE", PERSONA_IDS[learns % len(PERSONA_IDS)], f"legitimate day with {learns} Learn confirmations", _workload_events(0, learns),
             bundle_tags=["DAILY", "XDOMAIN_DAILY"], gates=daily_gates, metrics=daily_metrics,
-            threats=["T-RAW-VOLUME-FARMING"], invariants=["I-DAILY-SCALE-DIFFERENTIABLE", "I-NO-NEGATIVE-XP"], review_pair_required=False,
+            threats=["RAW_VOLUME_FARMING"], invariants=["INV-EXPLAINABLE-CONTRIBUTIONS", "INV-XP-NONNEGATIVE"], review_pair_required=False,
         ))
     scenarios.append(_scenario(
         "SC-SESSION-SPLIT", "MANIPULATION", PERSONA_IDS[5], "same legitimate work split across two sessions", _workload_events(30, 5, session_split=True),
         bundle_tags=["DAILY"], gates=["HG-NO-SESSION-SPLIT-GAIN", "HG-DETERMINISTIC-REPLAY"], metrics=["M-SESSION-SPLIT-DELTA"],
-        threats=["T-SESSION-SPLIT-FARMING"], invariants=["I-SESSION-SPLIT-NEUTRAL", "I-DETERMINISTIC-REPLAY"], replay=("FORWARD", "REVERSE"),
+        threats=["SESSION_SPLIT_FARMING"], invariants=["INV-NO-SESSION-SPLIT-GAIN", "INV-DETERMINISTIC-REPLAY"], replay=("FORWARD", "REVERSE"),
     ))
 
     interactions = [
@@ -931,15 +939,120 @@ def build_scenarios(protocol_digest: str, pipeline_digest: str) -> dict[str, Any
             scenario_id, category, PERSONA_IDS[index % len(PERSONA_IDS)], description,
             [_event(1, review_units=0.5 if "ROUNDING" not in scenario_id else 0.333333333333, learn_lru=0.5, verified_base=0.5, planned_rest=planned_rest)],
             bundle_tags=tags, gates=gates, metrics=metrics,
-            threats=["T-DUPLICATE-REPLAY" if "REPLAY" in scenario_id or "ROUNDING" in scenario_id else "T-MOMENTUM-SNOWBALL" if "MOMENTUM" in scenario_id else "T-RECOVERY-BONUS-LOOP" if "RECOVERY" in scenario_id else "T-MISSING-EVIDENCE"],
-            invariants=["I-DETERMINISTIC-REPLAY", "I-EXPLANATION-DECOMPOSABLE", "I-PLANNED-REST-NEUTRAL" if planned_rest else "I-NO-LEVEL-LOSS"], replay=replay,
+            threats=["EXPLANATION_OPACITY" if "REPLAY" in scenario_id or "ROUNDING" in scenario_id else "MOMENTUM_SNOWBALL" if "MOMENTUM" in scenario_id else "RECOVERY_BONUS_LOOP" if "RECOVERY" in scenario_id else "EXPLANATION_OPACITY"],
+            invariants=["INV-DETERMINISTIC-REPLAY", "INV-DECOMPOSABLE-EVIDENCE", "INV-PLANNED-REST-NEUTRAL" if planned_rest else "INV-LEVEL-MONOTONIC"], replay=replay,
         ))
 
-    # Guarantee every frozen threat and invariant is represented without adding artificial outcomes.
-    for index, threat_id in enumerate(THREAT_IDS):
-        scenarios[index % len(scenarios)]["threat_ids"] = sorted(set(scenarios[index % len(scenarios)]["threat_ids"]) | {threat_id})
-    for index, invariant_id in enumerate(INVARIANT_IDS):
-        scenarios[index % len(scenarios)]["invariant_ids"] = sorted(set(scenarios[index % len(scenarios)]["invariant_ids"]) | {invariant_id})
+    # Explicit G4.1/G4.2 source-boundary traces. These are semantic
+    # scenarios, not identifier-only coverage injection.
+    source_specs = [
+        (
+            "SC-SOURCE-REVIEW-UNCERTAINTY-PARALLEL",
+            "MATURE_DECK",
+            "same Review evidence remains separate for both frozen Review members",
+            _event(1, review_units=1.0, verified_base=1.0, metadata={"review_axis": "REVIEW_MODEL_AXIS_V1", "members": list(REVIEW_MEMBERS), "averaging": "PROHIBITED"}),
+            ["DOMAIN_IMBALANCE", "UNCERTAINTY_COLLAPSE"],
+            ["INV-REVIEW-UNCERTAINTY-PRESERVED", "INV-DETERMINISTIC-REPLAY"],
+            ["HG-REVIEW-AXIS-PRESERVED", "HG-DETERMINISTIC-REPLAY"],
+            ["M-EXPLANATION-DECOMPOSABILITY"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-LEARN-LIMITATION-PRESERVED",
+            "BEGINNER_HEAVY",
+            "confirmed Learn contribution retains its unresolved identity limitation",
+            _event(1, learn_lru=1.0, metadata={"learn_candidate": LEARN_CANDIDATE, "learn_status": "CONFIRMATORY_INCONCLUSIVE", "limitation": LEARN_LIMITATION}),
+            ["DOMAIN_IMBALANCE", "EXPLANATION_OPACITY"],
+            ["INV-LEARN-LIMITATION-PRESERVED", "INV-EXPLAINABLE-CONTRIBUTIONS"],
+            ["HG-LEARN-LIMITATION-PRESERVED", "HG-DECOMPOSABLE-EXPLANATION"],
+            ["M-EXPLANATION-DECOMPOSABILITY"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-BACKLOG-NOT-REWARD",
+            "BACKLOG_RETURNER",
+            "backlog size and elapsed time are context only and add no contribution",
+            _event(1, metadata={"backlog_size": 1000, "time_spent_seconds": 3600, "rewardable": False}),
+            ["BACKLOG_FARMING", "RAW_VOLUME_FARMING"],
+            ["INV-NO-BACKLOG-SIZE-GAIN", "INV-NO-TIME-SPENT-REWARD", "INV-XP-NONNEGATIVE"],
+            ["HG-NO-BACKLOG-SIZE-GAIN", "HG-NO-NEGATIVE-XP"],
+            ["M-EXPLOIT-ADVANTAGE"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-NEW-MATERIAL-CREATE-EXCLUDED",
+            "INTENSIVE_LEARNER",
+            "raw exposure and excluded Create-domain activity do not become Learn contribution",
+            _event(1, metadata={"new_material_exposures": 300, "confirmed_learn": 0, "attempted_domain": "CREATE_DOMAIN", "rewardable": False}),
+            ["NEW_MATERIAL_FLOODING", "RAW_VOLUME_FARMING"],
+            ["INV-G3-CREATE-XP-EXCLUDED", "INV-NO-NEW-MATERIAL-FLOOD-GAIN", "INV-NO-REAL-USER-DATA"],
+            ["HG-CREATE-EXCLUDED", "HG-NO-NEW-MATERIAL-FLOOD-GAIN", "HG-NO-REAL-USER-DATA"],
+            ["M-EXPLOIT-ADVANTAGE"],
+            "INVALIDATED",
+        ),
+        (
+            "SC-SOURCE-CONFIGURATION-CALENDAR-NEUTRAL",
+            "IRREGULAR_LEGITIMATE",
+            "scheduler settings, FSRS settings, due dates and clock boundaries remain non-rewardable",
+            _event(1, review_units=1.0, verified_base=1.0, metadata={"configured_review_limit": 9999, "timezone_shift_hours": 12, "scheduler_mutated": False, "fsrs_mutated": False, "due_dates_mutated": False}),
+            ["CONFIGURATION_FARMING", "CALENDAR_BOUNDARY_FARMING"],
+            ["INV-NO-CONFIGURATION-GAIN", "INV-SCHEDULER-UNCHANGED", "INV-FSRS-UNCHANGED", "INV-DUE-DATES-UNCHANGED"],
+            ["HG-NO-CONFIGURATION-GAIN", "HG-NO-TIMEZONE-CLOCK-GAIN"],
+            ["M-EXPLOIT-ADVANTAGE"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-HONEST-AGAIN-NO-DIRECT-PRICE",
+            "LOW_VOLUME_CONSISTENT",
+            "answer button, response speed and time are evidence context rather than direct prices",
+            _event(1, review_units=0.25, verified_base=0.25, metadata={"answer_button": "AGAIN", "response_time_ms": 50, "time_spent_seconds": 600, "direct_button_price": False}),
+            ["ANSWER_BEHAVIOR_FARMING"],
+            ["INV-NO-DIRECT-BUTTON-PRICING", "INV-HONEST-AGAIN-NOT-PUNISHED", "INV-NO-RESPONSE-TIME-REWARD", "INV-NO-TIME-SPENT-REWARD"],
+            ["HG-HONEST-AGAIN-NOT-PUNISHED", "HG-VERIFIED-BASE-PRESERVED"],
+            ["M-VERIFIED-BASE-PRESERVATION"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-PLANNED-REST-NO-DEBT",
+            "PLANNED_REST_SCHEDULE",
+            "planned rest preserves state without contribution, streak growth or debt",
+            _event(1, planned_rest=True, metadata={"streak_growth": 0, "xp": 0, "xp_debt": 0}),
+            ["STREAK_PRESSURE", "PLANNED_REST_EXPLOIT"],
+            ["INV-PLANNED-REST-NEUTRAL", "INV-NO-ABSENCE-XP-DEBT", "INV-STREAK-NO-XP-MULTIPLIER"],
+            ["HG-PLANNED-REST-NEUTRAL", "HG-STREAK-NO-XP-MULTIPLIER"],
+            ["M-PLANNED-REST-DELTA"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-MOMENTUM-RECOVERY-STATE-ONLY",
+            "ALTERNATING_INTENSIVE_LIGHT",
+            "Momentum and recovery remain bounded state indicators without recursive or return bonuses",
+            _event(1, review_units=1.0, verified_base=1.0, metadata={"momentum_spendable": False, "momentum_multiplier": 1.0, "recovery_bonus": 0}),
+            ["MOMENTUM_SNOWBALL", "RECOVERY_BONUS_LOOP"],
+            ["INV-MOMENTUM-BOUNDED-NONSPENDABLE", "INV-MOMENTUM-NO-RECURSIVE-MULTIPLIER", "INV-RECOVERY-NO-BONUS-LOOP"],
+            ["HG-MOMENTUM-NO-SNOWBALL", "HG-MOMENTUM-NO-XP-MULTIPLIER", "HG-RECOVERY-NO-BONUS-LOOP"],
+            ["M-MOMENTUM-SNOWBALL-DELTA", "M-RECOVERY-LOOP-DELTA"],
+            "VALID",
+        ),
+        (
+            "SC-SOURCE-RESEARCH-EXPLANATION-BOUNDARY",
+            "BALANCED",
+            "decomposition remains synthetic, research-only and production-prohibited",
+            _event(1, review_units=1.0, learn_lru=1.0, verified_base=1.0, metadata={"synthetic_only": True, "real_user_data": False, "production_approved": False}),
+            ["EXPLANATION_OPACITY"],
+            ["INV-DECOMPOSABLE-EVIDENCE", "INV-EXPLAINABLE-CONTRIBUTIONS", "INV-RESEARCH-ONLY", "INV-NO-REAL-USER-DATA", "INV-NO-PRODUCTION-APPROVAL", "INV-LEVEL-MONOTONIC"],
+            ["HG-DECOMPOSABLE-EXPLANATION", "HG-RESEARCH-ONLY", "HG-NO-PRODUCTION-APPROVAL", "HG-NO-LEVEL-LOSS"],
+            ["M-EXPLANATION-DECOMPOSABILITY"],
+            "VALID",
+        ),
+    ]
+    for scenario_id, persona_id, description, event, threats, invariants, gates, metrics, disposition in source_specs:
+        scenarios.append(_scenario(
+            scenario_id, "SOURCE_BOUNDARY", persona_id, description, [event],
+            bundle_tags=["INTEGRATED"], gates=gates, metrics=metrics,
+            threats=threats, invariants=invariants, replay=("FORWARD", "REVERSE"),
+            expected_validation_disposition=disposition,
+        ))
 
     artifact = {
         "$schema": "../schemas/core-economy-candidate-scenarios-v2.schema.json",
@@ -1349,6 +1462,18 @@ def semantic_validate(protocol: Mapping[str, Any], pipeline: Mapping[str, Any], 
         _fail("V1_V2_IDENTITY_MIX", "all v2 artifact versions must equal 2")
     for value, code in ((protocol, "PROTOCOL_DIGEST_MISMATCH"), (pipeline, "PIPELINE_DIGEST_MISMATCH"), (scenarios, "SCENARIO_DIGEST_MISMATCH"), (matrix, "MATRIX_DIGEST_MISMATCH")):
         _assert_digest(value, code)
+    # Cross-artifact digest/reference continuity.
+    protocol_digest = protocol["identity"]["artifact_digest"]
+    pipeline_digest = pipeline["identity"]["artifact_digest"]
+    scenario_digest = scenarios["identity"]["artifact_digest"]
+    matrix_digest = matrix["identity"]["artifact_digest"]
+    if scenarios["protocol_digest"] != protocol_digest or scenarios["pipeline_digest"] != pipeline_digest:
+        _fail("SCENARIO_CROSS_DIGEST_MISMATCH", "scenario registry does not reference exact protocol/pipeline digests")
+    if matrix["protocol_digest"] != protocol_digest or matrix["pipeline_digest"] != pipeline_digest or matrix["scenario_registry_digest"] != scenario_digest:
+        _fail("MATRIX_CROSS_DIGEST_MISMATCH", "matrix does not reference exact protocol/pipeline/scenario digests")
+    registry = protocol["artifact_registry"]
+    if registry["pipeline"]["digest"] != pipeline_digest or registry["scenarios"]["digest"] != scenario_digest or registry["matrix"]["digest"] != matrix_digest:
+        _fail("PROTOCOL_ARTIFACT_REGISTRY_MISMATCH", "protocol artifact registry digests do not match canonical artifacts")
     if protocol["supersession"]["prior_status"] != "SUPERSEDED_PRE_EXECUTION" or protocol["supersession"]["prior_results"] != "NOT_AVAILABLE" or protocol["supersession"]["results_accessed_before_republication"]:
         _fail("SUPERSESSION_STATE", "v1 must be superseded before execution with no results")
     if protocol["governance"]["g4_2_correction_method"] != "STALE_CLOSEOUT_IDENTITY_LEDGER_CORRECTION":
@@ -1457,6 +1582,23 @@ def semantic_validate(protocol: Mapping[str, Any], pipeline: Mapping[str, Any], 
     row_map = _unique(matrix["rows"], "row_id", "DUPLICATE_ROW_ID")
     if matrix["row_count"] != len(row_map):
         _fail("ROW_COUNT", "row_count mismatch")
+    # Validate row-local typed identities before whole-matrix completeness.
+    for row in matrix["rows"]:
+        identity = {key: row[key] for key in ("protocol_version", "pipeline_version", "candidate_bundle_id", "scenario_id", "review_member", "replay_direction", "replica", "seed", "gate_profile_id")}
+        expected_id = "ROW-" + canonical_digest(identity)
+        if row["row_id"] != expected_id:
+            _fail("ROW_ID_MISMATCH", str(row["row_id"]))
+        if row["candidate_bundle_id"] not in bundles or row["scenario_id"] not in scenario_map:
+            _fail("MATRIX_REFERENCE", str(row["row_id"]))
+        scenario = scenario_map[row["scenario_id"]]
+        if scenario["axis_mapping"]["review_pair_required"] and row["review_member"] not in REVIEW_MEMBERS:
+            _fail("REVIEW_MEMBER_SOURCE_MISMATCH", str(row["row_id"]))
+        if not scenario["axis_mapping"]["review_pair_required"] and row["review_member"] != "NOT_APPLICABLE":
+            _fail("REVIEW_MEMBER_SOURCE_MISMATCH", str(row["row_id"]))
+        if row["result_status"] != "NOT_RUN" or row["result"] != "NOT_AVAILABLE" or row["production_status"] != "RESEARCH_ONLY":
+            _fail("RESULT_STATUS", str(row["row_id"]))
+        if row["protocol_digest"] != protocol_digest or row["pipeline_digest"] != pipeline_digest or row["scenario_registry_digest"] != scenario_digest:
+            _fail("ROW_CROSS_DIGEST_MISMATCH", str(row["row_id"]))
     expected_rows = generate_rows(protocol, pipeline, scenarios)
     expected_by_id = {row["row_id"]: row for row in expected_rows}
     actual_by_id = {row["row_id"]: row for row in matrix["rows"]}
@@ -1505,6 +1647,16 @@ def semantic_validate(protocol: Mapping[str, Any], pipeline: Mapping[str, Any], 
     with_learn = apply_cross_domain(daily["review_bounded"], daily["learn_bounded"], conversion, "D-PER-DOMAIN-PIECEWISE-MEDIUM")["total_npu"]
     if with_learn <= base:
         _fail("LEARN_MARGINAL_ZERO", "Learn marginal contribution must be positive below boundary")
+    review_probe = apply_daily(1.0, 5.0, "D-PER-DOMAIN-PIECEWISE-MEDIUM")
+    learn_only = apply_cross_domain(0.0, review_probe["learn_bounded"], conversion, "D-PER-DOMAIN-PIECEWISE-MEDIUM")["total_npu"]
+    with_review = apply_cross_domain(review_probe["review_bounded"], review_probe["learn_bounded"], conversion, "D-PER-DOMAIN-PIECEWISE-MEDIUM")["total_npu"]
+    if with_review <= learn_only:
+        _fail("REVIEW_MARGINAL_ZERO", "Review marginal contribution must be positive below boundary")
+    control_daily = apply_daily(100.0, 0.0, "D-COMBINED-HARD-6-CONTROL")
+    control_base = apply_cross_domain(control_daily["review_bounded"], 0.0, conversion, "D-COMBINED-HARD-6-CONTROL")
+    control_plus_learn = apply_cross_domain(control_daily["review_bounded"], 1.0, conversion, "D-COMBINED-HARD-6-CONTROL")
+    if control_base["total_npu"] != 6.0 or control_plus_learn["total_npu"] != 6.0 or control_plus_learn["review_component"] >= control_base["review_component"]:
+        _fail("COMBINED_CONTROL_CROWDOUT", "combined-cap control must expose the prospectively expected crowdout")
     if nonlinear_componentwise_selected(1.0, 0.32, 0.75) == nonlinear_aggregate_first_prohibited(1.0, 0.32, 0.75):
         _fail("NONLINEAR_ORDER_DISTINCTION", "selected and prohibited nonlinear orders must differ")
     if human_text is not None:
@@ -1584,23 +1736,100 @@ def apply_negative_sample(artifacts: Mapping[str, Mapping[str, Any]], human_text
     return mutated, human_text
 
 
+def _refresh_negative_artifacts(
+    artifacts: dict[str, dict[str, Any]],
+    *,
+    preserve_row_ids: bool = False,
+) -> None:
+    protocol = artifacts["protocol"]
+    pipeline = artifacts["pipeline"]
+    scenarios = artifacts["scenarios"]
+    matrix = artifacts["matrix"]
+    for _ in range(4):
+        protocol["identity"]["artifact_digest"] = artifact_digest(protocol)
+        pipeline["identity"]["artifact_digest"] = artifact_digest(pipeline)
+        scenarios["protocol_digest"] = protocol["identity"]["artifact_digest"]
+        scenarios["pipeline_digest"] = pipeline["identity"]["artifact_digest"]
+        scenarios["identity"]["artifact_digest"] = artifact_digest(scenarios)
+        matrix["protocol_digest"] = protocol["identity"]["artifact_digest"]
+        matrix["pipeline_digest"] = pipeline["identity"]["artifact_digest"]
+        matrix["scenario_registry_digest"] = scenarios["identity"]["artifact_digest"]
+        for row in matrix["rows"]:
+            row["protocol_digest"] = protocol["identity"]["artifact_digest"]
+            row["pipeline_digest"] = pipeline["identity"]["artifact_digest"]
+            row["scenario_registry_digest"] = scenarios["identity"]["artifact_digest"]
+            if not preserve_row_ids:
+                identity = {
+                    key: row[key]
+                    for key in (
+                        "protocol_version",
+                        "pipeline_version",
+                        "candidate_bundle_id",
+                        "scenario_id",
+                        "review_member",
+                        "replay_direction",
+                        "replica",
+                        "seed",
+                        "gate_profile_id",
+                    )
+                }
+                row["row_id"] = "ROW-" + canonical_digest(identity)
+        matrix["identity"]["artifact_digest"] = artifact_digest(matrix)
+        protocol["artifact_registry"]["pipeline"]["digest"] = pipeline["identity"]["artifact_digest"]
+        protocol["artifact_registry"]["scenarios"]["digest"] = scenarios["identity"]["artifact_digest"]
+        protocol["artifact_registry"]["matrix"]["digest"] = matrix["identity"]["artifact_digest"]
+
+def _validate_negative_artifacts(
+    artifacts: Mapping[str, Mapping[str, Any]],
+    schemas: Mapping[str, Mapping[str, Any]],
+    human_text: str,
+) -> None:
+    for name in ("protocol", "pipeline", "scenarios", "matrix"):
+        errors = sorted(
+            Draft202012Validator(schemas[name]).iter_errors(artifacts[name]),
+            key=lambda error: list(error.absolute_path),
+        )
+        if errors:
+            _fail("SCHEMA_VALIDATION", f"{name}: {errors[0].message}")
+    semantic_validate(
+        artifacts["protocol"],
+        artifacts["pipeline"],
+        artifacts["scenarios"],
+        artifacts["matrix"],
+        human_text=human_text,
+    )
+
+
 def run_negative_corpus(root: Path, repository_root: Path) -> dict[str, Any]:
     corpus = load_strict_json(root / NEGATIVE_CORPUS_PATH, max_bytes=4 * 1024 * 1024)
     canonical = build_all()
+    schemas = build_schemas(canonical)
     human_text = (repository_root / HUMAN_PROTOCOL_REPOSITORY_PATH).read_text(encoding="utf-8")
     rejected: list[str] = []
     for sample in corpus["samples"]:
         mutated, mutated_human = apply_negative_sample(canonical, human_text, sample)
+        if not bool(sample.get("preserve_mutated_digest", False)) and sample["target"] != "human":
+            _refresh_negative_artifacts(
+                mutated,
+                preserve_row_ids=bool(sample.get("preserve_mutated_row_ids", False)),
+            )
+        expected_codes = set(sample["expected_error_codes"])
         try:
-            semantic_validate(mutated["protocol"], mutated["pipeline"], mutated["scenarios"], mutated["matrix"], human_text=mutated_human)
-        except Exception:
+            _validate_negative_artifacts(mutated, schemas, mutated_human)
+        except ProtocolValidationError as exc:
+            if exc.code not in expected_codes:
+                _fail(
+                    "NEGATIVE_UNEXPECTED_ERROR",
+                    f"{sample['sample_id']}: expected {sorted(expected_codes)}, got {exc.code}: {exc}",
+                )
             rejected.append(str(sample["sample_id"]))
+        except Exception as exc:
+            _fail("NEGATIVE_UNEXPECTED_EXCEPTION", f"{sample['sample_id']}: {type(exc).__name__}: {exc}")
         else:
             _fail("NEGATIVE_SAMPLE_ACCEPTED", str(sample["sample_id"]))
     if len(rejected) != 40:
         _fail("NEGATIVE_CORPUS_EXECUTION", f"expected 40 rejections, found {len(rejected)}")
     return {"negative_samples": len(rejected), "negative_corpus": "PASS"}
-
 
 def validate_workspace(root: Path, *, repository_root: Path | None = None) -> dict[str, Any]:
     protocol, pipeline, scenarios, matrix, corpus = _load_workspace(root)
