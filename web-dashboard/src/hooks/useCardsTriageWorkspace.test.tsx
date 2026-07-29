@@ -11,15 +11,37 @@ const second = item("1002", "Second", reason("content:2", "content.audio_missing
 
 let latestWorkspace: ReturnType<typeof useCardsTriageWorkspace> | null = null;
 let harnessDeckIds = ["3"];
+let harnessInitialLearningPeriodDays: 7 | 30 | 90 | undefined;
 
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
   latestWorkspace = null;
   harnessDeckIds = ["3"];
+  harnessInitialLearningPeriodDays = undefined;
 });
 
 describe("useCardsTriageWorkspace", () => {
+  it("uses the restored learning period for its first query after navigation", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    harnessInitialLearningPeriodDays = 30;
+    let initialScope: { periodStartMs: number; periodEndMs: number } | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) {
+        initialScope = body.scope;
+        return ok(response([first], 0, null));
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+
+    const root = await mount();
+    expect(latestWorkspace!.learningPeriodDays).toBe(30);
+    expect(initialScope!.periodEndMs - initialScope!.periodStartMs).toBe(30 * 86400000);
+    await act(async () => root.unmount());
+  });
+
   it("uses an explicit period and performs exactly one bounded continuation request per activation", async () => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
@@ -97,6 +119,36 @@ describe("useCardsTriageWorkspace", () => {
     expect(calls[2]!.contentCursor).toBe("500");
     expect(latestWorkspace!.lastContinuationAddedCount).toBe(0);
     expect(latestWorkspace!.scannedNoteCount).toBe(1000);
+    await act(async () => root.unmount());
+  });
+
+  it("preserves the current inbox and active item while an explicit refresh is pending", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let queryCount = 0;
+    let resolveRefresh: ((value: Response) => void) | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input); const body = JSON.parse(String(init?.body || "{}"));
+      if (url.includes("/api/triage/query")) {
+        queryCount += 1;
+        if (queryCount === 1) return ok(response([first], 0, null));
+        return new Promise<Response>((resolve) => { resolveRefresh = resolve; });
+      }
+      if (url.includes("/api/search/inspect")) return ok(searchDetails(String(body.cardId)));
+      throw new Error(`unexpected ${url}`);
+    }));
+    const root = await mount();
+    await act(async () => latestWorkspace!.activate(first));
+    await waitUntil(() => latestWorkspace?.inspectStatus === "ready");
+
+    await act(async () => latestWorkspace!.refresh());
+    await waitUntil(() => latestWorkspace?.refreshStatus === "pending");
+    expect(latestWorkspace!.response?.items).toEqual([first]);
+    expect(latestWorkspace!.activeItem?.itemId).toBe(first.itemId);
+
+    await act(async () => resolveRefresh?.(ok(response([first, second], 0, null))));
+    await waitUntil(() => latestWorkspace?.refreshStatus === "success");
+    expect(latestWorkspace!.response?.items).toEqual([first, second]);
+    expect(latestWorkspace!.activeItem?.itemId).toBe(first.itemId);
     await act(async () => root.unmount());
   });
 
@@ -328,6 +380,11 @@ describe("useCardsTriageWorkspace", () => {
     await act(async () => { await latestWorkspace!.recheckActive(); });
     expect(latestWorkspace!.lastOutcome?.phase).toBe("resolved");
     expect(latestWorkspace!.lastOutcome?.reconciliation?.removed.map((value) => value.reasonId)).toEqual(["learning:1"]);
+    expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1001", "1002"]);
+    expect(latestWorkspace!.activeItem?.cardId).toBe("1001");
+    expect(latestWorkspace!.activeItem?.reasons).toEqual([]);
+    expect(latestWorkspace!.focusRequest.version).toBe(0);
+    await act(async () => latestWorkspace!.advanceResolved());
     expect(latestWorkspace!.response!.items.map((value) => value.cardId)).toEqual(["1002"]);
     expect(latestWorkspace!.activeItem?.cardId).toBe("1002");
     expect(latestWorkspace!.focusRequest.itemId).toBe("card:1002");
@@ -426,7 +483,7 @@ async function mount() {
 }
 
 function Harness() {
-  latestWorkspace = useCardsTriageWorkspace(harnessDeckIds);
+  latestWorkspace = useCardsTriageWorkspace(harnessDeckIds, harnessInitialLearningPeriodDays);
   return <div>{latestWorkspace.queryStatus}:{latestWorkspace.response?.items.length ?? 0}:{latestWorkspace.continuationStatus}</div>;
 }
 

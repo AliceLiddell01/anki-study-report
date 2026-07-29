@@ -44,7 +44,7 @@ export E2E_MODE ANKI_E2E_SCOPE ANKI_E2E_SCREENSHOT_WORKERS ANKI_E2E_RESOURCE_TEL
 export ANKI_E2E_PACKAGE_SOURCE ANKI_E2E_FAST_CI_RUN_ID ANKI_E2E_FAST_CI_TESTED_SHA ANKI_E2E_FAST_CI_PACKAGE_SHA256
 ANKI_STUDY_REPORT_E2E=1
 
-case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|settings|notifications) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
+case "$ANKI_E2E_SCOPE" in full|global|stats|decks|activity|cards|cards-exact-av-media|settings|notifications) ;; *) echo "Unsupported E2E scope: $ANKI_E2E_SCOPE" >&2; exit 2;; esac
 case "$ANKI_E2E_SCREENSHOT_WORKERS" in 1|2|3|4) ;; *) echo "Screenshot workers must be 1..4: $ANKI_E2E_SCREENSHOT_WORKERS" >&2; exit 2;; esac
 case "$ANKI_E2E_RESOURCE_TELEMETRY" in 0|1) ;; *) echo "Resource telemetry must be 0 or 1" >&2; exit 2;; esac
 case "$ANKI_E2E_VERIFY_RESTART" in auto|0|1) ;; *) echo "Restart policy must be auto, 0, or 1" >&2; exit 2;; esac
@@ -370,6 +370,11 @@ phase_start "scenario-preparation" "real card scenario preparation"
 /e2e/bin/mark-apkg-cards-problematic.py \
   --profile-dir "$ANKI_PROFILE_DIR" \
   --artifacts-dir "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR"
+if [ "$ANKI_E2E_SCOPE" = "cards-exact-av-media" ]; then
+  /e2e/bin/cards-exact-av-media-scenario.py \
+    --profile-dir "$ANKI_PROFILE_DIR" \
+    --output "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR/exact-scenario.json"
+fi
 phase_end
 
 section "Install add-on and optional non-collection fixtures"
@@ -392,9 +397,24 @@ phase_start "dashboard-ready-first" "first readiness wait"
 phase_end
 phase_start "api-smoke-first" "first API smoke"
 /e2e/bin/smoke-api.py --label first
+if [ "$ANKI_E2E_SCOPE" = "cards-exact-av-media" ]; then
+  /e2e/bin/cards-exact-av-media-api.py \
+    --ready "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
+    --output "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR/exact-api.json"
+fi
 phase_end
 phase_start "browser-smoke-first" "browser real-deck and dashboard capture"
 /e2e/bin/smoke-browser.mjs --label first
+if [ "$ANKI_E2E_SCOPE" = "cards-exact-av-media" ]; then
+  /e2e/bin/cards-exact-av-media-browser.mjs \
+    --ready "$ANKI_STUDY_REPORT_E2E_READY_FILE" \
+    --reports "$ANKI_STUDY_REPORT_E2E_REPORTS_DIR" \
+    --screenshots "$ANKI_STUDY_REPORT_E2E_SCREENSHOTS_DIR" \
+    --diagnostics "$ANKI_STUDY_REPORT_E2E_DIAGNOSTICS_DIR"
+  /e2e/bin/cards-exact-av-media-evidence.py \
+    --artifacts "$ANKI_STUDY_REPORT_E2E_ARTIFACTS" \
+    --profile-dir "$ANKI_PROFILE_DIR"
+fi
 phase_end
 
 verify_restart="$ANKI_E2E_VERIFY_RESTART"

@@ -17,6 +17,15 @@ production code и tests
 - [C1.5R integrated acceptance](core/c1-5r-7-integrated-acceptance-closeout.md)
 - [C1.6 single-card resolution loop](core/c1-6-canonical-single-card-resolution-loop.md)
 - [C2 Core hardening](core/c2-core-hardening-ui-remediation.md)
+- [C2 post-merge manual acceptance remediation — Stage 1](core/c2-manual-acceptance-remediation-closeout.md)
+- [C2 Cards Prototype v3.2.3 production integration — Stage 2](core/c2-cards-v323-production-integration.md)
+- [C2 Cards final AV/audio/media evidence closeout](core/c2-cards-final-av-media-evidence-closeout.md)
+- [C2 Inspection Profiles corrected screenshot-first audit](core/c2-inspection-profiles-screenshot-audit.md)
+- [C2 WP1 Settings shared shell](core/c2-settings-shell-wp1-implementation.md)
+- [C2 WP2 Inspection Profiles workspace frame](core/c2-inspection-profiles-wp2-frame-implementation.md)
+- [C2 WP2 Inspection Profiles bounded corrective pass](core/c2-inspection-profiles-wp2-corrective-pass.md)
+- [C2 WP3 Inspection Profiles Basic implementation](core/c2-inspection-profiles-wp3-basic-implementation.md)
+- [C2 PR #130 final integration closeout](core/c2-pr130-final-integration-closeout.md)
 
 Остальные C1.5R reports остаются в [`reports/core/`](core/).
 

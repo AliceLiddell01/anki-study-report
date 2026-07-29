@@ -114,6 +114,7 @@ describe("dashboard router", () => {
     expect(integrations).toContain('href="#/settings/data"');
     expect(integrations).toContain('href="#/settings/inspection-profiles"');
     expect(integrations).toContain('href="#/settings/privacy"');
+    expect(integrations).toContain('href="#/settings/notifications"');
     expect(integrations).toContain('href="#/settings/server"');
     expect(integrations).toContain('href="#/settings/sources"');
     expect(integrations).toContain('href="#/settings/logs"');

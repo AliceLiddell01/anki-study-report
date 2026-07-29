@@ -55,11 +55,27 @@ export function SuggestionPanel({ item, onUse }: { item: InspectionProfileSummar
 }
 
 export function TemplateScopeEditor({ item, draft, onChange, errors }: EditorProps) {
-  const { t } = useTranslation("pages");
+  const { t, i18n } = useTranslation("pages");
+  const ru = i18n.resolvedLanguage?.startsWith("ru");
   const all = draft.appliesTo.templateOrdinals.length === 0;
   const descriptionId = "inspection-template-scope-help";
+  const keepOneId = "inspection-template-scope-keep-one";
+  const errorId = "inspection-template-scope-error";
+  const missingOrdinals = draft.appliesTo.templateOrdinals.filter(
+    (ordinal) => !item.structure.templates.some((template) => template.ordinal === ordinal),
+  );
   return (
-    <fieldset className="inspection-panel" aria-describedby={descriptionId}>
+    <fieldset
+      id="inspection-template-scope"
+      className="inspection-panel"
+      aria-describedby={[
+        descriptionId,
+        !all ? keepOneId : "",
+        errors["profile.appliesTo.templateOrdinals"] || missingOrdinals.length ? errorId : "",
+      ].filter(Boolean).join(" ")}
+      aria-invalid={Boolean(errors["profile.appliesTo.templateOrdinals"] || missingOrdinals.length) || undefined}
+      tabIndex={-1}
+    >
       <legend>{t("inspectionProfiles.templates.title")}</legend>
       <p id={descriptionId} className="inspection-help">{t("inspectionProfiles.templates.description")}</p>
       <label className="inspection-choice-row">
@@ -79,6 +95,8 @@ export function TemplateScopeEditor({ item, draft, onChange, errors }: EditorPro
                 <input
                   type="checkbox"
                   checked={checked}
+                  disabled={checked && draft.appliesTo.templateOrdinals.length === 1}
+                  aria-describedby={keepOneId}
                   onChange={(event) => {
                     const next = event.target.checked
                       ? [...draft.appliesTo.templateOrdinals, template.ordinal].sort((a, b) => a - b)
@@ -92,7 +110,12 @@ export function TemplateScopeEditor({ item, draft, onChange, errors }: EditorPro
           })}
         </div>
       ) : null}
-      {errors["profile.appliesTo.templateOrdinals"] ? <p className="inspection-inline-error">{errorLabel(t, errors["profile.appliesTo.templateOrdinals"])}</p> : null}
+      {!all ? <p id={keepOneId} className="inspection-help">{ru ? "Оставьте хотя бы один шаблон; для всех шаблонов выберите вариант выше." : "Keep at least one template selected; use the option above to include all templates."}</p> : null}
+      {missingOrdinals.length ? (
+        <p id={errorId} className="inspection-inline-error">
+          {ru ? "Отсутствуют сохранённые ordinal шаблонов" : "Saved template ordinals are missing"}: {missingOrdinals.join(", ")}.
+        </p>
+      ) : errors["profile.appliesTo.templateOrdinals"] ? <p id={errorId} className="inspection-inline-error">{errorLabel(t, errors["profile.appliesTo.templateOrdinals"])}</p> : null}
     </fieldset>
   );
 }
@@ -101,11 +124,32 @@ export function FieldMappingsEditor({ item, draft, onChange, errors }: EditorPro
   const { t } = useTranslation("pages");
   const usedByOther = (mappingIndex: number, ordinal: number) => draft.fieldMappings.some((mapping, index) => index !== mappingIndex && mapping.fields.some((field) => field.ordinal === ordinal));
   const updateMapping = (index: number, next: InspectionProfile["fieldMappings"][number]) => {
+    const previous = draft.fieldMappings[index];
     const mappings = draft.fieldMappings.map((mapping, current) => current === index ? next : mapping);
-    onChange({ ...draft, fieldMappings: mappings });
+    const checks = previous && previous.role !== next.role
+      ? draft.checks.map((check) => ({
+        ...check,
+        roles: check.roles.map((role) => role === previous.role ? next.role : role),
+      }))
+      : draft.checks;
+    onChange({ ...draft, fieldMappings: mappings, checks });
+  };
+  const focusAfterChange = (id: string) => window.requestAnimationFrame(() => document.getElementById(id)?.focus());
+  const removeMapping = (index: number) => {
+    const remainingCount = draft.fieldMappings.length - 1;
+    const focusId = remainingCount === 0
+      ? "inspection-add-mapping"
+      : `inspection-mapping-${Math.min(index, remainingCount - 1)}`;
+    onChange({ ...draft, fieldMappings: draft.fieldMappings.filter((_, current) => current !== index) });
+    focusAfterChange(focusId);
+  };
+  const addMapping = () => {
+    const nextIndex = draft.fieldMappings.length;
+    onChange({ ...draft, fieldMappings: [...draft.fieldMappings, { role: nextRole(draft), fields: [] }] });
+    focusAfterChange(`inspection-role-${nextIndex}`);
   };
   return (
-    <fieldset className="inspection-panel">
+    <fieldset className="inspection-panel" aria-invalid={Boolean(errors["profile.fieldMappings"]) || undefined}>
       <legend>{t("inspectionProfiles.mappings.title")}</legend>
       <p className="inspection-help">{t("inspectionProfiles.mappings.description")}</p>
       <div className="inspection-editor-list">
@@ -114,14 +158,21 @@ export function FieldMappingsEditor({ item, draft, onChange, errors }: EditorPro
           const helpId = `${roleId}-help`;
           const error = errors[`profile.fieldMappings.${index}.role`] || errors[`profile.fieldMappings.${index}.fields`];
           return (
-            <fieldset className="inspection-editor-card" key={`${index}:${mapping.role}`}>
+            <fieldset id={`inspection-mapping-${index}`} className="inspection-editor-card" key={index} tabIndex={-1}>
               <legend>{t("inspectionProfiles.mappings.mapping", { value: index + 1 })}</legend>
               <div className="inspection-card-toolbar">
                 <label htmlFor={roleId}>
                   {t("inspectionProfiles.mappings.role")}
-                  <input id={roleId} className="form-control" value={mapping.role} aria-describedby={`${helpId}${error ? ` ${roleId}-error` : ""}`} onChange={(event) => updateMapping(index, { ...mapping, role: event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40) })} />
+                  <input
+                    id={roleId}
+                    className="form-control"
+                    value={mapping.role}
+                    aria-describedby={`${helpId}${error ? ` ${roleId}-error` : ""}`}
+                    aria-invalid={Boolean(error) || undefined}
+                    onChange={(event) => updateMapping(index, { ...mapping, role: normalizeRole(event.target.value) })}
+                  />
                 </label>
-                <button type="button" className="inspection-icon-button" aria-label={t("inspectionProfiles.mappings.remove", { role: mapping.role })} onClick={() => onChange({ ...draft, fieldMappings: draft.fieldMappings.filter((_, current) => current !== index), checks: draft.checks.filter((check) => !check.roles.includes(mapping.role)) })}><Trash2 size={17} aria-hidden="true" /></button>
+                <button type="button" className="inspection-icon-button" aria-label={t("inspectionProfiles.mappings.remove", { role: mapping.role })} onClick={() => removeMapping(index)}><Trash2 size={17} aria-hidden="true" /></button>
               </div>
               <p id={helpId} className="inspection-help">{t("inspectionProfiles.mappings.roleHelp")}</p>
               <div className="inspection-checkbox-grid">
@@ -144,40 +195,64 @@ export function FieldMappingsEditor({ item, draft, onChange, errors }: EditorPro
           );
         })}
       </div>
-      <button type="button" className="secondary-button" onClick={() => onChange({ ...draft, fieldMappings: [...draft.fieldMappings, { role: nextRole(draft), fields: [] }] })}><Plus size={16} aria-hidden="true" />{t("inspectionProfiles.mappings.add")}</button>
+      <button id="inspection-add-mapping" type="button" className="secondary-button" onClick={addMapping}><Plus size={16} aria-hidden="true" />{t("inspectionProfiles.mappings.add")}</button>
       {errors["profile.fieldMappings"] ? <p className="inspection-inline-error">{errorLabel(t, errors["profile.fieldMappings"])}</p> : null}
     </fieldset>
   );
 }
 
 export function ChecksEditor({ draft, onChange, errors }: Omit<EditorProps, "item">) {
-  const { t } = useTranslation("pages");
+  const { t, i18n } = useTranslation("pages");
+  const ru = i18n.resolvedLanguage?.startsWith("ru");
   const updateCheck = (index: number, next: InspectionCheck) => onChange({ ...draft, checks: draft.checks.map((check, current) => current === index ? next : check) });
+  const focusAfterChange = (id: string) => window.requestAnimationFrame(() => document.getElementById(id)?.focus());
+  const removeCheck = (index: number) => {
+    const remainingCount = draft.checks.length - 1;
+    const focusId = remainingCount === 0
+      ? "inspection-add-check"
+      : `inspection-check-${Math.min(index, remainingCount - 1)}`;
+    onChange({ ...draft, checks: draft.checks.filter((_, current) => current !== index) });
+    focusAfterChange(focusId);
+  };
+  const addCheck = () => {
+    const nextIndex = draft.checks.length;
+    onChange({ ...draft, checks: [...draft.checks, newCheck(draft)] });
+    focusAfterChange(`inspection-check-id-${nextIndex}`);
+  };
   return (
-    <fieldset className="inspection-panel">
+    <fieldset className="inspection-panel" aria-invalid={Boolean(errors["profile.checks"]) || undefined}>
       <legend>{t("inspectionProfiles.checks.title")}</legend>
       <p className="inspection-help">{t("inspectionProfiles.checks.description")}</p>
       <div className="inspection-editor-list">
         {draft.checks.map((check, index) => {
           const rolesError = errors[`profile.checks.${index}.roles`];
           const minError = errors[`profile.checks.${index}.minLength`];
+          const idError = errors[`profile.checks.${index}.checkId`];
+          const visibleRoles = [...new Set([
+            ...draft.fieldMappings.map((mapping) => mapping.role),
+            ...check.roles.filter((role) => !draft.fieldMappings.some((mapping) => mapping.role === role)),
+          ])];
           return (
-            <fieldset className="inspection-editor-card" key={check.checkId}>
+            <fieldset id={`inspection-check-${index}`} className="inspection-editor-card" key={index} tabIndex={-1}>
               <legend>{t("inspectionProfiles.checks.check", { value: index + 1 })}</legend>
               <div className="inspection-card-toolbar">
                 <div className="inspection-form-grid">
+                  <label htmlFor={`inspection-check-id-${index}`}>{t("inspectionProfiles.checks.id")}<input id={`inspection-check-id-${index}`} className="form-control" value={check.checkId} aria-describedby={idError ? `inspection-check-id-${index}-error` : undefined} aria-invalid={Boolean(idError) || undefined} onChange={(event) => updateCheck(index, { ...check, checkId: normalizeCheckId(event.target.value) })} /></label>
                   <label htmlFor={`inspection-check-kind-${index}`}>{t("inspectionProfiles.checks.kind")}<select id={`inspection-check-kind-${index}`} className="form-control" value={check.kind} onChange={(event) => updateCheck(index, changeCheckKind(check, event.target.value as InspectionCheck["kind"]))}>{CHECK_KINDS.map((kind) => <option key={kind} value={kind}>{t(`inspectionProfiles.checkKinds.${kind}`)}</option>)}</select></label>
                   <label htmlFor={`inspection-check-priority-${index}`}>{t("inspectionProfiles.checks.priority")}<select id={`inspection-check-priority-${index}`} className="form-control" value={check.priority} onChange={(event) => updateCheck(index, { ...check, priority: event.target.value as InspectionCheck["priority"] })}>{PRIORITIES.map((priority) => <option key={priority} value={priority}>{t(`inspectionProfiles.priorities.${priority}`)}</option>)}</select></label>
                   {"mode" in check ? <label htmlFor={`inspection-check-mode-${index}`}>{t("inspectionProfiles.checks.mode")}<select id={`inspection-check-mode-${index}`} className="form-control" value={check.mode} onChange={(event) => updateCheck(index, { ...check, mode: event.target.value as "any" | "all" })}><option value="any">{t("inspectionProfiles.modes.any")}</option><option value="all">{t("inspectionProfiles.modes.all")}</option></select></label> : null}
-                  {check.kind === "min_text_length" ? <label htmlFor={`inspection-check-length-${index}`}>{t("inspectionProfiles.checks.minLength")}<input id={`inspection-check-length-${index}`} type="number" min="1" max="10000" className="form-control" value={check.minLength} aria-describedby={minError ? `inspection-check-length-${index}-error` : undefined} onChange={(event) => updateCheck(index, { ...check, minLength: Number(event.target.value) })} /></label> : null}
+                  {check.kind === "min_text_length" ? <label htmlFor={`inspection-check-length-${index}`}>{t("inspectionProfiles.checks.minLength")}<input id={`inspection-check-length-${index}`} type="number" min="1" max="10000" className="form-control" value={check.minLength} aria-describedby={minError ? `inspection-check-length-${index}-error` : undefined} aria-invalid={Boolean(minError) || undefined} onChange={(event) => updateCheck(index, { ...check, minLength: Number(event.target.value) })} /></label> : null}
                 </div>
-                <button type="button" className="inspection-icon-button" aria-label={t("inspectionProfiles.checks.remove", { value: index + 1 })} onClick={() => onChange({ ...draft, checks: draft.checks.filter((_, current) => current !== index) })}><Trash2 size={17} aria-hidden="true" /></button>
+                <button type="button" className="inspection-icon-button" aria-label={t("inspectionProfiles.checks.remove", { value: index + 1 })} onClick={() => removeCheck(index)}><Trash2 size={17} aria-hidden="true" /></button>
               </div>
-              <p className="inspection-machine-id">{t("inspectionProfiles.checks.id")}: <code>{check.checkId}</code></p>
-              <fieldset className="inspection-role-group" aria-describedby={rolesError ? `inspection-check-roles-${index}-error` : undefined}>
+              {idError ? <p id={`inspection-check-id-${index}-error`} className="inspection-inline-error">{errorLabel(t, idError)}</p> : null}
+              <fieldset id={`inspection-check-roles-${index}`} className="inspection-role-group" aria-describedby={rolesError ? `inspection-check-roles-${index}-error` : undefined} aria-invalid={Boolean(rolesError) || undefined} tabIndex={-1}>
                 <legend>{t("inspectionProfiles.checks.roles")}</legend>
                 <div className="inspection-checkbox-grid">
-                  {draft.fieldMappings.map((mapping) => <label key={mapping.role}><input type="checkbox" checked={check.roles.includes(mapping.role)} onChange={(event) => updateCheck(index, { ...check, roles: event.target.checked ? [...check.roles, mapping.role] : check.roles.filter((role) => role !== mapping.role) })} /><span>{roleLabel(t, mapping.role)}</span></label>)}
+                  {visibleRoles.map((role) => {
+                    const missing = !draft.fieldMappings.some((mapping) => mapping.role === role);
+                    return <label key={role} className={missing ? "is-missing" : undefined}><input type="checkbox" checked={check.roles.includes(role)} disabled={missing && !check.roles.includes(role)} onChange={(event) => updateCheck(index, { ...check, roles: event.target.checked ? [...check.roles, role] : check.roles.filter((value) => value !== role) })} /><span>{roleLabel(t, role)}{missing ? <small>{ru ? "роль отсутствует" : "missing role"}</small> : null}</span></label>;
+                  })}
                 </div>
               </fieldset>
               {rolesError ? <p id={`inspection-check-roles-${index}-error`} className="inspection-inline-error">{errorLabel(t, rolesError)}</p> : null}
@@ -186,7 +261,7 @@ export function ChecksEditor({ draft, onChange, errors }: Omit<EditorProps, "ite
           );
         })}
       </div>
-      <button type="button" className="secondary-button" disabled={!draft.fieldMappings.length} onClick={() => onChange({ ...draft, checks: [...draft.checks, newCheck(draft)] })}><Plus size={16} aria-hidden="true" />{t("inspectionProfiles.checks.add")}</button>
+      <button id="inspection-add-check" type="button" className="secondary-button" disabled={!draft.fieldMappings.length} onClick={addCheck}><Plus size={16} aria-hidden="true" />{t("inspectionProfiles.checks.add")}</button>
       <p className="inspection-help">{t("inspectionProfiles.checks.priorityHelp")}</p>
       {errors["profile.checks"] ? <p className="inspection-inline-error">{errorLabel(t, errors["profile.checks"])}</p> : null}
     </fieldset>
@@ -242,6 +317,14 @@ function nextRole(draft: InspectionProfile): string {
   let index = draft.fieldMappings.length + 1;
   while (draft.fieldMappings.some((mapping) => mapping.role === `role_${index}`)) index += 1;
   return `role_${index}`;
+}
+
+function normalizeRole(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40);
+}
+
+function normalizeCheckId(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 80);
 }
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;

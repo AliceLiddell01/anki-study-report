@@ -9,9 +9,8 @@ Roadmap разделён на один обязательный продукто
 ```mermaid
 flowchart TB
     S[Stage 0–9.5<br/>accepted product contour] --> C1[C1 Cards v2<br/>complete]
-    C1 --> C2[C2 Core hardening<br/>implemented and merged]
-    C2 --> A[C2 owner acceptance<br/>remediation]
-    A --> C3[C3 UI & Shell]
+    C1 --> C2[C2 Core hardening<br/>complete and accepted]
+    C2 --> C3[C3 UI & Shell<br/>next]
     C3 --> C4[C4 Data Independence]
     C4 --> C5[C5 Today v2]
     C5 --> C6[C6 Profile v2]
@@ -35,14 +34,16 @@ flowchart TB
 
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
-| [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
+| [Core `C`](core/README.md) | единственный обязательный путь add-on | C1 и C2 завершены; C2 acceptance закрыта | C3 UI & Shell |
 | [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0–G2 complete; G3 deferred post-MVP; G4/G4.4 complete with `REJECT`; G5 Study Rhythm MVP planned, implementation not started | bounded `core → gamification` sync, затем G5 vertical slice по [G5–G8 roadmap](gamification/g5-g8-product-roadmap.md) |
-| [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
+| [Operations `O`](operations/README.md) | защищённые admin-инструменты удалённых сервисов | O1 активирован; O2 условный | O1 в отдельном Operations-контуре |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
 | [Platform / CI](platform/README.md) | CI/CD, точные артефакты и E2E в реальном Anki | E2E-I1–I6 и bounded corrective fix завершены | нет активного этапа; CI 7–12 только по отдельному trigger |
 
 Профильный [`roadmap/gamification/README.md`](gamification/README.md) является источником актуального статуса Gamification внутри ветки `gamification`. Core mirror не переопределяет завершённые G0–G2 и frozen G4 contracts.
+
+Operations остаётся независимым от локального add-on. Подробная принятая граница O1/O2, privacy, authorization и remote-service scope хранится в [профильном roadmap Operations](operations/README.md).
 
 ## Как читать roadmap
 
@@ -92,7 +93,7 @@ production/research code и tests
 
 - **Complete** — обязательный результат существует и прошёл заявленные gates.
 - **Merged** — candidate интегрирован в целевую долгоживущую ветку.
-- **Owner acceptance open** — автоматические gates пройдены, но ручная проверка выявила незакрытый gap.
+- **Owner accepted** — обязательные автоматические gates и требуемая ручная приёмка завершены.
 - **Next** — следующая рекомендуемая работа внутри трека.
 - **Planned** — направление и границы зафиксированы, implementation ещё не начат.
 - **Conditional** — активируется только при явном trigger.

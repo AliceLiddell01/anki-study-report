@@ -118,7 +118,7 @@ Reference implementation не означает, что все страницы �
 - полноширинный App Shell;
 - плотную, но семантическую очередь;
 - active selection;
-- постоянный Inspector на широком desktop;
+- постоянный active-card workspace с dominant preview и resolution rail на широком desktop;
 - немодальный drawer на узком desktop;
 - безопасный preview внешнего пользовательского HTML/CSS;
 - real `.apkg` templates и local media;

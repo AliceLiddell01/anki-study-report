@@ -6,23 +6,27 @@
 
 ## Порядок чтения
 
-1. [`../README.md`](../README.md)
-2. этот файл;
-3. профильный roadmap;
-4. профильный contract в `docs/`;
-5. production/research code и tests нужного scope;
-6. свежий closeout только когда он нужен задаче.
+1. [`../AGENTS.md`](../AGENTS.md);
+2. [`../README.md`](../README.md);
+3. этот файл;
+4. профильный roadmap;
+5. профильный contract в `docs/`;
+6. production/research code и tests;
+7. свежий closeout только когда он нужен задаче.
 
 При противоречиях:
 
 ```text
-production/research code и tests
-→ docs/
+current branch production/research code и tests
+→ current branch docs/
+→ PR/base branch contracts
 → roadmap/
 → reports/artifacts
 → старые планы и сообщения
 → предположения
 ```
+
+`master` является релизной веткой, а `core` — integration branch обязательного production Core-трека. Feature/remediation branch или открытый PR может содержать более свежее состояние своего scope, чем base branch. Перед выводами всегда определить current branch/PR, base/head SHA и merge state.
 
 ## Проект и границы
 
@@ -41,10 +45,34 @@ Anki Study Report — локальный add-on для Anki 26.05+ с Python run
 
 ```text
 C1 — завершён и принят
-C2 implementation/integration — завершены и влиты в core
-C2 owner acceptance — открыта bounded remediation
-C3 → C4 → C5 → C6 — обязательный путь к Core 1.0
-release — не начат
+C2 base implementation/integration — завершены и влиты в core
+PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
+PR #130 Stage 2: Cards 1:1 composition + native CSS + AV/media repair — COMPLETE
+Cards final exact-card real-Anki evidence — PASS
+Cards owner verdict — ACCEPT CARDS 1:1
+Cards status — ACCEPTED / COMPLETE / FROZEN
+Cards technical blockers — NONE
+Cards accessibility blockers — NONE
+Inspection Profiles corrected screenshot-first audit — COMPLETE
+WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
+WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
+WP1 Settings visual language — PROVISIONAL
+WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
+WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 bounded corrective pass external visual review — 7.8/10 (историческая внешняя оценка)
+WP2 owner acceptance — NOT GRANTED
+Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
+WP3 Inspection Profiles Basic correction — COMPLETE
+WP4 Inspection Profiles Advanced — COMPLETE
+WP5 states/validation/accessibility — COMPLETE
+WP6 final visual/system evidence — COMPLETE
+Inspection Profiles — COMPLETE FOR C2 CLOSEOUT
+PR #130 — MERGED INTO CORE
+merged core SHA — 57eeca039247ab0522555b1292fc1f25c66976fd
+Fast CI — 30408497011 / PASS ON MERGED CORE
+real-Anki standard/full + restart — 30408746188 / PASS ON MERGED CORE
+C3 — NOT STARTED
+release/master — NOT TOUCHED
 ```
 
 Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
@@ -298,7 +326,8 @@ Review winner — P-TAPER-ZERO-30D
 Learn winner — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status — CONFIRMATORY_INCONCLUSIVE
 Learn limitation — DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-G5 / G6 — CONDITIONAL / NOT STARTED
+G5 — PLANNED / NOT STARTED
+G6 — CONDITIONAL / NOT STARTED
 ```
 
 ### Exact Gamification sources
@@ -318,6 +347,118 @@ G5 / G6 — CONDITIONAL / NOT STARTED
 - [G4 final closeout](../roadmap/gamification/g4-core-economy-bounded-screening.md)
 
 `gamification → master`, production integration, package inclusion and release remain prohibited without a separate owner decision.
+
+## Current accepted Cards evidence
+
+```text
+PR: #130 — MERGED INTO CORE
+frozen PR base / merge-base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+
+Stage 1 verified production candidate:
+a746172f8746eac82ff628d36a7a6328d9332acf
+
+Cards production package source:
+a162dde223b1bc40b6b0f566ae1fb5d665089359
+
+Cards final evidence harness:
+5487bb32d43b11bbe618ec45e1b0e1e365fabb39
+
+exact package SHA-256:
+e01b9dd3e3277d9ff0cafb9ac3a298a1459118056f07834a171662c91ae79357
+
+final evidence:
+cards-final-av-media-fidelity-evidence.zip
+
+final evidence size:
+56 358 736 bytes
+
+final evidence SHA-256:
+539cf5f08c5f804fa6de3b87c87f0792e6d60777f0b40a9c413a0b912516dfc3
+
+exact card:
+1649481469689 / 影
+
+standard browser smoke:
+19/19 PASS / 18 screenshots
+
+exact browser:
+6/6 scenarios PASS / 32 screenshots
+
+replay reset:
+PASS
+
+visible keyboard focus light/dark:
+PASS
+
+accessible-name localization:
+PASS
+
+live GIF:
+cross-scenario frame difference PASS
+
+deterministic GIF:
+frameCount=154
+
+network/security:
+external=0 / Inspection Profiles requests=0 / page errors=0 / console errors=0 / failed requests=0
+
+evidence self-verification:
+PASS / missing=0 / unexpected=0 / mismatches=0
+
+owner visual assessment:
+average≈9.3/10 / minimum mandatory aspect=8.7/10
+```
+
+Актуальные Cards contracts:
+
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md);
+- [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md).
+
+### Cards frozen boundary
+
+Cards production заморожен. Без новой доказанной регрессии запрещено менять Cards component composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный exact Cards real-Anki gate повторно не запускается без нового риска.
+
+После shared Settings changes допустим только короткий Cards regression smoke, если изменение действительно затронуло shared shell/styles.
+
+### Visual coverage checkpoint
+
+`ACCEPT CARDS 1:1` относится только к route `#/cards`. PR #130 позднее прошёл
+отдельный Profiles closeout, exact merged Fast CI/E2E и был влит в `core`;
+это не активирует C3 и не означает release.
+
+| Route / area | Текущее подтверждение | Статус |
+| --- | --- | --- |
+| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | OWNER ACCEPTED / FROZEN |
+| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | OWNER ACCEPTED / FROZEN |
+| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
+| replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
+| animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
+| `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
+| `#/settings/inspection-profiles` corrective frame | historical WP2 candidate и external review сохранены как baseline | HISTORICAL / SUPERSEDED BY FINAL C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Basic | two-column 1024/QHD composition, strict routing, focus и unmasked comparisons | COMPLETE FOR C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Advanced | authored strict mappings/checks/templates editor; three QHD columns; missing references remain visible | COMPLETE FOR C2 CLOSEOUT |
+| Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
+| Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
+
+Ранее заданный владельцем целевой порог для будущего Inspection Profiles
+acceptance, а не оценка текущего candidate:
+
+```text
+minimum acceptable result: 8.5/10
+preferred target: 9.0/10 or higher
+```
+
+Reports:
+
+- [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
+- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
+- [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
+- [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
+- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
+- [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
+- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md);
+- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md);
+- [PR #130 final integration closeout](../reports/core/c2-pr130-final-integration-closeout.md).
 
 ## Platform / CI
 
@@ -346,25 +487,25 @@ E2E-I6 corrective fix does not activate CI 7–12. Any optimization requires a s
 - Desktop/laptop — основной target; mobile не приоритет без отдельной задачи.
 - Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
 - Не возвращать legacy aliases без доказанной compatibility необходимости.
-- Не дробить roadmap stage на бесконечную лестницу.
+- Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Для exact Cards AV/media использовать [специализированный runbook](cards-exact-av-media-e2e.md).
 - Successful unchanged exact-SHA gates не повторять.
+- Не создавать вложенную лестницу этапов вместо одной цельной задачи.
+- Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
+- Для нетривиальной реализации использовать локальный `.agents/task-contract.toml` и `node scripts/run_python.mjs scripts/check_task_scope.py` из PowerShell 7.
 - Harness failure не объявлять production failure без подтверждения.
-- Docs/contracts/schema-only sync не требует Fast CI или Docker E2E.
 - Для Gamification target и PR base — `gamification`.
-- Не начинать G4.4 автоматически после G4.3.
-- Не трактовать G4.3 dry matrix как выполненный screening.
-- Не трактовать preferred direction `TAPER / RECOVERY` как выбранного winner.
-- Не трактовать отсутствие workflow checks как CI pass или CI failure.
+- Не трактовать historical dry matrix, preferred direction или отсутствие workflow checks как новый screening result, winner либо CI PASS.
 
 ## Режим работы
 
+- [Корневой auto-loaded entrypoint](../AGENTS.md)
+- [Компактный AI context bootstrap](ai-context-bootstrap.md)
 - [Режимы ChatGPT и Codex](ai-work-modes.md)
 - [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
 - [Codex agent rules](codex-agent-rules.md)
 - [Codex local environment](codex-local-environment.md)
+- [Task contract template](templates/task-contract.toml)
 
-ChatGPT mode может использовать GitHub connector и консоль владельца WSL/PowerShell. Скачиваемые scripts выдаются отдельными файлами и предваряются `Unblock-File`.
-
-Codex mode работает непосредственно в локальном task worktree.
-
-Не начинать следующий roadmap stage автоматически только потому, что предыдущая техническая работа завершена.
+Сначала определите фактическую branch/PR, трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.

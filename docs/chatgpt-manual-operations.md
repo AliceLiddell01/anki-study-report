@@ -1,14 +1,14 @@
 # Ручное сопровождение задач в ChatGPT mode
 
 **Статус:** актуальный операционный runbook
-**Снимок:** 2026-07-25
+**Снимок:** 2026-07-30
 **Режим:** обычный ChatGPT + GitHub connector + локальная консоль владельца
 **Канонический пример:** E2E-I4 cancellation/preflight closeout
 
 Этот документ дополняет [`chatgpt-work-mode.md`](chatgpt-work-mode.md). Он описывает
 не продуктовый или CI-контракт, а практический способ постепенно завершать
 многошаговую работу после основной реализации, когда ChatGPT видит репозиторий и
-GitHub, но локальные Git, WSL, PowerShell, Docker и `gh` запускает владелец.
+GitHub, но локальные Git, PowerShell 7, Docker и `gh` запускает владелец.
 
 Документ появился по итогам E2E-I4, где implementation, локальная remediation,
 package-producing Fast CI, controlled cancellation A/B и artifact acceptance
@@ -23,13 +23,18 @@ package-producing Fast CI, controlled cancellation A/B и artifact acceptance
 - работа уже ограничена одной веткой и одним основным PR;
 - GitHub connector подходит для чтения кода, PR, jobs, logs и artifacts;
 - connector не предоставляет нужную routine write/dispatch/cancel операцию;
-- владелец может выполнять WSL или PowerShell команды;
+- владелец может выполнять PowerShell 7 команды;
 - перенос задачи в Codex не требуется или временно невозможен;
 - важна интерактивная диагностика по фактическому выводу каждого checkpoint.
 
 Этот режим не должен превращаться в имитацию автономного агента через временные
-controller/status workflows. Для routine Git, `gh`, Python, shell и artifact
-inspection используется локальная консоль владельца.
+controller/status workflows. Для routine Git, `gh`, Python, PowerShell и artifact
+inspection используется локальная PowerShell 7 консоль владельца.
+
+Для локальной работы действуют Windows, PowerShell 7 и существующий основной
+checkout `C:\Users\KykLa\Documents\anki-study-report`. WSL, Bash, Git Bash,
+`git worktree`, второй checkout и повторный clone локально не используются.
+Linux в GitHub Actions, Docker containers и cloud E2E остаётся допустимым.
 
 ## Модель ответственности
 
@@ -88,12 +93,26 @@ required local tools
 
 Минимальный read-only guard:
 
-```bash
-git branch --show-current
-git rev-parse HEAD
-git rev-parse origin/<branch>
-git status --short --branch
-gh auth status
+```powershell
+$branchArgs = @('branch', '--show-current')
+& git @branchArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$headArgs = @('rev-parse', 'HEAD')
+& git @headArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$remoteArgs = @('rev-parse', 'origin/<branch>')
+& git @remoteArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$statusArgs = @('status', '--short', '--branch')
+& git @statusArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$authArgs = @('auth', 'status')
+& gh @authArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Нельзя использовать `git reset --hard`, пока не доказано, что working tree не
@@ -106,7 +125,7 @@ gh auth status
 Отдельный файл обязателен, когда есть:
 
 - вложенные кавычки или heredoc;
-- Python/PowerShell/Bash patch logic;
+- Python/PowerShell patch logic;
 - больше одного fail-fast guard;
 - SHA/branch/path verification;
 - artifact parsing;
@@ -126,10 +145,13 @@ run_e2e_i4_controlled_ab_step20_5e52fae.py
 
 Перед запуском:
 
-```bash
-EXPECTED_SHA="<sha256>"
-actual_sha="$(sha256sum "$RUNNER" | awk '{print $1}')"
-test "$actual_sha" = "$EXPECTED_SHA"
+```powershell
+$expectedSha = '<sha256>'
+$runnerPath = 'C:\Users\KykLa\Downloads\<file>'
+$actualSha = (Get-FileHash -LiteralPath $runnerPath -Algorithm SHA256).Hash
+if ($actualSha -ne $expectedSha) {
+    throw "SHA-256 mismatch: expected $expectedSha, got $actualSha"
+}
 ```
 
 Если SHA не совпал, runner не запускается. Нельзя «попробовать всё равно».
@@ -137,10 +159,14 @@ test "$actual_sha" = "$EXPECTED_SHA"
 `Unblock-File` выполняется только в Windows PowerShell:
 
 ```powershell
-Unblock-File -LiteralPath "$HOME\Downloads\<file>"
+$unblockArgs = @{
+    LiteralPath = 'C:\Users\KykLa\Downloads\<file>'
+}
+Unblock-File @unblockArgs
 ```
 
-Команда не существует в Bash/WSL и не нужна для обычного `python3 file.py` в WSL.
+`Unblock-File` нужен только для скачанного Windows-файла с соответствующей zone
+меткой; для созданного внутри checkout файла он не требуется.
 
 ### 4. Один runner — один checkpoint
 
@@ -206,11 +232,25 @@ Full Docker E2E не используется как debugger. После cloud 
 
 Для GitHub Actions:
 
-```bash
-gh run view <run-id> --json status,conclusion,headSha,jobs,url
-gh run view <run-id> --log-failed
-gh run view <run-id> --job <job-id> --log
-gh run download <run-id> --dir <output>
+```powershell
+$viewArgs = @(
+    'run', 'view', '<run-id>',
+    '--json', 'status,conclusion,headSha,jobs,url'
+)
+& gh @viewArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$failedArgs = @('run', 'view', '<run-id>', '--log-failed')
+& gh @failedArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$jobArgs = @('run', 'view', '<run-id>', '--job', '<job-id>', '--log')
+& gh @jobArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$downloadArgs = @('run', 'download', '<run-id>', '--dir', '<output>')
+& gh @downloadArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Источники истины:
@@ -278,6 +318,10 @@ public report  → semantic/schema + sanitizer validation
 - не выполняет merge без отдельной команды.
 
 ## Проблемы, встретившиеся в E2E-I4
+
+Ниже сохранён исторический case study. Упоминания прежних Bash/WSL commands,
+Linux paths и environment variables описывают фактически выполненный E2E-I4 и
+не являются инструкциями для будущей локальной работы.
 
 ### Повреждённый длинный copy-paste block
 
