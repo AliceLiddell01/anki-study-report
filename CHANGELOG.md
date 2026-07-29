@@ -4,6 +4,13 @@ All notable user-facing changes to Anki Study Report are documented here.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-29
+
+### Fixed
+
+- Fixed excessive Cyrillic spacing in the Russian Cards workspace on Windows.
+- Prevented noisy tracebacks when the browser cancels a local media response.
+
 ## [1.3.0] - 2026-07-29
 
 ### Added
