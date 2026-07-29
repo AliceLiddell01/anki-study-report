@@ -1,6 +1,6 @@
 # Roadmap Anki Study Report
 
-**Снимок:** 2026-07-28
+**Снимок:** 2026-07-29
 
 Roadmap разделён на один обязательный продуктовый путь **Core** и независимые либо условные треки. Больший номер не создаёт общей очереди между разными направлениями.
 
@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4 complete — REJECT<br/>G5/G6 conditional]
+    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4 complete — REJECT<br/>G5 Study Rhythm planned]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0–G2 complete; G3 deferred post-MVP; G4/G4.4 complete with `REJECT`; production не одобрен | G5/G6 conditional и не активированы |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0–G2 complete; G3 deferred post-MVP; G4/G4.4 complete with `REJECT`; G5 Study Rhythm MVP planned, implementation not started | bounded `core → gamification` sync, затем G5 vertical slice по [G5–G8 roadmap](gamification/g5-g8-product-roadmap.md) |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
@@ -84,7 +84,9 @@ production/research code и tests
 9. Research candidate не называется production-ready до отдельного решения.
 10. G3/Create XP не входит в initial core economy и возвращается только после первого стабильного Gamification release, отдельного owner decision и evidence-backed trigger.
 11. G4.4 исполнил replacement protocol v4 и закрыл G4 outcome `REJECT`; v4 не меняется post hoc.
-12. G5/G6 не активируются автоматически после закрытия G4.
+12. G5 planning одобрен владельцем, но implementation не начинается автоматически из-за публикации roadmap.
+13. G5 заканчивается рабочим packaged Study Rhythm MVP и не включает XP, levels, Learn XP, Create XP или cross-domain conversion.
+14. G6 economy требует нового prospective protocol и отдельного production approval; G4 `REJECT` нельзя обходить переименованием кандидатов.
 
 ## Словарь статусов
 
@@ -92,6 +94,7 @@ production/research code и tests
 - **Merged** — candidate интегрирован в целевую долгоживущую ветку.
 - **Owner acceptance open** — автоматические gates пройдены, но ручная проверка выявила незакрытый gap.
 - **Next** — следующая рекомендуемая работа внутри трека.
+- **Planned** — направление и границы зафиксированы, implementation ещё не начат.
 - **Conditional** — активируется только при явном trigger.
 - **Deferred** — намеренно вне текущего горизонта.
 - **Research only** — не входит в production/package/CI.
@@ -109,3 +112,14 @@ G4.4: COMPLETE
 final G4 outcome: REJECT
 production integration: PROHIBITED
 ```
+
+## Gamification post-G4 direction
+
+```text
+G5: STUDY RHYTHM MVP / PLANNED / NOT STARTED
+G6: PERSONAL PROGRESSION ECONOMY V1 / CONDITIONAL / NOT STARTED
+G7: ACHIEVEMENTS FOUNDATION / CONDITIONAL / NOT STARTED
+G8: SKILLS, QUESTS AND DOMAIN EXPANSION / DEFERRED / CONDITIONAL / NOT STARTED
+```
+
+Detailed plan: [`roadmap/gamification/g5-g8-product-roadmap.md`](gamification/g5-g8-product-roadmap.md).
