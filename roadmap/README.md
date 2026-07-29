@@ -18,7 +18,7 @@ flowchart TB
     C6 --> R{Core 1.0<br/>owner acceptance}
     R --> REL[Separate release decision]
 
-    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4.1–G4.3 complete<br/>G4.4 next]
+    G[Gamification G<br/>G1/G2 complete<br/>G3 deferred post-MVP<br/>G4 complete — REJECT<br/>G5/G6 conditional]
     O[Operations O<br/>independent]
     I[Identity I<br/>conditional]
     E[Extensions E<br/>conditional]
@@ -36,7 +36,7 @@ flowchart TB
 | Трек | Роль | Текущий статус | Следующая точка |
 | --- | --- | --- | --- |
 | [Core `C`](core/README.md) | единственный обязательный путь add-on | C2 влит; owner acceptance открыта | bounded C2 remediation, затем C3 |
-| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0/G1/G2 complete; G3 deferred post-MVP; G4 in progress; G4.1–G4.3 complete; candidate protocol frozen pre-screening; production не одобрен | G4.4 bounded screening — next / not started; отдельная активация обязательна |
+| [Gamification `G`](gamification/README.md) | research и необязательный продукт | G0–G2 complete; G3 deferred post-MVP; G4/G4.4 complete with `REJECT`; production не одобрен | G5/G6 conditional и не активированы |
 | [Operations `O`](operations/README.md) | защищённые admin-инструменты telemetry | независимый условный трек | O1 только при operational trigger |
 | [Identity `I`](identity/README.md) | optional continuity/recovery gate | не запланирован | I1 только при конкретном cross-device workflow |
 | [Extensions `E`](extensions/README.md) | first-party extension ecosystem | условный/отложенный | E1 только с reference pack |
@@ -83,8 +83,8 @@ production/research code и tests
 8. Один крупный этап не дробится на бесконечную лестницу подпунктов.
 9. Research candidate не называется production-ready до отдельного решения.
 10. G3/Create XP не входит в initial core economy и возвращается только после первого стабильного Gamification release, отдельного owner decision и evidence-backed trigger.
-11. G4.3 заморозил prospective candidate protocol и dry matrix, но не запустил screening, simulation или production work.
-12. G4.4 не активируется автоматически после G4.3 и не может менять frozen protocol post hoc без явного amendment record.
+11. G4.4 исполнил replacement protocol v4 и закрыл G4 outcome `REJECT`; v4 не меняется post hoc.
+12. G5/G6 не активируются автоматически после закрытия G4.
 
 ## Словарь статусов
 
@@ -96,11 +96,16 @@ production/research code и tests
 - **Deferred** — намеренно вне текущего горизонта.
 - **Research only** — не входит в production/package/CI.
 
-## Gamification G4.3 corrective state
+## Gamification G4 closure
 
 ```text
+G4: COMPLETE
 G4.3: COMPLETE
 G4.3 v1: SUPERSEDED_PRE_EXECUTION
-G4.3 v2: FROZEN_PRE_SCREENING
-G4.4: NEXT / NOT STARTED
+G4.3 v2: SUPERSEDED_PRE_EXECUTION
+G4.3 v3: INVALIDATED_AFTER_SCREENING
+G4.3 v4: FROZEN_AND_EXECUTED
+G4.4: COMPLETE
+final G4 outcome: REJECT
+production integration: PROHIBITED
 ```

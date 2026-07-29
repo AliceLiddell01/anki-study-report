@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0 Complete`; `G1 Complete` with `DEFER_REVIEW_MODEL`; `G2 Complete` with `RECOMMEND_LEARN_XP_RESEARCH_MODEL`; `G3 Deferred / Post-MVP / Not Started`; `G4 In Progress`; `G4.1–G4.3 Complete`; `G4.4 Next / Not Started`; production integration not approved
+**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -23,14 +23,14 @@ For this track, target branch and PR base are `gamification`.
 
 ```text
 G0  Research reconciliation                         COMPLETE
-G1  Review XP cross-horizon cycling                 COMPLETE — DEFER_REVIEW_MODEL
+G1  Review XP cross-horizon cycling                 COMPLETE — P-TAPER-ZERO-30D
 G2  Learn XP specification and simulation           COMPLETE — RECOMMEND_LEARN_XP_RESEARCH_MODEL
 G3  Create XP specification and simulation          DEFERRED / POST-MVP / NOT STARTED
-G4  Core gamification economy calibration           IN PROGRESS
+G4  Core gamification economy calibration           COMPLETE — REJECT
 G4.1 Problem and contract freeze                    COMPLETE
 G4.2 Input normalization and uncertainty model      COMPLETE
-G4.3 Candidate protocol and hypothesis design       COMPLETE — FROZEN_PRE_SCREENING
-G4.4 Bounded screening                              NEXT / NOT STARTED
+G4.3 Candidate protocol and hypothesis design       COMPLETE — v4 FROZEN_AND_EXECUTED
+G4.4 Bounded screening                              COMPLETE — REJECT
 G5  Production architecture foundation              CONDITIONAL
 G6  Gamification MVP                                CONDITIONAL
 G7  Achievements foundation                         CONDITIONAL
@@ -56,10 +56,10 @@ G0 reproduced the current synthetic Review baseline without production integrati
 **Status:** Complete.
 
 ```text
-G1 final outcome: DEFER_REVIEW_MODEL
-recommended research candidate: NONE
+G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended research candidate: P-TAPER-ZERO-30D
 P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
-P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; selected research winner; not falsified
 production integration: PROHIBITED
 ```
 
@@ -72,7 +72,7 @@ Decomposition:
 - `G1.5` confirmatory evidence — [report](g1-confirmatory-evidence.md)
 - `G1.6` candidate decision and closure — [decision](g1-review-xp-decision.md)
 
-G1.6 selected no winner because raw evidence continuity could not be freshly revalidated and accepted aggregates did not provide a non-arbitrary tie-breaker. G4 preserves both candidates as `REVIEW_MODEL_AXIS_V1`.
+G1.6 originally selected no winner because accepted aggregates did not provide a pre-existing non-arbitrary tie-breaker. The owner-authorized G4 closure resolves that tie with `MINIMIZE_LEGITIMATE_CONTEXT_HARM`: `P-TAPER-ZERO-30D` is the research winner because it avoids immediate post-boundary zeroing. STEP remains eligible and non-falsified; Review averaging remains prohibited.
 
 ## G2 — Learn XP specification and simulation
 
@@ -121,7 +121,7 @@ G3.1, Create lifecycle, candidates, reward units, formulas and simulation are in
 
 ## G4 — Core gamification economy calibration
 
-**Status:** In Progress.
+**Status:** Complete — `REJECT`.
 
 G4 prospectively defines and investigates a bounded, explainable and manipulation-resistant economy for:
 
@@ -192,9 +192,9 @@ production integration: PROHIBITED
 
 G4.2 freezes typed source records, contribution/day placeholders, Review uncertainty, Learn limitation propagation, independent axes, fail-closed dispositions, persona descriptors, deterministic fixture requirements and provenance.
 
-### G4.3 — Candidate economy protocol and hypothesis design
+### G4.3 — Candidate economy protocol and hypothesis design (historical v1)
 
-**Status:** Complete — `FROZEN_PRE_SCREENING`.
+**Status:** Complete — historical publication superseded before execution.
 
 Artifacts:
 
@@ -235,33 +235,43 @@ The protocol uses `CURATED_BOUNDED_FACTORIAL_DESIGN`; a full primitive Cartesian
 
 PR #166 merged G4.3 into `gamification` at `0d42e7bbee80b99de7e3369071c9a2dcdc6ba6bb`.
 
-### G4.4 — Bounded screening
+### G4.4 — Bounded screening and G4 closure
 
-**Status:** Next / Not Started.
+**Status:** Complete — `REJECT`.
 
-G4.4 is a separately activated execution stage. It may implement and run only the frozen G4.3 matrix and evaluators under the published contracts.
+Artifacts:
 
-Before activation:
+- [technical screening evidence](../../docs/gamification/core-economy-bounded-screening.md)
+- [canonical G4.4 closeout](g4-core-economy-bounded-screening.md)
+- [research handoff](../../docs/gamification/core-economy-research-handoff.md)
+- [accepted result manifest](../../research/gamification-sim/results/core-economy-screening-manifest-v4.json)
+- [accepted row results](../../research/gamification-sim/results/core-economy-screening-results-v4.json)
 
 ```text
-results access: PROHIBITED
-protocol mutation after result access: PROHIBITED
-production code reuse: PROHIBITED
-real user data: PROHIBITED
-winner claim: PROHIBITED
+accepted protocol: v4
+publication SHA: 78ce71d82d72577f8283707a85b8e6b226330c94
+evaluator SHA: 6174c5deae40b339b7e738ae08c1060b3f0158fa
+rows expected / actual / unique: 1275 / 1275 / 1275
+missing / extra / duplicates: 0 / 0 / 0
+gate results / metric results: 3952 / 3710
+unexpected failures: 33
+result artifact digest: ad000099135574d285561d8e9bcc624ff430d25c42dd5b2d89a35476f3fad5db
+result-set digest: bbbacf3880378409a740c26d85dbc589178ec2480f471107639e4c7ed8198d90
+final G4 outcome: REJECT
 ```
 
-Expected boundaries:
+Все eligible integrated bundles провалили non-compensable gates: uncertainty policies — `HG-FALSE-POSITIVE-CONTEXT-HARM-BOUNDED`, high daily policy — `HG-EXTREME-VOLUME-BOUNDED`. Isolated passing candidates не компенсируют эти failures и не образуют post-hoc bundle.
 
-- preserve all 23 non-compensable hard gates;
-- execute both Review members separately;
-- propagate the Learn identity limitation;
-- keep candidate/scenario/matrix identities exact;
-- record amendments before execution, never post hoc;
-- publish reproducible evidence before any candidate decision;
-- remain research-only and outside production package/CI.
+```text
+Review winner: P-TAPER-ZERO-30D
+Learn winner: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status: CONFIRMATORY_INCONCLUSIVE
+Learn limitation: DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+recommended integrated bundle: NONE
+production integration: PROHIBITED
+```
 
-G4.4 is not activated merely because G4.3 is complete.
+Full dimension ledger and rejected/control candidates are recorded in the canonical closeout.
 
 ## G5 — Production architecture foundation
 
@@ -289,16 +299,20 @@ Add one named workflow/domain at a time; no generic life-tracking framework or s
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G1 and G2 retain their frozen outcomes; G3 is deferred and non-blocking; G4.1–G4.3 are research-contract freezes. G4.4, screening, simulation and all production work remain not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G3 is deferred and non-blocking. G4/G4.4 are complete with `REJECT`; G5/G6 remain conditional and not started.
 
-## G4.3 corrective republication
+## G4 publication chronology
 
 ```text
+G4: COMPLETE
 G4.3: COMPLETE
 G4.3 v1: SUPERSEDED_PRE_EXECUTION
 G4.3 v1 results: NOT_AVAILABLE
-G4.3 v2: FROZEN_PRE_SCREENING
-G4.4: NEXT / NOT STARTED
+G4.3 v2: SUPERSEDED_PRE_EXECUTION
+G4.3 v3: INVALIDATED_AFTER_SCREENING
+G4.3 v4: FROZEN_AND_EXECUTED
+G4.4: COMPLETE
+final G4 outcome: REJECT
 ```
 
-See [G4.3 v2 closeout](g4-core-economy-candidate-protocol-v2.md).
+See [G4.3 v2 closeout](g4-core-economy-candidate-protocol-v2.md), [v3 invalidation](../../reports/research/g4-core-economy-v3-screening-invalidation.md) and [final G4.4 closeout](g4-core-economy-bounded-screening.md).

@@ -48,7 +48,7 @@ Inspection Profiles не изменяют объекты Anki. Очередь Ca
 Завершённая продуктовая работа сохранена как Stage 0–9.5. Будущая работа разделена на независимые треки:
 
 - [Core](../roadmap/core/README.md): C1 завершён; C2 implementation/integration влиты, owner acceptance требует bounded remediation; затем обязательны C3–C6;
-- [Геймификация](../roadmap/gamification/README.md): независимый research/product track; G4.3 завершён как `FROZEN_PRE_SCREENING`, G4.4 ещё не начат, production integration запрещена;
+- [Геймификация](../roadmap/gamification/README.md): независимый research/product track; G4/G4.4 завершены outcome `REJECT`, integrated winner отсутствует, production integration запрещена;
 - [Эксплуатация телеметрии](../roadmap/operations/README.md): отдельные защищённые внутренние инструменты;
 - [Идентификация](../roadmap/identity/README.md): условный gate непрерывности;
 - [Расширения](../roadmap/extensions/README.md): условная или отложенная экосистема first-party;
@@ -94,7 +94,7 @@ Core не зависит от геймификации, аккаунтов, ад
 
 - current contract index: `docs/gamification/README.md`;
 - track status and stage dependencies: `roadmap/gamification/README.md`;
-- current G4.3 closeout: `roadmap/gamification/g4-core-economy-candidate-protocol.md`;
+- current G4 closeout: `roadmap/gamification/g4-core-economy-bounded-screening.md`;
 - historical post-merge report: `reports/research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md`.
 
 Research contracts, fixtures and dry matrices remain outside the production add-on, dashboard API, Fast CI and release package until a separate owner decision.

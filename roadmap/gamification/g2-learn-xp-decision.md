@@ -8,6 +8,7 @@ G2.6: COMPLETE
 G2: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
 recommended research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+research winner: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 production approved: NO
 production integration: PROHIBITED
 G3: PLANNED / NOT STARTED

@@ -5,8 +5,8 @@
 ```text
 G0 current evidence: REPRODUCED
 G1: COMPLETE
-G1 final outcome: DEFER_REVIEW_MODEL
-recommended Review XP research candidate: NONE
+G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended Review XP research candidate: P-TAPER-ZERO-30D
 G2: COMPLETE
 G2.1: COMPLETE
 G2.2: COMPLETE
@@ -17,7 +17,7 @@ G2.6: COMPLETE
 G2 final outcome: RECOMMEND_LEARN_XP_RESEARCH_MODEL
 recommended Learn XP research candidate: C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 G3: DEFERRED / POST-MVP / NOT STARTED
-G4: IN PROGRESS
+G4: COMPLETE
 G4.1: COMPLETE
 core economy contract: FROZEN_PRE_NORMALIZATION_ANALYSIS
 G4.2: COMPLETE
@@ -25,12 +25,38 @@ input/uncertainty model: FROZEN_PRE_CANDIDATE_FAMILY_DESIGN
 G4.3: COMPLETE
 G4.3 v1: SUPERSEDED_PRE_EXECUTION
 G4.3 v1 results: NOT_AVAILABLE
-G4.3 v2: FROZEN_PRE_SCREENING
-G4.4: NEXT / NOT STARTED
+G4.3 v2: SUPERSEDED_PRE_EXECUTION
+G4.3 v3: INVALIDATED_AFTER_SCREENING
+G4.3 v4: FROZEN_AND_EXECUTED
+G4.4: COMPLETE
+screening: COMPLETE
+results: AVAILABLE
+final G4 outcome: REJECT
 production integration: PROHIBITED
 ```
 
 The package is isolated under `research/gamification-sim/`. It has no production imports, root dependency changes, Fast CI/package/release integration, real Anki profile data, collection data or tokens.
+
+## G4.4 accepted result
+
+- [Technical screening reference](../../docs/gamification/core-economy-bounded-screening.md)
+- [Canonical G4 closeout](../../roadmap/gamification/g4-core-economy-bounded-screening.md)
+- [Run manifest](results/core-economy-screening-manifest-v4.json)
+- [Full deterministic results](results/core-economy-screening-results-v4.json)
+
+```text
+publication SHA: 78ce71d82d72577f8283707a85b8e6b226330c94
+evaluator SHA: 6174c5deae40b339b7e738ae08c1060b3f0158fa
+rows expected / actual / unique: 1275 / 1275 / 1275
+missing / extra / duplicates: 0 / 0 / 0
+gate results / metric results: 3952 / 3710
+unexpected failures: 33
+result artifact digest: ad000099135574d285561d8e9bcc624ff430d25c42dd5b2d89a35476f3fad5db
+result-set digest: bbbacf3880378409a740c26d85dbc589178ec2480f471107639e4c7ed8198d90
+byte-identical reproduction: PASS
+```
+
+All recommendation-eligible integrated bundles failed a non-compensable hard gate. The G4 outcome is `REJECT`; no integrated bundle is recommended.
 
 ## Structure
 
@@ -228,7 +254,7 @@ The selected model preserves `1.0 LRU`, creates no provisional exposure and has 
 - [G1.5 closeout](../../roadmap/gamification/g1-confirmatory-evidence.md)
 - [G1.6 decision and G1 closeout](../../roadmap/gamification/g1-review-xp-decision.md)
 
-G1.4 retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`. G1.5 marked both `CONFIRMATORY_ELIGIBLE`. G1.6 closed with `DEFER_REVIEW_MODEL`, selected no winner and preserved both candidates as eligible, unselected and non-falsified.
+G1.4 retained `P-STEP-ZERO` and `P-TAPER-ZERO-30D`. G1.5 marked both `CONFIRMATORY_ELIGIBLE`. G1.6 originally closed with `DEFER_REVIEW_MODEL`; the owner-authorized G4 closure subsequently selected `P-TAPER-ZERO-30D` by the non-arbitrary lower-legitimate-context-harm tie-breaker. STEP remains eligible and non-falsified.
 
 ## Retained G1/G2 evidence identities
 
@@ -295,7 +321,7 @@ The G2.4/G2.5 commands remain historical research-only surfaces. G4.1 and G4.2 a
 
 ## Evidence and production boundary
 
-G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1–G2.6 preserve their contract/evidence/governance chronology. G4.1 freezes the two-domain problem. G4.2 freezes the input/uncertainty/axis/fail-closed boundary without adding results or changing G1/G2 outcomes. External evidence bundles remain owner-managed and outside Git.
+G0.7, G1.2a, G1.4 and G1.5 are synthetic evidence. G2.1–G2.6 preserve their contract/evidence/governance chronology. G4.1/G4.2 remain frozen historical inputs; replacement v4 provides the accepted deterministic G4.4 results and final `REJECT` outcome. External G1/G2 evidence bundles remain owner-managed and outside Git.
 
 Research artifacts are not part of the add-on runtime, dashboard, `.ankiaddon`, Fast CI or release pipeline. Generated outputs, environments, caches, coverage, build/dist and `rust-oracle/target/` remain untracked.
 

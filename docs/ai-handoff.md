@@ -1,6 +1,6 @@
 # Передача актуального контекста ИИ
 
-**Снимок:** 2026-07-28
+**Снимок:** 2026-07-29
 
 Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
@@ -63,10 +63,10 @@ gamification
 G0 — COMPLETE
 
 G1 — COMPLETE
-G1 final outcome — DEFER_REVIEW_MODEL
-recommended Review XP research candidate — NONE
+G1 final outcome — RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+recommended Review XP research candidate — P-TAPER-ZERO-30D
 P-STEP-ZERO — CONFIRMATORY_ELIGIBLE; not selected; not falsified
-P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; not selected; not falsified
+P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; selected research winner; not falsified
 
 G2 — COMPLETE
 G2 final outcome — RECOMMEND_LEARN_XP_RESEARCH_MODEL
@@ -78,18 +78,20 @@ G3 — DEFERRED / POST-MVP / NOT STARTED
 G3 critical path — NO
 G3 blocks G4/G5/G6 — NO
 
-G4 — IN PROGRESS
+G4 — COMPLETE
 G4.1 — COMPLETE
 G4.2 — COMPLETE
 G4.3 — COMPLETE
 G4.3 v1 — SUPERSEDED_PRE_EXECUTION
 G4.3 v1 results — NOT_AVAILABLE
-G4.3 v2 — FROZEN_PRE_SCREENING
-stage outcome — CORRECTIVE_PROTOCOL_FROZEN
-G4.4 — NEXT / NOT STARTED
-results — NOT_AVAILABLE
-screening — NOT STARTED
-simulation — NOT STARTED
+G4.3 v2 — SUPERSEDED_PRE_EXECUTION
+G4.3 v3 — INVALIDATED_AFTER_SCREENING
+G4.3 v4 — FROZEN_AND_EXECUTED
+G4.4 — COMPLETE
+results — AVAILABLE
+screening — COMPLETE
+final G4 outcome — REJECT
+recommended integrated bundle — NONE
 production integration — PROHIBITED
 ```
 
@@ -100,11 +102,11 @@ Review:
 ```text
 axis — REVIEW_MODEL_AXIS_V1
 members — P-STEP-ZERO; P-TAPER-ZERO-30D
-selection — NONE
-default — NONE
+selection — P-TAPER-ZERO-30D
+default — P-TAPER-ZERO-30D
 evaluation — PARALLEL_SEPARATE
 averaging — PROHIBITED
-winner — NONE
+winner — P-TAPER-ZERO-30D
 ```
 
 Raw G1 bundles are not declared freshly revalidated.
@@ -122,7 +124,7 @@ frozen source total — 1.0
 common economy XP — false
 ```
 
-G2 recommendation is bounded research governance. It does not mean confirmatory eligibility, scientific superiority, human benefit or production approval.
+G1/G2 selections are bounded research governance. They do not mean scientific superiority, confirmatory eligibility, human benefit or production approval.
 
 Create:
 
@@ -190,7 +192,7 @@ semantics changed — NO
 contract/schema changed — NO
 ```
 
-### G4.3 — candidate economy protocol and hypothesis design
+### G4.3 — candidate economy protocol and hypothesis design (historical v1)
 
 Canonical artifacts:
 
@@ -258,36 +260,46 @@ workflow checks — 0
 No-results proof:
 
 ```text
-results — NOT_AVAILABLE
+historical v1 results — NOT_AVAILABLE
 all matrix rows — NOT_RUN
 screening executed — NO
 simulation — NOT_STARTED
-winner — NONE
+historical v1 winner — NONE
 production approved — NO
-G4.4 — NEXT / NOT STARTED
+historical v1 next stage — G4.4 / NOT STARTED
 ```
 
-### G4.4 entry boundary
+### G4.4 final state
 
-G4.4 is the next recommended Gamification work, but it is not activated automatically.
+Accepted artifacts:
 
-It may only:
+- [technical G4.4 evidence](gamification/core-economy-bounded-screening.md);
+- [canonical G4.4 closeout](../roadmap/gamification/g4-core-economy-bounded-screening.md);
+- [research handoff](gamification/core-economy-research-handoff.md);
+- [v4 result manifest](../research/gamification-sim/results/core-economy-screening-manifest-v4.json);
+- [v4 row results](../research/gamification-sim/results/core-economy-screening-results-v4.json).
 
-- implement and execute the frozen G4.3 protocol;
-- preserve all non-compensable gates;
-- evaluate both Review members separately;
-- propagate the Learn identity limitation;
-- use synthetic deterministic inputs;
-- publish reproducible evidence before any candidate decision.
+```text
+v4 publication SHA — 78ce71d82d72577f8283707a85b8e6b226330c94
+v4 evaluator SHA — 6174c5deae40b339b7e738ae08c1060b3f0158fa
+rows expected / actual / unique — 1275 / 1275 / 1275
+missing / extra / duplicates — 0 / 0 / 0
+gate results / metric results — 3952 / 3710
+unexpected failures — 33
+result artifact digest — ad000099135574d285561d8e9bcc624ff430d25c42dd5b2d89a35476f3fad5db
+result-set digest — bbbacf3880378409a740c26d85dbc589178ec2480f471107639e4c7ed8198d90
+byte-identical reproduction — PASS
+```
 
-It must not:
+Every recommendation-eligible integrated bundle failed at least one non-compensable gate. The final G4 outcome is `REJECT`; isolated passing candidates are not combined post hoc.
 
-- change candidate definitions after result access;
-- use real user data;
-- reuse production runtime as the research evaluator;
-- average Review members;
-- claim a winner, balance, motivation or production readiness before the evidence and decision stages authorize it;
-- start G5 or production integration.
+```text
+Review winner — P-TAPER-ZERO-30D
+Learn winner — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
+Learn status — CONFIRMATORY_INCONCLUSIVE
+Learn limitation — DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
+G5 / G6 — CONDITIONAL / NOT STARTED
+```
 
 ### Exact Gamification sources
 
@@ -302,6 +314,8 @@ It must not:
 - [G4.3 candidate protocol](gamification/core-economy-candidate-protocol.md)
 - [G4.3 closeout](../roadmap/gamification/g4-core-economy-candidate-protocol.md)
 - [G4.3 post-merge report](../reports/research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md)
+- [G4.4 bounded screening](gamification/core-economy-bounded-screening.md)
+- [G4 final closeout](../roadmap/gamification/g4-core-economy-bounded-screening.md)
 
 `gamification → master`, production integration, package inclusion and release remain prohibited without a separate owner decision.
 
