@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; `G5 Study Rhythm MVP Planned / Not Started`; production integration not approved
+**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; `G5.0 Complete`; `G5.1 Profile Production Foundation` implementation candidate delivered with owner visual acceptance and merge pending; `G5.2+ Not Started`; G5 overall not complete
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -31,7 +31,10 @@ G4.1 Problem and contract freeze                    COMPLETE
 G4.2 Input normalization and uncertainty model      COMPLETE
 G4.3 Candidate protocol and hypothesis design       COMPLETE — v4 FROZEN_AND_EXECUTED
 G4.4 Bounded screening                              COMPLETE — REJECT
-G5  Study Rhythm MVP                                PLANNED / NOT STARTED
+G5  Production Profile and later Study Rhythm       IN PROGRESS / NOT COMPLETE
+G5.0 Current production baseline sync               COMPLETE
+G5.1 Profile Production Foundation                  DELIVERED CANDIDATE / OWNER ACCEPTANCE PENDING
+G5.2+ Study Rhythm contract and implementation      NOT STARTED
 G6  Personal Progression Economy v1                 CONDITIONAL / NOT STARTED
 G7  Achievements foundation                         CONDITIONAL / NOT STARTED
 G8  Skills, quests and domain expansion             DEFERRED / CONDITIONAL / NOT STARTED
@@ -328,7 +331,11 @@ AND CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved by this roadmap update. G3 remains deferred and non-blocking. G4/G4.4 remain complete with `REJECT`. G5 is planned but not started; G6–G8 are not started.
+G5.1 changes the existing production Profile frontend only and is not
+canonical complete until owner visual acceptance and merge. Existing
+`StudyReport.profile` and `/api/profile` contracts are unchanged; no new
+payload, API, persistence, scheduler, FSRS, telemetry, release or publication
+is introduced. G5.2 and G6–G8 are not started.
 
 ## G4 publication chronology
 

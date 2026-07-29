@@ -4,7 +4,7 @@
 
 ```text
 G5.0: COMPLETE
-G5.1 implementation candidate: IN PROGRESS
+G5.1 implementation candidate: DELIVERED
 G5.1 owner visual acceptance: PENDING
 G5.1 merge: NOT PERFORMED
 G5.2: NOT STARTED
@@ -71,13 +71,13 @@ Frontend не читает collection, raw revlog, profile paths или media и
 | Progress history | Дать компактный конец страницы | `profile.activity.recentActiveDays` | ADAPT | Три newest rows по умолчанию; disclosure до доступных семи | Это factual recent history, не milestones | Collapsed/expanded tests |
 | Customization drawer | Объединить profile settings | `profile.preferences` | IMPROVE | Accessible dialog только для start date и deck sort | Upload/name/bio/accent controls не поддержаны backend | Focus, Escape, save/reset/failure tests |
 | Explainability dialog | Объяснить mock XP/status | Нет отдельного factual contract сверх captions | REJECT | Не добавлять постоянную secondary dialog | Inline labels и source captions достаточны | No unexplained affordance review |
-| Page entrance motion | Подчеркнуть hierarchy | Existing motion tokens | IMPROVE | Основной content видим сразу; только короткий fail-open opacity/transform entrance | Убирает 780 ms choreography и v0.4.1 invisible-parent risk | CSS visual contract; reduced motion |
+| Page entrance motion | Подчеркнуть hierarchy | Existing motion tokens | IMPROVE | Основной content видим сразу; Profile root не использует transform/opacity entrance | Убирает 780 ms choreography, invisible-parent risk и fixed-dialog containing block | CSS visual contract; reduced motion |
 | Hover/focus motion | Показать интерактивность | Existing motion/focus tokens | ADAPT | 90–140 ms hover/press, visible focus, no persistent animation | Functional feedback без декоративного движения | CSS and keyboard tests |
 | Light/dark palette | Сохранить semantic parity | Existing theme tokens | ADAPT | Только project tokens и bounded profile accents | Exact mock colors/shadows не копируются | Theme screenshots |
-| 1024/QHD/4K layout | Использовать desktop пространство | Existing App Shell width plus Profile CSS | IMPROVE | 2×2 areas на 1024–1440, bounded four-column areas на wide, readable max widths | Mock слишком плотный в 1024 и слишком мелкий в QHD | Geometry/overflow evidence |
-| Low-data state | Не ломать hierarchy при малом объёме | Empty/short arrays and nullable metrics | IMPROVE | Честные empty blocks и unavailable values без fake zero progress | Production data может быть частичной или пустой | Focused low-data tests/screenshots |
+| 1024/QHD/4K layout | Использовать desktop пространство | Existing App Shell width plus Profile CSS | IMPROVE | 2×2 areas на 1024, bounded four-column areas с 1440 и readable max widths на QHD/4K | Mock слишком плотный в 1024 и слишком мелкий в QHD | Geometry/overflow evidence |
+| Low-data state | Не ломать hierarchy при малом объёме | Empty/short arrays and nullable metrics | IMPROVE | Честные empty blocks и unavailable values без fake zero progress | Production data может быть частичной или пустой | Focused low-data tests |
 | Gamification-disabled state | Показать feature toggle | Toggle отсутствует | REJECT | Не добавлять fake disabled surface | Public contract не содержит feature state | No speculative state test |
-| Long identity stress | Сохранить действия и полное имя | `identity.displayName` | ADAPT | Wrapping, `title`, min-width containment и responsive action | Имя нельзя обрезать без доступного полного значения | Long-identity screenshot/test |
+| Long identity stress | Сохранить действия и полное имя | `identity.displayName` | ADAPT | Wrapping, `title`, min-width containment и responsive action | Имя нельзя обрезать без доступного полного значения | Long-identity focused test |
 | External/demo assets | Усилить персональность | Нет безопасного media endpoint для Profile | REJECT | Не использовать `demo-avatar.svg`, `demo-banner.svg` или upload controls | Не расширять media/security scope | Dependency/source scan |
 | Standalone `localStorage` behavior | Симулировать сохранение mock | Existing token-protected profile store | REJECT | Только `/api/profile` и `onReportUpdated` | Browser storage не является Profile source of truth | API request tests |
 | Full HTML/CSS copy | Быстро повторить mock | Не применимо | REJECT | Новая React composition на существующих tokens | Prototype не является production source | Full diff review |

@@ -130,7 +130,12 @@ Create the first complete, visually polished and packaged Gamification feature o
 The user sets a realistic weekly study rhythm, sees today's state and weekly progress, and can plan rest without XP, levels or a rejected Review + Learn economy.
 
 ```text
-G5 status: PLANNED / NOT STARTED
+G5 status: IN PROGRESS / NOT COMPLETE
+G5.0: COMPLETE
+G5.1 Profile Production Foundation candidate: DELIVERED
+G5.1 owner visual acceptance: PENDING
+G5.1 merge: NOT PERFORMED
+G5.2+: NOT STARTED
 G5 closes with: WORKING PACKAGED MVP
 XP economy: OUT OF SCOPE
 level system: OUT OF SCOPE
@@ -403,20 +408,27 @@ Deliverable:
 
 Checks are selected by the complete diff. Because the package baseline changes, focused checks, non-Docker checks, frontend build, package validation and a package-producing Fast CI are expected; E2E scope follows the verification planner.
 
-### G5.1 — Design-reference adaptation checkpoint
+### G5.1 — Profile Production Foundation
 
-**Goal:** turn the reference into implementation decisions without a long standalone theory stage.
+**Goal:** adapt the supplied Profile reference into a production-quality
+foundation on the existing live `#/profile` route and existing
+`StudyReport.profile` contract.
 
-Deliverable:
+Candidate deliverable:
 
-- reference inventory;
-- adaptation ledger;
-- route composition;
-- token/component mapping;
-- objective visual acceptance list;
-- explicit list of copied vs rejected patterns.
+- reference CRC/checksum/inventory and adaptation ledger;
+- identity-first composition;
+- real learning areas from `profile.decks.overview`;
+- factual six-metric Status, bounded activity and compact recent history;
+- one accessible settings dialog for existing `customStudyStartedOn` and
+  `deckOverviewSort`;
+- RU/EN, light/dark, responsive and reduced-motion-safe behavior;
+- objective visual evidence and explicit ADAPT/IMPROVE/DEFER/REJECT decisions.
 
-The reference must actually be opened. No claim of analysis is valid before that.
+The implementation candidate changes no backend/public schema and introduces no
+XP, levels, achievements, skills, new routes or placeholder systems. Canonical
+completion remains blocked on exact-SHA gates, owner visual acceptance and
+merge. G5.2 is not started.
 
 ### G5.2 — Freeze minimal MVP contract
 
@@ -781,16 +793,20 @@ G8 bounded expansion
 
 ## 20. Production boundary at planning time
 
-This roadmap authorizes planning only.
+G5.1 has an owner-authorized implementation candidate. Later stages remain
+planning only.
 
 ```text
-production code changed: NO
-frontend changed: NO
+production code changed: G5.1 FRONTEND CANDIDATE ONLY
+frontend changed: YES — existing #/profile composition
 payload/API changed: NO
 persistence changed: NO
-package changed: NO
+package changed: PACKAGE-IMPACTING FRONTEND CANDIDATE
 release changed: NO
-G5 implementation started: NO
+G5.1 implementation candidate: DELIVERED
+G5.1 owner visual acceptance: PENDING
+G5.1 merge: NOT PERFORMED
+G5.2 started: NO
 G6/G7/G8 started: NO
 ```
 

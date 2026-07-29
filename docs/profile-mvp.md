@@ -1,6 +1,7 @@
 # Profile MVP
 
-Статус: implemented in Stage 3.
+Статус: Stage 3 contract implemented; G5.1 production-foundation candidate
+delivered on `chatGPT/G5`, owner visual acceptance and merge pending.
 
 ## Product role
 
@@ -18,18 +19,22 @@ Anki-профиля. Она показывает identity, lifetime totals, ко
 - Profile — identity и lifetime view всей коллекции;
 - Statistics — будущая глубокая аналитика, не часть Stage 3.
 
-Profile не содержит внутренних tabs, social/account model, achievements,
-goals, Activity Feed или controls будущего avatar/banner upload.
+Profile не содержит внутренних tabs, social/account model, XP, levels,
+achievements, skills, goals, Activity Feed или controls будущего
+avatar/banner upload.
 
 ## Page structure
 
 1. Theme-aware встроенный banner и avatar с детерминированными initials.
 2. Имя текущего Anki profile; fallback — `Пользователь Anki`.
-3. Нейтральный label `Локальный профиль` и даты учебной истории.
-4. Ровно шесть lifetime KPI.
-5. Mini heatmap последних максимум 182 календарных дней доступной активности.
-6. Семь последних активных дней, newest first.
-7. До восьми canonical current-deck rows и selector сортировки.
+3. Нейтральный label `Локальный профиль`, даты учебной истории и единая кнопка
+   настроек.
+4. До четырёх learning-area cards из `profile.decks.overview`; остаток
+   обозначается фактическим count и ссылкой на существующий `#/decks`.
+5. Выделенный factual Status с ровно шестью lifetime metrics.
+6. Mini heatmap последних максимум 182 календарных дней доступной активности.
+7. Три последних активных дня по умолчанию и раскрытие до всех семи
+   `recentActiveDays`, newest first.
 
 В hero нет внешних изображений. Длинное имя переносится и сохраняется целиком
 в `title`; avatar initials стабильны между renders.
@@ -84,8 +89,12 @@ statsAvailableFrom detectedStartedOn
 
 Override валидируется frontend и backend, не может быть future date и не
 создаёт activity, totals, streaks или study time. Если даты расходятся, hero
-отдельно сообщает, с какой даты реально доступна статистика. Dialog поддерживает
-initial focus, Tab trap, Escape, возврат focus, inline error и reset.
+отдельно сообщает, с какой даты реально доступна статистика. Единый dialog
+редактирует дату и `deckOverviewSort`, отправляет один existing Profile patch,
+блокирует duplicate submit, сохраняет draft после ошибки и поддерживает
+initial focus, Tab trap, Escape, возврат focus, inline error и явный reset
+draft. Dialog рендерится portal в `document.body`, поэтому shared page-entry
+transform не нарушает viewport-fixed geometry.
 
 ## Persistence
 
@@ -145,7 +154,8 @@ Computed metrics, Anki profile name и unknown fields отклоняются. In
 
 ## Deck sorting
 
-Default — `name`; также доступны `reviews` и `active_days`. Backend сортирует
+Default — `name`; также доступны `reviews` и `active_days`. Настройка находится
+в едином Profile settings dialog. Backend сортирует
 case-insensitive Unicode names, использует name и deck id как deterministic
 tie-breakers, затем ограничивает ответ восемью rows. Preference сохраняется
 per Anki profile, не в browser localStorage.
@@ -173,13 +183,16 @@ redesign, Decks/Cards v2, Search и mobile-first redesign не входят в S
 tests/test_profile_service.py
 tests/test_dashboard_server.py
 web-dashboard/src/pages/ProfilePage.test.tsx
+web-dashboard/src/pages/ProfileVisualContract.test.ts
 web-dashboard/src/lib/profileApi.test.ts
 ```
 
-Docker browser smoke открывает реальный `#/profile`, проверяет identity, шесть
-KPI, activity/recent/decks, save/reload двух preferences и сохраняет Profile
-light/dark screenshots. Artifact manifest индексирует их как обычные page
-screenshots; DOM assertion запрещает raw dashboard token.
+Docker browser smoke открывает реальный `#/profile` и сохраняет Profile
+light/dark screenshots. Более узкие frontend tests проверяют composition,
+RU/EN, low-data/unavailable, long identity, единый preference payload,
+validation, duplicate-submit guard, failure recovery, focus и history
+expansion. Реальный Anki interaction proof остаётся отдельным release gate и
+не выводится из локального mock browser evidence.
 
 Stage 4 не переносит Feed в Profile: visible Recent Activity здесь остаётся
 компактным all-collection блоком из `StudyReport.profile`, а полный scoped Feed
