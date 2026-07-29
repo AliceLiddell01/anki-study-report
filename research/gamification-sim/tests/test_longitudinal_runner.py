@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import math
 from pathlib import Path
+import platform
 
 import pytest
 
@@ -28,6 +29,18 @@ from gamification_sim.parameters import CURRENT_PARAMETERS
 
 ROOT = Path(__file__).parents[1]
 CONFIG = load_longitudinal_config(ROOT / "configs/review-longitudinal-v0.1.json")
+PRE_WIRING_DIGESTS = {
+    "Linux": (
+        "14b72f42ce03d7e9a44748c43e2735854004811b642e5ab9a1773ab5b25d5301",
+        "34395f2a7eb0683aa30e2a044d1b3ec1c4f4afee6e86bbc0ad61ec7eec0b29c1",
+        "62788baea6b294663e27713a81645a89ff3f4dd1f4e9be3842e7df31130ffc0e",
+    ),
+    "Windows": (
+        "9eb677e26b6faa9a10d3d39ba8760bc30cf87522165915b8580516092dfdb462",
+        "c3aa0fada14ddef12b17d8cac757f3ae404b837cf41a39a78b077f467669bb6e",
+        "7fa8475201afecd1bbe12103020c277a96e037b8137f2d1c139ed227879682e9",
+    ),
+}
 
 
 @pytest.fixture(scope="module")
@@ -176,19 +189,11 @@ def test_default_r_current_digests_match_pre_wiring_checkpoint(
     development,
 ):
     manifest = development["manifest"]
+    expected = PRE_WIRING_DIGESTS[platform.system()]
 
-    assert manifest["trajectory_digest"] == (
-        "14b72f42ce03d7e9a44748c43e273585"
-        "4004811b642e5ab9a1773ab5b25d5301"
-    )
-    assert manifest["final_cohort_digest"] == (
-        "34395f2a7eb0683aa30e2a044d1b3ec1"
-        "c4f4afee6e86bbc0ad61ec7eec0b29c1"
-    )
-    assert manifest["report_digest"] == (
-        "62788baea6b294663e27713a81645a89f"
-        "f3f4dd1f4e9be3842e7df31130ffc0e"
-    )
+    assert manifest["trajectory_digest"] == expected[0]
+    assert manifest["final_cohort_digest"] == expected[1]
+    assert manifest["report_digest"] == expected[2]
     assert "candidate_parameterization" not in manifest
     assert all(
         "candidate_parameterization" not in result

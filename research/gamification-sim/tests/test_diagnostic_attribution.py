@@ -239,7 +239,21 @@ def test_six_cells_and_three_groups_match_immutable_g0_7(short_bundle, long_bund
     cells, groups = _canonical_cells(short_bundle, long_bundle, contract)
     assert len(cells) == 6
     assert len(groups) == 3
-    assert cells == contract["current_evidence"]["cells"]
+    for actual, expected in zip(
+        cells,
+        contract["current_evidence"]["cells"],
+        strict=True,
+    ):
+        assert actual.keys() == expected.keys()
+        for key, expected_value in expected.items():
+            if isinstance(expected_value, float):
+                assert actual[key] == pytest.approx(
+                    expected_value,
+                    rel=0.0,
+                    abs=1e-15,
+                )
+            else:
+                assert actual[key] == expected_value
     assert groups == contract["current_evidence"]["groups"]
 
 

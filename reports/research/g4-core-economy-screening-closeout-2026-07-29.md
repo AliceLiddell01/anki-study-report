@@ -94,7 +94,7 @@ Review tie-break prioritizes lower legitimate-context harm over lower policy com
 
 ## Verification boundary
 
-Focused v4 protocol/evaluator tests, schema checks, negative corpus, exact coverage, detached result validation and byte-identical reproduction passed. Full research suite retained two pre-existing frozen-identity failures outside the G4 changed paths; exact commands and final status are recorded in the task/PR report.
+Focused v4 protocol/evaluator tests, schema checks, negative corpus, exact coverage, detached result validation and byte-identical reproduction passed. The first full research-suite run exposed two pre-existing Windows portability defects outside G4 paths: sub-`1e-15` binary64 values were compared exactly and pre-wiring digests recorded only Linux identities. Test-only corrections retain exact per-platform digests and a `1e-15` absolute frozen-cell tolerance; production and frozen contracts remain unchanged.
 
 Not run:
 
