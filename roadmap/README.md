@@ -95,3 +95,12 @@ production/research code и tests
 - **Conditional** — активируется только при явном trigger.
 - **Deferred** — намеренно вне текущего горизонта.
 - **Research only** — не входит в production/package/CI.
+
+## Gamification G4.3 corrective state
+
+```text
+G4.3: COMPLETE
+G4.3 v1: SUPERSEDED_PRE_EXECUTION
+G4.3 v2: FROZEN_PRE_SCREENING
+G4.4: NEXT / NOT STARTED
+```

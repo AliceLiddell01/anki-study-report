@@ -100,3 +100,7 @@ Gamification contracts и recommended research candidates являются resea
 - [Codex local WSL environment](codex-local-environment.md)
 
 `ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/` или профильном canonical closeout, а не дублироваться в этом индексе.
+
+## Gamification G4.3 corrective publication
+
+- [G4.3 v2 corrective protocol](gamification/core-economy-candidate-protocol-v2.md)

@@ -201,3 +201,21 @@ No real card text, note fields, media, profile paths, usernames, tokens, raw rev
 ## Production integration boundary
 
 No production add-on, dashboard, payload, API, scheduler, FSRS, database, workflow, package, release or telemetry integration is approved. G4.3 is a research protocol freeze; G4.4, screening and simulation remain not started. Research assets remain outside Fast CI and `.ankiaddon` contents.
+
+## G4.3 v2 corrective protocol
+
+- [Human corrective protocol](core-economy-candidate-protocol-v2.md)
+- [Machine protocol](../../research/gamification-sim/contracts/core-economy-candidate-protocol-v2.json)
+- [Evaluation pipeline](../../research/gamification-sim/contracts/core-economy-evaluation-pipeline-v2.json)
+- [Scenario registry](../../research/gamification-sim/fixtures/core-economy-candidate-scenarios-v2.json)
+- [Dry matrix](../../research/gamification-sim/matrices/core-economy-screening-matrix-v2.json)
+- [Focused validator/tests](../../research/gamification-sim/src/gamification_sim/core_economy_protocol_v2.py)
+
+```text
+G4.3 v1: SUPERSEDED_PRE_EXECUTION
+G4.3 v2: FROZEN_PRE_SCREENING
+scenarios / matrix rows: 41 / 864
+results: NOT_AVAILABLE
+G4.4: NEXT / NOT STARTED
+production: PROHIBITED
+```
