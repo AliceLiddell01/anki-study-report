@@ -31,6 +31,15 @@ def fetch_raw(url: str, body: bytes) -> tuple[int, str, bytes]:
         return error.code, error.headers.get("Content-Type", ""), error.read()
 
 
+def fetch_headers(url: str) -> tuple[int, dict[str, str], bytes]:
+    request = Request(url, headers={"User-Agent": "anki-study-report-test"})
+    try:
+        with urlopen(request, timeout=5) as response:
+            return response.status, dict(response.headers.items()), response.read()
+    except HTTPError as error:
+        return error.code, dict(error.headers.items()), error.read()
+
+
 def write_dashboard_static(root: Path) -> None:
     assets_dir = root / "assets"
     assets_dir.mkdir(parents=True)
@@ -78,7 +87,7 @@ def test_dashboard_server_smoke_endpoints():
         status, content_type, body = fetch(f"{base_url}/api/status")
         assert status == 200
         assert "application/json" in content_type
-        assert json.loads(body)["running"] is True
+        assert json.loads(body) == {"ok": True, "status": "running"}
 
         status, _, _ = fetch(f"{base_url}/api/health")
         assert status == 403
@@ -121,6 +130,46 @@ def test_dashboard_server_smoke_endpoints():
     assert manager.state().running is False
 
 
+def test_dashboard_server_sends_deny_by_default_browser_security_policy(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    monkeypatch.setattr(dashboard_server, "_find_static_dir", lambda: None)
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+
+    try:
+        status, headers, body = fetch_headers(f"{base_url}/")
+        assert status == 200
+        policy = headers["Content-Security-Policy"]
+        for directive in (
+            "default-src 'none'",
+            "script-src 'self' 'nonce-",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "media-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "frame-src 'none'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        ):
+            assert directive in policy
+        assert "http:" not in policy
+        assert "https:" not in policy
+        assert headers["Referrer-Policy"] == "no-referrer"
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        nonce = policy.split("'nonce-", 1)[1].split("'", 1)[0]
+        assert f'nonce="{nonce}"'.encode() in body
+
+        forbidden_status, forbidden_headers, _ = fetch_headers(f"{base_url}/api/report")
+        assert forbidden_status == 403
+        assert forbidden_headers["Content-Security-Policy"].startswith("default-src 'none'")
+    finally:
+        manager.stop()
+
+
 def test_search_endpoints_require_token_post_and_preserve_typed_statuses():
     dashboard_server = import_addon_module("dashboard_server")
     manager = dashboard_server.DashboardServerManager()
@@ -147,26 +196,21 @@ def test_search_endpoints_require_token_post_and_preserve_typed_statuses():
         assert status == 405
         assert json.loads(body)["error"] == "method_not_allowed"
 
+        query_body = {"schemaVersion": 2, "mode": "cards", "query": "deck:Japanese"}
         status, content_type, body = fetch(
-            f"{base_url}/api/search/query?token={token}",
-            method="POST",
-            json_body={"mode": "cards", "query": "deck:Japanese"},
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body=query_body
         )
         assert status == 200
         assert "application/json" in content_type
         assert json.loads(body) == {"ok": True, "response": {"mode": "cards", "items": []}}
 
+        inspect_body = {"schemaVersion": 2, "mode": "notes", "noteId": "123"}
         status, _, body = fetch(
-            f"{base_url}/api/search/inspect?token={token}",
-            method="POST",
-            json_body={"mode": "notes", "noteId": "123"},
+            f"{base_url}/api/search/inspect?token={token}", method="POST", json_body=inspect_body
         )
         assert status == 404
         assert json.loads(body)["error"] == "search_entity_not_found"
-        assert calls == [
-            ("query", {"mode": "cards", "query": "deck:Japanese"}),
-            ("inspect", {"mode": "notes", "noteId": "123"}),
-        ]
+        assert calls == [("query", query_body), ("inspect", inspect_body)]
     finally:
         manager.stop()
 
@@ -177,10 +221,9 @@ def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
     state = manager.start(port=0, idle_timeout_seconds=0)
     base_url = f"http://127.0.0.1:{state.port}"
     token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    request = {"schemaVersion": 2, "mode": "cards"}
     try:
-        status, _, body = fetch(
-            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
-        )
+        status, _, body = fetch(f"{base_url}/api/search/query?token={token}", method="POST", json_body=request)
         assert status == 503
         assert json.loads(body)["error"] == "search_unavailable"
 
@@ -189,13 +232,16 @@ def test_search_endpoint_maps_validation_timeout_and_unavailable_errors():
             assert status == 400
             assert json.loads(body)["error"] == "invalid_search_request"
 
-        for code, expected_status in [("invalid_search_request", 400), ("search_timeout", 504), ("search_failed", 503)]:
+        for code, expected_status in [
+            ("invalid_search_request", 400),
+            ("search_timeout", 504),
+            ("search_busy", 409),
+            ("search_failed", 503),
+        ]:
             manager.configure_search_handlers(
                 query_handler=lambda payload, code=code: {"ok": False, "error": code, "message": "Safe failure."}
             )
-            status, _, body = fetch(
-                f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
-            )
+            status, _, body = fetch(f"{base_url}/api/search/query?token={token}", method="POST", json_body=request)
             assert status == expected_status
             assert json.loads(body)["error"] == code
     finally:
@@ -216,7 +262,7 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
         status, _, body = fetch(
             f"{base_url}/api/search/query?token={token}",
             method="POST",
-            json_body={"mode": "cards", "query": "", "rawSql": "secret-select"},
+            json_body={"schemaVersion": 2, "mode": "cards", "query": "", "rawSql": "secret-select"},
         )
         assert status == 400
         assert json.loads(body)["fieldErrors"] == {"rawSql": "Unexpected field."}
@@ -225,7 +271,7 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
             query_handler=lambda payload: (_ for _ in ()).throw(RuntimeError("secret-query token=secret-token"))
         )
         status, _, body = fetch(
-            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"mode": "cards"}
+            f"{base_url}/api/search/query?token={token}", method="POST", json_body={"schemaVersion": 2, "mode": "cards"}
         )
         assert status == 503
         response_text = body.decode("utf-8")
@@ -233,6 +279,229 @@ def test_search_endpoint_rejects_unknown_fields_and_safely_logs_handler_failure(
         assert "secret-token" not in response_text
         assert "secret-query" not in repr(logged)
         assert "secret-token" not in repr(logged)
+    finally:
+        manager.stop()
+
+
+def test_triage_endpoint_is_token_protected_post_json_only_and_strict():
+    dashboard_server = import_addon_module("dashboard_server")
+    triage_runtime = import_addon_module("triage_runtime")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 4,
+        "dataset": "automatic",
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+        "limit": 100,
+        "contentCursor": None,
+    }
+    manager.configure_triage_handler(
+        lambda value: triage_runtime.run_triage_query_sync(None, value, signal_provider=lambda: [])
+    )
+    try:
+        status, _, body = fetch(f"{base_url}/api/triage/query", method="POST", json_body=payload)
+        assert status == 403
+        assert json.loads(body)["error"] == "invalid_dashboard_token"
+
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}", method="POST")
+        assert status == 415
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
+        status, content_type, body = fetch(
+            f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+        )
+        assert status == 200
+        assert "application/json" in content_type
+        response = json.loads(body)
+        assert response["ok"] is True
+        assert response["response"]["schemaVersion"] == 4
+        assert response["response"]["status"] == "partial"
+
+        status, _, body = fetch(
+            f"{base_url}/api/triage/query?token={token}",
+            method="POST",
+            json_body={**payload, "rawSql": "select * from cards"},
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
+        old = {**payload, "schemaVersion": 2}
+        status, _, body = fetch(f"{base_url}/api/triage/query?token={token}", method="POST", json_body=old)
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+
+        status, _, body = fetch_raw(
+            f"{base_url}/api/triage/query?token={token}", b'{"padding":"' + b"x" * 9000 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_request"
+    finally:
+        manager.stop()
+
+
+def test_triage_endpoint_maps_typed_failures_without_exception_leak(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 4,
+        "dataset": "automatic",
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+        "limit": 100,
+    }
+    logged = []
+    monkeypatch.setattr(dashboard_server, "log_event", lambda *args, **kwargs: logged.append((args, kwargs)))
+    try:
+        for code, expected in [
+            ("invalid_triage_request", 400),
+            ("triage_timeout", 504),
+            ("triage_unavailable", 503),
+            ("triage_failed", 503),
+        ]:
+            manager.configure_triage_handler(lambda _value, code=code: {"ok": False, "error": code, "message": "Safe failure."})
+            status, _, body = fetch(
+                f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+            )
+            assert status == expected
+            assert json.loads(body)["error"] == code
+
+        manager.configure_triage_handler(
+            lambda _value: (_ for _ in ()).throw(RuntimeError("private-path token=secret-token"))
+        )
+        status, _, body = fetch(
+            f"{base_url}/api/triage/query?token={token}", method="POST", json_body=payload
+        )
+        assert status == 503
+        assert json.loads(body) == {
+            "ok": False,
+            "error": "triage_failed",
+            "message": "The triage request failed.",
+        }
+        assert "private-path" not in body.decode("utf-8")
+        assert "secret-token" not in body.decode("utf-8")
+        assert "private-path" not in repr(logged)
+        assert "secret-token" not in repr(logged)
+    finally:
+        manager.stop()
+
+
+def test_triage_recheck_endpoint_is_token_protected_post_json_only_and_bounded():
+    dashboard_server = import_addon_module("dashboard_server")
+    triage_runtime = import_addon_module("triage_runtime")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    payload = {
+        "schemaVersion": 1,
+        "cardId": "1",
+        "expectedNoteId": "10001",
+        "reasonIds": ["learning:learning.repeated_again"],
+        "scope": {"periodStartMs": 1, "periodEndMs": 2, "deckIds": []},
+    }
+    manager.configure_triage_handler(
+        recheck_handler=lambda value: triage_runtime.run_triage_recheck_sync(None, value, signal_provider=lambda: [])
+    )
+    try:
+        status, _, body = fetch(f"{base_url}/api/triage/recheck", method="POST", json_body=payload)
+        assert status == 403
+        assert json.loads(body)["error"] == "invalid_dashboard_token"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}")
+        assert status == 405
+        assert json.loads(body)["error"] == "method_not_allowed"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}", method="POST")
+        assert status == 415
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+
+        status, _, body = fetch(f"{base_url}/api/triage/recheck?token={token}", method="POST", json_body=payload)
+        assert status == 200
+        response = json.loads(body)["response"]
+        assert response["schemaVersion"] == 1
+        assert response["cardId"] == "1"
+        assert response["status"] == "unavailable"
+
+        status, _, body = fetch(
+            f"{base_url}/api/triage/recheck?token={token}",
+            method="POST",
+            json_body={**payload, "rawSql": "select * from cards"},
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+
+        status, _, body = fetch_raw(
+            f"{base_url}/api/triage/recheck?token={token}", b'{"padding":"' + b"x" * 9000 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_triage_recheck_request"
+    finally:
+        manager.stop()
+
+
+def test_inspection_profile_endpoints_are_token_protected_json_only_bounded_and_typed():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    calls = []
+    manager.configure_inspection_profile_handlers(
+        query_handler=lambda value: calls.append(("query", value)) or {
+            "ok": True, "response": {"schemaVersion": 1, "items": []}
+        },
+        validate_handler=lambda value: calls.append(("validate", value)) or {
+            "ok": False, "error": "invalid_inspection_profile_request", "fieldErrors": {"profile": "invalid"}
+        },
+        update_handler=lambda value: calls.append(("update", value)) or {
+            "ok": False, "error": "inspection_profile_revision_conflict", "currentRevision": 7
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        path = "/api/inspection-profiles/query"
+        assert fetch(f"{base_url}{path}", method="POST", json_body={"schemaVersion": 1})[0] == 403
+        assert fetch(f"{base_url}{path}?token={token}")[0] == 405
+        assert fetch(f"{base_url}{path}?token={token}", method="POST")[0] == 415
+
+        status, _, body = fetch(
+            f"{base_url}{path}?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1, "noteTypeIds": [], "limit": 500},
+        )
+        assert status == 200
+        assert json.loads(body) == {"ok": True, "response": {"schemaVersion": 1, "items": []}}
+        assert calls[-1] == ("query", {"schemaVersion": 1, "noteTypeIds": [], "limit": 500})
+        assert token not in body.decode("utf-8")
+
+        status, _, body = fetch(
+            f"{base_url}/api/inspection-profiles/validate?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 400
+        assert json.loads(body)["fieldErrors"] == {"profile": "invalid"}
+
+        status, _, body = fetch(
+            f"{base_url}/api/inspection-profiles/update?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 409
+        assert json.loads(body)["currentRevision"] == 7
+
+        status, _, body = fetch_raw(
+            f"{base_url}{path}?token={token}", b'{"padding":"' + b"x" * 65_536 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_inspection_profile_request"
     finally:
         manager.stop()
 
@@ -257,9 +526,7 @@ def test_search_selection_browser_action_remains_token_protected_and_post_only()
         assert fetch(f"{base_url}/api/actions/open-search-selection", method="POST", json_body=body)[0] == 403
         assert fetch(f"{base_url}/api/actions/open-search-selection?token={token}")[0] == 404
         status, _, response = fetch(
-            f"{base_url}/api/actions/open-search-selection?token={token}",
-            method="POST",
-            json_body=body,
+            f"{base_url}/api/actions/open-search-selection?token={token}", method="POST", json_body=body
         )
         assert status == 200
         assert json.loads(response)["resultCode"] == "search.browser_opened"
@@ -357,11 +624,7 @@ def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch
         assert status == 200
         assert "application/json" in content_type
         status_payload = json.loads(body)
-        assert status_payload["running"] is True
-        assert status_payload["static_available"] is False
-        assert status_payload["static_dir"] is None
-        assert status_payload["report_available"] is False
-        assert status_payload["url"].endswith("?token=...")
+        assert status_payload == {"ok": True, "status": "running"}
         assert token not in body.decode("utf-8")
 
         status, content_type, body = fetch(f"{base_url}/")
@@ -372,6 +635,59 @@ def test_dashboard_server_reports_static_fallback_without_token_leak(monkeypatch
         assert "fallback-режиме" in text
         assert "build:addon" in text
         assert token not in text
+    finally:
+        manager.stop()
+
+
+def test_public_status_is_minimal_and_protected_diagnostics_redact_cross_platform_paths(monkeypatch):
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        status, _, body = fetch(f"{base_url}/api/status")
+        assert status == 200
+        public = json.loads(body)
+        assert public == {"ok": True, "status": "running"}
+        serialized = json.dumps(public)
+        assert "static_dir" not in serialized
+        assert "report_path" not in serialized
+
+        status, _, body = fetch(f"{base_url}/api/server/status?token={token}")
+        assert status == 200
+        protected = json.loads(body)
+        assert protected["static_dir"] is None or protected["static_dir"].startswith("<redacted>/")
+        assert protected["report_path"].startswith("<redacted>/")
+        assert "/tmp/" not in json.dumps(protected)
+
+        for value in (
+            r"C:\Users\Alice\AppData\Local\report.json",
+            "/Users/alice/Library/Application Support/report.json",
+            "/home/alice/.local/share/report.json",
+        ):
+            redacted = dashboard_server._mask_path(value)
+            assert redacted == "<redacted>/report.json"
+            assert "alice" not in redacted.lower()
+    finally:
+        manager.stop()
+
+
+def test_failed_unauthenticated_request_does_not_extend_idle_activity():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    state = manager.start(port=0, idle_timeout_seconds=60)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        before = manager._last_request_at
+        status, _, _ = fetch(f"{base_url}/api/report?token=wrong")
+        assert status == 403
+        assert manager._last_request_at == before
+
+        status, _, _ = fetch(f"{base_url}/api/report?token={token}")
+        assert status == 404
+        assert manager._last_request_at > before
     finally:
         manager.stop()
 
@@ -410,6 +726,8 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
     media_dir.mkdir()
     media_file = media_dir / "front.gif"
     media_file.write_bytes(b"GIF89a")
+    font_file = media_dir / "study.woff2"
+    font_file.write_bytes(b"wOF2safe")
 
     manager = dashboard_server.DashboardServerManager()
     manager.configure_media_handler(lambda name: ((media_dir / name).read_bytes(), (media_dir / name).suffix))
@@ -425,6 +743,11 @@ def test_dashboard_server_serves_token_protected_media(tmp_path):
         assert status == 200
         assert content_type == "image/gif"
         assert body == b"GIF89a"
+
+        status, content_type, body = fetch(f"{base_url}/api/media?name=study.woff2&token={token}")
+        assert status == 200
+        assert content_type == "font/woff2"
+        assert body == b"wOF2safe"
 
         status, _, _ = fetch(f"{base_url}/api/media?name=..%2Fsecret.txt&token={token}")
         assert status == 400
@@ -460,25 +783,17 @@ def test_dashboard_settings_endpoint_get_post_validation_and_auth():
 
         partial = {"data": {"useStatsCacheForReport": True}}
         status, _, body = fetch(
-            f"{base_url}/api/dashboard/settings?token={token}",
-            method="POST",
-            json_body=partial,
+            f"{base_url}/api/dashboard/settings?token={token}", method="POST", json_body=partial
         )
         assert status == 200
         assert received == [partial]
         assert json.loads(body)["settings"]["data"]["useStatsCacheForReport"] is True
 
-        status, _, _ = fetch(
-            f"{base_url}/api/dashboard/settings",
-            method="POST",
-            json_body=partial,
-        )
+        status, _, _ = fetch(f"{base_url}/api/dashboard/settings", method="POST", json_body=partial)
         assert status == 403
 
         status, _, body = fetch(
-            f"{base_url}/api/dashboard/settings?token={token}",
-            method="POST",
-            json_body=["invalid"],
+            f"{base_url}/api/dashboard/settings?token={token}", method="POST", json_body=["invalid"]
         )
         assert status == 400
         assert json.loads(body)["ok"] is False
@@ -515,9 +830,7 @@ def test_profile_endpoint_get_post_validation_and_auth():
 
         assert fetch(f"{base_url}/api/profile", method="POST", json_body=patch)[0] == 403
         status, _, body = fetch(
-            f"{base_url}/api/profile?token={token}",
-            method="POST",
-            json_body={"customStudyStartedOn": "invalid"},
+            f"{base_url}/api/profile?token={token}", method="POST", json_body={"customStudyStartedOn": "invalid"}
         )
         assert status == 400
         assert "customStudyStartedOn" in json.loads(body)["fieldErrors"]
@@ -538,10 +851,7 @@ def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contra
             "showWhatsNew": True,
         },
         release_seen_handler=lambda: seen_calls.append(True) or {"ok": True, "showWhatsNew": False},
-        privacy_provider=lambda: {
-            "ok": True,
-            "privacy": {"telemetry": {"status": "undecided"}},
-        },
+        privacy_provider=lambda: {"ok": True, "privacy": {"telemetry": {"status": "undecided"}}},
         privacy_handler=lambda payload: privacy_calls.append(payload) or (
             {"ok": False, "error": "invalid_privacy_choices", "fieldErrors": {"purposes": "invalid"}}
             if "purposes" not in payload
@@ -575,9 +885,7 @@ def test_product_notices_and_privacy_endpoints_are_narrow_token_protected_contra
 
         assert fetch(f"{base_url}/api/privacy?token={token}", method="POST", json_body={})[0] == 400
         assert fetch(
-            f"{base_url}/api/product-notices/seen?token={token}",
-            method="POST",
-            json_body={"version": "spoofed"},
+            f"{base_url}/api/product-notices/seen?token={token}", method="POST", json_body={"version": "spoofed"}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/product-notices/seen?token={token}", method="POST", json_body={}
@@ -645,9 +953,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
 
         assert fetch(f"{base_url}/api/telemetry/delete?token={token}")[0] == 405
         assert fetch(
-            f"{base_url}/api/telemetry/delete?token={token}",
-            method="POST",
-            json_body={"installationId": "spoofed"},
+            f"{base_url}/api/telemetry/delete?token={token}", method="POST", json_body={"installationId": "spoofed"}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/telemetry/delete?token={token}", method="POST", json_body={}
@@ -659,9 +965,7 @@ def test_telemetry_endpoints_are_local_token_protected_and_post_only():
 
         assert fetch(f"{base_url}/api/telemetry/check-send?token={token}")[0] == 405
         assert fetch(
-            f"{base_url}/api/telemetry/check-send?token={token}",
-            method="POST",
-            json_body={"force": True},
+            f"{base_url}/api/telemetry/check-send?token={token}", method="POST", json_body={"force": True}
         )[0] == 400
         status, _, body = fetch(
             f"{base_url}/api/telemetry/check-send?token={token}", method="POST", json_body={}
@@ -740,22 +1044,16 @@ def test_notification_endpoints_are_strict_bounded_and_token_protected():
         assert fetch(f"{base_url}/api/notifications/read?token={token}")[0] == 405
 
         status, _, _ = fetch(
-            f"{base_url}/api/notifications/read?token={token}",
-            method="POST",
-            json_body={"notificationIds": ["n1"]},
+            f"{base_url}/api/notifications/read?token={token}", method="POST", json_body={"notificationIds": ["n1"]}
         )
         assert status == 200
         assert calls[-1] == ("read", {"notificationIds": ["n1"]})
 
         assert fetch(
-            f"{base_url}/api/settings/notifications?token={token}",
-            method="POST",
-            json_body={},
+            f"{base_url}/api/settings/notifications?token={token}", method="POST", json_body={}
         )[0] == 405
         status, _, _ = fetch(
-            f"{base_url}/api/settings/notifications?token={token}",
-            method="PUT",
-            json_body={"showUnreadBadge": False},
+            f"{base_url}/api/settings/notifications?token={token}", method="PUT", json_body={"showUnreadBadge": False}
         )
         assert status == 200
         assert calls[-1] == ("settings", {"showUnreadBadge": False})
@@ -845,5 +1143,76 @@ def test_fsrs_query_endpoint_is_post_only_bounded_and_token_protected():
         assert json.loads(body)["error"] == "invalid_fsrs_query"
         status, _, body = fetch(f"{base_url}/api/statistics/fsrs/query?token={token}", method="POST", json_body={"operation": "memory", "padding": "x" * 9000})
         assert status == 400
+    finally:
+        manager.stop()
+
+
+def test_card_display_formatter_endpoints_are_token_protected_json_only_bounded_and_typed():
+    dashboard_server = import_addon_module("dashboard_server")
+    manager = dashboard_server.DashboardServerManager()
+    calls = []
+    manager.configure_card_display_formatter_handlers(
+        query_handler=lambda value: calls.append(("query", value)) or {
+            "ok": True,
+            "response": {
+                "schemaVersion": 1,
+                "status": "empty",
+                "revision": 0,
+                "formatters": [],
+                "errorCode": None,
+                "quarantined": False,
+            },
+        },
+        validate_handler=lambda value: calls.append(("validate", value)) or {
+            "ok": False,
+            "error": "invalid_card_display_formatter_request",
+            "fieldErrors": {"formatter": "invalid"},
+        },
+        update_handler=lambda value: calls.append(("update", value)) or {
+            "ok": False,
+            "error": "card_display_formatter_revision_conflict",
+            "currentRevision": 7,
+        },
+    )
+    state = manager.start(port=0, idle_timeout_seconds=0)
+    base_url = f"http://127.0.0.1:{state.port}"
+    token = parse_qs(urlparse(manager.url()).query)["token"][0]
+    try:
+        path = "/api/card-display-formatters/query"
+        assert fetch(f"{base_url}{path}", method="POST", json_body={"schemaVersion": 1})[0] == 403
+        assert fetch(f"{base_url}{path}?token={token}")[0] == 405
+        assert fetch(f"{base_url}{path}?token={token}", method="POST")[0] == 415
+
+        status, _, body = fetch(
+            f"{base_url}{path}?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 200
+        assert json.loads(body)["response"]["status"] == "empty"
+        assert calls[-1] == ("query", {"schemaVersion": 1})
+        assert token not in body.decode("utf-8")
+
+        status, _, body = fetch(
+            f"{base_url}/api/card-display-formatters/validate?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 400
+        assert json.loads(body)["fieldErrors"] == {"formatter": "invalid"}
+
+        status, _, body = fetch(
+            f"{base_url}/api/card-display-formatters/update?token={token}",
+            method="POST",
+            json_body={"schemaVersion": 1},
+        )
+        assert status == 409
+        assert json.loads(body)["currentRevision"] == 7
+
+        status, _, body = fetch_raw(
+            f"{base_url}{path}?token={token}", b'{"padding":"' + b"x" * 65_536 + b'"}'
+        )
+        assert status == 400
+        assert json.loads(body)["error"] == "invalid_card_display_formatter_request"
     finally:
         manager.stop()

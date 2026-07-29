@@ -40,6 +40,27 @@ DEFAULT_PORT = 8766
 DEFAULT_IDLE_TIMEOUT_SECONDS = 1800
 
 
+def _dashboard_content_security_policy(script_nonce: str) -> str:
+    return "; ".join(
+        (
+            "default-src 'none'",
+            f"script-src 'self' 'nonce-{script_nonce}'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "media-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "frame-src 'none'",
+            "worker-src 'none'",
+            "manifest-src 'self'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        )
+    )
+
+
 @dataclass(frozen=True)
 class DashboardServerState:
     running: bool
@@ -110,6 +131,14 @@ class DashboardServerManager:
         self._fsrs_query_handler = None
         self._search_query_handler = None
         self._search_inspect_handler = None
+        self._triage_query_handler = None
+        self._triage_recheck_handler = None
+        self._inspection_profile_query_handler = None
+        self._inspection_profile_validate_handler = None
+        self._inspection_profile_update_handler = None
+        self._card_display_formatter_query_handler = None
+        self._card_display_formatter_validate_handler = None
+        self._card_display_formatter_update_handler = None
         self._card_action_handler = None
         self._note_action_handler = None
         self._media_file_provider = None
@@ -356,6 +385,33 @@ class DashboardServerManager:
         with self._lock:
             self._search_query_handler = query_handler
             self._search_inspect_handler = inspect_handler
+
+    def configure_triage_handler(self, query_handler=None, recheck_handler=None) -> None:
+        with self._lock:
+            self._triage_query_handler = query_handler
+            self._triage_recheck_handler = recheck_handler
+
+    def configure_inspection_profile_handlers(
+        self,
+        query_handler=None,
+        validate_handler=None,
+        update_handler=None,
+    ) -> None:
+        with self._lock:
+            self._inspection_profile_query_handler = query_handler
+            self._inspection_profile_validate_handler = validate_handler
+            self._inspection_profile_update_handler = update_handler
+
+    def configure_card_display_formatter_handlers(
+        self,
+        query_handler=None,
+        validate_handler=None,
+        update_handler=None,
+    ) -> None:
+        with self._lock:
+            self._card_display_formatter_query_handler = query_handler
+            self._card_display_formatter_validate_handler = validate_handler
+            self._card_display_formatter_update_handler = update_handler
 
     def configure_entity_action_handlers(self, card_handler=None, note_handler=None) -> None:
         with self._lock:
@@ -638,6 +694,100 @@ class DashboardServerManager:
     def inspect_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request_search("_search_inspect_handler", payload)
 
+    def query_triage(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._triage_query_handler
+        if handler is None:
+            return {"ok": False, "error": "triage_unavailable", "message": "Triage is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "triage_failed",
+                "message": "The triage request failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "triage.request.error",
+                "Triage request handler failed",
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "triage_failed", "message": "The triage request failed."}
+
+    def recheck_triage(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            handler = self._triage_recheck_handler
+        if handler is None:
+            return {"ok": False, "error": "triage_recheck_unavailable", "message": "Card recheck is not configured."}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "triage_recheck_failed",
+                "message": "The card recheck failed.",
+            }
+        except Exception as error:
+            frames = traceback.extract_tb(error.__traceback__)[-12:]
+            log_event(
+                "triage.recheck.error",
+                "Triage recheck handler failed",
+                exception_type=type(error).__name__,
+                stack=[f"{frame.name}:{frame.lineno}" for frame in frames],
+            )
+            return {"ok": False, "error": "triage_recheck_failed", "message": "The card recheck failed."}
+
+    def request_inspection_profiles(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+        attribute = {
+            "query": "_inspection_profile_query_handler",
+            "validate": "_inspection_profile_validate_handler",
+            "update": "_inspection_profile_update_handler",
+        }.get(operation)
+        with self._lock:
+            handler = getattr(self, attribute, None) if attribute else None
+        if handler is None:
+            return {"ok": False, "error": "inspection_profiles_unavailable"}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "inspection_profiles_failed",
+            }
+        except Exception as error:
+            log_event(
+                "inspection_profiles.request.error",
+                "Inspection Profile request handler failed",
+                exception_type=type(error).__name__,
+            )
+            return {"ok": False, "error": "inspection_profiles_failed"}
+
+    def request_card_display_formatters(
+        self, operation: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        attribute = {
+            "query": "_card_display_formatter_query_handler",
+            "validate": "_card_display_formatter_validate_handler",
+            "update": "_card_display_formatter_update_handler",
+        }.get(operation)
+        with self._lock:
+            handler = getattr(self, attribute, None) if attribute else None
+        if handler is None:
+            return {"ok": False, "error": "card_display_formatters_unavailable"}
+        try:
+            result = handler(payload)
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "error": "card_display_formatters_failed",
+            }
+        except Exception as error:
+            log_event(
+                "card_display_formatters.request.error",
+                "Card display formatter request handler failed",
+                exception_type=type(error).__name__,
+            )
+            return {"ok": False, "error": "card_display_formatters_failed"}
+
     def _request_search(self, handler_attribute: str, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             handler = getattr(self, handler_attribute)
@@ -731,7 +881,10 @@ class DashboardServerManager:
     def token_is_valid(self, token: str | None) -> bool:
         with self._lock:
             expected = self._token
-        return bool(expected and token and secrets.compare_digest(token, expected))
+        valid = bool(expected and token and secrets.compare_digest(token, expected))
+        if valid:
+            self.touch()
+        return valid
 
     def _monitor_idle(self) -> None:
         while not self._stop_event.wait(5):
@@ -750,15 +903,17 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
     def __init__(self, *args: Any, manager: DashboardServerManager, **kwargs: Any) -> None:
         self.manager = manager
+        self._script_nonce = secrets.token_urlsafe(18)
         super().__init__(*args, **kwargs)
 
     def do_GET(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
 
         if path == "/api/status":
-            self._send_json(_state_to_dict(self.manager.state()))
+            self.manager.touch()
+            state = self.manager.state()
+            self._send_json({"ok": state.running, "status": "running" if state.running else "stopped"})
             return
         if path == "/api/health":
             self._send_health(_query_token(parsed))
@@ -850,6 +1005,41 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.METHOD_NOT_ALLOWED,
                 )
             return
+        if path in {"/api/triage/query", "/api/triage/recheck"}:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for triage requests."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
+        if path in {
+            "/api/inspection-profiles/query",
+            "/api/inspection-profiles/validate",
+            "/api/inspection-profiles/update",
+        }:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed", "message": "Use POST for Inspection Profiles."},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
+        if path in {
+            "/api/card-display-formatters/query",
+            "/api/card-display-formatters/validate",
+            "/api/card-display-formatters/update",
+        }:
+            if not self.manager.token_is_valid(_query_token(parsed)):
+                self._send_forbidden()
+            else:
+                self._send_json(
+                    {"ok": False, "error": "method_not_allowed"},
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                )
+            return
         if path in {"/api/entities/cards/actions", "/api/entities/notes/actions"}:
             if not self.manager.token_is_valid(_query_token(parsed)):
                 self._send_forbidden()
@@ -874,7 +1064,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
         state = self.manager.state()
         if not state.static_available or state.static_dir is None:
-            self._send_builtin_dashboard()
+            if path in {"", "/", "/index.html"}:
+                self.manager.touch()
+                self._send_builtin_dashboard()
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
             return
 
         static_dir = Path(state.static_dir)
@@ -882,10 +1076,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if target is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
+        self.manager.touch()
         self._send_file(target)
 
     def do_POST(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
 
@@ -950,6 +1144,22 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/search/inspect":
             self._send_search_request(_query_token(parsed), inspect=True)
             return
+        if path == "/api/triage/query":
+            self._send_triage_query(_query_token(parsed))
+            return
+        if path == "/api/triage/recheck":
+            self._send_triage_recheck(_query_token(parsed))
+            return
+        if path.startswith("/api/inspection-profiles/"):
+            operation = path.removeprefix("/api/inspection-profiles/").strip("/")
+            if operation in {"query", "validate", "update"}:
+                self._send_inspection_profile_request(_query_token(parsed), operation)
+                return
+        if path.startswith("/api/card-display-formatters/"):
+            operation = path.removeprefix("/api/card-display-formatters/").strip("/")
+            if operation in {"query", "validate", "update"}:
+                self._send_card_display_formatter_request(_query_token(parsed), operation)
+                return
         if path == "/api/entities/cards/actions":
             self._send_entity_action(_query_token(parsed), "cards")
             return
@@ -964,7 +1174,6 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self) -> None:
-        self.manager.touch()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         if path == "/api/settings/notifications":
@@ -974,6 +1183,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         return
+
+    def end_headers(self) -> None:
+        self.send_header("Content-Security-Policy", _dashboard_content_security_policy(self._script_nonce))
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        super().end_headers()
 
     def _send_json(self, data: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
         payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
@@ -1090,7 +1305,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": True, "message": "Logs cleared.", "status": log_status()})
 
     def _send_builtin_dashboard(self) -> None:
-        payload = """<!doctype html>
+        html = """<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -1437,7 +1652,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
   </script>
 </body>
 </html>
-""".encode("utf-8")
+"""
+        payload = html.replace("<script>", f'<script nonce="{self._script_nonce}">').encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
@@ -1688,10 +1904,145 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             status = HTTPStatus.NOT_FOUND
         elif error == "search_timeout":
             status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error == "search_busy":
+            status = HTTPStatus.CONFLICT
         elif error in {"search_unavailable", "search_failed"}:
             status = HTTPStatus.SERVICE_UNAVAILABLE
         else:
             status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_triage_query(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_request", "message": "Use application/json."},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_request", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.query_triage(payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_triage_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "triage_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"triage_unavailable", "triage_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_triage_recheck(self, token: str | None) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_recheck_request", "message": "Use application/json."},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_triage_recheck_request", "message": "Invalid JSON request body."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.recheck_triage(payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "invalid_triage_recheck_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "triage_recheck_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        elif error in {"triage_recheck_unavailable", "triage_recheck_failed"}:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(result, status)
+
+    def _send_inspection_profile_request(self, token: str | None, operation: str) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_inspection_profile_request"},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body(max_bytes=65_536)
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_inspection_profile_request"},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.request_inspection_profiles(operation, payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error == "inspection_profile_revision_conflict":
+            status = HTTPStatus.CONFLICT
+        elif error == "inspection_profile_future_schema":
+            status = HTTPStatus.CONFLICT
+        elif error == "invalid_inspection_profile_request":
+            status = HTTPStatus.BAD_REQUEST
+        elif error == "inspection_profiles_timeout":
+            status = HTTPStatus.GATEWAY_TIMEOUT
+        else:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        self._send_json(result, status)
+
+    def _send_card_display_formatter_request(
+        self, token: str | None, operation: str
+    ) -> None:
+        if not self.manager.token_is_valid(token):
+            self._send_forbidden()
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(
+                {"ok": False, "error": "invalid_card_display_formatter_request"},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        payload = self._read_json_body(max_bytes=65_536)
+        if payload is None:
+            self._send_json(
+                {"ok": False, "error": "invalid_card_display_formatter_request"},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        result = self.manager.request_card_display_formatters(operation, payload)
+        error = result.get("error")
+        if result.get("ok"):
+            status = HTTPStatus.OK
+        elif error in {
+            "card_display_formatter_revision_conflict",
+            "card_display_formatter_future_schema",
+        }:
+            status = HTTPStatus.CONFLICT
+        elif error == "invalid_card_display_formatter_request":
+            status = HTTPStatus.BAD_REQUEST
+        else:
+            status = HTTPStatus.SERVICE_UNAVAILABLE
         self._send_json(result, status)
 
     def _send_dashboard_action(self, token: str | None, action: str) -> None:
@@ -1760,7 +2111,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         status = HTTPStatus.OK if result.get("ok") else HTTPStatus.BAD_REQUEST if result.get("error") == "invalid_notification_request" else HTTPStatus.SERVICE_UNAVAILABLE
         self._send_json(result, status)
 
-    def _read_json_body(self) -> dict[str, Any] | None:
+    def _read_json_body(self, *, max_bytes: int = 8192) -> dict[str, Any] | None:
         length_header = self.headers.get("Content-Length")
         if not length_header:
             return {}
@@ -1768,7 +2119,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             length = int(length_header)
         except ValueError:
             return None
-        if length < 0 or length > 8192:
+        if length < 0 or length > max(1, int(max_bytes)):
             return None
         try:
             raw = self.rfile.read(length)
@@ -1884,6 +2235,10 @@ def _content_type(path: Path) -> str:
         ".wav": "audio/wav",
         ".m4a": "audio/mp4",
         ".flac": "audio/flac",
+        ".otf": "font/otf",
+        ".ttf": "font/ttf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
         ".svg": "image/svg+xml",
         ".txt": "text/plain; charset=utf-8",
         ".webp": "image/webp",
@@ -1903,6 +2258,10 @@ def _media_content_type(path: Path | str) -> str:
         ".wav": "audio/wav",
         ".m4a": "audio/mp4",
         ".flac": "audio/flac",
+        ".otf": "font/otf",
+        ".ttf": "font/ttf",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
     }.get(suffix, "application/octet-stream")
 
 
@@ -1917,7 +2276,10 @@ def _safe_media_name(value: str) -> str:
     if re.match(r"^[A-Za-z]:", name):
         return ""
     suffix = Path(name).suffix.lower().lstrip(".")
-    if suffix not in {"gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac"}:
+    if suffix not in {
+        "gif", "png", "jpg", "jpeg", "webp", "mp3", "ogg", "wav", "m4a", "flac",
+        "otf", "ttf", "woff", "woff2",
+    }:
         return ""
     return name
 
@@ -2033,13 +2395,7 @@ def _state_to_dict(state: DashboardServerState) -> dict[str, Any]:
 def _mask_path(value: str | None) -> str | None:
     if not value:
         return value
-    try:
-        path = Path(value)
-        parts = path.resolve().parts
-    except OSError:
-        return value
-    if "Users" in parts:
-        index = parts.index("Users")
-        if len(parts) > index + 2:
-            return str(Path(*parts[: index + 2]) / "..." / Path(*parts[index + 3 :]))
-    return str(path)
+    normalized = str(value).replace("\\", "/").rstrip("/")
+    name = normalized.rsplit("/", 1)[-1]
+    name = re.sub(r"[^A-Za-z0-9._ -]", "_", name)[:120] or "path"
+    return f"<redacted>/{name}"

@@ -172,22 +172,43 @@ def test_invalid_package_source_keeps_safe_diagnostic_env(tmp_path: Path, monkey
     assert values["ANKI_E2E_PACKAGE_SOURCE"] == "source-build"
 
 
-def test_workflow_preserves_early_failure_and_strict_upload_contract():
+def test_workflow_preserves_early_failure_and_split_cancellation_upload_contract():
     text = (ROOT / ".github" / "workflows" / "ci-e2e.yml").read_text(encoding="utf-8")
     initialize = text.index("Capture workflow source and validate package source inputs")
     resolve = text.index("Resolve exact successful Fast CI run and artifact IDs")
     prepare = text.index("Prepare redacted public E2E artifact")
-    upload = text.index("Upload redacted E2E diagnostics")
-    assert initialize < resolve < prepare < upload
+    finalize = text.index("Finalize public canonical summary and legacy projections")
+    upload = text.index("Upload E2E artifact")
+    cancel_prepare = text.index("Prepare bounded cancellation artifact")
+    cancel_upload = text.index("Upload bounded cancellation evidence")
+    assert initialize < resolve < prepare < finalize < upload < cancel_prepare < cancel_upload
     assert "CI_E2E_EXIT_CODE=1" in text[initialize:resolve]
     assert "ANKI_E2E_BUILD_DURATION_MS=0" in text[initialize:resolve]
     assert "ANKI_E2E_CACHE_STATE=unavailable" in text[initialize:resolve]
     assert "verify_fast_ci_e2e_handoff.py validate-inputs" in text[initialize:resolve]
-    assert "if: always()" in text[prepare:upload]
-    upload_block = text[upload:text.index("Report artifact upload telemetry", upload)]
-    assert "if: always()" in upload_block
+
+    prepare_block = text[prepare:finalize]
+    assert "if: ${{ !cancelled() }}" in prepare_block
+
+    finalize_block = text[finalize:text.index("Start artifact upload timing", finalize)]
+    assert "id: final_summary" in finalize_block
+    assert "env.CI_E2E_ARTIFACT_EXIT_CODE == '0'" in finalize_block
+
+    upload_block = text[upload:text.index("Resolve uploaded E2E artifact metadata", upload)]
+    assert "steps.final_summary.outcome == 'success'" in upload_block
+    assert "env.CI_E2E_ARTIFACT_EXIT_CODE == '0'" in upload_block
     assert "if-no-files-found: error" in upload_block
 
+    cancel_prepare_block = text[cancel_prepare:cancel_upload]
+    assert "if: ${{ cancelled() }}" in cancel_prepare_block
+    assert "continue-on-error: true" in cancel_prepare_block
+
+    cancel_upload_block = text[
+        cancel_upload:text.index("Upload canonical preflight failure evidence", cancel_upload)
+    ]
+    assert "if: ${{ cancelled() }}" in cancel_upload_block
+    assert "continue-on-error: true" in cancel_upload_block
+    assert "if-no-files-found: error" in cancel_upload_block
 
 def test_early_fast_handoff_failure_creates_safe_public_artifact(tmp_path: Path, monkeypatch):
     source = tmp_path / "missing-e2e-artifacts"

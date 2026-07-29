@@ -19,6 +19,7 @@ const PAGE_SCOPE = Object.freeze({
   tools: "global",
   "settings/report": "settings",
   "settings/data": "settings",
+  "settings/inspection-profiles": "settings",
   "settings/privacy": "settings",
   "settings/server": "settings",
   "settings/sources": "settings",

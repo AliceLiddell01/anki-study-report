@@ -20,6 +20,7 @@ BOOTSTRAP = ROOT / "docker" / "anki-e2e" / "bootstrap-current-harness.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci-e2e.yml"
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 WRAPPER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
+PREFLIGHT_CHECKS = ROOT / "scripts" / "e2e_preflight_checks.py"
 
 EXPECTED_DIGEST = "sha256:bce7889f4db861c1b539b0747b4bbf0fcc68c38d520090a0836b1fe9a7a2b475"
 EXPECTED_CONTRACT = "sha256:8d3c11ccdd9c474c751ea7fe4e845f67f21a388484cc4291c3ea2ee06cba5447"
@@ -179,12 +180,21 @@ def test_cloud_workflow_rejects_source_build_before_registry_login() -> None:
 
 def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None:
     text = workflow_text()
-    identity = workflow_step(text, "Expose exact GHCR environment identity", "Log in to GHCR")
+    identity = workflow_step(
+        text,
+        "Expose exact GHCR environment identity",
+        "Run canonical runtime E2E preflight",
+    )
+    runtime = workflow_step(
+        text,
+        "Run canonical runtime E2E preflight",
+        "Log in to GHCR",
+    )
     login = workflow_step(text, "Log in to GHCR", "Pull and verify exact GHCR environment image")
     pull = workflow_step(
         text,
         "Pull and verify exact GHCR environment image",
-        "Validate resolved GHCR Compose contract",
+        "Run canonical Docker-only E2E",
     )
 
     assert "if:" not in identity.split("shell:", 1)[0]
@@ -192,6 +202,9 @@ def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None
     assert "ANKI_E2E_IMAGE_REFERENCE=$env:EXACT_REFERENCE" in identity
     assert "ANKI_E2E_IMAGE_DIGEST=$env:EXPECTED_DIGEST" in identity
     assert "ANKI_E2E_ENVIRONMENT_CONTRACT_SHA256=$env:EXPECTED_CONTRACT" in identity
+    assert "if:" not in runtime.split("shell:", 1)[0]
+    assert "--layer runtime" in runtime
+    assert "ANKI_E2E_PREFLIGHT_COMPLETE=1" in runtime
     assert "if:" not in login
     assert "docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0" in login
     assert "username: ${{ github.actor }}" in login
@@ -210,19 +223,28 @@ def test_cloud_workflow_uses_pinned_login_exact_digest_and_no_fallback() -> None
 
 def test_cloud_workflow_always_uses_base_and_ghcr_compose_files() -> None:
     text = workflow_text()
-    validate = workflow_step(
+    runtime = workflow_step(
         text,
-        "Validate resolved GHCR Compose contract",
-        "Run canonical Docker-only E2E",
+        "Run canonical runtime E2E preflight",
+        "Log in to GHCR",
     )
     final_state = workflow_step(
         text,
         "Capture final Docker state",
-        "Prepare redacted public E2E artifact",
+        "Finalize Docker E2E state before artifact preparation",
     )
-    cleanup = workflow_step(text, "Clean Docker E2E state", "Restore canonical result")
+    cleanup = workflow_step(
+        text,
+        "Finalize Docker E2E state before artifact preparation",
+        "Build canonical final E2E summary",
+    )
+    checks = PREFLIGHT_CHECKS.read_text(encoding="utf-8")
 
-    for block in (validate, final_state, cleanup):
+    assert "scripts/e2e_preflight.py run" in runtime
+    assert "--layer runtime" in runtime
+    assert '"docker/anki-e2e/docker-compose.yml"' in checks
+    assert '"docker/anki-e2e/docker-compose.ghcr.yml"' in checks
+    for block in (final_state, cleanup):
         assert "docker/anki-e2e/docker-compose.yml" in block
         assert "docker/anki-e2e/docker-compose.ghcr.yml" in block
         assert "ANKI_E2E_IMAGE_SOURCE" not in block
@@ -257,7 +279,7 @@ def test_environment_provenance_is_separate_from_build_duration() -> None:
     pull = workflow_step(
         text,
         "Pull and verify exact GHCR environment image",
-        "Validate resolved GHCR Compose contract",
+        "Run canonical Docker-only E2E",
     )
     assert "ANKI_E2E_BUILD_DURATION_MS=$duration" not in pull
     assert '"ANKI_E2E_BUILD_DURATION_MS=0"' in text
@@ -303,7 +325,7 @@ def test_ghcr_compose_override_preserves_base_security_boundary() -> None:
     assert "${ANKI_E2E_IMAGE:?ANKI_E2E_IMAGE must be an exact digest reference}" in override
     assert "pull_policy: never" in override
     assert "/workspace/docker/anki-e2e/bootstrap-current-harness.sh" in override
-    assert "/e2e/bin/run-e2e.sh" in override
+    assert "/e2e/bin/run-e2e-failure-wrapper.sh" in override
     for forbidden in ("privileged:", "network_mode:", "/var/run/docker.sock", "cap_add:", "sha256:"):
         assert forbidden not in override
 
@@ -319,8 +341,11 @@ def test_local_wrapper_keeps_build_fallback_and_fails_closed_for_ghcr() -> None:
     assert "GHCR image source does not support -BuildOnly" in text
     assert "requires an exact digest reference in ANKI_E2E_IMAGE" in text
     assert "requires a prebuilt Fast CI or release artifact package" in text
-    assert 'Invoke-DockerCompose @("config", "--quiet")' in text
-    assert text.count("Invoke-DockerCompose $runArgs") == 1
+    assert "Invoke-Preflight" in text
+    assert "--layer static" in text
+    assert "--layer runtime" in text
+    assert 'Invoke-DockerComposeChecked @("build")' in text
+    assert text.count("$scriptExit = Invoke-DockerComposeRaw -Arguments $runArgs") == 1
     assert "Restore-E2EArtifactOwnership -Volume $volume" in text
     assert "docker pull" not in text
 

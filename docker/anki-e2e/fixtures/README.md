@@ -1,20 +1,33 @@
-# Rendering fixture provenance
+# Docker E2E fixture provenance
 
-`asr-e2e-render-fixtures.apkg` is an owner-authored, sanitized and
-authorized regression fixture. It contains 10 notes, 10 cards, 4 note
-types and 13 bundled media entries.
+**Contract snapshot:** 2026-07-23
 
-The repository owner created and repeatedly revised the card content, fields,
-templates and deck structure with AI assistance. The owner also created every
-bundled media file: each was drawn, recorded or generated under the owner's
-direction. The fixture is not an export of another person's private collection
-and contains no confidential user data.
+Docker/real-Anki E2E no longer uses a generated synthetic collection or the old
+`asr-e2e-render-fixtures.apkg` regression package.
 
-The repository owner authorizes public distribution of the tracked APKG
-rendering fixture and its bundled media as part of this repository, its tests,
-Docker E2E and CI artifacts. It is distributed under the repository's
-`GPL-3.0-only` terms unless a future file carries a separate compatible notice.
+The only collection-content fixtures are the three owner-provided working decks
+under:
 
-The generated synthetic Docker collection remains a separate fixture produced
-by `docker/anki-e2e/seed-collection.py` and is likewise covered by the repository
-license unless an explicit notice states otherwise.
+```text
+real-decks/words-n1.apkg
+real-decks/grammar-n5.apkg
+real-decks/java-core.apkg
+```
+
+Their provenance, public-storage authorization, byte sizes, SHA-256 values,
+replacement procedure and runtime mutation boundary are documented in:
+
+```text
+real-decks/README.md
+real-decks/manifest.json
+```
+
+The harness imports these packages into a disposable profile through Anki's
+public package API. It may mutate only scheduling/revlog/suspended/buried state
+of existing imported cards. It must not create or clone notes/cards, alter
+fields/templates/media, accept an external APKG override, or fall back to
+synthetic content.
+
+Runtime collections, media directories, logs, screenshots, reports, tokens and
+`.ankiaddon` outputs belong under ignored `e2e-artifacts/`; they are not source
+fixtures and must not be committed.

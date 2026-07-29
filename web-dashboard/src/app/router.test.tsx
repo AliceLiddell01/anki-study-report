@@ -25,6 +25,7 @@ describe("dashboard router", () => {
       "/logs",
       "/settings",
       "/settings/data",
+      "/settings/inspection-profiles",
       "/settings/privacy",
       "/settings/server",
       "/settings/sources",
@@ -57,6 +58,7 @@ describe("dashboard router", () => {
       "/actions",
       "/settings",
       "/settings/data",
+      "/settings/inspection-profiles",
       "/settings/privacy",
       "/settings/server",
       "/settings/sources",
@@ -81,6 +83,7 @@ describe("dashboard router", () => {
       "/actions",
       "/settings",
       "/settings/data",
+      "/settings/inspection-profiles",
       "/settings/privacy",
       "/settings/server",
       "/settings/sources",
@@ -109,7 +112,9 @@ describe("dashboard router", () => {
     expect(integrations).toContain('aria-label="Настройки"');
     expect(integrations).toContain('href="#/settings"');
     expect(integrations).toContain('href="#/settings/data"');
+    expect(integrations).toContain('href="#/settings/inspection-profiles"');
     expect(integrations).toContain('href="#/settings/privacy"');
+    expect(integrations).toContain('href="#/settings/notifications"');
     expect(integrations).toContain('href="#/settings/server"');
     expect(integrations).toContain('href="#/settings/sources"');
     expect(integrations).toContain('href="#/settings/logs"');

@@ -30,6 +30,19 @@ def candidate(severity="warning", *, load=80):
     }
 
 
+def card_candidate(card_id="123", severity="warning"):
+    return {
+        "code": "card.repeated_again",
+        "category": "card_problems",
+        "severity": severity,
+        "dedupeKey": f"card.repeated_again:{card_id}",
+        "entityType": "card",
+        "entityId": card_id,
+        "evidence": {"againCount": 4, "reviewCount": 7, "windowDays": 7, "lastReviewAt": NOW},
+        "detectorVersion": "signals-v1.0",
+    }
+
+
 def test_signal_lifecycle_keeps_read_and_resolution_independent(tmp_path):
     module = fresh_import_addon_module("notification_store")
     store = module.NotificationStore(tmp_path / "notifications.sqlite3")
@@ -65,6 +78,29 @@ def test_signal_lifecycle_keeps_read_and_resolution_independent(tmp_path):
     history = store.list_notifications()
     assert history["total"] == 3
     assert history["items"][0]["kind"] == "signal_reactivated"
+
+
+def test_active_card_signal_read_is_bounded_and_excludes_resolved_or_non_card_signals(tmp_path):
+    module = fresh_import_addon_module("notification_store")
+    store = module.NotificationStore(tmp_path / "notifications.sqlite3")
+    store.reconcile("workload.review_pressure", [candidate()], source_revision="workload-1", evaluated_at=NOW)
+    store.reconcile("card.repeated_again", [card_candidate()], source_revision="cards-1", evaluated_at=NOW)
+
+    assert store.list_active_card_signals() == [{
+        "code": "card.repeated_again",
+        "severity": "warning",
+        "entityType": "card",
+        "entityId": "123",
+        "evidence": {"againCount": 4, "reviewCount": 7, "windowDays": 7, "lastReviewAt": NOW},
+        "detectorVersion": "signals-v1.0",
+        "firstSeenAt": NOW,
+        "lastSeenAt": NOW,
+    }]
+    assert store.list_active_card_signals(limit=0) == []
+
+    store.reconcile("card.repeated_again", [], source_revision="cards-2", evaluated_at="2026-07-17T11:00:00Z")
+    store.reconcile("card.repeated_again", [], source_revision="cards-3", evaluated_at="2026-07-17T12:00:00Z")
+    assert store.list_active_card_signals() == []
 
 
 def test_preferences_toast_delivery_and_profile_isolation(tmp_path):

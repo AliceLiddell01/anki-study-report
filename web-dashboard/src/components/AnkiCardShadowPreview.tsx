@@ -1,6 +1,7 @@
 import { memo, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { highlightJavaBlocks } from "../lib/cardCodeHighlighting";
 
-export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview";
+export type AnkiCardShadowPreviewMode = "table" | "tile" | "preview" | "expanded";
 export type AnkiCardShadowPreviewSide = "front" | "back" | "answer";
 
 export interface AnkiPreviewModeConfig {
@@ -9,12 +10,12 @@ export interface AnkiPreviewModeConfig {
   targetWidth: number;
   targetHeight: number;
   scale: number;
-  minScale: number;
   maxScale: number;
   minHeight: number;
   maxHeight?: number;
   allowAutoHeight: boolean;
   verticalPadding: number;
+  horizontalPadding: number;
   audioButtonSize: number;
 }
 
@@ -25,12 +26,12 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 320,
     targetHeight: 170,
     scale: 0.5,
-    minScale: 0.32,
     maxScale: 0.5,
     minHeight: 118,
     maxHeight: 190,
     allowAutoHeight: false,
     verticalPadding: 18,
+    horizontalPadding: 0,
     audioButtonSize: 30,
   },
   tile: {
@@ -39,25 +40,39 @@ export const ANKI_PREVIEW_MODE_CONFIG: Record<AnkiCardShadowPreviewMode, AnkiPre
     targetWidth: 500,
     targetHeight: 268,
     scale: 0.78,
-    minScale: 0.48,
     maxScale: 0.82,
     minHeight: 190,
     maxHeight: 340,
     allowAutoHeight: false,
     verticalPadding: 24,
+    horizontalPadding: 0,
     audioButtonSize: 36,
   },
   preview: {
-    baseWidth: 720,
+    baseWidth: 660,
     baseHeight: 420,
     targetWidth: 720,
     targetHeight: 390,
     scale: 0.88,
-    minScale: 0.58,
     maxScale: 1,
-    minHeight: 260,
+    minHeight: 220,
+    maxHeight: 440,
+    allowAutoHeight: false,
+    verticalPadding: 20,
+    horizontalPadding: 20,
+    audioButtonSize: 40,
+  },
+  expanded: {
+    baseWidth: 900,
+    baseHeight: 1,
+    targetWidth: 980,
+    targetHeight: 1,
+    scale: 1,
+    maxScale: 1,
+    minHeight: 1,
     allowAutoHeight: true,
-    verticalPadding: 36,
+    verticalPadding: 0,
+    horizontalPadding: 0,
     audioButtonSize: 40,
   },
 };
@@ -72,6 +87,7 @@ export interface AnkiCardShadowPreviewProps {
   mode: AnkiCardShadowPreviewMode;
   side?: AnkiCardShadowPreviewSide;
   className?: string;
+  replayLabelPrefix?: string;
 }
 
 interface ShadowPreviewDocument {
@@ -85,6 +101,7 @@ interface ShadowPreviewDocument {
 export interface AdaptivePreviewLayoutInput {
   mode: AnkiCardShadowPreviewMode;
   availableWidth: number;
+  availableHeight?: number;
   contentWidth: number;
   contentHeight: number;
 }
@@ -105,6 +122,7 @@ const SHADOW_BASE_CSS = `
   display: grid;
   place-items: center;
   width: 100%;
+  height: 100%;
   min-height: 100%;
   contain: content;
 }
@@ -127,63 +145,131 @@ const SHADOW_BASE_CSS = `
 
 .asr-shadow-card-shell--preview {
   align-items: flex-start;
-  overflow: visible;
+  overflow: hidden;
   padding: 10px;
 }
 
+.asr-shadow-card-shell--expanded {
+  align-items: flex-start;
+  height: auto;
+  overflow: visible;
+  padding: 0;
+}
+
+.asr-shadow-card-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--asr-preview-scaled-width);
+  height: var(--asr-preview-scaled-height);
+}
+
+.asr-shadow-card-shell--preview .asr-shadow-card-frame {
+  overflow: hidden;
+  border-radius: 9px;
+}
+
 .asr-shadow-card-viewport {
-  flex: 0 0 var(--asr-preview-base-width);
-  width: var(--asr-preview-base-width);
-  min-height: var(--asr-preview-base-height);
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: var(--asr-preview-content-width);
+  min-height: var(--asr-preview-content-height);
   transform: scale(var(--asr-preview-scale));
-  transform-origin: center center;
+  transform-origin: top left;
 }
 
 .asr-shadow-card-viewport--preview {
-  transform-origin: top center;
+  height: var(--asr-preview-content-height);
 }
 
-.card {
+:where(.card) {
   width: var(--asr-preview-base-width);
   min-height: var(--asr-preview-base-height);
   overflow: visible;
-  padding: 24px;
+  padding: 0;
   background: #ffffff;
   color: #111827;
-  font-family: Arial, sans-serif;
-  font-size: 28px;
-  line-height: 1.45;
+  font-family: "Yu Gothic", "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+  font-size: 20px;
+  line-height: 1.5;
   text-align: center;
 }
 
-.asr-shadow-card-viewport--table .card {
+:where(.asr-shadow-card-viewport--table) > :where(.card) {
   padding: 18px;
   font-size: 30px;
   line-height: 1.35;
 }
 
-.asr-shadow-card-viewport--tile .card {
+:where(.asr-shadow-card-viewport--tile) > :where(.card) {
   padding: 22px;
   font-size: 30px;
   line-height: 1.4;
 }
 
-.asr-shadow-card-viewport--preview .card {
-  padding: 28px;
-  font-size: 28px;
+:where(.asr-shadow-card-viewport--preview) > :where(.card),
+:where(.asr-shadow-card-viewport--expanded) > :where(.card) {
+  padding: 0;
+  font-size: 20px;
   line-height: 1.5;
 }
 
-.nightMode .card,
-.card.nightMode {
+:where(.card).nightMode {
   background: #111827;
   color: #f8fafc;
 }
-`;
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+/*
+ * Anki-compatible presentation fallbacks live before template CSS and use
+ * zero-specificity selectors. Card templates remain authoritative for replay
+ * control size/colors/spacing and image geometry.
+ */
+:where(.card) :where(img) {
+  max-width: 100%;
+  max-height: 95vh;
 }
+
+:where(.card) :where(.asr-card-replay) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 3px;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg) {
+  width: var(--asr-card-audio-size);
+  height: var(--asr-card-audio-size);
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg circle) {
+  fill: #fff;
+  stroke: #414141;
+}
+
+:where(.card) :where(.replay-button, .asr-card-replay-button) :where(svg path) {
+  fill: #414141;
+}
+
+.card pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre;
+}
+
+`;
 
 function measuredNumber(value: number, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
@@ -192,6 +278,7 @@ function measuredNumber(value: number, fallback: number): number {
 export function calculateAdaptivePreviewLayout({
   mode,
   availableWidth,
+  availableHeight,
   contentWidth,
   contentHeight,
 }: AdaptivePreviewLayoutInput): AdaptivePreviewLayout {
@@ -199,13 +286,34 @@ export function calculateAdaptivePreviewLayout({
   const measuredContentWidth = Math.max(config.baseWidth, measuredNumber(contentWidth, config.baseWidth));
   const measuredContentHeight = Math.max(config.baseHeight, measuredNumber(contentHeight, config.baseHeight));
   const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
-  const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
-  const widthScale = targetWidth / measuredContentWidth;
-  let scale = clamp(widthScale, config.minScale, config.maxScale);
+  const targetWidth = mode === "preview"
+    ? Math.max(1, measuredAvailableWidth)
+    : Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
+  const availableContentWidth = Math.max(1, targetWidth - config.horizontalPadding);
+  const widthScale = availableContentWidth / measuredContentWidth;
+  let scale = Math.max(Number.EPSILON, Math.min(widthScale, config.maxScale));
 
-  if (!config.allowAutoHeight && config.maxHeight) {
-    const heightScale = Math.max(config.minScale, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
-    scale = clamp(Math.min(scale, heightScale), config.minScale, config.maxScale);
+  if (mode !== "preview" && !config.allowAutoHeight && config.maxHeight) {
+    const heightScale = Math.max(Number.EPSILON, (config.maxHeight - config.verticalPadding) / measuredContentHeight);
+    scale = Math.max(Number.EPSILON, Math.min(scale, heightScale, config.maxScale));
+  }
+
+  if (mode === "preview") {
+    const hostHeight = Math.max(config.minHeight, measuredNumber(availableHeight ?? 0, config.targetHeight));
+    const availableCanvasHeight = Math.max(1, hostHeight - config.verticalPadding);
+    const minimumCanvasHeight = availableCanvasHeight / scale;
+    const canvasWidth = Math.max(measuredContentWidth, availableContentWidth / scale);
+    const canvasHeight = Math.max(measuredContentHeight, minimumCanvasHeight);
+    const scaledContentHeight = measuredContentHeight * scale + config.verticalPadding;
+    return {
+      scale,
+      hostHeight,
+      targetWidth,
+      contentWidth: canvasWidth,
+      contentHeight: canvasHeight,
+      measured: true,
+      overflow: scaledContentHeight > hostHeight + 1,
+    };
   }
 
   const scaledHeight = Math.ceil(measuredContentHeight * scale + config.verticalPadding);
@@ -238,56 +346,26 @@ function initialAdaptiveLayout(mode: AnkiCardShadowPreviewMode): AdaptivePreview
 }
 
 const SHADOW_SAFETY_CSS = `
-.card img {
-  max-width: 100%;
-  height: auto;
-  vertical-align: middle;
-  object-fit: contain;
+.asr-shadow-card-viewport--preview > .card {
+  width: var(--asr-preview-content-width);
+  min-height: var(--asr-preview-content-height);
 }
 
+/* Raw media stays inert; playback is owned by the safe ShadowRoot handler. */
 .card audio,
 .card .asr-card-audio {
   display: none;
 }
 
-.card .asr-card-replay {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  margin: 0 0 12px;
-}
-
-.card .asr-card-replay-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--asr-card-audio-size);
-  height: var(--asr-card-audio-size);
-  border: 1px solid rgba(37, 99, 235, 0.42);
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
-  cursor: pointer;
-  padding: 0;
-}
-
-.card .asr-card-replay-button:hover {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.62);
-}
-
-.card .asr-card-replay-button:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.28);
-  outline-offset: 2px;
-}
-
-.card .asr-card-replay-icon {
-  display: block;
-  font-size: 16px;
-  line-height: 1;
-  transform: translateX(1px);
+/*
+ * Accessibility fallback only. The light/dark pair follows the W3C C40
+ * two-color pattern so one band remains visible on variable card backgrounds.
+ * Template rules with greater specificity remain authoritative.
+ */
+:where(.card) :where(.asr-card-replay-button):focus-visible {
+  outline: 2px solid #f9f9f9;
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px #193146;
 }
 
 .card .asr-card-media-missing {
@@ -299,6 +377,63 @@ const SHADOW_SAFETY_CSS = `
   font-size: 18px;
 }
 `;
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+function createReplaySvg(ownerDocument: Document): SVGSVGElement {
+  const svg = ownerDocument.createElementNS(SVG_NAMESPACE, "svg");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.classList.add("asr-card-replay-svg");
+
+  const circle = ownerDocument.createElementNS(SVG_NAMESPACE, "circle");
+  circle.setAttribute("cx", "20");
+  circle.setAttribute("cy", "20");
+  circle.setAttribute("r", "18");
+
+  const path = ownerDocument.createElementNS(SVG_NAMESPACE, "path");
+  path.setAttribute("d", "M16 11.5 L30 20 L16 28.5 Z");
+
+  svg.append(circle, path);
+  return svg;
+}
+
+/**
+ * Adds Anki's documented presentation hooks after sanitization without
+ * allowing card-owned SVG or script execution through the HTML sanitizer.
+ */
+function localizedReplayLabel(label: string): string {
+  return label.trim() || "Play audio";
+}
+
+export function enhanceReplayControls(
+  root: ParentNode,
+  replayLabelPrefix = "Play audio",
+): void {
+  root.querySelectorAll<HTMLElement>(".asr-card-replay").forEach((wrapper) => {
+    const audio = wrapper.querySelector<HTMLAudioElement>("audio.asr-card-audio");
+    if (!audio) {
+      return;
+    }
+
+    let button = wrapper.querySelector<HTMLButtonElement>("button.asr-card-replay-button");
+    if (!button) {
+      button = wrapper.ownerDocument.createElement("button");
+      button.type = "button";
+      button.className = "asr-card-replay-button";
+      wrapper.insertBefore(button, audio);
+    }
+
+    button.classList.add("replay-button");
+    button.dataset.asrReplayEnhanced = "true";
+    button.setAttribute(
+      "aria-label",
+      localizedReplayLabel(replayLabelPrefix),
+    );
+    button.replaceChildren(createReplaySvg(wrapper.ownerDocument));
+  });
+}
 
 export function buildShadowPreviewDocument({
   html,
@@ -326,6 +461,10 @@ function previewModeStyle(mode: AnkiCardShadowPreviewMode, layout: AdaptivePrevi
   return {
     "--asr-preview-base-width": `${config.baseWidth}px`,
     "--asr-preview-base-height": `${config.baseHeight}px`,
+    "--asr-preview-content-width": `${layout.contentWidth}px`,
+    "--asr-preview-content-height": `${layout.contentHeight}px`,
+    "--asr-preview-scaled-width": `${Math.max(1, Math.ceil(layout.contentWidth * layout.scale))}px`,
+    "--asr-preview-scaled-height": `${Math.max(1, Math.ceil(layout.contentHeight * layout.scale))}px`,
     "--asr-preview-target-width": `${layout.targetWidth}px`,
     "--asr-preview-target-height": `${layout.hostHeight}px`,
     "--asr-preview-scale": layout.scale,
@@ -344,11 +483,11 @@ function AnkiCardShadowPreviewComponent({
   mode,
   side = "front",
   className = "",
+  replayLabelPrefix = "Play audio",
 }: AnkiCardShadowPreviewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const [autoNightMode, setAutoNightMode] = useState(false);
   const [layout, setLayout] = useState<AdaptivePreviewLayout>(() => initialAdaptiveLayout(mode));
-  const resolvedNightMode = nightMode ?? autoNightMode;
+  const resolvedNightMode = nightMode ?? false;
   const shadowDocument = useMemo(
     () => buildShadowPreviewDocument({ html, css, title, cardOrd, nightMode: resolvedNightMode, mode, side, className }),
     [cardOrd, className, css, html, mode, resolvedNightMode, side, title],
@@ -358,24 +497,6 @@ function AnkiCardShadowPreviewComponent({
   useEffect(() => {
     setLayout(initialAdaptiveLayout(mode));
   }, [mode]);
-
-  useEffect(() => {
-    if (nightMode !== undefined || typeof document === "undefined") {
-      return;
-    }
-    const readTheme = () => {
-      const theme = document.documentElement.getAttribute("data-theme");
-      if (theme) {
-        setAutoNightMode(theme !== "light");
-        return;
-      }
-      setAutoNightMode(Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches));
-    };
-    readTheme();
-    const observer = new MutationObserver(readTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, [nightMode]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -400,9 +521,15 @@ function AnkiCardShadowPreviewComponent({
     card.className = shadowDocument.cardClassName;
     card.setAttribute("data-testid", "asr-shadow-card");
     card.innerHTML = shadowDocument.html;
+    enhanceReplayControls(card, replayLabelPrefix);
+
+    const frame = document.createElement("div");
+    frame.className = "asr-shadow-card-frame";
+    frame.setAttribute("data-testid", "asr-shadow-card-frame");
 
     viewport.appendChild(card);
-    shell.appendChild(viewport);
+    frame.appendChild(viewport);
+    shell.appendChild(frame);
     shadowRoot.append(style, shell);
 
     const handleReplayClick = (event: Event) => {
@@ -444,6 +571,7 @@ function AnkiCardShadowPreviewComponent({
         const nextLayout = calculateAdaptivePreviewLayout({
           mode,
           availableWidth: hostRect.width || host.clientWidth || ANKI_PREVIEW_MODE_CONFIG[mode].targetWidth,
+          availableHeight: hostRect.height || host.clientHeight || ANKI_PREVIEW_MODE_CONFIG[mode].targetHeight,
           contentWidth: Math.max(card.scrollWidth, viewport.scrollWidth, cardRect.width, ANKI_PREVIEW_MODE_CONFIG[mode].baseWidth),
           contentHeight: Math.max(card.scrollHeight, viewport.scrollHeight, cardRect.height, ANKI_PREVIEW_MODE_CONFIG[mode].baseHeight),
         });
@@ -465,6 +593,7 @@ function AnkiCardShadowPreviewComponent({
       });
     };
 
+    highlightJavaBlocks(shadowRoot);
     scheduleMeasure();
 
     const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleMeasure) : null;
@@ -493,7 +622,7 @@ function AnkiCardShadowPreviewComponent({
       });
       shadowRoot.removeEventListener("click", handleReplayClick);
     };
-  }, [mode, shadowDocument]);
+  }, [mode, replayLabelPrefix, shadowDocument]);
 
   return (
     <div
@@ -509,6 +638,7 @@ function AnkiCardShadowPreviewComponent({
       data-shadow-preview-mode={mode}
       data-shadow-preview-side={side}
       data-render-source={renderSource}
+      data-preview-night-mode={resolvedNightMode ? "true" : "false"}
       data-preview-measured={layout.measured ? "true" : "false"}
       data-preview-overflow={layout.overflow ? "true" : "false"}
       data-preview-scale={layout.scale.toFixed(3)}

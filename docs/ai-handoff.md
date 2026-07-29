@@ -1,127 +1,270 @@
-# Передача контекста новому чату/нейронке
+# Передача актуального контекста ИИ
 
-Снимок: **2026-07-18**.
+**Снимок:** 2026-07-29
 
-## Начать отсюда
+Этот файл — короткая точка входа. Он не заменяет production code, профильные contracts, roadmap или closeout reports.
 
-1. `README.md`
-2. `roadmap/README.md`
-3. `docs/project-overview.md`
-4. `docs/architecture.md`
-5. профильный current-contract документ
-6. `reports/README.md` только для historical evidence
+## Порядок чтения
 
-При конфликте:
+1. [`../AGENTS.md`](../AGENTS.md);
+2. [`../README.md`](../README.md);
+3. этот файл;
+4. профильный roadmap;
+5. профильный contract в `docs/`;
+6. production code и tests;
+7. свежий closeout только когда он нужен задаче.
 
-```text
-production code/tests
-→ current docs
-→ roadmap
-→ reports
-→ old plans/assumptions
-```
-
-## Product state
-
-Anki Study Report — local add-on for Anki 26.05+ with Python runtime, React/TypeScript dashboard and token-protected loopback server. Frontend does not access the collection directly.
-
-Accepted product contour is complete through Stage 9.5:
+При противоречиях:
 
 ```text
-Stage 0–5.5  foundation, IA, Settings, Profile, Activity, Decks, UI controls
-Stage 6–7    Statistics, FSRS analytics, RU/EN localization
-Stage 8      Search and undoable Safe Actions
-Stage 9–9.5  notices, opt-in telemetry, Signals, Notification Center, toasts
+current branch production code и tests
+→ current branch docs/
+→ PR/base branch contracts
+→ roadmap/
+→ reports/artifacts
+→ старые планы и сообщения
+→ предположения
 ```
 
-## Roadmap model
+`master` является релизной веткой, а `core` — integration branch обязательного production Core-трека. Feature/remediation branch или открытый PR может содержать более свежее состояние своего scope, чем base branch. Перед выводами всегда определить current branch/PR, base/head SHA и merge state.
 
-Future work is organized by tracks:
+## Проект и границы
+
+Anki Study Report — локальный add-on для Anki 26.05+ с Python runtime и React/TypeScript dashboard.
+
+- dashboard работает только через loopback и защищён access token;
+- frontend получает bounded API projections и не читает collection напрямую;
+- preview использует sanitizer и Shadow DOM без JavaScript execution surface;
+- учебные и профильные данные остаются локальными;
+- payload/public behavior меняются синхронно между слоями, tests и docs.
+
+Подробности: [architecture.md](architecture.md), [dashboard-api.md](dashboard-api.md), [security-and-safety.md](security-and-safety.md).
+
+## Core
 
 ```text
-C  Core: C1 Cards v2 → C2 Core 1.0 → C3? contextual additions
-G  Gamification: research reconciliation through optional MVP
-O  Operations: protected telemetry admin dashboard
-I  Identity: conditional continuity/linking gate
-E  Extensions: conditional first-party ecosystem
-CI Platform: delivery/E2E/release
+C1 — завершён и принят
+C2 base implementation/integration — завершены и влиты в core
+PR #130 Stage 1: latest-Core sync + rejected-overlay cleanup — COMPLETE
+PR #130 Stage 2: Cards 1:1 composition + native CSS + AV/media repair — COMPLETE
+Cards final exact-card real-Anki evidence — PASS
+Cards owner verdict — ACCEPT CARDS 1:1
+Cards status — ACCEPTED / COMPLETE / FROZEN
+Cards technical blockers — NONE
+Cards accessibility blockers — NONE
+Inspection Profiles corrected screenshot-first audit — COMPLETE
+WP1 Settings shell — STRUCTURAL FOUNDATION DELIVERED
+WP1 Settings owner visual assessment — 6/10 (исторический verdict владельца)
+WP1 Settings visual language — PROVISIONAL
+WP2 original Inspection Profiles frame candidate — REQUEST CHANGES
+WP2 bounded corrective pass — IMPLEMENTATION CANDIDATE DELIVERED
+WP2 bounded corrective pass external visual review — 7.8/10 (историческая внешняя оценка)
+WP2 owner acceptance — NOT GRANTED
+Owner progression decision — WP3 START AUTHORIZED WITHOUT WP2 ACCEPTANCE
+WP3 Inspection Profiles Basic correction — COMPLETE
+WP4 Inspection Profiles Advanced — COMPLETE
+WP5 states/validation/accessibility — COMPLETE
+WP6 final visual/system evidence — COMPLETE
+Inspection Profiles — COMPLETE FOR C2 CLOSEOUT
+PR #130 — MERGED INTO CORE
+merged core SHA — 57eeca039247ab0522555b1292fc1f25c66976fd
+Fast CI — 30408497011 / PASS ON MERGED CORE
+real-Anki standard/full + restart — 30408746188 / PASS ON MERGED CORE
+C3 — NOT STARTED
+release/master — NOT TOUCHED
 ```
 
-Only `C1 → C2` is the mandatory add-on path.
+Точный scope: [`../roadmap/core/README.md`](../roadmap/core/README.md).
 
-### Core
-
-`C1 Cards v2 / Problem Triage` remains the recommended next core stage. It must reuse Search, Safe Actions, Signals, Notification Center and the existing isolated preview rather than create duplicate workflows. `C2` freezes/hardens contracts after C1, although prerequisite hardening may occur inside C1.
-
-### Gamification
-
-The source branch `chatgpt/gamification-concept-foundation` is research-only and materially diverged from `master`. Do not merge/rebase it wholesale.
-
-Confirmed roadmap status:
-
-- Progression and Anki XP foundations: `DRAFT v0.2`;
-- Review concept documents: developed drafts;
-- Review simulation closure: `PARTIAL`;
-- blocker: cross-horizon retention-cycling evidence gap;
-- Learn XP: not started;
-- Create XP: not started;
-- global conversion and production ledger/API/migrations/UI: not designed.
-
-Direct spot-checks confirmed populated simulator implementation and tests, including a scenario test asserting 26 scenarios and 53 assertions. The branch checks were not executed in this roadmap task; `G0` must reconcile the diverged branch with current `master` and reproduce the documented evidence before further authoritative research work.
-
-Research candidates are not production economy. Gamification does not block core.
-
-### Telemetry operations
-
-Current telemetry service has only bounded ingestion/schema/deletion endpoints, no dashboard or generic query API. `O1` is a separate Access-protected read-only admin application with Worker-side JWT validation and prepared bounded D1 queries. It never becomes a route or secret-bearing mode in the add-on.
-
-### Identity and extensions
-
-`I1` activates only for a proven cross-installation requirement. `installation_id != person_id`; `person_id` is absent by default and requires explicit opt-in, unlink/revoke/export/delete and a separate threat/privacy migration. Fingerprinting is forbidden.
-
-Extensions are non-critical. `E1` begins only with one concrete first-party reference pack; no marketplace, remote code or placeholders.
-
-## Platform state
-
-CI Stage 6B is Complete:
+Current accepted Cards evidence:
 
 ```text
-cloud environment: exact immutable GHCR digest
-manual E2E: exact Fast CI package
-release E2E: exact release artifact
-local Docker build: diagnostic fallback
-cloud BuildKit/GHA cache: removed
+PR: #130 — MERGED INTO CORE
+frozen PR base / merge-base: 62cd4c1fc1dda6354f3e30cb3ae4aee5dfb4891f
+
+Stage 1 verified production candidate:
+a746172f8746eac82ff628d36a7a6328d9332acf
+
+Cards production package source:
+a162dde223b1bc40b6b0f566ae1fb5d665089359
+
+Cards final evidence harness:
+5487bb32d43b11bbe618ec45e1b0e1e365fabb39
+
+exact package SHA-256:
+e01b9dd3e3277d9ff0cafb9ac3a298a1459118056f07834a171662c91ae79357
+
+final evidence:
+cards-final-av-media-fidelity-evidence.zip
+
+final evidence size:
+56 358 736 bytes
+
+final evidence SHA-256:
+539cf5f08c5f804fa6de3b87c87f0792e6d60777f0b40a9c413a0b912516dfc3
+
+exact card:
+1649481469689 / 影
+
+standard browser smoke:
+19/19 PASS / 18 screenshots
+
+exact browser:
+6/6 scenarios PASS / 32 screenshots
+
+replay reset:
+PASS
+
+visible keyboard focus light/dark:
+PASS
+
+accessible-name localization:
+PASS
+
+live GIF:
+cross-scenario frame difference PASS
+
+deterministic GIF:
+frameCount=154
+
+network/security:
+external=0 / Inspection Profiles requests=0 / page errors=0 / console errors=0 / failed requests=0
+
+evidence self-verification:
+PASS / missing=0 / unexpected=0 / mismatches=0
+
+owner visual assessment:
+average≈9.3/10 / minimum mandatory aspect=8.7/10
 ```
 
-CI 7 is a measurement gate. CI 8/9/10 activate only for one proven bottleneck/flake class. Release remains manual and approval-gated.
+Актуальные Cards contracts:
 
-## Technical invariants
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md);
+- [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md).
 
-1. Payload/public behavior changes synchronize backend, frontend types/validators, tests and docs.
-2. Frontend never reads Anki collection directly.
-3. Server remains loopback-only and token-protected.
-4. Sanitizer, media validation, action allowlists and preview isolation are not weakened.
-5. Generated assets/runtime artifacts/profile data/tokens are not committed.
-6. Signals/evidence/entity refs stay local and outside telemetry taxonomy.
-7. Telemetry/admin/identity/gamification data purposes remain separated.
-8. Research packages do not silently enter Fast CI or `.ankiaddon`.
-9. Release uses exact artifacts and never occurs automatically after merge.
+### Cards frozen boundary
 
-## Verification
+Cards production заморожен. Без новой доказанной регрессии запрещено менять Cards component composition, queue, rail, drawer, expanded answer, native preview, AV/audio/GIF path, Shadow DOM или Cards styles ради Settings. Успешный exact Cards real-Anki gate повторно не запускается без нового риска.
 
-Canonical non-Docker check:
+После shared Settings changes допустим только короткий Cards regression smoke, если изменение действительно затронуло shared shell/styles.
 
-```powershell
-.\scripts\run_full_check.ps1 -SkipDocker
+### Visual coverage checkpoint
+
+`ACCEPT CARDS 1:1` относится только к route `#/cards`. PR #130 позднее прошёл
+отдельный Profiles closeout, exact merged Fast CI/E2E и был влит в `core`;
+это не активирует C3 и не означает release.
+
+| Route / area | Текущее подтверждение | Статус |
+| --- | --- | --- |
+| `#/cards` wide | exact same-card production captures + native CSS + AV/media evidence | OWNER ACCEPTED / FROZEN |
+| `#/cards` drawer | exact 1024 light/dark capture и GIF crop | OWNER ACCEPTED / FROZEN |
+| `#/cards` expanded | exact answer light/dark, GIF+PNG и geometry | OWNER ACCEPTED / FROZEN |
+| replay/audio | два playback, reset к нулю, local MP3 HTTP 200 | PASS |
+| animated GIF | exact SHA, 160×120, live light/dark frame difference, decoder 154 frames | PASS |
+| `#/settings/inspection-profiles` original frame candidate | исходный WP2 evidence; сохранён как исторический baseline | REQUEST CHANGES |
+| `#/settings/inspection-profiles` corrective frame | historical WP2 candidate и external review сохранены как baseline | HISTORICAL / SUPERSEDED BY FINAL C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Basic | two-column 1024/QHD composition, strict routing, focus и unmasked comparisons | COMPLETE FOR C2 CLOSEOUT |
+| `#/settings/inspection-profiles` Advanced | authored strict mappings/checks/templates editor; three QHD columns; missing references remain visible | COMPLETE FOR C2 CLOSEOUT |
+| Settings shared shell | структурная foundation; прежняя owner visual assessment 6/10 | STRUCTURAL FOUNDATION DELIVERED / VISUAL LANGUAGE PROVISIONAL |
+| Other Settings routes | shared shell regression only; business behavior preserved | VERIFIED IN WP1 SCOPE |
+
+Ранее заданный владельцем целевой порог для будущего Inspection Profiles
+acceptance, а не оценка текущего candidate:
+
+```text
+minimum acceptable result: 8.5/10
+preferred target: 9.0/10 or higher
 ```
 
-Use focused tests first, then exact Fast CI artifact, then only required targeted real-Anki scope. Do not repeat successful same-SHA gates. Docs-only roadmap work does not require Docker E2E.
+Reports:
 
-Before closing work:
+- [Stage 1 — C2 manual acceptance remediation](../reports/core/c2-manual-acceptance-remediation-closeout.md);
+- [Stage 2 — Cards Prototype v3.2.3 production integration](../reports/core/c2-cards-v323-production-integration.md);
+- [Cards final AV/audio/media evidence closeout](../reports/core/c2-cards-final-av-media-evidence-closeout.md);
+- [Inspection Profiles — corrected screenshot-first audit](../reports/core/c2-inspection-profiles-screenshot-audit.md);
+- [WP1 Settings shell implementation](../reports/core/c2-settings-shell-wp1-implementation.md);
+- [WP2 Inspection Profiles original workspace frame](../reports/core/c2-inspection-profiles-wp2-frame-implementation.md);
+- [WP2 Inspection Profiles bounded corrective pass](../reports/core/c2-inspection-profiles-wp2-corrective-pass.md);
+- [WP3 Inspection Profiles Basic implementation](../reports/core/c2-inspection-profiles-wp3-basic-implementation.md);
+- [PR #130 final integration closeout](../reports/core/c2-pr130-final-integration-closeout.md).
 
-- confirm branch/base/head and unrelated changes;
-- run `git diff --check` when a checkout is available;
-- validate relative Markdown links;
-- confirm no production/research code, workflow or generated artifact diff;
-- inspect actual CI evidence before claiming PASS;
-- do not merge, deploy or release without explicit authorization.
+## Platform / CI
+
+```text
+real-deck E2E foundation — COMPLETE / merged
+E2E-I1 — COMPLETE / PR #134
+E2E-I2 — COMPLETE / PR #135
+E2E-I3 — COMPLETE / PR #136
+E2E-I4 — COMPLETE / PR #137
+E2E-I5 — COMPLETE / PR #141
+E2E-I6 — COMPLETE / merged через PR #142
+E2E-I6 bounded corrective fix — cloud acceptance PASS / PR #144 открыт, не влит
+следующий Platform/CI stage — не активирован
+```
+
+Принятый E2E-I6 candidate:
+
+```text
+implementation HEAD: 00e1e98f91b454a1fa0c5fef5b3530884f01ec32
+docs/report head: 34498a03e2ce7b8aa2fe2ccef13a92ae2da42bf5
+core merge SHA: 52731abb2fae682c97c3d0d9a542c250c6f25ea8
+Fast CI: 30166328801 — PASS
+standard/full: 30166561184 — PASS
+main artifact: 8621761591
+history artifact: 8621762124
+canonical result: success / complete / run/pass
+history: bootstrap / 1 entry
+repository artifact/log retention: 90 дней для новых artifacts
+```
+
+Corrective candidate после E2E-I6:
+
+```text
+PR: #144 — OPEN / unmerged
+base core: a49c4b301084e5ffd3915b4cfcacf7bb8c95a3cb
+implementation HEAD: afe650adbf3ba55cb6b59068a1127022b651fbf3
+Fast CI: 30169763775 — PASS
+standard/full: 30169890912 — PASS
+main artifact: 8622647178
+history artifact: 8622648096
+canonical result: success / complete / run/pass
+history: append / 2 entries
+corrected footprint: meaningful categories restored; other=6 service files
+producer observations: current=55 / 4711, status=insufficient-history
+```
+
+Актуальный contract:
+
+- [e2e-final-summary-history.md](e2e-final-summary-history.md)
+
+Исторические отчёты:
+
+- [E2E-I6 closeout](../reports/ci/e2e-i6-final-summary-history-closeout.md)
+- [E2E-I6 post-merge sync](../reports/ci/e2e-i6-post-merge-documentation-sync.md)
+- [E2E-I6 corrective closeout](../reports/ci/e2e-i6-corrective-fix-closeout.md)
+
+E2E-I6 corrective fix не является новым этапом и не активирует CI 7–12. Любая оптимизация требует отдельного измеренного trigger и решения владельца.
+
+## Рабочие правила
+
+- Desktop/laptop — основной target; mobile не является приоритетом без отдельной задачи.
+- Не добавлять placeholder routes, speculative APIs или future extension surfaces заранее.
+- Не возвращать legacy aliases без доказанной compatibility необходимости.
+- Real-Anki Docker E2E выбирать по [test matrix](test-matrix.md) и [verification policy](verification-run-policy.md).
+- Для exact Cards AV/media использовать [специализированный runbook](cards-exact-av-media-e2e.md).
+- Successful unchanged exact-SHA gates не повторять.
+- Не создавать вложенную лестницу этапов вместо одной цельной задачи.
+- Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
+- Для нетривиальной реализации использовать локальный `.agents/task-contract.toml` и `python scripts/check_task_scope.py`.
+
+## Режим работы
+
+- [Корневой auto-loaded entrypoint](../AGENTS.md)
+- [Компактный AI context bootstrap](ai-context-bootstrap.md)
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
+- [Codex agent rules](codex-agent-rules.md)
+- [Task contract template](templates/task-contract.toml)
+
+Сначала определите фактическую branch/PR, трек и точный scope. Не начинайте следующий roadmap stage автоматически только потому, что предыдущий завершён.

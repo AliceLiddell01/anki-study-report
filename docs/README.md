@@ -1,47 +1,87 @@
-# Documentation index
+# Индекс документации
 
-`docs/` contains only current architecture, API, UX, security, configuration, testing and operational contracts.
-
-## Folder boundaries
+`docs/` содержит **актуальные контракты** проекта. Текущие планы находятся в `roadmap/`, а исторические аудиты, измерения и closeout — в `reports/`.
 
 ```text
-docs/       current behavior and mandatory contracts
-roadmap/    track placement, dependencies and activation/completion criteria
-reports/    historical audits, measurements and closeout evidence
+docs/       текущее поведение, архитектура и обязательные правила
+roadmap/    будущие этапы, зависимости и criteria
+reports/    исторические evidence и завершённые проверки
 ```
 
-Future planning is multi-track. The compact map is [roadmap/README.md](../roadmap/README.md):
+## Начать отсюда
 
-- [Core](../roadmap/core/README.md)
-- [Gamification](../roadmap/gamification/README.md)
-- [Telemetry operations](../roadmap/operations/README.md)
-- [Identity continuity](../roadmap/identity/README.md)
-- [Extension ecosystem](../roadmap/extensions/README.md)
-- [Platform / CI](../roadmap/platform/README.md)
+- [Корневые правила AI-агента](../AGENTS.md)
+- [Обзор проекта](project-overview.md)
+- [Архитектура](architecture.md)
+- [Передача актуального контекста ИИ](ai-handoff.md)
+- [Компактный AI context bootstrap](ai-context-bootstrap.md)
+- [Карта roadmap](../roadmap/README.md)
+- [Исторические отчёты](../reports/README.md)
 
-Gamification research, telemetry admin tooling, optional identity and extension packs are not current production contracts merely because they appear in roadmap.
+## Product и UX
 
-## Main current-contract entries
+- [Навигация и информационная архитектура](navigation-ia.md)
+- [UI prototyping и visual acceptance](ui-prototype-visual-acceptance.md)
+- [Settings Hub](settings-hub.md)
+- [Statistics v1](statistics-v1.md)
+- [FSRS analytics](fsrs-analytics.md)
+- [Search и Safe Actions](search-v1-and-safe-actions.md)
+- [Signals foundation](signals-foundation.md)
+- [Notification center](notification-center.md)
+- [Privacy и telemetry](privacy-telemetry.md)
 
-- [Project overview](project-overview.md)
-- [Architecture](architecture.md)
+### Cards и Inspection Profiles
+
+- [Cards v2 product contract](cards-v2-product-contract.md)
+- [Cards workspace по Prototype v3.2.3](cards-v323-production-workspace.md)
+- [Cards exact AV/audio/media E2E](cards-exact-av-media-e2e.md)
+- [Triage read API](cards-v2-triage-read-api.md)
+- [Canonical single-card resolution loop](cards-v2-resolution-loop.md)
+- [Cards attention inbox](cards-attention-inbox.md)
+- [Card display identity](card-display-identity.md)
+- [Declarative formatter v1](card-display-formatter-v1.md)
+- [Card preview semantics](card-preview-semantics.md)
+- [Triage candidate sources v4](triage-candidate-sources-v4.md)
+- [Inspection Profiles v1](inspection-profiles-v1.md)
+- [Inspection Profiles UI](inspection-profiles-ui.md)
+- [Guided Inspection Profiles](guided-inspection-profiles.md)
+
+Исторический C1.5 UI сохранён отдельно: [Cards workspace UI](cards-v2-workspace-ui.md).
+
+## Architecture и API
+
 - [Dashboard API](dashboard-api.md)
 - [Frontend map](frontend-map.md)
-- [Navigation / IA](navigation-ia.md)
-- [Settings Hub](settings-hub.md)
-- [Statistics](statistics-v1.md)
-- [FSRS analytics](fsrs-analytics.md)
-- [Search and Safe Actions](search-v1-and-safe-actions.md)
-- [Signals](signals-foundation.md)
-- [Notification Center](notification-center.md)
-- [Privacy / telemetry](privacy-telemetry.md)
+- [Configuration reference](config-reference.md)
+- [Fixtures и test data](fixtures-and-test-data.md)
+- [Decision log](decision-log.md)
+
+## Security, testing и delivery
+
 - [Security and safety](security-and-safety.md)
 - [Test matrix](test-matrix.md)
-- [Verification policy](verification-run-policy.md)
+- [Verification run policy](verification-run-policy.md)
 - [CI/CD](ci-cd.md)
+- [Docker real-Anki E2E](docker-e2e.md)
+- [Run-event protocol](run-event-protocol.md)
+- [Failure diagnostics](failure-diagnostics.md)
+- [Preflight и cancellation](e2e-preflight-cancellation.md)
+- [Fast CI package / E2E harness reuse](e2e-package-harness-reuse.md)
+- [Идентичность нерелизной сборки](non-release-build-identity.md)
+- [Каноническая итоговая сводка E2E и bounded history](e2e-final-summary-history.md)
 - [GHCR E2E consumer](ghcr-e2e-consumer.md)
-- [Packaging / release](packaging-release.md)
-- [Decision log](decision-log.md)
-- [AI handoff](ai-handoff.md)
+- [Packaging и release](packaging-release.md)
 
-Historical evidence belongs in [reports/](../reports/README.md), not in `docs/`.
+## Работа ИИ-агентов
+
+- [Корневой auto-loaded entrypoint](../AGENTS.md)
+- [Компактный переносимый контекст](ai-context-bootstrap.md)
+- [Режимы ChatGPT и Codex](ai-work-modes.md)
+- [ChatGPT work mode](chatgpt-work-mode.md)
+- [ChatGPT manual operations](chatgpt-manual-operations.md)
+- [Codex agent rules](codex-agent-rules.md)
+- [Codex local WSL environment](codex-local-environment.md)
+- [Шаблон локального task contract](templates/task-contract.toml)
+- Scope guard: `python scripts/check_task_scope.py`
+
+`ai-handoff.md` хранит только текущий срез. Подробные run IDs, SHA и результаты завершённых этапов должны оставаться в `reports/`, а не дублироваться в этом индексе.

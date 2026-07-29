@@ -31,6 +31,8 @@ PACKAGE_ID = 102
 DIAGNOSTICS_DIGEST = "sha256:" + "1" * 64
 PACKAGE_DIGEST = "sha256:" + "2" * 64
 
+PR_ASSOC = {"head": {"sha": "d" * 40, "repo": {"id": 1297299947}}, "base": {"sha": BASE, "repo": {"id": 1297299947}}}
+
 
 def run_payload(event: str = "workflow_dispatch") -> dict:
     payload = {
@@ -185,12 +187,17 @@ def test_source_modes_are_mutually_exclusive_and_release_sha_is_strict():
         MODULE.validate_source_inputs(release_artifact_name="", release_artifact_sha256="", fast_ci_run_id="0")
 
 
-@pytest.mark.parametrize("event", ["workflow_dispatch", "push"])
-def test_valid_non_pr_source_run(event: str):
-    resolution = resolve(event)
-    assert resolution["sourceEvent"] == event
-    assert resolution["sourceHeadSha"] == TESTED
-    assert resolution["sourceBaseSha"] is None
+@pytest.mark.parametrize(
+    ("event", "pulls"),
+    [("workflow_dispatch", []), ("workflow_dispatch", [PR_ASSOC]), ("workflow_dispatch", [PR_ASSOC, PR_ASSOC]), ("push", [PR_ASSOC])],
+)
+def test_non_pr_source_run_ignores_advisory_pull_request_associations(event: str, pulls: list[dict]):
+    payload = run_payload(event)
+    payload["pull_requests"] = copy.deepcopy(pulls)
+    resolution = MODULE.resolve_source_run(
+        run_payload=payload, artifacts_payload=artifacts_payload(), repository=REPO, input_run_id=RUN_ID
+    )
+    assert (resolution["sourceEvent"], resolution["sourceHeadSha"], resolution["sourceBaseSha"]) == (event, payload["head_sha"], None)
     assert resolution["diagnosticsArtifact"]["id"] == DIAGNOSTICS_ID
     assert resolution["packageArtifact"]["id"] == PACKAGE_ID
 
@@ -233,6 +240,21 @@ def test_pull_request_requires_unambiguous_same_repo_identity():
     payload = run_payload("pull_request")
     payload["pull_requests"][0]["head"]["repo"]["id"] = 999
     with pytest.raises(HandoffError, match="Fork-origin"):
+        MODULE.resolve_source_run(run_payload=payload, artifacts_payload=artifacts_payload("d" * 40), repository=REPO, input_run_id=RUN_ID)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda p: p["pull_requests"].append(copy.deepcopy(p["pull_requests"][0])),
+        lambda p: p["pull_requests"][0].update(head=None),
+        lambda p: p["pull_requests"][0].update(base=None),
+    ],
+)
+def test_pull_request_rejects_ambiguous_or_malformed_identity(mutation):
+    payload = run_payload("pull_request")
+    mutation(payload)
+    with pytest.raises(HandoffError, match="exactly one|head/base identity"):
         MODULE.resolve_source_run(run_payload=payload, artifacts_payload=artifacts_payload("d" * 40), repository=REPO, input_run_id=RUN_ID)
 
 
@@ -303,6 +325,14 @@ def test_diagnostics_identity_mismatches_fail(tmp_path: Path, field: str, value,
     (diagnostics_dir / "ci-summary.json").write_text(json.dumps(summary), encoding="utf-8")
     with pytest.raises(HandoffError, match=message):
         MODULE.validate_diagnostics(resolution=resolution, directory=diagnostics_dir)
+
+
+def test_non_pr_diagnostics_tested_sha_must_match_run_head(tmp_path: Path):
+    resolution = resolve(tested="e" * 40)
+    directory = tmp_path / "diagnostics"
+    create_diagnostics(directory, resolution, tested="e" * 40)
+    with pytest.raises(HandoffError, match="source run head SHA"):
+        MODULE.validate_diagnostics(resolution=resolution, directory=directory)
 
 
 def test_diagnostics_inventory_must_match_summary(tmp_path: Path):

@@ -51,17 +51,24 @@ jobs:
 
       - name: Prepare diagnostics
         shell: pwsh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.ref }}
+          TESTED_COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           New-Item -ItemType Directory -Force ci-fast/logs, ci-fast/timing | Out-Null
           "CI_FAST_STARTED_AT=$([DateTime]::UtcNow.ToString('o'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           python scripts/ci_fast_timing.py initialize `
             --output ci-fast/timing/fast-ci-timing.json `
-            --repository '${{ github.repository }}' `
-            --event-name '${{ github.event_name }}' `
-            --ref '${{ github.ref }}' `
-            --tested-commit-sha '${{ github.sha }}' `
-            --run-id '${{ github.run_id }}' `
-            --run-attempt '${{ github.run_attempt }}'
+            --repository $env:REPOSITORY `
+            --event-name $env:EVENT_NAME `
+            --ref $env:WORKFLOW_REF `
+            --tested-commit-sha $env:TESTED_COMMIT_SHA `
+            --run-id $env:RUN_ID `
+            --run-attempt $env:RUN_ATTEMPT
           if ($LASTEXITCODE -ne 0) { throw 'Fast CI timing initialization failed.' }
           python --version
           node --version
@@ -107,17 +114,23 @@ jobs:
 
       - name: Publish verification plan
         id: verification_plan
-        if: always()
+        if: ${{ !cancelled() }}
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
         run: |
           python scripts/ci_fast_timing.py start --output ci-fast/timing/fast-ci-timing.json --phase-id verification-planner
           if ($LASTEXITCODE -ne 0) { throw 'Verification planner timing start failed.' }
 
-          $eventName = "${{ github.event_name }}"
-          $defaultBranch = "${{ github.event.repository.default_branch }}"
-          $refName = "${{ github.ref_name }}"
-          $baseRef = "${{ github.base_ref }}"
-          $before = "${{ github.event.before }}"
+          $eventName = $env:EVENT_NAME
+          $defaultBranch = $env:DEFAULT_BRANCH
+          $refName = $env:REF_NAME
+          $baseRef = $env:BASE_REF
+          $before = $env:EVENT_BEFORE
 
           if ($eventName -eq 'pull_request') {
             $baseBranch = if ($baseRef) { $baseRef } else { $defaultBranch }
@@ -144,7 +157,7 @@ jobs:
 
       - name: Write CI summary
         id: ci_summary
-        if: always()
+        if: ${{ !cancelled() }}
         shell: pwsh
         env:
           FAST_CHECK_OUTCOME: ${{ steps.fast_check.outcome }}
@@ -169,6 +182,7 @@ jobs:
         shell: pwsh
         env:
           ARTIFACT_NAME: ci-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          REPOSITORY: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           SOURCE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           SOURCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'null' }}
@@ -182,7 +196,7 @@ jobs:
           python scripts/write_ci_package_metadata.py `
             --package anki_study_report.ankiaddon `
             --output-directory ci-package `
-            --repository '${{ github.repository }}' `
+            --repository $env:REPOSITORY `
             --event-name $env:EVENT_NAME `
             --ref $env:WORKFLOW_REF `
             --tested-commit-sha $env:TESTED_COMMIT_SHA `
@@ -215,9 +229,37 @@ jobs:
           if ($commandExit -ne 0) { throw 'Fast CI package metadata verification failed.' }
           if ($timingExit -ne 0) { throw 'Package metadata verification timing finish failed.' }
 
+      - name: Finalize cancelled Fast CI
+        id: cancelled_finalize
+        if: ${{ cancelled() }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-fast/timing | Out-Null
+          if (-not (Test-Path -LiteralPath ci-fast/cancellation-summary.json -PathType Leaf)) {
+            python docker/anki-e2e/cancellation_protocol.py record `
+              --output ci-fast/cancellation-summary.json `
+              --producer fast-ci `
+              --elapsed-ms 0 `
+              --original-exit-code 130 `
+              --cleanup-status partial `
+              --cleanup-duration-ms 0 `
+              --cleanup-attempts 1 `
+              --artifact-status partial `
+              --run-events ci-fast/run-events.jsonl `
+              --evidence-path run-events.jsonl
+          }
+          if (Test-Path -LiteralPath ci-fast/timing/fast-ci-timing.json -PathType Leaf) {
+            python scripts/ci_fast_timing.py finalize `
+              --output ci-fast/timing/fast-ci-timing.json `
+              --result cancelled `
+              --markdown-output ci-fast/timing/fast-ci-timing.md
+            python scripts/ci_fast_timing.py validate --output ci-fast/timing/fast-ci-timing.json
+          }
+
       - name: Finalize structured timing
         id: timing_finalize
-        if: always()
+        if: ${{ !cancelled() }}
         shell: pwsh
         env:
           JOB_STATUS: ${{ job.status }}
@@ -237,12 +279,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Final Fast CI timing validation failed.' }
 
       - name: Upload Fast CI diagnostics
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-fast-${{ github.run_id }}-${{ github.run_attempt }}
           path: ci-fast/
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload bounded cancelled Fast CI evidence
+        if: ${{ cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-fast-cancelled-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ci-fast/cancellation-summary.json
+            ci-fast/run-events.jsonl
+            ci-fast/timing/fast-ci-timing.json
+            ci-fast/timing/fast-ci-timing.md
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Upload exact Fast CI package

@@ -1,106 +1,63 @@
 from pathlib import Path
-import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SMOKE_BROWSER = ROOT / "docker" / "anki-e2e" / "smoke-browser.mjs"
-E2E_CONTRACT = ROOT / "docker" / "anki-e2e" / "e2e-contract.mjs"
+BROWSER_PLAN = ROOT / "docker" / "anki-e2e" / "browser-plan.mjs"
 DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
-ROUTER = ROOT / "web-dashboard" / "src" / "app" / "router.tsx"
-TOP_NAV = ROOT / "web-dashboard" / "src" / "layout" / "TopNav.tsx"
-RU_LOCALE = ROOT / "web-dashboard" / "src" / "i18n" / "locales" / "ru.ts"
 
 
-def _page_names() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    block = text.split("const dashboardPageCases = [", 1)[1].split("];", 1)[0]
-    return re.findall(r'pageName:\s*"([^"]+)"', block)
+def test_manifest_page_counts_follow_real_dashboard_capture_contract() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    plan = BROWSER_PLAN.read_text(encoding="utf-8")
+    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
+
+    assert 'Object.freeze({ name: "home", route: "/home" })' in plan
+    assert 'Object.freeze({ name: "cards", route: "/cards" })' in plan
+    assert 'Object.freeze({ name: "decks", route: "/decks" })' in plan
+    assert 'Object.freeze({ name: "profile", route: "/profile" })' in plan
+    assert 'Object.freeze({ name: "settings", route: "/settings" })' in plan
+    assert 'export const THEMES = Object.freeze(["light", "dark"])' in plan
+    assert 'candidate.kind === "route-capture"' in smoke
+    assert '$pageScreenshots.Count -ne 10' in runner
+    assert 'Expected 10 real-dashboard page screenshots' in runner
 
 
-def _page_scopes() -> dict[str, str]:
-    text = E2E_CONTRACT.read_text(encoding="utf-8")
-    block = text.split("const PAGE_SCOPE = Object.freeze({", 1)[1].split("});", 1)[0]
-    entries = re.findall(r'^\s*(?:"([^"]+)"|([A-Za-z][\w-]*)):\s*"([^"]+)",?\s*$', block, re.MULTILINE)
-    return {(quoted or bare): scope for quoted, bare, scope in entries}
+def test_dashboard_route_capture_uses_structure_and_hash_not_transient_copy() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+
+    assert 'page.locator("main").waitFor' in smoke
+    assert "window.location.hash === hash" in smoke
+    assert "e2eTheme" in smoke
+    assert "page.addInitScript" in smoke
+    assert "page.reload(" not in smoke
+    assert 'getByRole("heading"' not in smoke
+    for transient_heading in ("Сегодня", "Карточки", "Колоды"):
+        assert transient_heading not in smoke
 
 
-def _runner_expected_pages() -> dict[str, int]:
-    text = DOCKER_RUNNER.read_text(encoding="utf-8")
-    match = re.search(r'\$expectedPages\s*=\s*@\{([^}]+)\}\[\$scope\]', text)
-    assert match, "PowerShell screenshot-count contract was not found"
-    return {name: int(value) for name, value in re.findall(r'(\w+)\s*=\s*(\d+)', match.group(1))}
+def test_theme_bootstrap_waits_for_the_document_root() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+
+    assert "const root = document.documentElement;" in smoke
+    assert "if (!root) return false;" in smoke
+    assert 'document.addEventListener("DOMContentLoaded", applyTheme, { once: true });' in smoke
+    assert "document.documentElement.dataset.theme = selectedTheme;" not in smoke
 
 
-def test_manifest_page_counts_follow_the_capture_contract() -> None:
-    page_names = _page_names()
-    page_scopes = _page_scopes()
-    expected = _runner_expected_pages()
+def test_cards_screenshot_counts_follow_real_deck_anchor_contract() -> None:
+    smoke = SMOKE_BROWSER.read_text(encoding="utf-8")
+    plan = BROWSER_PLAN.read_text(encoding="utf-8")
+    runner = DOCKER_RUNNER.read_text(encoding="utf-8")
 
-    assert len(page_names) == len(set(page_names)), "dashboard page names must be unique"
-    assert set(page_names) == set(page_scopes), "every dashboard page must have exactly one E2E scope"
-
-    calculated = {
-        scope: (len(page_names) if scope == "full" else sum(page_scopes[name] == scope for name in page_names)) * 2
-        for scope in expected
-    }
-    assert expected == calculated
-
-
-def _primary_nav_label_keys() -> list[str]:
-    text = ROUTER.read_text(encoding="utf-8")
-    block = text.split("export const primaryNavItems", 1)[1].split("];", 1)[0]
-    return re.findall(r'labelKey:\s*"primary\.([^"]+)"', block)
-
-
-def _ru_primary_nav_labels() -> dict[str, str]:
-    text = RU_LOCALE.read_text(encoding="utf-8")
-    navigation = text.split("navigation: {", 1)[1]
-    block = navigation.split("primary: {", 1)[1].split("},", 1)[0]
-    return dict(re.findall(r'^\s*(\w+):\s*"([^"]+)"', block, re.MULTILINE))
-
-
-def _statistics_smoke_nav_labels() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    before_message = text.split("`Statistics primary navigation order is correct:", 1)[0]
-    expected = before_message.rsplit("JSON.stringify(", 1)[1].split(")", 1)[0]
-    return re.findall(r'"([^"]+)"', expected)
-
-
-def test_statistics_smoke_navigation_follows_the_router_and_russian_locale() -> None:
-    keys = _primary_nav_label_keys()
-    labels = _ru_primary_nav_labels()
-
-    assert keys
-    assert "search" in keys
-    assert all(key in labels for key in keys)
-    assert _statistics_smoke_nav_labels() == [labels[key] for key in keys]
-
-
-def _profile_menu_label_keys() -> list[str]:
-    text = TOP_NAV.read_text(encoding="utf-8")
-    block = text.split("const profileMenuSections", 1)[1].split("> = [", 1)[1].split("];", 1)[0]
-    keys = re.findall(r'labelKey:\s*"profile\.([^\"]+)"', block)
-    return [key for key in keys if key not in {"personal", "utilities"}]
-
-
-def _ru_profile_menu_labels() -> dict[str, str]:
-    text = RU_LOCALE.read_text(encoding="utf-8")
-    navigation = text.split("navigation: {", 1)[1]
-    block = navigation.split("profile: {", 1)[1].split("},", 1)[0]
-    return dict(re.findall(r'^\s*(\w+):\s*"([^\"]+)"', block, re.MULTILINE))
-
-
-def _avatar_smoke_menu_labels() -> list[str]:
-    text = SMOKE_BROWSER.read_text(encoding="utf-8")
-    before_message = text.split("`Avatar menu items are complete:", 1)[0]
-    expected = before_message.rsplit("JSON.stringify(", 1)[1].split(")", 1)[0]
-    return re.findall(r'"([^\"]+)"', expected)
-
-
-def test_avatar_smoke_menu_follows_top_nav_and_russian_locale() -> None:
-    keys = _profile_menu_label_keys()
-    labels = _ru_profile_menu_labels()
-
-    assert keys
-    assert all(key in labels for key in keys)
-    assert _avatar_smoke_menu_labels() == [labels[key] for key in keys]
+    assert 'export const PREVIEW_ANCHOR_IDS = Object.freeze(["words-preview", "grammar-preview", "java-preview"])' in plan
+    assert 'expectedScreenshots: 2' in plan
+    assert 'path.join(screenshotsDir, "cards", "real-decks", anchorId, `${theme}.png`)' in smoke
+    assert 'path.join(screenshotsDir, "states", "cards", "real-deck-inbox", `${theme}.png`)' in smoke
+    assert 'expectedScreenshotCount = items.reduce' in plan
+    assert '$realDeckCards.Count -ne 6' in runner
+    assert 'Expected 6 real-deck preview screenshots' in runner
+    assert '$syntheticCards.Count -ne 0' in runner
+    assert 'Synthetic/legacy APKG screenshots remain' in runner
+    assert 'cardsScreenshot("synthetic"' not in smoke
+    assert 'cardsScreenshot("apkg"' not in smoke

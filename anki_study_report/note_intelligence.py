@@ -5,8 +5,11 @@ from __future__ import annotations
 from html import escape, unescape
 from html.parser import HTMLParser
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
+
+from .card_css_policy import sanitize_card_stylesheet
 
 
 FIELD_SEPARATOR = "\x1f"
@@ -60,18 +63,19 @@ UNSAFE_STYLE_VALUE_RE = re.compile(
 )
 
 _ROLE_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("reading", ("чтение", "reading", "kana", "furigana", "yomi", "pronunciation")),
-    ("partOfSpeech", ("часть речи", "part of speech", "pos", "speech")),
-    ("meaning", ("значение", "перевод", "meaning", "translation", "definition", "gloss", "back")),
-    ("example", ("пример", "sentence", "example", "context", "предложение")),
-    ("audio", ("audio", "sound", "звук", "аудио")),
-    ("pitch", ("pitch", "accent", "ударение", "акцент")),
-    ("kanjiGif", ("kanji gif", "kanjigif", "stroke", "gif")),
-    ("image", ("image", "picture", "photo", "img", "картинка", "изображение", "kanji")),
-    ("answer", ("answer", "ответ", "solution", "definition")),
-    ("explanation", ("explanation", "объяснение", "notes", "note", "комментарий")),
-    ("term", ("слово", "word", "expression", "term", "vocab", "выражение")),
-    ("question", ("front", "question", "вопрос", "title", "prompt")),
+    ("term", ("слово", "слова", "лексема", "выражение", "vocabulary", "vocab", "term", "word", "expression")),
+    ("reading", ("чтение", "кана", "произношение", "транскрипция", "reading", "kana", "furigana", "yomi", "pronunciation")),
+    ("meaning", ("значение", "перевод", "русский", "толкование", "meaning", "translation", "definition", "gloss")),
+    ("example", ("пример", "предложение", "контекст", "sentence", "example", "context")),
+    ("audio", ("аудио", "звук", "озвучка", "sound", "audio", "pronunciation audio")),
+    ("image", ("картинка", "изображение", "фото", "image", "picture", "photo", "img", "kanji image")),
+    ("partOfSpeech", ("часть речи", "частьречи", "pos", "part of speech", "grammatical category")),
+    ("pitch", ("питч", "акцент", "питч акцент", "pitch", "pitch accent", "accent")),
+    ("kanjiGif", ("kanji gif", "kanjigif", "порядок черт", "stroke order", "stroke gif")),
+    ("question", ("вопрос", "лицевая сторона", "front", "question", "prompt")),
+    ("answer", ("ответ", "обратная сторона", "back", "answer", "solution")),
+    ("explanation", ("объяснение", "заметки", "комментарий", "notes", "explanation", "comment")),
+    ("code", ("код", "code", "source", "snippet")),
 )
 
 
@@ -293,8 +297,8 @@ def build_rendered_preview(
     front_raw = _render_template(qfmt, fields, front_side="")
     back_raw = _render_template(afmt, fields, front_side=front_raw)
     front_html, front_media = sanitize_rendered_html(front_raw)
-    back_html, _back_media = sanitize_rendered_html(back_raw)
-    media_refs = _unique_media_refs(front_media)
+    back_html, back_media = sanitize_rendered_html(back_raw)
+    media_refs = _unique_media_refs(front_media + back_media)
     front_plain = safe_plain_text(front_raw, 240)
     back_plain = safe_plain_text(back_raw, 320)
     reason = "template renderer"
@@ -517,13 +521,7 @@ def sanitize_rendered_html(value: Any) -> tuple[str, list[dict[str, str]]]:
 
 
 def sanitize_card_css(value: Any) -> str:
-    text = str(value or "")
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"@import[^;]+;", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"url\((?:file://|https?://|[A-Za-z]:\\)[^)]+\)", "url()", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b[A-Za-z]:\\[^\s;{}]+", " ", text)
-    text = re.sub(r"token=[^\s;{}]+", "token=[redacted]", text, flags=re.IGNORECASE)
-    return text[:4000]
+    return sanitize_card_stylesheet(value)
 
 
 def _sanitize_style_attributes(text: str) -> str:
@@ -592,20 +590,40 @@ def split_field_values(raw_fields: Any) -> list[str]:
 
 def detect_field_role(name: Any, value: Any = "") -> tuple[str, float]:
     normalized = normalize_name(name)
+    tokens = tuple(normalized.split())
+    scores: dict[str, float] = {}
     for role, aliases in _ROLE_ALIASES:
-        if any(alias in normalized for alias in aliases):
-            return role, 0.92
+        for alias in aliases:
+            alias_normalized = normalize_name(alias)
+            alias_tokens = tuple(alias_normalized.split())
+            if not alias_tokens:
+                continue
+            score = 0.0
+            if normalized == alias_normalized:
+                score = 0.99
+            elif _contains_token_phrase(tokens, alias_tokens):
+                score = 0.91
+            elif len(alias_tokens) > 1 and set(alias_tokens).issubset(tokens):
+                score = 0.8
+            elif len(alias_tokens) == 1 and alias_tokens[0] in tokens:
+                score = 0.86
+            scores[role] = max(scores.get(role, 0.0), score)
     raw = str(value or "")
     lower = raw.lower()
     if "[sound:" in lower:
-        return "audio", 0.78
+        scores["audio"] = max(scores.get("audio", 0.0), 0.88)
     if "<img" in lower:
-        return "image", 0.72
+        scores["image"] = max(scores.get("image", 0.0), 0.84)
     if ".gif" in lower:
-        return "kanjiGif", 0.7
+        scores["kanjiGif"] = max(scores.get("kanjiGif", 0.0), 0.82)
     if _looks_like_code(raw):
-        return "question", 0.48
-    return "unknown", 0.2
+        scores["code"] = max(scores.get("code", 0.0), 0.58)
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    if not ranked or ranked[0][1] < 0.58:
+        return "unknown", 0.2
+    if len(ranked) > 1 and ranked[1][1] >= 0.58 and ranked[0][1] - ranked[1][1] < 0.07:
+        return "unknown", round(ranked[0][1] - ranked[1][1] + 0.3, 2)
+    return ranked[0][0], round(ranked[0][1], 2)
 
 
 def detect_media_badges(field_values: list[dict[str, Any]], profile: dict[str, Any]) -> list[str]:
@@ -675,41 +693,41 @@ def _native_render_output(card: Any) -> dict[str, Any] | None:
 
 
 def _native_question_answer(card: Any) -> dict[str, Any] | None:
-    question = _call_native_card_method(getattr(card, "question", None))
-    answer = _call_native_card_method(getattr(card, "answer", None))
+    question = _call_native_question(getattr(card, "question", None))
+    answer = _call_native_answer(getattr(card, "answer", None))
     if question is None and answer is None:
         return None
     return {"frontHtml": question or "", "backHtml": answer or "", "css": ""}
 
 
 def _call_native_render_output(render_output: Any) -> Any:
-    for kwargs in (
-        {"reload": True, "browser": True},
-        {"browser": True},
-        {"reload": True},
-        {},
-    ):
-        try:
-            return render_output(**kwargs)
-        except TypeError:
-            continue
-    return None
+    # Anki 26.05+ reviewer context. Browser Appearance is compact identity only.
+    if not callable(render_output):
+        return None
+    try:
+        return render_output(reload=True, browser=False)
+    except TypeError:
+        return None
 
 
-def _call_native_card_method(method: Any) -> str | None:
+def _call_native_question(method: Any) -> str | None:
+    # Explicit compatibility fallback for the supported reviewer question API.
     if not callable(method):
         return None
-    for kwargs in (
-        {"reload": True, "browser": True},
-        {"browser": True},
-        {"reload": True},
-        {},
-    ):
-        try:
-            return str(method(**kwargs) or "")
-        except TypeError:
-            continue
-    return None
+    try:
+        return str(method(reload=True, browser=False) or "")
+    except TypeError:
+        return None
+
+
+def _call_native_answer(method: Any) -> str | None:
+    # Anki 26.05 Card.answer() has no browser/reload arguments.
+    if not callable(method):
+        return None
+    try:
+        return str(method() or "")
+    except TypeError:
+        return None
 
 
 def _native_output_text(output: Any, attrs: tuple[str, ...], method_name: str) -> str:
@@ -829,9 +847,29 @@ def safe_plain_text(value: Any, limit: int | None = None) -> str:
 
 
 def normalize_name(value: Any) -> str:
-    text = str(value or "").strip().lower()
-    text = text.replace("_", " ").replace("-", " ")
-    return re.sub(r"\s+", " ", text)
+    text = unicodedata.normalize("NFKC", str(value or "").strip())
+    separated: list[str] = []
+    for index, char in enumerate(text):
+        previous = text[index - 1] if index else ""
+        following = text[index + 1] if index + 1 < len(text) else ""
+        boundary = bool(index and (
+            (previous.islower() and char.isupper())
+            or (previous.isalpha() and char.isdigit())
+            or (previous.isdigit() and char.isalpha())
+            or (previous.isupper() and char.isupper() and following.islower())
+        ))
+        if boundary:
+            separated.append(" ")
+        separated.append(char)
+    normalized = "".join(separated).casefold()
+    normalized = re.sub(r"[_\-./:]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _contains_token_phrase(tokens: tuple[str, ...], phrase: tuple[str, ...]) -> bool:
+    if len(phrase) > len(tokens):
+        return False
+    return any(tokens[index:index + len(phrase)] == phrase for index in range(len(tokens) - len(phrase) + 1))
 
 
 def _template_profiles(raw_templates: Any, fields: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -1,327 +1,206 @@
-# Gamification track
+# Трек Gamification
 
-**Track:** `G`
-**Role:** parallel research/product direction
-**Current status:** `G0` is Next; production integration is not approved
+**Трек:** `G`  
+**Роль:** параллельное research/product направление  
+**Текущий статус:** `G0` — следующий; production integration не одобрена
 
-Gamification does not block `C1` Cards v2 or `C2` Core 1.0. Research code, fixtures and generated evidence do not enter the add-on package, Fast CI or release workflows without an explicit later decision.
+Gamification не блокирует Core. Research code, fixtures и generated evidence не входят в add-on package, Fast CI или release без отдельного решения.
 
-## Source audit
+Исторический аудит исходной research-ветки и внешней evidence base вынесен в отдельный отчёт: [gamification source audit](../../reports/research/gamification-track-source-audit-2026-07-18.md).
 
-The source branch is `chatgpt/gamification-concept-foundation`. At the 2026-07-18 audit it diverged from current `master`: 48 commits ahead, 99 behind, merge base `4d197c1037fd66401735e654c6697791364518a4`.
+## Карта этапов
 
-The branch is a substantial research source, not a merge-ready production feature branch:
+```mermaid
+flowchart LR
+    G0[G0 Reconcile research] --> G1[G1 Review XP evidence]
+    G1 --> G2[G2 Learn XP]
+    G2 --> G3[G3 Create XP]
+    G3 --> G4[G4 Economy calibration]
+    G4 --> G5{Production architecture approved?}
+    G5 -->|yes| G6[G6 Local MVP]
+    G6 -. evidence trigger .-> G7[G7 Achievements]
+    G6 -. validated domain .-> G8[G8 Skills / quests / expansion]
 
-- Progression and Anki XP foundations are `DRAFT v0.2`;
-- Review taxonomy, reward, abuse and day aggregation are developed drafts;
-- Stage 5A and multiple simulator sub-stages are documented as complete;
-- Stage 5B.C and overall Review simulation remain `PARTIAL`;
-- cross-horizon retention-cycling evidence is the open blocker;
-- Learn XP and Create XP are not started;
-- global XP conversion and production ledger/API/migrations/UI are not designed.
-
-Direct spot-checks confirmed that simulator implementation and tests are populated. For example, the scenario runner is implemented, and its tests assert 26 scenarios and 53 assertions. Those checks establish that the files exist; they do not substitute for executing the full branch test/simulation commands on a current master-based branch.
-
-Do not merge or rebase the historical branch wholesale. A later research PR must selectively reconcile current assets with `master`, rerun the documented checks and separate reproducible current evidence from superseded reports.
-
-## Evidence baseline
-
-External research supports a cautious, theory-informed direction rather than a promise that points always improve learning:
-
-- Self-Determination Theory interventions support autonomy and competence and can improve intrinsic motivation;
-- gamification effects are design- and audience-dependent;
-- personalized approaches can outperform one-size-fits-all designs;
-- points, badges, competition and leaderboards can also produce motivational or performance harms;
-- short interventions are overrepresented, while long-term effects require longitudinal and matched-control evidence.
-
-Design consequences:
-
-- preserve autonomy, competence and relatedness;
-- provide settings and opt-out before production activation;
-- treat leaderboards/competition as conditional, never default requirements;
-- separate engagement metrics from learning outcomes;
-- measure novelty decay and long-horizon behavior;
-- prefer explainable progress and constructive feedback over escalating extrinsic rewards.
-
-Evidence references:
-
-- https://doi.org/10.1016/j.lmot.2024.102015
-- https://doi.org/10.1007/s11423-023-10337-7
-- https://doi.org/10.1016/j.lindif.2024.102470
-- https://doi.org/10.1111/jcal.13077
-- https://doi.org/10.1016/j.infsof.2022.107142
-- https://doi.org/10.3390/educsci11010032
-
-## Sequence
-
-```text
-G0 Reconcile research branch with current master
-→ G1 Close Review XP cycling evidence gap
-→ G2 Learn XP specification and simulation
-→ G3 Create XP specification and simulation
-→ G4 Cross-domain economy calibration
-→ G5 Production architecture foundation
-→ G6 Gamification MVP
-→ G7 Achievements foundation (conditional)
-→ G8 Skills/quests/domain expansion (conditional)
+    classDef conditional stroke-dasharray: 5 5;
+    class G5,G7,G8 conditional;
 ```
 
-## G0 — Research reconciliation
+## Product principles
 
-**Status:** Next
+- autonomy, competence и opt-out важнее механического роста points;
+- engagement metrics не подменяют learning outcomes;
+- competition и leaderboards не являются default;
+- reward model должен быть explainable, abuse-resistant и longitudinally tested;
+- production остаётся local-first до отдельного Identity decision;
+- placeholder XP, levels и achievements запрещены.
 
-### Goal
+## Краткая карта
 
-Create a new branch from current `master`, selectively recover valid research assets and establish one truthful, reproducible research baseline.
+| Этап | Статус | Цель | Gate завершения |
+| --- | --- | --- | --- |
+| **G0 Research reconciliation** | Next | Перенести валидные research assets на актуальную базу без wholesale merge | current-base research package воспроизводим, superseded evidence помечено |
+| **G1 Review XP evidence** | Blocked by G0 | Закрыть cross-horizon retention-cycling gap | gate проходит либо Review model явно rejected/deferred |
+| **G2 Learn XP** | Planned | Определить initial-learning rewards и anti-farming | versioned spec и reproducible simulation evidence |
+| **G3 Create XP** | Planned | Вознаграждать полезные state transitions без spam/farming | bounded reward и resistance к duplicate/reset/import abuse |
+| **G4 Economy calibration** | After G1–G3 | Свести XP domains, level curve, streak, rest, Momentum и recovery | fairness/workload/abuse/long-horizon gates |
+| **G5 Production architecture** | Conditional | Спроектировать local-first ledger, migrations и reconciliation | threat model, data model и API boundaries approved |
+| **G6 Gamification MVP** | Conditional | Level/XP, streak, Momentum, explanations и opt-out | migrations, accessibility, privacy и real-Anki verification |
+| **G7 Achievements** | Conditional | Добавить milestones при доказанном feedback gap | rules bounded, explainable, optional и retroactively safe |
+| **G8 Skills/quests/expansion** | Deferred | Расширять один подтверждённый workflow/domain за раз | отдельная taxonomy, calibration, privacy и ownership |
 
-### Dependencies
+## Stage contracts
 
-Read access to the historical branch. No dependency on the core track.
+### G0 — Research reconciliation
 
-### Scope
+**Dependencies:** read access к historical branch; Core не блокирует этап.
 
-- inventory documents, contracts, source, scenarios, schemas, tests and evidence;
-- resolve drift against current repository structure and policies;
-- rerun and record actual test/scenario/oracle counts;
-- distinguish current results from superseded reports;
-- preserve research package isolation;
-- decide which assets are imported, rewritten, archived or discarded.
+**Scope:**
 
-### Out of scope
+- inventory documents, contracts, source, scenarios, schemas, tests и evidence;
+- reconcile repository drift;
+- rerun и записать фактические test/scenario/oracle counts;
+- отделить current results от superseded reports;
+- решить, какие assets imported, rewritten, archived или discarded;
+- сохранить research package isolation.
+
+**Вне scope:**
 
 - production add-on integration;
-- changing XP formulas merely to make checks pass;
-- merging the historical branch wholesale;
-- Fast CI or package inclusion.
+- изменение XP formulas только ради зелёных checks;
+- wholesale merge/rebase historical branch;
+- Fast CI или package inclusion.
 
-### Activation criteria
+**Completion:** актуальная research branch/PR содержит self-consistent package и docs; checks воспроизводимы; production/runtime/workflow files не меняются.
 
-Already met: the branch is materially diverged from `master` and must be reconciled before further authoritative research work.
+### G1 — Review XP cross-horizon evidence
 
-### Completion criteria
+**Dependencies:** executable G0 baseline, persistent matched-card longitudinal simulator, versioned candidate/evidence contracts.
 
-A master-based research branch/PR contains a self-consistent package and docs; actual checks are reproducible; superseded evidence is marked; no production/runtime/workflow files change.
+**Scope:**
 
-## G1 — Close Review XP cross-horizon cycling gap
+- defensible candidate hypotheses;
+- matched 90/365-day и sensitivity runs;
+- hard gates до Pareto ranking;
+- explicit reject/defer decision при недостаточной evidence.
 
-**Status:** Blocked by G0
+**Вне scope:** production economy, Learn/Create XP и изменения Anki scheduling.
 
-### Goal
+**Completion:** cycling growth gate проходит под documented tolerances либо Review model явно rejected/deferred. Research candidate не называется production-ready.
 
-Resolve the observed 90→365-day retention-cycling advantage without sacrificing honest baseline reward, session invariance or return-from-backlog behavior.
+### G2 — Learn XP
 
-### Dependencies
+**Dependencies:** G1 complete и stable evidence methodology.
 
-G0 executable baseline; persistent matched-card longitudinal simulator; versioned candidate/evidence contracts.
+**Scope:**
 
-### Scope
+- event taxonomy initial learning;
+- pending/confirmed reward transitions;
+- delayed confirmation;
+- Undo/import/sync semantics;
+- fairness и abuse scenarios;
+- simulation.
 
-Defensible candidate hypotheses, matched 90/365-day and sensitivity runs, hard gates before Pareto ranking, and an explicit reject/defer decision when evidence remains insufficient.
+**Вне scope:** production ledger/UI и universal Review/Learn formula.
 
-### Out of scope
+**Completion:** versioned specification и reproducible simulator evidence; values остаются research-only.
 
-Production economy, Learn/Create XP and changes to Anki scheduling.
+### G3 — Create XP
 
-### Activation criteria
+**Dependencies:** G2 methodology и ясные Cards/Search/action provenance boundaries.
 
-G0 closes with trustworthy longitudinal tooling.
+**Scope:**
 
-### Completion criteria
+- creation/readiness/fix events;
+- delayed confirmation;
+- lifetime reward state;
+- quality и abuse controls;
+- scenarios и simulation.
 
-The cycling growth gate passes under documented tolerances or the Review model is explicitly rejected/deferred. A recommended research candidate is not called production-ready.
+**Вне scope:** remote AI content scoring, arbitrary surveillance и production integration.
 
-## G2 — Learn XP specification and simulation
+**Completion:** specification и evidence показывают bounded reward и resistance к duplicate/reset/import farming.
 
-**Status:** Planned after G1
+### G4 — Cross-domain economy calibration
 
-### Goal
+**Dependencies:** research candidates Review, Learn и Create XP.
 
-Define initial-learning units, pending/confirmed rewards and anti-farming behavior independently from Review XP.
+**Scope:**
 
-### Dependencies
+- conversion между XP domains;
+- level curve и productive-day scale;
+- streak, Momentum, planned rest, Streak Guard и recovery;
+- synthetic populations, matched controls и sensitivity;
+- individual-difference и novelty-decay plan;
+- explicit opt-out requirements.
 
-G1 complete; shared evidence methodology stable.
+**Вне scope:** production storage/API/UI.
 
-### Scope
+**Completion:** versioned candidate проходит fairness, abuse, workload и long-horizon gates; unresolved uncertainty остаётся видимой.
 
-Event taxonomy, state transitions, delayed confirmation, Undo/import/sync semantics, scenarios, simulation and fairness/abuse gates.
+### G5 — Production architecture foundation
 
-### Out of scope
+**Activation:** G4 accepted; model достаточно стабилен, чтобы schema/versioning не устарели немедленно.
 
-Production ledger/UI and a universal Review/Learn formula.
+**Scope:**
 
-### Activation criteria
+- event capture;
+- immutable/reconcilable reward ledger;
+- per-profile persistence и migrations;
+- Undo/sync/import/late-history reconciliation;
+- privacy separation;
+- versioning и explainability;
+- threat model и API boundaries.
 
-Review evidence no longer blocks cross-domain calibration.
+**Вне scope:** default accounts, remote study-history telemetry, competition и UI expansion.
 
-### Completion criteria
+**Completion:** architecture и verification plan approved независимо от UI.
 
-A versioned specification and reproducible simulator evidence exist; candidate values remain research-only.
+### G6 — Gamification MVP
 
-## G3 — Create XP specification and simulation
+**Activation:** G5 complete и отдельное owner approval production implementation.
 
-**Status:** Planned after G2
+**Scope:**
 
-### Goal
+- local level/XP;
+- streak с planned rest;
+- Momentum;
+- transparent reward history;
+- settings, full disable/reset/export;
+- accessible RU/EN UI.
 
-Reward useful material state transitions without incentivizing low-quality card spam or repeated edits.
+**Вне scope:** leaderboards, social competition, marketplace, skills, quests и mandatory accounts.
 
-### Dependencies
+**Completion:** migrations/reconciliation, accessibility, privacy, economy gates и real-Anki verification проходят без отправки study events в telemetry.
 
-G2 methodology; clear Cards/Search/action provenance boundaries.
+### G7 — Achievements
 
-### Scope
+**Activation:** measured MVP usage показывает конкретный feedback gap.
 
-Creation/readiness/fix events, delayed confirmation, lifetime reward state, quality and abuse controls, scenarios and simulation.
+**Scope:** минимальная taxonomy milestones, versioning, explainability и retroactive reconciliation.
 
-### Out of scope
+**Вне scope:** rankings, loot economies и mandatory engagement loops.
 
-Remote AI content scoring, arbitrary surveillance and production integration.
+**Completion:** rules bounded, optional и безопасны для retroactive/import/reset behavior.
 
-### Activation criteria
+### G8 — Skills, quests и domain expansion
 
-A concrete and auditable notion of useful creation/fix work exists.
+**Activation:** существует один concrete non-Anki workflow с evidence, owner и reason to share progression.
 
-### Completion criteria
+**Scope:** один named domain/workflow за раз со своей event taxonomy, calibration и privacy model.
 
-A versioned specification and evidence demonstrate bounded reward and resistance to duplicate/reset/import farming.
+**Вне scope:** generic life tracking, universal XP conversion и speculative routes/settings.
 
-## G4 — Cross-domain economy calibration
+**Completion:** новый domain не искажает Anki economy, остаётся local-first и имеет reproducible calibration.
 
-**Status:** Planned after G1–G3
+## Общие границы
 
-### Goal
+Без отдельного решения запрещены:
 
-Calibrate Review/Learn/Create conversion, level curve, productive-day scale, streak, Momentum, planned rest, Streak Guard and recovery behavior as one economy.
+- production storage/API/UI;
+- accounts и remote study history;
+- leaderboards/marketplace;
+- generic life-tracking framework;
+- изменение Anki scheduling;
+- включение research dependencies в package или Fast CI.
 
-### Dependencies
-
-Research candidates for all three Anki XP domains.
-
-### Scope
-
-Long-horizon synthetic populations, matched controls, sensitivity, individual-difference analysis, novelty-decay measurement plan and explicit opt-out requirements.
-
-### Out of scope
-
-Production storage/API/UI.
-
-### Activation criteria
-
-No domain is represented by placeholder values.
-
-### Completion criteria
-
-A versioned economy candidate passes fairness, abuse, workload and long-horizon gates; unresolved uncertainty remains visible.
-
-## G5 — Production architecture foundation
-
-**Status:** Conditional after G4
-
-### Goal
-
-Design a local-first, explainable and reconcilable production system before any gamification UI.
-
-### Dependencies
-
-G4 accepted research candidate; C2 core contracts sufficiently stable.
-
-### Scope
-
-Event capture, immutable/reconcilable reward ledger, per-profile persistence, migrations, Undo/sync/import/late-history reconciliation, privacy separation, versioning and explainability.
-
-### Out of scope
-
-Default accounts, remote telemetry of learning history, competitive features and UI expansion.
-
-### Activation criteria
-
-The economy is stable enough that schema/versioning work will not immediately be invalidated.
-
-### Completion criteria
-
-Threat model, data model, migrations, reconciliation rules, API boundaries and verification plan are approved independently of UI.
-
-## G6 — Gamification MVP
-
-**Status:** Conditional after G5
-
-### Goal
-
-Deliver local level/XP, streak with planned rest, Momentum, explanations/history and settings/opt-out.
-
-### Dependencies
-
-G5 complete; required core contracts stable.
-
-### Scope
-
-Local-first MVP, accessible RU/EN UI, transparent reward breakdown and full disable/reset/export behavior.
-
-### Out of scope
-
-Leaderboards, social competition, marketplace, skills, quests and mandatory accounts.
-
-### Activation criteria
-
-Architecture and research gates are complete, and the owner explicitly approves product implementation.
-
-### Completion criteria
-
-MVP passes migrations/reconciliation, long-horizon economy, accessibility, privacy and real-Anki verification without sending study events to telemetry.
-
-## G7 — Achievements foundation
-
-**Status:** Conditional
-
-### Goal
-
-Add durable milestones only when they improve feedback without dominating intrinsic motivation.
-
-### Dependencies
-
-G6 evidence and opt-out/settings contracts.
-
-### Scope
-
-A minimal achievement taxonomy, versioning, explainability and retroactive reconciliation.
-
-### Out of scope
-
-Competitive rankings, loot economies and mandatory engagement loops.
-
-### Activation criteria
-
-Measured MVP usage identifies a concrete feedback gap that achievements solve.
-
-### Completion criteria
-
-Achievement rules are bounded, explainable, optional and tested against retroactive/import/reset behavior.
-
-## G8 — Skills, quests and domain expansion
-
-**Status:** Deferred / conditional
-
-### Goal
-
-Extend progression only to a validated non-Anki domain or a specific quest/skill workflow.
-
-### Dependencies
-
-G6 stable; a domain-specific evidence model and product owner exist.
-
-### Scope
-
-One named domain/workflow at a time with its own event taxonomy, calibration and privacy model.
-
-### Out of scope
-
-A generic life-tracking framework, universal XP conversion and speculative routes/settings.
-
-### Activation criteria
-
-A concrete non-Anki workflow has evidence, maintenance ownership and a reason to share progression.
-
-### Completion criteria
-
-The new domain preserves local-first/privacy boundaries, has reproducible calibration and does not distort the Anki economy.
+G5–G8 не резервируют будущий UI и не активируются автоматически завершением предыдущего research stage.

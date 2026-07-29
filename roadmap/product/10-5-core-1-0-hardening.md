@@ -1,7 +1,17 @@
-# Compatibility pointer — former Stage 10.5
+# Указатель совместимости — прежний Stage 10.5
 
-This path is retained so historical links do not break.
+Этот путь сохранён, чтобы исторические ссылки не ломались.
 
-Core 1.0 Hardening is now **`C2`** in the authoritative [Core product track](../core/README.md). Selected prerequisite hardening may occur inside `C1`, while full contract freeze and release closure remain in `C2`.
+Core 1.0 Hardening является этапом **C2** в авторитетном [треке Core](../core/README.md).
 
-This stage does not rebuild CI/CD; the independent [Platform / CI track](../platform/README.md) remains authoritative for delivery infrastructure.
+C2:
+
+- реализован;
+- прошёл exact-SHA Fast CI, targeted `standard/cards` с restart и final `standard/full`;
+- влит в `core` merge commit `edb140b1197910aae31500a40e4a8287cc46b760`.
+
+После merge ручная проверка владельца выявила незакрытые Cards/Inspection Profiles/motion regressions. Их исправление является append-only границей приёмки C2, а не новым `C2.x` этапом.
+
+C2 больше не является последним обязательным этапом перед Core 1.0. Актуальный путь продолжается через C3–C6, определённые в authoritative Core roadmap.
+
+Этот этап не перестраивает CI/CD. За инфраструктуру поставки отвечает независимый [трек Platform / CI](../platform/README.md).

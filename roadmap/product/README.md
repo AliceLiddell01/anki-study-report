@@ -1,8 +1,8 @@
-# Product roadmap index
+# Индекс исторической product-roadmap
 
-`roadmap/product/` preserves the accepted historical Stage 0–9.5 sequence. Future work is now organized by independent tracks instead of one global Stage 10–13 queue.
+`roadmap/product/` сохраняет принятую историческую последовательность Stage 0–9.5. Будущая работа организована по независимым трекам и больше не использует одну глобальную очередь Stage 10–13.
 
-## Completed product contour
+## Завершённый продуктовый контур
 
 ```text
 Stage 0   Foundation / Legacy Cleanup
@@ -18,17 +18,19 @@ Stage 8   Search Query / Search v1 / Safe Actions
 Stage 9   Notices / Telemetry / Signals / Notifications
 ```
 
-## Future product tracks
+## Актуальные треки
 
-- [Core product track](../core/README.md): `C1 Cards v2 → C2 Core 1.0 → C3? Contextual Additions`.
-- [Gamification track](../gamification/README.md): parallel research/product stages `G0–G8`.
-- [Telemetry operations](../operations/README.md): protected internal `O1`.
-- [Identity continuity](../identity/README.md): conditional `I1`.
-- [Extension ecosystem](../extensions/README.md): conditional/deferred `E1–E4`.
-- [Platform / CI](../platform/README.md): independent CI/CD/E2E line.
+- [Core](../core/README.md): `C1 → C2 → manual acceptance closure → C3 UI & Shell → C4 Data Independence → C5 Today v2 → C6 Profile v2 → Core 1.0`.
+- [Gamification](../gamification/README.md): параллельный research/product track `G0–G8`; production не одобрен.
+- [Telemetry operations](../operations/README.md): защищённый внутренний трек `O`.
+- [Identity continuity](../identity/README.md): условный `I1`.
+- [Extension ecosystem](../extensions/README.md): условный/отложенный `E1–E4`.
+- [Platform / CI](../platform/README.md): независимый CI/CD/E2E track.
+
+`C1.6B` не входит в обязательную очередь. Прежний Stage 11/`C3 Contextual Additions` больше не является зарезервированным этапом: contextual additions допускаются только как отдельные доказанные предложения.
 
 ## Compatibility paths
 
-The former Stage 10–13 and `unscheduled-*` files remain at their existing paths as short pointers to the new authoritative tracks. This avoids breaking links while preventing two competing roadmaps.
+Прежние файлы Stage 10–13 и `unscheduled-*` остаются по существующим путям как короткие указатели. Это сохраняет исторические ссылки и не создаёт вторую конкурирующую roadmap.
 
-Canonical current behavior remains in `docs/`; historical evidence remains in `reports/`.
+Каноническое текущее поведение находится в `docs/`; исторические доказательства — в `reports/`; обязательный будущий путь — в `roadmap/core/README.md`.

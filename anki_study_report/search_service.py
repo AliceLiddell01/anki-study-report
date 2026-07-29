@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from html import unescape
 from html.parser import HTMLParser
+import heapq
 import math
 import re
 from typing import Any
 
+from .card_display_identity import project_card_display_identity
+from .note_intelligence import build_rendered_preview_native_first
 
-SEARCH_SCHEMA_VERSION = 1
+
+SEARCH_SCHEMA_VERSION = 2
 MAX_QUERY_LENGTH = 4096
 MAX_FILTERS = 12
 ALLOWED_PAGE_SIZES = (25, 50, 100)
@@ -53,8 +57,10 @@ class SearchEntityNotFoundError(LookupError):
 def normalize_search_query_request(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise SearchValidationError({"request": "Expected a JSON object."})
-    allowed = {"mode", "query", "filters", "sort", "page", "pageSize", "requestId"}
+    allowed = {"schemaVersion", "mode", "query", "filters", "sort", "page", "pageSize", "requestId"}
     errors = {key: "Unexpected field." for key in raw if key not in allowed}
+    if raw.get("schemaVersion") != SEARCH_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
+        errors["schemaVersion"] = "Expected schemaVersion 2."
 
     mode = raw.get("mode")
     if mode not in MODES:
@@ -91,6 +97,7 @@ def normalize_search_query_request(raw: object) -> dict[str, Any]:
     if errors:
         raise SearchValidationError(errors)
     return {
+        "schemaVersion": SEARCH_SCHEMA_VERSION,
         "mode": mode,
         "query": query,
         "filters": filters,
@@ -104,8 +111,10 @@ def normalize_search_query_request(raw: object) -> dict[str, Any]:
 def normalize_search_inspect_request(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise SearchValidationError({"request": "Expected a JSON object."})
-    allowed = {"mode", "cardId", "noteId", "requestId"}
+    allowed = {"schemaVersion", "mode", "cardId", "noteId", "requestId"}
     errors = {key: "Unexpected field." for key in raw if key not in allowed}
+    if raw.get("schemaVersion") != SEARCH_SCHEMA_VERSION or isinstance(raw.get("schemaVersion"), bool):
+        errors["schemaVersion"] = "Expected schemaVersion 2."
     mode = raw.get("mode")
     if mode not in MODES:
         errors["mode"] = "Expected cards or notes."
@@ -122,26 +131,35 @@ def normalize_search_inspect_request(raw: object) -> dict[str, Any]:
         request_id = None
     if errors:
         raise SearchValidationError(errors)
-    return {"mode": mode, expected_key: entity_id, "requestId": request_id}
+    return {"schemaVersion": SEARCH_SCHEMA_VERSION, "mode": mode, expected_key: entity_id, "requestId": request_id}
 
 
-def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
+def execute_search_query(
+    col: Any,
+    raw: object,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     # Always revalidate at the collection boundary. This keeps the public
     # helpers safe even when they are called outside the HTTP bridge.
     request = normalize_search_query_request(raw)
     native_query = build_native_query(col, request)
     found = col.find_cards(native_query, order=False) if request["mode"] == "cards" else col.find_notes(native_query, order=False)
 
-    ids = sorted({_coerce_entity_id(value) for value in found}, reverse=request["sort"]["direction"] == "desc")
-    truncated = len(ids) > RESULT_CAP
-    bounded_ids = ids[:RESULT_CAP]
+    bounded_ids, truncated = _bounded_sorted_entity_ids(
+        found,
+        limit=RESULT_CAP,
+        reverse=request["sort"]["direction"] == "desc",
+    )
     bounded_total = len(bounded_ids)
     page = request["page"]
     page_size = request["pageSize"]
     offset = (page - 1) * page_size
     page_ids = bounded_ids[offset:offset + page_size]
     if request["mode"] == "cards":
-        items = [project_card_row(col, col.get_card(card_id)) for card_id in page_ids]
+        items = [
+            project_card_row(col, col.get_card(card_id), formatter_resolver)
+            for card_id in page_ids
+        ]
     else:
         items = [project_note_row(col, col.get_note(note_id)) for note_id in page_ids]
     response: dict[str, Any] = {
@@ -163,12 +181,55 @@ def execute_search_query(col: Any, raw: object) -> dict[str, Any]:
     return response
 
 
-def execute_search_inspect(col: Any, raw: object) -> dict[str, Any]:
+def _bounded_sorted_entity_ids(
+    values: Any,
+    *,
+    limit: int,
+    reverse: bool,
+) -> tuple[list[int], bool]:
+    """Select deterministic IDs with O(limit) add-on memory.
+
+    Anki's public find_cards/find_notes API still returns its complete native
+    sequence. This helper prevents a second full-size set and sorted list in
+    the add-on while preserving the existing hard result cap.
+    """
+
+    bounded_limit = max(1, int(limit))
+    heap: list[int] = []
+    selected: set[int] = set()
+    truncated = False
+    for raw_value in values:
+        entity_id = _coerce_entity_id(raw_value)
+        if entity_id in selected:
+            continue
+        heap_value = entity_id if reverse else -entity_id
+        if len(heap) < bounded_limit:
+            heapq.heappush(heap, heap_value)
+            selected.add(entity_id)
+            continue
+        boundary = heap[0] if reverse else -heap[0]
+        better = entity_id > boundary if reverse else entity_id < boundary
+        truncated = True
+        if not better:
+            continue
+        removed = heapq.heapreplace(heap, heap_value)
+        selected.remove(removed if reverse else -removed)
+        selected.add(entity_id)
+    return sorted(selected, reverse=reverse), truncated
+
+
+def execute_search_inspect(
+    col: Any,
+    raw: object,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     request = normalize_search_inspect_request(raw)
     mode = request["mode"]
     try:
         if mode == "cards":
-            details = project_card_details(col, col.get_card(request["cardId"]))
+            details = project_card_details(
+                col, col.get_card(request["cardId"]), formatter_resolver
+            )
         else:
             details = project_note_details(col, col.get_note(request["noteId"]))
     except SearchEntityNotFoundError:
@@ -179,6 +240,26 @@ def execute_search_inspect(col: Any, raw: object) -> dict[str, Any]:
     if request.get("requestId") is not None:
         response["requestId"] = request["requestId"]
     return response
+
+
+def resolve_card_rows(
+    col: Any,
+    card_ids: list[int],
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
+    """Resolve bounded exact card IDs through the canonical Search row projector."""
+
+    items: list[dict[str, Any]] = []
+    missing_card_ids: list[str] = []
+    for card_id in card_ids:
+        try:
+            card = col.get_card(card_id)
+            if _coerce_entity_id(getattr(card, "id", 0)) != card_id:
+                raise LookupError
+            items.append(project_card_row(col, card, formatter_resolver))
+        except Exception:
+            missing_card_ids.append(str(card_id))
+    return {"items": items, "missingCardIds": missing_card_ids}
 
 
 def build_native_query(col: Any, request: dict[str, Any]) -> str:
@@ -214,20 +295,32 @@ def safe_plain_text(value: object, *, max_length: int = MAX_PRIMARY_TEXT_LENGTH)
     return text[: max(0, max_length - 1)].rstrip() + "…"
 
 
-def project_card_row(col: Any, card: Any) -> dict[str, Any]:
+def project_card_row(
+    col: Any,
+    card: Any,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
     note_type = _note_type(note)
     deck_id = _card_deck_id(card)
+    note_type_id = str(_coerce_entity_id(getattr(note, "mid", note_type.get("id", 0))))
+    template_ordinal = int(getattr(card, "ord", 0))
+    formatter = (
+        formatter_resolver.resolve(note_type_id, template_ordinal)
+        if formatter_resolver is not None and callable(getattr(formatter_resolver, "resolve", None))
+        else None
+    )
+    display_identity = project_card_display_identity(card, formatter).to_wire()
     return {
         "cardId": str(_coerce_entity_id(card.id)),
         "noteId": str(_coerce_entity_id(card.nid)),
         "deckId": str(deck_id),
         "deckName": _deck_name(col, deck_id),
-        "noteTypeId": str(_coerce_entity_id(getattr(note, "mid", note_type.get("id", 0)))),
+        "noteTypeId": note_type_id,
         "noteTypeName": str(note_type.get("name") or ""),
-        "templateOrdinal": int(getattr(card, "ord", 0)),
+        "templateOrdinal": template_ordinal,
         "templateName": _template_name(card, note_type),
-        "primaryText": _primary_text(note, note_type),
+        **display_identity,
         "state": _card_state(card),
         "due": int(getattr(card, "due", 0)),
         "interval": int(getattr(card, "ivl", 0)),
@@ -253,9 +346,15 @@ def project_note_row(col: Any, note: Any) -> dict[str, Any]:
     }
 
 
-def project_card_details(col: Any, card: Any) -> dict[str, Any]:
-    row = project_card_row(col, card)
+def project_card_details(
+    col: Any,
+    card: Any,
+    formatter_resolver: Any = None,
+) -> dict[str, Any]:
+    row = project_card_row(col, card, formatter_resolver)
     note = card.note() if callable(getattr(card, "note", None)) else col.get_note(card.nid)
+    note_type = _note_type(note)
+    raw_fields = list(getattr(note, "fields", []) or [])
     return {
         **row,
         "deck": {"deckId": row["deckId"], "deckName": row["deckName"]},
@@ -263,6 +362,13 @@ def project_card_details(col: Any, card: Any) -> dict[str, Any]:
         "template": {"ordinal": row["templateOrdinal"], "name": row["templateName"]},
         "queue": int(getattr(card, "queue", 0)),
         "tags": _tags(note, limit=MAX_TAGS),
+        "renderedPreview": build_rendered_preview_native_first(
+            col,
+            card.id,
+            note_type,
+            raw_fields,
+            int(getattr(card, "ord", 0)),
+        ),
     }
 
 
@@ -422,6 +528,8 @@ def _note_items(note: Any) -> list[tuple[str, str]]:
 
 
 def _primary_text(note: Any, note_type: dict[str, Any]) -> str:
+    """Project note-mode text only; card identity must never call this helper."""
+
     fields = list(getattr(note, "fields", []) or [])
     sort_index = note_type.get("sortf", 0)
     if isinstance(sort_index, bool) or not isinstance(sort_index, int) or sort_index < 0:
@@ -466,16 +574,20 @@ def _deck_summary(col: Any, cards: list[Any], limit: int) -> list[dict[str, str]
     return [{"deckId": str(deck_id), "deckName": _deck_name(col, deck_id)} for deck_id in ids[:limit]]
 
 
-def _template_name(card: Any, note_type: dict[str, Any]) -> str:
+def _card_template(card: Any, note_type: dict[str, Any]) -> dict[str, Any]:
     try:
         if callable(getattr(card, "template", None)):
             template = card.template()
         else:
             templates = note_type.get("tmpls") or []
             template = templates[int(getattr(card, "ord", 0))] if templates else {}
-        return str(template.get("name") or "") if isinstance(template, dict) else ""
+        return template if isinstance(template, dict) else {}
     except Exception:
-        return ""
+        return {}
+
+
+def _template_name(card: Any, note_type: dict[str, Any]) -> str:
+    return str(_card_template(card, note_type).get("name") or "")
 
 
 def _card_state(card: Any) -> str:

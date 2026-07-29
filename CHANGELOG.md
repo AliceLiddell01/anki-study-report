@@ -4,6 +4,29 @@ All notable user-facing changes to Anki Study Report are documented here.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-29
+
+### Added
+
+- Added a complete Inspection Profiles workspace with a guided basic mode, an advanced editor, configuration validation, and lifecycle controls.
+- Added an explicit single-card resolution loop in Cards: perform a safe action, recheck the card, and immediately see the updated reasons.
+
+### Changed
+
+- Improved the Cards workspace across standard, QHD, and 4K displays with a more comfortable layout, notices, fonts, and use of the preview area.
+- Priority, reason, deck, text, and learning-period filters now remain in place while navigating the dashboard during the current session.
+- Improved clarity, responsive layout, focus handling, and validation feedback in the Inspection Profiles editor.
+
+### Fixed
+
+- Improved the reliability and safety of card previews, Search, and the local dashboard.
+- Fixed optional diagnostic delivery after privacy settings changes.
+
+### Safety
+
+- A card leaves the problem queue only after an explicit recheck confirms that no current reasons remain.
+- Card previews remain local and isolated; unsafe styles and scripts are not executed.
+
 ## [1.2.0] - 2026-07-18
 
 ### Added
