@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; production integration not approved
+**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; `G5 Study Rhythm MVP Planned / Not Started`; production integration not approved
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -31,11 +31,13 @@ G4.1 Problem and contract freeze                    COMPLETE
 G4.2 Input normalization and uncertainty model      COMPLETE
 G4.3 Candidate protocol and hypothesis design       COMPLETE — v4 FROZEN_AND_EXECUTED
 G4.4 Bounded screening                              COMPLETE — REJECT
-G5  Production architecture foundation              CONDITIONAL
-G6  Gamification MVP                                CONDITIONAL
-G7  Achievements foundation                         CONDITIONAL
-G8  Skills, quests and domain expansion             DEFERRED / CONDITIONAL
+G5  Study Rhythm MVP                                PLANNED / NOT STARTED
+G6  Personal Progression Economy v1                 CONDITIONAL / NOT STARTED
+G7  Achievements foundation                         CONDITIONAL / NOT STARTED
+G8  Skills, quests and domain expansion             DEFERRED / CONDITIONAL / NOT STARTED
 ```
+
+Detailed post-G4 product plan: [G5–G8 product roadmap](g5-g8-product-roadmap.md).
 
 ## G0 — Research reconciliation
 
@@ -273,33 +275,60 @@ production integration: PROHIBITED
 
 Full dimension ledger and rejected/control candidates are recorded in the canonical closeout.
 
-## G5 — Production architecture foundation
+## G5 — Study Rhythm MVP
 
-**Status:** Conditional after G4 and stable Core contracts.
+**Status:** Planned / Not Started.
 
-Design local-first event capture, ledger, persistence, migrations, reconciliation, privacy, versioning and explainability before UI.
+G5 creates the first complete packaged Gamification feature instead of a separate theory-only architecture stage. Architecture is implemented only as required by the vertical slice.
 
-## G6 — Gamification MVP
+The MVP provides:
 
-**Status:** Conditional after G5 and explicit owner approval.
+- local opt-in;
+- weekly active-day target;
+- planned rest weekdays;
+- today's state and weekly progress;
+- recent rhythm context and explanations;
+- profile-level persistence;
+- strict loopback token-protected API;
+- RU/EN, light/dark and reduced-motion support.
 
-Local level/XP, streak with planned rest, Momentum, explanations/history and opt-out; no leaderboards, marketplace or mandatory accounts.
+G5 uses existing canonical `activityHub` and `profile` projections. It does not implement XP, levels, Learn XP, Create XP, cross-domain conversion, achievements or quests.
+
+The first G5 task is a bounded `core → gamification` sync. Feature implementation must not start on the stale production baseline.
+
+Full decomposition, checks, completion criteria and design-reference policy: [G5–G8 product roadmap](g5-g8-product-roadmap.md).
+
+## G6 — Personal Progression Economy v1
+
+**Status:** Conditional / Not Started.
+
+G6 may add local explainable XP/levels only after G5 closeout, explicit owner approval and a new prospective economy protocol that passes the uncertainty and extreme-volume gates responsible for G4 `REJECT`.
+
+If the Learn identity limitation remains open, the bounded direction is Review-first only: Learn XP disabled and no cross-domain conversion.
 
 ## G7 — Achievements foundation
 
-**Status:** Conditional.
+**Status:** Conditional / Not Started.
 
-Add minimal explainable achievements only after MVP evidence identifies a concrete feedback gap.
+Add a minimal deterministic achievement registry only after G5/G6 evidence identifies a concrete feedback gap. Unlocks must be explainable, idempotent and resistant to repeated-action farming.
 
 ## G8 — Skills, quests and domain expansion
 
-**Status:** Deferred / conditional.
+**Status:** Deferred / Conditional / Not Started.
 
-Add one named workflow/domain at a time; no generic life-tracking framework or speculative routes.
+Add one named evidence-backed workflow or domain at a time. Do not create a generic life-tracking framework, arbitrary scripting surface or speculative routes.
+
+Create XP remains behind its original activation gate:
+
+```text
+FIRST_STABLE_GAMIFICATION_RELEASE
+AND SEPARATE_OWNER_DECISION
+AND CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER
+```
 
 ## Production boundary
 
-No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved. G3 is deferred and non-blocking. G4/G4.4 are complete with `REJECT`; G5/G6 remain conditional and not started.
+No production add-on, dashboard, payload, API, migration, scheduler, FSRS, package, release or telemetry integration is approved by this roadmap update. G3 remains deferred and non-blocking. G4/G4.4 remain complete with `REJECT`. G5 is planned but not started; G6–G8 are not started.
 
 ## G4 publication chronology
 
