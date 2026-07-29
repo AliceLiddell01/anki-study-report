@@ -52,6 +52,32 @@ if (-not $ArtifactsDir) {
 New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
 $ArtifactsDir = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $ArtifactsDir).Path)
 $PreflightReport = Join-Path $ArtifactsDir "reports\preflight-report.json"
+$PreservedReportEvidence = @{}
+
+function Save-E2EReportEvidence {
+    param([string]$ArtifactsRoot)
+
+    $reports = Join-Path $ArtifactsRoot "reports"
+    foreach ($name in @("non-release-build-identity.json", "release-build-identity.json")) {
+        $path = Join-Path $reports $name
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $script:PreservedReportEvidence[$name] = [IO.File]::ReadAllBytes($path)
+        }
+    }
+}
+
+function Restore-E2EReportEvidence {
+    param([string]$ArtifactsRoot)
+
+    if ($script:PreservedReportEvidence.Count -eq 0) {
+        return
+    }
+    $reports = Join-Path $ArtifactsRoot "reports"
+    New-Item -ItemType Directory -Force -Path $reports | Out-Null
+    foreach ($entry in $script:PreservedReportEvidence.GetEnumerator()) {
+        [IO.File]::WriteAllBytes((Join-Path $reports $entry.Key), [byte[]]$entry.Value)
+    }
+}
 
 function Get-ComposeProjectName {
     $run = if ($env:GITHUB_RUN_ID -match '^\d+$') { $env:GITHUB_RUN_ID } else { "$PID" }
@@ -271,6 +297,7 @@ try {
     if ($BuildOnly) {
         $scriptExit = 0
     } else {
+        Save-E2EReportEvidence -ArtifactsRoot $ArtifactsDir
         $volume = "$($ArtifactsDir):/e2e/artifacts"
         $runArgs = @("run", "--rm")
         if ($PlainCompose) {
@@ -300,6 +327,7 @@ try {
         $scriptExit = Invoke-DockerComposeRaw -Arguments $runArgs
         if ($scriptExit -notin @(130, 143)) {
             Restore-E2EArtifactOwnership -Volume $volume
+            Restore-E2EReportEvidence -ArtifactsRoot $ArtifactsDir
         }
         if ($scriptExit -eq 0) {
             Assert-E2EArtifactManifest -ArtifactsRoot $ArtifactsDir
