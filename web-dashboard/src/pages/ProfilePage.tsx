@@ -54,7 +54,7 @@ function ProfilePage({ report, onReportUpdated }: Props) {
 
   if (!profile) {
     return (
-      <main className="profile-page" data-testid="profile-page">
+      <div className="profile-page" data-testid="profile-page">
         <section className="profile-unavailable" aria-labelledby="profile-unavailable-title">
           <Settings2 aria-hidden="true" />
           <div>
@@ -62,7 +62,7 @@ function ProfilePage({ report, onReportUpdated }: Props) {
             <p>{t("profile.unavailableDescription")}</p>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
 
@@ -118,7 +118,7 @@ function ProfilePage({ report, onReportUpdated }: Props) {
   };
 
   return (
-    <main className="profile-page" data-testid="profile-page">
+    <div className="profile-page" data-testid="profile-page">
       <ProfileHero profile={profile} onOpenSettings={openDialog} triggerRef={triggerRef} />
       <LearningAreas profile={profile} />
       <ProfileStatus profile={profile} />
@@ -138,7 +138,7 @@ function ProfilePage({ report, onReportUpdated }: Props) {
         />,
         document.body,
       ) : null}
-    </main>
+    </div>
   );
 }
 

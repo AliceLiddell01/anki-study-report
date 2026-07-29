@@ -94,6 +94,11 @@ describe("Profile production foundation", () => {
     expect(markup.match(/href=/g)).toHaveLength(2);
   });
 
+  it("does not add a nested main landmark inside the application shell", () => {
+    const markup = renderToStaticMarkup(<main><ProfilePage report={mockReport} /></main>);
+    expect(markup.match(/<main(?:\s|>)/g)).toHaveLength(1);
+  });
+
   it("shows three newest history rows by default and expands existing recent data", async () => {
     await act(async () => root.render(<ProfilePage report={mockReport} />));
     const list = () => container.querySelectorAll('[data-testid="profile-recent-days"] li');
