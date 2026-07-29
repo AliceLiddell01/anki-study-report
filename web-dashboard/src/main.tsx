@@ -4,6 +4,7 @@ import App from "./App";
 import "./i18n";
 import "./styles.css";
 import "./styles/cardsInbox.css";
+import "./styles/cardsTypography.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
