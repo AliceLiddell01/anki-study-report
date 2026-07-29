@@ -13,6 +13,7 @@ ROOT = Path(__file__).parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "ci-e2e.yml"
 IDENTITY_MODULE = ROOT / "scripts" / "non_release_build_identity.py"
 CANCELLATION_MODULE = ROOT / "scripts" / "prepare_ci_e2e_cancellation.py"
+DOCKER_RUNNER = ROOT / "scripts" / "run_anki_e2e_docker.ps1"
 
 
 def load_module(name: str, path: Path):
@@ -113,6 +114,19 @@ def test_identity_survives_inner_reset_by_staging_and_restoration():
     restore_block = text[restore:public]
     assert "write-artifact-manifest.py" in restore_block
     assert "Identity-aware artifact manifest regeneration failed." in restore_block
+
+
+def test_docker_runner_preserves_artifact_backed_identity_across_inner_reset():
+    text = DOCKER_RUNNER.read_text(encoding="utf-8")
+    assert '$PreservedReportEvidence = @{}' in text
+    assert '"non-release-build-identity.json"' in text
+    assert '"release-build-identity.json"' in text
+    assert "[IO.File]::ReadAllBytes" in text
+    assert "[IO.File]::WriteAllBytes" in text
+    save = text.index("Save-E2EReportEvidence -ArtifactsRoot $ArtifactsDir")
+    canonical = text.index("$scriptExit = Invoke-DockerComposeRaw -Arguments $runArgs")
+    restore = text.index("Restore-E2EReportEvidence -ArtifactsRoot $ArtifactsDir")
+    assert save < canonical < restore
 
 
 def test_cancellation_restores_staged_identity_before_minimal_export():
