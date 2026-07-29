@@ -59,7 +59,7 @@ production code и tests
 
 ## Audits
 
-- [Card alias audit](audits/card-alias-inventory.md)
+- [Card alias audit](audits/card-alias-audit.md)
 - [Legacy cleanup inventory](audits/legacy-cleanup-inventory.md)
 - [Code scanning remediation](audits/code-scanning-remediation-2026-07-13.md)
 - [Public repository readiness](audits/public-repository-readiness.md)
