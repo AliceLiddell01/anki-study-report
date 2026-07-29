@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from http.server import ThreadingHTTPServer
 from logging import Filter, Formatter, Handler, LogRecord, getLogger
 import logging
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
 
@@ -17,6 +19,41 @@ RECENT_LOG_BYTES = 200_000
 _LOGGER_NAME = "anki_study_report"
 _TOKEN_RE = re.compile(r"([?&]token=)([^&#\s]+)", re.IGNORECASE)
 _SECRET_KEY_RE = re.compile(r"(token|secret|password|api[_-]?key)", re.IGNORECASE)
+_EXPECTED_DASHBOARD_DISCONNECTS = (
+    BrokenPipeError,
+    ConnectionAbortedError,
+    ConnectionResetError,
+)
+_DASHBOARD_HANDLER_NAME = "_DashboardRequestHandler"
+_DISCONNECT_GUARD_MARKER = "__anki_study_report_disconnect_guard__"
+_ORIGINAL_THREADING_HTTP_HANDLE_ERROR = ThreadingHTTPServer.handle_error
+
+
+def _is_dashboard_http_server(server: ThreadingHTTPServer) -> bool:
+    handler_factory = getattr(server, "RequestHandlerClass", None)
+    handler_class = getattr(handler_factory, "func", handler_factory)
+    return (
+        getattr(handler_class, "__name__", "") == _DASHBOARD_HANDLER_NAME
+        and str(getattr(handler_class, "__module__", "")).endswith(".dashboard_server")
+    )
+
+
+def _handle_threading_http_error(self, request, client_address) -> None:
+    error = sys.exc_info()[1]
+    if isinstance(error, _EXPECTED_DASHBOARD_DISCONNECTS) and _is_dashboard_http_server(self):
+        return
+    _ORIGINAL_THREADING_HTTP_HANDLE_ERROR(self, request, client_address)
+
+
+def _install_dashboard_disconnect_guard() -> None:
+    current = ThreadingHTTPServer.handle_error
+    if getattr(current, _DISCONNECT_GUARD_MARKER, False):
+        return
+    setattr(_handle_threading_http_error, _DISCONNECT_GUARD_MARKER, True)
+    ThreadingHTTPServer.handle_error = _handle_threading_http_error
+
+
+_install_dashboard_disconnect_guard()
 
 
 class _EventDefaults(Filter):

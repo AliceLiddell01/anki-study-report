@@ -212,7 +212,7 @@ def test_collect_attention_cards_builds_read_only_payload():
             "fallbackReason": "native_unavailable_no_get_card",
             "frontHtml": "<b>鑑みる</b>",
             "backHtml": "<b>鑑みる</b><hr>consider",
-            "css": "@scope (.card){.card{color:red;}}",
+            "css": "@scope (.card){:scope{color:red;}}",
             "frontPlainText": "鑑みる",
             "backPlainText": "鑑みる consider",
             "mediaRefs": [],

@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import i18n from "../../i18n";
+import { validateClientDraft } from "../../hooks/useInspectionProfilesWorkspace";
 import type { InspectionProfile, InspectionProfileSummary } from "../../types/inspectionProfiles";
 import BasicProfileEditor from "./BasicProfileEditor";
 
@@ -63,6 +64,18 @@ describe("BasicProfileEditor", () => {
     expect(current.checks).toHaveLength(1);
   });
 
+  it("keeps focus inside the requirement flow after add and remove", async () => {
+    await render();
+    await clickWithoutRender(button("Add"));
+    await renderAndFrame();
+    expect(document.activeElement?.id).toBe("inspection-basic-requirement-1");
+
+    const remove = [...container.querySelectorAll<HTMLButtonElement>(".inspection-icon-button")][1]!;
+    await clickWithoutRender(remove);
+    await renderAndFrame();
+    expect(document.activeElement?.id).toBe("inspection-basic-requirement-0");
+  });
+
   it("shows friendly template names without ordinal copy", async () => {
     await render();
     const selectedScope = [...container.querySelectorAll<HTMLInputElement>("input[type='radio']")][1]!;
@@ -73,12 +86,42 @@ describe("BasicProfileEditor", () => {
     expect(container.textContent).not.toContain("Ordinal");
   });
 
+  it("requires an explicit all-templates choice instead of collapsing the last selected template", async () => {
+    await render();
+    const selectedScope = [...container.querySelectorAll<HTMLInputElement>("input[type='radio']")][1]!;
+    await act(async () => selectedScope.click());
+    await render();
+    const checkedTemplates = [...container.querySelectorAll<HTMLInputElement>(".inspection-basic-template-list input:checked")];
+    expect(checkedTemplates).toHaveLength(1);
+    expect(checkedTemplates[0]?.disabled).toBe(true);
+    expect(checkedTemplates[0]?.getAttribute("aria-describedby")).toBe("inspection-basic-template-keep-one");
+    expect(container.querySelector("#inspection-basic-template-keep-one")?.textContent).toContain("All card templates");
+    expect(current.appliesTo.templateOrdinals).toEqual([0]);
+  });
+
+  it("strictly rejects empty, zero, negative, decimal, and oversized minimum lengths", () => {
+    const withLength = (minLength: number) => ({
+      ...structuredClone(draft),
+      checks: [{ checkId: "answer-length", kind: "min_text_length" as const, roles: ["answer"], mode: "any" as const, priority: "medium" as const, minLength }],
+    });
+    for (const value of [0, -1, 1.5, 10_001]) {
+      expect(validateClientDraft(withLength(value))["profile.checks.0.minLength"]).toBe("invalid_min_length");
+    }
+    expect(validateClientDraft(withLength(1))["profile.checks.0.minLength"]).toBeUndefined();
+    expect(validateClientDraft(withLength(10_000))["profile.checks.0.minLength"]).toBeUndefined();
+  });
+
   async function render() {
     await act(async () => root.render(<BasicProfileEditor item={item} draft={current} errors={{}} onChange={(next) => { current = structuredClone(next); }} />));
     await settle();
   }
   async function settle() { await act(async () => { await Promise.resolve(); }); }
   async function click(element: HTMLElement) { await act(async () => element.click()); await render(); }
+  async function clickWithoutRender(element: HTMLElement) { await act(async () => element.click()); }
+  async function renderAndFrame() {
+    await render();
+    await act(async () => { await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())); });
+  }
   async function change(element: HTMLSelectElement, value: string) { await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); }); await render(); }
   function button(text: string) { const match = [...container.querySelectorAll<HTMLButtonElement>("button")].find((element) => element.textContent?.trim() === text); if (!match) throw new Error(`Missing ${text}`); return match; }
 });

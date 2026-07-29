@@ -32,7 +32,7 @@ export interface InspectionProfilesWorkspace {
   busy: boolean;
   status: string | null;
   conflictRevision: number | null;
-  reload: (preserveDraft?: boolean) => Promise<void>;
+  reload: (preserveDraft?: boolean, announce?: boolean) => Promise<void>;
   select: (noteTypeId: string | null, discardDirty?: boolean) => boolean;
   setDraftFromUser: (draft: InspectionProfile | null) => void;
   setImportedDraft: (draft: InspectionProfile) => void;
@@ -105,7 +105,7 @@ export function useInspectionProfilesWorkspace(): InspectionProfilesWorkspace {
     commitSnapshot({ profile: generated, baseline: cloneProfile(generated), origin: "generated", userEdited: false });
   }, [commitSnapshot]);
 
-  const reload = useCallback(async (preserveDraft = false) => {
+  const reload = useCallback(async (preserveDraft = false, announce = false) => {
     const sequence = ++querySequence.current;
     queryController.current?.abort();
     const controller = new AbortController();
@@ -117,6 +117,7 @@ export function useInspectionProfilesWorkspace(): InspectionProfilesWorkspace {
       if (sequence !== querySequence.current) return;
       setCatalog(response);
       setLoadState("ready");
+      if (announce) setStatus("catalog_refreshed");
       const currentSelectedId = selectedIdRef.current;
       if (!currentSelectedId) return;
       const current = response.items.find((item) => item.structure.noteTypeId === currentSelectedId) ?? null;
@@ -427,7 +428,12 @@ export function validateClientDraft(profile: InspectionProfile): Record<string, 
   const checkIds = profile.checks.map((check) => check.checkId);
   if (new Set(checkIds).size !== checkIds.length) errors["profile.checks"] = "duplicate_check_ids";
   profile.checks.forEach((check, index) => {
-    if (!check.roles.length || check.roles.some((role) => !roles.includes(role))) {
+    if (!/^[a-z][a-z0-9_-]{0,79}$/.test(check.checkId)) {
+      errors[`profile.checks.${index}.checkId`] = "invalid_check_id";
+    } else if (checkIds.indexOf(check.checkId) !== index) {
+      errors[`profile.checks.${index}.checkId`] = "duplicate_check_ids";
+    }
+    if (!check.roles.length || new Set(check.roles).size !== check.roles.length || check.roles.some((role) => !roles.includes(role))) {
       errors[`profile.checks.${index}.roles`] = "select_role";
     }
     if (check.kind === "min_text_length" && (!Number.isInteger(check.minLength) || check.minLength < 1 || check.minLength > 10_000)) {

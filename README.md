@@ -2,28 +2,33 @@
 
 Локальное расширение для **Anki 26.05+**: Python runtime собирает и анализирует учебные данные, а React/TypeScript dashboard показывает их в защищённом локальном интерфейсе.
 
-> Проект находится в активной разработке. Стабильный публичный release ещё не объявлен.
+> Проект находится в активной разработке. Актуальная версия и пользовательская история изменений находятся в `anki_study_report/version.py` и [CHANGELOG.md](CHANGELOG.md).
 
 ## Что уже есть
 
 - локальные страницы Today, Activity, Statistics/FSRS, Decks, Search, Cards и Profile;
+- рабочее пространство Inspection Profiles с базовым и расширенным редактированием, проверкой и сохранением настроек;
+- явный цикл безопасного действия и повторной проверки одной проблемной карточки;
 - безопасные действия и bounded API без прямого доступа frontend к Anki collection;
 - token-protected dashboard только на `127.0.0.1`;
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
 - Fast CI, exact package handoff и real-Anki Docker E2E на трёх committed APKG;
 - доказательства с проверяемой схемой для прогресса, ошибок, предварительных проверок, отмены и идентичности нерелизной сборки;
-- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting.
+- каноническая итоговая сводка real-Anki E2E, bounded 90-day history и observational-only regression reporting;
+- repository-owned exact Cards AV/audio/media gate с self-verifying evidence.
 
 ## Куда идти дальше
 
 | Задача | Документ |
 | --- | --- |
+| Начать работу AI-агента | [Корневые правила](AGENTS.md) · [Компактный context bootstrap](docs/ai-context-bootstrap.md) |
 | Понять проект и архитектуру | [Обзор проекта](docs/project-overview.md) · [Архитектура](docs/architecture.md) |
 | Найти актуальный контракт | [Индекс документации](docs/README.md) |
 | Узнать текущее состояние | [AI handoff](docs/ai-handoff.md) |
 | Посмотреть планы и зависимости | [Карта roadmap](roadmap/README.md) |
 | Найти исторические подтверждения | [Индекс отчётов](reports/README.md) |
 | Запустить проверки | [Матрица тестирования](docs/test-matrix.md) · [Политика запусков](docs/verification-run-policy.md) |
+| Проверить exact Cards AV/media | [Cards exact AV/audio/media E2E](docs/cards-exact-av-media-e2e.md) |
 | Собрать или выпустить add-on | [Packaging и release](docs/packaging-release.md) |
 | Внести вклад | [CONTRIBUTING](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
 
@@ -54,8 +59,8 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; C2 реализован и влит, но его owner acceptance требует bounded post-merge remediation; затем обязательны C3–C6.
-- **Gamification:** G4 и G4.4 завершены outcome `REJECT`: replacement protocol v4 исполнен воспроизводимо, integrated winner отсутствует, Review winner — `P-TAPER-ZERO-30D`, Learn winner — `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; production integration запрещена.
+- **Core:** C1 и C2 завершены. Inspection Profiles полностью интегрированы, Cards прошли приёмку и получили адаптивную desktop-компоновку с сохранением фильтров в текущей сессии. Следующий отдельный этап — C3 UI & Shell; он ещё не начат.
+- **Gamification:** G4 и G4.4 завершены outcome `REJECT`: replacement protocol v4 исполнен воспроизводимо, integrated winner отсутствует, Review winner — `P-TAPER-ZERO-30D`, Learn winner — `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; production integration запрещена. G5 Study Rhythm запланирован, но feature implementation не начата.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { dashboardToken } from "../lib/actionsApi";
+import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import type { Status } from "../types/report";
 
 type IntegrationItem = {
@@ -51,7 +52,8 @@ function IntegrationsPage() {
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
+      <SettingsRouteHeader>
+        <section className="rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <span className="status-pill status-neutral">{t("integrations.optional")}</span>
@@ -65,8 +67,9 @@ function IntegrationsPage() {
             {loading ? t("integrations.refreshing") : t("actions.refresh", { ns: "common" })}
           </button>
         </div>
-        {message ? <p className="mt-4 text-sm leading-6 text-report-muted" role="status">{message}</p> : null}
-      </section>
+          {message ? <p className="mt-4 text-sm leading-6 text-report-muted" role="status">{message}</p> : null}
+        </section>
+      </SettingsRouteHeader>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {items.map((item) => (

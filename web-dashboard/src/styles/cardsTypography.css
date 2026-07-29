@@ -1,0 +1,6 @@
+/* Cards chrome follows the locale-aware application font stack.
+ * Native card preview typography remains isolated inside Shadow DOM.
+ */
+.cards-inbox-page {
+  font-family: inherit;
+}

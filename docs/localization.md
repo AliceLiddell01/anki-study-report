@@ -287,6 +287,7 @@ pages.privacy
 - подсказки жизненного цикла;
 - состояния validation, отсутствия карточек и конфликтов;
 - Advanced;
+- Basic/Advanced mode tabs, dirty/error count и refresh status;
 - инструменты профиля.
 
 Неизвестные значения kind, role и warning из backend используют безопасные локализованные fallback и не показывают машинные идентификаторы как обычный текст UI.

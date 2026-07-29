@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
+import { SettingsRouteHeader } from "../layout/SettingsRouteHeader";
 import { useTranslation } from "react-i18next";
 import type { DeckOption } from "../types/settings";
 
 export function SettingsPageHeader({ title, description, status }: { title: string; description: string; status?: string }) {
   return (
-    <header className="settings-page-header rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
-      {status ? <span className="status-pill status-neutral">{status}</span> : null}
-      <h1 className={`${status ? "mt-4 " : ""}text-2xl font-semibold tracking-normal text-report-text sm:text-3xl`}>{title}</h1>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">{description}</p>
-    </header>
+    <SettingsRouteHeader>
+      <header className="settings-page-header rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-panel sm:p-6">
+        {status ? <span className="status-pill status-neutral">{status}</span> : null}
+        <h1 className={`${status ? "mt-4 " : ""}text-2xl font-semibold tracking-normal text-report-text sm:text-3xl`}>{title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-report-muted">{description}</p>
+      </header>
+    </SettingsRouteHeader>
   );
 }
 

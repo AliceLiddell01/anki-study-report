@@ -102,6 +102,8 @@ const en = {
       diagnosticsGroup: "Diagnostics",
       sources: "Data sources",
       logs: "Logs",
+      more: "More",
+      additionalSections: "Additional Settings sections",
     },
   },
   pages: {
@@ -123,12 +125,15 @@ const en = {
       },
       catalog: {
         title: "Note types", search: "Search by name", stateFilter: "State", allStates: "All states",
+        count: "Showing {{returned}} of {{total}} note types",
         clearFilters: "Clear filters", empty: "No available note types were found in the collection.", noMatches: "No note types match these filters.",
         structure: "Fields: {{fields}} · templates: {{templates}}", truncated: "Showing {{count}} of {{total}} note types. The catalog is safely bounded.",
       },
       editor: {
         selectTitle: "Choose a note type", selectDescription: "Choose a note type on the left to inspect its structure and configure checks.", selectSafety: "A local draft will appear; it is not saved and does not enable checks automatically.",
         noteType: "Anki note type", kind: "Kind", fields: "Fields", templates: "Templates", unsaved: "Unsaved changes",
+        profileLabel: "Profile", proposedProfile: "Proposed profile", proposedProfileNoName: "No separate name yet", browserDraft: "Browser draft",
+        structureSummary: "{{kind}} · {{fields}} fields · {{templates}} templates", structureCounts: "{{fields}} fields · {{templates}} templates",
         notConfiguredTitle: "No profile is configured", notConfiguredDescription: "Use the local suggestion or start with an empty declarative configuration.",
         displayName: "Profile name", displayNameHelp: "A local descriptive name; it does not rename the Anki note type.",
       },
@@ -167,7 +172,7 @@ const en = {
       conflict: { title: "The profile changed in another operation", description: "The server is already at revision {{revision}}. Your browser draft was preserved and not overwritten.", reviewServer: "Refresh server version", reloadDiscard: "Load server version and discard draft" },
       errors: {
         title: "Fix the profile", description: "The backend remains authoritative. Go to each listed section to correct it.", required: "Enter a value.",
-        duplicate_roles: "Roles must be unique.", invalid_role: "Use a valid role ID.", select_field: "Select at least one field.", duplicate_check_ids: "Check IDs must be unique.", select_role: "Select an existing role.", invalid_min_length: "Enter an integer from 1 to 10000.",
+        duplicate_roles: "Roles must be unique.", invalid_role: "Use a valid role ID.", select_field: "Select at least one field.", duplicate_check_ids: "Check IDs must be unique.", invalid_check_id: "Use a valid check ID.", select_role: "Select an existing role.", invalid_min_length: "Enter an integer from 1 to 10000.",
       },
       actions: {
         retry: "Try again", useSuggestion: "Use suggestion", startEmpty: "Start empty", import: "Import JSON", export: "Export JSON",
@@ -176,7 +181,7 @@ const en = {
       },
       status: {
         validation_succeeded: "The profile passed backend validation.", client_validation_failed: "Fix the highlighted fields.", server_validation_failed: "The backend rejected the profile; fix the highlighted fields.",
-        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.",
+        profile_confirmed: "The profile was confirmed and enabled.", draft_saved: "The draft was saved and creates no authoritative issues.", profile_disabled: "The profile was disabled.", profile_deleted: "Only the local profile was deleted.", catalog_refreshed: "The note type list was updated.",
         inspection_profile_revision_conflict: "A revision conflict was found; the draft was not overwritten.", invalid_inspection_profile_request: "The profile failed strict validation.", inspection_profiles_unavailable: "Inspection Profiles are temporarily unavailable.", inspection_profiles_timeout: "The operation timed out.", inspection_profiles_failed: "The profile operation failed.", inspection_profile_future_schema: "An unsupported future schema was found.", failed: "The operation failed.",
       },
       import: { fileLabel: "Choose an Inspection Profile JSON file", tooLarge: "The file is larger than 1 MiB.", invalid: "The file is not a strict Inspection Profile v1 document.", loaded: "The import was loaded into a local draft only; it was not saved or confirmed.", missing_note_type: "That note type does not exist in this collection.", unsaved_changes: "Save or discard the current changes first.", structure_mismatch: "The fingerprint or exact references do not match the current structure." },
@@ -891,6 +896,8 @@ const en = {
         readOnly: "read only",
         singleCard: "one card at a time",
         refresh: "Refresh",
+        refreshed: "Updated.",
+        refreshFailedStale: "Refresh failed. The previous inbox remains available.",
         retry: "Retry",
         summary: {
           items_one: "{{count}} card",
@@ -992,6 +999,7 @@ const en = {
           answerTitle: "Answer",
           expandedTitle: "Expanded answer preview",
           close: "Close answer preview",
+          playAudio: "Play audio",
           loading: "Loading the safe front…",
           stale: "The card is unavailable or was deleted.",
           failed: "The preview could not be loaded. Reasons and actions remain available.",
@@ -1003,7 +1011,7 @@ const en = {
         actions: {
           open: "Open in Anki",
           opening: "Opening…",
-          opened: "The Anki Browser open request was accepted. The issue remains active.",
+          opened: "The card opened in Anki Browser. Return after editing and recheck it.",
           failed: "The exact card could not be opened in Anki.",
           working: "Working…",
           suspend: "Suspend card",
@@ -1015,7 +1023,17 @@ const en = {
         resolution: {
           rule: "A successful action does not mean the issue is resolved. Only the exact-card recheck determines the outcome.",
           recheck: "Recheck card",
+          actionPending: "Running the command for this exact card…",
           actionSucceeded: "Anki completed the action for one card. The reason stays active until an explicit recheck.",
+          actionFailed: "Anki did not complete the command. The card was not changed; it is safe to retry.",
+          recheckFailed: "An authoritative result was not available. Previous reasons were preserved.",
+          actionResults: {
+            suspend: "The card was suspended in Anki. The command completed, but the reason has not been rechecked.",
+            unsuspend: "The card was unsuspended in Anki. The command completed, but the reason has not been rechecked.",
+            bury: "The card was buried in Anki. The command completed, but the reason has not been rechecked.",
+            unbury: "The card was unburied in Anki. The command completed, but the reason has not been rechecked.",
+            clear_flag: "The card flag was cleared in Anki. The command completed, but the reason has not been rechecked.",
+          },
           noChanges: "Anki made no changes. This is an action result, not proof that the reason is resolved.",
           removed: "Resolved",
           remaining: "Remaining",
