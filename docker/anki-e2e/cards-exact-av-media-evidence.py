@@ -283,7 +283,16 @@ def main() -> int:
         if value.get("status") != "PASS":
             raise RuntimeError(f"Cannot package non-PASS report: {name}")
 
-    exact_package_sha = required_env("ANKI_E2E_FAST_CI_PACKAGE_SHA256")
+    package_source = os.environ.get("ANKI_E2E_PACKAGE_SOURCE", "source-build")
+    actual_package_sha = sha256_file(package)
+    if package_source == "source-build":
+        exact_package_sha = actual_package_sha
+        tested_commit_sha = required_env("ANKI_E2E_HARNESS_SHA")
+        fast_ci_run_id = None
+    else:
+        exact_package_sha = required_env("ANKI_E2E_FAST_CI_PACKAGE_SHA256")
+        tested_commit_sha = required_env("ANKI_E2E_FAST_CI_TESTED_SHA")
+        fast_ci_run_id = required_env("ANKI_E2E_FAST_CI_RUN_ID")
     exact_apkg = Path(required_env("ANKI_E2E_EXACT_APKG_PATH"))
     exact_apkg_sha = required_env("ANKI_E2E_EXACT_APKG_SHA256")
     media_dir = args.profile_dir / "collection.media"
@@ -347,8 +356,10 @@ def main() -> int:
                 copy_exact(source, root / "diagnostics/runtime" / relative)
 
         production_screenshots = root / "production/screenshots"
-        for source in sorted((screenshots / "cards/exact-av-media").rglob("*.png")):
-            copy_exact(source, production_screenshots / source.name)
+        exact_screenshots = screenshots / "cards/exact-av-media"
+        for source in sorted(exact_screenshots.rglob("*.png")):
+            relative_screenshot = source.relative_to(exact_screenshots)
+            copy_exact(source, production_screenshots / relative_screenshot)
         contact_source = reports / "cards-exact-contact-sheet.png"
         copy_exact(contact_source, root / "contact-sheet.png")
 
@@ -363,9 +374,10 @@ def main() -> int:
             "cardId": int(required_env("ANKI_E2E_EXACT_CARD_ID")),
             "word": required_env("ANKI_E2E_EXACT_WORD"),
             "package": {
+                "source": package_source,
                 "sha256": exact_package_sha,
-                "testedCommitSha": required_env("ANKI_E2E_FAST_CI_TESTED_SHA"),
-                "fastCiRunId": required_env("ANKI_E2E_FAST_CI_RUN_ID"),
+                "testedCommitSha": tested_commit_sha,
+                "fastCiRunId": fast_ci_run_id,
             },
             "harness": {
                 "sha": required_env("ANKI_E2E_HARNESS_SHA"),
@@ -398,6 +410,8 @@ def main() -> int:
             "productionScreenshots": [
                 row.get("path") for row in browser.get("screenshots", []) if isinstance(row, dict)
             ],
+            "responsiveMatrix": browser.get("responsiveMatrix"),
+            "interactionGallery": browser.get("interactionGallery"),
             "deterministicGifFrame": browser.get("deterministicFrame"),
             "animatedGif": browser.get("animation"),
             "referenceArtifacts": reference_rows,
@@ -424,6 +438,8 @@ def main() -> int:
             "cardId": int(required_env("ANKI_E2E_EXACT_CARD_ID")),
             "scenarios": len(browser.get("scenarios", [])),
             "screenshots": len(browser.get("screenshots", [])),
+            "responsiveMatrix": browser.get("responsiveMatrix"),
+            "interactionGallery": browser.get("interactionGallery"),
             "audioReplay": browser.get("replay"),
             "gifAnimation": browser.get("animation"),
             "deterministicFrame": browser.get("deterministicFrame"),
@@ -446,6 +462,8 @@ def main() -> int:
 - Card: `{required_env("ANKI_E2E_EXACT_CARD_ID")}` (`{required_env("ANKI_E2E_EXACT_WORD")}`)
 - Package SHA-256: `{exact_package_sha}`
 - Harness SHA: `{required_env("ANKI_E2E_HARNESS_SHA")}`
+- Responsive matrix: `1920x1080`, `2560x1440`, `3840x2160` at DSF 1, viewport-only, light theme
+- Interaction gallery: primary `1920x1080` viewport plus expanded-answer and refresh close-ups
 - Inspection Profiles requests: `0`
 - External requests: `0`
 

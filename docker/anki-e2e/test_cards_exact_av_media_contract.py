@@ -89,6 +89,21 @@ def test_exact_browser_uses_page_clip_and_side_aware_media_contract() -> None:
     assert "`Воспроизвести аудио: ${config.mp3.name}`" not in source
     assert "inspectionProfileRequests.length === 0" in source
     assert "externalRequests.length === 0" in source
+    assert 'Object.freeze({ name: "full-hd", width: 1920, height: 1080 })' in source
+    assert 'Object.freeze({ name: "qhd", width: 2560, height: 1440 })' in source
+    assert 'Object.freeze({ name: "4k-uhd", width: 3840, height: 2160 })' in source
+    assert '"responsive-matrix"' in source
+    assert '"interaction-gallery", "1920x1080"' in source
+    assert 'fullPage: false, animations: "disabled"' in source
+    assert "responsive matrix contains transient UI" in source
+    assert "responsive matrix stretches below the viewport" in source
+    assert "native preview exceeds its frame" in source
+    assert "native card background does not fill the preview width" in source
+    assert "native card background does not fill the preview height" in source
+    assert "expanded-answer-close-up-1920x1080-light.png" in source
+    assert "refresh-notification-close-up-1920x1080-light.png" in source
+    assert "06-native-card-fill-1920x1080-dark.png" in source
+    assert source.index("captureCardsVisualEvidence(browser)") < source.index("proveGifAnimation(gifScenarioFrames)")
 
 
 def test_exact_geometry_targets_the_exact_word_and_side_aware_examples() -> None:
@@ -156,6 +171,12 @@ def test_final_evidence_contract_is_self_verifying() -> None:
     assert "mismatches" in source
     assert "archive.extractall(extraction)" in source
     assert 'FINAL_NAME = "cards-final-av-media-fidelity-evidence.zip"' in source
+    assert "relative_screenshot = source.relative_to(exact_screenshots)" in source
+    assert '"responsiveMatrix": browser.get("responsiveMatrix")' in source
+    assert '"interactionGallery": browser.get("interactionGallery")' in source
+    assert 'if package_source == "source-build":' in source
+    assert "exact_package_sha = actual_package_sha" in source
+    assert '"source": package_source' in source
 
 
 def test_new_harness_files_parse() -> None:

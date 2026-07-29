@@ -42,6 +42,9 @@ evidence identity
 ```
 
 Разные package/harness SHA допустимы только после fail-closed harness-only reuse validation.
+Для локального `source-build` package SHA вычисляется из фактически собранного
+архива внутри contour, а provenance явно помечается `source-build`; Fast CI
+metadata в этом режиме не подделывается.
 
 ## 3. State-aware preflight
 
@@ -219,7 +222,47 @@ PASS требует минимум два разных SHA в одной compari
 
 Повторные screenshots одного page context или canvas sampling не считаются надёжным единственным proof: browser capture API не обещает новый GIF frame на каждый вызов.
 
-## 11. Failure diagnostics
+## 11. Responsive UX screenshot matrix
+
+Тот же exact real-card contour является canonical owner-facing источником Cards
+screenshots. Отдельный mock/dev capture не заменяет эту матрицу.
+
+Основная матрица сохраняется в
+`screenshots/cards/exact-av-media/responsive-matrix/`:
+
+```text
+cards-page-full-hd-1920x1080-light.png
+cards-page-qhd-2560x1440-light.png
+cards-page-4k-uhd-3840x2160-light.png
+```
+
+Контракт каждого кадра:
+
+- реальная рабочая карточка из committed APKG;
+- `deviceScaleFactor=1`;
+- viewport-only capture (`fullPage=false`) без browser zoom и post-capture resize;
+- точный viewport из имени файла;
+- закрыты уведомления, filters, coverage и modal;
+- document не превышает viewport по ширине или высоте;
+- Cards workspace bounded, queue и inspector имеют одинаковую высоту;
+- template-owned Anki background заполняет native preview frame по ширине и высоте.
+
+Дополнительные состояния сохраняются только для primary `1920x1080` в
+`interaction-gallery/1920x1080/`:
+
+```text
+01-dismissible-warnings-1920x1080-light.png
+02-filters-open-1920x1080-light.png
+03-coverage-open-1920x1080-light.png
+04-expanded-answer-close-up-1920x1080-light.png
+05-refresh-notification-close-up-1920x1080-light.png
+06-native-card-fill-1920x1080-dark.png
+```
+
+Последний dark capture и light matrix дополнительно закрепляют отсутствие
+dashboard-colored боковых полей внутри native card frame.
+
+## 12. Failure diagnostics
 
 Failure packager обязан работать даже когда token не был восстановлен.
 
@@ -238,7 +281,7 @@ Failure ZIP содержит:
 
 Отдельный focused smoke должен вызвать packager без token и проверить `unzip -t`.
 
-## 12. Focused minimum
+## 13. Focused minimum
 
 Перед каждым real-Anki run:
 
@@ -257,7 +300,7 @@ failure packager smoke
 
 String tests должны проверять contract markers, а не incidental formatting или локальное имя переменной.
 
-## 13. Heavy-run policy
+## 14. Heavy-run policy
 
 ```text
 focused checks
@@ -280,7 +323,7 @@ first failed assertion
 
 Blind rerun запрещён. После успешной неизменной package/harness pair повтор не нужен.
 
-## 14. Acceptance checklist
+## 15. Acceptance checklist
 
 ```text
 [ ] exact repository/branch/local+remote HEAD
@@ -304,7 +347,7 @@ Blind rerun запрещён. После успешной неизменной p
 [ ] no unrelated dirty paths
 ```
 
-## 15. External references
+## 16. External references
 
 - Playwright `page.screenshot()` — clip и animation behavior: <https://playwright.dev/docs/api/class-page#page-screenshot>
 - Playwright evaluation contexts: <https://playwright.dev/docs/evaluating>

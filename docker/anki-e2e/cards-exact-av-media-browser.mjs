@@ -36,12 +36,20 @@ const config = {
   themes: parseThemes(requiredEnv("ANKI_E2E_EXACT_THEMES")),
   viewports: parseViewports(requiredEnv("ANKI_E2E_EXACT_VIEWPORTS_JSON")),
 };
+const responsiveMatrixViewports = Object.freeze([
+  Object.freeze({ name: "full-hd", width: 1920, height: 1080 }),
+  Object.freeze({ name: "qhd", width: 2560, height: 1440 }),
+  Object.freeze({ name: "4k-uhd", width: 3840, height: 2160 }),
+]);
+const primaryEvidenceViewport = responsiveMatrixViewports[0];
 
 const ready = JSON.parse(await fs.readFile(readyPath, "utf8"));
 const base = new URL(ready.baseUrl);
 const token = String(ready.token);
 const artifactRoot = path.dirname(reportsDir);
 const exactScreenshotsRoot = path.join(screenshotsDir, "cards", "exact-av-media");
+const responsiveMatrixRoot = path.join(exactScreenshotsRoot, "responsive-matrix");
+const interactionGalleryRoot = path.join(exactScreenshotsRoot, "interaction-gallery", "1920x1080");
 const failureScreenshots = path.join(diagnosticsDir, "screenshots-before-failure");
 const traceDir = path.join(diagnosticsDir, "browser-trace");
 const exactBrowserPath = path.join(reportsDir, "exact-browser.json");
@@ -53,6 +61,8 @@ const contactSheetPath = path.join(reportsDir, "cards-exact-contact-sheet.png");
 await Promise.all([
   fs.mkdir(reportsDir, { recursive: true }),
   fs.mkdir(exactScreenshotsRoot, { recursive: true }),
+  fs.mkdir(responsiveMatrixRoot, { recursive: true }),
+  fs.mkdir(interactionGalleryRoot, { recursive: true }),
   fs.mkdir(failureScreenshots, { recursive: true }),
   fs.mkdir(traceDir, { recursive: true }),
 ]);
@@ -69,6 +79,8 @@ const scenarios = [];
 const geometry = [];
 const gifScenarioFrames = [];
 const replayFocusProofs = [];
+let responsiveMatrix = [];
+let interactionGallery = [];
 let replayProof = null;
 let gifProof = null;
 let fixedFrameProof = null;
@@ -234,6 +246,10 @@ try {
     }
   }
 
+  const visualEvidence = await captureCardsVisualEvidence(browser);
+  responsiveMatrix = visualEvidence.matrix;
+  interactionGallery = visualEvidence.interactions;
+  screenshots.push(...visualEvidence.screenshots);
   gifProof = proveGifAnimation(gifScenarioFrames);
 
   assert(
@@ -336,6 +352,280 @@ function buildScenarios(value) {
     }
   }
   return result;
+}
+
+async function captureCardsVisualEvidence(browserInstance) {
+  const matrix = [];
+  const interactions = [];
+  const captured = [];
+
+  for (const viewport of responsiveMatrixViewports) {
+    const scenario = `responsive-matrix-${viewport.name}-light`;
+    activeScenario = scenario;
+    lastScenario = scenario;
+    activeContext = await browserInstance.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: 1,
+      locale: "en-US",
+      timezoneId: "UTC",
+      colorScheme: "light",
+      reducedMotion: "reduce",
+    });
+    activePage = await activeContext.newPage();
+    attachDiagnostics(activePage, scenario);
+    await installThemeBootstrap(activePage);
+
+    await openCards(activePage, "light");
+    const item = activePage.locator(`[data-testid="cards-inbox-item"][data-card-id="${config.cardId}"]`);
+    await item.waitFor({ state: "visible", timeout: 60000 });
+    await item.click();
+    await activePage.locator('[data-testid="cards-detail-content"]').waitFor({ state: "visible", timeout: 30000 });
+    await waitForExactShadow(activePage, "preview", "front");
+
+    if (viewport === primaryEvidenceViewport) {
+      const warningCount = await activePage.locator(".cards-inbox-warning").count();
+      if (warningCount > 0) {
+        const warningPath = path.join(interactionGalleryRoot, "01-dismissible-warnings-1920x1080-light.png");
+        await activePage.screenshot({ path: warningPath, fullPage: false, animations: "disabled", caret: "hide" });
+        const warningScreenshot = recordScreenshot(warningPath, {
+          kind: "interaction-state",
+          scenario,
+          state: "dismissible-warnings",
+          theme: "light",
+          viewport: { width: viewport.width, height: viewport.height },
+        });
+        captured.push(warningScreenshot);
+        interactions.push({ state: "dismissible-warnings", screenshot: warningScreenshot.path });
+      }
+    }
+
+    await dismissCardsNotices(activePage);
+    await assertCleanMatrixState(activePage);
+    const layout = await cardsPageGeometry(activePage);
+    assertResponsiveMatrixGeometry(layout, viewport);
+    const matrixPath = path.join(
+      responsiveMatrixRoot,
+      `cards-page-${viewport.name}-${viewport.width}x${viewport.height}-light.png`,
+    );
+    await activePage.screenshot({ path: matrixPath, fullPage: false, animations: "disabled", caret: "hide" });
+    const matrixScreenshot = recordScreenshot(matrixPath, {
+      kind: "responsive-matrix",
+      scenario,
+      theme: "light",
+      viewport: { width: viewport.width, height: viewport.height },
+    });
+    captured.push(matrixScreenshot);
+    matrix.push({
+      name: viewport.name,
+      viewport: { width: viewport.width, height: viewport.height },
+      theme: "light",
+      deviceScaleFactor: 1,
+      fullPage: false,
+      animations: "disabled",
+      screenshot: matrixScreenshot.path,
+      geometry: layout,
+    });
+
+    if (viewport === primaryEvidenceViewport) {
+      const filterToggle = activePage.locator(".cards-inbox-filter-toggle");
+      await filterToggle.click();
+      await activePage.locator("#cards-inbox-filter-panel").waitFor({ state: "visible", timeout: 10000 });
+      const filtersPath = path.join(interactionGalleryRoot, "02-filters-open-1920x1080-light.png");
+      await activePage.screenshot({ path: filtersPath, fullPage: false, animations: "disabled", caret: "hide" });
+      const filtersScreenshot = recordScreenshot(filtersPath, {
+        kind: "interaction-state",
+        scenario,
+        state: "filters-open",
+        theme: "light",
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      captured.push(filtersScreenshot);
+      interactions.push({ state: "filters-open", screenshot: filtersScreenshot.path });
+      await filterToggle.click();
+      await activePage.locator("#cards-inbox-filter-panel").waitFor({ state: "detached", timeout: 10000 });
+
+      const coverage = activePage.locator(".cards-inbox-coverage > summary");
+      await coverage.click();
+      await activePage.locator(".cards-inbox-coverage[open]").waitFor({ state: "visible", timeout: 10000 });
+      const coveragePath = path.join(interactionGalleryRoot, "03-coverage-open-1920x1080-light.png");
+      await activePage.screenshot({ path: coveragePath, fullPage: false, animations: "disabled", caret: "hide" });
+      const coverageScreenshot = recordScreenshot(coveragePath, {
+        kind: "interaction-state",
+        scenario,
+        state: "coverage-open",
+        theme: "light",
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      captured.push(coverageScreenshot);
+      interactions.push({ state: "coverage-open", screenshot: coverageScreenshot.path });
+      await coverage.click();
+
+      await activePage.locator(".cards-detail-expand").click();
+      const expanded = activePage.locator('[data-testid="cards-preview-modal"]');
+      await expanded.waitFor({ state: "visible", timeout: 30000 });
+      await waitForExactShadow(activePage, "expanded", "back");
+      const expandedPath = path.join(interactionGalleryRoot, "04-expanded-answer-close-up-1920x1080-light.png");
+      await capturePageClip(activePage, expanded, expandedPath);
+      const expandedScreenshot = recordScreenshot(expandedPath, {
+        kind: "expanded-answer-close-up",
+        scenario,
+        state: "expanded-answer",
+        theme: "light",
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      captured.push(expandedScreenshot);
+      interactions.push({ state: "expanded-answer", screenshot: expandedScreenshot.path });
+      await expanded.locator(".product-modal-close").click();
+      await expanded.waitFor({ state: "detached", timeout: 10000 });
+
+      await activePage.locator(".shared-refresh-button").click();
+      const refreshNotice = activePage.locator(".cards-refresh-status.is-success:not(:empty)");
+      await refreshNotice.waitFor({ state: "visible", timeout: 30000 });
+      const refreshPath = path.join(interactionGalleryRoot, "05-refresh-notification-close-up-1920x1080-light.png");
+      await capturePageClip(activePage, refreshNotice, refreshPath);
+      const refreshScreenshot = recordScreenshot(refreshPath, {
+        kind: "refresh-notification-close-up",
+        scenario,
+        state: "refresh-success",
+        theme: "light",
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      captured.push(refreshScreenshot);
+      interactions.push({ state: "refresh-success", screenshot: refreshScreenshot.path });
+      await refreshNotice.locator(".cards-notice-close").click();
+      await activePage.waitForFunction(
+        () => !document.querySelector(".cards-refresh-status:not(:empty)"),
+        null,
+        { timeout: 10000 },
+      );
+
+      await activePage.locator('[data-testid="theme-toggle"]').click();
+      await activePage.waitForFunction(
+        () => document.documentElement.dataset.theme === "dark"
+          && document.querySelector('[data-shadow-preview="true"]')?.getAttribute("data-preview-night-mode") === "true",
+        null,
+        { timeout: 10000 },
+      );
+      const darkLayout = await cardsPageGeometry(activePage);
+      assertNativeCardFillsFrame(darkLayout);
+      const darkPath = path.join(interactionGalleryRoot, "06-native-card-fill-1920x1080-dark.png");
+      await activePage.screenshot({ path: darkPath, fullPage: false, animations: "disabled", caret: "hide" });
+      const darkScreenshot = recordScreenshot(darkPath, {
+        kind: "interaction-state",
+        scenario,
+        state: "native-card-fill-dark",
+        theme: "dark",
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      captured.push(darkScreenshot);
+      interactions.push({
+        state: "native-card-fill-dark",
+        screenshot: darkScreenshot.path,
+        geometry: {
+          nativeCard: darkLayout.nativeCard,
+          nativeCardFrame: darkLayout.nativeCardFrame,
+          nativeCardBackground: darkLayout.nativeCardBackground,
+        },
+      });
+    }
+
+    await activePage.close();
+    await activeContext.close();
+    activePage = null;
+    activeContext = null;
+    activeScenario = null;
+  }
+
+  assert(matrix.length === responsiveMatrixViewports.length, `responsive matrix is incomplete: ${JSON.stringify(matrix)}`);
+  assert(
+    matrix.every((item) => item.fullPage === false && item.deviceScaleFactor === 1),
+    `responsive matrix contains full-page or scaled captures: ${JSON.stringify(matrix)}`,
+  );
+  return { matrix, interactions, screenshots: captured };
+}
+
+async function dismissCardsNotices(page) {
+  const warningClose = page.locator(".cards-inbox-warning .cards-notice-close");
+  while (await warningClose.count()) {
+    await warningClose.first().click();
+  }
+  await page.locator(".cards-inbox-warning").waitFor({ state: "detached", timeout: 10000 }).catch(async () => {
+    assert(await page.locator(".cards-inbox-warning").count() === 0, "Cards warnings did not close");
+  });
+}
+
+async function assertCleanMatrixState(page) {
+  const state = await page.evaluate(() => ({
+    notices: document.querySelectorAll(".cards-inbox-warning, .cards-refresh-status:not(:empty)").length,
+    filtersOpen: Boolean(document.querySelector("#cards-inbox-filter-panel")),
+    coverageOpen: Boolean(document.querySelector(".cards-inbox-coverage[open]")),
+    modalOpen: Boolean(document.querySelector('[data-testid="cards-preview-modal"]')),
+  }));
+  assert(
+    state.notices === 0 && !state.filtersOpen && !state.coverageOpen && !state.modalOpen,
+    `responsive matrix contains transient UI: ${JSON.stringify(state)}`,
+  );
+}
+
+async function cardsPageGeometry(page) {
+  return page.evaluate(() => {
+    const elementRect = (element) => {
+      if (!(element instanceof HTMLElement)) return null;
+      const value = element.getBoundingClientRect();
+      return { x: value.x, y: value.y, width: value.width, height: value.height, right: value.right, bottom: value.bottom };
+    };
+    const rect = (selector) => {
+      const element = document.querySelector(selector);
+      return elementRect(element);
+    };
+    const previewHost = document.querySelector('[data-testid="cards-inspector"] [data-shadow-preview="true"]');
+    const nativeRoot = previewHost?.shadowRoot ?? null;
+    const nativeCard = nativeRoot?.querySelector('[data-testid="asr-shadow-card"]') ?? null;
+    const nativeCardFrame = nativeRoot?.querySelector('[data-testid="asr-shadow-card-frame"]') ?? null;
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      document: {
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+      },
+      workspace: rect(".cards-inbox-workspace"),
+      queue: rect(".cards-inbox-queue"),
+      inspector: rect('[data-testid="cards-inspector"]'),
+      previewFrame: rect(".cards-detail-preview-frame"),
+      previewHost: rect('[data-testid="cards-inspector"] [data-shadow-preview="true"]'),
+      nativeCard: elementRect(nativeCard),
+      nativeCardFrame: elementRect(nativeCardFrame),
+      nativeCardBackground: nativeCard instanceof HTMLElement ? getComputedStyle(nativeCard).backgroundColor : null,
+    };
+  });
+}
+
+function assertResponsiveMatrixGeometry(layout, viewport) {
+  assert(
+    layout.viewport.width === viewport.width && layout.viewport.height === viewport.height,
+    `responsive viewport mismatch: expected=${viewport.width}x${viewport.height} actual=${JSON.stringify(layout.viewport)}`,
+  );
+  assert(layout.document.scrollWidth <= viewport.width, `responsive matrix has horizontal overflow: ${JSON.stringify(layout)}`);
+  assert(layout.document.scrollHeight <= viewport.height, `responsive matrix stretches below the viewport: ${JSON.stringify(layout)}`);
+  assert(layout.workspace && layout.workspace.height >= 680 && layout.workspace.height <= 842, `workspace height is unbounded: ${JSON.stringify(layout)}`);
+  assert(layout.workspace.width <= 2304, `workspace width exceeds the Cards contract: ${JSON.stringify(layout)}`);
+  assert(layout.queue && layout.inspector && Math.abs(layout.queue.height - layout.inspector.height) <= 1, `queue/inspector heights diverge: ${JSON.stringify(layout)}`);
+  assert(layout.previewFrame && layout.previewHost, `preview geometry is missing: ${JSON.stringify(layout)}`);
+  assert(layout.previewHost.height <= layout.previewFrame.height, `native preview exceeds its frame: ${JSON.stringify(layout)}`);
+  assert(layout.previewFrame.bottom <= layout.inspector.bottom + 1, `preview frame escapes the inspector: ${JSON.stringify(layout)}`);
+  assertNativeCardFillsFrame(layout);
+}
+
+function assertNativeCardFillsFrame(layout) {
+  assert(layout.nativeCard && layout.nativeCardFrame, `native card canvas geometry is missing: ${JSON.stringify(layout)}`);
+  assert(
+    Math.abs(layout.nativeCard.width - layout.nativeCardFrame.width) <= 1,
+    `native card background does not fill the preview width: ${JSON.stringify(layout)}`,
+  );
+  assert(
+    Math.abs(layout.nativeCard.height - layout.nativeCardFrame.height) <= 1,
+    `native card background does not fill the preview height: ${JSON.stringify(layout)}`,
+  );
 }
 
 function attachDiagnostics(page, scenario) {
@@ -1369,7 +1659,19 @@ async function captureRect(page, value, outputPath) {
 }
 
 async function createContactSheet(browserInstance, outputPath, allScreenshots) {
-  const selectedKinds = new Set(["full-page", "media-block", "replay-default", "replay-keyboard-focus", "replay-playing", "gif-browser-frame", "gif-fixed-frame"]);
+  const selectedKinds = new Set([
+    "full-page",
+    "media-block",
+    "replay-default",
+    "replay-keyboard-focus",
+    "replay-playing",
+    "gif-browser-frame",
+    "gif-fixed-frame",
+    "responsive-matrix",
+    "interaction-state",
+    "expanded-answer-close-up",
+    "refresh-notification-close-up",
+  ]);
   const selected = allScreenshots.filter((item) => selectedKinds.has(item.kind));
   const cards = [];
   for (const item of selected) {
@@ -1410,6 +1712,8 @@ async function writeReports() {
       browser: { headless: true, deviceScaleFactor: 1, locale: "en-US", timezone: "UTC" },
     },
     scenarios,
+    responsiveMatrix,
+    interactionGallery,
     replay: replayProof
       ? { ...replayProof, focus: replayFocusProofs }
       : null,
