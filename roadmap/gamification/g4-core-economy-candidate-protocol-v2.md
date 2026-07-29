@@ -4,7 +4,8 @@
 **Publication state:** `FROZEN_PRE_SCREENING`
 **Target branch:** `gamification`
 **Corrective PR:** `#168`
-**Merge SHA:** `PENDING_INDEPENDENT_PR_AUDIT`
+**Merge SHA:** `9a13cc40a2bae9ece4377a3781452beab46116f2`
+**Post-merge report:** [`reports/research/g4-3-candidate-economy-protocol-v2-closeout-2026-07-29.md`](../../reports/research/g4-3-candidate-economy-protocol-v2-closeout-2026-07-29.md)
 
 ```text
 G4.3: COMPLETE
@@ -71,4 +72,4 @@ Full research suite is not required because shared helpers are unchanged. G4.4 s
 
 ## G4.4 entry contract
 
-G4.4 remains blocked until PR #168 is independently audited and merged. Execution must use the exact merged v2 publication SHA and the four digests above. Any substantive protocol change after result access requires a new version and a full replacement run.
+G4.4 remains blocked until a separate stage is explicitly opened. Execution must use exact merged G4.3 v2 publication merge SHA `9a13cc40a2bae9ece4377a3781452beab46116f2` and the four digests above. Any substantive protocol change after result access requires a new version and a full replacement run.
