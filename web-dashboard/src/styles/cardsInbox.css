@@ -308,7 +308,8 @@
 
 .cards-detail-content {
   min-width: 0;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface-2);
@@ -676,21 +677,32 @@
 }
 /*  Cards v3.2.3 current production contract  */
 main.app-content-safe-inset:has(.cards-inbox-page) {
+  max-width: 2304px;
   padding-right: 2rem;
 }
 
 .cards-inbox-page {
-  --cards-queue-width: clamp(320px, 23vw, 334px);
-  --cards-region-gap: 1rem;
+  --cards-queue-width: clamp(300px, 18vw, 328px);
+  --cards-region-gap: .85rem;
+  --cards-workspace-height: clamp(690px, 72dvh, 840px);
+  position: relative;
   width: 100%;
   max-width: none;
   margin-inline: 0;
-  gap: 1rem;
+  gap: .8rem;
+  font-family:
+    "Yu Gothic UI",
+    "Yu Gothic",
+    "Hiragino Sans",
+    "Noto Sans JP",
+    Meiryo,
+    "Segoe UI",
+    sans-serif;
 }
 
 .cards-inbox-heading {
   display: flex;
-  min-height: 66px;
+  min-height: 58px;
   align-items: center;
   gap: 1.4rem;
   margin-bottom: 0;
@@ -700,15 +712,15 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   margin-top: .1rem;
   letter-spacing: -.025em;
   margin: 0;
-  font-size: clamp(1.85rem, 2.45vw, 2.1rem);
+  font-size: clamp(1.65rem, 2vw, 1.9rem);
   line-height: 1.04;
 }
 
 .cards-inbox-heading p {
   color: var(--text-muted);
   max-width: 820px;
-  margin-top: .38rem;
-  font-size: .85rem;
+  margin-top: .3rem;
+  font-size: .8rem;
   line-height: 1.45;
 }
 
@@ -721,16 +733,36 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   gap: .65rem;
 }
 
+.cards-notice-tray {
+  position: absolute;
+  z-index: 12;
+  top: 4.35rem;
+  right: 0;
+  width: min(32rem, calc(100% - 1rem));
+  display: grid;
+  justify-items: end;
+  gap: .45rem;
+  pointer-events: none;
+}
+
+.cards-notice-tray > * {
+  pointer-events: auto;
+}
+
 .cards-refresh-status:not(:empty) {
-  min-height: 44px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
   justify-content: flex-start;
-  padding: .7rem .85rem;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 36%, var(--border-subtle));
-  border-radius: var(--radius-item, .7rem);
-  background: color-mix(in srgb, var(--accent-primary) 8%, var(--surface-2));
+  padding: .48rem .52rem .48rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-subtle));
+  border-radius: .78rem;
+  background: color-mix(in srgb, var(--surface-2) 96%, transparent);
   color: var(--text-secondary);
-  font-size: .76rem;
-  line-height: 1.45;
+  box-shadow: 0 12px 34px rgb(3 8 20 / .16);
+  font-size: .72rem;
+  line-height: 1.35;
+  animation: cards-notice-enter var(--motion-normal) var(--ease-standard) both;
 }
 
 .cards-refresh-status.is-pending {
@@ -739,16 +771,87 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 }
 
 .cards-refresh-status.is-success:not(:empty) {
-  border-color: color-mix(in srgb, var(--status-good) 42%, var(--border-subtle));
-  background: color-mix(in srgb, var(--status-good) 9%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--status-good) 34%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-good) 7%, var(--surface-2));
   color: var(--status-good);
 }
 
 .cards-refresh-status.is-error:not(:empty) {
-  padding: .7rem .85rem;
-  border: 1px solid color-mix(in srgb, var(--status-danger) 44%, var(--border-subtle));
-  border-radius: var(--radius-item, .7rem);
-  background: color-mix(in srgb, var(--status-danger) 9%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--status-danger) 38%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-danger) 7%, var(--surface-2));
+}
+
+.cards-refresh-status .tertiary-button {
+  min-height: 30px;
+  padding: .3rem .48rem;
+  font-size: .68rem;
+}
+
+.cards-notice-close {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: .58rem;
+  color: var(--text-muted);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.cards-notice-close:hover,
+.cards-notice-close:focus-visible {
+  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface-3) 78%, transparent);
+  color: var(--text-primary);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  outline-offset: 1px;
+}
+
+.cards-inbox-warnings {
+  width: 100%;
+  display: grid;
+  justify-items: end;
+  gap: .45rem;
+}
+
+.cards-inbox-warning {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  display: flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: .52rem;
+  padding: .48rem .52rem .48rem .68rem;
+  border: 1px solid color-mix(in srgb, var(--status-warning) 34%, var(--border-subtle));
+  border-left-width: 1px;
+  border-radius: .78rem;
+  background: color-mix(in srgb, var(--status-warning) 7%, var(--surface-2));
+  box-shadow: 0 12px 34px rgb(3 8 20 / .16);
+  color: var(--text-secondary);
+  font-size: .7rem;
+  line-height: 1.35;
+  animation: cards-notice-enter var(--motion-normal) var(--ease-standard) both;
+}
+
+.cards-inbox-warning > span {
+  min-width: 0;
+}
+
+.cards-inbox-warning > svg {
+  flex: 0 0 auto;
+  color: var(--status-warning);
+}
+
+.cards-inbox-warning .tertiary-button {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: .3rem .48rem;
+  font-size: .68rem;
 }
 
 .cards-inbox-workspace {
@@ -766,10 +869,11 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   background: var(--surface-2);
   display: flex;
   flex-direction: column;
-  min-height: min(750px, calc(100dvh - 150px));
-  max-height: calc(100dvh - 96px);
-  border-radius: .9rem;
-  box-shadow: 0 10px 28px rgb(3 8 20 / .1);
+  height: var(--cards-workspace-height);
+  min-height: 0;
+  max-height: none;
+  border-radius: 1.05rem;
+  box-shadow: 0 14px 40px rgb(3 8 20 / .1);
 }
 
 .cards-inbox-inspector {
@@ -778,10 +882,11 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   border: 1px solid var(--border-subtle);
   background: var(--surface-2);
   border-color: var(--border-strong);
-  box-shadow: 0 14px 42px rgb(3 8 20 / .14);
-  min-height: min(750px, calc(100dvh - 150px));
-  max-height: calc(100dvh - 96px);
-  border-radius: .9rem;
+  box-shadow: 0 18px 48px rgb(3 8 20 / .12);
+  height: var(--cards-workspace-height);
+  min-height: 0;
+  max-height: none;
+  border-radius: 1.05rem;
 }
 
 .cards-inbox-queue-header {
@@ -895,20 +1000,40 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   background: transparent;
   color: var(--text-primary);
   text-align: left;
-  transition: background-color var(--motion-fast), box-shadow var(--motion-fast);
-  min-height: 60px;
+  border: 1px solid transparent;
+  border-radius: .72rem;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-instant) var(--ease-standard);
+  min-height: 56px;
   gap: .62rem;
-  padding: .72rem .82rem;
+  padding: .62rem .72rem;
 }
 
 .cards-inbox-item.is-active {
+  border-color: color-mix(in srgb, var(--accent-primary) 34%, var(--border-subtle));
   background: color-mix(in srgb, var(--accent-primary) 4%, var(--surface-2));
-  box-shadow: inset 3px 0 var(--accent-primary);
+  box-shadow:
+    inset 3px 0 var(--accent-primary),
+    0 6px 18px color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
 .cards-inbox-item.is-active.is-busy {
   background: color-mix(in srgb, var(--accent-primary) 2.5%, var(--surface-2));
   cursor: progress;
+}
+
+.cards-inbox-list {
+  display: grid;
+  align-content: start;
+  padding: .4rem;
+  gap: .18rem;
+}
+
+.cards-inbox-list-item {
+  border-bottom: 0;
 }
 
 .cards-inbox-item.is-active.is-busy :is(.cards-inbox-item-identity, .cards-inbox-item-meta, .cards-inbox-item-reason-row) {
@@ -962,10 +1087,10 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   grid-template-columns: minmax(0, 1fr) auto;
   border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--surface-3) 68%, var(--surface-2));
-  min-height: 90px;
+  min-height: 82px;
   gap: 1rem;
   align-items: start;
-  padding: .92rem 1.05rem;
+  padding: .78rem 1rem;
 }
 
 .cards-detail-state {
@@ -1042,18 +1167,20 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 .cards-detail-workspace-body {
   container-type: inline-size;
   min-width: 0;
+  min-height: 0;
   display: grid;
   flex: 1;
-  min-height: clamp(570px, calc(100dvh - 235px), 780px);
+  overflow: hidden;
   grid-template-columns: minmax(0, 2.08fr) minmax(310px, .98fr);
 }
 
 .cards-detail-preview-region {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-subtle);
-  padding: .95rem 1rem 1rem;
+  padding: .8rem .9rem .9rem;
 }
 
 .cards-detail-section-heading {
@@ -1081,13 +1208,25 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 
 .cards-detail-preview-frame {
   flex: 1;
+  min-height: 0;
   display: grid;
   place-items: stretch;
   overflow: hidden;
-  border: 0;
-  background: transparent;
-  min-height: clamp(430px, 57vh, 650px);
-  border-radius: .9rem;
+  padding: .72rem;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 62%, var(--border-subtle));
+  border-radius: 1.18rem;
+  background: color-mix(in srgb, var(--surface-3) 26%, var(--surface-2));
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / .035),
+    0 12px 32px rgb(3 8 20 / .08);
+}
+
+.cards-inbox-page .anki-card-shadow-preview--preview {
+  border-color: color-mix(in srgb, var(--border-strong) 72%, var(--border-subtle));
+  border-radius: .96rem;
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / .06),
+    0 8px 24px rgb(3 8 20 / .1);
 }
 
 /* Dashboard surface hierarchy only; native card day/night styling stays inside Shadow DOM. */
@@ -1108,7 +1247,11 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 }
 
 [data-theme="light"] .cards-detail-preview-frame {
-  background: transparent;
+  border-color: color-mix(in srgb, var(--border-strong) 54%, transparent);
+  background: color-mix(in srgb, var(--surface-3) 36%, var(--surface-2));
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / .94),
+    0 12px 30px rgb(63 84 109 / .08);
 }
 
 [data-theme="light"] .cards-detail-resolution-rail {
@@ -1125,17 +1268,19 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  gap: .48rem;
-  padding: .64rem;
+  gap: .52rem;
+  padding: .68rem;
   background: color-mix(in srgb, var(--surface-3) 38%, var(--surface-2));
 }
 
 .cards-detail-flow-section {
-  padding: .62rem .68rem;
+  padding: .64rem .7rem;
   border: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
-  border-radius: .72rem;
+  border-radius: .86rem;
   background: color-mix(in srgb, var(--surface-2) 96%, var(--surface-1));
-  box-shadow: inset 0 1px rgb(255 255 255 / .025);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / .035),
+    0 4px 14px rgb(3 8 20 / .035);
 }
 
 .cards-detail-flow-section > h3 {
@@ -1158,7 +1303,7 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   min-width: 0;
   padding: .46rem .52rem;
   border: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
-  border-radius: .62rem;
+  border-radius: .72rem;
   background: color-mix(in srgb, var(--surface-3) 34%, var(--surface-2));
 }
 
@@ -1422,7 +1567,7 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
   }
 
   .cards-inbox-queue {
-    min-height: min(720px, calc(100dvh - 150px));
+    min-height: 0;
   }
 }
 
@@ -1433,6 +1578,17 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 
   .cards-detail-drawer {
     width: min(82vw, 760px);
+  }
+
+  .cards-notice-tray {
+    position: static;
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .cards-inbox-warning,
+  .cards-refresh-status:not(:empty) {
+    width: 100%;
   }
 }
 
@@ -1534,4 +1690,26 @@ main.app-content-safe-inset:has(.cards-inbox-page) {
 .cards-detail-drawer .cards-detail-resolution-rule {
   font-size: .59rem;
   line-height: 1.34;
+}
+
+@keyframes cards-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cards-refresh-status:not(:empty),
+  .cards-inbox-warning {
+    animation: none;
+  }
+
+  .cards-inbox-item {
+    transition: none;
+  }
 }

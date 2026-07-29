@@ -188,7 +188,7 @@ const SHADOW_BASE_CSS = `
   padding: 0;
   background: #ffffff;
   color: #111827;
-  font-family: Arial, "Noto Sans JP", sans-serif;
+  font-family: "Yu Gothic", "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
   font-size: 20px;
   line-height: 1.5;
   text-align: center;
@@ -286,7 +286,9 @@ export function calculateAdaptivePreviewLayout({
   const measuredContentWidth = Math.max(config.baseWidth, measuredNumber(contentWidth, config.baseWidth));
   const measuredContentHeight = Math.max(config.baseHeight, measuredNumber(contentHeight, config.baseHeight));
   const measuredAvailableWidth = measuredNumber(availableWidth, config.targetWidth);
-  const targetWidth = Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
+  const targetWidth = mode === "preview"
+    ? Math.max(1, measuredAvailableWidth)
+    : Math.max(1, Math.min(measuredAvailableWidth, config.targetWidth));
   const availableContentWidth = Math.max(1, targetWidth - config.horizontalPadding);
   const widthScale = availableContentWidth / measuredContentWidth;
   let scale = Math.max(Number.EPSILON, Math.min(widthScale, config.maxScale));
@@ -300,13 +302,14 @@ export function calculateAdaptivePreviewLayout({
     const hostHeight = Math.max(config.minHeight, measuredNumber(availableHeight ?? 0, config.targetHeight));
     const availableCanvasHeight = Math.max(1, hostHeight - config.verticalPadding);
     const minimumCanvasHeight = availableCanvasHeight / scale;
+    const canvasWidth = Math.max(measuredContentWidth, availableContentWidth / scale);
     const canvasHeight = Math.max(measuredContentHeight, minimumCanvasHeight);
     const scaledContentHeight = measuredContentHeight * scale + config.verticalPadding;
     return {
       scale,
       hostHeight,
       targetWidth,
-      contentWidth: measuredContentWidth,
+      contentWidth: canvasWidth,
       contentHeight: canvasHeight,
       measured: true,
       overflow: scaledContentHeight > hostHeight + 1,
@@ -344,6 +347,7 @@ function initialAdaptiveLayout(mode: AnkiCardShadowPreviewMode): AdaptivePreview
 
 const SHADOW_SAFETY_CSS = `
 .asr-shadow-card-viewport--preview > .card {
+  width: var(--asr-preview-content-width);
   min-height: var(--asr-preview-content-height);
 }
 

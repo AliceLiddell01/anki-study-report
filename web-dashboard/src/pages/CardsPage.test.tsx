@@ -9,7 +9,7 @@ import type { CardsTriageWorkspace } from "../hooks/useCardsTriageWorkspace";
 import { ResolvedThemeProvider } from "../lib/resolvedThemeContext";
 import type { SearchInspectResponse } from "../types/search";
 import type { TriageItem, TriageQueryResponse, TriageReason } from "../types/triage";
-import CardsPage, { CARDS_WIDE_WORKSPACE_QUERY } from "./CardsPage";
+import CardsPage, { CARDS_FILTER_SESSION_KEY, CARDS_WIDE_WORKSPACE_QUERY } from "./CardsPage";
 
 const workspaceMock = vi.fn<() => CardsTriageWorkspace>();
 let wideMode = true;
@@ -39,10 +39,11 @@ const inspectResponse: SearchInspectResponse<"cards"> = { schemaVersion: 2, mode
 beforeEach(async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   await i18n.changeLanguage("ru");
+  window.sessionStorage.clear();
   wideMode = true;
   workspaceMock.mockReturnValue(readyWorkspace());
 });
-afterEach(() => { workspaceMock.mockReset(); document.body.innerHTML = ""; });
+afterEach(() => { workspaceMock.mockReset(); window.sessionStorage.clear(); document.body.innerHTML = ""; });
 
 describe("Cards attention inbox", () => {
   it("recomposes the page into compact header, queue rail, dominant preview, and resolution rail", () => {
@@ -94,6 +95,75 @@ describe("Cards attention inbox", () => {
     expect(clear).toBeTruthy();
     await act(async () => clear!.click());
     expect(workspace.setLearningPeriodDays).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
+  it("restores Cards filters after the page is unmounted during route navigation", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    let root = createRoot(document.getElementById("root")!);
+    workspaceMock.mockReturnValue(readyWorkspace());
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+
+    const search = document.querySelector<HTMLInputElement>('input[aria-label="Видимый текст"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "覚");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const filterToggle = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Фильтры"))!;
+    await act(async () => filterToggle.click());
+    const selects = Array.from(document.querySelectorAll("select"));
+    const prioritySelect = selects.find((select) => select.parentElement?.textContent?.includes("Приоритет"))!;
+    const reasonSelect = selects.find((select) => select.parentElement?.textContent?.includes("Причина"))!;
+    const deckSelect = selects.find((select) => select.parentElement?.textContent?.includes("Колода"))!;
+    await act(async () => {
+      prioritySelect.value = "high";
+      prioritySelect.dispatchEvent(new Event("change", { bubbles: true }));
+      reasonSelect.value = "content";
+      reasonSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      deckSelect.value = "Japanese::N5";
+      deckSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(JSON.parse(window.sessionStorage.getItem(CARDS_FILTER_SESSION_KEY)!)).toMatchObject({
+      priority: "high",
+      reason: "content",
+      deck: "Japanese::N5",
+      textFilter: "覚",
+    });
+
+    await act(async () => root.unmount());
+    document.body.innerHTML = '<div id="root"></div>';
+    root = createRoot(document.getElementById("root")!);
+    workspaceMock.mockReturnValue(readyWorkspace());
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+    await act(async () => Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Фильтры"))!.click());
+
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Видимый текст"]')?.value).toBe("覚");
+    const restoredSelects = Array.from(document.querySelectorAll("select"));
+    expect(restoredSelects.find((select) => select.parentElement?.textContent?.includes("Приоритет"))?.value).toBe("high");
+    expect(restoredSelects.find((select) => select.parentElement?.textContent?.includes("Причина"))?.value).toBe("content");
+    expect(restoredSelects.find((select) => select.parentElement?.textContent?.includes("Колода"))?.value).toBe("Japanese::N5");
+
+    await act(async () => root.unmount());
+  });
+
+  it("lets the user dismiss coverage warnings and refresh feedback", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    workspaceMock.mockReturnValue({ ...readyWorkspace(), refreshStatus: "success" });
+    await act(async () => root.render(<CardsPage report={null} loadState="ready" />));
+
+    expect(document.querySelectorAll(".cards-inbox-warning")).toHaveLength(2);
+    const warningClose = document.querySelector<HTMLButtonElement>(".cards-inbox-warning .cards-notice-close")!;
+    expect(warningClose.getAttribute("aria-label")).toBe("Закрыть уведомление");
+    await act(async () => warningClose.click());
+    expect(document.querySelectorAll(".cards-inbox-warning")).toHaveLength(1);
+
+    const refreshStatus = document.querySelector('[data-testid="cards-refresh-status"]')!;
+    expect(refreshStatus.textContent).toContain("Обновлено");
+    const refreshClose = refreshStatus.querySelector<HTMLButtonElement>(".cards-notice-close")!;
+    await act(async () => refreshClose.click());
+    expect(refreshStatus.textContent).toBe("");
+
     await act(async () => root.unmount());
   });
 

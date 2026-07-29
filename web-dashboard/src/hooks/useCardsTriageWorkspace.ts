@@ -94,10 +94,13 @@ export interface CardsTriageWorkspace {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function useCardsTriageWorkspace(deckIds: string[]): CardsTriageWorkspace {
+export function useCardsTriageWorkspace(
+  deckIds: string[],
+  initialLearningPeriodDays: LearningPeriodDays = 7,
+): CardsTriageWorkspace {
   const deckKey = deckIds.join(",");
   const stableDeckIds = useMemo(() => deckKey ? deckKey.split(",") : [], [deckKey]);
-  const [learningPeriodDays, setLearningPeriodDaysState] = useState<LearningPeriodDays>(7);
+  const [learningPeriodDays, setLearningPeriodDaysState] = useState<LearningPeriodDays>(initialLearningPeriodDays);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [queryStatus, setQueryStatus] = useState<CardsQueryStatus>("loading");
   const [queryError, setQueryError] = useState<TriageApiError | null>(null);
