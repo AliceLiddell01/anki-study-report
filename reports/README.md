@@ -53,12 +53,13 @@ production code и tests
 
 - [Gamification source audit — 2026-07-18](research/gamification-track-source-audit-2026-07-18.md)
 - [G4.3 candidate economy protocol post-merge closeout — 2026-07-28](research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md)
+- [G4.3 v2 corrective protocol post-merge closeout — 2026-07-29](research/g4-3-candidate-economy-protocol-v2-closeout-2026-07-29.md)
 - [FSRS helper reference inventory](research/fsrs-helper-reference-inventory.md)
 - [Statistics reference inventory](research/statistics-reference-inventory.md)
 
 ## Audits
 
-- [Card alias audit](audits/card-alias-audit.md)
+- [Card alias audit](audits/card-alias-inventory.md)
 - [Legacy cleanup inventory](audits/legacy-cleanup-inventory.md)
 - [Code scanning remediation](audits/code-scanning-remediation-2026-07-13.md)
 - [Public repository readiness](audits/public-repository-readiness.md)
