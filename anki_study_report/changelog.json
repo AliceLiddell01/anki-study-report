@@ -5,6 +5,95 @@
   },
   "releases": [
     {
+      "version": "1.3.0",
+      "date": "2026-07-29",
+      "sections": [
+        {
+          "type": "added",
+          "items": [
+            {
+              "id": "inspection_profiles_workspace",
+              "text": {
+                "ru": "Добавлено полноценное рабочее пространство «Профили проверки» с понятным базовым режимом, расширенным редактором, проверкой настроек и управлением их жизненным циклом.",
+                "en": "Added a complete Inspection Profiles workspace with a guided basic mode, an advanced editor, configuration validation, and lifecycle controls."
+              }
+            },
+            {
+              "id": "single_card_resolution_recheck",
+              "text": {
+                "ru": "В разделе «Карточки» добавлен явный цикл исправления одной карточки: выполнить безопасное действие, повторно проверить её и сразу увидеть обновлённые причины.",
+                "en": "Added an explicit single-card resolution loop in Cards: perform a safe action, recheck the card, and immediately see the updated reasons."
+              }
+            }
+          ]
+        },
+        {
+          "type": "changed",
+          "items": [
+            {
+              "id": "cards_responsive_workspace",
+              "text": {
+                "ru": "Рабочее пространство «Карточки» стало удобнее на обычных, QHD- и 4K-экранах: улучшены компоновка, уведомления, шрифты и использование области предпросмотра.",
+                "en": "Improved the Cards workspace across standard, QHD, and 4K displays with a more comfortable layout, notices, fonts, and use of the preview area."
+              }
+            },
+            {
+              "id": "cards_session_filter_persistence",
+              "text": {
+                "ru": "Фильтры приоритета, причины, колоды, текста и периода обучения теперь сохраняются при переходах между разделами dashboard в пределах текущей сессии.",
+                "en": "Priority, reason, deck, text, and learning-period filters now remain in place while navigating the dashboard during the current session."
+              }
+            },
+            {
+              "id": "inspection_profiles_editor_usability",
+              "text": {
+                "ru": "Улучшены понятность, адаптивность, фокус и сообщения проверки в редакторе профилей проверки.",
+                "en": "Improved clarity, responsive layout, focus handling, and validation feedback in the Inspection Profiles editor."
+              }
+            }
+          ]
+        },
+        {
+          "type": "fixed",
+          "items": [
+            {
+              "id": "preview_search_dashboard_reliability",
+              "text": {
+                "ru": "Повышены надёжность и безопасность предпросмотра карточек, поиска и локального dashboard.",
+                "en": "Improved the reliability and safety of card previews, Search, and the local dashboard."
+              }
+            },
+            {
+              "id": "optional_diagnostics_after_privacy_changes",
+              "text": {
+                "ru": "Исправлена отправка добровольно включённой диагностики после изменения настроек конфиденциальности.",
+                "en": "Fixed optional diagnostic delivery after privacy settings changes."
+              }
+            }
+          ]
+        },
+        {
+          "type": "safety",
+          "items": [
+            {
+              "id": "explicit_recheck_before_resolution",
+              "text": {
+                "ru": "Карточка исчезает из очереди проблем только после явной повторной проверки, подтвердившей отсутствие актуальных причин.",
+                "en": "A card leaves the problem queue only after an explicit recheck confirms that no current reasons remain."
+              }
+            },
+            {
+              "id": "local_isolated_card_previews",
+              "text": {
+                "ru": "Предпросмотр карточек остаётся локальным и изолированным; небезопасные стили и сценарии не выполняются.",
+                "en": "Card previews remain local and isolated; unsafe styles and scripts are not executed."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.2.0",
       "date": "2026-07-18",
       "sections": [

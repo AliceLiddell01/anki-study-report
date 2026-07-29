@@ -2,11 +2,13 @@
 
 Локальное расширение для **Anki 26.05+**: Python runtime собирает и анализирует учебные данные, а React/TypeScript dashboard показывает их в защищённом локальном интерфейсе.
 
-> Проект находится в активной разработке. Стабильный публичный release ещё не объявлен.
+> Проект находится в активной разработке. Актуальная версия и пользовательская история изменений находятся в `anki_study_report/version.py` и [CHANGELOG.md](CHANGELOG.md).
 
 ## Что уже есть
 
 - локальные страницы Today, Activity, Statistics/FSRS, Decks, Search, Cards и Profile;
+- рабочее пространство Inspection Profiles с базовым и расширенным редактированием, проверкой и сохранением настроек;
+- явный цикл безопасного действия и повторной проверки одной проблемной карточки;
 - безопасные действия и bounded API без прямого доступа frontend к Anki collection;
 - token-protected dashboard только на `127.0.0.1`;
 - sanitizer и Shadow DOM для предпросмотра карточек без JavaScript execution surface;
@@ -57,7 +59,7 @@ reports/             исторические отчёты и evidence
 
 ## Текущее направление
 
-- **Core:** C1 завершён; базовая C2 implementation/integration влита. В draft PR #130 Stage 1 synchronization/rejected-overlay cleanup завершён. [Cards 1:1 production integration](docs/cards-v323-production-workspace.md), native CSS fidelity, AV/audio/media repair и финальный exact-card real-Anki evidence gate завершены и приняты владельцем: `ACCEPT CARDS 1:1`. Cards имеют статус `ACCEPTED / COMPLETE / FROZEN`; технических и accessibility blockers нет. WP1 Settings shell и [WP2 Inspection Profiles workspace frame](reports/core/c2-inspection-profiles-wp2-frame-implementation.md) поставлены как implementation candidates; их external visual review pending, Basic/Advanced Profiles internals не начаты. PR #130 остаётся `OPEN / DRAFT / UNMERGED`; merge decision и C3 не выполнялись.
+- **Core:** C1 и C2 завершены. Inspection Profiles полностью интегрированы, Cards прошли приёмку и получили адаптивную desktop-компоновку с сохранением фильтров в текущей сессии. Следующий отдельный этап — C3 UI & Shell; он ещё не начат.
 - **Platform / CI:** E2E-I1–E2E-I6 завершены; следующий Platform/CI этап не активирован автоматически и требует отдельного измеренного trigger.
 - **Остальные треки:** Gamification, Operations, Identity и Extensions независимы или условны и не блокируют Core без явной зависимости.
 
