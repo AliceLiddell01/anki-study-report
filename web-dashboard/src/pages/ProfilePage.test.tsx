@@ -39,7 +39,7 @@ describe("Profile production foundation", () => {
       decks: {
         ...mockReport.profile!.decks,
         overview: [
-          { id: 9, name: "Japanese::Grammar N3", totalReviews: 410, activeDays: 12 },
+          { id: 9, name: "Words::N1::Lesson 10", totalReviews: 410, activeDays: 12 },
           { id: 10, name: "Medical terminology", totalReviews: 305, activeDays: 9 },
           { id: 11, name: "История искусства", totalReviews: 204, activeDays: 7 },
           { id: 12, name: "Mathematics", totalReviews: 188, activeDays: 6 },
@@ -50,7 +50,7 @@ describe("Profile production foundation", () => {
     const markup = renderToStaticMarkup(<ProfilePage report={report} />);
     const order = [
       'data-testid="profile-hero"',
-      'data-testid="profile-learning"',
+      'data-testid="profile-decks"',
       'data-testid="profile-status"',
       'data-testid="profile-activity"',
       'data-testid="profile-history"',
@@ -59,11 +59,17 @@ describe("Profile production foundation", () => {
     expect(order.every((position) => position >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((left, right) => left - right));
     expect(markup).toContain("Очень длинное имя локального профиля 文法");
-    expect(markup).toContain("Japanese::Grammar N3");
+    expect(markup).toContain('aria-label="Words::N1::Lesson 10"');
+    expect(markup).toContain("Words · N1");
+    expect(markup).toContain("Lesson 10");
+    expect(markup).toContain("Medical terminology");
     expect(markup).toContain("410");
     expect(markup).toContain("12");
-    expect(markup).toContain("Ещё 3 области");
-    expect((markup.match(/class="profile-status-card"/g) ?? [])).toHaveLength(6);
+    expect(markup).toContain("Ещё 3 колоды");
+    expect(markup).not.toMatch(/област(ь|и|ей)/i);
+    expect((markup.match(/class="profile-status-card /g) ?? [])).toHaveLength(6);
+    expect((markup.match(/profile-status-card--primary/g) ?? [])).toHaveLength(2);
+    expect((markup.match(/profile-status-card--secondary/g) ?? [])).toHaveLength(4);
     expect(markup).not.toMatch(/\bXP\b|достижен|achievement|mastery|уров(ень|ня)/i);
   });
 
@@ -111,7 +117,7 @@ describe("Profile production foundation", () => {
     expect(button("Свернуть историю").getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("opens an accessible unified dialog, validates future dates, traps Tab and restores focus on Escape", async () => {
+  it("keeps initial heading focus inside the dialog in both Tab directions and restores focus on Escape", async () => {
     await act(async () => root.render(<ProfilePage report={mockReport} />));
     const trigger = button("Настроить профиль");
     await act(async () => trigger.click());
@@ -122,11 +128,15 @@ describe("Profile production foundation", () => {
     expect(document.activeElement).toBe(heading);
     expect(document.querySelector("#profile-deck-sort")).not.toBeNull();
 
-    await changeInput(input, "2021-03-01");
     const firstControl = dialog.querySelector<HTMLButtonElement>(".profile-icon-button")!;
-    firstControl.focus();
     await act(async () => dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true })));
-    expect(document.activeElement).toBe(button("Сохранить"));
+    expect(document.activeElement).toBe(button("Отмена"));
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    button("Отмена").focus();
+    await act(async () => dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true })));
+    expect(document.activeElement).toBe(firstControl);
+    expect(dialog.contains(document.activeElement)).toBe(true);
 
     await changeInput(input, "2099-01-01");
     await act(async () => button("Сохранить").click());
@@ -139,7 +149,7 @@ describe("Profile production foundation", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it("saves the date and learning-area order in one existing profile request", async () => {
+  it("saves the date and main-deck order in one existing profile request", async () => {
     const changed = {
       ...mockReport.profile!,
       preferences: { customStudyStartedOn: "2021-03-01", deckOverviewSort: "reviews" as const },
@@ -194,6 +204,14 @@ describe("Profile production foundation", () => {
     expect(saveMock).toHaveBeenCalledTimes(1);
     expect(document.querySelector<HTMLButtonElement>(".profile-dialog .profile-button--primary")!.disabled).toBe(true);
 
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    await act(async () => dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true })));
+    expect(document.activeElement).toBe(document.querySelector("#profile-settings-title"));
+
+    await act(async () => dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+
     await act(async () => {
       resolveRequest?.({ ok: false });
       await Promise.resolve();
@@ -218,13 +236,38 @@ describe("Profile production foundation", () => {
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   });
 
+  it("selects compact and full Activity presentation from the factual available date range", () => {
+    const compact = withProfile({
+      ...mockReport.profile!,
+      activity: {
+        ...mockReport.profile!.activity,
+        rangeStart: "2026-07-28",
+        rangeEnd: "2026-07-29",
+      },
+    });
+    const full = withProfile({
+      ...mockReport.profile!,
+      activity: {
+        ...mockReport.profile!.activity,
+        rangeStart: "2026-01-01",
+        rangeEnd: "2026-07-01",
+      },
+    });
+
+    expect(renderToStaticMarkup(<ProfilePage report={compact} />)).toContain('data-activity-presentation="compact"');
+    expect(renderToStaticMarkup(<ProfilePage report={full} />)).toContain('data-activity-presentation="full"');
+  });
+
   it("renders the production composition in English", async () => {
     await i18n.changeLanguage("en");
     const markup = renderToStaticMarkup(<ProfilePage report={mockReport} />);
     expect(markup).toContain("What you study");
+    expect(markup).toContain("Main decks");
+    expect(markup).toContain("Decks from the current profile, ordered by the selected preference.");
     expect(markup).toContain("Your history in numbers");
     expect(markup).toContain("Activity history");
     expect(markup).toContain("Profile settings");
+    expect(markup).not.toMatch(/\barea(s)?\b/i);
   });
 
   function button(text: string): HTMLButtonElement {

@@ -40,9 +40,11 @@ web-dashboard/src/i18n/
 ## Profile production foundation
 
 `ProfilePage` использует существующий all-collection `StudyReport.profile` без
-новых backend fields. Композиция фиксирована как identity hero → реальные
-learning areas из `profile.decks.overview` → factual Status → activity heatmap
-→ компактная recent history. Единый settings dialog сохраняет
+новых backend fields. Композиция фиксирована как компактный identity hero →
+реальные main decks из `profile.decks.overview` → factual Status с
+primary/secondary hierarchy → compact/full factual Activity → спокойная recent
+history. Canonical deck hierarchy визуально раскрывается без domain inference,
+а полное имя остаётся accessible. Единый settings dialog сохраняет
 `customStudyStartedOn` и `deckOverviewSort` одним существующим Profile patch и
 рендерится portal в `document.body`.
 

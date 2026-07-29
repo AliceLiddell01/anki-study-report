@@ -1,7 +1,8 @@
 # Profile MVP
 
-Статус: Stage 3 contract implemented; G5.1 production-foundation candidate
-delivered on `chatGPT/G5`, owner visual acceptance and merge pending.
+Статус: Stage 3 contract implemented; G5 in progress. G5.1 — remediated
+candidate on `chatGPT/G5`, owner visual acceptance and merge pending; G5.2 not
+started.
 
 ## Product role
 
@@ -25,14 +26,19 @@ avatar/banner upload.
 
 ## Page structure
 
-1. Theme-aware встроенный banner и avatar с детерминированными initials.
+1. Theme-aware интегрированный identity hero с компактным banner и avatar с
+   детерминированными initials.
 2. Имя текущего Anki profile; fallback — `Пользователь Anki`.
 3. Нейтральный label `Локальный профиль`, даты учебной истории и единая кнопка
    настроек.
-4. До четырёх learning-area cards из `profile.decks.overview`; остаток
-   обозначается фактическим count и ссылкой на существующий `#/decks`.
-5. Выделенный factual Status с ровно шестью lifetime metrics.
-6. Mini heatmap последних максимум 182 календарных дней доступной активности.
+4. До четырёх main-deck cards из `profile.decks.overview`; canonical `::` name
+   визуально раскрывается как parent path и leaf, а полное имя сохраняется в
+   accessible name. Остаток обозначается фактическим count колод и ссылкой на
+   существующий `#/decks`.
+5. Выделенный factual Status с ровно шестью lifetime metrics: reviews и active
+   days образуют primary group, остальные четыре метрики — secondary group.
+6. Activity использует compact factual composition для короткого доступного
+   диапазона и bounded heatmap максимум 182 календарных дней для длинного.
 7. Три последних активных дня по умолчанию и раскрытие до всех семи
    `recentActiveDays`, newest first.
 
@@ -92,9 +98,10 @@ Override валидируется frontend и backend, не может быть 
 отдельно сообщает, с какой даты реально доступна статистика. Единый dialog
 редактирует дату и `deckOverviewSort`, отправляет один existing Profile patch,
 блокирует duplicate submit, сохраняет draft после ошибки и поддерживает
-initial focus, Tab trap, Escape, возврат focus, inline error и явный reset
-draft. Dialog рендерится portal в `document.body`, поэтому shared page-entry
-transform не нарушает viewport-fixed geometry.
+initial focus на heading, двусторонний Tab/Shift+Tab trap, Escape, возврат
+focus, inline error и явный reset draft. Dialog рендерится portal в
+`document.body`, поэтому shared page-entry transform не нарушает
+viewport-fixed geometry.
 
 ## Persistence
 
@@ -165,8 +172,8 @@ per Anki profile, не в browser localStorage.
 - нет profile name → `Пользователь Anki`;
 - нет history → нулевые count KPI, unavailable time/pass rate, явные empty
   blocks для activity/recent/decks;
-- один день → один heatmap cell, без огромной пустой сетки;
-- один deck → обычная одна row;
+- короткий диапазон → compact summary + factual grid, без огромной пустой сетки;
+- один deck → обычная одна card;
 - custom start не расширяет heatmap пустыми годами.
 
 ## Explicit non-goals

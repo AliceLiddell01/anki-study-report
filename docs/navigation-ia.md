@@ -116,10 +116,11 @@ Menu разделено на два блока:
 - после `Escape` фокус возвращается на trigger.
 
 `#/profile` является самостоятельной локальной поверхностью всей collection:
-identity hero, реальные learning areas из текущего deck overview, factual
-lifetime Status, активность и компактная recent history. Ссылки ведут только
-в существующие `#/calendar` и `#/decks`; настройки даты начала и порядка
-learning areas объединены в доступном dialog. Profile не добавляет
+компактный identity hero, реальные main decks из текущего deck overview,
+factual lifetime Status с primary/secondary hierarchy, compact/full Activity и
+спокойная recent history. Ссылки ведут только в существующие `#/calendar` и
+`#/decks`; настройки даты начала и порядка main decks объединены в доступном
+dialog. Profile не добавляет
 Gamification routes или speculative progression systems и не меняет scope
 dashboard. См. `docs/profile-mvp.md`.
 

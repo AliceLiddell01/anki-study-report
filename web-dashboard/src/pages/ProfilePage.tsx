@@ -30,8 +30,9 @@ type ProfileDraft = {
 };
 
 const RECENT_DAYS_COLLAPSED = 3;
-const LEARNING_AREAS_LIMIT = 4;
+const MAIN_DECKS_LIMIT = 4;
 const HEATMAP_DAYS_LIMIT = 182;
+const COMPACT_ACTIVITY_DAYS_LIMIT = 42;
 
 function ProfilePage({ report, onReportUpdated }: Props) {
   const { t } = useTranslation("pages");
@@ -120,7 +121,7 @@ function ProfilePage({ report, onReportUpdated }: Props) {
   return (
     <div className="profile-page" data-testid="profile-page">
       <ProfileHero profile={profile} onOpenSettings={openDialog} triggerRef={triggerRef} />
-      <LearningAreas profile={profile} />
+      <MainDecks profile={profile} />
       <ProfileStatus profile={profile} />
       <ActivityHeatmap profile={profile} />
       <RecentHistory profile={profile} />
@@ -158,9 +159,11 @@ function ProfileHero({
 
   return (
     <header className="profile-hero" data-testid="profile-hero">
-      <div className="profile-hero__banner" aria-hidden="true">
+      <div className="profile-hero__backdrop" aria-hidden="true">
         <span className="profile-hero__orb profile-hero__orb--one" />
         <span className="profile-hero__orb profile-hero__orb--two" />
+        <span className="profile-hero__line profile-hero__line--one" />
+        <span className="profile-hero__line profile-hero__line--two" />
       </div>
       <div className="profile-hero__body">
         <div className="profile-avatar" aria-label={t("profile.avatarLabel", { initials: profile.identity.initials })} data-testid="profile-avatar">
@@ -171,12 +174,15 @@ function ProfileHero({
           <h1 title={profile.identity.displayName}>{profile.identity.displayName}</h1>
           <div className="profile-identity__facts">
             {history.displayedStartedOn ? (
-              <p>{t("profile.inAnkiSince", { date: formatMonthYear(history.displayedStartedOn), days: formatDays(history.activeDays) })}</p>
+              <>
+                <span>{t("profile.studyStarted", { date: formatMonthYear(history.displayedStartedOn) })}</span>
+                <span>{t("profile.activityDaysFact", { days: formatDays(history.activeDays) })}</span>
+              </>
             ) : (
-              <p>{t("profile.historyMissing")}</p>
+              <span>{t("profile.historyMissing")}</span>
             )}
             {history.displayedStartedOn && history.statsAvailableFrom && history.displayedStartedOn !== history.statsAvailableFrom ? (
-              <p>{t("profile.statsSince", { date: formatMonthYear(history.statsAvailableFrom) })}</p>
+              <span>{t("profile.statsSince", { date: formatMonthYear(history.statsAvailableFrom) })}</span>
             ) : null}
           </div>
         </div>
@@ -189,46 +195,60 @@ function ProfileHero({
   );
 }
 
-function LearningAreas({ profile }: { profile: ProfileModel }) {
+function MainDecks({ profile }: { profile: ProfileModel }) {
   const { t } = useTranslation("pages");
-  const areas = profile.decks.overview.slice(0, LEARNING_AREAS_LIMIT);
-  const remaining = Math.max(0, profile.decks.total - areas.length);
+  const decks = profile.decks.overview.slice(0, MAIN_DECKS_LIMIT);
+  const remaining = Math.max(0, profile.decks.total - decks.length);
 
   return (
-    <section className="profile-section" aria-labelledby="profile-learning-title" data-testid="profile-learning">
+    <section className="profile-section profile-decks" aria-labelledby="profile-decks-title" data-testid="profile-decks">
       <SectionHeading
-        id="profile-learning-title"
-        eyebrow={t("profile.learningEyebrow")}
-        title={t("profile.learningAreas")}
-        description={t("profile.learningAreasDescription")}
+        id="profile-decks-title"
+        eyebrow={t("profile.decksEyebrow")}
+        title={t("profile.mainDecks")}
+        description={t("profile.mainDecksDescription")}
         action={<a href="#/decks">{t("profile.openAllDecks")}</a>}
       />
-      {areas.length ? (
+      {decks.length ? (
         <>
-          <div className="profile-learning-grid">
-            {areas.map((area, index) => (
-              <article key={area.id} className={`profile-learning-card profile-learning-card--${(index % 4) + 1}`}>
-                <span className="profile-learning-card__index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-                <h3 title={area.name}>{area.name}</h3>
+          <div className="profile-deck-grid">
+            {decks.map((deck, index) => (
+              <article key={deck.id} className={`profile-deck-card profile-deck-card--${(index % 4) + 1}`}>
+                <span className="profile-deck-card__index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                <DeckTitle name={deck.name} />
                 <dl>
                   <div>
                     <dt>{t("profile.totalReviews")}</dt>
-                    <dd>{formatInteger(area.totalReviews)}</dd>
+                    <dd>{formatInteger(deck.totalReviews)}</dd>
                   </div>
                   <div>
                     <dt>{t("profile.activeDays")}</dt>
-                    <dd>{formatInteger(area.activeDays)}</dd>
+                    <dd>{formatInteger(deck.activeDays)}</dd>
                   </div>
                 </dl>
               </article>
             ))}
           </div>
-          {remaining ? <p className="profile-section__note">{t("profile.moreLearningAreas", { count: remaining })}</p> : null}
+          {remaining ? <p className="profile-section__note">{t("profile.moreDecks", { count: remaining })}</p> : null}
         </>
       ) : (
         <Empty icon={<Layers3 size={20} aria-hidden="true" />} text={t("profile.decksEmpty")} />
       )}
     </section>
+  );
+}
+
+function DeckTitle({ name }: { name: string }) {
+  const segments = name.split("::").map((segment) => segment.trim()).filter(Boolean);
+  if (segments.length < 2) return <h3 title={name}>{name}</h3>;
+  const leaf = segments[segments.length - 1];
+  const parentPath = segments.slice(0, -1).join(" · ");
+
+  return (
+    <h3 title={name} aria-label={name} data-canonical-name={name}>
+      <span className="profile-deck-card__path" aria-hidden="true">{parentPath}</span>
+      <span className="profile-deck-card__name" aria-hidden="true">{leaf}</span>
+    </h3>
   );
 }
 
@@ -243,6 +263,8 @@ function ProfileStatus({ profile }: { profile: ProfileModel }) {
     { label: t("profile.studyTime"), value: formatDurationSeconds(history.studyTimeSeconds), caption: studyTimeCaption(history.studyTimeSource) },
     { label: t("profile.averageSuccess"), value: formatPercent(history.averagePassRate), caption: t("profile.passCaption") },
   ];
+  const primaryMetrics = metrics.slice(0, 2);
+  const secondaryMetrics = metrics.slice(2);
 
   return (
     <section className="profile-status" aria-labelledby="profile-status-title" data-testid="profile-status">
@@ -252,16 +274,31 @@ function ProfileStatus({ profile }: { profile: ProfileModel }) {
         title={t("profile.statusTitle")}
         description={t("profile.statusDescription")}
       />
-      <div className="profile-status-grid">
-        {metrics.map((metric) => (
-          <article key={metric.label} className="profile-status-card" aria-label={`${metric.label}: ${metric.value}`}>
-            <p>{metric.label}</p>
-            <strong>{metric.value}</strong>
-            <span>{metric.caption}</span>
-          </article>
-        ))}
+      <div className="profile-status-layout">
+        <div className="profile-status-primary">
+          {primaryMetrics.map((metric) => <StatusMetric key={metric.label} metric={metric} emphasis="primary" />)}
+        </div>
+        <div className="profile-status-secondary">
+          {secondaryMetrics.map((metric) => <StatusMetric key={metric.label} metric={metric} emphasis="secondary" />)}
+        </div>
       </div>
     </section>
+  );
+}
+
+function StatusMetric({
+  metric,
+  emphasis,
+}: {
+  metric: { label: string; value: string; caption: string };
+  emphasis: "primary" | "secondary";
+}) {
+  return (
+    <article className={`profile-status-card profile-status-card--${emphasis}`} aria-label={`${metric.label}: ${metric.value}`}>
+      <p>{metric.label}</p>
+      <strong>{metric.value}</strong>
+      <span>{metric.caption}</span>
+    </article>
   );
 }
 
@@ -274,9 +311,15 @@ function ActivityHeatmap({ profile }: { profile: ProfileModel }) {
   const maxReviews = Math.max(1, ...dates.map((date) => dayMap.get(date)?.reviews ?? 0));
   const reviewsInRange = dates.reduce((total, date) => total + (dayMap.get(date)?.reviews ?? 0), 0);
   const activeDaysInRange = dates.filter((date) => (dayMap.get(date)?.reviews ?? 0) > 0).length;
+  const presentation = dates.length <= COMPACT_ACTIVITY_DAYS_LIMIT ? "compact" : "full";
 
   return (
-    <section className="profile-section profile-activity" aria-labelledby="profile-activity-title" data-testid="profile-activity">
+    <section
+      className={`profile-section profile-activity profile-activity--${presentation}`}
+      aria-labelledby="profile-activity-title"
+      data-testid="profile-activity"
+      data-activity-presentation={presentation}
+    >
       <SectionHeading
         id="profile-activity-title"
         eyebrow={t("profile.activityEyebrow")}
@@ -285,38 +328,43 @@ function ActivityHeatmap({ profile }: { profile: ProfileModel }) {
         action={<a href="#/calendar">{t("profile.openCalendar")}</a>}
       />
       {dates.length ? (
-        <>
-          <div className="profile-activity__summary" aria-label={t("profile.activityRangeSummary", { reviews: reviewsInRange, days: activeDaysInRange })}>
-            <span><strong>{formatInteger(reviewsInRange)}</strong>{t("profile.rangeReviews")}</span>
-            <span><strong>{formatInteger(activeDaysInRange)}</strong>{t("profile.rangeActiveDays")}</span>
+        <div className="profile-activity__content">
+          <div className="profile-activity__context">
+            <div className="profile-activity__summary" aria-label={t("profile.activityRangeSummary", { reviews: reviewsInRange, days: activeDaysInRange })}>
+              <span><strong>{formatInteger(reviewsInRange)}</strong>{t("profile.rangeReviews")}</span>
+              <span><strong>{formatInteger(activeDaysInRange)}</strong>{t("profile.rangeActiveDays")}</span>
+            </div>
+            {presentation === "compact" ? <p>{t("profile.compactRange", { count: dates.length })}</p> : null}
           </div>
-          <div className="profile-heatmap-scroll">
-            <div
-              className="profile-heatmap"
-              role="img"
-              aria-label={t("profile.heatmapLabel", { start: dates[0], end: dates[dates.length - 1] })}
-              data-testid="profile-heatmap"
-            >
-              {dates.map((date) => {
-                const reviews = dayMap.get(date)?.reviews ?? 0;
-                const intensity = reviews ? Math.min(4, Math.max(1, Math.ceil((reviews / maxReviews) * 4))) : 0;
-                return (
-                  <span
-                    key={date}
-                    className={`profile-heatmap__day profile-heatmap__day--${intensity}`}
-                    title={`${date}: ${t("profile.reviewCount", { count: reviews })}`}
-                    aria-hidden="true"
-                  />
-                );
-              })}
+          <div className="profile-activity__visual">
+            <div className="profile-heatmap-scroll">
+              <div
+                className="profile-heatmap"
+                role="img"
+                aria-label={t("profile.heatmapLabel", { start: dates[0], end: dates[dates.length - 1] })}
+                data-testid="profile-heatmap"
+              >
+                {dates.map((date) => {
+                  const reviews = dayMap.get(date)?.reviews ?? 0;
+                  const intensity = reviews ? Math.min(4, Math.max(1, Math.ceil((reviews / maxReviews) * 4))) : 0;
+                  return (
+                    <span
+                      key={date}
+                      className={`profile-heatmap__day profile-heatmap__day--${intensity}`}
+                      title={`${date}: ${t("profile.reviewCount", { count: reviews })}`}
+                      aria-hidden="true"
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            <div className="profile-heatmap-legend" aria-hidden="true">
+              <span>{t("profile.lessActivity")}</span>
+              {[0, 1, 2, 3, 4].map((intensity) => <i key={intensity} className={`profile-heatmap__day profile-heatmap__day--${intensity}`} />)}
+              <span>{t("profile.moreActivity")}</span>
             </div>
           </div>
-          <div className="profile-heatmap-legend" aria-hidden="true">
-            <span>{t("profile.lessActivity")}</span>
-            {[0, 1, 2, 3, 4].map((intensity) => <i key={intensity} className={`profile-heatmap__day profile-heatmap__day--${intensity}`} />)}
-            <span>{t("profile.moreActivity")}</span>
-          </div>
-        </>
+        </div>
       ) : (
         <Empty icon={<CalendarDays size={20} aria-hidden="true" />} text={t("profile.activityEmpty")} />
       )}
@@ -435,10 +483,14 @@ function ProfileSettingsDialog({
         'button:not([disabled]), input:not([disabled]), select:not([disabled])',
       ) ?? [],
     );
-    if (!focusable.length) return;
+    if (!focusable.length) {
+      event.preventDefault();
+      titleRef.current?.focus();
+      return;
+    }
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (event.shiftKey && (document.activeElement === titleRef.current || document.activeElement === first)) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -506,8 +558,8 @@ function ProfileSettingsDialog({
           </div>
 
           <div className="profile-dialog__field">
-            <label htmlFor="profile-deck-sort">{t("profile.learningAreasSort")}</label>
-            <p>{t("profile.learningAreasSortDescription")}</p>
+            <label htmlFor="profile-deck-sort">{t("profile.deckSort")}</label>
+            <p>{t("profile.deckSortDescription")}</p>
             <select
               id="profile-deck-sort"
               value={draft.deckOverviewSort}

@@ -3,7 +3,7 @@
 **Track:** `G`  
 **Canonical branch:** `gamification`  
 **Planning status:** owner-approved direction  
-**Implementation status:** `NOT STARTED`  
+**Implementation status:** `G5 IN PROGRESS / NOT COMPLETE`<br>
 **Prepared from:** merged G4 state at `d70eb173af2d4618d82d8dfa7a149d212cd5710d`  
 **Date:** 2026-07-29
 
@@ -65,7 +65,7 @@ G8 — Skills, Quests and Domain Expansion
 Новый статус:
 
 ```text
-G5 — PLANNED / NOT STARTED
+G5 — IN PROGRESS / NOT COMPLETE
 G6 — CONDITIONAL / NOT STARTED
 G7 — CONDITIONAL / NOT STARTED
 G8 — DEFERRED / CONDITIONAL / NOT STARTED
@@ -132,10 +132,10 @@ The user sets a realistic weekly study rhythm, sees today's state and weekly pro
 ```text
 G5 status: IN PROGRESS / NOT COMPLETE
 G5.0: COMPLETE
-G5.1 Profile Production Foundation candidate: DELIVERED
+G5.1: REMEDIATED CANDIDATE / OWNER ACCEPTANCE PENDING
 G5.1 owner visual acceptance: PENDING
 G5.1 merge: NOT PERFORMED
-G5.2+: NOT STARTED
+G5.2: NOT STARTED
 G5 closes with: WORKING PACKAGED MVP
 XP economy: OUT OF SCOPE
 level system: OUT OF SCOPE
@@ -418,8 +418,10 @@ Candidate deliverable:
 
 - reference CRC/checksum/inventory and adaptation ledger;
 - identity-first composition;
-- real learning areas from `profile.decks.overview`;
-- factual six-metric Status, bounded activity and compact recent history;
+- real main decks from `profile.decks.overview`, with canonical hierarchy
+  preserved and no domain inference;
+- factual six-metric Status with primary/secondary hierarchy, compact/full
+  factual Activity and quiet recent history;
 - one accessible settings dialog for existing `customStudyStartedOn` and
   `deckOverviewSort`;
 - RU/EN, light/dark, responsive and reduced-motion-safe behavior;
@@ -793,8 +795,8 @@ G8 bounded expansion
 
 ## 20. Production boundary at planning time
 
-G5.1 has an owner-authorized implementation candidate. Later stages remain
-planning only.
+G5.1 has an owner-authorized remediated candidate. Owner visual acceptance and
+merge remain pending; later stages remain planning only.
 
 ```text
 production code changed: G5.1 FRONTEND CANDIDATE ONLY
@@ -803,7 +805,7 @@ payload/API changed: NO
 persistence changed: NO
 package changed: PACKAGE-IMPACTING FRONTEND CANDIDATE
 release changed: NO
-G5.1 implementation candidate: DELIVERED
+G5.1: REMEDIATED CANDIDATE / OWNER ACCEPTANCE PENDING
 G5.1 owner visual acceptance: PENDING
 G5.1 merge: NOT PERFORMED
 G5.2 started: NO
