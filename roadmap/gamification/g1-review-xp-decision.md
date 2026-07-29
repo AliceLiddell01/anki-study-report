@@ -6,7 +6,7 @@
 Mode: ChatGPT
 G1.6: COMPLETE
 G1: COMPLETE
-G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+G1 final outcome: RECOMMEND_RESEARCH_CANDIDATE
 recommended research candidate: P-TAPER-ZERO-30D
 historical G1.6 outcome: DEFER_REVIEW_MODEL
 production approved: NO
@@ -265,7 +265,7 @@ No raw evidence, task logs, temporary extracted payloads, runtime outputs or pri
 G1: COMPLETE
 G1.6: COMPLETE
 historical G1.6 outcome: DEFER_REVIEW_MODEL
-current G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+current G1 final outcome: RECOMMEND_RESEARCH_CANDIDATE
 recommended research candidate: P-TAPER-ZERO-30D
 production integration: PROHIBITED
 G2: COMPLETE

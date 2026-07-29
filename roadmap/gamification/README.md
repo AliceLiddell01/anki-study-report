@@ -56,7 +56,7 @@ G0 reproduced the current synthetic Review baseline without production integrati
 **Status:** Complete.
 
 ```text
-G1 final outcome: RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+G1 final outcome: RECOMMEND_RESEARCH_CANDIDATE
 recommended research candidate: P-TAPER-ZERO-30D
 P-STEP-ZERO: CONFIRMATORY_ELIGIBLE; not selected; not falsified
 P-TAPER-ZERO-30D: CONFIRMATORY_ELIGIBLE; selected research winner; not falsified

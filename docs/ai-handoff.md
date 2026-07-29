@@ -63,7 +63,7 @@ gamification
 G0 — COMPLETE
 
 G1 — COMPLETE
-G1 final outcome — RECOMMEND_REVIEW_XP_RESEARCH_MODEL
+G1 final outcome — RECOMMEND_RESEARCH_CANDIDATE
 recommended Review XP research candidate — P-TAPER-ZERO-30D
 P-STEP-ZERO — CONFIRMATORY_ELIGIBLE; not selected; not falsified
 P-TAPER-ZERO-30D — CONFIRMATORY_ELIGIBLE; selected research winner; not falsified
