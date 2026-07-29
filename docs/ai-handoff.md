@@ -492,7 +492,7 @@ E2E-I6 corrective fix does not activate CI 7–12. Any optimization requires a s
 - Successful unchanged exact-SHA gates не повторять.
 - Не создавать вложенную лестницу этапов вместо одной цельной задачи.
 - Docs-only post-merge sync не требует повторного Fast CI или Docker E2E.
-- Для нетривиальной реализации использовать локальный `.agents/task-contract.toml` и `python scripts/check_task_scope.py`.
+- Для нетривиальной реализации использовать локальный `.agents/task-contract.toml` и `node scripts/run_python.mjs scripts/check_task_scope.py` из PowerShell 7.
 - Harness failure не объявлять production failure без подтверждения.
 - Для Gamification target и PR base — `gamification`.
 - Не трактовать historical dry matrix, preferred direction или отсутствие workflow checks как новый screening result, winner либо CI PASS.

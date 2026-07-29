@@ -1,6 +1,6 @@
 # Режимы работы ChatGPT и Codex
 
-Снимок правил: **2026-07-25**.
+Снимок правил: **2026-07-30**.
 
 Этот документ определяет два разных режима работы с репозиторием:
 
@@ -16,7 +16,7 @@
 - [ChatGPT work mode](chatgpt-work-mode.md);
 - [ChatGPT manual operations](chatgpt-manual-operations.md);
 - [Codex work mode](codex-agent-rules.md);
-- [Codex local WSL environment](codex-local-environment.md);
+- [Codex local Windows environment](codex-local-environment.md);
 - [UI prototyping and visual acceptance](ui-prototype-visual-acceptance.md).
 
 ## Выбор режима не является постоянным default
@@ -94,7 +94,8 @@ production regression или явном owner rejection.
 - GitHub Actions не используется как удалённый терминал, редактор веток или
   универсальный debugger.
 - Для routine Git operations, локальной диагностики и локальных тестов
-  используются Codex checkout либо доступная владельцу WSL/PowerShell-консоль.
+  используются существующий Codex checkout и PowerShell 7 либо доступная владельцу
+  PowerShell 7 консоль.
 - Permanent workflows применяются только для их штатной роли: CI, release,
   package handoff и real-Anki integration gates.
 - Docs/cleanup, непосредственно относящиеся к задаче, входят в основной PR либо в
@@ -143,7 +144,7 @@ GitHub Actions инфраструктуру.
 ## Ручной continuation contour ChatGPT mode
 
 Когда основная implementation уже существует, но connector не покрывает локальные
-Git/WSL/PowerShell/`gh` операции, используется
+Git/PowerShell/`gh` операции, используется
 [`chatgpt-manual-operations.md`](chatgpt-manual-operations.md).
 
 Contour обязан оставаться checkpointed:

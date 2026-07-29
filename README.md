@@ -81,19 +81,29 @@ reports/             исторические отчёты и evidence
 Canonical non-Docker check:
 
 ```powershell
-.\scripts\run_full_check.ps1 -SkipDocker
+$checkArgs = @('-SkipDocker')
+& '.\scripts\run_full_check.ps1' @checkArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Package validation:
 
 ```powershell
-node scripts/run_python.mjs scripts/package_addon.py --check
+$packageArgs = @(
+    'scripts/run_python.mjs',
+    'scripts/package_addon.py',
+    '--check'
+)
+& node @packageArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Полный Docker E2E запускается только когда это оправдано риском изменения:
 
 ```powershell
-.\scripts\run_full_check.ps1 -CleanDocker
+$e2eArgs = @('-CleanDocker')
+& '.\scripts\run_full_check.ps1' @e2eArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 ## Лицензия

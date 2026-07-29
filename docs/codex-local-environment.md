@@ -1,252 +1,202 @@
-# Codex local environment
+# Локальная среда Codex
 
-Снимок окружения: **2026-07-22**.
+**Снимок:** 2026-07-30
+**Статус:** authoritative local environment profile
 
-Этот документ описывает фактический локальный профиль, который используется,
-когда владелец выбирает **Codex mode** для задачи Anki Study Report. Он не
-назначает Codex постоянным режимом проекта и не отменяет ChatGPT mode. Активный
-режим выбирается владельцем для конкретной задачи и может временно зависеть от
-доступных лимитов или нужного типа работы.
+Этот документ задаёт среду локального выполнения после того, как владелец выбрал
+Codex mode. Он не меняет product scope, Git-полномочия конкретной задачи или
+правила проверки из [`codex-agent-rules.md`](codex-agent-rules.md).
 
-Общие правила выбора режима находятся в [`ai-work-modes.md`](ai-work-modes.md),
-Codex-specific процесс — в [`codex-agent-rules.md`](codex-agent-rules.md).
-
-## Surface и environment profile
-
-Текущий подтверждённый контур:
+## Фиксированный профиль
 
 ```text
-Surface: ChatGPT desktop app on Windows, Codex local worktree task
-Environment profile: Anki extension
-Agent runtime: WSL
-Integrated terminal shell: WSL
-Files open with: VS Code
+OS: Windows
+Shell: PowerShell 7
+Checkout: C:\Users\KykLa\Documents\anki-study-report
+Working tree: existing main checkout
+Task branch: existing owner-specified branch
 ```
 
-Это не Codex CLI, не VS Code extension и не cloud task. Точный номер версии
-настольного приложения не является репозиторным контрактом.
+Локально запрещены:
 
-Setup и cleanup в профиле должны использовать отдельные Linux scripts. Факт
-сохранения их последней редакции в UI проверяется владельцем отдельно; репозиторий
-не должен делать вид, что настройка интерфейса подтверждена только по наличию
-этого документа.
+- WSL;
+- Bash и Git Bash;
+- `git worktree`;
+- второй checkout;
+- повторный clone репозитория;
+- создание или переключение branch без отдельного прямого указания владельца.
 
-## WSL и filesystem
+Эти ограничения относятся только к локальной рабочей поверхности. Linux остаётся
+допустимым:
 
-Текущая среда:
+- на GitHub Actions runners;
+- внутри Docker containers;
+- в cloud E2E и других штатных CI jobs.
+
+## Checkout и paths
+
+Все локальные команды запускаются из существующего checkout:
 
 ```text
-Arch Linux under WSL 2
-systemd enabled
-native Linux filesystem
+C:\Users\KykLa\Documents\anki-study-report
 ```
 
-Основной source checkout на момент снимка:
+Не создавать альтернативный рабочий корень, не зеркалировать repository в другой
+каталог и не переносить задачу в отдельное рабочее дерево. Использовать Windows
+paths и `-LiteralPath` для путей, которые могут содержать пробелы.
 
-```text
-$HOME/projects/anki-study-report
+Перед mutation подтвердить, что фактическая branch совпадает с указанной
+владельцем task branch и что unrelated dirty/untracked files не будут затронуты.
+
+## PowerShell 7
+
+Для native executables использовать argument arrays и проверять
+`$LASTEXITCODE` сразу после каждого вызова:
+
+```powershell
+$statusArgs = @('status', '--short', '--branch')
+& git @statusArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$headArgs = @('rev-parse', 'HEAD')
+& git @headArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-Codex выполняет каждую задачу в отдельном worktree. Использовать переданные
-профилем переменные:
+Для PowerShell cmdlets использовать named parameters или splatting и
+`$ErrorActionPreference = 'Stop'` в bounded scripts. Не собирать исполняемые
+команды строковой конкатенацией и не передавать их в другую shell.
 
-```text
-CODEX_SOURCE_TREE_PATH  source checkout
-CODEX_WORKTREE_PATH     current task worktree
+Repository-owned `.ps1` entrypoints запускаются напрямую из PowerShell:
+
+```powershell
+$checkArgs = @('-SkipDocker')
+& '.\scripts\run_full_check.ps1' @checkArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
-
-Путь task worktree является динамическим. Скрипты не должны hard-code путь
-конкретной прошлой задачи.
-
-Рабочее дерево должно оставаться в `/home/...`, а не в `/mnt/c/...`. Не смешивать
-Linux и Windows executables или filesystem paths без отдельной необходимости.
 
 ## Toolchain
 
-Setup обязан проверить наличие Linux-версий:
+Версии Node.js, package manager и Python определяются current repository config,
+lockfiles и canonical scripts. Перед изменением dependencies или окружения
+сначала прочитать эти источники и выполнить read-only preflight:
 
-```text
-git
-node
-pnpm
-uv
+```powershell
+$gitVersionArgs = @('--version')
+& git @gitVersionArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$nodeVersionArgs = @('--version')
+& node @nodeVersionArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$pnpmVersionArgs = @('--version')
+& pnpm @pnpmVersionArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$uvVersionArgs = @('--version')
+& uv @uvVersionArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-Проектный Python создаётся как:
+Не устанавливать или обновлять global tools, system packages, Docker settings
+или project dependencies без необходимости в рамках текущей задачи. Не
+использовать executable из другой OS surface.
 
-```text
-.venv/bin/python
+Python repository scripts запускать через repository-owned runner:
+
+```powershell
+$scopeArgs = @('scripts/run_python.mjs', 'scripts/check_task_scope.py')
+& node @scopeArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-Версия берётся из `.python-version`; для текущего проекта это Python 3.11.
-Системный Arch `python3` может иметь другую версию и не является проектным
-runtime. Не полагаться на необязательный `python` alias.
+## Docker и cloud Linux
 
-Текущий host-tooling snapshot:
+Локальный Docker запускается только через доступный Windows Docker context и
+PowerShell entrypoint, когда его требует риск изменения или task contract.
+Контейнеры могут быть Linux-контейнерами; это не разрешает переносить локальную
+Git/filesystem работу в Linux shell.
 
-```text
-Node 20.20.2
-pnpm 9.15.9
-system python3 3.14.6
-Docker Engine 29.6.2
-Docker Compose 5.3.1
-Docker Buildx 0.35.0
-Docker context default
+GitHub Actions и cloud E2E продолжают использовать их штатные runner images и
+container commands. Локальный PowerShell-only профиль не требует переписывать
+workflow implementation и не запрещает Linux внутри CI.
+
+## Git workflow
+
+Codex работает в существующей task branch, указанной владельцем. В пределах
+прямо разрешённой задачи можно:
+
+- читать refs и PR metadata;
+- изменять allowed paths;
+- запускать проверки;
+- создавать логические commits;
+- выполнять обычный push;
+- обновлять или создавать PR;
+- выполнять Ready/merge только при отдельном прямом разрешении.
+
+Без отдельного разрешения нельзя:
+
+- создавать или переключать branch;
+- создавать worktree или дополнительный checkout;
+- повторно клонировать repository;
+- force-push, переписывать историю или удалять branch;
+- merge в `master`, release, deployment или publication.
+
+## Task contract
+
+Для нетривиального change использовать локальный ignored
+`.agents/task-contract.toml`. Создать его из repository template можно так:
+
+```powershell
+$directoryArgs = @{
+    ItemType = 'Directory'
+    Path = '.agents'
+    Force = $true
+}
+New-Item @directoryArgs | Out-Null
+
+$copyArgs = @{
+    LiteralPath = 'docs/templates/task-contract.toml'
+    Destination = '.agents/task-contract.toml'
+}
+Copy-Item @copyArgs
 ```
 
-Номера версий являются диагностическим снимком, а не вечным pin. Источником
-поддерживаемых проектных версий остаются repository config, lockfiles и CI.
+Contract должен фиксировать exact branch/base, in/out of scope, allowed paths,
+acceptance criteria, проверки и stop conditions. Он не становится шире только
+потому, что рядом обнаружено несвязанное изменение.
 
-Для критических verification commands допустимо удалить `/mnt/*` entries из
-process `PATH`, чтобы Windows executables не затеняли Linux tooling. Ожидаются
-Linux paths вроде `/usr/bin/git`, `/usr/bin/docker` и `/usr/bin/pwsh`.
+## Cleanup и hygiene
 
-## Docker
+Cleanup ограничивается outputs, созданными текущей задачей и явно признанными
+безопасными для удаления. Не использовать recursive delete для checkout,
+repository root, profile directories или вычисленного пути без проверки точного
+resolved target.
 
-Используется native Docker Engine внутри Arch WSL:
+Перед commit и в финале:
 
-```text
-socket: /var/run/docker.sock
-services: docker.service, containerd.service
-context: default
+```powershell
+$scopeArgs = @('scripts/run_python.mjs', 'scripts/check_task_scope.py')
+& node @scopeArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$diffArgs = @('diff', '--check')
+& git @diffArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$statusArgs = @('status', '--short', '--branch')
+& git @statusArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-Docker Desktop, Docker Desktop WSL integration и remote Docker context не
-являются текущим контуром.
+Unrelated owner changes сохраняются. Reset, restore, stash, branch switch или
+новое рабочее дерево не используются как способ получить «чистую» среду.
 
-Codex может использовать уже работающий daemon и запускать разрешённые задачей
-build/test commands. Без отдельного согласования нельзя:
+## Связанные документы
 
-- устанавливать или обновлять системные Docker packages;
-- менять daemon configuration;
-- выполнять `systemctl enable/disable`;
-- удалять чужие images, volumes или containers;
-- делать глобальный Docker cleanup.
-
-## Setup contract
-
-Linux setup script должен:
-
-1. Перейти в `${CODEX_WORKTREE_PATH:?CODEX_WORKTREE_PATH is not set}`.
-2. Проверить `git`, `node`, `pnpm` и `uv`.
-3. Прочитать `.python-version`.
-4. Создать или переиспользовать `.venv` нужной версии.
-5. Установить `requirements-dev.txt` в `.venv`.
-6. Выполнить `pnpm install --frozen-lockfile`.
-7. Проверить Python source через `ast.parse` без генерации bytecode.
-8. Вывести версии основных инструментов и фактический worktree.
-
-Рекомендуемая переменная процесса:
-
-```bash
-export PYTHONDONTWRITEBYTECODE=1
-```
-
-Setup не должен:
-
-- запускать `sudo pacman` или другой system package manager;
-- менять WSL, systemd, `/etc/wsl.conf` или Windows settings;
-- запускать или настраивать Docker daemon;
-- собирать Docker image;
-- запускать real-Anki E2E;
-- менять Git history, commit или push;
-- сбрасывать unrelated changes.
-
-Если обязательный системный инструмент отсутствует, setup завершает работу с
-понятной ошибкой вместо скрытого изменения системы.
-
-## Cleanup contract
-
-Automatic cleanup удаляет только generated project outputs:
-
-```text
-__pycache__/
-.pytest_cache/
-web-dashboard/dist/
-anki_study_report/web_dashboard/
-anki_study_report.ankiaddon
-known temporary local-input APKG created by the task
-```
-
-Cleanup сохраняет:
-
-```text
-.venv/
-web-dashboard/node_modules/
-Docker images and volumes
-e2e-artifacts/
-E2E screenshots
-diagnostics and logs
-```
-
-E2E evidence сохраняется, потому что оно может быть необходимо для анализа
-failure или owner review. Его последующее удаление выполняется осознанно после
-закрытия задачи.
-
-Cleanup не выполняет:
-
-```text
-git reset --hard
-git clean -fdx
-git checkout .
-git restore .
-docker compose down -v
-system-wide Docker prune
-```
-
-Он не должен затрагивать параллельные worktrees или чужую диагностику.
-
-## Git и автономность
-
-В своём task worktree Codex может:
-
-- fetch актуальных refs;
-- создать одну task branch от актуального `origin/core`;
-- читать и изменять repository files;
-- устанавливать project-local dependencies;
-- запускать tests, typecheck, build, package validation и разрешённый Docker E2E;
-- делать логические commits;
-- push собственной branch;
-- создать или обновить один основной PR в `core`;
-- исправлять свой PR после CI или review.
-
-По умолчанию Codex готовит проверенный PR и останавливается для owner review.
-Merge в `core` допускается только когда конкретный prompt прямо его разрешает.
-
-Без отдельного разрешения запрещены:
-
-- force-push;
-- прямое переписывание `core` или `master`;
-- merge в `master`;
-- удаление чужих branches;
-- изменение system/global configuration;
-- действия вне repository worktree;
-- создание controller/trigger/status PR chains.
-
-## Verification boundary
-
-Полная автономность разрешена для focused project checks. Docker real-Anki E2E
-разрешён, когда он требуется `test-matrix.md`, `verification-run-policy.md` или
-реальным integration risk.
-
-E2E не используется как пошаговый debugger. Сначала выполняются focused checks,
-затем targeted E2E для локализованного риска и один final full gate для готового
-кандидата, если он обязателен. Successful unchanged exact-SHA run не повторяется
-без новой причины.
-
-## Что остаётся task-specific
-
-Следующее не закрепляется этим environment contract и должно задаваться конкретным
-prompt:
-
-- активный режим ChatGPT или Codex;
-- модель и reasoning effort;
-- product scope и completion criteria;
-- нужна ли task branch/PR;
-- разрешён ли merge в `core`;
-- required test set;
-- нужен ли постоянный report в `reports/`.
-
-Так временное использование доступного Codex quota не превращается в постоянный
-репозиторный default, а возвращение к ChatGPT mode не требует изменения этих
-документов.
+- [Codex work mode](codex-agent-rules.md)
+- [Общие режимы работы](ai-work-modes.md)
+- [AI context bootstrap](ai-context-bootstrap.md)
+- [Test matrix](test-matrix.md)
+- [Verification run policy](verification-run-policy.md)

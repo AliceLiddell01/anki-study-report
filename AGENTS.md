@@ -19,14 +19,29 @@
 5. Не начинай реализацию, пока цель, out of scope, allowed paths и completion criteria
    не образуют одну ограниченную задачу.
 
-Команды локального preflight:
+Локальный Codex preflight выполняется в PowerShell 7 из
+`C:\Users\KykLa\Documents\anki-study-report`:
 
-```bash
-git status --short --branch
-git branch --show-current
-git rev-parse HEAD
-git diff --stat
-git ls-files --others --exclude-standard
+```powershell
+$statusArgs = @('status', '--short', '--branch')
+& git @statusArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$branchArgs = @('branch', '--show-current')
+& git @branchArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$headArgs = @('rev-parse', 'HEAD')
+& git @headArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$diffArgs = @('diff', '--stat')
+& git @diffArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$untrackedArgs = @('ls-files', '--others', '--exclude-standard')
+& git @untrackedArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 ## Роли веток
@@ -62,20 +77,36 @@ current branch production code and tests
 
 - ChatGPT + GitHub connector: `docs/chatgpt-work-mode.md`.
 - Codex + local checkout: `docs/codex-agent-rules.md`.
-- WSL environment: `docs/codex-local-environment.md`.
+- Windows/PowerShell 7 environment: `docs/codex-local-environment.md`.
 - Ручные checkpointed операции: `docs/chatgpt-manual-operations.md`.
 - Компактный внешний контекст: `docs/ai-context-bootstrap.md`.
 
 Не смешивай полномочия режимов. GitHub Actions не является заменой локальному shell,
 Git или `gh`.
 
+Для локального Codex authoritative profile — Windows, PowerShell 7, существующий
+основной checkout `C:\Users\KykLa\Documents\anki-study-report` и указанная
+владельцем существующая task branch. Локально запрещены WSL, Bash, Git Bash,
+`git worktree`, второй checkout и повторный clone. Это ограничение не относится
+к Linux runner в GitHub Actions, Linux внутри Docker containers или cloud E2E.
+
 ## Task contract и scope guard
 
 Для нетривиального code/docs change используй:
 
-```bash
-mkdir -p .agents
-cp docs/templates/task-contract.toml .agents/task-contract.toml
+```powershell
+$directoryArgs = @{
+    ItemType = 'Directory'
+    Path = '.agents'
+    Force = $true
+}
+New-Item @directoryArgs | Out-Null
+
+$copyArgs = @{
+    LiteralPath = 'docs/templates/task-contract.toml'
+    Destination = '.agents/task-contract.toml'
+}
+Copy-Item @copyArgs
 ```
 
 Заполни contract до изменения кода. В нём обязательны:
@@ -90,9 +121,14 @@ cp docs/templates/task-contract.toml .agents/task-contract.toml
 
 Перед commit и в финале выполни:
 
-```bash
-python scripts/check_task_scope.py
-git diff --check
+```powershell
+$scopeArgs = @('scripts/run_python.mjs', 'scripts/check_task_scope.py')
+& node @scopeArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$diffArgs = @('diff', '--check')
+& git @diffArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Scope guard не разрешает неожиданный файл только потому, что он оказался удобным

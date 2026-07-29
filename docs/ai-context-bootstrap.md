@@ -116,8 +116,10 @@ verification contour.
 Для нетривиальной реализации создать `.agents/task-contract.toml` из template и
 проверить scope командой:
 
-```bash
-python scripts/check_task_scope.py
+```powershell
+$scopeArgs = @('scripts/run_python.mjs', 'scripts/check_task_scope.py')
+& node @scopeArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 ### Анализ выполненной работы
@@ -182,11 +184,13 @@ Successful unchanged exact-SHA gate не повторять. После двух
 Одна coherent task/PR — одна рабочая сессия. Состояние хранить в repository
 handoff/task contract, а не в памяти длинного чата.
 
-### WSL ничего не «исправил»
+### Локальная среда не меняет reasoning
 
-WSL ускоряет tooling/I/O, но не память и качество рассуждений модели. Checkout
-держать в `/home/...`, использовать project `.venv`, не смешивать `/mnt/c` и Linux
-executables без необходимости.
+Authoritative local Codex profile — Windows, PowerShell 7, существующий основной
+checkout `C:\Users\KykLa\Documents\anki-study-report` и указанная владельцем
+существующая task branch. Локально не использовать WSL, Bash, Git Bash,
+`git worktree`, второй checkout или повторный clone. Linux в GitHub Actions,
+Docker containers и cloud E2E остаётся допустимым.
 
 ## Минимальный рабочий цикл
 
@@ -198,7 +202,7 @@ resolve branch/base/head
 → focused tests
 → inspect full diff
 → scope guard + git diff --check
-→ one independent diff review
+→ one separate diff review
 → at most one bounded remediation
 → risk-required final verification
 → commit/PR/final report

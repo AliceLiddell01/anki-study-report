@@ -1,6 +1,6 @@
 # Режим работы Codex
 
-Снимок правил: **2026-07-21**.
+Снимок правил: **2026-07-30**.
 
 Этот файл применяется только к **Codex mode**: агент имеет локальный checkout,
 shell и может выполнять многофайловую реализацию, тесты и Git workflow
@@ -15,11 +15,15 @@ shell и может выполнять многофайловую реализа
 Codex может автономно:
 
 - читать и изменять локальное рабочее дерево;
-- создавать или переключать branch;
-- выполнять shell, Git, tests, build и Docker commands;
+- работать в указанной владельцем существующей task branch;
+- выполнять PowerShell 7, Git, tests, build и Docker commands;
 - делать логические commits;
 - push и открывать draft PR, если это соответствует задаче;
 - rebase/merge в разрешённых владельцем границах.
+
+Создание или переключение branch требует отдельного прямого указания владельца.
+Текущий локальный профиль не разрешает `git worktree`, второй checkout или
+повторный clone.
 
 Codex не должен применять ChatGPT-specific процесс скачиваемых файлов:
 
@@ -44,9 +48,17 @@ Codex не должен применять ChatGPT-specific процесс ск�
 Затем выполнить:
 
 ```powershell
-git status --short --branch
-git diff --stat
-git ls-files --others --exclude-standard
+$statusArgs = @('status', '--short', '--branch')
+& git @statusArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$diffArgs = @('diff', '--stat')
+& git @diffArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$untrackedArgs = @('ls-files', '--others', '--exclude-standard')
+& git @untrackedArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Не трогать unrelated dirty changes. Если они есть, сохранить их и явно отметить
@@ -111,12 +123,17 @@ PR либо в один финальный механический closeout, е
 
 ## Консоль и скрипты
 
-Codex выбирает среду по фактической задаче:
+Локальная среда Codex фиксирована:
 
-- WSL/Linux shell — Linux tooling, Docker, artifact inspection и shell scripts;
-- PowerShell — canonical repository `.ps1` entrypoints и Windows-specific checks.
+- OS — Windows;
+- shell — PowerShell 7;
+- checkout — `C:\Users\KykLa\Documents\anki-study-report`;
+- рабочее дерево — существующий основной checkout;
+- branch — существующая task branch, указанная владельцем.
 
-Не смешивать Windows и WSL paths без необходимости.
+Локально не использовать WSL, Bash, Git Bash, `git worktree`, второй checkout или
+повторный clone. Linux остаётся допустимым внутри GitHub Actions runners, Docker
+containers и cloud E2E: это не меняет локальную PowerShell-only границу.
 
 Скрипты должны быть простыми:
 
@@ -187,16 +204,26 @@ production code.
 Для package changes:
 
 ```powershell
-node scripts/run_python.mjs scripts/package_addon.py --check
+$packageArgs = @(
+    'scripts/run_python.mjs',
+    'scripts/package_addon.py',
+    '--check'
+)
+& node @packageArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 Canonical non-Docker check:
 
 ```powershell
-.\scripts\run_full_check.ps1 -SkipDocker
+$checkArgs = @('-SkipDocker')
+& '.\scripts\run_full_check.ps1' @checkArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-Docker real-Anki E2E разрешён локально и выбирается по текущему риску.
+Docker real-Anki E2E разрешён из PowerShell 7 при доступном Windows Docker
+контексте и выбирается по текущему риску. Linux внутри контейнеров и cloud E2E
+остаётся допустимым.
 
 Правила stop-loss:
 
