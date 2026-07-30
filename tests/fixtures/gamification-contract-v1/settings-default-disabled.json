@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "enabled": false,
+  "weeklyTargetDays": 1,
+  "plannedRestWeekdays": [],
+  "feedbackEnabled": true
+}

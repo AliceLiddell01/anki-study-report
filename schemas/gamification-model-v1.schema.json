@@ -1,0 +1,502 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anki-study-report.local/schemas/gamification-model-v1.schema.json",
+  "title": "GamificationModelV1",
+  "description": "Read-only Study Rhythm v1 model derived from ActivityHub v1 and the current ProfileModel.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "calculationVersion",
+    "generatedAt",
+    "availability",
+    "settings",
+    "coverage",
+    "today",
+    "week",
+    "historySummary",
+    "existingStreakContext",
+    "explanations",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "calculationVersion": {
+      "const": "study-rhythm-v1"
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/utcTimestamp"
+    },
+    "availability": {
+      "enum": [
+        "available",
+        "partial",
+        "unavailable"
+      ]
+    },
+    "settings": {
+      "$ref": "#/$defs/publicSettings"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "today": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/today"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "week": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/week"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "historySummary": {
+      "$ref": "#/$defs/historySummary"
+    },
+    "existingStreakContext": {
+      "$ref": "#/$defs/existingStreakContext"
+    },
+    "explanations": {
+      "type": "array",
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "planned_rest_is_neutral",
+          "activity_on_rest_day_counts",
+          "unavailable_days_are_not_missed",
+          "existing_streak_is_not_rest_aware",
+          "current_plan_is_not_applied_retroactively"
+        ]
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "activity_hub_missing",
+          "activity_hub_schema_unsupported",
+          "activity_scope_not_all_collection",
+          "current_week_partial_coverage",
+          "profile_missing_for_streak_context",
+          "settings_corrupt_recovered"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "safeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "isoWeekday": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 7
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+    },
+    "publicSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "revision",
+        "enabled",
+        "weeklyTargetDays",
+        "plannedRestWeekdays",
+        "feedbackEnabled",
+        "source"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "revision": {
+          "$ref": "#/$defs/safeInteger"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "weeklyTargetDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "plannedRestWeekdays": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/isoWeekday"
+          }
+        },
+        "feedbackEnabled": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "default",
+            "stored",
+            "recovered_default"
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "scope",
+        "today",
+        "weekStart",
+        "weekEnd",
+        "availableFrom",
+        "status",
+        "knownElapsedDays",
+        "unavailableElapsedDates"
+      ],
+      "properties": {
+        "source": {
+          "const": "activity_hub_v1"
+        },
+        "scope": {
+          "const": "all_collection"
+        },
+        "today": {
+          "$ref": "#/$defs/date"
+        },
+        "weekStart": {
+          "$ref": "#/$defs/date"
+        },
+        "weekEnd": {
+          "$ref": "#/$defs/date"
+        },
+        "availableFrom": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "full",
+            "partial",
+            "unavailable"
+          ]
+        },
+        "knownElapsedDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "unavailableElapsedDates": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/date"
+          }
+        }
+      }
+    },
+    "today": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "isoWeekday",
+        "plan",
+        "activity",
+        "countsTowardTarget"
+      ],
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "isoWeekday": {
+          "$ref": "#/$defs/isoWeekday"
+        },
+        "plan": {
+          "enum": [
+            "open",
+            "rest"
+          ]
+        },
+        "activity": {
+          "enum": [
+            "active",
+            "inactive",
+            "unavailable"
+          ]
+        },
+        "countsTowardTarget": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completedDays",
+        "targetDays",
+        "remainingDays",
+        "isLowerBound"
+      ],
+      "properties": {
+        "completedDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "targetDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "remainingDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "isLowerBound": {
+          "type": "boolean"
+        }
+      }
+    },
+    "weekDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "isoWeekday",
+        "relation",
+        "plan",
+        "activity",
+        "countsTowardTarget"
+      ],
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "isoWeekday": {
+          "$ref": "#/$defs/isoWeekday"
+        },
+        "relation": {
+          "enum": [
+            "past",
+            "today",
+            "future"
+          ]
+        },
+        "plan": {
+          "enum": [
+            "open",
+            "rest"
+          ]
+        },
+        "activity": {
+          "enum": [
+            "active",
+            "inactive",
+            "unavailable",
+            "future"
+          ]
+        },
+        "countsTowardTarget": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "week": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "weekStart",
+        "weekEnd",
+        "progress",
+        "remainingOpenDays",
+        "completionState",
+        "days"
+      ],
+      "properties": {
+        "weekStart": {
+          "$ref": "#/$defs/date"
+        },
+        "weekEnd": {
+          "$ref": "#/$defs/date"
+        },
+        "progress": {
+          "$ref": "#/$defs/progress"
+        },
+        "remainingOpenDays": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/date"
+          }
+        },
+        "completionState": {
+          "enum": [
+            "complete",
+            "unknown",
+            "possible",
+            "not_possible_without_plan_change"
+          ]
+        },
+        "days": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "$ref": "#/$defs/weekDay"
+          }
+        }
+      }
+    },
+    "completedWeek": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "weekStart",
+        "weekEnd",
+        "activeDays"
+      ],
+      "properties": {
+        "weekStart": {
+          "$ref": "#/$defs/date"
+        },
+        "weekEnd": {
+          "$ref": "#/$defs/date"
+        },
+        "activeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        }
+      }
+    },
+    "historySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limit",
+        "completedWeeks"
+      ],
+      "properties": {
+        "limit": {
+          "const": 4
+        },
+        "completedWeeks": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/completedWeek"
+          }
+        }
+      }
+    },
+    "availableStreakContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "currentStreak",
+        "bestStreak",
+        "source",
+        "restAware"
+      ],
+      "properties": {
+        "available": {
+          "const": true
+        },
+        "currentStreak": {
+          "$ref": "#/$defs/safeInteger"
+        },
+        "bestStreak": {
+          "$ref": "#/$defs/safeInteger"
+        },
+        "source": {
+          "const": "profile_study_history"
+        },
+        "restAware": {
+          "const": false
+        }
+      }
+    },
+    "unavailableStreakContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "currentStreak",
+        "bestStreak",
+        "source",
+        "restAware"
+      ],
+      "properties": {
+        "available": {
+          "const": false
+        },
+        "currentStreak": {
+          "type": "null"
+        },
+        "bestStreak": {
+          "type": "null"
+        },
+        "source": {
+          "const": "profile_study_history"
+        },
+        "restAware": {
+          "const": false
+        }
+      }
+    },
+    "existingStreakContext": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/availableStreakContext"
+        },
+        {
+          "$ref": "#/$defs/unavailableStreakContext"
+        }
+      ]
+    }
+  }
+}

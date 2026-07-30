@@ -132,10 +132,12 @@ The user sets a realistic weekly study rhythm, sees today's state and weekly pro
 ```text
 G5 status: IN PROGRESS / NOT COMPLETE
 G5.0: COMPLETE
-G5.1: REMEDIATED CANDIDATE / OWNER ACCEPTANCE PENDING
-G5.1 owner visual acceptance: PENDING
-G5.1 merge: NOT PERFORMED
-G5.2: NOT STARTED
+G5.1: COMPLETE
+G5.1 owner visual acceptance: GRANTED
+G5.1 merge: PR #182 / 4c16753fdbd0367b16c9fc9992602f3f86f65c5f
+G5.2: CONTRACT CANDIDATE / REVIEW PENDING
+G5.2 merge: NOT PERFORMED
+G5.3: NOT STARTED
 G5 closes with: WORKING PACKAGED MVP
 XP economy: OUT OF SCOPE
 level system: OUT OF SCOPE
@@ -427,22 +429,29 @@ Candidate deliverable:
 - RU/EN, light/dark, responsive and reduced-motion-safe behavior;
 - objective visual evidence and explicit ADAPT/IMPROVE/DEFER/REJECT decisions.
 
-The implementation candidate changes no backend/public schema and introduces no
-XP, levels, achievements, skills, new routes or placeholder systems. Canonical
-completion remains blocked on exact-SHA gates, owner visual acceptance and
-merge. G5.2 is not started.
+The implementation changed no backend/public schema and introduced no XP,
+levels, achievements, skills, new routes or placeholder systems. Owner visual
+acceptance was granted and PR #182 merged as
+`4c16753fdbd0367b16c9fc9992602f3f86f65c5f`.
 
 ### G5.2 — Freeze minimal MVP contract
 
 **Goal:** freeze only the settings, source-data and derived-state fields required by the vertical slice.
 
+**Status:** `CONTRACT CANDIDATE / REVIEW PENDING`; merge not performed.
+
 Deliverable:
 
-- human contract;
-- strict schemas or validators where appropriate;
-- backend/frontend type agreement;
-- calculation/version identifiers;
-- no XP, levels, achievements or quest placeholders.
+- [self-contained human contract](../../docs/gamification/study-rhythm-mvp-contract-v1.md);
+- strict Draft 2020-12 settings, request, model and error schemas;
+- valid fixtures plus mandatory invalid cases;
+- executable Python contract validation and exact human/schema example parity;
+- frozen ActivityHub/Profile source, calendar, coverage, recovery, revision,
+  completion, explanation, limitation and error semantics;
+- no XP, levels, achievements, quest placeholders, runtime store/service, live
+  endpoint, route or UI.
+
+G5.2 does not start G5.3 and does not make G5 complete.
 
 ### G5.3 — Implement local store and pure rhythm service
 
@@ -793,22 +802,24 @@ G7 achievements
 G8 bounded expansion
 ```
 
-## 20. Production boundary at planning time
+## 20. Current production boundary
 
-G5.1 has an owner-authorized remediated candidate. Owner visual acceptance and
-merge remain pending; later stages remain planning only.
+G5.1 is owner accepted and merged. G5.2 is a contract candidate only; runtime
+implementation remains a later, separately reviewed stage.
 
 ```text
-production code changed: G5.1 FRONTEND CANDIDATE ONLY
-frontend changed: YES — existing #/profile composition
+production code changed: G5.1 MERGED PROFILE FRONTEND ONLY
+frontend changed: YES — existing #/profile composition from merged G5.1
 payload/API changed: NO
 persistence changed: NO
-package changed: PACKAGE-IMPACTING FRONTEND CANDIDATE
+package changed by G5.2: NO
 release changed: NO
-G5.1: REMEDIATED CANDIDATE / OWNER ACCEPTANCE PENDING
-G5.1 owner visual acceptance: PENDING
-G5.1 merge: NOT PERFORMED
-G5.2 started: NO
+G5.1: COMPLETE
+G5.1 owner visual acceptance: GRANTED
+G5.1 merge: PR #182 / 4c16753fdbd0367b16c9fc9992602f3f86f65c5f
+G5.2: CONTRACT CANDIDATE / REVIEW PENDING
+G5.2 merge: NOT PERFORMED
+G5.3 started: NO
 G6/G7/G8 started: NO
 ```
 

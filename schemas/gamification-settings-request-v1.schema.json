@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anki-study-report.local/schemas/gamification-settings-request-v1.schema.json",
+  "title": "GamificationSettingsMutationRequestV1",
+  "description": "Strict optimistic-concurrency request for a future token-protected Study Rhythm settings endpoint.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/replaceRequest"
+    },
+    {
+      "$ref": "#/$defs/resetRequest"
+    }
+  ],
+  "$defs": {
+    "safeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "isoWeekday": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 7
+    },
+    "replaceSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "weeklyTargetDays",
+        "plannedRestWeekdays",
+        "feedbackEnabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "weeklyTargetDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "plannedRestWeekdays": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/isoWeekday"
+          }
+        },
+        "feedbackEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "replaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "expectedRevision",
+        "operation",
+        "settings"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "expectedRevision": {
+          "$ref": "#/$defs/safeInteger"
+        },
+        "operation": {
+          "const": "replace"
+        },
+        "settings": {
+          "$ref": "#/$defs/replaceSettings"
+        }
+      }
+    },
+    "resetRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "expectedRevision",
+        "operation"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "expectedRevision": {
+          "$ref": "#/$defs/safeInteger"
+        },
+        "operation": {
+          "const": "reset"
+        }
+      }
+    }
+  }
+}

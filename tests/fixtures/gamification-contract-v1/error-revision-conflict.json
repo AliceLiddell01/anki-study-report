@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "error": "gamification_revision_conflict",
+  "message": "Study Rhythm settings changed in another request.",
+  "currentRevision": 4,
+  "currentSettings": {
+    "schemaVersion": 1,
+    "revision": 4,
+    "enabled": true,
+    "weeklyTargetDays": 4,
+    "plannedRestWeekdays": [
+      6,
+      7
+    ],
+    "feedbackEnabled": true,
+    "source": "stored"
+  }
+}

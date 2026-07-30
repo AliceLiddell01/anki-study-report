@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "calculationVersion": "study-rhythm-v1",
+  "generatedAt": "2026-07-29T12:00:00Z",
+  "availability": "available",
+  "settings": {
+    "schemaVersion": 1,
+    "revision": 3,
+    "enabled": true,
+    "weeklyTargetDays": 4,
+    "plannedRestWeekdays": [
+      6,
+      7
+    ],
+    "feedbackEnabled": true,
+    "source": "stored"
+  },
+  "coverage": {
+    "source": "activity_hub_v1",
+    "scope": "all_collection",
+    "today": "2026-07-29",
+    "weekStart": "2026-07-27",
+    "weekEnd": "2026-08-02",
+    "availableFrom": "2026-07-01",
+    "status": "full",
+    "knownElapsedDays": 3,
+    "unavailableElapsedDates": []
+  },
+  "today": {
+    "date": "2026-07-29",
+    "isoWeekday": 3,
+    "plan": "open",
+    "activity": "inactive",
+    "countsTowardTarget": false
+  },
+  "week": {
+    "weekStart": "2026-07-27",
+    "weekEnd": "2026-08-02",
+    "progress": {
+      "completedDays": 1,
+      "targetDays": 4,
+      "remainingDays": 3,
+      "isLowerBound": false
+    },
+    "remainingOpenDays": [
+      "2026-07-29",
+      "2026-07-30",
+      "2026-07-31"
+    ],
+    "completionState": "possible",
+    "days": [
+      {
+        "date": "2026-07-27",
+        "isoWeekday": 1,
+        "relation": "past",
+        "plan": "open",
+        "activity": "active",
+        "countsTowardTarget": true
+      },
+      {
+        "date": "2026-07-28",
+        "isoWeekday": 2,
+        "relation": "past",
+        "plan": "open",
+        "activity": "inactive",
+        "countsTowardTarget": false
+      },
+      {
+        "date": "2026-07-29",
+        "isoWeekday": 3,
+        "relation": "today",
+        "plan": "open",
+        "activity": "inactive",
+        "countsTowardTarget": false
+      },
+      {
+        "date": "2026-07-30",
+        "isoWeekday": 4,
+        "relation": "future",
+        "plan": "open",
+        "activity": "future",
+        "countsTowardTarget": null
+      },
+      {
+        "date": "2026-07-31",
+        "isoWeekday": 5,
+        "relation": "future",
+        "plan": "open",
+        "activity": "future",
+        "countsTowardTarget": null
+      },
+      {
+        "date": "2026-08-01",
+        "isoWeekday": 6,
+        "relation": "future",
+        "plan": "rest",
+        "activity": "future",
+        "countsTowardTarget": null
+      },
+      {
+        "date": "2026-08-02",
+        "isoWeekday": 7,
+        "relation": "future",
+        "plan": "rest",
+        "activity": "future",
+        "countsTowardTarget": null
+      }
+    ]
+  },
+  "historySummary": {
+    "limit": 4,
+    "completedWeeks": [
+      {
+        "weekStart": "2026-07-20",
+        "weekEnd": "2026-07-26",
+        "activeDays": 4
+      },
+      {
+        "weekStart": "2026-07-13",
+        "weekEnd": "2026-07-19",
+        "activeDays": 3
+      }
+    ]
+  },
+  "existingStreakContext": {
+    "available": true,
+    "currentStreak": 0,
+    "bestStreak": 14,
+    "source": "profile_study_history",
+    "restAware": false
+  },
+  "explanations": [
+    "planned_rest_is_neutral",
+    "activity_on_rest_day_counts",
+    "existing_streak_is_not_rest_aware",
+    "current_plan_is_not_applied_retroactively"
+  ],
+  "limitations": []
+}
