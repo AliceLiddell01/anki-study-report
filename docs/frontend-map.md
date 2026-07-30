@@ -1,6 +1,6 @@
 # Карта frontend dashboard
 
-**Снимок документации:** 2026-07-26
+**Снимок документации:** 2026-07-30
 
 Актуальные контракты находятся в `docs/`, последовательность работ — в `roadmap/`, исторические отчёты и аудиты — в `reports/`.
 
@@ -34,7 +34,22 @@ web-dashboard/src/i18n/
 | `#/decks` | `DecksPage` | `deckHub`, действие Browser | семантика direct и subtree |
 | `#/search` | `SearchPage` | Search v2, metadata v1 | строгий parsing и точные ID |
 | `#/cards` | лениво загружаемый `CardsPage` | запрос Triage v4, recheck v1, просмотр Search v2 | ограниченное накопление, гонки действий и recheck, фокус и responsive-подробности |
+| `#/profile` | `ProfilePage` | `StudyReport.profile`, `POST /api/profile` | factual identity/lifetime semantics, viewport-fixed settings dialog и отсутствие speculative progression |
 | `#/settings/inspection-profiles` | `InspectionProfilesSettingsPage` | API Inspection Profiles | точные ссылки, жизненный цикл и локальные черновики |
+
+## Profile production foundation
+
+`ProfilePage` использует существующий all-collection `StudyReport.profile` без
+новых backend fields. Композиция фиксирована как компактный identity hero →
+реальные main decks из `profile.decks.overview` → factual Status с
+primary/secondary hierarchy → compact/full factual Activity → спокойная recent
+history. Canonical deck hierarchy визуально раскрывается без domain inference,
+а полное имя остаётся accessible. Единый settings dialog сохраняет
+`customStudyStartedOn` и `deckOverviewSort` одним существующим Profile patch и
+рендерится portal в `document.body`.
+
+Profile не создаёт route `#/gamification`, XP/levels, skill model,
+achievements, milestone inference или browser-local persistence.
 
 ## Каноническая идентичность карточки и предпросмотр
 

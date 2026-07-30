@@ -115,7 +115,14 @@ Menu разделено на два блока:
 - закрытие по `Escape`, click вне menu, выбору маршрута или внешней смене маршрута;
 - после `Escape` фокус возвращается на trigger.
 
-`#/profile` является самостоятельной локальной поверхностью всей collection: идентичность, KPI за всё время, активность и обзор колод. Он не дублирует основные маршруты Calendar, Decks и Cards и не меняет scope dashboard. См. `docs/profile-mvp.md`.
+`#/profile` является самостоятельной локальной поверхностью всей collection:
+компактный identity hero, реальные main decks из текущего deck overview,
+factual lifetime Status с primary/secondary hierarchy, compact/full Activity и
+спокойная recent history. Ссылки ведут только в существующие `#/calendar` и
+`#/decks`; настройки даты начала и порядка main decks объединены в доступном
+dialog. Profile не добавляет
+Gamification routes или speculative progression systems и не меняет scope
+dashboard. См. `docs/profile-mvp.md`.
 
 ## Навигация Settings
 

@@ -23,12 +23,13 @@ describe("Settings Hub pages", () => {
     expect(markup).toContain("Перестроить кэш");
   });
 
-  it("renders the Profile MVP fallback without transitional settings copy", () => {
+  it("renders the honest Profile unavailable state without fabricated identity or settings links", () => {
     const markup = renderToStaticMarkup(<ProfilePage report={null} />);
 
-    expect(markup).toContain("Пользователь Anki");
-    expect(markup).toContain("Локальный профиль");
-    expect(markup).toContain("Изменить дату начала");
+    expect(markup).toContain("Профиль пока недоступен");
+    expect(markup).toContain("Опубликуйте свежий отчёт в Anki");
+    expect(markup).not.toContain("Пользователь Anki");
+    expect(markup).not.toContain("Настроить профиль");
     expect(markup).not.toContain("переходный read-only экран");
     expect(markup).not.toContain('href="#/settings"');
   });

@@ -58,7 +58,9 @@ describe("representative localized pages", () => {
 
     expect(activity).toContain("Activity");
     expect(decks).toContain("Decks");
-    expect(profile).toContain("Learning journey");
+    expect(profile).toContain("What you study");
+    expect(profile).toContain("Main decks");
+    expect(profile).toContain("Your history in numbers");
     expect(profile).toContain("Local profile");
     expect(profile).not.toContain("Локальный профиль");
     expect(actions).toContain("Tools");
