@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "calculationVersion": "study-rhythm-v1",
+  "generatedAt": "2026-07-29T12:00:00Z",
+  "availability": "unavailable",
+  "settings": {
+    "schemaVersion": 1,
+    "revision": 2,
+    "enabled": true,
+    "weeklyTargetDays": 4,
+    "plannedRestWeekdays": [
+      6,
+      7
+    ],
+    "feedbackEnabled": true,
+    "source": "stored"
+  },
+  "coverage": {
+    "source": "activity_hub_v1",
+    "scope": "all_collection",
+    "today": "2026-07-29",
+    "weekStart": "2026-07-27",
+    "weekEnd": "2026-08-02",
+    "availableFrom": null,
+    "status": "unavailable",
+    "knownElapsedDays": 0,
+    "unavailableElapsedDates": [
+      "2026-07-27",
+      "2026-07-28",
+      "2026-07-29"
+    ]
+  },
+  "today": null,
+  "week": null,
+  "historySummary": {
+    "limit": 4,
+    "completedWeeks": []
+  },
+  "existingStreakContext": {
+    "available": true,
+    "currentStreak": 2,
+    "bestStreak": 10,
+    "source": "profile_study_history",
+    "restAware": false
+  },
+  "explanations": [
+    "unavailable_days_are_not_missed",
+    "existing_streak_is_not_rest_aware"
+  ],
+  "limitations": [
+    "activity_hub_missing"
+  ]
+}

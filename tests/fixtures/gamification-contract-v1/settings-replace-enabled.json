@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "expectedRevision": 0,
+  "operation": "replace",
+  "settings": {
+    "enabled": true,
+    "weeklyTargetDays": 4,
+    "plannedRestWeekdays": [
+      6,
+      7
+    ],
+    "feedbackEnabled": true
+  }
+}

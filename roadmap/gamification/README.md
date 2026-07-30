@@ -2,7 +2,7 @@
 
 **Track:** `G`
 **Role:** parallel research/product direction
-**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; `G5 In Progress / Not Complete`; `G5.0 Complete`; `G5.1 Profile Production Foundation` remediated candidate with owner visual acceptance and merge pending; `G5.2 Not Started`
+**Current status:** `G0–G2 Complete`; G1 winner `P-TAPER-ZERO-30D`; G2 winner `C-CONFIRMATION-ONLY-D1-NOTE-SIBLING`; `G3 Deferred / Post-MVP / Not Started`; `G4/G4.4 Complete` with `REJECT`; `G5 In Progress / Not Complete`; `G5.0 Complete`; `G5.1 Profile Production Foundation Complete` with owner visual acceptance granted and PR #182 merged as `4c16753fdbd0367b16c9fc9992602f3f86f65c5f`; `G5.2 Contract Candidate / Review Pending`
 
 Gamification does not block the Core path. Research code, fixtures, contracts, evidence and recommended research candidates do not enter the add-on package, Fast CI or release workflows without a later explicit decision.
 
@@ -33,8 +33,8 @@ G4.3 Candidate protocol and hypothesis design       COMPLETE — v4 FROZEN_AND_E
 G4.4 Bounded screening                              COMPLETE — REJECT
 G5  Production Profile and later Study Rhythm       IN PROGRESS / NOT COMPLETE
 G5.0 Current production baseline sync               COMPLETE
-G5.1 Profile Production Foundation                  REMEDIATED CANDIDATE / OWNER ACCEPTANCE PENDING
-G5.2 Study Rhythm contract                          NOT STARTED
+G5.1 Profile Production Foundation                  COMPLETE — OWNER ACCEPTED / MERGED PR #182
+G5.2 Study Rhythm contract                          CONTRACT CANDIDATE / REVIEW PENDING
 G6  Personal Progression Economy v1                 CONDITIONAL / NOT STARTED
 G7  Achievements foundation                         CONDITIONAL / NOT STARTED
 G8  Skills, quests and domain expansion             DEFERRED / CONDITIONAL / NOT STARTED
@@ -301,6 +301,16 @@ The first G5 task is a bounded `core → gamification` sync. Feature implementat
 
 Full decomposition, checks, completion criteria and design-reference policy: [G5–G8 product roadmap](g5-g8-product-roadmap.md).
 
+Current G5.2 deliverables:
+
+- [Study Rhythm MVP contract v1](../../docs/gamification/study-rhythm-mvp-contract-v1.md);
+- strict settings, request, model and error schemas in [`schemas/`](../../schemas/);
+- executable contract fixtures and tests;
+- [G5.2 evidence report](../../reports/gamification/g5-2-study-rhythm-contract-freeze.md).
+
+This is a contract candidate only. G5.2 review and merge are pending, G5.3 is
+not started, and G5 overall remains not complete.
+
 ## G6 — Personal Progression Economy v1
 
 **Status:** Conditional / Not Started.
@@ -331,11 +341,16 @@ AND CONCRETE_EVIDENCE_BACKED_PRODUCT_TRIGGER
 
 ## Production boundary
 
-G5.1 changes the existing production Profile frontend only and is a remediated
-candidate, not canonical complete until owner visual acceptance and merge. Existing
-`StudyReport.profile` and `/api/profile` contracts are unchanged; no new
-payload, API, persistence, scheduler, FSRS, telemetry, release or publication
-is introduced. G5.2 and G6–G8 are not started.
+G5.1 changed the existing production Profile frontend only, received owner
+visual acceptance and merged through PR #182 as
+`4c16753fdbd0367b16c9fc9992602f3f86f65c5f`. Existing
+`StudyReport.profile` and `/api/profile` contracts remain unchanged.
+
+G5.2 freezes documentation, strict schemas, fixtures and executable contract
+tests only. It introduces no runtime store/service, live endpoint, dashboard
+payload, route, UI, scheduler, FSRS, telemetry, package, release or
+publication. G5.2 is `CONTRACT CANDIDATE / REVIEW PENDING`; its merge is not
+performed. G5.3 and G6–G8 are not started.
 
 ## G4 publication chronology
 

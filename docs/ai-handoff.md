@@ -326,7 +326,14 @@ Review winner — P-TAPER-ZERO-30D
 Learn winner — C-CONFIRMATION-ONLY-D1-NOTE-SIBLING
 Learn status — CONFIRMATORY_INCONCLUSIVE
 Learn limitation — DISPOSABLE_ANKI_IDENTITY_PROBE_UNAVAILABLE
-G5 — PLANNED / NOT STARTED
+G5 — IN PROGRESS / NOT COMPLETE
+G5.0 — COMPLETE
+G5.1 — COMPLETE
+G5.1 owner visual acceptance — GRANTED
+G5.1 merge — PR #182 / 4c16753fdbd0367b16c9fc9992602f3f86f65c5f
+G5.2 — CONTRACT CANDIDATE / REVIEW PENDING
+G5.2 merge — NOT PERFORMED
+G5.3 — NOT STARTED
 G6 — CONDITIONAL / NOT STARTED
 ```
 
@@ -345,6 +352,10 @@ G6 — CONDITIONAL / NOT STARTED
 - [G4.3 post-merge report](../reports/research/g4-3-candidate-economy-protocol-closeout-2026-07-28.md)
 - [G4.4 bounded screening](gamification/core-economy-bounded-screening.md)
 - [G4 final closeout](../roadmap/gamification/g4-core-economy-bounded-screening.md)
+- [G5.1 production foundation](gamification/profile-g5-1-production-foundation.md)
+- [G5.1 merged evidence](../reports/gamification/g5-1-profile-production-foundation.md)
+- [G5.2 Study Rhythm contract v1](gamification/study-rhythm-mvp-contract-v1.md)
+- [G5.2 contract evidence](../reports/gamification/g5-2-study-rhythm-contract-freeze.md)
 
 `gamification → master`, production integration, package inclusion and release remain prohibited without a separate owner decision.
 
